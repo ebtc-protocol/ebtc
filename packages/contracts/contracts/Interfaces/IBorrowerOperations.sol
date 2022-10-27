@@ -18,9 +18,9 @@ interface IBorrowerOperations {
     event LUSDTokenAddressChanged(address _lusdTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(address indexed _borrower, uint arrayIndex);
-    event TroveUpdated(address indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event LUSDBorrowingFeePaid(address indexed _borrower, uint _LUSDFee);
+    event TroveCreated(bytes32 indexed _borrower, uint arrayIndex);
+    event TroveUpdated(bytes32 indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
+    event LUSDBorrowingFeePaid(bytes32 indexed _borrower, uint _LUSDFee);
 
     // --- Functions ---
 
@@ -37,21 +37,21 @@ interface IBorrowerOperations {
         address _lqtyStakingAddress
     ) external;
 
-    function openTrove(uint _maxFee, uint _LUSDAmount, address _upperHint, address _lowerHint) external payable;
+    function openTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function addColl(address _upperHint, address _lowerHint) external payable;
+    function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function moveETHGainToTrove(address _user, address _upperHint, address _lowerHint) external payable;
+    function moveETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function withdrawColl(uint _amount, address _upperHint, address _lowerHint) external;
+    function withdrawColl(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function withdrawLUSD(uint _maxFee, uint _amount, address _upperHint, address _lowerHint) external;
+    function withdrawLUSD(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function repayLUSD(uint _amount, address _upperHint, address _lowerHint) external;
+    function repayLUSD(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function closeTrove() external;
+    function closeTrove(bytes32 _troveId) external;
 
-    function adjustTrove(uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, address _upperHint, address _lowerHint) external payable;
+    function adjustTrove(bytes32 _troveId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
     function claimCollateral() external;
 

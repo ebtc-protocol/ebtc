@@ -673,8 +673,8 @@ class TestHelper {
     if (!maxFeePercentage) maxFeePercentage = this._100pct
     if (!extraLUSDAmount) extraLUSDAmount = this.toBN(0)
     else if (typeof extraLUSDAmount == 'string') extraLUSDAmount = this.toBN(extraLUSDAmount)
-    if (!upperHint) upperHint = this.ZERO_ADDRESS
-    if (!lowerHint) lowerHint = this.ZERO_ADDRESS
+    if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
+    if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
 
     const MIN_DEBT = (
       await this.getNetBorrowingAmount(contracts, await contracts.borrowerOperations.MIN_NET_DEBT())
@@ -1214,6 +1214,7 @@ TestHelper.ZERO_ADDRESS = '0x' + '0'.repeat(40)
 TestHelper.maxBytes32 = '0x' + 'f'.repeat(64)
 TestHelper._100pct = '1000000000000000000'
 TestHelper.latestRandomSeed = 31337
+TestHelper.DUMMY_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
 module.exports = {
   TestHelper,

@@ -9,20 +9,20 @@ interface ISortedTroves {
     
     event SortedTrovesAddressChanged(address _sortedDoublyLLAddress);
     event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
-    event NodeAdded(address _id, uint _NICR);
-    event NodeRemoved(address _id);
+    event NodeAdded(bytes32 _id, uint _NICR);
+    event NodeRemoved(bytes32 _id);
 
     // --- Functions ---
     
     function setParams(uint256 _size, address _TroveManagerAddress, address _borrowerOperationsAddress) external;
 
-    function insert(address _id, uint256 _ICR, address _prevId, address _nextId) external;
+    function insert(address owner, bytes32 _id, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external;
 
-    function remove(address _id) external;
+    function remove(bytes32 _id) external;
 
-    function reInsert(address _id, uint256 _newICR, address _prevId, address _nextId) external;
+    function reInsert(bytes32 _id, uint256 _newICR, bytes32 _prevId, bytes32 _nextId) external;
 
-    function contains(address _id) external view returns (bool);
+    function contains(bytes32 _id) external view returns (bool);
 
     function isFull() external view returns (bool);
 
@@ -32,15 +32,19 @@ interface ISortedTroves {
 
     function getMaxSize() external view returns (uint256);
 
-    function getFirst() external view returns (address);
+    function getFirst() external view returns (bytes32);
 
-    function getLast() external view returns (address);
+    function getLast() external view returns (bytes32);
 
-    function getNext(address _id) external view returns (address);
+    function getNext(bytes32 _id) external view returns (bytes32);
 
-    function getPrev(address _id) external view returns (address);
+    function getPrev(bytes32 _id) external view returns (bytes32);
 
-    function validInsertPosition(uint256 _ICR, address _prevId, address _nextId) external view returns (bool);
+    function validInsertPosition(uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external view returns (bool);
 
-    function findInsertPosition(uint256 _ICR, address _prevId, address _nextId) external view returns (address, address);
+    function findInsertPosition(uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external view returns (bytes32, bytes32);
+
+    function insert(address owner, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32);
+    function existTroveOwners(bytes32 _id) external view returns (address);
+    function nonExistId() external view returns (bytes32);
 }

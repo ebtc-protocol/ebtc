@@ -9,7 +9,7 @@ import "./SortedTroves.sol";
 /*  Helper contract for grabbing Trove data for the front end. Not part of the core Liquity system. */
 contract MultiTroveGetter {
     struct CombinedTroveData {
-        address owner;
+        bytes32 id;
 
         uint debt;
         uint coll;
@@ -63,7 +63,7 @@ contract MultiTroveGetter {
     function _getMultipleSortedTrovesFromHead(uint _startIdx, uint _count)
         internal view returns (CombinedTroveData[] memory _troves)
     {
-        address currentTroveowner = sortedTroves.getFirst();
+        bytes32 currentTroveowner = sortedTroves.getFirst();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
             currentTroveowner = sortedTroves.getNext(currentTroveowner);
@@ -72,7 +72,7 @@ contract MultiTroveGetter {
         _troves = new CombinedTroveData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _troves[idx].owner = currentTroveowner;
+            _troves[idx].id = currentTroveowner;
             (
                 _troves[idx].debt,
                 _troves[idx].coll,
@@ -92,7 +92,7 @@ contract MultiTroveGetter {
     function _getMultipleSortedTrovesFromTail(uint _startIdx, uint _count)
         internal view returns (CombinedTroveData[] memory _troves)
     {
-        address currentTroveowner = sortedTroves.getLast();
+        bytes32 currentTroveowner = sortedTroves.getLast();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
             currentTroveowner = sortedTroves.getPrev(currentTroveowner);
@@ -101,7 +101,7 @@ contract MultiTroveGetter {
         _troves = new CombinedTroveData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _troves[idx].owner = currentTroveowner;
+            _troves[idx].id = currentTroveowner;
             (
                 _troves[idx].debt,
                 _troves[idx].coll,

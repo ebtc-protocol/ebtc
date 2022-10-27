@@ -14,32 +14,32 @@ contract BorrowerOperationsScript is CheckContract {
         borrowerOperations = _borrowerOperations;
     }
 
-    function openTrove(uint _maxFee, uint _LUSDAmount, address _upperHint, address _lowerHint) external payable {
+    function openTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
         borrowerOperations.openTrove{ value: msg.value }(_maxFee, _LUSDAmount, _upperHint, _lowerHint);
     }
 
-    function addColl(address _upperHint, address _lowerHint) external payable {
-        borrowerOperations.addColl{ value: msg.value }(_upperHint, _lowerHint);
+    function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+        borrowerOperations.addColl{ value: msg.value }(_troveId, _upperHint, _lowerHint);
     }
 
-    function withdrawColl(uint _amount, address _upperHint, address _lowerHint) external {
-        borrowerOperations.withdrawColl(_amount, _upperHint, _lowerHint);
+    function withdrawColl(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
+        borrowerOperations.withdrawColl(_troveId, _amount, _upperHint, _lowerHint);
     }
 
-    function withdrawLUSD(uint _maxFee, uint _amount, address _upperHint, address _lowerHint) external {
-        borrowerOperations.withdrawLUSD(_maxFee, _amount, _upperHint, _lowerHint);
+    function withdrawLUSD(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
+        borrowerOperations.withdrawLUSD(_troveId, _maxFee, _amount, _upperHint, _lowerHint);
     }
 
-    function repayLUSD(uint _amount, address _upperHint, address _lowerHint) external {
-        borrowerOperations.repayLUSD(_amount, _upperHint, _lowerHint);
+    function repayLUSD(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
+        borrowerOperations.repayLUSD(_troveId, _amount, _upperHint, _lowerHint);
     }
 
-    function closeTrove() external {
-        borrowerOperations.closeTrove();
+    function closeTrove(bytes32 _troveId) external {
+        borrowerOperations.closeTrove(_troveId);
     }
 
-    function adjustTrove(uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, address _upperHint, address _lowerHint) external payable {
-        borrowerOperations.adjustTrove{ value: msg.value }(_maxFee, _collWithdrawal, _debtChange, isDebtIncrease, _upperHint, _lowerHint);
+    function adjustTrove(bytes32 _troveId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+        borrowerOperations.adjustTrove{ value: msg.value }(_troveId, _maxFee, _collWithdrawal, _debtChange, isDebtIncrease, _upperHint, _lowerHint);
     }
 
     function claimCollateral() external {
