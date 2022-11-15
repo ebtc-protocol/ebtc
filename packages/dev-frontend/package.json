@@ -7,7 +7,7 @@
     "@ethersproject/abi": "5.4.0",
     "@fortawesome/fontawesome-svg-core": "1.2.34",
     "@fortawesome/free-regular-svg-icons": "5.15.2",
-    "@fortawesome/free-solid-svg-icons": "5.15.2",
+    "@fortawesome/free-solid-svg-icons": "6.2.1",
     "@fortawesome/react-fontawesome": "0.1.14",
     "@liquity/chicken-bonds": "file:.yalc/@liquity/chicken-bonds",
     "@popperjs/core": "2.9.1",
