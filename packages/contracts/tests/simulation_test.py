@@ -1,4 +1,5 @@
 import csv
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -234,8 +235,12 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
     print(f"Network: {network.show_active()}")
 
     logGlobalState(contracts)
-
-    with open('tests/simulation.csv', 'w', newline='') as csvfile:
+    with open(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "simulation.csv",
+            ), "w+",
+    ) as csvfile:
         datawriter = csv.writer(csvfile, delimiter=',')
         datawriter.writerow(
             ['iteration', 'ETH_price', 'price_LUSD', 'price_LQTY', 'num_troves', 'total_coll',
@@ -294,7 +299,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
             data['redemption_fee'][index] = redemption_fee
 
             # LQTY Market
-            result_lqty = LQTY_market(index, data)
+            result_lqty = lqty_market(index, data)
             price_lqty_current = result_lqty[0]
             # annualized_earning = result_LQTY[1]
             # MC_LQTY_current = result_LQTY[2]
