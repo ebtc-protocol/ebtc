@@ -2,11 +2,11 @@
 
 ## Installation:
 From root directory create virtual env:
-- `python3 -m venv .venv`
+- `python3 -m venv venv`
 - `source venv/bin/activate`
 
 Install dependencies required to run simulation suite
-- `pip install requirements.txt`
+- `pip install -r requirements.txt`
 
 At this stage  you should be good to go
 
