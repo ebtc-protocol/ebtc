@@ -13,7 +13,7 @@ period = year
 
 #number of runs in simulation
 #n_sim = 8640
-n_sim = year
+n_sim = month
 
 # number of liquidations for each call to `liquidateTroves`
 NUM_LIQUIDATIONS = 10
