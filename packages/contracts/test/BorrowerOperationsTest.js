@@ -24,6 +24,8 @@ const assertRevert = th.assertRevert
  * modelling.
  * 
  */
+ 
+const hre = require("hardhat");
 
 contract('BorrowerOperations', async accounts => {
 
@@ -33,7 +35,9 @@ contract('BorrowerOperations', async accounts => {
     // defaulter_1, defaulter_2,
     frontEnd_1, frontEnd_2, frontEnd_3] = accounts;
 
-    const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+    const bn8 = "0xF977814e90dA44bFA03b6295A0616a897441aceC";
+    let [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+    let bn8Signer;
 
   // const frontEnds = [frontEnd_1, frontEnd_2, frontEnd_3]
 
@@ -63,7 +67,9 @@ contract('BorrowerOperations', async accounts => {
   let BORROWING_FEE_FLOOR
 
   before(async () => {
-
+      await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
+      bn8Signer = await ethers.provider.getSigner(bn8);
+      [bountyAddress, lpRewardsAddress, multisig] = [bn8Signer._address, bn8Signer._address, bn8Signer._address];
   })
 
   const testCorpus = ({ withProxy = false }) => {
