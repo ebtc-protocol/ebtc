@@ -78,6 +78,15 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
     mapping(bytes32 => address) public troveOwners;
     uint256 public nextTroveNonce;
     bytes32 public dummyId;
+	
+    // Mapping from trove owner to list of owned trove IDs
+    mapping(address => mapping(uint256 => bytes32)) private _ownedTroves;
+
+    // Mapping from trove ID to index within owner trove list
+    mapping(bytes32 => uint256) private _ownedTroveIndex;
+
+    // Mapping from trove owner to its owned troves count
+    mapping(address => uint256) private _ownedCount;
 
     // --- Dependency setters ---
 
@@ -122,6 +131,15 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         return dummyId;
     }
 	
+    function troveOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
+        require(index < _ownedCount[owner], "!index");
+        return _ownedTroves[owner][index];
+    }
+
+    function troveCountOf(address owner) public view override returns (uint256) {
+        return _ownedCount[owner];
+    }
+	
     function insert(address owner, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external override returns (bytes32){
         bytes32 _id = toTroveId(owner, block.number, nextTroveNonce);
         insert(owner, _id, _NICR, _prevId, _nextId);	
@@ -144,6 +162,7 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 		
         nextTroveNonce += 1;
         troveOwners[_id] = owner;
+        _addTroveToOwnerEnumeration(owner, _id);
     }
 
     function _insert(ITroveManager _troveManager, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
@@ -196,6 +215,10 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
     function remove(bytes32 _id) external override {
         _requireCallerIsTroveManager();
         _remove(_id);
+
+        address _owner = troveOwners[_id];
+        _removeTroveFromOwnerEnumeration(_owner, _id);
+        delete troveOwners[_id];
     }
 
     /*
@@ -236,7 +259,6 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 
         delete data.nodes[_id];
         data.size = data.size.sub(1);
-        troveOwners[_id] = address(0);
         NodeRemoved(_id);
     }
 
@@ -260,6 +282,39 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         _remove(_id);
 
         _insert(troveManagerCached, _id, _newNICR, _prevId, _nextId);
+    }
+	
+    /**
+     * @dev Private function to add a trove to ownership-tracking data structures.
+     * @param to address representing the owner of the given trove ID
+     * @param troveId bytes32 ID of the trove to be added to the owned list of the given owner
+     */
+    function _addTroveToOwnerEnumeration(address to, bytes32 troveId) private {
+        uint256 length = _ownedCount[to];
+        _ownedTroves[to][length] = troveId;
+        _ownedTroveIndex[troveId] = length;
+        _ownedCount[to] = _ownedCount[to] + 1;
+    }
+
+    /**
+     * @dev Private function to remove a trove from ownership-tracking data structures.
+     * This has O(1) time complexity, but alters the ordering within the _ownedTroves.
+     * @param from address representing the owner of the given trove ID
+     * @param troveId bytes32 ID of the trove to be removed from the owned list of the given owner
+     */
+    function _removeTroveFromOwnerEnumeration(address from, bytes32 troveId) private {
+        uint256 lastTroveIndex = _ownedCount[from] - 1;
+        uint256 troveIndex = _ownedTroveIndex[troveId];
+
+        if (troveIndex != lastTroveIndex) {
+            bytes32 lastTroveId = _ownedTroves[from][lastTroveIndex];
+            _ownedTroves[from][troveIndex] = lastTroveId; // Move the last trove to the slot of the to-delete trove
+            _ownedTroveIndex[lastTroveId] = troveIndex; // Update the moved trove's index
+        }
+
+        delete _ownedTroveIndex[troveId];
+        delete _ownedTroves[from][lastTroveIndex];
+        _ownedCount[from] = lastTroveIndex;
     }
 
     /*

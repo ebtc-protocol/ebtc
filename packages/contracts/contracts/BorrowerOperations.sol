@@ -248,6 +248,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     * If both are positive, it will revert.
     */
     function _adjustTrove(bytes32 _troveId, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
+        _requireTroveOwner(_troveId);
+		
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
         LocalVariables_adjustTrove memory vars;
 
@@ -321,6 +323,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     function closeTrove(bytes32 _troveId) external override {
+        _requireTroveOwner(_troveId);
+		
         ITroveManager troveManagerCached = troveManager;
         IActivePool activePoolCached = activePool;
         ILUSDToken lusdTokenCached = lusdToken;
@@ -463,6 +467,11 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     // --- 'Require' wrapper functions ---
+
+    function _requireTroveOwner(bytes32 _troveId) internal view {
+        address _owner = sortedTroves.existTroveOwners(_troveId);
+        require(msg.sender == _owner, "!troveOwner");
+    }
 
     function _requireSingularCollChange(uint _collWithdrawal) internal view {
         require(msg.value == 0 || _collWithdrawal == 0, "BorrowerOperations: Cannot withdraw and add coll");

@@ -47,4 +47,6 @@ interface ISortedTroves {
     function insert(address owner, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32);
     function existTroveOwners(bytes32 _id) external view returns (address);
     function nonExistId() external view returns (bytes32);
+    function troveCountOf(address owner) external view returns (uint256);
+    function troveOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
 }

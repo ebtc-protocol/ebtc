@@ -123,6 +123,10 @@ contract('BorrowerOperations', async accounts => {
 	  let lastTroveId = await sortedTroves.getLast();
 	  let lastTroveOwner = await sortedTroves.existTroveOwners(lastTroveId);
 	  assert.isTrue(lastTroveOwner == alice);
+	  let _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  assert.isTrue(_aliceOwnedTroves == 1);	  
+	  let _aliceOwnedTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  assert.isTrue(_aliceOwnedTrove == lastTroveId);
 	  
 	  // Second Trove
 	  await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
@@ -137,8 +141,15 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(lastTroveOwner == alice);
 	  assert.isTrue(firstTroveOwner == alice);
 	  assert.isTrue(firstTroveId != lastTroveId);
+	  _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  assert.isTrue(_aliceOwnedTroves == 2);	  
+	  let _aliceOwnedFirstTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 2);
+	  let _aliceOwnedSecondTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  assert.isTrue(_aliceOwnedFirstTrove == lastTroveId);
+	  assert.isTrue(_aliceOwnedSecondTrove == firstTroveId);
 	  
-	  // Close Second Trove	  
+	  // Close Second Trove	  	
+	  await assertRevert(borrowerOperations.closeTrove(lastTroveId, { from: bob }), "!troveOwner");	
 	  const txClose = await borrowerOperations.closeTrove(lastTroveId, { from: alice });
 	  assert.isTrue(txClose.receipt.status);
 	  troveSize = await sortedTroves.getSize();
@@ -148,7 +159,11 @@ contract('BorrowerOperations', async accounts => {
 	  lastTroveId = await sortedTroves.getLast();
 	  lastTroveOwner = await sortedTroves.existTroveOwners(lastTroveId);
 	  assert.isTrue(firstTroveId == lastTroveId);	
-	  assert.isTrue(firstTroveOwner == lastTroveOwner);  
+	  assert.isTrue(firstTroveOwner == lastTroveOwner); 
+	  _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  assert.isTrue(_aliceOwnedTroves == 1);	
+	  let _aliceOwnedLeftTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  assert.isTrue(_aliceOwnedLeftTrove == firstTroveId);   
     })
 
     xit("addColl(): reverts when top-up would leave trove with ICR < MCR", async () => {
