@@ -16,7 +16,7 @@ contract('CollSurplusPool', async accounts => {
     owner,
     A, B, C, D, E] = accounts;
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   let borrowerOperations
   let priceFeed
@@ -84,7 +84,7 @@ contract('CollSurplusPool', async accounts => {
     const B_coll = toBN(dec(60, 18))
     const B_lusdAmount = toBN(dec(3000, 18))
     const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_lusdAmount)
-    const openTroveData = th.getTransactionData('openTrove(uint256,uint256,address,address)', ['0xde0b6b3a7640000', web3.utils.toHex(B_lusdAmount), B, B])
+    const openTroveData = th.getTransactionData('openTrove(uint256,uint256,bytes32,bytes32)', ['0xde0b6b3a7640000', web3.utils.toHex(B_lusdAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32])
     await nonPayable.forward(borrowerOperations.address, openTroveData, { value: B_coll })
     await openTrove({ extraLUSDAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
 

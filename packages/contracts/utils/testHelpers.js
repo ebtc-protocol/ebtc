@@ -468,13 +468,10 @@ class TestHelper {
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
     const newNICR = await contracts.hintHelpers.computeNominalCR(newColl, newDebt)
-    const {
-      hintAddress: approxfullListHint,
-      latestRandomSeed
-    } = await contracts.hintHelpers.getApproxHint(newNICR, 5, this.latestRandomSeed)
-    this.latestRandomSeed = latestRandomSeed
+    let _approxHints = await contracts.hintHelpers.getApproxHint(newNICR, 5, this.latestRandomSeed)
+    this.latestRandomSeed = _approxHints[2];
 
-    const {0: upperHint, 1: lowerHint} = await contracts.sortedTroves.findInsertPosition(newNICR, approxfullListHint, approxfullListHint)
+    const {0: upperHint, 1: lowerHint} = await contracts.sortedTroves.findInsertPosition(newNICR, _approxHints[0], _approxHints[0])
     return {upperHint, lowerHint}
   }
 
@@ -950,7 +947,7 @@ class TestHelper {
   static async redeemCollateralAndGetTxObject(redeemer, contracts, LUSDAmount, gasPrice, maxFee = this._100pct) {
     // console.log("GAS PRICE:  " + gasPrice)
     if (gasPrice == undefined){
-      gasPrice = 0;
+      gasPrice = 10000000000;//10 GWEI
     }
     const price = await contracts.priceFeedTestnet.getPrice()
     const tx = await this.performRedemptionTx(redeemer, price, contracts, LUSDAmount, maxFee, gasPrice)
@@ -976,13 +973,11 @@ class TestHelper {
 
     const firstRedemptionHint = redemptionhint[0]
     const partialRedemptionNewICR = redemptionhint[1]
-
-    const {
-      hintAddress: approxPartialRedemptionHint,
-      latestRandomSeed
-    } = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, 50, this.latestRandomSeed)
-    this.latestRandomSeed = latestRandomSeed
-
+	
+    let _approxHints = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, 50, this.latestRandomSeed);
+    let approxPartialRedemptionHint = _approxHints[0];
+    this.latestRandomSeed = _approxHints[2];
+	
     const exactPartialRedemptionHint = (await contracts.sortedTroves.findInsertPosition(partialRedemptionNewICR,
       approxPartialRedemptionHint,
       approxPartialRedemptionHint))
