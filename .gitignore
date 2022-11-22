@@ -15,7 +15,7 @@ node_modules
 /temp
 .env
 .eslintcache
-
+*.log
 # Don't track NPM lockfile (we use Yarn)
 package-lock.json
 
