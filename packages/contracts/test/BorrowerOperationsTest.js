@@ -107,10 +107,13 @@ contract('BorrowerOperations', async accounts => {
       LUSD_GAS_COMPENSATION = await borrowerOperations.LUSD_GAS_COMPENSATION()
       MIN_NET_DEBT = await borrowerOperations.MIN_NET_DEBT()
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR()
+
+      ownerSigner = await ethers.provider.getSigner(owner);
 	  
-      await bn8Signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
-      await bn8Signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
-      await bn8Signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
+      await ownerSigner.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
+      await ownerSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
+      await ownerSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
+      
     })
 
     it("openTrove(): mutiple Trove per user", async () => {		  
