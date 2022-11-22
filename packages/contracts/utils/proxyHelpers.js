@@ -92,7 +92,7 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async openTrove(...params) {
-    return this.forwardFunction(params, 'openTrove(uint256,uint256,address,address)')
+    return this.forwardFunction(params, 'openTrove(uint256,uint256,bytes32,bytes32)')
   }
 
   async addColl(...params) {
@@ -154,15 +154,15 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimCollateralAndOpenTrove(...params) {
-    return this.forwardFunction(params, 'claimCollateralAndOpenTrove(uint256,uint256,address,address)')
+    return this.forwardFunction(params, 'claimCollateralAndOpenTrove(uint256,uint256,bytes32,bytes32)')
   }
 
   async claimSPRewardsAndRecycle(...params) {
-    return this.forwardFunction(params, 'claimSPRewardsAndRecycle(uint256,address,address)')
+    return this.forwardFunction(params, 'claimSPRewardsAndRecycle(bytes32,uint256,bytes32,bytes32)')
   }
 
   async claimStakingGainsAndRecycle(...params) {
-    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(uint256,address,address)')
+    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(bytes32,uint256,bytes32,bytes32)')
   }
 
   async transferETH(...params) {
@@ -244,7 +244,7 @@ class TroveManagerProxy extends Proxy {
   }
 
   async redeemCollateral(...params) {
-    return this.forwardFunction(params, 'redeemCollateral(uint256,address,address,address,uint256,uint256,uint256)')
+    return this.forwardFunction(params, 'redeemCollateral(uint256,bytes32,bytes32,bytes32,uint256,uint256,uint256)')
   }
 
   async getActualDebtFromComposite(...params) {
@@ -313,6 +313,14 @@ class SortedTrovesProxy extends Proxy {
 
   async findInsertPosition(...params) {
     return this.proxyFunction('findInsertPosition', params)
+  }
+
+  async troveOfOwnerByIndex(...params) {
+    return this.forwardFunction(params, 'troveOfOwnerByIndex(address,uint)')
+  }
+
+  async existTroveOwners(...params) {
+    return this.forwardFunction(params, 'existTroveOwners(bytes32)')
   }
 }
 

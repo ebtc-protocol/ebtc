@@ -842,8 +842,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         if (newDebt == LUSD_GAS_COMPENSATION) {
             // No debt left in the Trove (except for the liquidation reserve), therefore the trove gets closed
             _removeStake(_redeemColFromTrove._troveId);
+            address _borrower = _contractsCache.sortedTroves.existTroveOwners(_redeemColFromTrove._troveId);
             _closeTrove(_redeemColFromTrove._troveId, Status.closedByRedemption);
-            _redeemCloseTrove(_contractsCache, _redeemColFromTrove._troveId, LUSD_GAS_COMPENSATION, newColl);
+            _redeemCloseTrove(_contractsCache, _redeemColFromTrove._troveId, LUSD_GAS_COMPENSATION, newColl, _borrower);
             emit TroveUpdated(_redeemColFromTrove._troveId, 0, 0, 0, TroveManagerOperation.redeemCollateral);
 
         } else {
@@ -884,14 +885,13 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     * The debt recorded on the trove's struct is zero'd elswhere, in _closeTrove.
     * Any surplus ETH left in the trove, is sent to the Coll surplus pool, and can be later claimed by the borrower.
     */
-    function _redeemCloseTrove(ContractsCache memory _contractsCache, bytes32 _troveId, uint _LUSD, uint _ETH) internal {
+    function _redeemCloseTrove(ContractsCache memory _contractsCache, bytes32 _troveId, uint _LUSD, uint _ETH, address _b) internal {
         _contractsCache.lusdToken.burn(gasPoolAddress, _LUSD);
         // Update Active Pool LUSD, and send ETH to account
         _contractsCache.activePool.decreaseLUSDDebt(_LUSD);
 
         // send ETH from Active Pool to CollSurplus Pool
-        address _borrower = _contractsCache.sortedTroves.existTroveOwners(_troveId);
-        _contractsCache.collSurplusPool.accountSurplus(_borrower, _ETH);
+        _contractsCache.collSurplusPool.accountSurplus(_b, _ETH);
         _contractsCache.activePool.sendETH(address(_contractsCache.collSurplusPool), _ETH);
     }
 
