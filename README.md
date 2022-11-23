@@ -1,4 +1,4 @@
-# EBTC
+# eBTC
 | Tests                                                                                                                                                                                   | Coverage                                                                                                                                        |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
