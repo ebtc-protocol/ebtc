@@ -1210,6 +1210,7 @@ TestHelper.maxBytes32 = '0x' + 'f'.repeat(64)
 TestHelper._100pct = '1000000000000000000'
 TestHelper.latestRandomSeed = 31337
 TestHelper.DUMMY_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
+TestHelper.RANDOM_INDEX = "0xb26afa65c1c675627f1764dfb025aa01be04832ebe5e3780290c443ac01c3279";
 
 module.exports = {
   TestHelper,
