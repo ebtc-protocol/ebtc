@@ -248,10 +248,13 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     * If both are positive, it will revert.
     */
     function _adjustTrove(bytes32 _troveId, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
-        _requireTroveOwner(_troveId);
+        
 		
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
         LocalVariables_adjustTrove memory vars;
+
+        _requireTroveisActive(contractsCache.troveManager, _troveId);
+        _requireTroveOwner(_troveId);
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
@@ -262,7 +265,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         }
         _requireSingularCollChange(_collWithdrawal);
         _requireNonZeroAdjustment(_collWithdrawal, _LUSDChange);
-        _requireTroveisActive(contractsCache.troveManager, _troveId);
+        
 
         // Confirm the operation is either a borrower adjusting their own trove, or a pure ETH transfer from the Stability Pool to a trove
         address _borrower = sortedTroves.existTroveOwners(_troveId);
