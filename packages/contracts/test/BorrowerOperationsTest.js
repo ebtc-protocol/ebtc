@@ -169,7 +169,7 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(_aliceOwnedLeftTrove == firstTroveId);   
     })
 
-    xit("addColl(): reverts when top-up would leave trove with ICR < MCR", async () => {
+    it("addColl(): reverts when top-up would leave trove with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
@@ -179,16 +179,20 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       assert.isFalse(await troveManager.checkRecoveryMode(price))
-      assert.isTrue((await troveManager.getCurrentICR(alice, price)).lt(toBN(dec(110, 16))))
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const icr = await troveManager.getCurrentICR(aliceIndex, price)
+      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const collTopUp = 1  // 1 wei top up
 
-     await assertRevert(borrowerOperations.addColl(alice, alice, { from: alice, value: collTopUp }), 
+     await assertRevert(borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: collTopUp }), 
       "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
     })
 
-    xit("addColl(): Increases the activePool ETH and raw ether balance by correct amount", async () => {
+    it("addColl(): Increases the activePool ETH and raw ether balance by correct amount", async () => {
       const { collateral: aliceColl } = await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
@@ -196,7 +200,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_ETH_Before.eq(aliceColl))
       assert.isTrue(activePool_RawEther_Before.eq(aliceColl))
 
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(1, 'ether') })
 
       const activePool_ETH_After = await activePool.getETH()
       const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
@@ -204,11 +208,12 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_After.eq(aliceColl.add(toBN(dec(1, 'ether')))))
     })
 
-    xit("addColl(), active Trove: adds the correct collateral amount to the Trove", async () => {
+    it("addColl(), active Trove: adds the correct collateral amount to the Trove", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
-      const alice_Trove_Before = await troveManager.Troves(alice)
+      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
       const coll_before = alice_Trove_Before[1]
       const status_Before = alice_Trove_Before[3]
 
@@ -216,9 +221,9 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(status_Before, 1)
 
       // Alice adds second collateral
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(1, 'ether') })
 
-      const alice_Trove_After = await troveManager.Troves(alice)
+      const alice_Trove_After = await troveManager.Troves(aliceIndex)
       const coll_After = alice_Trove_After[1]
       const status_After = alice_Trove_After[3]
 
@@ -227,40 +232,42 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(status_After, 1)
     })
 
-    xit("addColl(), active Trove: Trove is in sortedList before and after", async () => {
+    it("addColl(), active Trove: Trove is in sortedList before and after", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       // check Alice is in list before
-      const aliceTroveInList_Before = await sortedTroves.contains(alice)
+      const aliceTroveInList_Before = await sortedTroves.contains(aliceIndex)
       const listIsEmpty_Before = await sortedTroves.isEmpty()
       assert.equal(aliceTroveInList_Before, true)
       assert.equal(listIsEmpty_Before, false)
 
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(1, 'ether') })
 
       // check Alice is still in list after
-      const aliceTroveInList_After = await sortedTroves.contains(alice)
+      const aliceTroveInList_After = await sortedTroves.contains(aliceIndex)
       const listIsEmpty_After = await sortedTroves.isEmpty()
       assert.equal(aliceTroveInList_After, true)
       assert.equal(listIsEmpty_After, false)
     })
 
-    xit("addColl(), active Trove: updates the stake and updates the total stakes", async () => {
+    it("addColl(), active Trove: updates the stake and updates the total stakes", async () => {
       //  Alice creates initial Trove with 1 ether
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
-      const alice_Trove_Before = await troveManager.Troves(alice)
+      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
       const alice_Stake_Before = alice_Trove_Before[2]
       const totalStakes_Before = (await troveManager.totalStakes())
 
       assert.isTrue(totalStakes_Before.eq(alice_Stake_Before))
 
       // Alice tops up Trove collateral with 2 ether
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: dec(2, 'ether') })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(2, 'ether') })
 
       // Check stake and total stakes get updated
-      const alice_Trove_After = await troveManager.Troves(alice)
+      const alice_Trove_After = await troveManager.Troves(aliceIndex)
       const alice_Stake_After = alice_Trove_After[2]
       const totalStakes_After = (await troveManager.totalStakes())
 
@@ -268,12 +275,17 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(totalStakes_After.eq(totalStakes_Before.add(toBN(dec(2, 'ether')))))
     })
 
-    xit("addColl(), active Trove: applies pending rewards and updates user's L_ETH, L_LUSDDebt snapshots", async () => {
+    it("addColl(), active Trove: applies pending rewards and updates user's L_ETH, L_LUSDDebt snapshots", async () => {
       // --- SETUP ---
 
       const { collateral: aliceCollBefore, totalDebt: aliceDebtBefore } = await openTrove({ extraLUSDAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      
       const { collateral: bobCollBefore, totalDebt: bobDebtBefore } = await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+
       await openTrove({ extraLUSDAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
 
       // --- TEST ---
 
@@ -281,19 +293,19 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice('100000000000000000000');
 
       // Liquidate Carol's Trove,
-      const tx = await troveManager.liquidate(carol, { from: owner });
+      const tx = await troveManager.liquidate(carolIndex, { from: owner });
 
-      assert.isFalse(await sortedTroves.contains(carol))
+      assert.isFalse(await sortedTroves.contains(carolIndex))
 
       const L_ETH = await troveManager.L_ETH()
       const L_LUSDDebt = await troveManager.L_LUSDDebt()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Troves
-      const alice_rewardSnapshot_Before = await troveManager.rewardSnapshots(alice)
+      const alice_rewardSnapshot_Before = await troveManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_Before = alice_rewardSnapshot_Before[0]
       const alice_LUSDDebtRewardSnapshot_Before = alice_rewardSnapshot_Before[1]
 
-      const bob_rewardSnapshot_Before = await troveManager.rewardSnapshots(bob)
+      const bob_rewardSnapshot_Before = await troveManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_Before = bob_rewardSnapshot_Before[0]
       const bob_LUSDDebtRewardSnapshot_Before = bob_rewardSnapshot_Before[1]
 
@@ -302,10 +314,10 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_ETHrewardSnapshot_Before, 0)
       assert.equal(bob_LUSDDebtRewardSnapshot_Before, 0)
 
-      const alicePendingETHReward = await troveManager.getPendingETHReward(alice)
-      const bobPendingETHReward = await troveManager.getPendingETHReward(bob)
-      const alicePendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(alice)
-      const bobPendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(bob)
+      const alicePendingETHReward = await troveManager.getPendingETHReward(aliceIndex)
+      const bobPendingETHReward = await troveManager.getPendingETHReward(bobIndex)
+      const alicePendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(aliceIndex)
+      const bobPendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(bobIndex)
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingLUSDDebtReward, bobPendingLUSDDebtReward]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
@@ -314,14 +326,14 @@ contract('BorrowerOperations', async accounts => {
       const aliceTopUp = toBN(dec(5, 'ether'))
       const bobTopUp = toBN(dec(1, 'ether'))
 
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: aliceTopUp })
-      await borrowerOperations.addColl(bob, bob, { from: bob, value: bobTopUp })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: aliceTopUp })
+      await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: bobTopUp })
 
       // Check that both alice and Bob have had pending rewards applied in addition to their top-ups. 
-      const aliceNewColl = await getTroveEntireColl(alice)
-      const aliceNewDebt = await getTroveEntireDebt(alice)
-      const bobNewColl = await getTroveEntireColl(bob)
-      const bobNewDebt = await getTroveEntireDebt(bob)
+      const aliceNewColl = await getTroveEntireColl(aliceIndex)
+      const aliceNewDebt = await getTroveEntireDebt(aliceIndex)
+      const bobNewColl = await getTroveEntireColl(bobIndex)
+      const bobNewDebt = await getTroveEntireDebt(bobIndex)
 
       assert.isTrue(aliceNewColl.eq(aliceCollBefore.add(alicePendingETHReward).add(aliceTopUp)))
       assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingLUSDDebtReward)))
@@ -330,11 +342,11 @@ contract('BorrowerOperations', async accounts => {
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_ETH and L_LUSDDebt */
-      const alice_rewardSnapshot_After = await troveManager.rewardSnapshots(alice)
+      const alice_rewardSnapshot_After = await troveManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_After = alice_rewardSnapshot_After[0]
       const alice_LUSDDebtRewardSnapshot_After = alice_rewardSnapshot_After[1]
 
-      const bob_rewardSnapshot_After = await troveManager.rewardSnapshots(bob)
+      const bob_rewardSnapshot_After = await troveManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_After = bob_rewardSnapshot_After[0]
       const bob_LUSDDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
@@ -385,14 +397,20 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    xit("addColl(), reverts if trove is non-existent or closed", async () => {
+    it("addColl(), reverts if trove is non-existent or closed", async () => {
       // A, B open troves
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+
+      // random index
+      const carolIndex = "0xb26afa65c1c675627f1764dfb025aa01be04832ebe5e3780290c443ac01c3279"
+
       // Carol attempts to add collateral to her non-existent trove
       try {
-        const txCarol = await borrowerOperations.addColl(carol, carol, { from: carol, value: dec(1, 'ether') })
+        const txCarol = await borrowerOperations.addColl(carolIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(1, 'ether') })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
@@ -403,13 +421,13 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
 
       // Bob gets liquidated
-      await troveManager.liquidate(bob)
+      await troveManager.liquidate(bobIndex)
 
-      assert.isFalse(await sortedTroves.contains(bob))
+      assert.isFalse(await sortedTroves.contains(bobIndex))
 
       // Bob attempts to add collateral to his closed trove
       try {
-        const txBob = await borrowerOperations.addColl(bob, bob, { from: bob, value: dec(1, 'ether') })
+        const txBob = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(1, 'ether') })
         assert.isFalse(txBob.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
@@ -417,9 +435,11 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    xit("addColl(): can add collateral in Recovery Mode", async () => {
+    it("addColl(): can add collateral in Recovery Mode", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceCollBefore = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
       await priceFeed.setPrice('105000000000000000000')
@@ -427,10 +447,10 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       const collTopUp = toBN(dec(1, 'ether'))
-      await borrowerOperations.addColl(alice, alice, { from: alice, value: collTopUp })
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: collTopUp })
 
       // Check Alice's collateral
-      const aliceCollAfter = (await troveManager.Troves(alice))[1]
+      const aliceCollAfter = (await troveManager.Troves(aliceIndex))[1]
       assert.isTrue(aliceCollAfter.eq(aliceCollBefore.add(collTopUp)))
     })
 
