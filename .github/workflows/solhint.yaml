@@ -11,8 +11,10 @@ jobs:
         with:
           node-version: 14.x
 
-      - name: Lint
+      - name: Install Dependencies
         run: |
             yarn install --frozen-lockfile
             echo "$(yarn global bin)" >> $GITHUB_PATH
-            yarn solhint 'packages/contracts/contracts/*.sol'
+
+      - name: Lint
+        run: yarn solhint 'packages/contracts/contracts/*.sol'
