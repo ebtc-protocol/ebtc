@@ -24,6 +24,7 @@
     "ethereumjs-util": "^7.0.9",
     "ethers": "^5.4.3",
     "solc": "^0.6.11",
+    "solhint": "^3.3.7",
     "xmlhttprequest": "^1.8.0"
   },
   "devDependencies": {
