@@ -14,7 +14,4 @@ jobs:
       - run: |
           yarn install --frozen-lockfile
           echo "$(yarn global bin)" >> $GITHUB_PATH
-
-      - name: Lint
-        run: |
           solhint 'packages/contracts/contracts/*.sol'
