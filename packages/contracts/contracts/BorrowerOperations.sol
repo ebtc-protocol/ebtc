@@ -218,7 +218,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     // Send ETH as collateral to a trove. Called by only the Stability Pool.
     function moveETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
         _requireCallerIsStabilityPool();
-        _adjustTrove(_troveId, 0, 0, false, _upperHint, _lowerHint, 0);
+        _adjustTroveInternal(_troveId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
     // Withdraw ETH collateral from a trove
@@ -239,6 +239,11 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function adjustTrove(bytes32 _troveId, uint _maxFeePercentage, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
         _adjustTrove(_troveId, _collWithdrawal, _LUSDChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
     }
+	
+    function _adjustTrove(bytes32 _troveId, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
+        _requireTroveOwner(_troveId);	
+        _adjustTroveInternal(_troveId, _collWithdrawal, _LUSDChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
+    }
 
     /*
     * _adjustTrove(): Alongside a debt change, this function can perform either a collateral top-up or a collateral withdrawal. 
@@ -247,8 +252,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     *
     * If both are positive, it will revert.
     */
-    function _adjustTrove(bytes32 _troveId, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
-        
+    function _adjustTroveInternal(bytes32 _troveId, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
 		
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
         LocalVariables_adjustTrove memory vars;

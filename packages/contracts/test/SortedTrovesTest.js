@@ -11,6 +11,8 @@ const dec = th.dec
 const toBN = th.toBN
 const mv = testHelpers.MoneyValues
 
+const hre = require("hardhat");
+
 contract('SortedTroves', async accounts => {
   
   const assertSortedListIsOrdered = async (contracts) => {
@@ -39,9 +41,9 @@ contract('SortedTroves', async accounts => {
 
   const [
     owner,
-    alice, bob, carol, dennis, erin, flyn, graham, harriet, ida,
-    defaulter_1, defaulter_2, defaulter_3, defaulter_4,
-    A, B, C, D, E, F, G, H, I, J, whale] = accounts;
+    alice, bob, carol, dennis, erin,
+    defaulter_1,
+    A, B, C, D, E, F, G, H, whale] = accounts;
 
   let priceFeed
   let sortedTroves
@@ -49,14 +51,22 @@ contract('SortedTroves', async accounts => {
   let borrowerOperations
   let lusdToken
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
+  const bn8 = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";//wrapped Ether
+  let bn8Signer;
 
   let contracts
 
   const getOpenTroveLUSDAmount = async (totalDebt) => th.getOpenTroveLUSDAmount(contracts, totalDebt)
   const openTrove = async (params) => th.openTrove(contracts, params)
 
-  describe('SortedTroves', () => {
+  describe('SortedTroves', () => {	
+
+    before(async () => {	
+      await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
+      bn8Signer = await ethers.provider.getSigner(bn8);
+    })  
+	
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       contracts.troveManager = await TroveManagerTester.new()
@@ -76,22 +86,29 @@ contract('SortedTroves', async accounts => {
       await deploymentHelper.connectLQTYContracts(LQTYContracts)
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
       await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
+	
+      await bn8Signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("21000")});
+      await bn8Signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("21000")});
+      await bn8Signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("21000")});
     })
 
     it('contains(): returns true for addresses that have opened troves', async () => {
       await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // Confirm trove statuses became active
-      assert.equal((await troveManager.Troves(alice))[3], '1')
-      assert.equal((await troveManager.Troves(bob))[3], '1')
-      assert.equal((await troveManager.Troves(carol))[3], '1')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '1')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '1')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '1')
 
       // Check sorted list contains troves
-      assert.isTrue(await sortedTroves.contains(alice))
-      assert.isTrue(await sortedTroves.contains(bob))
-      assert.isTrue(await sortedTroves.contains(carol))
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId))
+      assert.isTrue(await sortedTroves.contains(_bobTroveId))
+      assert.isTrue(await sortedTroves.contains(_carolTroveId))
     })
 
     it('contains(): returns false for addresses that have not opened troves', async () => {
@@ -112,8 +129,11 @@ contract('SortedTroves', async accounts => {
       await openTrove({ ICR: toBN(dec(1000, 18)), extraLUSDAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
       await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
       await lusdToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -121,19 +141,19 @@ contract('SortedTroves', async accounts => {
       await lusdToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close troves
-      await borrowerOperations.closeTrove({ from: alice })
-      await borrowerOperations.closeTrove({ from:bob })
-      await borrowerOperations.closeTrove({ from:carol })
+      await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
+      await borrowerOperations.closeTrove(_bobTroveId, { from:bob })
+      await borrowerOperations.closeTrove(_carolTroveId, { from:carol })
 
       // Confirm trove statuses became closed
-      assert.equal((await troveManager.Troves(alice))[3], '2')
-      assert.equal((await troveManager.Troves(bob))[3], '2')
-      assert.equal((await troveManager.Troves(carol))[3], '2')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '2')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '2')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '2')
 
       // Check sorted list does not contain troves
-      assert.isFalse(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(bob))
-      assert.isFalse(await sortedTroves.contains(carol))
+      assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+      assert.isFalse(await sortedTroves.contains(_bobTroveId))
+      assert.isFalse(await sortedTroves.contains(_carolTroveId))
     })
 
     // true for addresses that opened -> closed -> opened a trove
@@ -141,8 +161,11 @@ contract('SortedTroves', async accounts => {
       await openTrove({ ICR: toBN(dec(1000, 18)), extraLUSDAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
       await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
       await lusdToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -150,28 +173,31 @@ contract('SortedTroves', async accounts => {
       await lusdToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close troves
-      await borrowerOperations.closeTrove({ from: alice })
-      await borrowerOperations.closeTrove({ from:bob })
-      await borrowerOperations.closeTrove({ from:carol })
+      await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
+      await borrowerOperations.closeTrove(_bobTroveId, { from:bob })
+      await borrowerOperations.closeTrove(_carolTroveId, { from:carol })
 
       // Confirm trove statuses became closed
-      assert.equal((await troveManager.Troves(alice))[3], '2')
-      assert.equal((await troveManager.Troves(bob))[3], '2')
-      assert.equal((await troveManager.Troves(carol))[3], '2')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '2')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '2')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '2')
 
       await openTrove({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
+      let _aliceTroveId2 = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: bob } })
+      let _bobTroveId2 = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       await openTrove({ ICR: toBN(dec(3000, 18)), extraParams: { from: carol } })
+      let _carolTroveId2 = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // Confirm trove statuses became open again
-      assert.equal((await troveManager.Troves(alice))[3], '1')
-      assert.equal((await troveManager.Troves(bob))[3], '1')
-      assert.equal((await troveManager.Troves(carol))[3], '1')
+      assert.equal((await troveManager.Troves(_aliceTroveId2))[3], '1')
+      assert.equal((await troveManager.Troves(_bobTroveId2))[3], '1')
+      assert.equal((await troveManager.Troves(_carolTroveId2))[3], '1')
 
       // Check sorted list does  contain troves
-      assert.isTrue(await sortedTroves.contains(alice))
-      assert.isTrue(await sortedTroves.contains(bob))
-      assert.isTrue(await sortedTroves.contains(carol))
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId2))
+      assert.isTrue(await sortedTroves.contains(_bobTroveId2))
+      assert.isTrue(await sortedTroves.contains(_carolTroveId2))
     })
 
     // false when list size is 0
@@ -184,8 +210,9 @@ contract('SortedTroves', async accounts => {
     // true when list size is 1 and the trove the only one in system
     it('contains(): true when list size is 1 and the trove the only one in system', async () => {
       await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
 
-      assert.isTrue(await sortedTroves.contains(alice))
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId))
     })
 
     // false when list size is 1 and trove is not in the system
@@ -210,28 +237,32 @@ contract('SortedTroves', async accounts => {
       // NICR sorted in descending order
       await openTrove({ ICR: toBN(dec(500, 18)), extraParams: { from: whale } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: A } })
+      let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
       await openTrove({ ICR: toBN(dec(5, 18)), extraParams: { from: B } })
+      let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
       await openTrove({ ICR: toBN(dec(250, 16)), extraParams: { from: C } })
+      let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
       await openTrove({ ICR: toBN(dec(166, 16)), extraParams: { from: D } })
       await openTrove({ ICR: toBN(dec(125, 16)), extraParams: { from: E } })
+      let _eTroveId = await sortedTroves.troveOfOwnerByIndex(E, 0);
 
       // Expect a trove with NICR 300% to be inserted between B and C
       const targetNICR = dec(3, 18)
 
       // Pass addresses that loosely bound the right postiion
-      const hints = await sortedTroves.findInsertPosition(targetNICR, A, E)
+      const hints = await sortedTroves.findInsertPosition(targetNICR, _aTroveId, _eTroveId)
 
       // Expect the exact correct insert hints have been returned
-      assert.equal(hints[0], B )
-      assert.equal(hints[1], C )
+      assert.equal(hints[0], _bTroveId)
+      assert.equal(hints[1], _cTroveId)
 
       // The price doesn’t affect the hints
       await priceFeed.setPrice(dec(500, 18))
-      const hints2 = await sortedTroves.findInsertPosition(targetNICR, A, E)
+      const hints2 = await sortedTroves.findInsertPosition(targetNICR, _aTroveId, _eTroveId)
 
       // Expect the exact correct insert hints have been returned
-      assert.equal(hints2[0], B )
-      assert.equal(hints2[1], C )
+      assert.equal(hints2[0], _bTroveId)
+      assert.equal(hints2[1], _cTroveId)
     })
 
     //--- Ordering --- 
@@ -296,22 +327,28 @@ contract('SortedTroves', async accounts => {
       })
 
       it('insert(): fails if list is full', async () => {
-        await sortedTrovesTester.insert(alice, 1, alice, alice)
-        await sortedTrovesTester.insert(bob, 1, alice, alice)
-        await th.assertRevert(sortedTrovesTester.insert(carol, 1, alice, alice), 'SortedTroves: List is full')
+        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+        await sortedTrovesTester.insert(bob, 1, _aliceTroveId, _aliceTroveId)
+        await th.assertRevert(sortedTrovesTester.insert(carol, 1, _aliceTroveId, _aliceTroveId), 'SortedTroves: List is full')
       })
 
-      it('insert(): fails if list already contains the node', async () => {
+      it('insert(): success even if list already contains the node', async () => {
+        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceTroves = await sortedTroves.troveCountOf(alice);
+        assert.equal(_aliceTroves, 1);
+		
         await sortedTrovesTester.insert(alice, 1, alice, alice)
-        await th.assertRevert(sortedTrovesTester.insert(alice, 1, alice, alice), 'SortedTroves: List already contains the node')
+        _aliceTroves = await sortedTroves.troveCountOf(alice);
+        assert.equal(_aliceTroves, 2);
       })
 
       it('insert(): fails if id is zero', async () => {
-        await th.assertRevert(sortedTrovesTester.insert(th.ZERO_ADDRESS, 1, alice, alice), 'SortedTroves: Id cannot be zero')
+        await th.assertRevert(sortedTrovesTester.insert(alice, th.DUMMY_BYTES32, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: Id cannot be zero')
       })
 
       it('insert(): fails if NICR is zero', async () => {
-        await th.assertRevert(sortedTrovesTester.insert(alice, 0, alice, alice), 'SortedTroves: NICR must be positive')
+        await th.assertRevert(sortedTrovesTester.insert(alice, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: NICR must be positive')
       })
 
       it('remove(): fails if id is not in the list', async () => {
@@ -319,21 +356,23 @@ contract('SortedTroves', async accounts => {
       })
 
       it('reInsert(): fails if list doesn’t contain the node', async () => {
-        await th.assertRevert(sortedTrovesTester.reInsert(alice, 1, alice, alice), 'SortedTroves: List does not contain the id')
+        await th.assertRevert(sortedTrovesTester.reInsert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: List does not contain the id')
       })
 
       it('reInsert(): fails if new NICR is zero', async () => {
-        await sortedTrovesTester.insert(alice, 1, alice, alice)
-        assert.isTrue(await sortedTroves.contains(alice), 'list should contain element')
-        await th.assertRevert(sortedTrovesTester.reInsert(alice, 0, alice, alice), 'SortedTroves: NICR must be positive')
-        assert.isTrue(await sortedTroves.contains(alice), 'list should contain element')
+        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+        assert.isTrue(await sortedTroves.contains(_aliceTroveId), 'list should contain element')
+        await th.assertRevert(sortedTrovesTester.reInsert(_aliceTroveId, 0, _aliceTroveId, _aliceTroveId), 'SortedTroves: NICR must be positive')
+        assert.isTrue(await sortedTroves.contains(_aliceTroveId), 'list should contain element')
       })
 
       it('findInsertPosition(): No prevId for hint - ascend list starting from nextId, result is after the tail', async () => {
-        await sortedTrovesTester.insert(alice, 1, alice, alice)
-        const pos = await sortedTroves.findInsertPosition(1, th.ZERO_ADDRESS, alice)
-        assert.equal(pos[0], alice, 'prevId result should be nextId param')
-        assert.equal(pos[1], th.ZERO_ADDRESS, 'nextId result should be zero')
+        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+        const pos = await sortedTroves.findInsertPosition(1, th.DUMMY_BYTES32, _aliceTroveId)
+        assert.equal(pos[0], _aliceTroveId, 'prevId result should be nextId param')
+        assert.equal(pos[1], th.DUMMY_BYTES32, 'nextId result should be zero')
       })
     })
   })
