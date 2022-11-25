@@ -968,6 +968,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     function _requireUserHasTrove(bytes32 _troveId) internal view {
         require(troveManager.getTroveStatus(_troveId) == 1, "StabilityPool: caller must have an active trove to withdraw ETHGain to");
+        require(sortedTroves.existTroveOwners(_troveId) == msg.sender, "StabilityPool: caller must be the owner of the trove");
     }
 
     function _requireUserHasETHGain(address _depositor) internal view {

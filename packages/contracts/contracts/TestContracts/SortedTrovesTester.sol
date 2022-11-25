@@ -12,6 +12,10 @@ contract SortedTrovesTester {
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
     }
 
+    function insert(address _owner, bytes32 _troveId, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
+        sortedTroves.insert(_owner, _troveId, _NICR, _prevId, _nextId);
+    }
+
     function insert(address _owner, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
         sortedTroves.insert(_owner, _NICR, _prevId, _nextId);
     }
