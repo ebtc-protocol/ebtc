@@ -6,7 +6,7 @@ const TroveManagerTester = artifacts.require("./TroveManagerTester")
 const LUSDToken = artifacts.require("./LUSDToken.sol")
 
 contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async accounts => {
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
   const [
     owner,
     alice, bob, carol, dennis, erin, freddy, greta, harry, ida,
@@ -47,6 +47,9 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(296, 16)), extraParams: { from: alice } })
       const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(280, 16)), extraParams: { from: bob } })
       const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: carol } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
 
@@ -62,9 +65,9 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check troves A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await troveManager.getCurrentICR(alice, price)
-      const ICR_B = await troveManager.getCurrentICR(bob, price)
-      const ICR_C = await troveManager.getCurrentICR(carol, price)
+      const ICR_A = await troveManager.getCurrentICR(_aliceTroveId, price)
+      const ICR_B = await troveManager.getCurrentICR(_bobTroveId, price)
+      const ICR_C = await troveManager.getCurrentICR(_carolTroveId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -81,7 +84,8 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
 
     it('First trove only doesn’t get out of Recovery Mode', async () => {
       await setup()
-      const tx = await troveManager.batchLiquidateTroves([alice])
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId])
 
       const TCR = await th.getTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -89,20 +93,23 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
 
     it('Two troves over MCR are liquidated', async () => {
       await setup()
-      const tx = await troveManager.batchLiquidateTroves([alice, bob, carol])
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId, _bobTroveId, _carolTroveId])
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
 
       // Confirm all troves removed
-      assert.isFalse(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(bob))
-      assert.isFalse(await sortedTroves.contains(carol))
+      assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+      assert.isFalse(await sortedTroves.contains(_bobTroveId))
+      assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await troveManager.Troves(alice))[3], '3')
-      assert.equal((await troveManager.Troves(bob))[3], '3')
-      assert.equal((await troveManager.Troves(carol))[3], '3')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '3')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '3')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '3')
     })
 
     it('Stability Pool profit matches', async () => {
@@ -112,19 +119,22 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
         totalLiquidatedDebt,
         price,
       } = await setup()
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       const spEthBefore = await stabilityPool.getETH()
       const spLusdBefore = await stabilityPool.getTotalLUSDDeposits()
 
-      const tx = await troveManager.batchLiquidateTroves([alice, carol])
+      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId, _carolTroveId])
 
       // Confirm all troves removed
-      assert.isFalse(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(carol))
+      assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+      assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await troveManager.Troves(alice))[3], '3')
-      assert.equal((await troveManager.Troves(carol))[3], '3')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '3')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '3')
 
       const spEthAfter = await stabilityPool.getETH()
       const spLusdAfter = await stabilityPool.getTotalLUSDDeposits()
@@ -145,6 +155,9 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(280, 16)), extraParams: { from: alice } })
       const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(276, 16)), extraParams: { from: bob } })
       const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: carol } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
 
@@ -160,29 +173,29 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check troves A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await troveManager.getCurrentICR(alice, price)
-      const ICR_B = await troveManager.getCurrentICR(bob, price)
-      const ICR_C = await troveManager.getCurrentICR(carol, price)
+      const ICR_A = await troveManager.getCurrentICR(_aliceTroveId, price)
+      const ICR_B = await troveManager.getCurrentICR(_bobTroveId, price)
+      const ICR_C = await troveManager.getCurrentICR(_carolTroveId, price)
 
       assert.isTrue(ICR_A.gt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
       assert.isTrue(ICR_C.lt(mv._ICR100))
 
-      const tx = await troveManager.batchLiquidateTroves([bob, alice])
+      const tx = await troveManager.batchLiquidateTroves([_bobTroveId, _aliceTroveId])
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 1, 'Not enough liquidations')
 
       // Confirm only Bob’s trove removed
-      assert.isTrue(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(bob))
-      assert.isTrue(await sortedTroves.contains(carol))
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId))
+      assert.isFalse(await sortedTroves.contains(_bobTroveId))
+      assert.isTrue(await sortedTroves.contains(_carolTroveId))
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await troveManager.Troves(bob))[3], '3')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '3')
       // Confirm troves have status 'open' (Status enum element idx 1)
-      assert.equal((await troveManager.Troves(alice))[3], '1')
-      assert.equal((await troveManager.Troves(carol))[3], '1')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '1')
+      assert.equal((await troveManager.Troves(_carolTroveId))[3], '1')
     })
   })
 
@@ -190,6 +203,8 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
     const setup = async () => {
       const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(298, 16)), extraParams: { from: bob } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
 
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt)
 
@@ -205,8 +220,8 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check troves A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await troveManager.getCurrentICR(alice, price)
-      const ICR_B = await troveManager.getCurrentICR(bob, price)
+      const ICR_A = await troveManager.getCurrentICR(_aliceTroveId, price)
+      const ICR_B = await troveManager.getCurrentICR(_bobTroveId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -229,18 +244,20 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
 
     it('Two troves over MCR are liquidated', async () => {
       await setup()
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       const tx = await troveManager.liquidateTroves(10)
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 2, 'Not enough liquidations')
 
       // Confirm all troves removed
-      assert.isFalse(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(bob))
+      assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+      assert.isFalse(await sortedTroves.contains(_bobTroveId))
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await troveManager.Troves(alice))[3], '3')
-      assert.equal((await troveManager.Troves(bob))[3], '3')
+      assert.equal((await troveManager.Troves(_aliceTroveId))[3], '3')
+      assert.equal((await troveManager.Troves(_bobTroveId))[3], '3')
     })
   })
 })

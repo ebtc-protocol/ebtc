@@ -258,7 +258,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         LocalVariables_adjustTrove memory vars;
 
         _requireTroveisActive(contractsCache.troveManager, _troveId);
-        _requireTroveOwner(_troveId);
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);

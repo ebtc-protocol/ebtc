@@ -409,9 +409,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             _removeStake(_troveId);
             singleLiquidation = _getCappedOffsetVals(singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, _price);
 
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
             _closeTrove(_troveId, Status.closedByLiquidation);
             if (singleLiquidation.collSurplus > 0) {
-                address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
                 collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
             }
 

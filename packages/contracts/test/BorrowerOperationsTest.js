@@ -67,6 +67,11 @@ contract('BorrowerOperations', async accounts => {
   let BORROWING_FEE_FLOOR
 
   before(async () => {
+      let _forkBlock = hre.network.config['forking']['blockNumber'];
+      let _forkUrl = hre.network.config['forking']['url'];
+      console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+      await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+	  
       await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
       bn8Signer = await ethers.provider.getSigner(bn8);
       [bountyAddress, lpRewardsAddress, multisig] = [bn8Signer._address, bn8Signer._address, bn8Signer._address];
@@ -109,10 +114,14 @@ contract('BorrowerOperations', async accounts => {
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR()
 
       ownerSigner = await ethers.provider.getSigner(owner);
+      let _ownerBal = await web3.eth.getBalance(owner);
+      let _bn8Bal = await web3.eth.getBalance(bn8);
+      let _ownerRicher = toBN(_ownerBal.toString()).gt(toBN(_bn8Bal.toString()));
+      let _signer = _ownerRicher? ownerSigner : bn8Signer;
 	  
-      await ownerSigner.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
-      await ownerSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
-      await ownerSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
+      await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
+      await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
+      await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
       
     })
 

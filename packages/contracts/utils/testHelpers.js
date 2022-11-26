@@ -702,6 +702,7 @@ class TestHelper {
   }
 
   static async withdrawLUSD(contracts, {
+    _troveId,
     maxFeePercentage,
     lusdAmount,
     ICR,
@@ -710,15 +711,15 @@ class TestHelper {
     extraParams
   }) {
     if (!maxFeePercentage) maxFeePercentage = this._100pct
-    if (!upperHint) upperHint = this.ZERO_ADDRESS
-    if (!lowerHint) lowerHint = this.ZERO_ADDRESS
+    if (!upperHint) upperHint = this.DUMMY_BYTES32
+    if (!lowerHint) lowerHint = this.DUMMY_BYTES32
 
     assert(!(lusdAmount && ICR) && (lusdAmount || ICR), "Specify either lusd amount or target ICR, but not both")
 
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.troveManager.getEntireDebtAndColl(extraParams.from)
+      const { debt, coll } = await contracts.troveManager.getEntireDebtAndColl(_troveId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")
@@ -728,7 +729,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, lusdAmount)
     }
 
-    await contracts.borrowerOperations.withdrawLUSD(maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawLUSD(_troveId, maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
 
     return {
       lusdAmount,
@@ -982,6 +983,7 @@ class TestHelper {
       approxPartialRedemptionHint,
       approxPartialRedemptionHint))
 
+    //console.log('gasPrice_toUse=' + gasPrice_toUse + ',LUSDAmount=' + LUSDAmount + ',firstHint=' + firstRedemptionHint + ',lHint=' + exactPartialRedemptionHint[0] + ',hHint=' + exactPartialRedemptionHint[1] + ',partialRedemptionNewICR=' + partialRedemptionNewICR);
     const tx = await contracts.troveManager.redeemCollateral(LUSDAmount,
       firstRedemptionHint,
       exactPartialRedemptionHint[0],
@@ -990,6 +992,8 @@ class TestHelper {
       0, maxFee,
       { from: redeemer, gasPrice: gasPrice_toUse},
     )
+	
+    //for (let i = 0; i < tx.logs.length; i++) { if (tx.logs[i].event === "Redemption") { console.log(tx.logs[i]); } }
 
     return tx
   }
