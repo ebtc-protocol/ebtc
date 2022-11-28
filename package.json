@@ -43,8 +43,6 @@
     "build": "run-s build:*",
     "deploy:chicken-bonds": "yarn --cwd ../ChickenBond deploy-fork compile publish:local",
     "watch:chicken-bonds": "yarn --cwd ../ChickenBond watch",
-    "docs": "run-s docs:*",
-    "docs:api-documenter": "api-documenter generate -i temp/sdk-apis -o docs/sdk",
     "fuzzer": "yarn workspace @liquity/fuzzer fuzzer",
     "prepare": "run-s prepare:*",
     "prepare:contracts": "yarn workspace @liquity/contracts prepare",
