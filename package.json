@@ -46,7 +46,6 @@
     "fuzzer": "yarn workspace @liquity/fuzzer fuzzer",
     "prepare": "run-s prepare:*",
     "prepare:contracts": "yarn workspace @liquity/contracts prepare",
-    "prepare:docs": "run-s docs",
     "rebuild": "run-s prepare build",
     "release": "run-s release:*",
     "start-dev-chain": "run-s start-dev-chain:*",
