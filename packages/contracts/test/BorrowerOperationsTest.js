@@ -67,10 +67,10 @@ contract('BorrowerOperations', async accounts => {
   let BORROWING_FEE_FLOOR
 
   before(async () => {
-      let _forkBlock = hre.network.config['forking']['blockNumber'];
-      let _forkUrl = hre.network.config['forking']['url'];
-      console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
-      await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+      // let _forkBlock = hre.network.config['forking']['blockNumber'];
+      // let _forkUrl = hre.network.config['forking']['url'];
+      // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+      // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
 	  
       await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
       bn8Signer = await ethers.provider.getSigner(bn8);
@@ -2550,181 +2550,192 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePoolCollAfter.eq(activePoolCollAfter))
     })
 
-    xit("adjustTrove(): With 0 debt change, doesnt change borrower's debt or ActivePool debt", async () => {
+    it("adjustTrove(): With 0 debt change, doesnt change borrower's debt or ActivePool debt", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceDebtBefore = await getTroveEntireDebt(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       const activePoolDebtBefore = await activePool.getLUSDDebt()
 
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
       assert.isTrue(aliceDebtBefore.eq(activePoolDebtBefore))
 
       // Alice adjusts trove. Coll change, no debt change
-      await borrowerOperations.adjustTrove(th._100pct, 0, 0, false, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, false, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
-      const aliceDebtAfter = await getTroveEntireDebt(alice)
+      const aliceDebtAfter = await getTroveEntireDebt(aliceIndex)
       const activePoolDebtAfter = await activePool.getLUSDDebt()
 
       assert.isTrue(aliceDebtAfter.eq(aliceDebtBefore))
       assert.isTrue(activePoolDebtAfter.eq(activePoolDebtBefore))
     })
 
-    xit("adjustTrove(): updates borrower's debt and coll with an increase in both", async () => {
+    it("adjustTrove(): updates borrower's debt and coll with an increase in both", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const debtBefore = await getTroveEntireDebt(alice)
-      const collBefore = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const debtBefore = await getTroveEntireDebt(aliceIndex)
+      const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
       // Alice adjusts trove. Coll and debt increase(+1 ETH, +50LUSD)
-      await borrowerOperations.adjustTrove(th._100pct, 0, await getNetBorrowingAmount(dec(50, 18)), true, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, await getNetBorrowingAmount(dec(50, 18)), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
-      const debtAfter = await getTroveEntireDebt(alice)
-      const collAfter = await getTroveEntireColl(alice)
+      const debtAfter = await getTroveEntireDebt(aliceIndex)
+      const collAfter = await getTroveEntireColl(aliceIndex)
 
       th.assertIsApproximatelyEqual(debtAfter, debtBefore.add(toBN(dec(50, 18))), 10000)
       th.assertIsApproximatelyEqual(collAfter, collBefore.add(toBN(dec(1, 18))), 10000)
     })
 
-    xit("adjustTrove(): updates borrower's debt and coll with a decrease in both", async () => {
+    it("adjustTrove(): updates borrower's debt and coll with a decrease in both", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const debtBefore = await getTroveEntireDebt(alice)
-      const collBefore = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const debtBefore = await getTroveEntireDebt(aliceIndex)
+      const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
       // Alice adjusts trove coll and debt decrease (-0.5 ETH, -50LUSD)
-      await borrowerOperations.adjustTrove(th._100pct, dec(500, 'finney'), dec(50, 18), false, alice, alice, { from: alice })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(500, 'finney'), dec(50, 18), false, aliceIndex, aliceIndex, { from: alice })
 
-      const debtAfter = await getTroveEntireDebt(alice)
-      const collAfter = await getTroveEntireColl(alice)
+      const debtAfter = await getTroveEntireDebt(aliceIndex)
+      const collAfter = await getTroveEntireColl(aliceIndex)
 
       assert.isTrue(debtAfter.eq(debtBefore.sub(toBN(dec(50, 18)))))
       assert.isTrue(collAfter.eq(collBefore.sub(toBN(dec(5, 17)))))
     })
 
-    xit("adjustTrove(): updates borrower's  debt and coll with coll increase, debt decrease", async () => {
+    it("adjustTrove(): updates borrower's  debt and coll with coll increase, debt decrease", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const debtBefore = await getTroveEntireDebt(alice)
-      const collBefore = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const debtBefore = await getTroveEntireDebt(aliceIndex)
+      const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt decrease (+0.5 ETH, -50LUSD)
-      await borrowerOperations.adjustTrove(th._100pct, 0, dec(50, 18), false, alice, alice, { from: alice, value: dec(500, 'finney') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), false, aliceIndex, aliceIndex, { from: alice, value: dec(500, 'finney') })
 
-      const debtAfter = await getTroveEntireDebt(alice)
-      const collAfter = await getTroveEntireColl(alice)
+      const debtAfter = await getTroveEntireDebt(aliceIndex)
+      const collAfter = await getTroveEntireColl(aliceIndex)
 
       th.assertIsApproximatelyEqual(debtAfter, debtBefore.sub(toBN(dec(50, 18))), 10000)
       th.assertIsApproximatelyEqual(collAfter, collBefore.add(toBN(dec(5, 17))), 10000)
     })
 
-    xit("adjustTrove(): updates borrower's debt and coll with coll decrease, debt increase", async () => {
+    it("adjustTrove(): updates borrower's debt and coll with coll decrease, debt increase", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const debtBefore = await getTroveEntireDebt(alice)
-      const collBefore = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const debtBefore = await getTroveEntireDebt(aliceIndex)
+      const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
       // Alice adjusts trove - coll decrease and debt increase (0.1 ETH, 10LUSD)
-      await borrowerOperations.adjustTrove(th._100pct, dec(1, 17), await getNetBorrowingAmount(dec(1, 18)), true, alice, alice, { from: alice })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(1, 17), await getNetBorrowingAmount(dec(1, 18)), true, aliceIndex, aliceIndex, { from: alice })
 
-      const debtAfter = await getTroveEntireDebt(alice)
-      const collAfter = await getTroveEntireColl(alice)
+      const debtAfter = await getTroveEntireDebt(aliceIndex)
+      const collAfter = await getTroveEntireColl(aliceIndex)
 
       th.assertIsApproximatelyEqual(debtAfter, debtBefore.add(toBN(dec(1, 18))), 10000)
       th.assertIsApproximatelyEqual(collAfter, collBefore.sub(toBN(dec(1, 17))), 10000)
     })
 
-    xit("adjustTrove(): updates borrower's stake and totalStakes with a coll increase", async () => {
+    it("adjustTrove(): updates borrower's stake and totalStakes with a coll increase", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const stakeBefore = await troveManager.getTroveStake(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const stakeBefore = await troveManager.getTroveStake(aliceIndex)
       const totalStakesBefore = await troveManager.totalStakes();
       assert.isTrue(stakeBefore.gt(toBN('0')))
       assert.isTrue(totalStakesBefore.gt(toBN('0')))
 
       // Alice adjusts trove - coll and debt increase (+1 ETH, +50 LUSD)
-      await borrowerOperations.adjustTrove(th._100pct, 0, dec(50, 18), true, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
-      const stakeAfter = await troveManager.getTroveStake(alice)
+      const stakeAfter = await troveManager.getTroveStake(aliceIndex)
       const totalStakesAfter = await troveManager.totalStakes();
 
       assert.isTrue(stakeAfter.eq(stakeBefore.add(toBN(dec(1, 18)))))
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.add(toBN(dec(1, 18)))))
     })
 
-    xit("adjustTrove(): updates borrower's stake and totalStakes with a coll decrease", async () => {
+    it("adjustTrove(): updates borrower's stake and totalStakes with a coll decrease", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const stakeBefore = await troveManager.getTroveStake(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const stakeBefore = await troveManager.getTroveStake(aliceIndex)
       const totalStakesBefore = await troveManager.totalStakes();
       assert.isTrue(stakeBefore.gt(toBN('0')))
       assert.isTrue(totalStakesBefore.gt(toBN('0')))
 
       // Alice adjusts trove - coll decrease and debt decrease
-      await borrowerOperations.adjustTrove(th._100pct, dec(500, 'finney'), dec(50, 18), false, alice, alice, { from: alice })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(500, 'finney'), dec(50, 18), false, aliceIndex, aliceIndex, { from: alice })
 
-      const stakeAfter = await troveManager.getTroveStake(alice)
+      const stakeAfter = await troveManager.getTroveStake(aliceIndex)
       const totalStakesAfter = await troveManager.totalStakes();
 
       assert.isTrue(stakeAfter.eq(stakeBefore.sub(toBN(dec(5, 17)))))
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.sub(toBN(dec(5, 17)))))
     })
 
-    xit("adjustTrove(): changes LUSDToken balance by the requested decrease", async () => {
+    it("adjustTrove(): changes LUSDToken balance by the requested decrease", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const alice_LUSDTokenBalance_Before = await lusdToken.balanceOf(alice)
       assert.isTrue(alice_LUSDTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll decrease and debt decrease
-      await borrowerOperations.adjustTrove(th._100pct, dec(100, 'finney'), dec(10, 18), false, alice, alice, { from: alice })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       // check after
       const alice_LUSDTokenBalance_After = await lusdToken.balanceOf(alice)
       assert.isTrue(alice_LUSDTokenBalance_After.eq(alice_LUSDTokenBalance_Before.sub(toBN(dec(10, 18)))))
     })
 
-    xit("adjustTrove(): changes LUSDToken balance by the requested increase", async () => {
+    it("adjustTrove(): changes LUSDToken balance by the requested increase", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const alice_LUSDTokenBalance_Before = await lusdToken.balanceOf(alice)
       assert.isTrue(alice_LUSDTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt increase
-      await borrowerOperations.adjustTrove(th._100pct, 0, dec(100, 18), true, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       // check after
       const alice_LUSDTokenBalance_After = await lusdToken.balanceOf(alice)
       assert.isTrue(alice_LUSDTokenBalance_After.eq(alice_LUSDTokenBalance_Before.add(toBN(dec(100, 18)))))
     })
 
-    xit("adjustTrove(): Changes the activePool ETH and raw ether balance by the requested decrease", async () => {
+    it("adjustTrove(): Changes the activePool ETH and raw ether balance by the requested decrease", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
@@ -2732,7 +2743,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll decrease and debt decrease
-      await borrowerOperations.adjustTrove(th._100pct, dec(100, 'finney'), dec(10, 18), false, alice, alice, { from: alice })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       const activePool_ETH_After = await activePool.getETH()
       const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
@@ -2740,10 +2751,11 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_After.eq(activePool_ETH_Before.sub(toBN(dec(1, 17)))))
     })
 
-    xit("adjustTrove(): Changes the activePool ETH and raw ether balance by the amount of ETH sent", async () => {
+    it("adjustTrove(): Changes the activePool ETH and raw ether balance by the amount of ETH sent", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
@@ -2751,7 +2763,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt increase
-      await borrowerOperations.adjustTrove(th._100pct, 0, dec(100, 18), true, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_ETH_After = await activePool.getETH()
       const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
@@ -2759,91 +2771,106 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_After.eq(activePool_ETH_Before.add(toBN(dec(1, 18)))))
     })
 
-    xit("adjustTrove(): Changes the LUSD debt in ActivePool by requested decrease", async () => {
+    it("adjustTrove(): Changes the LUSD debt in ActivePool by requested decrease", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const activePool_LUSDDebt_Before = await activePool.getLUSDDebt()
       assert.isTrue(activePool_LUSDDebt_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt decrease
-      await borrowerOperations.adjustTrove(th._100pct, 0, dec(30, 18), false, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(30, 18), false, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_LUSDDebt_After = await activePool.getLUSDDebt()
       assert.isTrue(activePool_LUSDDebt_After.eq(activePool_LUSDDebt_Before.sub(toBN(dec(30, 18)))))
     })
 
-    xit("adjustTrove(): Changes the LUSD debt in ActivePool by requested increase", async () => {
+    it("adjustTrove(): Changes the LUSD debt in ActivePool by requested increase", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const activePool_LUSDDebt_Before = await activePool.getLUSDDebt()
       assert.isTrue(activePool_LUSDDebt_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt increase
-      await borrowerOperations.adjustTrove(th._100pct, 0, await getNetBorrowingAmount(dec(100, 18)), true, alice, alice, { from: alice, value: dec(1, 'ether') })
+      await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, await getNetBorrowingAmount(dec(100, 18)), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_LUSDDebt_After = await activePool.getLUSDDebt()
     
       th.assertIsApproximatelyEqual(activePool_LUSDDebt_After, activePool_LUSDDebt_Before.add(toBN(dec(100, 18))))
     })
 
-    xit("adjustTrove(): new coll = 0 and new debt = 0 is not allowed, as gas compensation still counts toward ICR", async () => {
+    it("adjustTrove(): new coll = 0 and new debt = 0 is not allowed, as gas compensation still counts toward ICR", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
-      const aliceColl = await getTroveEntireColl(alice)
-      const aliceDebt = await getTroveEntireColl(alice)
-      const status_Before = await troveManager.getTroveStatus(alice)
-      const isInSortedList_Before = await sortedTroves.contains(alice)
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const aliceColl = await getTroveEntireColl(aliceIndex)
+      const aliceDebt = await getTroveEntireColl(aliceIndex)
+      const status_Before = await troveManager.getTroveStatus(aliceIndex)
+      const isInSortedList_Before = await sortedTroves.contains(aliceIndex)
 
       assert.equal(status_Before, 1)  // 1: Active
       assert.isTrue(isInSortedList_Before)
 
       await assertRevert(
-        borrowerOperations.adjustTrove(th._100pct, aliceColl, aliceDebt, true, alice, alice, { from: alice }),
+        borrowerOperations.adjustTrove(aliceIndex, th._100pct, aliceColl, aliceDebt, true, aliceIndex, aliceIndex, { from: alice }),
         'BorrowerOps: An operation that would result in ICR < MCR is not permitted'
       )
     })
 
-    xit("adjustTrove(): Reverts if requested debt increase and amount is zero", async () => {
+    it("adjustTrove(): Reverts if requested debt increase and amount is zero", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      await assertRevert(borrowerOperations.adjustTrove(th._100pct, 0, 0, true, alice, alice, { from: alice }),
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, true, aliceIndex, aliceIndex, { from: alice }),
         'BorrowerOps: Debt increase requires non-zero debtChange')
     })
 
-    xit("adjustTrove(): Reverts if requested coll withdrawal and ether is sent", async () => {
+    it("adjustTrove(): Reverts if requested coll withdrawal and ether is sent", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      await assertRevert(borrowerOperations.adjustTrove(th._100pct, dec(1, 'ether'), dec(100, 18), true, alice, alice, { from: alice, value: dec(3, 'ether') }), 'BorrowerOperations: Cannot withdraw and add coll')
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(1, 'ether'), dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(3, 'ether') }), 'BorrowerOperations: Cannot withdraw and add coll')
     })
 
-    xit("adjustTrove(): Reverts if it’s zero adjustment", async () => {
+    it("adjustTrove(): Reverts if it’s zero adjustment", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
-      await assertRevert(borrowerOperations.adjustTrove(th._100pct, 0, 0, false, alice, alice, { from: alice }),
+      await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, false, aliceIndex, aliceIndex, { from: alice }),
                          'BorrowerOps: There must be either a collateral change or a debt change')
     })
 
-    xit("adjustTrove(): Reverts if requested coll withdrawal is greater than trove's collateral", async () => {
+    it("adjustTrove(): Reverts if requested coll withdrawal is greater than trove's collateral", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceColl = await getTroveEntireColl(alice)
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+
+      const aliceColl = await getTroveEntireColl(aliceIndex)
 
       // Requested coll withdrawal > coll in the trove
-      await assertRevert(borrowerOperations.adjustTrove(th._100pct, aliceColl.add(toBN(1)), 0, false, alice, alice, { from: alice }))
-      await assertRevert(borrowerOperations.adjustTrove(th._100pct, aliceColl.add(toBN(dec(37, 'ether'))), 0, false, bob, bob, { from: bob }))
+      await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, aliceColl.add(toBN(1)), 0, false, aliceIndex, aliceIndex, { from: alice }))
+      await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, aliceColl.add(toBN(dec(37, 'ether'))), 0, false, aliceIndex, aliceIndex, { from: bob }))
     })
 
-    xit("adjustTrove(): Reverts if borrower has insufficient LUSD balance to cover his debt repayment", async () => {
+    it("adjustTrove(): Reverts if borrower has insufficient LUSD balance to cover his debt repayment", async () => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: B } })
-      const bobDebt = await getTroveEntireDebt(B)
+
+      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
+      const bobDebt = await getTroveEntireDebt(BIndex)
 
       // Bob transfers some LUSD to carol
       await lusdToken.transfer(C, dec(10, 18), { from: B })
@@ -2852,7 +2879,7 @@ contract('BorrowerOperations', async accounts => {
       const B_LUSDBal = await lusdToken.balanceOf(B)
       assert.isTrue(B_LUSDBal.lt(bobDebt))
 
-      const repayLUSDPromise_B = borrowerOperations.adjustTrove(th._100pct, 0, bobDebt, false, B, B, { from: B })
+      const repayLUSDPromise_B = borrowerOperations.adjustTrove(BIndex, th._100pct, 0, bobDebt, false, BIndex, BIndex, { from: B })
 
       // B attempts to repay all his debt
       await assertRevert(repayLUSDPromise_B, "revert")
