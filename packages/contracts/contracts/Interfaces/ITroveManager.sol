@@ -92,15 +92,16 @@ interface ITroveManager is ILiquityBase {
 
     function getPendingETHReward(address _borrower) external view returns (uint);
 
-    function getPendingLUSDDebtReward(address _borrower) external view returns (uint);
+    function getPendingLUSDDebtReward(address _borrower) external view returns (uint, uint);
 
-     function hasPendingRewards(address _borrower) external view returns (bool);
+    function hasPendingRewards(address _borrower) external view returns (bool);
 
     function getEntireDebtAndColl(address _borrower) external view returns (
         uint debt, 
         uint coll, 
         uint pendingLUSDDebtReward, 
-        uint pendingETHReward
+        uint pendingETHReward,
+        uint pendingLUSDInterest
     );
 
     function closeTrove(address _borrower) external;

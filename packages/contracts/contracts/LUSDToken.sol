@@ -97,7 +97,7 @@ contract LUSDToken is CheckContract, ILUSDToken {
     // --- Functions for intra-Liquity calls ---
 
     function mint(address _account, uint256 _amount) external override {
-        _requireCallerIsBorrowerOperations();
+        _requireCallerIsBOorTroveM();
         _mint(_account, _amount);
     }
 
@@ -280,6 +280,14 @@ contract LUSDToken is CheckContract, ILUSDToken {
         require(
             msg.sender == troveManagerAddress || msg.sender == stabilityPoolAddress,
             "LUSD: Caller is neither TroveManager nor StabilityPool");
+    }
+
+    function _requireCallerIsBOorTroveM() internal view {
+        require(
+            msg.sender == borrowerOperationsAddress ||
+            msg.sender == troveManagerAddress,
+            "LUSD: Caller is neither BorrowerOperations nor TroveManager"
+        );
     }
 
     // --- Optional functions ---
