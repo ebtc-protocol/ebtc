@@ -346,8 +346,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         (singleLiquidation.entireTroveDebt,
         singleLiquidation.entireTroveColl,
         vars.pendingDebtReward,
-        vars.pendingCollReward,
-        vars.pendingDebtInterest) = getEntireDebtAndColl(_borrower);
+        ,
+        vars.pendingCollReward) = getEntireDebtAndColl(_borrower);
 
         _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
         _removeStake(_borrower);
@@ -385,8 +385,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         (singleLiquidation.entireTroveDebt,
         singleLiquidation.entireTroveColl,
         vars.pendingDebtReward,
-        vars.pendingCollReward,
-        vars.pendingDebtInterest) = getEntireDebtAndColl(_borrower);
+        ,
+        vars.pendingCollReward) = getEntireDebtAndColl(_borrower);
 
         singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
         singleLiquidation.LUSDGasCompensation = LUSD_GAS_COMPENSATION;
@@ -1196,7 +1196,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         public
         view
         override
-        returns (uint debt, uint coll, uint pendingLUSDDebtReward, uint pendingETHReward, uint pendingLUSDInterest)
+        returns (uint debt, uint coll, uint pendingLUSDDebtReward, uint pendingLUSDInterest, uint pendingETHReward)
     {
         debt = Troves[_borrower].debt;
         coll = Troves[_borrower].coll;

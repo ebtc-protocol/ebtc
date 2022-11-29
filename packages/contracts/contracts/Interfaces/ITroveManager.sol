@@ -100,8 +100,8 @@ interface ITroveManager is ILiquityBase {
         uint debt, 
         uint coll, 
         uint pendingLUSDDebtReward, 
-        uint pendingETHReward,
-        uint pendingLUSDInterest
+        uint pendingLUSDInterest,
+        uint pendingETHReward
     );
 
     function closeTrove(address _borrower) external;
