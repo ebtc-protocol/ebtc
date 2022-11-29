@@ -103,7 +103,16 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     */
     uint public L_ETH;
     uint public L_LUSDDebt;
-    uint public L_LUSDInterest; // TODO: Comments
+
+    // TODO: Update for compound interest
+    /*
+    * L_LUSDInterest tracks the interest accumulated on a unit debt position. During its lifetime, each trove earns:
+    *
+    * A LUSDDebt increase of ( debt * [L_LUSDInterest - L_LUSDInterest(0)] / L_LUSDInterest(0) )
+    *
+    * Where L_LUSDInterest(0) is the snapshot of L_LUSDInterest for the active Trove taken at the instant the trove was opened
+    */
+    uint public L_LUSDInterest;
 
     // Map addresses with active troves to their RewardSnapshot
     mapping (address => RewardSnapshot) public rewardSnapshots;
@@ -1069,7 +1078,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     function _getCurrentTroveAmounts(address _borrower) internal view returns (uint, uint) {
         uint pendingETHReward = getPendingETHReward(_borrower);
-        // TODO: This is stale
         (uint pendingLUSDDebtReward, uint pendingLUSDInterest) = getPendingLUSDDebtReward(_borrower);
 
         uint currentETH = Troves[_borrower].coll.add(pendingETHReward);
@@ -1091,7 +1099,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
             // Compute pending rewards
             uint pendingETHReward = getPendingETHReward(_borrower);
-            (uint pendingLUSDDebtReward, uint pendingLUSDInterest) = getPendingLUSDDebtReward(_borrower); // TODO
+            (uint pendingLUSDDebtReward, uint pendingLUSDInterest) = getPendingLUSDDebtReward(_borrower);
 
             // Apply pending rewards to trove's state
             Troves[_borrower].coll = Troves[_borrower].coll.add(pendingETHReward);
@@ -1100,7 +1108,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             _updateTroveRewardSnapshots(_borrower);
 
             // Transfer from DefaultPool to ActivePool
-            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, pendingLUSDDebtReward.add(pendingLUSDInterest), pendingETHReward);
+            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, pendingLUSDDebtReward, pendingETHReward);
             // Mint pending LUSD interest to LQTY staking contract
             _mintPendingLUSDInterest(_lqtyStaking, _lusdToken, pendingLUSDInterest); // TODO: Check if better method?
 
@@ -1150,7 +1158,17 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         if ( Troves[_borrower].status != Status.active) { return (0, 0); }
 
         uint stake =  Troves[_borrower].stake;
-        uint initialDebt = Troves[_borrower].debt.sub(LUSD_GAS_COMPENSATION); // TODO
+        uint initialDebt = Troves[_borrower].debt.sub(LUSD_GAS_COMPENSATION); // TODO: Check
+
+        uint L_LUSDInterest_new = L_LUSDInterest;
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            uint interestRatePerSecond = _calcInterestRatePerSecond();
+            if (interestRatePerSecond > 0) {
+                // TODO: This is an approximation. Use exact compound interest formula
+                L_LUSDInterest_new = L_LUSDInterest_new.mul(DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed))).div(DECIMAL_PRECISION);
+            }
+        }
 
         uint pendingLUSDDebtReward;
         if (rewardPerUnitStaked > 0) {
@@ -1160,7 +1178,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         uint pendingLUSDInterest;
         uint snapshotLUSDInterest = rewardSnapshots[_borrower].LUSDInterest;
 
-        uint256 debtIncrease = L_LUSDInterest.sub(snapshotLUSDInterest);
+        uint256 debtIncrease = L_LUSDInterest_new.sub(snapshotLUSDInterest);
         if (debtIncrease > 0 && snapshotLUSDInterest > 0) {
             pendingLUSDInterest = initialDebt.mul(debtIncrease).div(snapshotLUSDInterest);
         }
@@ -1284,18 +1302,19 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     // New pending reward functions for interest rates
     function _tickInterest() internal {
-        uint interestRatePerSecond = _calcInterestRatePerSecond();
-        if (interestRatePerSecond > 0) { // && timeElapsed >= interestTimeWindow 
-            uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        if (timeElapsed > 0) { // timeElapsed >= interestTimeWindow 
+            uint interestRatePerSecond = _calcInterestRatePerSecond();
+            if (interestRatePerSecond > 0) {
+                // TODO: This is an approximation. Use exact compound interest formula
+                L_LUSDInterest = L_LUSDInterest.mul(DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed))).div(DECIMAL_PRECISION);
+                lastInterestRateUpdateTime = block.timestamp;
 
-            // TODO: This is an approximation. Use exact compound interest formula
-            L_LUSDInterest = L_LUSDInterest.mul(DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed))).div(DECIMAL_PRECISION);
-            lastInterestRateUpdateTime = block.timestamp;
-
-            emit L_LUSDInterestUpdated(L_LUSDInterest);
-            // TODO: Maybe mint here?
-            // uint entireSystemDebt = getEntireSystemDebt();
-            // LUSDFee = entireSystemDebt.mul(interestPerLUSD).div(DECIMAL_PRECISION);
+                emit L_LUSDInterestUpdated(L_LUSDInterest);
+                // TODO: Maybe mint here?
+                // uint entireSystemDebt = getEntireSystemDebt();
+                // LUSDFee = entireSystemDebt.mul(interestPerLUSD).div(DECIMAL_PRECISION);
+            }
         }
     }
 
