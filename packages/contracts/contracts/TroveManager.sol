@@ -349,7 +349,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         vars.pendingDebtInterest) = getEntireDebtAndColl(_borrower);
 
         _movePendingTroveRewardsToActivePool(_contractsCache.activePool, _contractsCache.defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-        _mintPendingLUSDInterest(_contractsCache.lqtyStaking, _contractsCache.lusdToken, vars.pendingDebtInterest);
         _removeStake(_borrower);
 
         singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
@@ -394,7 +393,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         // If ICR <= 100%, purely redistribute the Trove across all active Troves
         if (_ICR <= _100pct) {
             _movePendingTroveRewardsToActivePool(_contractsCache.activePool, _contractsCache.defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _mintPendingLUSDInterest(_contractsCache.lqtyStaking, _contractsCache.lusdToken, vars.pendingDebtInterest);
             _removeStake(_borrower);
            
             singleLiquidation.debtToOffset = 0;
@@ -409,7 +407,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
         } else if ((_ICR > _100pct) && (_ICR < MCR)) {
             _movePendingTroveRewardsToActivePool(_contractsCache.activePool, _contractsCache.defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _mintPendingLUSDInterest(_contractsCache.lqtyStaking, _contractsCache.lusdToken, vars.pendingDebtInterest);
             _removeStake(_borrower);
 
             (singleLiquidation.debtToOffset,
@@ -428,7 +425,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         */
         } else if ((_ICR >= MCR) && (_ICR < _TCR) && (singleLiquidation.entireTroveDebt <= _LUSDInStabPool)) {
             _movePendingTroveRewardsToActivePool(_contractsCache.activePool, _contractsCache.defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _mintPendingLUSDInterest(_contractsCache.lqtyStaking, _contractsCache.lusdToken, vars.pendingDebtInterest);
             assert(_LUSDInStabPool != 0);
 
             _removeStake(_borrower);
@@ -1012,7 +1008,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             // Save the address of the Trove preceding the current one, before potentially modifying the list
             address nextUserToCheck = contractsCache.sortedTroves.getPrev(currentBorrower);
 
-            _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, contractsCache.lqtyStaking, contractsCache.lusdToken, currentBorrower);
+            _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, currentBorrower);
 
             SingleRedemptionValues memory singleRedemption = _redeemCollateralFromTrove(
                 contractsCache,
@@ -1087,11 +1083,11 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     function applyPendingRewards(address _borrower) external override {
         _requireCallerIsBorrowerOperations();
-        return _applyPendingRewards(activePool, defaultPool, lqtyStaking, lusdToken, _borrower);
+        return _applyPendingRewards(activePool, defaultPool, _borrower);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Trove
-    function _applyPendingRewards(IActivePool _activePool, IDefaultPool _defaultPool, ILQTYStaking _lqtyStaking, ILUSDToken _lusdToken, address _borrower) internal {
+    function _applyPendingRewards(IActivePool _activePool, IDefaultPool _defaultPool, address _borrower) internal {
         _tickInterest();
 
         if (hasPendingRewards(_borrower)) {
@@ -1109,8 +1105,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
             // Transfer from DefaultPool to ActivePool
             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, pendingLUSDDebtReward, pendingETHReward);
-            // Mint pending LUSD interest to LQTY staking contract
-            _mintPendingLUSDInterest(_lqtyStaking, _lusdToken, pendingLUSDInterest); // TODO: Check if better method?
 
             emit TroveUpdated(
                 _borrower,
@@ -1307,13 +1301,16 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
-                L_LUSDInterest = L_LUSDInterest.mul(DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed))).div(DECIMAL_PRECISION);
+                uint LUSDInterest = interestRatePerSecond.mul(timeElapsed);
+
+                L_LUSDInterest = L_LUSDInterest.mul(DECIMAL_PRECISION.add(LUSDInterest)).div(DECIMAL_PRECISION);
                 lastInterestRateUpdateTime = block.timestamp;
 
                 emit L_LUSDInterestUpdated(L_LUSDInterest);
-                // TODO: Maybe mint here?
-                // uint entireSystemDebt = getEntireSystemDebt();
-                // LUSDFee = entireSystemDebt.mul(interestPerLUSD).div(DECIMAL_PRECISION);
+
+                uint activeDebt = activePool.getLUSDDebt();
+                uint activeDebtInterest = activeDebt.mul(LUSDInterest).div(DECIMAL_PRECISION);
+                _mintPendingLUSDInterest(lqtyStaking, lusdToken, activeDebtInterest);
             }
         }
     }
