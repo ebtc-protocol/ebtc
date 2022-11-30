@@ -49,10 +49,10 @@ contract('TroveManager', async accounts => {
   }
 
   before(async () => {	  
-    let _forkBlock = hre.network.config['forking']['blockNumber'];
-    let _forkUrl = hre.network.config['forking']['url'];
-    console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
-    await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+    // let _forkBlock = hre.network.config['forking']['blockNumber'];
+    // let _forkUrl = hre.network.config['forking']['url'];
+    // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+    // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
   })
 
   beforeEach(async () => {

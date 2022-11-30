@@ -107,14 +107,30 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       issuance_M4 = toBN('46678287282156100').mul(communityLQTYSupply).div(toBN(dec(1, 18)))
       issuance_M5 = toBN('44093311972020200').mul(communityLQTYSupply).div(toBN(dec(1, 18)))
       issuance_M6 = toBN('41651488815552900').mul(communityLQTYSupply).div(toBN(dec(1, 18)))
-	  
-      await bn8Signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: A, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: B, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: C, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: D, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: E, value: ethers.utils.parseEther("21000")});
-      await bn8Signer.sendTransaction({ to: F, value: ethers.utils.parseEther("21000")});
+
+      ownerSigner = await ethers.provider.getSigner(owner);
+      let _ownerBal = await web3.eth.getBalance(owner);
+      let _bn8Bal = await web3.eth.getBalance(bn8);
+      let _ownerRicher = toBN(_ownerBal.toString()).gt(toBN(_bn8Bal.toString()));
+      let _signer = _ownerRicher? ownerSigner : bn8Signer;
+    
+      await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: D, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: E, value: ethers.utils.parseEther("21000")});
+      await _signer.sendTransaction({ to: F, value: ethers.utils.parseEther("21000")});
+      
+      const signer_address = await _signer.getAddress()
+      const b8nSigner_address = await bn8Signer.getAddress()
+
+      // Ensure bn8Signer has funds if it doesn't in this fork state
+      if (signer_address != b8nSigner_address) {
+        await _signer.sendTransaction({ to: b8nSigner_address, value: ethers.utils.parseEther("2000000")});
+      }
+      
+     
     })
 
     it("liquidation < 1 minute after a deposit does not change totalLQTYIssued", async () => {

@@ -476,7 +476,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function _requireTroveOwner(bytes32 _troveId) internal view {
         address _owner = sortedTroves.existTroveOwners(_troveId);
-        require(msg.sender == _owner, "!troveOwner");
+        require(msg.sender == _owner, "BorrowerOps: Caller must be trove owner");
     }
 
     function _requireSingularCollChange(uint _collWithdrawal) internal view {

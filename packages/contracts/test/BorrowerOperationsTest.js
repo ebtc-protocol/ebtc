@@ -407,7 +407,7 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    it("addColl(), reverts if trove is non-existent or closed", async () => {
+    it("addColl(), reverts if trove is not owned by caller", async () => {
       // A, B open troves
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
@@ -420,12 +420,21 @@ contract('BorrowerOperations', async accounts => {
 
       // Carol attempts to add collateral to her non-existent trove
       try {
-        const txCarol = await borrowerOperations.addColl(carolIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(1, 'ether') })
+        const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(1, 'ether') })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "Trove does not exist or is closed")
+        assert.include(error.message, "BorrowerOps: Caller must be trove owner")
       }
+    })
+
+    it("addColl(), reverts if trove is non-existent or closed", async () => {
+      // A, B open troves
+      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+
+      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
@@ -441,7 +450,7 @@ contract('BorrowerOperations', async accounts => {
         assert.isFalse(txBob.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "Trove does not exist or is closed")
+        assert.include(error.message, "BorrowerOps: Caller must be trove owner")
       }
     })
 

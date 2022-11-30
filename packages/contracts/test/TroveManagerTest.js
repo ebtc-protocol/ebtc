@@ -57,10 +57,11 @@ contract('TroveManager', async accounts => {
   const withdrawLUSD = async (params) => th.withdrawLUSD(contracts, params)
 
   before(async () => {	  
-    let _forkBlock = hre.network.config['forking']['blockNumber'];
-    let _forkUrl = hre.network.config['forking']['url'];
-    console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
-    await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+    // let _forkBlock = hre.network.config['forking']['blockNumber'];
+    // let _forkUrl = hre.network.config['forking']['url'];
+    // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+    // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [beadp]}); 
     beadpSigner = await ethers.provider.getSigner(beadp);	
   })
@@ -94,11 +95,16 @@ contract('TroveManager', async accounts => {
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
-	
-    await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000")});
-    await beadpSigner.sendTransaction({ to: alice, value: ethers.utils.parseEther("1000")});
-    await beadpSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("1000")});
-    await beadpSigner.sendTransaction({ to: carol, value: ethers.utils.parseEther("1000")});
+
+    ownerSigner = await ethers.provider.getSigner(owner);
+    let _signer = ownerSigner
+  
+    await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000")});
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("1000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("1000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("1000")});
+
+    await _signer.sendTransaction({ to: beadp, value: ethers.utils.parseEther("2000000")});
   })
 
   it("liquidate(): closes a Trove that has ICR < MCR", async () => {

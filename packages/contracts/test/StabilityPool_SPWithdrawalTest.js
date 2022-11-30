@@ -63,10 +63,10 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
     before(async () => {
 	  
-      let _forkBlock = hre.network.config['forking']['blockNumber'];
-      let _forkUrl = hre.network.config['forking']['url'];
-      console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
-      await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+      // let _forkBlock = hre.network.config['forking']['blockNumber'];
+      // let _forkUrl = hre.network.config['forking']['url'];
+      // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+      // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
 	  
       gasPriceInWei = await web3.eth.getGasPrice()
       await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
@@ -95,8 +95,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await deploymentHelper.connectLQTYContracts(LQTYContracts)
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
       await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
-	  
-      await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("100001")});
+
+      ownerSigner = await ethers.provider.getSigner(owner);
+      let _signer = ownerSigner;
+    
+      await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("100001")});
+
+      await _signer.sendTransaction({ to: bn7, value: ethers.utils.parseEther("2000000")});
+      await _signer.sendTransaction({ to: bn8, value: ethers.utils.parseEther("2000000")});
+      await _signer.sendTransaction({ to: beadp, value: ethers.utils.parseEther("2000000")});
     })
 
     // --- Compounding tests ---
