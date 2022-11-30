@@ -13,8 +13,9 @@ import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/ReentrancyGuard.sol";
 
-contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
+contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, ReentrancyGuard {
     string constant public NAME = "TroveManager";
 
     // --- Connected contract declarations ---
@@ -300,15 +301,62 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     // --- Trove Liquidation functions ---
 
     // Single liquidation function. Closes the trove if its ICR is lower than the minimum collateral ratio.
-    function liquidate(bytes32 _troveId) external override {
+    function liquidate(bytes32 _troveId) external override nonReentrant {
         _requireTroveIsActive(_troveId);
-
-        bytes32[] memory troveIds = new bytes32[](1);
-        troveIds[0] = _troveId;
-        batchLiquidateTroves(troveIds);
+		
+        ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);
+        uint256 _price = priceFeed.fetchPrice();
+		
+        _liquidateTroveBelowMCR(_troveId, _contractsCache, _price);	
     }
 
     // --- Inner single liquidation functions ---
+	
+    // liquidate given Trove completely by repaying debt in full if its ICR is below MCR
+    function _liquidateTroveBelowMCR(bytes32 _troveId, ContractsCache memory _contractsCache, uint256 _price) internal {
+        // check precondition
+        uint256 _ICR = getCurrentICR(_troveId, _price);        
+        require(_ICR < MCR, 'ICR>MCR');
+		
+        // do liquidation job with respect to internal accounting
+        (uint256 totalDebtToBurn, uint256 totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
+		
+        // TODO accrue and deduct interest fee accordingly
+			
+        emit TroveLiquidated(_troveId, totalDebtToBurn, totalColToSend, TroveManagerOperation.liquidateInNormalMode);
+        emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
+		
+        // update the staking and collateral snapshots
+        totalStakesSnapshot = totalStakes;
+        totalCollateralSnapshot = _contractsCache.activePool.getETH().sub(totalColToSend);
+		
+        // burn the debt from liquidator
+        _contractsCache.lusdToken.burn(msg.sender, totalDebtToBurn);
+		
+        // ensure sending back collateral to liquidator is last thing to do
+        _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
+    }
+	
+    // liquidate (and close) the Trove from an external liquidator
+    // this function would return the debt and collateral of the liquidated Trove
+    function _liquidateATroveByExternalLiquidator(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
+        // calculate entire debt to repay
+        (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
+		
+        // move around distributed debt and collateral if any
+        if (pendingDebtReward > 0 || pendingCollReward > 0){
+            _movePendingTroveRewardsToActivePool(_contractsCache.activePool, _contractsCache.defaultPool, pendingDebtReward, pendingCollReward);		
+        }
+		
+        // offset debt from Active Pool
+        _contractsCache.activePool.decreaseLUSDDebt(entireTroveDebt);
+		
+        // housekeeping after liquidation by closing the Trove
+        _removeStake(_troveId);
+        _closeTrove(_troveId, Status.closedByLiquidation);
+
+        return (entireTroveDebt, entireTroveColl);
+    }
 
     // Liquidate one trove, in Normal Mode.
     function _liquidateNormalMode(
@@ -320,31 +368,29 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         internal
         returns (LiquidationValues memory singleLiquidation)
     {
-        LocalVariables_InnerSingleLiquidateFunction memory vars;
-
-        (singleLiquidation.entireTroveDebt,
-        singleLiquidation.entireTroveColl,
-        vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
-
-        _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-        _removeStake(_troveId);
-
-        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
-        singleLiquidation.LUSDGasCompensation = LUSD_GAS_COMPENSATION;
-        uint collToLiquidate = singleLiquidation.entireTroveColl.sub(singleLiquidation.collGasCompensation);
-
-        (singleLiquidation.debtToOffset,
-        singleLiquidation.collToSendToSP,
-        singleLiquidation.debtToRedistribute,
-        singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, collToLiquidate, _LUSDInStabPool);
-
-        _closeTrove(_troveId, Status.closedByLiquidation);
-
-        address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-        emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
-        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
-        return singleLiquidation;
+//        LocalVariables_InnerSingleLiquidateFunction memory vars;
+//
+//        (singleLiquidation.entireTroveDebt,
+//        singleLiquidation.entireTroveColl,
+//        vars.pendingDebtReward,
+//        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
+//
+//        _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+//        _removeStake(_troveId);
+//
+//        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
+//        singleLiquidation.LUSDGasCompensation = LUSD_GAS_COMPENSATION;
+//        uint collToLiquidate = singleLiquidation.entireTroveColl.sub(singleLiquidation.collGasCompensation);
+//
+//        (singleLiquidation.debtToOffset,
+//        singleLiquidation.collToSendToSP,
+//        singleLiquidation.debtToRedistribute,
+//        singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, collToLiquidate, _LUSDInStabPool);
+//
+//        _closeTrove(_troveId, Status.closedByLiquidation);
+//        emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
+//        emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
+//        return singleLiquidation;
     }
 
     // Liquidate one trove, in Recovery Mode.
@@ -360,75 +406,71 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         internal
         returns (LiquidationValues memory singleLiquidation)
     {
-        LocalVariables_InnerSingleLiquidateFunction memory vars;
-        if (TroveIds.length <= 1) {return singleLiquidation;} // don't liquidate if last trove
-        (singleLiquidation.entireTroveDebt,
-        singleLiquidation.entireTroveColl,
-        vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
-
-        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
-        singleLiquidation.LUSDGasCompensation = LUSD_GAS_COMPENSATION;
-        vars.collToLiquidate = singleLiquidation.entireTroveColl.sub(singleLiquidation.collGasCompensation);
-
-        // If ICR <= 100%, purely redistribute the Trove across all active Troves
-        if (_ICR <= _100pct) {
-            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _removeStake(_troveId);
-           
-            singleLiquidation.debtToOffset = 0;
-            singleLiquidation.collToSendToSP = 0;
-            singleLiquidation.debtToRedistribute = singleLiquidation.entireTroveDebt;
-            singleLiquidation.collToRedistribute = vars.collToLiquidate;
-
-            _closeTrove(_troveId, Status.closedByLiquidation);
-
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
-            
-        // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
-        } else if ((_ICR > _100pct) && (_ICR < MCR)) {
-             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _removeStake(_troveId);
-
-            (singleLiquidation.debtToOffset,
-            singleLiquidation.collToSendToSP,
-            singleLiquidation.debtToRedistribute,
-            singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, vars.collToLiquidate, _LUSDInStabPool);
-
-            _closeTrove(_troveId, Status.closedByLiquidation);
-
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
-        /*
-        * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
-        * and there is LUSD in the Stability Pool, only offset, with no redistribution,
-        * but at a capped rate of 1.1 and only if the whole debt can be liquidated.
-        * The remainder due to the capped rate will be claimable as collateral surplus.
-        */
-        } else if ((_ICR >= MCR) && (_ICR < _TCR) && (singleLiquidation.entireTroveDebt <= _LUSDInStabPool)) {
-            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            assert(_LUSDInStabPool != 0);
-
-            _removeStake(_troveId);
-            singleLiquidation = _getCappedOffsetVals(singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, _price);
-
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            _closeTrove(_troveId, Status.closedByLiquidation);
-            if (singleLiquidation.collSurplus > 0) {
-                collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
-            }
-
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
-
-        } else { // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireTroveDebt > _LUSDInStabPool))
-            LiquidationValues memory zeroVals;
-            return zeroVals;
-        }
-
+//        LocalVariables_InnerSingleLiquidateFunction memory vars;
+//        if (TroveIds.length <= 1) {return singleLiquidation;} // don't liquidate if last trove
+//        (singleLiquidation.entireTroveDebt,
+//        singleLiquidation.entireTroveColl,
+//        vars.pendingDebtReward,
+//        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
+//
+//        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
+//        singleLiquidation.LUSDGasCompensation = LUSD_GAS_COMPENSATION;
+//        vars.collToLiquidate = singleLiquidation.entireTroveColl.sub(singleLiquidation.collGasCompensation);
+//
+//        // If ICR <= 100%, purely redistribute the Trove across all active Troves
+//        if (_ICR <= _100pct) {
+//            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+//            _removeStake(_troveId);
+//           
+//            singleLiquidation.debtToOffset = 0;
+//            singleLiquidation.collToSendToSP = 0;
+//            singleLiquidation.debtToRedistribute = singleLiquidation.entireTroveDebt;
+//            singleLiquidation.collToRedistribute = vars.collToLiquidate;
+//
+//            _closeTrove(_troveId, Status.closedByLiquidation);
+//            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+//            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+//            
+//        // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
+//        } else if ((_ICR > _100pct) && (_ICR < MCR)) {
+//             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+//            _removeStake(_troveId);
+//
+//            (singleLiquidation.debtToOffset,
+//            singleLiquidation.collToSendToSP,
+//            singleLiquidation.debtToRedistribute,
+//            singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, vars.collToLiquidate, _LUSDInStabPool);
+//
+//            _closeTrove(_troveId, Status.closedByLiquidation);
+//            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+//            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+//        /*
+//        * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
+//        * and there is LUSD in the Stability Pool, only offset, with no redistribution,
+//        * but at a capped rate of 1.1 and only if the whole debt can be liquidated.
+//        * The remainder due to the capped rate will be claimable as collateral surplus.
+//        */
+//        } else if ((_ICR >= MCR) && (_ICR < _TCR) && (singleLiquidation.entireTroveDebt <= _LUSDInStabPool)) {
+//            _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+//            assert(_LUSDInStabPool != 0);
+//
+//            _removeStake(_troveId);
+//            singleLiquidation = _getCappedOffsetVals(singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, _price);
+//
+//            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
+//            _closeTrove(_troveId, Status.closedByLiquidation);
+//            if (singleLiquidation.collSurplus > 0) {
+//                collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
+//            }
+//
+//            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
+//            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+//
+//        } else { // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireTroveDebt > _LUSDInStabPool))
+//            LiquidationValues memory zeroVals;
+//            return zeroVals;
+//        }
+//
         return singleLiquidation;
     }
 
