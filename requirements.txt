@@ -1,0 +1,2 @@
+eth-brownie==1.19.2
+numpy==1.23.4
