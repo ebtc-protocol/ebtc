@@ -8,14 +8,14 @@ node_modules
 
 # output of TypeScript transpilation
 /packages/*/dist
-
+/venv
 # api-extractor temp files
 /packages/*/temp
 
 /temp
 .env
 .eslintcache
-
+*.log
 # Don't track NPM lockfile (we use Yarn)
 package-lock.json
 
@@ -24,3 +24,4 @@ cache
 
 # ngrok config is individual to each dev
 ngrok.config.yml
+.idea/

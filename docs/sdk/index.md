@@ -4,10 +4,3 @@
 
 ## API Reference
 
-## Packages
-
-|  Package | Description |
-|  --- | --- |
-|  [@liquity/lib-base](./lib-base.md) |  |
-|  [@liquity/lib-ethers](./lib-ethers.md) |  |
-
