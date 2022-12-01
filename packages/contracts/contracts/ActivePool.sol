@@ -129,6 +129,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     // --- Fallback function ---
 
     receive() external payable {
+        // FlashETH idea
+        // We can just remove this check 
+        // Then add a confirming FlashLoan Operation
+        // Then receive via receive
         _requireCallerIsBorrowerOperationsOrDefaultPool();
         ETH = ETH.add(msg.value);
         emit ActivePoolETHBalanceUpdated(ETH);
