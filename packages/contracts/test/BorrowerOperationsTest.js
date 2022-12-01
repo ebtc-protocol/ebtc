@@ -4033,6 +4033,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("openTrove(): creates a new Trove and assigns the correct collateral and debt amount", async () => {
 
+      // We can't know the troveID beforehand unless we know the block at which the operation will be mined and ensure no more troves are minted in the intermediate term
       const aliceIndexNonExistant = th.RANDOM_INDEX
       const debt_Before = await getTroveEntireDebt(aliceIndexNonExistant)
       const coll_Before = await getTroveEntireColl(aliceIndexNonExistant)
@@ -4046,19 +4047,16 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(status_Before, 0)
 
       const LUSDRequest = MIN_NET_DEBT
-      borrowerOperations.openTrove(th._100pct, MIN_NET_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(100, 'ether') })
-
+      await borrowerOperations.openTrove(th._100pct, MIN_NET_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(100, 'ether') })
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       // Get the expected debt based on the LUSD request (adding fee and liq. reserve on top)
       const expectedDebt = LUSDRequest
         .add(await troveManager.getBorrowingFee(LUSDRequest))
         .add(LUSD_GAS_COMPENSATION)
-
       const debt_After = await getTroveEntireDebt(aliceIndex)
       const coll_After = await getTroveEntireColl(aliceIndex)
       const status_After = await troveManager.getTroveStatus(aliceIndex)
-
       // check coll and debt after
       assert.isTrue(coll_After.gt('0'))
       assert.isTrue(debt_After.gt('0'))
