@@ -3791,44 +3791,6 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(lqtyStaking_LUSDBalance_After.gt(lqtyStaking_LUSDBalance_Before))
     })
 
-    if (!withProxy) { // TODO: use rawLogs instead of logs
-      it("openTrove(): borrowing at non-zero base records the (drawn debt + fee  + liq. reserve) on the Trove struct", async () => {
-        // time fast-forwards 1 year, and multisig stakes 1 LQTY
-        await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-        await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-        await lqtyStaking.stake(dec(1, 18), { from: multisig })
-
-        await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-        await openTrove({ extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-        await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-        await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-
-        // Artificially make baseRate 5%
-        await troveManager.setBaseRate(dec(5, 16))
-        await troveManager.setLastFeeOpTimeToNow()
-
-        // Check baseRate is now non-zero
-        const baseRate_1 = await troveManager.baseRate()
-        assert.isTrue(baseRate_1.gt(toBN('0')))
-
-        // 2 hours pass
-        th.fastForwardTime(7200, web3.currentProvider)
-
-        const D_LUSDRequest = toBN(dec(20000, 18))
-
-        // D withdraws LUSD
-        const openTroveTx = await borrowerOperations.openTrove(th._100pct, D_LUSDRequest, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(200, 'ether') })
-
-        const emittedFee = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(openTroveTx))
-        assert.isTrue(toBN(emittedFee).gt(toBN('0')))
-
-        const newDebt = (await troveManager.Troves(D))[0]
-
-        // Check debt on Trove struct equals drawn debt plus emitted fee
-        th.assertIsApproximatelyEqual(newDebt, D_LUSDRequest.add(emittedFee).add(LUSD_GAS_COMPENSATION), 100000)
-      })
-    }
-
     it("openTrove(): Borrowing at non-zero base rate increases the LQTY staking contract LUSD fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
