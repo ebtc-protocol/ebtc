@@ -8,6 +8,9 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
+import "./Dependencies/ERC3156FlashLender.sol";
+
+
 /*
  * The Active Pool holds the ETH collateral and LUSD debt (but not LUSD tokens) for all active troves.
  *
@@ -15,7 +18,7 @@ import "./Dependencies/console.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool {
+contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     using SafeMath for uint256;
 
     string constant public NAME = "ActivePool";
@@ -136,5 +139,48 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
         ETH = ETH.add(msg.value);
         emit ActivePoolETHBalanceUpdated(ETH);
+    }
+
+    // === Flashloans === //
+
+    // TODO: Prob we will just allow WETH to save the check above
+    // OR: Rewrite receive
+
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external override returns (bool) {
+        require(token == address(0), "ETH only");
+        uint256 fee = amount * FEE_AMT / MAX_BPS;
+        
+        // TODO Send
+
+        // Callback
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            "IERC3156: Callback failed"
+        );
+
+        // TODO: Repay
+    }
+
+    function flashFee(
+        address token,
+        uint256 amount
+    ) external view override returns (uint256) {
+        require(token == address(0), "ETH only");
+
+        return amount * FEE_AMT / MAX_BPS;
+    }
+
+    /// @dev Max flashloan, exclusively in ETH equals to the current balance
+    function maxFlashLoan(
+        address token
+    ) external view override returns (uint256) {
+        require(token == address(0), "ETH only");
+
+        return address(this).balance;
     }
 }

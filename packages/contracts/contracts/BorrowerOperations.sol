@@ -7,23 +7,17 @@ import "./Interfaces/ITroveManager.sol";
 import "./Interfaces/ILUSDToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedTroves.sol";
+
 import "./Interfaces/ILQTYStaking.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
-interface IERC3156FlashBorrower {
-    function onFlashLoan(
-        address initiator,
-        address token,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata data
-    ) external returns (bytes32);
-}
+import "./Dependencies/ERC3156FlashLender.sol";
 
-contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOperations {
+
+contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOperations, ERC3156FlashLender {
     string constant public NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
@@ -248,38 +242,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function adjustTrove(uint _maxFeePercentage, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, address _upperHint, address _lowerHint) external payable override {
         _adjustTrove(msg.sender, _collWithdrawal, _LUSDChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
     }
-
-    address constant internal FEE_RECIPIENT  = address(0);
-    uint256 constant internal FEE_AMT  = 50; // 50 BPS
-    uint256 constant internal MAX_BPS  = 10_000;
-
-    function flashLoan(
-        IERC3156FlashBorrower receiver,
-        address token,
-        uint256 amount,
-        bytes calldata data
-    ) external returns (bool) {
-        uint256 fee = amount * FEE_AMT / MAX_BPS;
-
-        ILUSDToken cachedLusd = lusdToken;
-
-        // Issue LUSD
-        cachedLusd.mint(address(receiver), amount);
-
-        // Callback
-        require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
-            "IERC3156: Callback failed"
-        );
-
-        // Gas: Repay from user balance, so we don't trigger a new SSTORE
-        // Safe to use transferFrom and unchecked as it's a standard token
-        // Also saves gas
-        cachedLusd.transferFrom(address(receiver), FEE_RECIPIENT, fee);
-
-        // Burn amount, they must repay by holding it and we can burn
-        cachedLusd.burn(address(receiver), amount);
-    }   
 
     /*
     * _adjustTrove(): Alongside a debt change, this function can perform either a collateral top-up or a collateral withdrawal. 
@@ -704,5 +666,57 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function getCompositeDebt(uint _debt) external pure override returns (uint) {
         return _getCompositeDebt(_debt);
+    }
+
+
+    // === Flash Loans === //
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external override returns (bool) {
+        ILUSDToken cachedLusd = lusdToken;
+        require(token == address(cachedLusd), "Only LUSD");
+
+        uint256 fee = amount * FEE_AMT / MAX_BPS;
+
+        // Issue LUSD
+        cachedLusd.mint(address(receiver), amount);
+
+        // Callback
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            "IERC3156: Callback failed"
+        );
+
+        // Gas: Repay from user balance, so we don't trigger a new SSTORE
+        // Safe to use transferFrom and unchecked as it's a standard token
+        // Also saves gas
+        cachedLusd.transferFrom(address(receiver), FEE_RECIPIENT, fee);
+
+        // Burn amount, they must repay by holding it and we can burn
+        cachedLusd.burn(address(receiver), amount);
+    }
+
+    function flashFee(
+        address token,
+        uint256 amount
+    ) external view override returns (uint256) {
+        require(token == address(lusdToken), "Only LUSD");
+
+        return amount * FEE_AMT / MAX_BPS;
+    }
+
+    /// @dev Max flashloan, exclusively in ETH equals to the current balance
+    function maxFlashLoan(
+        address token
+    ) external view override returns (uint256) {
+        require(token == address(lusdToken), "Only LUSD");
+
+        // TODO: Decide if max, or w/e
+        // For now return 112 which is UniV3 compatible
+        // Source: I made it up
+        return type(uint112).max;
     }
 }
