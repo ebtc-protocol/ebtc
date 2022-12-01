@@ -156,6 +156,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         uint256 fee = amount * FEE_AMT / MAX_BPS;
         
         // TODO Send
+        // Deposit Eth into WETH
+        // Send WETH to receiver
 
         // Callback
         require(
@@ -163,7 +165,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
             "IERC3156: Callback failed"
         );
 
-        // TODO: Repay
+        // TODO: Repay via:
+        // Withdraw to this
+        // Transfer of WETH to Fee recipient
     }
 
     function flashFee(
