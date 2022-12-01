@@ -13,6 +13,16 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
+interface IERC3156FlashBorrower {
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external returns (bytes32);
+}
+
 contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOperations {
     string constant public NAME = "BorrowerOperations";
 
@@ -238,6 +248,38 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function adjustTrove(uint _maxFeePercentage, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, address _upperHint, address _lowerHint) external payable override {
         _adjustTrove(msg.sender, _collWithdrawal, _LUSDChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
     }
+
+    address constant internal FEE_RECIPIENT  = address(0);
+    uint256 constant internal FEE_AMT  = 50; // 50 BPS
+    uint256 constant internal MAX_BPS  = 10_000;
+
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool) {
+        uint256 fee = amount * FEE_AMT / MAX_BPS;
+
+        ILUSDToken cachedLusd = lusdToken;
+
+        // Issue LUSD
+        cachedLusd.mint(address(receiver), amount);
+
+        // Callback
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            "IERC3156: Callback failed"
+        );
+
+        // Gas: Repay from user balance, so we don't trigger a new SSTORE
+        // Safe to use transferFrom and unchecked as it's a standard token
+        // Also saves gas
+        cachedLusd.transferFrom(address(receiver), FEE_RECIPIENT, fee);
+
+        // Burn amount, they must repay by holding it and we can burn
+        cachedLusd.burn(address(receiver), amount);
+    }   
 
     /*
     * _adjustTrove(): Alongside a debt change, this function can perform either a collateral top-up or a collateral withdrawal. 
