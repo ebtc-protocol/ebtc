@@ -5,6 +5,7 @@ const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.s
 const NonPayable = artifacts.require('NonPayable.sol')
 const TroveManagerTester = artifacts.require("TroveManagerTester")
 const LUSDTokenTester = artifacts.require("./LUSDTokenTester")
+const MultipleTrovesTester = artifacts.require("./MultipleTrovesTester.sol")
 
 const th = testHelpers.TestHelper
 
@@ -124,6 +125,40 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
       await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});
       
+    })
+
+    it("openTrove(): mutiple Trove via non-EOA smart contract", async () => {
+	  mtsTester = await MultipleTrovesTester.new();
+	  mtsTester.initiate(borrowerOperations.address, sortedTroves.address);	  
+	  ownerSigner.sendTransaction({ to: mtsTester.address, value: ethers.utils.parseEther("1000")});
+      		
+	  // open multiple Troves
+	  let _count = 10;
+	  const _singleTroveDebt = (await contracts.borrowerOperations.MIN_NET_DEBT()).add(toBN(dec(2, 18)));
+	  let _icr = toBN(dec(25, 17));//250%
+	  const _price = await priceFeed.getPrice();
+	  let _singleTroveCol = _icr.mul(_singleTroveDebt).div(_price);
+	  tx = await mtsTester.openTroves(_count, th._100pct, _singleTroveDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: owner, value: _singleTroveCol.mul(toBN(_count)) } );
+	  let _openedTroveEvts = th.getAllEventsByName(tx, 'TroveOpened');
+	  let _ei = 0;
+	  for(;_ei < _openedTroveEvts.length - 1;_ei++){
+	      let _troveId = _openedTroveEvts[_ei].args[0];
+	      //console.log(_troveId);
+	      let _troveStatus = await troveManager.getTroveStatus(_troveId);
+	      assert.equal(_troveStatus, 1);			
+	      let _troveOwner = await sortedTroves.existTroveOwners(_troveId);
+	      assert.equal(_troveOwner, mtsTester.address);	  
+	      let _ii = _ei + 1;
+	      for(;_ii < _openedTroveEvts.length;_ii++){
+	          let _iTroveId = _openedTroveEvts[_ii].args[0];
+	          assert.notEqual(_iTroveId, _troveId);
+	          let _iTroveStatus = await troveManager.getTroveStatus(_iTroveId);
+	          assert.equal(_iTroveStatus, 1);  		
+	          let _iTroveOwner = await sortedTroves.existTroveOwners(_iTroveId);
+	          assert.equal(_iTroveOwner, mtsTester.address);
+	      }
+	  }
+	  //console.log(_openedTroveEvts[_openedTroveEvts.length - 1].args[0]);
     })
 
     it("openTrove(): mutiple Trove per user", async () => {		  
