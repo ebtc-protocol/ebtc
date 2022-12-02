@@ -3,6 +3,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
+
 const accounts = require("./hardhatAccountsList2k.js");
 const accountsList = accounts.accountsList
 
@@ -27,10 +28,8 @@ const alchemyUrlRinkeby = () => {
 
 module.exports = {
     paths: {
-        sources: "./contracts",
-        tests: "./test",
-        cache: "./cache",
-        artifacts: "./artifacts"
+        // contracts: "./contracts",
+        // artifacts: "./artifacts"
     },
     solidity: {
         compilers: [
