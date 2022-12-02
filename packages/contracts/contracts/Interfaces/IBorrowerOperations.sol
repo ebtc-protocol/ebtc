@@ -18,9 +18,9 @@ interface IBorrowerOperations {
     event LUSDTokenAddressChanged(address _lusdTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(bytes32 indexed _borrower, uint arrayIndex);
-    event TroveUpdated(bytes32 indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event LUSDBorrowingFeePaid(bytes32 indexed _borrower, uint _LUSDFee);
+    event TroveCreated(bytes32 indexed _troveId, uint arrayIndex);
+    event TroveUpdated(bytes32 indexed _troveId, uint _debt, uint _coll, uint stake, uint8 operation);
+    event LUSDBorrowingFeePaid(bytes32 indexed _troveId, uint _LUSDFee);
 
     // --- Functions ---
 
