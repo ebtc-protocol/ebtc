@@ -19,8 +19,7 @@ const alchemyUrl = () => {
 
 module.exports = {
     paths: {
-        // contracts: "./contracts",
-        // artifacts: "./artifacts"
+        sources: "./contracts",
     },
     solidity: {
         compilers: [
