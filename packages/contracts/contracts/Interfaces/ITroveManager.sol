@@ -28,8 +28,8 @@ interface ITroveManager is ILiquityBase {
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _LUSDGasCompensation);
     event Redemption(uint _attemptedLUSDAmount, uint _actualLUSDAmount, uint _ETHSent, uint _ETHFee);
-    event TroveUpdated(bytes32 indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event TroveLiquidated(bytes32 indexed _borrower, uint _debt, uint _coll, uint8 operation);
+    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
+    event TroveLiquidated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);

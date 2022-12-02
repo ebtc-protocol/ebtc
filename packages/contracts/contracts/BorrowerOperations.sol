@@ -89,8 +89,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     event LUSDTokenAddressChanged(address _lusdTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(bytes32 indexed _troveId, uint arrayIndex);
-    event TroveUpdated(bytes32 indexed _troveId, uint _debt, uint _coll, uint stake, BorrowerOperation operation);
+    event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
+    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint stake, BorrowerOperation operation);
     event LUSDBorrowingFeePaid(bytes32 indexed _troveId, uint _LUSDFee);
     
     // --- Dependency setters ---
@@ -198,7 +198,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         vars.stake = contractsCache.troveManager.updateStakeAndTotalStakes(_troveId);
 
         vars.arrayIndex = contractsCache.troveManager.addTroveIdToArray(_troveId);
-        emit TroveCreated(_troveId, vars.arrayIndex);
+        emit TroveCreated(_troveId, msg.sender, vars.arrayIndex);
 
         // Move the ether to the Active Pool, and mint the LUSDAmount to the borrower
         _activePoolAddColl(contractsCache.activePool, msg.value);
@@ -206,7 +206,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // Move the LUSD gas compensation to the Gas Pool
         _withdrawLUSD(contractsCache.activePool, contractsCache.lusdToken, gasPoolAddress, LUSD_GAS_COMPENSATION, LUSD_GAS_COMPENSATION);
 
-        emit TroveUpdated(_troveId, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
+        emit TroveUpdated(_troveId, msg.sender, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
         emit LUSDBorrowingFeePaid(_troveId, vars.LUSDFee);
     }
 
@@ -312,7 +312,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint newNICR = _getNewNominalICRFromTroveChange(vars.coll, vars.debt, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
         sortedTroves.reInsert(_troveId, newNICR, _upperHint, _lowerHint);
 
-        emit TroveUpdated(_troveId, vars.newDebt, vars.newColl, vars.stake, BorrowerOperation.adjustTrove);
+        emit TroveUpdated(_troveId, _borrower, vars.newDebt, vars.newColl, vars.stake, BorrowerOperation.adjustTrove);
         emit LUSDBorrowingFeePaid(_troveId,  vars.LUSDFee);
 
         // Use the unmodified _LUSDChange here, as we don't send the fee to the user
@@ -352,7 +352,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         troveManagerCached.removeStake(_troveId);
         troveManagerCached.closeTrove(_troveId);
 
-        emit TroveUpdated(_troveId, 0, 0, 0, BorrowerOperation.closeTrove);
+        // We already verified msg.sender is the borrower
+        emit TroveUpdated(_troveId, msg.sender, 0, 0, 0, BorrowerOperation.closeTrove);
 
         // Burn the repaid LUSD from the user's balance and the gas compensation from the Gas Pool
         _repayLUSD(activePoolCached, lusdTokenCached, msg.sender, debt.sub(LUSD_GAS_COMPENSATION));

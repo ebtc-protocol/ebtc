@@ -211,8 +211,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _LUSDGasCompensation);
     event Redemption(uint _attemptedLUSDAmount, uint _actualLUSDAmount, uint _ETHSent, uint _ETHFee);
-    event TroveUpdated(bytes32 indexed troveId, uint _debt, uint _coll, uint _stake, TroveManagerOperation _operation);
-    event TroveLiquidated(bytes32 indexed troveId, uint _debt, uint _coll, TroveManagerOperation _operation);
+    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint _stake, TroveManagerOperation _operation);
+    event TroveLiquidated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, TroveManagerOperation operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
@@ -340,8 +340,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, collToLiquidate, _LUSDInStabPool);
 
         _closeTrove(_troveId, Status.closedByLiquidation);
-        emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
-        emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
+
+        address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
+        emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
+        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
         return singleLiquidation;
     }
 
@@ -380,8 +382,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             singleLiquidation.collToRedistribute = vars.collToLiquidate;
 
             _closeTrove(_troveId, Status.closedByLiquidation);
-            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
+            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
             
         // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
         } else if ((_ICR > _100pct) && (_ICR < MCR)) {
@@ -394,8 +398,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, vars.collToLiquidate, _LUSDInStabPool);
 
             _closeTrove(_troveId, Status.closedByLiquidation);
-            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
+            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
         /*
         * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
         * and there is LUSD in the Stability Pool, only offset, with no redistribution,
@@ -415,8 +421,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
                 collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
             }
 
-            emit TroveLiquidated(_troveId, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
 
         } else { // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireTroveDebt > _LUSDInStabPool))
             LiquidationValues memory zeroVals;
@@ -845,7 +851,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             address _borrower = _contractsCache.sortedTroves.existTroveOwners(_redeemColFromTrove._troveId);
             _closeTrove(_redeemColFromTrove._troveId, Status.closedByRedemption);
             _redeemCloseTrove(_contractsCache, _redeemColFromTrove._troveId, LUSD_GAS_COMPENSATION, newColl, _borrower);
-            emit TroveUpdated(_redeemColFromTrove._troveId, 0, 0, 0, TroveManagerOperation.redeemCollateral);
+            emit TroveUpdated(_redeemColFromTrove._troveId, _borrower, 0, 0, 0, TroveManagerOperation.redeemCollateral);
 
         } else {
             uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
@@ -867,8 +873,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             Troves[_redeemColFromTrove._troveId].coll = newColl;
             _updateStakeAndTotalStakes(_redeemColFromTrove._troveId);
 
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_redeemColFromTrove._troveId);
             emit TroveUpdated(
                 _redeemColFromTrove._troveId,
+                _borrower,
                 newDebt, newColl,
                 Troves[_redeemColFromTrove._troveId].stake,
                 TroveManagerOperation.redeemCollateral
@@ -1076,8 +1084,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             // Transfer from DefaultPool to ActivePool
             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, pendingLUSDDebtReward, pendingETHReward);
 
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
             emit TroveUpdated(
                 _troveId,
+                _borrower,
                 Troves[_troveId].debt,
                 Troves[_troveId].coll,
                 Troves[_troveId].stake,
