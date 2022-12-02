@@ -3,10 +3,8 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
-const {subtask} = require("hardhat/config");
 const accounts = require("./hardhatAccountsList2k.js");
 const accountsList = accounts.accountsList
-const {TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS} = require("hardhat/builtin-tasks/task-names")
 
 const fs = require('fs')
 const getSecret = (secretKey, defaultValue='') => {
@@ -26,13 +24,6 @@ const alchemyUrl = () => {
 const alchemyUrlRinkeby = () => {
     return `https://eth-rinkeby.alchemyapi.io/v2/${getSecret('alchemyAPIKeyRinkeby')}`
 }
-
-subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS)
-  .setAction(async (_, __, runSuper) => {
-    const paths = await runSuper();
-
-    return paths.filter(p => !p.endsWith(".t.sol"));
-  });
 
 module.exports = {
     paths: {
