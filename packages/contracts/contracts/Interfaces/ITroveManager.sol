@@ -7,6 +7,7 @@ import "./IStabilityPool.sol";
 import "./ILUSDToken.sol";
 import "./ILQTYToken.sol";
 import "./ILQTYStaking.sol";
+import "./IFeeManager.sol";
 
 
 // Common interface for the Trove Manager.
@@ -51,13 +52,15 @@ interface ITroveManager is ILiquityBase {
         address _lusdTokenAddress,
         address _sortedTrovesAddress,
         address _lqtyTokenAddress,
-        address _lqtyStakingAddress
+        address _lqtyStakingAddress,
+        address _feeManagerAddress
     ) external;
 
     function stabilityPool() external view returns (IStabilityPool);
     function lusdToken() external view returns (ILUSDToken);
     function lqtyToken() external view returns (ILQTYToken);
     function lqtyStaking() external view returns (ILQTYStaking);
+    function feeManager() external view returns (IFeeManager);
 
     function getTroveIdsCount() external view returns (uint);
 

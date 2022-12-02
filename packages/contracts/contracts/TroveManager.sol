@@ -9,6 +9,7 @@ import "./Interfaces/ILUSDToken.sol";
 import "./Interfaces/ISortedTroves.sol";
 import "./Interfaces/ILQTYToken.sol";
 import "./Interfaces/ILQTYStaking.sol";
+import "./Interfaces/IFeeManager.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -32,6 +33,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     ILQTYToken public override lqtyToken;
 
     ILQTYStaking public override lqtyStaking;
+
+    IFeeManager public override feeManager;
 
     // A doubly linked list of Troves, sorted by their sorted by their collateral ratios
     ISortedTroves public sortedTroves;
@@ -208,6 +211,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     event SortedTrovesAddressChanged(address _sortedTrovesAddress);
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeManagerAddressChanged(address _feeManagerAddress);
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _LUSDGasCompensation);
     event Redemption(uint _attemptedLUSDAmount, uint _actualLUSDAmount, uint _ETHSent, uint _ETHFee);
@@ -242,9 +246,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         address _lusdTokenAddress,
         address _sortedTrovesAddress,
         address _lqtyTokenAddress,
-        address _lqtyStakingAddress
-    )
-        external
+        address _lqtyStakingAddress,
+        address _feeManagerAddress
+    ) external
         override
         onlyOwner
     {
@@ -259,6 +263,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         checkContract(_sortedTrovesAddress);
         checkContract(_lqtyTokenAddress);
         checkContract(_lqtyStakingAddress);
+        checkContract(_feeManagerAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);
@@ -271,6 +276,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
+        feeManager = IFeeManager(_feeManagerAddress);
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -283,6 +289,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         emit SortedTrovesAddressChanged(_sortedTrovesAddress);
         emit LQTYTokenAddressChanged(_lqtyTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
+        emit FeeManagerAddressChanged(_feeManagerAddress);
 
         _renounceOwnership();
     }
