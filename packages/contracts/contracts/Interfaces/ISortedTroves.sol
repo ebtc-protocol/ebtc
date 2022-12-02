@@ -45,8 +45,24 @@ interface ISortedTroves {
     function findInsertPosition(uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external view returns (bytes32, bytes32);
 
     function insert(address owner, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32);
+
     function existTroveOwners(bytes32 _id) external view returns (address);
+
     function nonExistId() external view returns (bytes32);
+
     function troveCountOf(address owner) external view returns (uint256);
+
     function troveOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
+
+    // Mapping from trove owner to list of owned trove IDs
+    // mapping(address => mapping(uint256 => bytes32)) public _ownedTroves;
+    function _ownedTroves(address, uint256) external view returns (bytes32);
+
+    // Mapping from trove ID to index within owner trove list
+    // mapping(bytes32 => uint256) public _ownedTroveIndex;
+    function _ownedTroveIndex(bytes32) external view returns (uint256);
+
+    // Mapping from trove owner to its owned troves count
+    // mapping(address => uint256) public _ownedCount;
+    function _ownedCount(address) external view returns (uint256);
 }

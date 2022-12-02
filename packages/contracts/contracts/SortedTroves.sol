@@ -80,13 +80,13 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
     bytes32 public dummyId;
 	
     // Mapping from trove owner to list of owned trove IDs
-    mapping(address => mapping(uint256 => bytes32)) private _ownedTroves;
+    mapping(address => mapping(uint256 => bytes32)) public override _ownedTroves;
 
     // Mapping from trove ID to index within owner trove list
-    mapping(bytes32 => uint256) private _ownedTroveIndex;
+    mapping(bytes32 => uint256) public override _ownedTroveIndex;
 
     // Mapping from trove owner to its owned troves count
-    mapping(address => uint256) private _ownedCount;
+    mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
 
