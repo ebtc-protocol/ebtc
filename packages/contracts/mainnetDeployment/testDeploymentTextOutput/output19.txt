@@ -52,22 +52,22 @@ Using previously deployed ACCOUNT_3 lockup contract at address 0xC4aC0c3083B566C
 current Chainlink price: 205289372969
 current Tellor price: 2050000000
 current Tellor timestamp: 1617538250
-LUSD-ETH Pair's current LUSD reserves: 40.036378355965833891
-LUSD-ETH Pair's current ETH reserves: .188993756164807541
+EBTC-ETH Pair's current EBTC reserves: 40.036378355965833891
+EBTC-ETH Pair's current ETH reserves: .188993756164807541
 number of troves: 3 
 Trove list size: 3 
 Entire system debt: 7425.000000000000000000
 Entire system coll: 6.000000000000000000
 Base rate: .000000000000000000
 Current borrowing rate: .005000000000000000
-Total LUSD SP deposits: 34.160000000000000000
+Total EBTC SP deposits: 34.160000000000000000
 Total LP tokens staked in unipool: .552691887045032822
 TroveManager state variables:
 Total trove stakes: 6.000000000000000000
 Snapshot of total trove stakes before last liq. : .000000000000000000
 Snapshot of total trove collateral before last liq. : .000000000000000000
 L_ETH: .000000000000000000
-L_LUSDDebt: .000000000000000000
+L_EBTCDebt: .000000000000000000
 StabilityPool state variables:
 Product P: 1.000000000000000000
 Current epoch: .000000000000000000

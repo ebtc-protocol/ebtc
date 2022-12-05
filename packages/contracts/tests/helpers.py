@@ -16,16 +16,16 @@ def logGlobalState(contracts):
     num_troves = contracts.sortedTroves.getSize()
     print('Num troves      ', num_troves)
     activePoolColl = contracts.activePool.getETH()
-    activePoolDebt = contracts.activePool.getLUSDDebt()
+    activePoolDebt = contracts.activePool.getEBTCDebt()
     defaultPoolColl = contracts.defaultPool.getETH()
-    defaultPoolDebt = contracts.defaultPool.getLUSDDebt()
+    defaultPoolDebt = contracts.defaultPool.getEBTCDebt()
     total_debt = (activePoolDebt + defaultPoolDebt).to("ether")
     total_coll = (activePoolColl + defaultPoolColl).to("ether")
     print('Total Debt      ', total_debt)
     print('Total Coll      ', total_coll)
-    SP_LUSD = contracts.stabilityPool.getTotalLUSDDeposits().to("ether")
+    SP_EBTC = contracts.stabilityPool.getTotalEBTCDeposits().to("ether")
     SP_ETH = contracts.stabilityPool.getETH().to("ether")
-    print('SP LUSD         ', SP_LUSD)
+    print('SP EBTC         ', SP_EBTC)
     print('SP ETH          ', SP_ETH)
     price_ether_current = contracts.priceFeedTestnet.getPrice()
     ETH_price = price_ether_current.to("ether")
@@ -46,4 +46,4 @@ def logGlobalState(contracts):
     print('Last trove’s ICR', last_ICR)
     print(' ----------------------\n')
 
-    return [ETH_price, num_troves, total_coll, total_debt, TCR, recovery_mode, last_ICR, SP_LUSD, SP_ETH]
+    return [ETH_price, num_troves, total_coll, total_debt, TCR, recovery_mode, last_ICR, SP_EBTC, SP_ETH]

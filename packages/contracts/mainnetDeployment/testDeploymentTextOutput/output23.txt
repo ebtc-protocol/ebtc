@@ -77,7 +77,7 @@ Community Issuance balance: 31951373.982475769951532035
 PRICEFEED CHECKS
 PriceFeed first stored price: 2071.640000000000000000
 PriceFeed initial status: 0
-Unipool's stored LUSD-ETH Uniswap Pair address: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
+Unipool's stored EBTC-ETH Uniswap Pair address: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
 SYSTEM GLOBAL VARS CHECKS
 system liquidation reserve: 200.000000000000000000
 system min net debt      : 1800.000000000000000000
@@ -87,19 +87,19 @@ deployer debt: 3215.000000000000000000
 deployer coll: 3.000000000000000000
 deployer stake: 3.000000000000000000
 deployer's trove status: 1
-deployer's LUSD balance: 2311.224204161781052791
-LUSD-ETH Pair token 0: 0xaa05...87A5,
-        LUSDToken contract addr: 0xaa05...87A5
-LUSD-ETH Pair token 1: 0xC02a...6Cc2,
+deployer's EBTC balance: 2311.224204161781052791
+EBTC-ETH Pair token 0: 0xaa05...87A5,
+        EBTCToken contract addr: 0xaa05...87A5
+EBTC-ETH Pair token 1: 0xC02a...6Cc2,
         WETH ERC20 contract addr: 0xc02a...6cc2
-LUSD-ETH Pair's LUSD reserves before provision: 40.036378355965833891
-LUSD-ETH Pair's ETH reserves before provision: .188993756164807541
+EBTC-ETH Pair's EBTC reserves before provision: 40.036378355965833891
+EBTC-ETH Pair's ETH reserves before provision: .188993756164807541
 Liquidity already provided to Uniswap
-LUSD-ETH Pair's LUSD reserves after provision: 40.036378355965833891
-LUSD-ETH Pair's ETH reserves after provision: .188993756164807541
+EBTC-ETH Pair's EBTC reserves after provision: 40.036378355965833891
+EBTC-ETH Pair's ETH reserves after provision: .188993756164807541
 CHECK LP STAKING EARNS LQTY
 deployer's LP token balance: 2.194601866876996844
-LUSDETHPair addr: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
+EBTCETHPair addr: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
 Pair addr stored in Unipool: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
 deployer's farmed LQTY before staking LP tokens: .000000000000074273
 Already staked in Unipool
@@ -108,7 +108,7 @@ deployer's farmed LQTY from Unipool after waiting ~1.5mins: .000000000000074376
 deployer LQTY Balance Before SP deposit: 1398.375771175734140867
 CHECK DEPLOYER MAKING DEPOSIT AND EARNING LQTY
 deployer SP deposit before making deposit: .000000000000000000
-deployer SP deposit after depositing 15 LUSD: 15.000000000000000000
+deployer SP deposit after depositing 15 EBTC: 15.000000000000000000
 wait 90 seconds before withdrawing...
 deployer SP deposit after full withdrawal: .000000000000000000
 deployer LQTY Balance after SP deposit withdrawal: 1423.940289013143416702
@@ -122,33 +122,33 @@ deployer LQTY bal before staking: 1413.940289013143416702
 deployer stake before staking: 65.000000000000000000
 deployer LQTY bal after staking: 1400.940289013143416702
 deployer stake after staking: 78.000000000000000000
-deployer pending LUSD revenue share: .000000000000000000
+deployer pending EBTC revenue share: .000000000000000000
 Acct 2 already has an active trove
 acct2 debt: 2210.000000000000000000
 acct2 coll: 1.500000000000000000
 acct2 stake: 1.500000000000000000
 acct2 trove status: 1
-deployer pending LUSD revenue share from staking, after acct 2 opened trove: .000000000000000000
+deployer pending EBTC revenue share from staking, after acct 2 opened trove: .000000000000000000
 CHECK DEPLOYER WITHDRAWING STAKING GAINS
-deployer LUSD bal before withdrawing staking gains: 2312.174204161781052766
-deployer LUSD bal after withdrawing staking gains: 2312.174204161781052766
-LUSD-ETH Pair's current LUSD reserves: 40.036378355965833891
-LUSD-ETH Pair's current ETH reserves: .188993756164807541
+deployer EBTC bal before withdrawing staking gains: 2312.174204161781052766
+deployer EBTC bal after withdrawing staking gains: 2312.174204161781052766
+EBTC-ETH Pair's current EBTC reserves: 40.036378355965833891
+EBTC-ETH Pair's current ETH reserves: .188993756164807541
 number of troves: 3 
 Trove list size: 3 
 Entire system debt: 7615.950000000000000000
 Entire system coll: 6.000000000000000000
 Base rate: .000000000000000000
 Current borrowing rate: .005000000000000000
-Total LUSD SP deposits: 34.160000000000000000
+Total EBTC SP deposits: 34.160000000000000000
 Total LQTY staked: 78.000000000000000000
-Total LP (LUSD-ETH) tokens staked in unipool: .552691887045032822
+Total LP (EBTC-ETH) tokens staked in unipool: .552691887045032822
 TroveManager state variables:
 Total trove stakes: 6.000000000000000000
 Snapshot of total trove stakes before last liq. : .000000000000000000
 Snapshot of total trove collateral before last liq. : .000000000000000000
 L_ETH: .000000000000000000
-L_LUSDDebt: .000000000000000000
+L_EBTCDebt: .000000000000000000
 StabilityPool state variables:
 Product P: 1.000000000000000000
 Current epoch: .000000000000000000
@@ -156,7 +156,7 @@ Current scale: .000000000000000000
 Sum S, at current epoch and scale: .000000000000000000
 Sum G, at current epoch and scale: 4750380241679283576465.000000000000000000
 LQTYStaking state variables:
-F_LUSD: .881913509376195942
+F_EBTC: .881913509376195942
 F_ETH: .000000000000000000
 CommunityIssuance state variables:
 Total LQTY issued to depositors / front ends: 234364.490152675424000000

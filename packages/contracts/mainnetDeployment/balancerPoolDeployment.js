@@ -22,14 +22,14 @@ const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 // Mainnet addresses; adjust for testnets
 
 const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
-const LUSD = '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0';
+const EBTC = '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0';
 const CHAINLINK_ETHUSD_PROXY = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
 
-const tokens = [LUSD, WETH];
+const tokens = [EBTC, WETH];
 const weights = [toBigNum(dec(4, 17)), toBigNum(dec(6, 17))];
 
-const NAME = 'WETH/LUSD Pool';
-const SYMBOL = '60WETH-40LUSD';
+const NAME = 'WETH/EBTC Pool';
+const SYMBOL = '60WETH-40EBTC';
 const swapFeePercentage = toBigNum(dec(5, 15)); // 0.5%
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -112,7 +112,7 @@ async function main() {
   const weth_balance = INITIAL_FUNDING.mul(weights[1]).div(eth_price);
   const lusd_balance = INITIAL_FUNDING.mul(weights[0]).div(toBigNum(dec(1, 18)));
   const initialBalances = [lusd_balance, weth_balance];
-  th.logBN('Initial LUSD', lusd_balance);
+  th.logBN('Initial EBTC', lusd_balance);
   th.logBN('Initial WETH', weth_balance);
 
   const JOIN_KIND_INIT = 0;
@@ -153,15 +153,15 @@ async function main() {
   const approveWethReceipt = await txApproveWeth.wait();
   console.log('Approve WETH gas: ', approveWethReceipt.gasUsed.toString());
 
-  // Approve LUSD
+  // Approve EBTC
   const lusd = new ethers.Contract(
-    LUSD,
+    EBTC,
     ERC20.abi,
     deployerWallet
   );
   const txApproveLusd = await lusd.approve(VAULT, lusd_balance);
   const approveLusdReceipt = await txApproveLusd.wait();
-  console.log('Approve LUSD gas: ', approveLusdReceipt.gasUsed.toString());
+  console.log('Approve EBTC gas: ', approveLusdReceipt.gasUsed.toString());
 
   // joins and exits are done on the Vault, not the pool
   const tx2 = await vault.joinPool(poolId, deployerWalletAddress, deployerWalletAddress, joinPoolRequest);

@@ -62,7 +62,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         lqtyStaking = lqtyStakingCached;
     }
 
-    function claimCollateralAndOpenTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+    function claimCollateralAndOpenTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
         uint balanceBefore = address(this).balance;
 
         // Claim collateral
@@ -76,7 +76,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint totalCollateral = balanceAfter.sub(balanceBefore).add(msg.value);
 
         // Open trove with obtained collateral, plus collateral sent by user
-        borrowerOperations.openTrove{ value: totalCollateral }(_maxFee, _LUSDAmount, _upperHint, _lowerHint);
+        borrowerOperations.openTrove{ value: totalCollateral }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function claimSPRewardsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
@@ -90,14 +90,14 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
         uint claimedCollateral = collBalanceAfter.sub(collBalanceBefore);
 
-        // Add claimed ETH to trove, get more LUSD and stake it into the Stability Pool
+        // Add claimed ETH to trove, get more EBTC and stake it into the Stability Pool
         if (claimedCollateral > 0) {
             _requireUserHasTrove(_troveId);
-            uint LUSDAmount = _getNetLUSDAmount(_troveId, claimedCollateral);
-            borrowerOperations.adjustTrove{ value: claimedCollateral }(_troveId, _maxFee, 0, LUSDAmount, true, _upperHint, _lowerHint);
-            // Provide withdrawn LUSD to Stability Pool
-            if (LUSDAmount > 0) {
-                stabilityPool.provideToSP(LUSDAmount, address(0));
+            uint EBTCAmount = _getNetEBTCAmount(_troveId, claimedCollateral);
+            borrowerOperations.adjustTrove{ value: claimedCollateral }(_troveId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
+            // Provide withdrawn EBTC to Stability Pool
+            if (EBTCAmount > 0) {
+                stabilityPool.provideToSP(EBTCAmount, address(0));
             }
         }
 
@@ -117,19 +117,19 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         lqtyStaking.unstake(0);
 
         uint gainedCollateral = address(this).balance.sub(collBalanceBefore); // stack too deep issues :'(
-        uint gainedLUSD = lusdToken.balanceOf(address(this)).sub(lusdBalanceBefore);
+        uint gainedEBTC = lusdToken.balanceOf(address(this)).sub(lusdBalanceBefore);
 
-        uint netLUSDAmount;
-        // Top up trove and get more LUSD, keeping ICR constant
+        uint netEBTCAmount;
+        // Top up trove and get more EBTC, keeping ICR constant
         if (gainedCollateral > 0) {
             _requireUserHasTrove(_troveId);
-            netLUSDAmount = _getNetLUSDAmount(_troveId, gainedCollateral);
-            borrowerOperations.adjustTrove{ value: gainedCollateral }(_troveId, _maxFee, 0, netLUSDAmount, true, _upperHint, _lowerHint);
+            netEBTCAmount = _getNetEBTCAmount(_troveId, gainedCollateral);
+            borrowerOperations.adjustTrove{ value: gainedCollateral }(_troveId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
         }
 
-        uint totalLUSD = gainedLUSD.add(netLUSDAmount);
-        if (totalLUSD > 0) {
-            stabilityPool.provideToSP(totalLUSD, address(0));
+        uint totalEBTC = gainedEBTC.add(netEBTCAmount);
+        if (totalEBTC > 0) {
+            stabilityPool.provideToSP(totalEBTC, address(0));
 
             // Providing to Stability Pool also triggers LQTY claim, so stake it if any
             uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
@@ -141,13 +141,13 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     }
 
-    function _getNetLUSDAmount(bytes32 _troveId, uint _collateral) internal returns (uint) {
+    function _getNetEBTCAmount(bytes32 _troveId, uint _collateral) internal returns (uint) {
         uint price = priceFeed.fetchPrice();
         uint ICR = troveManager.getCurrentICR(_troveId, price);
 
-        uint LUSDAmount = _collateral.mul(price).div(ICR);
+        uint EBTCAmount = _collateral.mul(price).div(ICR);
         uint borrowingRate = troveManager.getBorrowingRateWithDecay();
-        uint netDebt = LUSDAmount.mul(LiquityMath.DECIMAL_PRECISION).div(LiquityMath.DECIMAL_PRECISION.add(borrowingRate));
+        uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(LiquityMath.DECIMAL_PRECISION.add(borrowingRate));
 
         return netDebt;
     }

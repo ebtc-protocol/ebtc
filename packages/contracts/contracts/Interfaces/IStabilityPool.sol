@@ -3,17 +3,17 @@
 pragma solidity 0.6.11;
 
 /*
- * The Stability Pool holds LUSD tokens deposited by Stability Pool depositors.
+ * The Stability Pool holds EBTC tokens deposited by Stability Pool depositors.
  *
- * When a trove is liquidated, then depending on system conditions, some of its LUSD debt gets offset with
- * LUSD in the Stability Pool:  that is, the offset debt evaporates, and an equal amount of LUSD tokens in the Stability Pool is burned.
+ * When a trove is liquidated, then depending on system conditions, some of its EBTC debt gets offset with
+ * EBTC in the Stability Pool:  that is, the offset debt evaporates, and an equal amount of EBTC tokens in the Stability Pool is burned.
  *
- * Thus, a liquidation causes each depositor to receive a LUSD loss, in proportion to their deposit as a share of total deposits.
+ * Thus, a liquidation causes each depositor to receive a EBTC loss, in proportion to their deposit as a share of total deposits.
  * They also receive an ETH gain, as the ETH collateral of the liquidated trove is distributed among Stability depositors,
  * in the same proportion.
  *
  * When a liquidation occurs, it depletes every deposit by the same fraction: for example, a liquidation that depletes 40%
- * of the total LUSD in the Stability Pool, depletes 40% of each deposit.
+ * of the total EBTC in the Stability Pool, depletes 40% of each deposit.
  *
  * A deposit that has experienced a series of liquidations is termed a "compounded deposit": each liquidation depletes the deposit,
  * multiplying it by some factor in range ]0,1[
@@ -38,13 +38,13 @@ interface IStabilityPool {
     // --- Events ---
     
     event StabilityPoolETHBalanceUpdated(uint _newBalance);
-    event StabilityPoolLUSDBalanceUpdated(uint _newBalance);
+    event StabilityPoolEBTCBalanceUpdated(uint _newBalance);
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
     event TroveManagerAddressChanged(address _newTroveManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
     event DefaultPoolAddressChanged(address _newDefaultPoolAddress);
-    event LUSDTokenAddressChanged(address _newLUSDTokenAddress);
+    event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event SortedTrovesAddressChanged(address _newSortedTrovesAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event CommunityIssuanceAddressChanged(address _newCommunityIssuanceAddress);
@@ -63,7 +63,7 @@ interface IStabilityPool {
     event UserDepositChanged(address indexed _depositor, uint _newDeposit);
     event FrontEndStakeChanged(address indexed _frontEnd, uint _newFrontEndStake, address _depositor);
 
-    event ETHGainWithdrawn(address indexed _depositor, uint _ETH, uint _LUSDLoss);
+    event ETHGainWithdrawn(address indexed _depositor, uint _ETH, uint _EBTCLoss);
     event LQTYPaidToDepositor(address indexed _depositor, uint _LQTY);
     event LQTYPaidToFrontEnd(address indexed _frontEnd, uint _LQTY);
     event EtherSent(address _to, uint _amount);
@@ -142,7 +142,7 @@ interface IStabilityPool {
      * Initial checks:
      * - Caller is TroveManager
      * ---
-     * Cancels out the specified debt against the LUSD contained in the Stability Pool (as far as possible)
+     * Cancels out the specified debt against the EBTC contained in the Stability Pool (as far as possible)
      * and transfers the Trove's ETH collateral from ActivePool to StabilityPool.
      * Only called by liquidation functions in the TroveManager.
      */
@@ -155,9 +155,9 @@ interface IStabilityPool {
     function getETH() external view returns (uint);
 
     /*
-     * Returns LUSD held in the pool. Changes when users deposit/withdraw, and when Trove debt is offset.
+     * Returns EBTC held in the pool. Changes when users deposit/withdraw, and when Trove debt is offset.
      */
-    function getTotalLUSDDeposits() external view returns (uint);
+    function getTotalEBTCDeposits() external view returns (uint);
 
     /*
      * Calculates the ETH gain earned by the deposit since its last snapshots were taken.
@@ -180,7 +180,7 @@ interface IStabilityPool {
     /*
      * Return the user's compounded deposit.
      */
-    function getCompoundedLUSDDeposit(address _depositor) external view returns (uint);
+    function getCompoundedEBTCDeposit(address _depositor) external view returns (uint);
 
     /*
      * Return the front end's compounded stake.

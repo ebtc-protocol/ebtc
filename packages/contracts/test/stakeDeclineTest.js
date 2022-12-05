@@ -1,7 +1,7 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
-const LUSDTokenTester = artifacts.require("./LUSDTokenTester.sol")
+const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -38,7 +38,7 @@ contract('TroveManager', async accounts => {
 
   let contracts
 
-  const getOpenTroveLUSDAmount = async (totalDebt) => th.getOpenTroveLUSDAmount(contracts, totalDebt)
+  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
  
   const getSnapshotsRatio = async () => {
     const ratio = (await troveManager.totalStakesSnapshot())
@@ -58,7 +58,7 @@ contract('TroveManager', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await LUSDTokenTester.new(
+    contracts.lusdToken = await EBTCTokenTester.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -92,24 +92,24 @@ contract('TroveManager', async accounts => {
     // Make 1 mega troves A at ~50% total collateral
     let _aColAmt = dec(8, 19);
     let _aDebtAmt = dec(1, 22);
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _aColAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _aColAmt })
     let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
     
     // Make 5 large troves B, C, D, E, F at ~10% total collateral
     let _colAmt = dec(4, 19);
     let _debtAmt = dec(1, 22);
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
     let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: _colAmt })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: _colAmt })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: _colAmt })
   
     // Make 10 tiny troves at relatively negligible collateral (~1e-9 of total)
     const tinyTroves = accounts.slice(10, 20)
     let _tinyTroveIds = {}
     for (account of tinyTroves) {
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: dec(2, 20) })
+      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: dec(2, 20) })
       _tinyTroveIds[account] = await sortedTroves.troveOfOwnerByIndex(account, 0);
     }
 

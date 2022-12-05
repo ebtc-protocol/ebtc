@@ -2,28 +2,28 @@
 
 pragma solidity 0.6.11;
 
-import "../Interfaces/ILUSDToken.sol";
+import "../Interfaces/IEBTCToken.sol";
 
-contract LUSDTokenCaller {
-    ILUSDToken LUSD;
+contract EBTCTokenCaller {
+    IEBTCToken EBTC;
 
-    function setLUSD(ILUSDToken _LUSD) external {
-        LUSD = _LUSD;
+    function setEBTC(IEBTCToken _EBTC) external {
+        EBTC = _EBTC;
     }
 
     function lusdMint(address _account, uint _amount) external {
-        LUSD.mint(_account, _amount);
+        EBTC.mint(_account, _amount);
     }
 
     function lusdBurn(address _account, uint _amount) external {
-        LUSD.burn(_account, _amount);
+        EBTC.burn(_account, _amount);
     }
 
     function lusdSendToPool(address _sender,  address _poolAddress, uint256 _amount) external {
-        LUSD.sendToPool(_sender, _poolAddress, _amount);
+        EBTC.sendToPool(_sender, _poolAddress, _amount);
     }
 
     function lusdReturnFromPool(address _poolAddress, address _receiver, uint256 _amount ) external {
-        LUSD.returnFromPool(_poolAddress, _receiver, _amount);
+        EBTC.returnFromPool(_poolAddress, _receiver, _amount);
     }
 }

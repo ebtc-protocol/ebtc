@@ -14,8 +14,8 @@ contract BorrowerOperationsScript is CheckContract {
         borrowerOperations = _borrowerOperations;
     }
 
-    function openTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
-        borrowerOperations.openTrove{ value: msg.value }(_maxFee, _LUSDAmount, _upperHint, _lowerHint);
+    function openTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+        borrowerOperations.openTrove{ value: msg.value }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable {
@@ -26,12 +26,12 @@ contract BorrowerOperationsScript is CheckContract {
         borrowerOperations.withdrawColl(_troveId, _amount, _upperHint, _lowerHint);
     }
 
-    function withdrawLUSD(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
-        borrowerOperations.withdrawLUSD(_troveId, _maxFee, _amount, _upperHint, _lowerHint);
+    function withdrawEBTC(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
+        borrowerOperations.withdrawEBTC(_troveId, _maxFee, _amount, _upperHint, _lowerHint);
     }
 
-    function repayLUSD(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
-        borrowerOperations.repayLUSD(_troveId, _amount, _upperHint, _lowerHint);
+    function repayEBTC(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
+        borrowerOperations.repayEBTC(_troveId, _amount, _upperHint, _lowerHint);
     }
 
     function closeTrove(bytes32 _troveId) external {

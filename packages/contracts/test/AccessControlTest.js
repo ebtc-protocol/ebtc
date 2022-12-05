@@ -40,7 +40,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   before(async () => {
     coreContracts = await deploymentHelper.deployLiquityCore()
     coreContracts.troveManager = await TroveManagerTester.new()
-    coreContracts = await deploymentHelper.deployLUSDTokenTester(coreContracts)
+    coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     
     priceFeed = coreContracts.priceFeed
@@ -64,7 +64,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
 
     for (account of accounts.slice(0, 10)) {
-      await th.openTrove(coreContracts, { extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+      await th.openTrove(coreContracts, { extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
     }
 
     const expectedCISupplyCap = '32000000000000000000000000' // 32mil
@@ -233,11 +233,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // increaseLUSD	
-    it("increaseLUSDDebt(): reverts when called by an account that is not BO nor TroveM", async () => {
+    // increaseEBTC	
+    it("increaseEBTCDebt(): reverts when called by an account that is not BO nor TroveM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.increaseLUSDDebt(100, { from: alice })
+        const txAlice = await activePool.increaseEBTCDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -245,11 +245,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // decreaseLUSD
-    it("decreaseLUSDDebt(): reverts when called by an account that is not BO nor TroveM nor SP", async () => {
+    // decreaseEBTC
+    it("decreaseEBTCDebt(): reverts when called by an account that is not BO nor TroveM nor SP", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.decreaseLUSDDebt(100, { from: alice })
+        const txAlice = await activePool.decreaseEBTCDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -283,11 +283,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // increaseLUSD	
-    it("increaseLUSDDebt(): reverts when called by an account that is not TroveManager", async () => {
+    // increaseEBTC	
+    it("increaseEBTCDebt(): reverts when called by an account that is not TroveManager", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await defaultPool.increaseLUSDDebt(100, { from: alice })
+        const txAlice = await defaultPool.increaseEBTCDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -295,11 +295,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // decreaseLUSD	
-    it("decreaseLUSD(): reverts when called by an account that is not TroveManager", async () => {
+    // decreaseEBTC	
+    it("decreaseEBTC(): reverts when called by an account that is not TroveManager", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await defaultPool.decreaseLUSDDebt(100, { from: alice })
+        const txAlice = await defaultPool.decreaseEBTCDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -350,7 +350,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('LUSDToken', async accounts => {
+  describe('EBTCToken', async accounts => {
 
     //    mint
     it("mint(): reverts when called by an account that is not BorrowerOperations", async () => {
@@ -469,9 +469,9 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   })
 
   describe('LQTYStaking', async accounts => {
-    it("increaseF_LUSD(): reverts when caller is not TroveManager", async () => {
+    it("increaseF_EBTC(): reverts when caller is not TroveManager", async () => {
       try {
-        const txAlice = await lqtyStaking.increaseF_LUSD(dec(1, 18), { from: alice })
+        const txAlice = await lqtyStaking.increaseF_EBTC(dec(1, 18), { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")

@@ -2,7 +2,7 @@ const { TestHelper: { dec } } = require("../utils/testHelpers.js")
 
 const EchidnaTester = artifacts.require('EchidnaTester')
 const TroveManager = artifacts.require('TroveManager')
-const LUSDToken = artifacts.require('LUSDToken')
+const EBTCToken = artifacts.require('EBTCToken')
 const ActivePool = artifacts.require('ActivePool')
 const DefaultPool = artifacts.require('DefaultPool')
 const StabilityPool = artifacts.require('StabilityPool')
@@ -22,7 +22,7 @@ contract('Echidna debugger', async accounts => {
   before(async () => {
     echidnaTester = await EchidnaTester.new({ value: dec(11, 25) })
     troveManager = await TroveManager.at(await echidnaTester.troveManager())
-    lusdToken = await LUSDToken.at(await echidnaTester.lusdToken())
+    lusdToken = await EBTCToken.at(await echidnaTester.lusdToken())
     activePool = await ActivePool.at(await echidnaTester.activePool())
     defaultPool = await DefaultPool.at(await echidnaTester.defaultPool())
     stabilityPool = await StabilityPool.at(await echidnaTester.stabilityPool())
@@ -65,14 +65,14 @@ contract('Echidna debugger', async accounts => {
     console.log('Trove 2', icr2_after_price, icr2_after_price.toString())
   })
 
-  it.only('LUSD balance', async () => {
+  it.only('EBTC balance', async () => {
     await echidnaTester.openTroveExt('0', '0', '4210965169908805439447313562489173090')
 
     const totalSupply = await lusdToken.totalSupply();
     const gasPoolBalance = await lusdToken.balanceOf(GAS_POOL_ADDRESS);
-    const activePoolBalance = await activePool.getLUSDDebt();
-    const defaultPoolBalance = await defaultPool.getLUSDDebt();
-    const stabilityPoolBalance = await stabilityPool.getTotalLUSDDeposits();
+    const activePoolBalance = await activePool.getEBTCDebt();
+    const defaultPoolBalance = await defaultPool.getEBTCDebt();
+    const stabilityPoolBalance = await stabilityPool.getTotalEBTCDeposits();
     const currentTrove = await echidnaTester.echidnaProxies(0);
     const troveBalance = lusdToken.balanceOf(currentTrove);
 

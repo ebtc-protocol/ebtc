@@ -53,8 +53,8 @@ Using previously deployed ACCOUNT_3 lockup contract at address 0x015f2eB03910dFE
 current Chainlink price: 203578000000
 current Tellor price: 2024690000
 current Tellor timestamp: 1617614538
-LUSD-ETH Pair's current LUSD reserves: 2001.941734972325910671
-LUSD-ETH Pair's current ETH reserves: 1.010000000000000000
+EBTC-ETH Pair's current EBTC reserves: 2001.941734972325910671
+EBTC-ETH Pair's current ETH reserves: 1.010000000000000000
 number of troves: 2 
 Trove list size: 2 
 Entire system debt: 4625.000000000000000000
@@ -62,15 +62,15 @@ Entire system coll: 6.500000000000000000
 TCR: 286109621
 Base rate: .000000000000000000
 Current borrowing rate: .005000000000000000
-Total LUSD SP deposits: 34.959359097674089329
+Total EBTC SP deposits: 34.959359097674089329
 Total LQTY staked: 26.000000000000000000
-Total LP (LUSD-ETH) tokens staked in unipool: .000000000000000001
+Total LP (EBTC-ETH) tokens staked in unipool: .000000000000000001
 TroveManager state variables:
 Total trove stakes: 6.500000000000000000
 Snapshot of total trove stakes before last liq. : .000000000000000000
 Snapshot of total trove collateral before last liq. : .000000000000000000
 L_ETH: .000000000000000000
-L_LUSDDebt: .000000000000000000
+L_EBTCDebt: .000000000000000000
 StabilityPool state variables:
 Product P: 1.000000000000000000
 Current epoch: .000000000000000000
@@ -78,7 +78,7 @@ Current scale: .000000000000000000
 Sum S, at current epoch and scale: .000000000000000000
 Sum G, at current epoch and scale: 28132143341608533333.000000000000000000
 LQTYStaking state variables:
-F_LUSD: .769230769230769230
+F_EBTC: .769230769230769230
 F_ETH: .000000000000000000
 CommunityIssuance state variables:
 Total LQTY issued to depositors / front ends: 2405.351864068448000000

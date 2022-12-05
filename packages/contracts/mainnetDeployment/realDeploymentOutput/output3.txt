@@ -77,7 +77,7 @@ Community Issuance balance: 31999873.402199592704000000
 PRICEFEED CHECKS
 PriceFeed first stored price: 2028.345152850000000000
 PriceFeed initial status: 0
-Unipool's stored LUSD-ETH Uniswap Pair address: 0xF20EF17b889b437C151eB5bA15A47bFc62bfF469
+Unipool's stored EBTC-ETH Uniswap Pair address: 0xF20EF17b889b437C151eB5bA15A47bFc62bfF469
 SYSTEM GLOBAL VARS CHECKS
 system liquidation reserve: 200.000000000000000000
 system min net debt      : 1800.000000000000000000
@@ -87,19 +87,19 @@ deployer debt: 3215.000000000000000000
 deployer coll: 3.000000000000000000
 deployer stake: 3.000000000000000000
 deployer's trove status: 1
-deployer's LUSD balance: 988.098905929999999990
-LUSD-ETH Pair token 0: 0x5f98...8bA0,
-        LUSDToken contract addr: 0x5f98...8bA0
-LUSD-ETH Pair token 1: 0xC02a...6Cc2,
+deployer's EBTC balance: 988.098905929999999990
+EBTC-ETH Pair token 0: 0x5f98...8bA0,
+        EBTCToken contract addr: 0x5f98...8bA0
+EBTC-ETH Pair token 1: 0xC02a...6Cc2,
         WETH ERC20 contract addr: 0xc02a...6cc2
-LUSD-ETH Pair's LUSD reserves before provision: 2021.901094070000000000
-LUSD-ETH Pair's ETH reserves before provision: 1.000000000000000000
+EBTC-ETH Pair's EBTC reserves before provision: 2021.901094070000000000
+EBTC-ETH Pair's ETH reserves before provision: 1.000000000000000000
 Liquidity already provided to Uniswap
-LUSD-ETH Pair's LUSD reserves after provision: 2021.901094070000000000
-LUSD-ETH Pair's ETH reserves after provision: 1.000000000000000000
+EBTC-ETH Pair's EBTC reserves after provision: 2021.901094070000000000
+EBTC-ETH Pair's ETH reserves after provision: 1.000000000000000000
 CHECK LP STAKING EARNS LQTY
 deployer's LP token balance: 44.965554528661157277
-LUSDETHPair addr: 0xF20EF17b889b437C151eB5bA15A47bFc62bfF469
+EBTCETHPair addr: 0xF20EF17b889b437C151eB5bA15A47bFc62bfF469
 Pair addr stored in Unipool: 0xF20EF17b889b437C151eB5bA15A47bFc62bfF469
 deployer's farmed LQTY before staking LP tokens: 541.593180482069370908
 Already staked in Unipool
@@ -108,7 +108,7 @@ deployer's farmed LQTY from Unipool after waiting ~1.5mins: 570.9876543209876542
 deployer LQTY Balance Before SP deposit: 103.597800407296000000
 CHECK DEPLOYER MAKING DEPOSIT AND EARNING LQTY
 deployer SP deposit before making deposit: .000000000000000000
-deployer SP deposit after depositing 15 LUSD: 15.000000000000000000
+deployer SP deposit after depositing 15 EBTC: 15.000000000000000000
 wait 90 seconds before withdrawing...
 CHECK BENEFICIARY ATTEMPTING WITHDRAWAL FROM LC
 account2 LQTY bal before withdrawal attempt: .000000000000000000

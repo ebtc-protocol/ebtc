@@ -15,12 +15,12 @@ interface IBorrowerOperations {
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address  _newPriceFeedAddress);
     event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event LUSDTokenAddressChanged(address _lusdTokenAddress);
+    event EBTCTokenAddressChanged(address _lusdTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
     event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
     event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event LUSDBorrowingFeePaid(bytes32 indexed _troveId, uint _LUSDFee);
+    event EBTCBorrowingFeePaid(bytes32 indexed _troveId, uint _EBTCFee);
 
     // --- Functions ---
 
@@ -37,7 +37,7 @@ interface IBorrowerOperations {
         address _lqtyStakingAddress
     ) external;
 
-    function openTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function openTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
     function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
@@ -45,9 +45,9 @@ interface IBorrowerOperations {
 
     function withdrawColl(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function withdrawLUSD(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawEBTC(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function repayLUSD(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function repayEBTC(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
     function closeTrove(bytes32 _troveId) external;
 

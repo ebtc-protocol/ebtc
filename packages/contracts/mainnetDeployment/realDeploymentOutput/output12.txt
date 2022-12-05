@@ -80,8 +80,8 @@ lockupContract addr: 0xBa4a395251dBEb49a17BA0d09eAB6cb3F55752F9,
             on-chain beneficiary addr: 0xF6451cCdC8D47a26Ec6535cA8DEa90E6696A3aDC,
             unlockTime: 1649147590
             
-LUSD-ETH Pair's current LUSD reserves: 92609905.463917997593139420
-LUSD-ETH Pair's current ETH reserves: 24306.116953901334254246
+EBTC-ETH Pair's current EBTC reserves: 92609905.463917997593139420
+EBTC-ETH Pair's current ETH reserves: 24306.116953901334254246
 number of troves: 1122 
 Trove list size: 1122 
 Entire system debt: 1543939809.042370227162411493
@@ -89,15 +89,15 @@ Entire system coll: 1031985.776904940769348493
 TCR: 253227344
 Base rate: 0.000011092677259651
 Current borrowing rate: 0.005010694209389384
-Total LUSD SP deposits: 1304492550.680712398144999404
+Total EBTC SP deposits: 1304492550.680712398144999404
 Total LQTY staked: 2670685.232683986625669747
-Total LP (LUSD-ETH) tokens staked in unipool: 1387089.916052446975161893
+Total LP (EBTC-ETH) tokens staked in unipool: 1387089.916052446975161893
 TroveManager state variables:
 Total trove stakes: 1031985.776904940769348493
 Snapshot of total trove stakes before last liq. : 1125233.348803487892955901
 Snapshot of total trove collateral before last liq. : 1125233.348803487892955901
 L_ETH: 0.000000000000000000
-L_LUSDDebt: 0.000000000000000000
+L_EBTCDebt: 0.000000000000000000
 StabilityPool state variables:
 Product P: 0.990140585534387222
 Current epoch: 0.000000000000000000
@@ -105,7 +105,7 @@ Current scale: 0.000000000000000000
 Sum S, at current epoch and scale: 5161393455724.325045942088944868
 Sum G, at current epoch and scale: 350444912240521722006.120654388495103411
 LQTYStaking state variables:
-F_LUSD: 599.184541197705648502
+F_EBTC: 599.184541197705648502
 F_ETH: 0.000012617995488598
 CommunityIssuance state variables:
 Total LQTY issued to depositors / front ends: 2230071.199002582016000000

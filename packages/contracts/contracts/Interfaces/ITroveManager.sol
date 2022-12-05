@@ -4,7 +4,7 @@ pragma solidity 0.6.11;
 
 import "./ILiquityBase.sol";
 import "./IStabilityPool.sol";
-import "./ILUSDToken.sol";
+import "./IEBTCToken.sol";
 import "./ILQTYToken.sol";
 import "./ILQTYStaking.sol";
 
@@ -16,7 +16,7 @@ interface ITroveManager is ILiquityBase {
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
-    event LUSDTokenAddressChanged(address _newLUSDTokenAddress);
+    event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
     event StabilityPoolAddressChanged(address _stabilityPoolAddress);
@@ -26,16 +26,16 @@ interface ITroveManager is ILiquityBase {
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _LUSDGasCompensation);
-    event Redemption(uint _attemptedLUSDAmount, uint _actualLUSDAmount, uint _ETHSent, uint _ETHFee);
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
+    event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
     event TroveLiquidated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_ETH, uint _L_LUSDDebt);
-    event TroveSnapshotsUpdated(uint _L_ETH, uint _L_LUSDDebt);
+    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
+    event TroveSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
     event TroveIndexUpdated(bytes32 _borrower, uint _newIndex);
 
     // --- Functions ---
@@ -55,7 +55,7 @@ interface ITroveManager is ILiquityBase {
     ) external;
 
     function stabilityPool() external view returns (IStabilityPool);
-    function lusdToken() external view returns (ILUSDToken);
+    function lusdToken() external view returns (IEBTCToken);
     function lqtyToken() external view returns (ILQTYToken);
     function lqtyStaking() external view returns (ILQTYStaking);
 
@@ -73,7 +73,7 @@ interface ITroveManager is ILiquityBase {
     function batchLiquidateTroves(bytes32[] calldata _troveArray) external;
 
     function redeemCollateral(
-        uint _LUSDAmount,
+        uint _EBTCAmount,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
@@ -92,14 +92,14 @@ interface ITroveManager is ILiquityBase {
 
     function getPendingETHReward(bytes32 _troveId) external view returns (uint);
 
-    function getPendingLUSDDebtReward(bytes32 _troveId) external view returns (uint);
+    function getPendingEBTCDebtReward(bytes32 _troveId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _troveId) external view returns (bool);
 
     function getEntireDebtAndColl(bytes32 _troveId) external view returns (
         uint debt, 
         uint coll, 
-        uint pendingLUSDDebtReward, 
+        uint pendingEBTCDebtReward, 
         uint pendingETHReward
     );
 
@@ -115,8 +115,8 @@ interface ITroveManager is ILiquityBase {
     function getBorrowingRate() external view returns (uint);
     function getBorrowingRateWithDecay() external view returns (uint);
 
-    function getBorrowingFee(uint LUSDDebt) external view returns (uint);
-    function getBorrowingFeeWithDecay(uint _LUSDDebt) external view returns (uint);
+    function getBorrowingFee(uint EBTCDebt) external view returns (uint);
+    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view returns (uint);
 
     function decayBaseRateFromBorrowing() external;
 

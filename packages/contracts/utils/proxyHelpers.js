@@ -103,12 +103,12 @@ class BorrowerOperationsProxy extends Proxy {
     return this.forwardFunction(params, 'withdrawColl(uint256,address,address)')
   }
 
-  async withdrawLUSD(...params) {
-    return this.forwardFunction(params, 'withdrawLUSD(uint256,uint256,address,address)')
+  async withdrawEBTC(...params) {
+    return this.forwardFunction(params, 'withdrawEBTC(uint256,uint256,address,address)')
   }
 
-  async repayLUSD(...params) {
-    return this.forwardFunction(params, 'repayLUSD(uint256,address,address)')
+  async repayEBTC(...params) {
+    return this.forwardFunction(params, 'repayEBTC(uint256,address,address)')
   }
 
   async closeTrove(...params) {
@@ -135,8 +135,8 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('getCompositeDebt', params)
   }
 
-  async LUSD_GAS_COMPENSATION(...params) {
-    return this.proxyFunction('LUSD_GAS_COMPENSATION', params)
+  async EBTC_GAS_COMPENSATION(...params) {
+    return this.proxyFunction('EBTC_GAS_COMPENSATION', params)
   }
 
   async MIN_NET_DEBT(...params) {
@@ -199,8 +199,8 @@ class TroveManagerProxy extends Proxy {
     return this.proxyFunction('getPendingETHReward', params)
   }
 
-  async getPendingLUSDDebtReward(...params) {
-    return this.proxyFunction('getPendingLUSDDebtReward', params)
+  async getPendingEBTCDebtReward(...params) {
+    return this.proxyFunction('getPendingEBTCDebtReward', params)
   }
 
   async liquidate(user) {
@@ -231,8 +231,8 @@ class TroveManagerProxy extends Proxy {
     return this.proxyFunction('L_ETH', [])
   }
 
-  async L_LUSDDebt() {
-    return this.proxyFunction('L_LUSDDebt', [])
+  async L_EBTCDebt() {
+    return this.proxyFunction('L_EBTCDebt', [])
   }
 
   async rewardSnapshots(user) {
@@ -285,8 +285,8 @@ class StabilityPoolProxy extends Proxy {
     return this.forwardFunction(params, 'provideToSP(uint256,address)')
   }
 
-  async getCompoundedLUSDDeposit(user) {
-    return this.proxyFunctionWithUser('getCompoundedLUSDDeposit', user)
+  async getCompoundedEBTCDeposit(user) {
+    return this.proxyFunctionWithUser('getCompoundedEBTCDeposit', user)
   }
 
   async deposits(user) {
@@ -402,8 +402,8 @@ class LQTYStakingProxy extends Proxy {
     return this.proxyFunctionWithUser('stakes', user)
   }
 
-  async F_LUSD(user) {
-    return this.proxyFunctionWithUser('F_LUSD', user)
+  async F_EBTC(user) {
+    return this.proxyFunctionWithUser('F_EBTC', user)
   }
 }
 

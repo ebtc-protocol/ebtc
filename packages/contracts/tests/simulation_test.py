@@ -143,7 +143,7 @@ def contracts():
     contracts.collSurplusPool = CollSurplusPool.deploy({'from': accounts[0]})  # noqa
     contracts.borrowerOperations = BorrowerOperationsTester.deploy({'from': accounts[0]})  # noqa
     contracts.hintHelpers = HintHelpers.deploy({'from': accounts[0]})  # noqa
-    contracts.lusdToken = LUSDToken.deploy(  # noqa
+    contracts.lusdToken = EBTCToken.deploy(  # noqa
         contracts.troveManager.address,
         contracts.stabilityPool.address,
         contracts.borrowerOperations.address,
@@ -201,10 +201,10 @@ def print_expectations():
 * open troves
 * issuance fee
 * trove pool formed
-* LUSD supply determined
-* LUSD stability pool demand determined
-* LUSD liquidity pool demand determined
-* LUSD price determined
+* EBTC supply determined
+* EBTC stability pool demand determined
+* EBTC liquidity pool demand determined
+* EBTC price determined
 * redemption & redemption fee
 * LQTY pool return determined
 """
@@ -243,8 +243,8 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
     ) as csvfile:
         datawriter = csv.writer(csvfile, delimiter=',')
         datawriter.writerow(
-            ['iteration', 'ETH_price', 'price_LUSD', 'price_LQTY', 'num_troves', 'total_coll',
-             'total_debt', 'TCR', 'recovery_mode', 'last_ICR', 'SP_LUSD', 'SP_ETH',
+            ['iteration', 'ETH_price', 'price_EBTC', 'price_LQTY', 'num_troves', 'total_coll',
+             'total_debt', 'TCR', 'recovery_mode', 'last_ICR', 'SP_EBTC', 'SP_ETH',
              'total_coll_added', 'total_coll_liquidated', 'total_lusd_redempted'])
 
         # Simulation Process
@@ -290,7 +290,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
                                                           inactive_accounts, price_ether_current,
                                                           price_lusd, index)
             total_lusd_redempted = total_lusd_redempted + redemption_pool
-            print('LUSD price', price_lusd)
+            print('EBTC price', price_lusd)
             print('LQTY price', price_lqty_current)
 
             issuance_fee = price_lusd * (
