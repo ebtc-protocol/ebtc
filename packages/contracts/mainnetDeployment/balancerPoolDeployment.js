@@ -159,9 +159,9 @@ async function main() {
     ERC20.abi,
     deployerWallet
   );
-  const txApproveLusd = await ebtc.approve(VAULT, ebtc_balance);
-  const approveLusdReceipt = await txApproveLusd.wait();
-  console.log('Approve EBTC gas: ', approveLusdReceipt.gasUsed.toString());
+  const txApproveEbtc = await ebtc.approve(VAULT, ebtc_balance);
+  const approveEbtcReceipt = await txApproveEbtc.wait();
+  console.log('Approve EBTC gas: ', approveEbtcReceipt.gasUsed.toString());
 
   // joins and exits are done on the Vault, not the pool
   const tx2 = await vault.joinPool(poolId, deployerWalletAddress, deployerWalletAddress, joinPoolRequest);
@@ -171,7 +171,7 @@ async function main() {
   console.log('Join Pool gas: ', receipt2.gasUsed.toString());
   th.logBN('Pool BPT tokens', await pool.totalSupply());
 
-  console.log('Total gas: ', receipt1.gasUsed.add(depositWethReceipt.gasUsed).add(approveWethReceipt.gasUsed).add(approveLusdReceipt.gasUsed).add(receipt2.gasUsed).toString());
+  console.log('Total gas: ', receipt1.gasUsed.add(depositWethReceipt.gasUsed).add(approveWethReceipt.gasUsed).add(approveEbtcReceipt.gasUsed).add(receipt2.gasUsed).toString());
 }
 
 main()

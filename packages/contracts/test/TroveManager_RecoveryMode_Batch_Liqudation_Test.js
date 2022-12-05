@@ -124,7 +124,7 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       const spEthBefore = await stabilityPool.getETH()
-      const spLusdBefore = await stabilityPool.getTotalEBTCDeposits()
+      const spEbtcBefore = await stabilityPool.getTotalEBTCDeposits()
 
       const tx = await troveManager.batchLiquidateTroves([_aliceTroveId, _carolTroveId])
 
@@ -137,17 +137,17 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       assert.equal((await troveManager.Troves(_carolTroveId))[3], '3')
 
       const spEthAfter = await stabilityPool.getETH()
-      const spLusdAfter = await stabilityPool.getTotalEBTCDeposits()
+      const spEbtcAfter = await stabilityPool.getTotalEBTCDeposits()
 
       // liquidate collaterals with the gas compensation fee subtracted
       const expectedCollateralLiquidatedA = th.applyLiquidationFee(A_totalDebt.mul(mv._MCR).div(price))
       const expectedCollateralLiquidatedC = th.applyLiquidationFee(C_coll)
       // Stability Pool gains
       const expectedGainInEBTC = expectedCollateralLiquidatedA.mul(price).div(mv._1e18BN).sub(A_totalDebt)
-      const realGainInEBTC = spEthAfter.sub(spEthBefore).mul(price).div(mv._1e18BN).sub(spLusdBefore.sub(spLusdAfter))
+      const realGainInEBTC = spEthAfter.sub(spEthBefore).mul(price).div(mv._1e18BN).sub(spEbtcBefore.sub(spEbtcAfter))
 
       assert.equal(spEthAfter.sub(spEthBefore).toString(), expectedCollateralLiquidatedA.toString(), 'Stability Pool ETH doesn’t match')
-      assert.equal(spLusdBefore.sub(spLusdAfter).toString(), A_totalDebt.toString(), 'Stability Pool EBTC doesn’t match')
+      assert.equal(spEbtcBefore.sub(spEbtcAfter).toString(), A_totalDebt.toString(), 'Stability Pool EBTC doesn’t match')
       assert.equal(realGainInEBTC.toString(), expectedGainInEBTC.toString(), 'Stability Pool gains don’t match')
     })
 
