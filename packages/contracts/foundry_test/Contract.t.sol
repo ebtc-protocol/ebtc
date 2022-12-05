@@ -14,7 +14,7 @@ contract DummyTest is Test {
         assertEq(testNumber, 42);
     }
 
-    function testFailLessthanNumber() private {
+    function testFailLessthanNumber() public {
         require(testNumber < 40);
     }
 }
