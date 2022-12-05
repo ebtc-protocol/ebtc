@@ -7,7 +7,7 @@ const moneyVals = testHelpers.MoneyValues
 
 let latestRandomSeed = 31337
 
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const EBTCToken = artifacts.require("EBTCToken")
 
 contract('HintHelpers', async accounts => {
@@ -16,7 +16,7 @@ contract('HintHelpers', async accounts => {
 
   const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let borrowerOperations
   let hintHelpers
@@ -28,52 +28,52 @@ contract('HintHelpers', async accounts => {
 
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
 
-  /* Open a Trove for each account. EBTC debt is 200 EBTC each, with collateral beginning at
-  1.5 ether, and rising by 0.01 ether per Trove.  Hence, the ICR of account (i + 1) is always 1% greater than the ICR of account i. 
+  /* Open a Cdp for each account. EBTC debt is 200 EBTC each, with collateral beginning at
+  1.5 ether, and rising by 0.01 ether per Cdp.  Hence, the ICR of account (i + 1) is always 1% greater than the ICR of account i. 
  */
 
- // Open Troves in parallel, then withdraw EBTC in parallel
- const makeTrovesInParallel = async (accounts, n) => {
+ // Open Cdps in parallel, then withdraw EBTC in parallel
+ const makeCdpsInParallel = async (accounts, n) => {
   activeAccounts = accounts.slice(0,n)
   // console.log(`number of accounts used is: ${activeAccounts.length}`)
-  // console.time("makeTrovesInParallel")
-  const openTrovepromises = activeAccounts.map((account, index) => openTrove(account, index))
-  await Promise.all(openTrovepromises)
-  const withdrawEBTCpromises = activeAccounts.map(account => withdrawEBTCfromTrove(account))
+  // console.time("makeCdpsInParallel")
+  const openCdppromises = activeAccounts.map((account, index) => openCdp(account, index))
+  await Promise.all(openCdppromises)
+  const withdrawEBTCpromises = activeAccounts.map(account => withdrawEBTCfromCdp(account))
   await Promise.all(withdrawEBTCpromises)
-  // console.timeEnd("makeTrovesInParallel")
+  // console.timeEnd("makeCdpsInParallel")
  }
 
- const openTrove = async (account, index) => {
+ const openCdp = async (account, index) => {
    const amountFinney = 2000 + index * 10
    const coll = web3.utils.toWei((amountFinney.toString()), 'finney')
-   await borrowerOperations.openTrove(th._100pct, 0, account, account, { from: account, value: coll })
+   await borrowerOperations.openCdp(th._100pct, 0, account, account, { from: account, value: coll })
  }
 
- const withdrawEBTCfromTrove = async (account) => {
+ const withdrawEBTCfromCdp = async (account) => {
   await borrowerOperations.withdrawEBTC(th._100pct, '100000000000000000000', account, account, { from: account })
  }
 
  // Sequentially add coll and withdraw EBTC, 1 account at a time
-  const makeTrovesInSequence = async (accounts, n) => {
+  const makeCdpsInSequence = async (accounts, n) => {
     activeAccounts = accounts.slice(0,n)
     // console.log(`number of accounts used is: ${activeAccounts.length}`)
 
     let ICR = 200
 
-    // console.time('makeTrovesInSequence')
+    // console.time('makeCdpsInSequence')
     for (const account of activeAccounts) {
       const ICR_BN = toBN(ICR.toString().concat('0'.repeat(16)))
-      await th.openTrove(contracts, { extraEBTCAmount: toBN(dec(10000, 18)), ICR: ICR_BN, extraParams: { from: account } })
+      await th.openCdp(contracts, { extraEBTCAmount: toBN(dec(10000, 18)), ICR: ICR_BN, extraParams: { from: account } })
 
       ICR += 1
     }
-    // console.timeEnd('makeTrovesInSequence')
+    // console.timeEnd('makeCdpsInSequence')
   }
 
   before(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await TroveManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.stabilityPool.address,
@@ -81,7 +81,7 @@ contract('HintHelpers', async accounts => {
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     borrowerOperations = contracts.borrowerOperations
     hintHelpers = contracts.hintHelpers
@@ -94,22 +94,22 @@ contract('HintHelpers', async accounts => {
     numAccounts = 10
 
     await priceFeed.setPrice(dec(100, 18))
-    await makeTrovesInSequence(accounts, numAccounts) 
-    // await makeTrovesInParallel(accounts, numAccounts)  
+    await makeCdpsInSequence(accounts, numAccounts) 
+    // await makeCdpsInParallel(accounts, numAccounts)  
   })
 
   it("setup: makes accounts with nominal ICRs increasing by 1% consecutively", async () => {
     // check first 10 accounts
-    const ICR_0 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[0],0))
-    const ICR_1 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[1],0))
-    const ICR_2 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[2],0))
-    const ICR_3 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[3],0))
-    const ICR_4 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[4],0))
-    const ICR_5 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[5],0))
-    const ICR_6 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[6],0))
-    const ICR_7 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[7],0))
-    const ICR_8 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[8],0))
-    const ICR_9 = await cdpManager.getNominalICR(await sortedTroves.cdpOfOwnerByIndex(accounts[9],0))
+    const ICR_0 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[0],0))
+    const ICR_1 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[1],0))
+    const ICR_2 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[2],0))
+    const ICR_3 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[3],0))
+    const ICR_4 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[4],0))
+    const ICR_5 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[5],0))
+    const ICR_6 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[6],0))
+    const ICR_7 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[7],0))
+    const ICR_8 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[8],0))
+    const ICR_9 = await cdpManager.getNominalICR(await sortedCdps.cdpOfOwnerByIndex(accounts[9],0))
 
     assert.isTrue(ICR_0.eq(toBN(dec(200, 16))))
     assert.isTrue(ICR_1.eq(toBN(dec(201, 16))))
@@ -123,12 +123,12 @@ contract('HintHelpers', async accounts => {
     assert.isTrue(ICR_9.eq(toBN(dec(209, 16))))
   })
 
-  it("getApproxHint(): returns the address of a Trove within sqrt(length) positions of the correct insert position", async () => {
+  it("getApproxHint(): returns the address of a Cdp within sqrt(length) positions of the correct insert position", async () => {
     const sqrtLength = Math.ceil(Math.sqrt(numAccounts))
 
-    /* As per the setup, the ICRs of Troves are monotonic and seperated by 1% intervals. Therefore, the difference in ICR between 
+    /* As per the setup, the ICRs of Cdps are monotonic and seperated by 1% intervals. Therefore, the difference in ICR between 
     the given CR and the ICR of the hint address equals the number of positions between the hint address and the correct insert position 
-    for a Trove with the given CR. */
+    for a Cdp with the given CR. */
 
     // CR = 250%
     const CR_250 = '2500000000000000000'
@@ -185,8 +185,8 @@ contract('HintHelpers', async accounts => {
   })
 
   /* Pass 100 random collateral ratios to getApproxHint(). For each, check whether the returned hint address is within 
-  sqrt(length) positions of where a Trove with that CR should be inserted. */
-  // it("getApproxHint(): for 100 random CRs, returns the address of a Trove within sqrt(length) positions of the correct insert position", async () => {
+  sqrt(length) positions of where a Cdp with that CR should be inserted. */
+  // it("getApproxHint(): for 100 random CRs, returns the address of a Cdp within sqrt(length) positions of the correct insert position", async () => {
   //   const sqrtLength = Math.ceil(Math.sqrt(numAccounts))
 
   //   for (i = 0; i < 100; i++) {
@@ -220,16 +220,16 @@ contract('HintHelpers', async accounts => {
     const ICR_hintAddress_Max = await cdpManager.getNominalICR(_approxHints[0])
     const ICRPercent_hintAddress_Max = Number(web3.utils.fromWei(ICR_hintAddress_Max, 'ether')) * 100
 
-     const firstTrove = await sortedTroves.getFirst()
-     const ICR_FirstTrove = await cdpManager.getNominalICR(firstTrove)
-     const ICRPercent_FirstTrove = Number(web3.utils.fromWei(ICR_FirstTrove, 'ether')) * 100
+     const firstCdp = await sortedCdps.getFirst()
+     const ICR_FirstCdp = await cdpManager.getNominalICR(firstCdp)
+     const ICRPercent_FirstCdp = Number(web3.utils.fromWei(ICR_FirstCdp, 'ether')) * 100
  
      // check the hint position is at most sqrtLength positions away from the correct position
-     ICR_Difference_Max = (ICRPercent_hintAddress_Max - ICRPercent_FirstTrove)
+     ICR_Difference_Max = (ICRPercent_hintAddress_Max - ICRPercent_FirstCdp)
      assert.isBelow(ICR_Difference_Max, sqrtLength)
   })
 
-  it("getApproxHint(): returns the tail of the list if the CR is lower than ICR of any Trove", async () => {
+  it("getApproxHint(): returns the tail of the list if the CR is lower than ICR of any Cdp", async () => {
     const sqrtLength = Math.ceil(Math.sqrt(numAccounts))
 
      // CR = MCR
@@ -240,12 +240,12 @@ contract('HintHelpers', async accounts => {
     const ICR_hintAddress_Min = await cdpManager.getNominalICR(_approxHints[0])
     const ICRPercent_hintAddress_Min = Number(web3.utils.fromWei(ICR_hintAddress_Min, 'ether')) * 100
 
-     const lastTrove = await sortedTroves.getLast()
-     const ICR_LastTrove = await cdpManager.getNominalICR(lastTrove)
-     const ICRPercent_LastTrove = Number(web3.utils.fromWei(ICR_LastTrove, 'ether')) * 100
+     const lastCdp = await sortedCdps.getLast()
+     const ICR_LastCdp = await cdpManager.getNominalICR(lastCdp)
+     const ICRPercent_LastCdp = Number(web3.utils.fromWei(ICR_LastCdp, 'ether')) * 100
  
      // check the hint position is at most sqrtLength positions away from the correct position
-     const ICR_Difference_Min = (ICRPercent_hintAddress_Min - ICRPercent_LastTrove)
+     const ICR_Difference_Min = (ICRPercent_hintAddress_Min - ICRPercent_LastCdp)
      assert.isBelow(ICR_Difference_Min, sqrtLength)
   })
 

@@ -1,6 +1,6 @@
 
-const SortedTroves = artifacts.require("./SortedTroves.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
@@ -11,8 +11,8 @@ const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
 const deployLiquity = async () => {
   const priceFeedTestnet = await PriceFeedTestnet.new()
-  const sortedTroves = await SortedTroves.new()
-  const cdpManager = await TroveManager.new()
+  const sortedCdps = await SortedCdps.new()
+  const cdpManager = await CdpManager.new()
   const activePool = await ActivePool.new()
   const stabilityPool = await StabilityPool.new()
   const defaultPool = await DefaultPool.new()
@@ -26,8 +26,8 @@ const deployLiquity = async () => {
   DefaultPool.setAsDeployed(defaultPool)
   PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
   EBTCToken.setAsDeployed(ebtcToken)
-  SortedTroves.setAsDeployed(sortedTroves)
-  TroveManager.setAsDeployed(cdpManager)
+  SortedCdps.setAsDeployed(sortedCdps)
+  CdpManager.setAsDeployed(cdpManager)
   ActivePool.setAsDeployed(activePool)
   StabilityPool.setAsDeployed(stabilityPool)
   FunctionCaller.setAsDeployed(functionCaller)
@@ -36,7 +36,7 @@ const deployLiquity = async () => {
   const contracts = {
     priceFeedTestnet,
     ebtcToken,
-    sortedTroves,
+    sortedCdps,
     cdpManager,
     activePool,
     stabilityPool,
@@ -52,8 +52,8 @@ const getAddresses = (contracts) => {
     BorrowerOperations: contracts.borrowerOperations.address,
     PriceFeedTestnet: contracts.priceFeedTestnet.address,
     EBTCToken: contracts.ebtcToken.address,
-    SortedTroves: contracts.sortedTroves.address,
-    TroveManager: contracts.cdpManager.address,
+    SortedCdps: contracts.sortedCdps.address,
+    CdpManager: contracts.cdpManager.address,
     StabilityPool: contracts.stabilityPool.address,
     ActivePool: contracts.activePool.address,
     DefaultPool: contracts.defaultPool.address,
@@ -63,19 +63,19 @@ const getAddresses = (contracts) => {
 
 // Connect contracts to their dependencies
 const connectContracts = async (contracts, addresses) => {
-  // set TroveManager addr in SortedTroves
-  await contracts.sortedTroves.setTroveManager(addresses.TroveManager)
+  // set CdpManager addr in SortedCdps
+  await contracts.sortedCdps.setCdpManager(addresses.CdpManager)
 
   // set contract addresses in the FunctionCaller 
-  await contracts.functionCaller.setTroveManagerAddress(addresses.TroveManager)
-  await contracts.functionCaller.setSortedTrovesAddress(addresses.SortedTroves)
+  await contracts.functionCaller.setCdpManagerAddress(addresses.CdpManager)
+  await contracts.functionCaller.setSortedCdpsAddress(addresses.SortedCdps)
 
-  // set TroveManager addr in PriceFeed
-  await contracts.priceFeedTestnet.setTroveManagerAddress(addresses.TroveManager)
+  // set CdpManager addr in PriceFeed
+  await contracts.priceFeedTestnet.setCdpManagerAddress(addresses.CdpManager)
 
-  // set contracts in the Trove Manager
+  // set contracts in the Cdp Manager
   await contracts.cdpManager.setEBTCToken(addresses.EBTCToken)
-  await contracts.cdpManager.setSortedTroves(addresses.SortedTroves)
+  await contracts.cdpManager.setSortedCdps(addresses.SortedCdps)
   await contracts.cdpManager.setPriceFeed(addresses.PriceFeedTestnet)
   await contracts.cdpManager.setActivePool(addresses.ActivePool)
   await contracts.cdpManager.setDefaultPool(addresses.DefaultPool)
@@ -83,11 +83,11 @@ const connectContracts = async (contracts, addresses) => {
   await contracts.cdpManager.setBorrowerOperations(addresses.BorrowerOperations)
 
   // set contracts in BorrowerOperations 
-  await contracts.borrowerOperations.setSortedTroves(addresses.SortedTroves)
+  await contracts.borrowerOperations.setSortedCdps(addresses.SortedCdps)
   await contracts.borrowerOperations.setPriceFeed(addresses.PriceFeedTestnet)
   await contracts.borrowerOperations.setActivePool(addresses.ActivePool)
   await contracts.borrowerOperations.setDefaultPool(addresses.DefaultPool)
-  await contracts.borrowerOperations.setTroveManager(addresses.TroveManager)
+  await contracts.borrowerOperations.setCdpManager(addresses.CdpManager)
 
   // set contracts in the Pools
   await contracts.stabilityPool.setActivePoolAddress(addresses.ActivePool)
@@ -101,7 +101,7 @@ const connectContracts = async (contracts, addresses) => {
 }
 
 const connectEchidnaProxy = async (echidnaProxy, addresses) => {
-  echidnaProxy.setTroveManager(addresses.TroveManager)
+  echidnaProxy.setCdpManager(addresses.CdpManager)
   echidnaProxy.setBorrowerOperations(addresses.BorrowerOperations)
 }
 

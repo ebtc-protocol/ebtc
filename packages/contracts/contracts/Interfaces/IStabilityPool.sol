@@ -41,11 +41,11 @@ interface IStabilityPool {
     event StabilityPoolEBTCBalanceUpdated(uint _newBalance);
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
     event DefaultPoolAddressChanged(address _newDefaultPoolAddress);
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
-    event SortedTrovesAddressChanged(address _newSortedTrovesAddress);
+    event SortedCdpsAddressChanged(address _newSortedCdpsAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event CommunityIssuanceAddressChanged(address _newCommunityIssuanceAddress);
 
@@ -79,7 +79,7 @@ interface IStabilityPool {
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _ebtcTokenAddress,
-        address _sortedTrovesAddress,
+        address _sortedCdpsAddress,
         address _priceFeedAddress,
         address _communityIssuanceAddress
     ) external;
@@ -126,7 +126,7 @@ interface IStabilityPool {
      * - Leaves their compounded deposit in the Stability Pool
      * - Updates snapshots for deposit and tagged front end stake
      */
-    function withdrawETHGainToTrove(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawETHGainToCdp(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external;
 
     /*
      * Initial checks:
@@ -140,11 +140,11 @@ interface IStabilityPool {
 
     /*
      * Initial checks:
-     * - Caller is TroveManager
+     * - Caller is CdpManager
      * ---
      * Cancels out the specified debt against the EBTC contained in the Stability Pool (as far as possible)
-     * and transfers the Trove's ETH collateral from ActivePool to StabilityPool.
-     * Only called by liquidation functions in the TroveManager.
+     * and transfers the Cdp's ETH collateral from ActivePool to StabilityPool.
+     * Only called by liquidation functions in the CdpManager.
      */
     function offset(uint _debt, uint _coll) external;
 
@@ -155,7 +155,7 @@ interface IStabilityPool {
     function getETH() external view returns (uint);
 
     /*
-     * Returns EBTC held in the pool. Changes when users deposit/withdraw, and when Trove debt is offset.
+     * Returns EBTC held in the pool. Changes when users deposit/withdraw, and when Cdp debt is offset.
      */
     function getTotalEBTCDeposits() external view returns (uint);
 

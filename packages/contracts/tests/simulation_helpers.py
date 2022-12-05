@@ -16,7 +16,7 @@ period = year
 # n_sim = 8640
 n_sim = year
 
-# number of liquidations for each call to `liquidateTroves`
+# number of liquidations for each call to `liquidateCdps`
 NUM_LIQUIDATIONS = 10
 
 EBTC_GAS_COMPENSATION = 200.0
@@ -163,7 +163,7 @@ natural_rate_initial = 0.2
 natural_rate = [natural_rate_initial]
 sd_natural_rate = 0.002
 
-"""# Trove pool
+"""# Cdp pool
 
 Each cdp is defined by five numbers
 > (collateral in ether, debt in EBTC, collateral ratio target, rational inattention, collateral ratio)
@@ -171,7 +171,7 @@ Each cdp is defined by five numbers
 which can be denoted by
 > ($Q_t^e(i)$, $Q_t^d(i)$, $CR^*(i)$, $\tau(i)$, $CR_t(i)$).
 
-**Open Troves**
+**Open Cdps**
 
 The amount of new cdps opened in period t is denoted by $N_t^o$, which follows 
 
@@ -252,7 +252,7 @@ rational_inattention_gamma_theta = 0.08
 # sensitivity to EBTC price & issuance fee
 alpha = 0.3
 
-"""**Close Troves**
+"""**Close Cdps**
 
 The amount of cdps closed in period t is denoted as $N_t^c$, which follows
 > $$N_t^c = \begin{cases} 
@@ -270,7 +270,7 @@ sd_closecdps = 0.5
 # sensitivity to EBTC price
 beta = 0.2
 
-"""**Trove Liquidation**
+"""**Cdp Liquidation**
 
 At the beginning of each period, 
 right after the feed of ether price, 
@@ -350,9 +350,9 @@ for i in range(1, month):
     shock_LQTY = random.normalvariate(0, sd_LQTY)
     price_LQTY.append(price_LQTY[i - 1] * (1 + shock_LQTY) * (1 + drift_LQTY))
 
-"""# Troves
+"""# Cdps
 
-Liquidate Troves
+Liquidate Cdps
 """
 
 
@@ -362,7 +362,7 @@ def is_recovery_mode(contracts, price_ether_current):
 
 
 def pending_liquidations(contracts, price_ether_current):
-    last_cdp = contracts.sortedTroves.getLast()
+    last_cdp = contracts.sortedCdps.getLast()
     last_icr = contracts.cdpManager.getCurrentICR(last_cdp, Wei(price_ether_current * 1e18))
 
     if last_cdp == ZERO_ADDRESS:
@@ -380,7 +380,7 @@ def pending_liquidations(contracts, price_ether_current):
         debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
         if stability_pool_balance >= debt:
             return True
-        cdp = contracts.sortedTroves.getPrev(cdp)
+        cdp = contracts.sortedCdps.getPrev(cdp)
         ICR = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
         if ICR >= Wei(15e17):
             return False
@@ -427,12 +427,12 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
 
     while pending_liquidations(contracts, price_ether_current):
         try:
-            tx = contracts.cdpManager.liquidateTroves(NUM_LIQUIDATIONS,
+            tx = contracts.cdpManager.liquidateCdps(NUM_LIQUIDATIONS,
                                                         {'from': accounts[0], 'gas_limit': 8000000,
                                                          'allow_revert': True})
-            # print(tx.events['TroveLiquidated'])
+            # print(tx.events['CdpLiquidated'])
             remove_accounts_from_events(accounts, active_accounts, inactive_accounts,
-                                        tx.events['TroveLiquidated'], '_borrower')
+                                        tx.events['CdpLiquidated'], '_borrower')
         except:
             print(f"TM: {contracts.cdpManager.address}")
             stability_pool_balance = contracts.stabilityPool.getTotalEBTCDeposits()
@@ -444,7 +444,7 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
                 print(f"debt: {debt / 1e18}")
                 if stability_pool_balance >= debt:
                     print("True!")
-                cdp = contracts.sortedTroves.getPrev(cdp)
+                cdp = contracts.sortedCdps.getPrev(cdp)
                 icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
                 print(f"ICR: {icr}")
     stability_pool_current = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
@@ -486,7 +486,7 @@ def calculate_stability_return(contracts, price_EBTC, data, index):
 def is_new_tcr_above_ccr(
         contracts, coll_change, is_coll_increase, debt_change, is_debt_increase, price
 ) -> bool:
-    new_tcr = contracts.borrowerOperations.getNewTCRFromTroveChange(
+    new_tcr = contracts.borrowerOperations.getNewTCRFromCdpChange(
         coll_change, is_coll_increase, debt_change, is_debt_increase, price
     )
     return new_tcr >= Wei(1.5 * 1e18)
@@ -502,7 +502,7 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
 
     np.random.seed(208 + index)
     shock_closecdps = np.random.normal(0, sd_closecdps)
-    n_cdps = contracts.sortedTroves.getSize()
+    n_cdps = contracts.sortedCdps.getSize()
 
     if index <= 240:
         number_closecdps = np.random.uniform(0, 1)
@@ -526,7 +526,7 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
         if pending == 0:
             if is_new_tcr_above_ccr(contracts, coll, False, debt, False,
                                     floatToWei(price_ether_current)):
-                contracts.borrowerOperations.closeTrove({'from': account})
+                contracts.borrowerOperations.closeCdp({'from': account})
                 inactive_accounts.append(account_index)
                 active_accounts.pop(drops[i])
         if is_recovery_mode(contracts, price_ether_current):
@@ -535,7 +535,7 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
     return [number_closecdps]
 
 
-"""Adjust Troves"""
+"""Adjust Cdps"""
 def transfer_from_to(contracts, from_account, to_account, amount):
     balance = contracts.ebtcToken.balanceOf(from_account)
     transfer_amount = min(balance, amount)
@@ -586,7 +586,7 @@ def get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts, a
 def get_hints(contracts, coll, debt):
     nicr = contracts.hintHelpers.computeNominalCR(floatToWei(coll), floatToWei(debt))
     approx_hint = contracts.hintHelpers.getApproxHint(nicr, 100, 0)
-    return contracts.sortedTroves.findInsertPosition(nicr, approx_hint[0], approx_hint[0])
+    return contracts.sortedCdps.findInsertPosition(nicr, approx_hint[0], approx_hint[0])
 
 
 def get_hints_from_amounts(accounts, contracts, active_accounts, coll, debt, price_ether_current):
@@ -609,7 +609,7 @@ def get_hints_from_icr(accounts, contracts, active_accounts, icr, nicr):
         i = bisect_left(keys, icr)
         # return [index2address(accounts, active_accounts, min(i, l-1)),
         # index2address(accounts, active_accounts, max(i-1, 0)), i]
-        hints = contracts.sortedTroves.findInsertPosition(
+        hints = contracts.sortedCdps.findInsertPosition(
             nicr,
             index2address(accounts, active_accounts, min(i, num_active_accs - 1)),
             index2address(accounts, active_accounts, max(i - 1, 0))
@@ -702,7 +702,7 @@ def open_cdp(accounts, contracts, active_accounts, inactive_accounts, supply_cdp
     ebtc = get_ebtc_amount_from_net_debt(contracts, floatToWei(supply_cdp))
     if is_new_tcr_above_ccr(contracts, coll, True, debt_change, True,
                             floatToWei(price_ether_current)):
-        contracts.borrowerOperations.openTrove(MAX_FEE, ebtc, hints[0], hints[1],
+        contracts.borrowerOperations.openCdp(MAX_FEE, ebtc, hints[0], hints[1],
                                                {'from': accounts[inactive_accounts[0]],
                                                 'value': coll})
         new_account = {"index": inactive_accounts[0], "CR_initial": cr_ratio,
@@ -899,7 +899,7 @@ def redeem_cdp(accounts, contracts, i, price_ether_current):
     if truncated_lus_damount == Wei(0):
         return None
     approx_hint = contracts.hintHelpers.getApproxHint(partial_redemption_hint_nicr, 2000, 0)
-    hints = contracts.sortedTroves.findInsertPosition(partial_redemption_hint_nicr, approx_hint[0],
+    hints = contracts.sortedCdps.findInsertPosition(partial_redemption_hint_nicr, approx_hint[0],
                                                       approx_hint[0])
     try:
         tx = contracts.cdpManager.redeemCollateral(
@@ -915,7 +915,7 @@ def redeem_cdp(accounts, contracts, i, price_ether_current):
         return tx
     except:
         print(f"\n   Redemption failed! ")
-        print(f"Trove Manager: {contracts.cdpManager.address}")
+        print(f"Cdp Manager: {contracts.cdpManager.address}")
         print(f"EBTC Token:    {contracts.ebtcToken.address}")
         print(f"i: {i}")
         print(f"account: {accounts[i]}")
@@ -1011,7 +1011,7 @@ def price_stabilizer(accounts, contracts, active_accounts, inactive_accounts, pr
                         accounts,
                         active_accounts,
                         inactive_accounts,
-                        filter(lambda e: e['coll'] == 0, tx.events['TroveUpdated']),
+                        filter(lambda e: e['coll'] == 0, tx.events['CdpUpdated']),
                         '_borrower'
                     )
                     remaining = remaining - redemption

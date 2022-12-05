@@ -16,13 +16,13 @@ async function main() {
       ARBITRARY_ADDRESS
     )
 
- const { cdpManager, borrowerOperations, hintHelpers, sortedTroves, priceFeedTestnet } = coreContracts
+ const { cdpManager, borrowerOperations, hintHelpers, sortedCdps, priceFeedTestnet } = coreContracts
 
   await dh.connectCoreContracts(coreContracts, LQTYContracts)
   await dh.connectLQTYContracts(LQTYContracts)
   await dh.connectLQTYContractsToCore(LQTYContracts, coreContracts)
 
-  // Examples of off-chain hint calculation for Open Trove
+  // Examples of off-chain hint calculation for Open Cdp
 
   const toWei = web3.utils.toWei
   const toBN = web3.utils.toBN
@@ -33,7 +33,7 @@ async function main() {
   const EBTCAmount = toBN(toWei('2500')) // borrower wants to withdraw 2500 EBTC
   const ETHColl = toBN(toWei('5')) // borrower wants to lock 5 ETH collateral
 
-  // Call deployed TroveManager contract to read the liquidation reserve and latest borrowing fee
+  // Call deployed CdpManager contract to read the liquidation reserve and latest borrowing fee
   const liquidationReserve = await cdpManager.EBTC_GAS_COMPENSATION()
   const expectedFee = await cdpManager.getBorrowingFeeWithDecay(EBTCAmount)
   
@@ -46,16 +46,16 @@ async function main() {
 
   // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
-  let numTroves = await sortedTroves.getSize()
-  let numTrials = numTroves.mul(toBN('15'))
+  let numCdps = await sortedCdps.getSize()
+  let numTrials = numCdps.mul(toBN('15'))
   let { 0: approxHint } = await hintHelpers.getApproxHint(NICR, numTrials, 42)  // random seed of 42
 
-  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedTroves contract
-  let { 0: upperHint, 1: lowerHint } = await sortedTroves.findInsertPosition(NICR, approxHint, approxHint)
+  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedCdps contract
+  let { 0: upperHint, 1: lowerHint } = await sortedCdps.findInsertPosition(NICR, approxHint, approxHint)
 
-  // Finally, call openTrove with the exact upperHint and lowerHint
+  // Finally, call openCdp with the exact upperHint and lowerHint
   const maxFee = '5'.concat('0'.repeat(16)) // Slippage protection: 5%
-  await borrowerOperations.openTrove(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
+  await borrowerOperations.openCdp(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
 
   // --- adjust cdp --- 
 
@@ -72,15 +72,15 @@ async function main() {
 
   // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
-  numTroves = await sortedTroves.getSize()
-  numTrials = numTroves.mul(toBN('15'))
+  numCdps = await sortedCdps.getSize()
+  numTrials = numCdps.mul(toBN('15'))
   ({0: approxHint} = await hintHelpers.getApproxHint(NICR, numTrials, 42))
 
-  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedTroves contract
-  ({ 0: upperHint, 1: lowerHint } = await sortedTroves.findInsertPosition(NICR, approxHint, approxHint))
+  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedCdps contract
+  ({ 0: upperHint, 1: lowerHint } = await sortedCdps.findInsertPosition(NICR, approxHint, approxHint))
 
-  // Call adjustTrove with the exact upperHint and lowerHint
-  await borrowerOperations.adjustTrove(maxFee, 0, EBTCRepayment, false, upperHint, lowerHint, {value: collIncrease})
+  // Call adjustCdp with the exact upperHint and lowerHint
+  await borrowerOperations.adjustCdp(maxFee, 0, EBTCRepayment, false, upperHint, lowerHint, {value: collIncrease})
 
 
   // --- RedeemCollateral ---
@@ -97,9 +97,9 @@ async function main() {
   } = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, numTrials, 42)
   
   /* Use the approximate partial redemption hint to get the exact partial redemption hint from the 
-  * deployed SortedTroves contract
+  * deployed SortedCdps contract
   */
-  const exactPartialRedemptionHint = (await sortedTroves.findInsertPosition(partialRedemptionNewICR,
+  const exactPartialRedemptionHint = (await sortedCdps.findInsertPosition(partialRedemptionNewICR,
     approxPartialRedemptionHint,
     approxPartialRedemptionHint))
 

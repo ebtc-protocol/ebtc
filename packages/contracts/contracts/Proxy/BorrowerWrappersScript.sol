@@ -6,7 +6,7 @@ import "../Dependencies/SafeMath.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Dependencies/IERC20.sol";
 import "../Interfaces/IBorrowerOperations.sol";
-import "../Interfaces/ITroveManager.sol";
+import "../Interfaces/ICdpManager.sol";
 import "../Interfaces/IStabilityPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILQTYStaking.sol";
@@ -21,7 +21,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     string constant public NAME = "BorrowerWrappersScript";
 
-    ITroveManager immutable cdpManager;
+    ICdpManager immutable cdpManager;
     IStabilityPool immutable stabilityPool;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
@@ -38,7 +38,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         public
     {
         checkContract(_cdpManagerAddress);
-        ITroveManager cdpManagerCached = ITroveManager(_cdpManagerAddress);
+        ICdpManager cdpManagerCached = ICdpManager(_cdpManagerAddress);
         cdpManager = cdpManagerCached;
 
         IStabilityPool stabilityPoolCached = cdpManagerCached.stabilityPool();
@@ -62,7 +62,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         lqtyStaking = lqtyStakingCached;
     }
 
-    function claimCollateralAndOpenTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+    function claimCollateralAndOpenCdp(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
         uint balanceBefore = address(this).balance;
 
         // Claim collateral
@@ -76,7 +76,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint totalCollateral = balanceAfter.sub(balanceBefore).add(msg.value);
 
         // Open cdp with obtained collateral, plus collateral sent by user
-        borrowerOperations.openTrove{ value: totalCollateral }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
+        borrowerOperations.openCdp{ value: totalCollateral }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function claimSPRewardsAndRecycle(bytes32 _cdpId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
@@ -92,9 +92,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         // Add claimed ETH to cdp, get more EBTC and stake it into the Stability Pool
         if (claimedCollateral > 0) {
-            _requireUserHasTrove(_cdpId);
+            _requireUserHasCdp(_cdpId);
             uint EBTCAmount = _getNetEBTCAmount(_cdpId, claimedCollateral);
-            borrowerOperations.adjustTrove{ value: claimedCollateral }(_cdpId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
+            borrowerOperations.adjustCdp{ value: claimedCollateral }(_cdpId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
             // Provide withdrawn EBTC to Stability Pool
             if (EBTCAmount > 0) {
                 stabilityPool.provideToSP(EBTCAmount, address(0));
@@ -122,9 +122,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint netEBTCAmount;
         // Top up cdp and get more EBTC, keeping ICR constant
         if (gainedCollateral > 0) {
-            _requireUserHasTrove(_cdpId);
+            _requireUserHasCdp(_cdpId);
             netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
-            borrowerOperations.adjustTrove{ value: gainedCollateral }(_cdpId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
+            borrowerOperations.adjustCdp{ value: gainedCollateral }(_cdpId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
         }
 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
@@ -152,7 +152,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         return netDebt;
     }
 
-    function _requireUserHasTrove(bytes32 _cdpId) internal view {
-        require(cdpManager.getTroveStatus(_cdpId) == 1, "BorrowerWrappersScript: caller must have an active cdp");
+    function _requireUserHasCdp(bytes32 _cdpId) internal view {
+        require(cdpManager.getCdpStatus(_cdpId) == 1, "BorrowerWrappersScript: caller must have an active cdp");
     }
 }

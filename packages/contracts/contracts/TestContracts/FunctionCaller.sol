@@ -2,8 +2,8 @@
 
 pragma solidity 0.6.11;
 
-import '../Interfaces/ITroveManager.sol';
-import '../Interfaces/ISortedTroves.sol';
+import '../Interfaces/ICdpManager.sol';
+import '../Interfaces/ISortedCdps.sol';
 import '../Interfaces/IPriceFeed.sol';
 import '../Dependencies/LiquityMath.sol';
 
@@ -11,25 +11,25 @@ import '../Dependencies/LiquityMath.sol';
 Not part of the Liquity application. */
 contract FunctionCaller {
 
-    ITroveManager cdpManager;
+    ICdpManager cdpManager;
     address public cdpManagerAddress;
 
-    ISortedTroves sortedTroves;
-    address public sortedTrovesAddress;
+    ISortedCdps sortedCdps;
+    address public sortedCdpsAddress;
 
     IPriceFeed priceFeed;
     address public priceFeedAddress;
 
     // --- Dependency setters ---
 
-    function setTroveManagerAddress(address _cdpManagerAddress) external {
+    function setCdpManagerAddress(address _cdpManagerAddress) external {
         cdpManagerAddress = _cdpManagerAddress;
-        cdpManager = ITroveManager(_cdpManagerAddress);
+        cdpManager = ICdpManager(_cdpManagerAddress);
     }
     
-    function setSortedTrovesAddress(address _sortedTrovesAddress) external {
-        cdpManagerAddress = _sortedTrovesAddress;
-        sortedTroves = ISortedTroves(_sortedTrovesAddress);
+    function setSortedCdpsAddress(address _sortedCdpsAddress) external {
+        cdpManagerAddress = _sortedCdpsAddress;
+        sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }
 
      function setPriceFeedAddress(address _priceFeedAddress) external {
@@ -43,7 +43,7 @@ contract FunctionCaller {
         return cdpManager.getCurrentICR(_cdpId, _price);  
     }
 
-    function sortedTroves_findInsertPosition(uint _NICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32, bytes32) {
-        return sortedTroves.findInsertPosition(_NICR, _prevId, _nextId);
+    function sortedCdps_findInsertPosition(uint _NICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32, bytes32) {
+        return sortedCdps.findInsertPosition(_NICR, _prevId, _nextId);
     }
 }

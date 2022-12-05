@@ -22,7 +22,7 @@
 \newtheorem{proposition}[theorem]{Proposition}
 
 \begin{document}
-\title{\textbf{Efficient Order-Preserving Redistribution of Troves}}
+\title{\textbf{Efficient Order-Preserving Redistribution of Cdps}}
 \author{Richard Pardoe \thanks{rick@liquity.org}\\[1ex]
   Robert Lauko \thanks{robert@liquity.org} \hspace{2cm}
   Bingen Eguzkitza \thanks{bingen@liquity.org}
@@ -39,7 +39,7 @@ The Liquity protocol $\cite{Whitepaper}$ issues a USD-pegged stablecoin EBTC tha
 
 To allow for efficient redemptions despite Ethereum's gas constraints, the system keeps cdps ordered by ICR, so that it can iterate over the linked list starting from the bottom. It is not feasible to sort the list after every operation. \\
 
-Troves with an insufficient ICR are subject to liquidation. Given that Liquity's fallback liquidation mechanism $\cite{Whitepaper}$ redistributes the collateral and debt of a liquidated cdp between all remaining active cdps, it must be ensured that redistributions do not break cdp ordering. \\
+Cdps with an insufficient ICR are subject to liquidation. Given that Liquity's fallback liquidation mechanism $\cite{Whitepaper}$ redistributes the collateral and debt of a liquidated cdp between all remaining active cdps, it must be ensured that redistributions do not break cdp ordering. \\
 
 Redistribution in proportion to the collateral size of active cdps maintains ordering, as can be easily shown (see \ref{sec:appendix} Appendix). However, in practice, it is clear that redistributing in a “push” based manner - iterating over all cdps and updating their collateral and debt - does not scale, and has computational complexity of $O(n)$, where $n$ is the number of cdps. \\
 
@@ -52,8 +52,8 @@ However, a problem arises when a new cdp is created after active cdps have recei
 This discrepancy means that the reward distribution scheme described in $\cite{Batog}$ can break the ordering of cdps by collateral ratio. To remedy this, we modify the original approach by introducing a “corrected stake”, to ensure fresh cdps do not receive disproportionate rewards. We then show that this corrected stake preserves cdp ordering. \\
 
 
-\section{Troves and Liquidations}
-Troves are collateralized debt positions held by individual borrowers, defined by their amount of debt $d$ (in EBTC) and collateral $c$ (in ETH).
+\section{Cdps and Liquidations}
+Cdps are collateralized debt positions held by individual borrowers, defined by their amount of debt $d$ (in EBTC) and collateral $c$ (in ETH).
 
 Let $\gamma_i$ denote the individual collateral ratio (ICR) of a cdp $i$, i.e. the ratio of its collateral to its debt:
 
@@ -73,7 +73,7 @@ where $C=\sum c_j$ is the total collateral in the system.
 
 The rewards compound across multiple redistribution events.
 
-\section{Trove Ordering}
+\section{Cdp Ordering}
 To ensure that the cdps can be reliably accessed using a linked list, it is crucial to maintain the ordering of the cdps (by ICR) throughout all redistribution events $E_k$.
 
 The ordering is maintained if $\forall{E_k,i,j}: (\gamma_i > \gamma_j	\Longrightarrow \gamma_i' > \gamma_j'$), where $\gamma_i'$ and $\gamma_j'$ is the ICR of cdps $i$ and $j$ after $E_k$.
@@ -205,7 +205,7 @@ Let $\Gamma_1$ define a system of cdps with past liquidations, in which all acti
 
 Let $\Gamma_2$ define an evolution of $\Gamma_1$, i.e. $\Gamma_2 = f(\Gamma_1)$. $\Gamma_2$ is a system with past liquidations, with \textit{S} $= \sum s_i + \sum s_j$, where $s_j$ is the stake of newly added cdps $j$. $\Gamma_2$ is a second-order system, containing \textbf{both} \textit{first-order} stakes $s_i = c_i$ which have experienced all liquidations, \textbf{and} \textit{second-order} stakes $s_j$ which have only experienced the liquidations after their creation.\\
 
-In general, $\Gamma_n$ is a system with $n$ sequential pairs, each consisting of a cdp creation period and a liquidation period. Troves created in a given cdp creation period $t$ have experienced only those liquidations that occurred in liquidation period $t$ or greater.
+In general, $\Gamma_n$ is a system with $n$ sequential pairs, each consisting of a cdp creation period and a liquidation period. Cdps created in a given cdp creation period $t$ have experienced only those liquidations that occurred in liquidation period $t$ or greater.
 
 \begin{proposition}
   At first-order, stake equals initial collateral.
@@ -421,7 +421,7 @@ where
 
 
 \bigskip
-Trove $j$’s stake $s_j$ is given by the corrected stake rule (\ref{eq:2}), that is:
+Cdp $j$’s stake $s_j$ is given by the corrected stake rule (\ref{eq:2}), that is:
 
 \begin{equation} 
     s_j=\frac{c_\mathsmaller{j} \cdot S_\emptyset}{C_\emptyset}
@@ -893,7 +893,7 @@ Given the definition of ICR we have
 
 In the event of a redistribution of a cdp $k$, its collateral $c_k$ and debt $d_k$ is redistributed to all active cdps, proportional to their shares of $C$.
 
-Troves $i$ and $j$ thus receive the following pairs of collateral and debt rewards $(x_i, y_i)$ and $(x_j, y_j)$:
+Cdps $i$ and $j$ thus receive the following pairs of collateral and debt rewards $(x_i, y_i)$ and $(x_j, y_j)$:
 
 \begin{equation} 
   (x_i, y_i) = \left(\frac{c_i}{C} \cdot c_k, \frac{c_i}{C} \cdot d_k\right)

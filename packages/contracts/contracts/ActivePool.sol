@@ -30,7 +30,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     // --- Events ---
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolETHBalanceUpdated(uint _ETH);
 
@@ -56,7 +56,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         defaultPoolAddress = _defaultPoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_cdpManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
 
@@ -81,7 +81,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     // --- Pool functionality ---
 
     function sendETH(address _account, uint _amount) external override {
-        _requireCallerIsBOorTroveMorSP();
+        _requireCallerIsBOorCdpMorSP();
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
@@ -91,13 +91,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     }
 
     function increaseEBTCDebt(uint _amount) external override {
-        _requireCallerIsBOorTroveM();
+        _requireCallerIsBOorCdpM();
         EBTCDebt  = EBTCDebt.add(_amount);
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
-        _requireCallerIsBOorTroveMorSP();
+        _requireCallerIsBOorCdpMorSP();
         EBTCDebt = EBTCDebt.sub(_amount);
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
@@ -111,19 +111,19 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
             "ActivePool: Caller is neither BO nor Default Pool");
     }
 
-    function _requireCallerIsBOorTroveMorSP() internal view {
+    function _requireCallerIsBOorCdpMorSP() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
             msg.sender == cdpManagerAddress ||
             msg.sender == stabilityPoolAddress,
-            "ActivePool: Caller is neither BorrowerOperations nor TroveManager nor StabilityPool");
+            "ActivePool: Caller is neither BorrowerOperations nor CdpManager nor StabilityPool");
     }
 
-    function _requireCallerIsBOorTroveM() internal view {
+    function _requireCallerIsBOorCdpM() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
             msg.sender == cdpManagerAddress,
-            "ActivePool: Caller is neither BorrowerOperations nor TroveManager");
+            "ActivePool: Caller is neither BorrowerOperations nor CdpManager");
     }
 
     // --- Fallback function ---

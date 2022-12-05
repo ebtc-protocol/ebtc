@@ -8,7 +8,7 @@ import "../BorrowerOperations.sol";
 for testing the parent's internal functions. */
 contract BorrowerOperationsTester is BorrowerOperations {
 
-    function getNewICRFromTroveChange
+    function getNewICRFromCdpChange
     (
         uint _coll, 
         uint _debt, 
@@ -22,10 +22,10 @@ contract BorrowerOperationsTester is BorrowerOperations {
     pure
     returns (uint)
     {
-        return _getNewICRFromTroveChange(_coll, _debt, _collChange, isCollIncrease, _debtChange, isDebtIncrease, _price);
+        return _getNewICRFromCdpChange(_coll, _debt, _collChange, isCollIncrease, _debtChange, isDebtIncrease, _price);
     }
 
-    function getNewTCRFromTroveChange
+    function getNewTCRFromCdpChange
     (
         uint _collChange, 
         bool isCollIncrease,  
@@ -37,7 +37,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
     view
     returns (uint) 
     {
-        return _getNewTCRFromTroveChange(_collChange, isCollIncrease, _debtChange, isDebtIncrease, _price);
+        return _getNewTCRFromCdpChange(_collChange, isCollIncrease, _debtChange, isDebtIncrease, _price);
     }
 
     function getUSDValue(uint _coll, uint _price) external pure returns (uint) {
@@ -54,7 +54,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
         address _lowerHint)
         external 
     {
-        //_adjustTrove(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
+        //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
 

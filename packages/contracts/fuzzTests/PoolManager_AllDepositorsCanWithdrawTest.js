@@ -26,13 +26,13 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   let ebtcToken
   let cdpManager
   let stabilityPool
-  let sortedTroves
+  let sortedCdps
   let borrowerOperations
 
-  const skyrocketPriceAndCheckAllTrovesSafe = async () => {
+  const skyrocketPriceAndCheckAllCdpsSafe = async () => {
         // price skyrockets, therefore no undercollateralized troes
         await priceFeed.setPrice(dec(1000, 18));
-        const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), dec(1000, 18))
+        const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), dec(1000, 18))
         assert.isTrue(lowestICR.gt(toBN(dec(110, 16))))
   }
 
@@ -42,8 +42,8 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     const randomDefaulterIndex = Math.floor(Math.random() * (remainingDefaulters.length))
     const randomDefaulter = remainingDefaulters[randomDefaulterIndex]
 
-    const liquidatedEBTC = (await cdpManager.Troves(randomDefaulter))[0]
-    const liquidatedETH = (await cdpManager.Troves(randomDefaulter))[1]
+    const liquidatedEBTC = (await cdpManager.Cdps(randomDefaulter))[0]
+    const liquidatedETH = (await cdpManager.Cdps(randomDefaulter))[1]
 
     const price = await priceFeed.getPrice()
     const ICR = (await cdpManager.getCurrentICR(randomDefaulter, price)).toString()
@@ -102,41 +102,41 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     }
   }
 
-  const systemContainsTroveUnder110 = async (price) => {
-    const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), price)
+  const systemContainsCdpUnder110 = async (price) => {
+    const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(110, 16)): ${lowestICR.lt(toBN(dec(110, 16)))}`)
     return lowestICR.lt(dec(110, 16))
   }
 
-  const systemContainsTroveUnder100 = async (price) => {
-    const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), price)
+  const systemContainsCdpUnder100 = async (price) => {
+    const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(100, 16)): ${lowestICR.lt(toBN(dec(100, 16)))}`)
     return lowestICR.lt(dec(100, 16))
   }
 
-  const getTotalDebtFromUndercollateralizedTroves = async (n, price) => {
+  const getTotalDebtFromUndercollateralizedCdps = async (n, price) => {
     let totalDebt = ZERO
-    let cdp = await sortedTroves.getLast()
+    let cdp = await sortedCdps.getLast()
 
     for (let i = 0; i < n; i++) {
       const ICR = await cdpManager.getCurrentICR(cdp, price)
       const debt = ICR.lt(toBN(dec(110, 16))) ? (await cdpManager.getEntireDebtAndColl(cdp))[0] : ZERO
 
       totalDebt = totalDebt.add(debt)
-      cdp = await sortedTroves.getPrev(cdp)
+      cdp = await sortedCdps.getPrev(cdp)
     }
 
     return totalDebt
   }
 
-  const clearAllUndercollateralizedTroves = async (price) => {
+  const clearAllUndercollateralizedCdps = async (price) => {
     /* Somewhat arbitrary way to clear under-collateralized cdps: 
     *
     * - If system is in Recovery Mode and contains cdps with ICR < 100, whale draws the lowest cdp's debt amount 
     * and sends to lowest cdp owner, who then closes their cdp.
     *
     * - If system contains cdps with ICR < 110, whale simply draws and makes an SP deposit 
-    * equal to the debt of the last 50 cdps, before a liquidateTroves tx hits the last 50 cdps.
+    * equal to the debt of the last 50 cdps, before a liquidateCdps tx hits the last 50 cdps.
     *
     * The intent is to avoid the system entering an endless loop where the SP is empty and debt is being forever liquidated/recycled 
     * between active cdps, and the existence of some under-collateralized cdps blocks all SP depositors from withdrawing.
@@ -144,23 +144,23 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     * Since the purpose of the fuzz test is to see if SP depositors can indeed withdraw *when they should be able to*,
     * we first need to put the system in a state with no under-collateralized cdps (which are supposed to block SP withdrawals).
     */
-    while(await systemContainsTroveUnder100(price) && await cdpManager.checkRecoveryMode()) {
-      const lowestTrove = await sortedTroves.getLast()
-      const lastTroveDebt = (await cdpManager.getEntireDebtAndColl(cdp))[0]
-      await borrowerOperations.adjustTrove(0, 0 , lastTroveDebt, true, whale, {from: whale})
-      await ebtcToken.transfer(lowestTrove, lowestTroveDebt, {from: whale})
-      await borrowerOperations.closeTrove({from: lowestTrove})
+    while(await systemContainsCdpUnder100(price) && await cdpManager.checkRecoveryMode()) {
+      const lowestCdp = await sortedCdps.getLast()
+      const lastCdpDebt = (await cdpManager.getEntireDebtAndColl(cdp))[0]
+      await borrowerOperations.adjustCdp(0, 0 , lastCdpDebt, true, whale, {from: whale})
+      await ebtcToken.transfer(lowestCdp, lowestCdpDebt, {from: whale})
+      await borrowerOperations.closeCdp({from: lowestCdp})
     }
 
-    while (await systemContainsTroveUnder110(price)) {
-      const debtLowest50Troves = await getTotalDebtFromUndercollateralizedTroves(50, price)
+    while (await systemContainsCdpUnder110(price)) {
+      const debtLowest50Cdps = await getTotalDebtFromUndercollateralizedCdps(50, price)
       
-      if (debtLowest50Troves.gt(ZERO)) {
-        await borrowerOperations.adjustTrove(0, 0 , debtLowest50Troves, true, whale, {from: whale})
-        await stabilityPool.provideToSP(debtLowest50Troves, {from: whale})
+      if (debtLowest50Cdps.gt(ZERO)) {
+        await borrowerOperations.adjustCdp(0, 0 , debtLowest50Cdps, true, whale, {from: whale})
+        await stabilityPool.provideToSP(debtLowest50Cdps, {from: whale})
       }
       
-      await cdpManager.liquidateTroves(50)
+      await cdpManager.liquidateCdps(50)
     }
   }
 
@@ -223,7 +223,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       stabilityPool = contracts.stabilityPool
       cdpManager = contracts.cdpManager
       borrowerOperations = contracts.borrowerOperations
-      sortedTroves = contracts.sortedTroves
+      sortedCdps = contracts.sortedCdps
 
       await deploymentHelper.connectLQTYContracts(LQTYContracts)
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -240,7 +240,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
     it("Defaulters' Collateral in range [1, 1e8]. SP Deposits in range [100, 1e10]. ETH:USD = 100", async () => {
       // whale adds coll that holds TCR > 150%
-      await borrowerOperations.openTrove(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
+      await borrowerOperations.openCdp(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
 
       const numberOfOps = 5
       const defaulterAccounts = accounts.slice(1, numberOfOps)
@@ -263,7 +263,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       // setup:
       // account set L all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(defaulterCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(defaulterCollMin,
         defaulterCollMax,
         defaulterAccounts,
         contracts,
@@ -272,7 +272,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
         true)
 
       // account set S all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(depositorCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(depositorCollMin,
         depositorCollMax,
         depositorAccounts,
         contracts,
@@ -292,7 +292,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
           currentDepositorsDict)
       }
 
-      await skyrocketPriceAndCheckAllTrovesSafe()
+      await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
       const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
@@ -314,7 +314,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
     it("Defaulters' Collateral in range [1, 10]. SP Deposits in range [1e8, 1e10]. ETH:USD = 100", async () => {
       // whale adds coll that holds TCR > 150%
-      await borrowerOperations.openTrove(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
+      await borrowerOperations.openCdp(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
 
       const numberOfOps = 5
       const defaulterAccounts = accounts.slice(1, numberOfOps)
@@ -337,7 +337,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       // setup:
       // account set L all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(defaulterCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(defaulterCollMin,
         defaulterCollMax,
         defaulterAccounts,
         contracts,
@@ -345,7 +345,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
         defaulterEBTCProportionMax)
 
       // account set S all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(depositorCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(depositorCollMin,
         depositorCollMax,
         depositorAccounts,
         contracts,
@@ -364,7 +364,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
           currentDepositorsDict)
       }
 
-      await skyrocketPriceAndCheckAllTrovesSafe()
+      await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
       const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
@@ -386,7 +386,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
     it("Defaulters' Collateral in range [1e6, 1e8]. SP Deposits in range [100, 1000]. Every liquidation empties the Pool. ETH:USD = 100", async () => {
       // whale adds coll that holds TCR > 150%
-      await borrowerOperations.openTrove(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
+      await borrowerOperations.openCdp(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
 
       const numberOfOps = 5
       const defaulterAccounts = accounts.slice(1, numberOfOps)
@@ -409,7 +409,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       // setup:
       // account set L all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(defaulterCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(defaulterCollMin,
         defaulterCollMax,
         defaulterAccounts,
         contracts,
@@ -417,7 +417,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
         defaulterEBTCProportionMax)
 
       // account set S all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(depositorCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(depositorCollMin,
         depositorCollMax,
         depositorAccounts,
         contracts,
@@ -436,7 +436,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
           currentDepositorsDict)
       }
 
-      await skyrocketPriceAndCheckAllTrovesSafe()
+      await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
       const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
@@ -458,7 +458,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
     it("Defaulters' Collateral in range [1e6, 1e8]. SP Deposits in range [1e8 1e10]. ETH:USD = 100", async () => {
       // whale adds coll that holds TCR > 150%
-      await borrowerOperations.openTrove(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
+      await borrowerOperations.openCdp(0, 0, whale, whale, { from: whale, value: dec(5, 29) })
 
       // price drops, all L liquidateable
       const numberOfOps = 5
@@ -482,7 +482,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       // setup:
       // account set L all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(defaulterCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(defaulterCollMin,
         defaulterCollMax,
         defaulterAccounts,
         contracts,
@@ -490,7 +490,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
         defaulterEBTCProportionMax)
 
       // account set S all add coll and withdraw EBTC
-      await th.openTrove_allAccounts_randomETH_randomEBTC(depositorCollMin,
+      await th.openCdp_allAccounts_randomETH_randomEBTC(depositorCollMin,
         depositorCollMax,
         depositorAccounts,
         contracts,
@@ -509,7 +509,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
           currentDepositorsDict)
       }
 
-      await skyrocketPriceAndCheckAllTrovesSafe()
+      await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
       const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()

@@ -26,7 +26,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     // --- Events ---
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
@@ -52,7 +52,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         activePoolAddress = _activePoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_cdpManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -71,7 +71,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     // --- Pool functionality ---
 
     function accountSurplus(address _account, uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
 
         uint newAmount = balances[_account].add(_amount);
         balances[_account] = newAmount;
@@ -102,10 +102,10 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
             "CollSurplusPool: Caller is not Borrower Operations");
     }
 
-    function _requireCallerIsTroveManager() internal view {
+    function _requireCallerIsCdpManager() internal view {
         require(
             msg.sender == cdpManagerAddress,
-            "CollSurplusPool: Caller is not TroveManager");
+            "CollSurplusPool: Caller is not CdpManager");
     }
 
     function _requireCallerIsActivePool() internal view {

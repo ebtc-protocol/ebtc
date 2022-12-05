@@ -6,7 +6,7 @@ Uniswp addr: 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 Uniswap Factory number of pairs: 32192
 deployer's ETH balance before deployments: 6977466151391335371
 Using previously deployed priceFeed contract at address 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
-Using previously deployed sortedTroves contract at address 0xb8493cD0E7135462502DF048deeFc9b650fa789F
+Using previously deployed sortedCdps contract at address 0xb8493cD0E7135462502DF048deeFc9b650fa789F
 Using previously deployed cdpManager contract at address 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 Using previously deployed activePool contract at address 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 Using previously deployed stabilityPool contract at address 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
@@ -21,7 +21,7 @@ No Etherscan Url defined, skipping verification
 Contract objects addresses:
 priceFeed: 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
 ebtcToken: 0xaa052d8b915c9311e5EA234dd24105d6208087A5
-sortedTroves: 0xb8493cD0E7135462502DF048deeFc9b650fa789F
+sortedCdps: 0xb8493cD0E7135462502DF048deeFc9b650fa789F
 cdpManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 activePool: 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 stabilityPool: 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
@@ -38,7 +38,7 @@ Using previously deployed lockupContractFactory contract at address 0xe6dEcadA1d
 Using previously deployed communityIssuance contract at address 0x89c5eaD36eCA8d7c0840ddD461d406Ad637CD35D
 Using previously deployed lqtyToken contract at address 0x05F1b3d2C7C90A61DA377942A35DF94B80537790
 No Etherscan Url defined, skipping verification
-Using previously deployed multiTroveGetter contract at address 0x1AfE186670C7DAF5E085ae6269Da9762621F2b71
+Using previously deployed multiCdpGetter contract at address 0x1AfE186670C7DAF5E085ae6269Da9762621F2b71
 No Etherscan Url defined, skipping verification
 Contract objects addresses:
 lqtyStaking: 0x3d130ccbabe9b3561bb1f45f9605EDF2944C9Ee5
@@ -135,7 +135,7 @@ deployer EBTC bal after withdrawing staking gains: 2312.174204161781052766
 EBTC-ETH Pair's current EBTC reserves: 40.036378355965833891
 EBTC-ETH Pair's current ETH reserves: .188993756164807541
 number of cdps: 3 
-Trove list size: 3 
+Cdp list size: 3 
 Entire system debt: 7615.950000000000000000
 Entire system coll: 6.000000000000000000
 Base rate: .000000000000000000
@@ -143,7 +143,7 @@ Current borrowing rate: .005000000000000000
 Total EBTC SP deposits: 34.160000000000000000
 Total LQTY staked: 78.000000000000000000
 Total LP (EBTC-ETH) tokens staked in unipool: .552691887045032822
-TroveManager state variables:
+CdpManager state variables:
 Total cdp stakes: 6.000000000000000000
 Snapshot of total cdp stakes before last liq. : .000000000000000000
 Snapshot of total cdp collateral before last liq. : .000000000000000000

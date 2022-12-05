@@ -14,8 +14,8 @@ contract BorrowerOperationsScript is CheckContract {
         borrowerOperations = _borrowerOperations;
     }
 
-    function openTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
-        borrowerOperations.openTrove{ value: msg.value }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
+    function openCdp(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+        borrowerOperations.openCdp{ value: msg.value }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable {
@@ -34,12 +34,12 @@ contract BorrowerOperationsScript is CheckContract {
         borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
-    function closeTrove(bytes32 _cdpId) external {
-        borrowerOperations.closeTrove(_cdpId);
+    function closeCdp(bytes32 _cdpId) external {
+        borrowerOperations.closeCdp(_cdpId);
     }
 
-    function adjustTrove(bytes32 _cdpId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable {
-        borrowerOperations.adjustTrove{ value: msg.value }(_cdpId, _maxFee, _collWithdrawal, _debtChange, isDebtIncrease, _upperHint, _lowerHint);
+    function adjustCdp(bytes32 _cdpId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+        borrowerOperations.adjustCdp{ value: msg.value }(_cdpId, _maxFee, _collWithdrawal, _debtChange, isDebtIncrease, _upperHint, _lowerHint);
     }
 
     function claimCollateral() external {

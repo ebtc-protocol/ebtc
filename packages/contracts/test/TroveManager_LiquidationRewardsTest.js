@@ -7,14 +7,14 @@ const toBN = th.toBN
 const getDifference = th.getDifference
 const mv = testHelpers.MoneyValues
 
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const EBTCToken = artifacts.require("EBTCToken")
 
 const GAS_PRICE = 10000000000 //10 GWEI
 
 const hre = require("hardhat");
 
-contract('TroveManager - Redistribution reward calculations', async accounts => {
+contract('CdpManager - Redistribution reward calculations', async accounts => {
 
   const [
     owner,
@@ -28,7 +28,7 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let nameRegistry
   let activePool
@@ -39,9 +39,9 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   let contracts
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
   before(async () => {	  
     // let _forkBlock = hre.network.config['forking']['blockNumber'];
@@ -54,7 +54,7 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await TroveManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.stabilityPool.address,
@@ -64,7 +64,7 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     nameRegistry = contracts.nameRegistry
     activePool = contracts.activePool
@@ -91,10 +91,10 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: A, B Open. B Liquidated. C, D Open. D Liquidated. Distributes correct rewards", async () => {
     // A, B open cdp
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: bob } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: bob } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
@@ -103,18 +103,18 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // L1: B liquidated
-    const txB = await cdpManager.liquidate(_bobTroveId)
+    const txB = await cdpManager.liquidate(_bobCdpId)
     assert.isTrue(txB.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_bobTroveId))
+    assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // C, D open cdps
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: carol } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: dennis } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: carol } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: dennis } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
@@ -123,16 +123,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // L2: D Liquidated
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txB.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Get entire coll of A and C
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
-    const carol_Coll = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     /* Expected collateral:
@@ -158,12 +158,12 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: A, B, C Open. C Liquidated. D, E, F Open. F Liquidated. Distributes correct rewards", async () => {
     // A, B C open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
@@ -172,20 +172,20 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // L1: C liquidated
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // D, E, F open cdps
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: dennis } })
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: erin } })
-    const { collateral: F_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: freddy } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    let _freddyTroveId = await sortedTroves.cdpOfOwnerByIndex(freddy, 0);
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: dennis } })
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: erin } })
+    const { collateral: F_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: freddy } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
@@ -194,22 +194,22 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // L2: F Liquidated
-    const txF = await cdpManager.liquidate(_freddyTroveId)
+    const txF = await cdpManager.liquidate(_freddyCdpId)
     assert.isTrue(txF.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_freddyTroveId))
+    assert.isFalse(await sortedCdps.contains(_freddyCdpId))
 
     // Get entire coll of A, B, D and E
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
-    const dennis_Coll = ((await cdpManager.Troves(_dennisTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_dennisTroveId)))
+    const dennis_Coll = ((await cdpManager.Cdps(_dennisCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_dennisCdpId)))
       .toString()
-    const erin_Coll = ((await cdpManager.Troves(_erinTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_erinTroveId)))
+    const erin_Coll = ((await cdpManager.Cdps(_erinCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_erinCdpId)))
       .toString()
 
     /* Expected collateral:
@@ -247,94 +247,94 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: Sequence of alternate opening/liquidation: final surviving cdp has ETH from all previously liquidated cdps", async () => {
     // A, B  open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: bob } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: bob } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     // Price drops to 1 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // L1: A liquidated
-    const txA = await cdpManager.liquidate(_aliceTroveId)
+    const txA = await cdpManager.liquidate(_aliceCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+    assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
     // C, opens cdp
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // L2: B Liquidated
-    const txB = await cdpManager.liquidate(_bobTroveId)
+    const txB = await cdpManager.liquidate(_bobCdpId)
     assert.isTrue(txB.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_bobTroveId))
+    assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
     // D opens cdp
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // L3: C Liquidated
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
     // E opens cdp
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: erin } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // L4: D Liquidated
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txD.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
     // F opens cdp
-    const { collateral: F_coll } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: freddy } })
-    let _freddyTroveId = await sortedTroves.cdpOfOwnerByIndex(freddy, 0);
+    const { collateral: F_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: freddy } })
+    let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // L5: E Liquidated
-    const txE = await cdpManager.liquidate(_erinTroveId)
+    const txE = await cdpManager.liquidate(_erinCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_erinTroveId))
+    assert.isFalse(await sortedCdps.contains(_erinCdpId))
 
     // Get entire coll of A, B, D, E and F
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
-    const carol_Coll = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
-    const dennis_Coll = ((await cdpManager.Troves(_dennisTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_dennisTroveId)))
+    const dennis_Coll = ((await cdpManager.Cdps(_dennisCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_dennisCdpId)))
       .toString()
-    const erin_Coll = ((await cdpManager.Troves(_erinTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_erinTroveId)))
+    const erin_Coll = ((await cdpManager.Cdps(_erinCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_erinCdpId)))
       .toString()
 
-    const freddy_rawColl = (await cdpManager.Troves(_freddyTroveId))[1].toString()
-    const freddy_ETHReward = (await cdpManager.getPendingETHReward(_freddyTroveId)).toString()
+    const freddy_rawColl = (await cdpManager.Cdps(_freddyCdpId))[1].toString()
+    const freddy_ETHReward = (await cdpManager.getPendingETHReward(_freddyCdpId)).toString()
 
     /* Expected collateral:
      A-E should have been liquidated
@@ -365,36 +365,36 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(1000, 18))
   })
 
-  // ---Trove adds collateral --- 
+  // ---Cdp adds collateral --- 
 
   // Test based on scenario in: https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution: A,B,C,D,E open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt", async () => {
     // A, B, C, D, E open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
-    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
-    let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
+    let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+    let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
-    const txA = await cdpManager.liquidate(_aTroveId)
+    const txA = await cdpManager.liquidate(_aCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aTroveId))
+    assert.isFalse(await sortedCdps.contains(_aCdpId))
 
     // Check entireColl for each cdp:
-    const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const C_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _cTroveId)).entireColl
-    const D_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
-    const E_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _eTroveId)).entireColl
+    const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const C_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _cCdpId)).entireColl
+    const D_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
+    const E_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     const totalCollAfterL1 = B_coll.add(C_coll).add(D_coll).add(E_coll)
     const B_collAfterL1 = B_coll.add(th.applyLiquidationFee(A_coll).mul(B_coll).div(totalCollAfterL1))
@@ -408,16 +408,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
     // Bob adds 1 ETH to his cdp
     const addedColl1 = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bTroveId, _bTroveId, _bTroveId, { from: B, value: addedColl1 })
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: addedColl1 })
 
     // Liquidate C
-    const txC = await cdpManager.liquidate(_cTroveId)
+    const txC = await cdpManager.liquidate(_cCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_cTroveId))
+    assert.isFalse(await sortedCdps.contains(_cCdpId))
 
-    const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const D_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
-    const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eTroveId)).entireColl
+    const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const D_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
+    const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     const totalCollAfterL2 = B_collAfterL1.add(addedColl1).add(D_collAfterL1).add(E_collAfterL1)
     const B_collAfterL2 = B_collAfterL1.add(addedColl1).add(th.applyLiquidationFee(C_collAfterL1).mul(B_collAfterL1.add(addedColl1)).div(totalCollAfterL2))
@@ -431,19 +431,19 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
     // Bob adds 1 ETH to his cdp
     const addedColl2 = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bTroveId, _bTroveId, _bTroveId, { from: B, value: addedColl2 })
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: addedColl2 })
 
     // Liquidate E
-    const txE = await cdpManager.liquidate(_eTroveId)
+    const txE = await cdpManager.liquidate(_eCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_eTroveId))
+    assert.isFalse(await sortedCdps.contains(_eCdpId))
 
     const totalCollAfterL3 = B_collAfterL2.add(addedColl2).add(D_collAfterL2)
     const B_collAfterL3 = B_collAfterL2.add(addedColl2).add(th.applyLiquidationFee(E_collAfterL2).mul(B_collAfterL2.add(addedColl2)).div(totalCollAfterL3))
     const D_collAfterL3 = D_collAfterL2.add(th.applyLiquidationFee(E_collAfterL2).mul(D_collAfterL2).div(totalCollAfterL3))
 
-    const B_entireColl_3 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const D_entireColl_3 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
+    const B_entireColl_3 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const D_entireColl_3 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
 
     const diff_entireColl_B = getDifference(B_entireColl_3, B_collAfterL3)
     const diff_entireColl_D = getDifference(D_entireColl_3, D_collAfterL3)
@@ -455,44 +455,44 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
   // Test based on scenario in: https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution: A,B,C,D open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt", async () => {
     // A, B, C, D, E open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
-    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
-    let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
+    let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+    let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Check entireColl for each cdp:
-    const A_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _aTroveId)).entireColl
-    const B_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const C_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _cTroveId)).entireColl
-    const D_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
-    const E_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _eTroveId)).entireColl
+    const A_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _aCdpId)).entireColl
+    const B_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const C_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _cCdpId)).entireColl
+    const D_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
+    const E_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding A 
     const denominatorColl_1 = (await cdpManager.getEntireSystemColl()).sub(A_entireColl_0)
 
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
-    const txA = await cdpManager.liquidate(_aTroveId)
+    const txA = await cdpManager.liquidate(_aCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aTroveId))
+    assert.isFalse(await sortedCdps.contains(_aCdpId))
 
     const A_collRedistribution = A_entireColl_0.mul(toBN(995)).div(toBN(1000)) // remove the gas comp
 
     // console.log(`A_collRedistribution: ${A_collRedistribution}`)
     // Check accumulated ETH gain for each cdp
-    const B_ETHGain_1 = await cdpManager.getPendingETHReward(_bTroveId)
-    const C_ETHGain_1 = await cdpManager.getPendingETHReward(_cTroveId)
-    const D_ETHGain_1 = await cdpManager.getPendingETHReward(_dTroveId)
-    const E_ETHGain_1 = await cdpManager.getPendingETHReward(_eTroveId)
+    const B_ETHGain_1 = await cdpManager.getPendingETHReward(_bCdpId)
+    const C_ETHGain_1 = await cdpManager.getPendingETHReward(_cCdpId)
+    const D_ETHGain_1 = await cdpManager.getPendingETHReward(_dCdpId)
+    const E_ETHGain_1 = await cdpManager.getPendingETHReward(_eCdpId)
 
     // Check gains are what we'd expect from a distribution proportional to each cdp's entire coll
     const B_expectedPendingETH_1 = A_collRedistribution.mul(B_entireColl_0).div(denominatorColl_1)
@@ -506,28 +506,28 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isAtMost(getDifference(E_expectedPendingETH_1, E_ETHGain_1), 1e8)
 
     // // Bob adds 1 ETH to his cdp
-    await borrowerOperations.addColl(_bTroveId, _bTroveId, _bTroveId, { from: B, value: dec(1, 'ether') })
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: dec(1, 'ether') })
 
     // Check entireColl for each cdp
-    const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const C_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _cTroveId)).entireColl
-    const D_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
-    const E_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _eTroveId)).entireColl
+    const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const C_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _cCdpId)).entireColl
+    const D_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
+    const E_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding C
     const denominatorColl_2 = (await cdpManager.getEntireSystemColl()).sub(C_entireColl_1)
 
     // Liquidate C
-    const txC = await cdpManager.liquidate(_cTroveId)
+    const txC = await cdpManager.liquidate(_cCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_cTroveId))
+    assert.isFalse(await sortedCdps.contains(_cCdpId))
 
     const C_collRedistribution = C_entireColl_1.mul(toBN(995)).div(toBN(1000)) // remove the gas comp
     // console.log(`C_collRedistribution: ${C_collRedistribution}`)
 
-    const B_ETHGain_2 = await cdpManager.getPendingETHReward(_bTroveId)
-    const D_ETHGain_2 = await cdpManager.getPendingETHReward(_dTroveId)
-    const E_ETHGain_2 = await cdpManager.getPendingETHReward(_eTroveId)
+    const B_ETHGain_2 = await cdpManager.getPendingETHReward(_bCdpId)
+    const D_ETHGain_2 = await cdpManager.getPendingETHReward(_dCdpId)
+    const E_ETHGain_2 = await cdpManager.getPendingETHReward(_eCdpId)
 
     // Since B topped up, he has no previous pending ETH gain
     const B_expectedPendingETH_2 = C_collRedistribution.mul(B_entireColl_1).div(denominatorColl_2)
@@ -544,26 +544,26 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.isAtMost(getDifference(E_expectedPendingETH_2, E_ETHGain_2), 1e8)
 
     // // Bob adds 1 ETH to his cdp
-    await borrowerOperations.addColl(_bTroveId, _bTroveId, _bTroveId, { from: B, value: dec(1, 'ether') })
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: dec(1, 'ether') })
 
     // Check entireColl for each cdp
-    const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bTroveId)).entireColl
-    const D_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _dTroveId)).entireColl
-    const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eTroveId)).entireColl
+    const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    const D_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
+    const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding E
     const denominatorColl_3 = (await cdpManager.getEntireSystemColl()).sub(E_entireColl_2)
 
     // Liquidate E
-    const txE = await cdpManager.liquidate(_eTroveId)
+    const txE = await cdpManager.liquidate(_eCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_eTroveId))
+    assert.isFalse(await sortedCdps.contains(_eCdpId))
 
     const E_collRedistribution = E_entireColl_2.mul(toBN(995)).div(toBN(1000)) // remove the gas comp
     // console.log(`E_collRedistribution: ${E_collRedistribution}`)
 
-    const B_ETHGain_3 = await cdpManager.getPendingETHReward(_bTroveId)
-    const D_ETHGain_3 = await cdpManager.getPendingETHReward(_dTroveId)
+    const B_ETHGain_3 = await cdpManager.getPendingETHReward(_bCdpId)
+    const D_ETHGain_3 = await cdpManager.getPendingETHReward(_dCdpId)
 
     // Since B topped up, he has no previous pending ETH gain
     const B_expectedPendingETH_3 = E_collRedistribution.mul(B_entireColl_2).div(denominatorColl_3)
@@ -578,46 +578,46 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: A,B,C Open. Liq(C). B adds coll. Liq(A). B acquires all coll and debt", async () => {
     // A, B, C open cdps
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Carol
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob, value: addedColl })
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceTroveId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Alice
-    const txA = await cdpManager.liquidate(_aliceTroveId)
+    const txA = await cdpManager.liquidate(_aliceCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+    assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
     // Expect Bob now holds all Ether and EBTCDebt in the system: 2 + 0.4975+0.4975*0.995+0.995 Ether and 110*3 EBTC (10 each for gas compensation)
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const bob_EBTCDebt = ((await cdpManager.Troves(_bobTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_bobTroveId)))
+    const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_bobCdpId)))
       .toString()
 
     const expected_B_coll = B_coll
@@ -631,39 +631,39 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: A,B,C Open. Liq(C). B tops up coll. D Opens. Liq(D). Distributes correct rewards.", async () => {
     // A, B, C open cdps
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Carol
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob, value: addedColl })
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
 
     // D opens cdp
-    const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate D
-    const txA = await cdpManager.liquidate(_dennisTroveId)
+    const txA = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     /* Bob rewards:
      L1: 1/2*0.995 ETH, 55 EBTC
@@ -682,20 +682,20 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     totalColl: 4.99 ETH
     totalDebt 380 EBTC (includes 50 each for gas compensation)
     */
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const bob_EBTCDebt = ((await cdpManager.Troves(_bobTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_bobTroveId)))
+    const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_bobCdpId)))
       .toString()
 
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const alice_EBTCDebt = ((await cdpManager.Troves(_aliceTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_aliceTroveId)))
+    const alice_EBTCDebt = ((await cdpManager.Cdps(_aliceCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(addedColl).add(th.applyLiquidationFee(C_coll))
@@ -719,33 +719,33 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
   })
 
-  it("redistribution: Trove with the majority stake tops up. A,B,C, D open. Liq(D). C tops up. E Enters, Liq(E). Distributes correct rewards", async () => {
+  it("redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). C tops up. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C, D open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Dennis
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txD.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH
-    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceTroveId)
-    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobTroveId)
-    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolTroveId)
+    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
+    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobCdpId)
+    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolCdpId)
 
     //Expect 1000 + 1000*0.995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH()).toString()
@@ -758,23 +758,23 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
     //Carol adds 1 ETH to her cdp, brings it to 1992.01 total coll
     const C_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol, value: dec(1, 'ether') })
+    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol, value: dec(1, 'ether') })
 
     //Expect 1996 ETH in system now
     const entireSystemColl_2 = (await activePool.getETH()).add(await defaultPool.getETH())
     th.assertIsApproximatelyEqual(entireSystemColl_2, totalColl.add(th.applyLiquidationFee(D_coll)).add(C_addedColl))
 
     // E opens with another 1996 ETH
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Erin
-    const txE = await cdpManager.liquidate(_erinTroveId)
+    const txE = await cdpManager.liquidate(_erinCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_erinTroveId))
+    assert.isFalse(await sortedCdps.contains(_erinCdpId))
 
     /* Expected ETH rewards: 
      Carol = 1992.01/1996 * 1996*0.995 = 1982.05 ETH
@@ -790,16 +790,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     total = 3982.02 ETH
     */
 
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const carol_Coll = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(D_coll)).add(C_addedColl)
@@ -822,33 +822,33 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
   })
 
-  it("redistribution: Trove with the majority stake tops up. A,B,C, D open. Liq(D). A, B, C top up. E Enters, Liq(E). Distributes correct rewards", async () => {
+  it("redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). A, B, C top up. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Dennis
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txD.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
-    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceTroveId)
-    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobTroveId)
-    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolTroveId)
+    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
+    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobCdpId)
+    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolCdpId)
 
     //Expect 1995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH()).toString()
@@ -863,25 +863,25 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     bringing them to 2.995, 2.995, 1992.01 total coll each. */
 
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice, value: addedColl })
-    await borrowerOperations.addColl(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob, value: addedColl })
-    await borrowerOperations.addColl(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol, value: addedColl })
+    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice, value: addedColl })
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
+    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol, value: addedColl })
 
     //Expect 1998 ETH in system now
     const entireSystemColl_2 = (await activePool.getETH()).add(await defaultPool.getETH()).toString()
     th.assertIsApproximatelyEqual(entireSystemColl_2, totalColl.add(th.applyLiquidationFee(D_coll)).add(addedColl.mul(toBN(3))))
 
     // E opens with another 1998 ETH
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Erin
-    const txE = await cdpManager.liquidate(_erinTroveId)
+    const txE = await cdpManager.liquidate(_erinCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_erinTroveId))
+    assert.isFalse(await sortedCdps.contains(_erinCdpId))
 
     /* Expected ETH rewards: 
      Carol = 1992.01/1998 * 1998*0.995 = 1982.04995 ETH
@@ -897,16 +897,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     total = 3986.01 ETH
     */
 
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const carol_Coll = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(D_coll)).add(addedColl.mul(toBN(3)))
@@ -929,51 +929,51 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
   })
 
-  // --- Trove withdraws collateral ---
+  // --- Cdp withdraws collateral ---
 
   it("redistribution: A,B,C Open. Liq(C). B withdraws coll. Liq(A). B acquires all coll and debt", async () => {
     // A, B, C open cdps
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Carol
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     //Bob withdraws 0.5 ETH from his cdp
     const withdrawnColl = toBN(dec(500, 'finney'))
-    await borrowerOperations.withdrawColl(_bobTroveId, withdrawnColl, _bobTroveId, _bobTroveId, { from: bob })
+    await borrowerOperations.withdrawColl(_bobCdpId, withdrawnColl, _bobCdpId, _bobCdpId, { from: bob })
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceTroveId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Alice
-    const txA = await cdpManager.liquidate(_aliceTroveId)
+    const txA = await cdpManager.liquidate(_aliceCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+    assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
     // Expect Bob now holds all Ether and EBTCDebt in the system: 2.5 Ether and 300 EBTC
     // 1 + 0.995/2 - 0.5 + 1.4975*0.995
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const bob_EBTCDebt = ((await cdpManager.Troves(_bobTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_bobTroveId)))
+    const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_bobCdpId)))
       .toString()
 
     const expected_B_coll = B_coll
@@ -990,39 +990,39 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
   it("redistribution: A,B,C Open. Liq(C). B withdraws coll. D Opens. Liq(D). Distributes correct rewards.", async () => {
     // A, B, C open cdps
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Carol
-    const txC = await cdpManager.liquidate(_carolTroveId)
+    const txC = await cdpManager.liquidate(_carolCdpId)
     assert.isTrue(txC.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_carolTroveId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     //Bob  withdraws 0.5 ETH from his cdp
     const withdrawnColl = toBN(dec(500, 'finney'))
-    await borrowerOperations.withdrawColl(_bobTroveId, withdrawnColl, _bobTroveId, _bobTroveId, { from: bob })
+    await borrowerOperations.withdrawColl(_bobCdpId, withdrawnColl, _bobCdpId, _bobCdpId, { from: bob })
 
     // D opens cdp
-    const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate D
-    const txA = await cdpManager.liquidate(_dennisTroveId)
+    const txA = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     /* Bob rewards:
      L1: 0.4975 ETH, 55 EBTC
@@ -1041,20 +1041,20 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     totalColl: 3.49 ETH
     totalDebt 380 EBTC (Includes 50 in each cdp for gas compensation)
     */
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const bob_EBTCDebt = ((await cdpManager.Troves(_bobTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_bobTroveId)))
+    const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_bobCdpId)))
       .toString()
 
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const alice_EBTCDebt = ((await cdpManager.Troves(_aliceTroveId))[0]
-      .add(await cdpManager.getPendingEBTCDebtReward(_aliceTroveId)))
+    const alice_EBTCDebt = ((await cdpManager.Cdps(_aliceCdpId))[0]
+      .add(await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).sub(withdrawnColl).add(th.applyLiquidationFee(C_coll))
@@ -1083,33 +1083,33 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
   })
 
-  it("redistribution: Trove with the majority stake withdraws. A,B,C,D open. Liq(D). C withdraws some coll. E Enters, Liq(E). Distributes correct rewards", async () => {
+  it("redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). C withdraws some coll. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C, D open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Dennis
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txD.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
-    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceTroveId)
-    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobTroveId)
-    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolTroveId)
+    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
+    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobCdpId)
+    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolCdpId)
 
     //Expect 1995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH())
@@ -1122,23 +1122,23 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
 
     //Carol wthdraws 1 ETH from her cdp, brings it to 1990.01 total coll
     const C_withdrawnColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.withdrawColl(_carolTroveId, C_withdrawnColl, _carolTroveId, _carolTroveId, { from: carol })
+    await borrowerOperations.withdrawColl(_carolCdpId, C_withdrawnColl, _carolCdpId, _carolCdpId, { from: carol })
 
     //Expect 1994 ETH in system now
     const entireSystemColl_2 = (await activePool.getETH()).add(await defaultPool.getETH())
     th.assertIsApproximatelyEqual(entireSystemColl_2, totalColl.add(th.applyLiquidationFee(D_coll)).sub(C_withdrawnColl))
 
     // E opens with another 1994 ETH
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Erin
-    const txE = await cdpManager.liquidate(_erinTroveId)
+    const txE = await cdpManager.liquidate(_erinCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_erinTroveId))
+    assert.isFalse(await sortedCdps.contains(_erinCdpId))
 
     /* Expected ETH rewards: 
      Carol = 1990.01/1994 * 1994*0.995 = 1980.05995 ETH
@@ -1154,16 +1154,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     total = 3978.03 ETH
     */
 
-    const alice_Coll = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const bob_Coll = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const carol_Coll = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(D_coll)).sub(C_withdrawnColl)
@@ -1186,33 +1186,33 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
   })
 
-  it("redistribution: Trove with the majority stake withdraws. A,B,C,D open. Liq(D). A, B, C withdraw. E Enters, Liq(E). Distributes correct rewards", async () => {
+  it("redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). A, B, C withdraw. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C, D open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
-    const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Dennis
-    const txD = await cdpManager.liquidate(_dennisTroveId)
+    const txD = await cdpManager.liquidate(_dennisCdpId)
     assert.isTrue(txD.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_dennisTroveId))
+    assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
     await priceFeed.setPrice(dec(200, 18))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
-    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceTroveId)
-    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobTroveId)
-    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolTroveId)
+    const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
+    const bob_ETHReward_1 = await cdpManager.getPendingETHReward(_bobCdpId)
+    const carol_ETHReward_1 = await cdpManager.getPendingETHReward(_carolCdpId)
 
     //Expect 1995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH())
@@ -1226,20 +1226,20 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     /* Alice, Bob, Carol each withdraw 0.5 ETH to their cdps, 
     bringing them to 1.495, 1.495, 1990.51 total coll each. */
     const withdrawnColl = toBN(dec(500, 'finney'))
-    await borrowerOperations.withdrawColl(_aliceTroveId, withdrawnColl, _aliceTroveId, _aliceTroveId, { from: alice })
-    await borrowerOperations.withdrawColl(_bobTroveId, withdrawnColl, _bobTroveId, _bobTroveId, { from: bob })
-    await borrowerOperations.withdrawColl(_carolTroveId, withdrawnColl, _carolTroveId, _carolTroveId, { from: carol })
+    await borrowerOperations.withdrawColl(_aliceCdpId, withdrawnColl, _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawColl(_bobCdpId, withdrawnColl, _bobCdpId, _bobCdpId, { from: bob })
+    await borrowerOperations.withdrawColl(_carolCdpId, withdrawnColl, _carolCdpId, _carolCdpId, { from: carol })
 
-    const alice_Coll_1 = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll_1 = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const bob_Coll_1 = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll_1 = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const carol_Coll_1 = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll_1 = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     const totalColl_1 = A_coll.add(B_coll).add(C_coll)
@@ -1252,16 +1252,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     th.assertIsApproximatelyEqual(entireSystemColl_2, totalColl.add(th.applyLiquidationFee(D_coll)).sub(withdrawnColl.mul(toBN(3))))
 
     // E opens with another 1993.5 ETH
-    const { collateral: E_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: erin, value: entireSystemColl_2 } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
 
     // Liquidate Erin
-    const txE = await cdpManager.liquidate(_erinTroveId)
+    const txE = await cdpManager.liquidate(_erinCdpId)
     assert.isTrue(txE.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_erinTroveId))
+    assert.isFalse(await sortedCdps.contains(_erinCdpId))
 
     /* Expected ETH rewards: 
      Carol = 1990.51/1993.5 * 1993.5*0.995 = 1980.55745 ETH
@@ -1277,16 +1277,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     total = 3977.0325 ETH
     */
 
-    const alice_Coll_2 = ((await cdpManager.Troves(_aliceTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_aliceTroveId)))
+    const alice_Coll_2 = ((await cdpManager.Cdps(_aliceCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_aliceCdpId)))
       .toString()
 
-    const bob_Coll_2 = ((await cdpManager.Troves(_bobTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_bobTroveId)))
+    const bob_Coll_2 = ((await cdpManager.Cdps(_bobCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_bobCdpId)))
       .toString()
 
-    const carol_Coll_2 = ((await cdpManager.Troves(_carolTroveId))[1]
-      .add(await cdpManager.getPendingETHReward(_carolTroveId)))
+    const carol_Coll_2 = ((await cdpManager.Cdps(_carolCdpId))[1]
+      .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(D_coll)).sub(withdrawnColl.mul(toBN(3)))
@@ -1313,26 +1313,26 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
   // https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution, all operations: A,B,C open. Liq(A). D opens. B adds, C withdraws. Liq(B). E & F open. D adds. Liq(F). Distributes correct rewards", async () => {
     // A, B, C open cdps
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: bob } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: carol } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 1 $/E
     await priceFeed.setPrice(dec(1, 18))
 
     // Liquidate A
-    const txA = await cdpManager.liquidate(_aliceTroveId)
+    const txA = await cdpManager.liquidate(_aliceCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+    assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
     // Check rewards for B and C
     const B_pendingRewardsAfterL1 = th.applyLiquidationFee(A_coll).mul(B_coll).div(B_coll.add(C_coll))
     const C_pendingRewardsAfterL1 = th.applyLiquidationFee(A_coll).mul(C_coll).div(B_coll.add(C_coll))
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_bobTroveId), B_pendingRewardsAfterL1), 1000000)
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolTroveId), C_pendingRewardsAfterL1), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_bobCdpId), B_pendingRewardsAfterL1), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolCdpId), C_pendingRewardsAfterL1), 1000000)
 
     const totalStakesSnapshotAfterL1 = B_coll.add(C_coll)
     const totalCollateralSnapshotAfterL1 = totalStakesSnapshotAfterL1.add(th.applyLiquidationFee(A_coll))
@@ -1343,16 +1343,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice(dec(1000, 18))
 
     // D opens cdp
-    const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     //Bob adds 1 ETH to his cdp
     const B_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob, value: B_addedColl })
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: B_addedColl })
 
     //Carol  withdraws 1 ETH from her cdp
     const C_withdrawnColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.withdrawColl(_carolTroveId, C_withdrawnColl, _carolTroveId, _carolTroveId, { from: carol })
+    await borrowerOperations.withdrawColl(_carolCdpId, C_withdrawnColl, _carolCdpId, _carolCdpId, { from: carol })
 
     const B_collAfterL1 = B_coll.add(B_pendingRewardsAfterL1).add(B_addedColl)
     const C_collAfterL1 = C_coll.add(C_pendingRewardsAfterL1).sub(C_withdrawnColl)
@@ -1361,15 +1361,15 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice(dec(1, 18))
 
     // Liquidate B
-    const txB = await cdpManager.liquidate(_bobTroveId)
+    const txB = await cdpManager.liquidate(_bobCdpId)
     assert.isTrue(txB.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_bobTroveId))
+    assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     // Check rewards for C and D
     const C_pendingRewardsAfterL2 = C_collAfterL1.mul(th.applyLiquidationFee(B_collAfterL1)).div(C_collAfterL1.add(D_coll))
     const D_pendingRewardsAfterL2 = D_coll.mul(th.applyLiquidationFee(B_collAfterL1)).div(C_collAfterL1.add(D_coll))
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolTroveId), C_pendingRewardsAfterL2), 1000000)
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_dennisTroveId), D_pendingRewardsAfterL2), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolCdpId), C_pendingRewardsAfterL2), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_dennisCdpId), D_pendingRewardsAfterL2), 1000000)
 
     const totalStakesSnapshotAfterL2 = totalStakesSnapshotAfterL1.add(D_coll.mul(totalStakesSnapshotAfterL1).div(totalCollateralSnapshotAfterL1)).sub(B_coll).sub(C_withdrawnColl.mul(totalStakesSnapshotAfterL1).div(totalCollateralSnapshotAfterL1))
     const defaultedAmountAfterL2 = th.applyLiquidationFee(B_coll.add(B_addedColl).add(B_pendingRewardsAfterL1)).add(C_pendingRewardsAfterL1)
@@ -1381,32 +1381,32 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice(dec(1000, 18))
 
     // E and F open cdps
-    const { collateral: E_coll, totalDebt: E_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: erin } })
-    const { collateral: F_coll, totalDebt: F_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: freddy } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    let _freddyTroveId = await sortedTroves.cdpOfOwnerByIndex(freddy, 0);
+    const { collateral: E_coll, totalDebt: E_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: erin } })
+    const { collateral: F_coll, totalDebt: F_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: freddy } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
     // D tops up
     const D_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis, value: D_addedColl })
+    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis, value: D_addedColl })
 
     // Price drops to 1
     await priceFeed.setPrice(dec(1, 18))
 
     // Liquidate F
-    const txF = await cdpManager.liquidate(_freddyTroveId)
+    const txF = await cdpManager.liquidate(_freddyCdpId)
     assert.isTrue(txF.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_freddyTroveId))
+    assert.isFalse(await sortedCdps.contains(_freddyCdpId))
 
     // Grab remaining cdps' collateral
-    const carol_rawColl = (await cdpManager.Troves(_carolTroveId))[1].toString()
-    const carol_pendingETHReward = (await cdpManager.getPendingETHReward(_carolTroveId)).toString()
+    const carol_rawColl = (await cdpManager.Cdps(_carolCdpId))[1].toString()
+    const carol_pendingETHReward = (await cdpManager.getPendingETHReward(_carolCdpId)).toString()
 
-    const dennis_rawColl = (await cdpManager.Troves(_dennisTroveId))[1].toString()
-    const dennis_pendingETHReward = (await cdpManager.getPendingETHReward(_dennisTroveId)).toString()
+    const dennis_rawColl = (await cdpManager.Cdps(_dennisCdpId))[1].toString()
+    const dennis_pendingETHReward = (await cdpManager.getPendingETHReward(_dennisCdpId)).toString()
 
-    const erin_rawColl = (await cdpManager.Troves(_erinTroveId))[1].toString()
-    const erin_pendingETHReward = (await cdpManager.getPendingETHReward(_erinTroveId)).toString()
+    const erin_rawColl = (await cdpManager.Cdps(_erinCdpId))[1].toString()
+    const erin_pendingETHReward = (await cdpManager.getPendingETHReward(_erinCdpId)).toString()
 
     // Check raw collateral of C, D, E
     const C_collAfterL2 = C_collAfterL1.add(C_pendingRewardsAfterL2)
@@ -1451,28 +1451,28 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     B: 8901 ETH
     C: 23.902 ETH
     */
-    const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(90000, 16)), extraParams: { from: alice, value: toBN('450000000000000000000') } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(90000, 16)), extraParams: { from: alice, value: toBN('450000000000000000000') } })
 	
     await beadpSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("180001")});
-    const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(1800000, 16)), extraParams: { from: bob, value: toBN('8901000000000000000000') } })
-    const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(4600, 16)), extraParams: { from: carol, value: toBN('23902000000000000000') } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(1800000, 16)), extraParams: { from: bob, value: toBN('8901000000000000000000') } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(4600, 16)), extraParams: { from: carol, value: toBN('23902000000000000000') } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops 
     await priceFeed.setPrice('1')
 
     // Liquidate A
-    const txA = await cdpManager.liquidate(_aliceTroveId)
+    const txA = await cdpManager.liquidate(_aliceCdpId)
     assert.isTrue(txA.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_aliceTroveId))
+    assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
     // Check rewards for B and C
     const B_pendingRewardsAfterL1 = th.applyLiquidationFee(A_coll).mul(B_coll).div(B_coll.add(C_coll))
     const C_pendingRewardsAfterL1 = th.applyLiquidationFee(A_coll).mul(C_coll).div(B_coll.add(C_coll))
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_bobTroveId), B_pendingRewardsAfterL1), 1000000)
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolTroveId), C_pendingRewardsAfterL1), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_bobCdpId), B_pendingRewardsAfterL1), 1000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolCdpId), C_pendingRewardsAfterL1), 1000000)
 
     const totalStakesSnapshotAfterL1 = B_coll.add(C_coll)
     const totalCollateralSnapshotAfterL1 = totalStakesSnapshotAfterL1.add(th.applyLiquidationFee(A_coll))
@@ -1483,16 +1483,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice(dec(1, 27))
 
     // D opens cdp: 0.035 ETH
-    const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ extraEBTCAmount: dec(100, 18), extraParams: { from: dennis, value: toBN(dec(35, 15)) } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: dennis, value: toBN(dec(35, 15)) } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Bob adds 11.33909 ETH to his cdp
     const B_addedColl = toBN('11339090000000000000')
-    await borrowerOperations.addColl(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob, value: B_addedColl })
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: B_addedColl })
 
     // Carol withdraws 15 ETH from her cdp
     const C_withdrawnColl = toBN(dec(15, 'ether'))
-    await borrowerOperations.withdrawColl(_carolTroveId, C_withdrawnColl, _carolTroveId, _carolTroveId, { from: carol })
+    await borrowerOperations.withdrawColl(_carolCdpId, C_withdrawnColl, _carolCdpId, _carolCdpId, { from: carol })
 
     const B_collAfterL1 = B_coll.add(B_pendingRewardsAfterL1).add(B_addedColl)
     const C_collAfterL1 = C_coll.add(C_pendingRewardsAfterL1).sub(C_withdrawnColl)
@@ -1501,16 +1501,16 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice('1')
 
     // Liquidate B
-    const txB = await cdpManager.liquidate(_bobTroveId)
+    const txB = await cdpManager.liquidate(_bobCdpId)
     assert.isTrue(txB.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_bobTroveId))
+    assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     // Check rewards for C and D
     const C_pendingRewardsAfterL2 = C_collAfterL1.mul(th.applyLiquidationFee(B_collAfterL1)).div(C_collAfterL1.add(D_coll))
     const D_pendingRewardsAfterL2 = D_coll.mul(th.applyLiquidationFee(B_collAfterL1)).div(C_collAfterL1.add(D_coll))
     const C_collAfterL2 = C_collAfterL1.add(C_pendingRewardsAfterL2)
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolTroveId), C_pendingRewardsAfterL2), 10000000)
-    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_dennisTroveId), D_pendingRewardsAfterL2), 10000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_carolCdpId), C_pendingRewardsAfterL2), 10000000)
+    assert.isAtMost(th.getDifference(await cdpManager.getPendingETHReward(_dennisCdpId), D_pendingRewardsAfterL2), 10000000)
 
     const totalStakesSnapshotAfterL2 = totalStakesSnapshotAfterL1.add(D_coll.mul(totalStakesSnapshotAfterL1).div(totalCollateralSnapshotAfterL1)).sub(B_coll).sub(C_withdrawnColl.mul(totalStakesSnapshotAfterL1).div(totalCollateralSnapshotAfterL1))
     const defaultedAmountAfterL2 = th.applyLiquidationFee(B_coll.add(B_addedColl).add(B_pendingRewardsAfterL1)).add(C_pendingRewardsAfterL1)
@@ -1525,14 +1525,14 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     E: 10000 ETH
     F: 0.0007 ETH
     */
-    const { collateral: E_coll, totalDebt: E_totalDebt } = await openTrove({ extraEBTCAmount: dec(100, 18), extraParams: { from: erin, value: toBN(dec(1, 22)) } })
-    const { collateral: F_coll, totalDebt: F_totalDebt } = await openTrove({ extraEBTCAmount: dec(100, 18), extraParams: { from: freddy, value: toBN('700000000000000') } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    let _freddyTroveId = await sortedTroves.cdpOfOwnerByIndex(freddy, 0);
+    const { collateral: E_coll, totalDebt: E_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: erin, value: toBN(dec(1, 22)) } })
+    const { collateral: F_coll, totalDebt: F_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: freddy, value: toBN('700000000000000') } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
     // D tops up
     const D_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis, value: D_addedColl })
+    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis, value: D_addedColl })
 
     const D_collAfterL2 = D_coll.add(D_pendingRewardsAfterL2).add(D_addedColl)
 
@@ -1540,22 +1540,22 @@ contract('TroveManager - Redistribution reward calculations', async accounts => 
     await priceFeed.setPrice('1')
 
     // Liquidate F
-    const txF = await cdpManager.liquidate(_freddyTroveId)
+    const txF = await cdpManager.liquidate(_freddyCdpId)
     assert.isTrue(txF.receipt.status)
-    assert.isFalse(await sortedTroves.contains(_freddyTroveId))
+    assert.isFalse(await sortedCdps.contains(_freddyCdpId))
 
     // Grab remaining cdps' collateral
-    const carol_rawColl = (await cdpManager.Troves(_carolTroveId))[1].toString()
-    const carol_pendingETHReward = (await cdpManager.getPendingETHReward(_carolTroveId)).toString()
-    const carol_Stake = (await cdpManager.Troves(_carolTroveId))[2].toString()
+    const carol_rawColl = (await cdpManager.Cdps(_carolCdpId))[1].toString()
+    const carol_pendingETHReward = (await cdpManager.getPendingETHReward(_carolCdpId)).toString()
+    const carol_Stake = (await cdpManager.Cdps(_carolCdpId))[2].toString()
 
-    const dennis_rawColl = (await cdpManager.Troves(_dennisTroveId))[1].toString()
-    const dennis_pendingETHReward = (await cdpManager.getPendingETHReward(_dennisTroveId)).toString()
-    const dennis_Stake = (await cdpManager.Troves(_dennisTroveId))[2].toString()
+    const dennis_rawColl = (await cdpManager.Cdps(_dennisCdpId))[1].toString()
+    const dennis_pendingETHReward = (await cdpManager.getPendingETHReward(_dennisCdpId)).toString()
+    const dennis_Stake = (await cdpManager.Cdps(_dennisCdpId))[2].toString()
 
-    const erin_rawColl = (await cdpManager.Troves(_erinTroveId))[1].toString()
-    const erin_pendingETHReward = (await cdpManager.getPendingETHReward(_erinTroveId)).toString()
-    const erin_Stake = (await cdpManager.Troves(_erinTroveId))[2].toString()
+    const erin_rawColl = (await cdpManager.Cdps(_erinCdpId))[1].toString()
+    const erin_pendingETHReward = (await cdpManager.getPendingETHReward(_erinCdpId)).toString()
+    const erin_Stake = (await cdpManager.Cdps(_erinCdpId))[2].toString()
 
     // Check raw collateral of C, D, E
     const totalCollForL3 = C_collAfterL2.add(D_collAfterL2).add(E_coll)

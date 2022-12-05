@@ -1,6 +1,6 @@
 import { Wallet } from "@ethersproject/wallet";
 
-import { Decimal, EBTC_MINIMUM_DEBT, Trove } from "@liquity/lib-base";
+import { Decimal, EBTC_MINIMUM_DEBT, Cdp } from "@liquity/lib-base";
 import { EthersLiquity } from "@liquity/lib-ethers";
 
 import { deployer, funder, provider } from "../globals";
@@ -9,12 +9,12 @@ export interface WarzoneParams {
   cdps: number;
 }
 
-export const warzone = async ({ cdps: numberOfTroves }: WarzoneParams) => {
+export const warzone = async ({ cdps: numberOfCdps }: WarzoneParams) => {
   const deployerLiquity = await EthersLiquity.connect(deployer);
 
   const price = await deployerLiquity.getPrice();
 
-  for (let i = 1; i <= numberOfTroves; ++i) {
+  for (let i = 1; i <= numberOfCdps; ++i) {
     const user = Wallet.createRandom().connect(provider);
     const userAddress = await user.getAddress();
     const debt = EBTC_MINIMUM_DEBT.add(99999 * Math.random());
@@ -29,8 +29,8 @@ export const warzone = async ({ cdps: numberOfTroves }: WarzoneParams) => {
 
     const fees = await liquity.getFees();
 
-    await liquity.openTrove(
-      Trove.recreate(new Trove(collateral, debt), fees.borrowingRate()),
+    await liquity.openCdp(
+      Cdp.recreate(new Cdp(collateral, debt), fees.borrowingRate()),
       { borrowingFeeDecayToleranceMinutes: 0 },
       { gasPrice: 0 }
     );
@@ -41,7 +41,7 @@ export const warzone = async ({ cdps: numberOfTroves }: WarzoneParams) => {
     }
 
     if (i % 10 === 0) {
-      console.log(`Created ${i} Troves.`);
+      console.log(`Created ${i} Cdps.`);
     }
 
     //await new Promise(resolve => setTimeout(resolve, 4000));

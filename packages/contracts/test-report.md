@@ -21,45 +21,45 @@ $ hardhat test
 
   Contract: Access Control: Liquity functions with the caller restricted to Liquity contract(s)
     BorrowerOperations
-      ✓ moveETHGainToTrove(): reverts when called by an account that is not StabilityPool
-    TroveManager
+      ✓ moveETHGainToCdp(): reverts when called by an account that is not StabilityPool
+    CdpManager
       ✓ applyPendingRewards(): reverts when called by an account that is not BorrowerOperations
       ✓ updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations
       ✓ removeStake(): reverts when called by an account that is not BorrowerOperations
       ✓ updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations
-      ✓ closeTrove(): reverts when called by an account that is not BorrowerOperations
-      ✓ addTroveOwnerToArray(): reverts when called by an account that is not BorrowerOperations
-      ✓ setTroveStatus(): reverts when called by an account that is not BorrowerOperations
-      ✓ increaseTroveColl(): reverts when called by an account that is not BorrowerOperations
-      ✓ decreaseTroveColl(): reverts when called by an account that is not BorrowerOperations
-      ✓ increaseTroveDebt(): reverts when called by an account that is not BorrowerOperations
-      ✓ decreaseTroveDebt(): reverts when called by an account that is not BorrowerOperations
+      ✓ closeCdp(): reverts when called by an account that is not BorrowerOperations
+      ✓ addCdpOwnerToArray(): reverts when called by an account that is not BorrowerOperations
+      ✓ setCdpStatus(): reverts when called by an account that is not BorrowerOperations
+      ✓ increaseCdpColl(): reverts when called by an account that is not BorrowerOperations
+      ✓ decreaseCdpColl(): reverts when called by an account that is not BorrowerOperations
+      ✓ increaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
+      ✓ decreaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
     ActivePool
-      ✓ sendETH(): reverts when called by an account that is not BO nor TroveM nor SP
-      ✓ increaseEBTCDebt(): reverts when called by an account that is not BO nor TroveM
-      ✓ decreaseEBTCDebt(): reverts when called by an account that is not BO nor TroveM nor SP
+      ✓ sendETH(): reverts when called by an account that is not BO nor CdpM nor SP
+      ✓ increaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM
+      ✓ decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ fallback(): reverts when called by an account that is not Borrower Operations nor Default Pool
     DefaultPool
-      ✓ sendETHToActivePool(): reverts when called by an account that is not TroveManager
-      ✓ increaseEBTCDebt(): reverts when called by an account that is not TroveManager
-      ✓ decreaseEBTC(): reverts when called by an account that is not TroveManager
+      ✓ sendETHToActivePool(): reverts when called by an account that is not CdpManager
+      ✓ increaseEBTCDebt(): reverts when called by an account that is not CdpManager
+      ✓ decreaseEBTC(): reverts when called by an account that is not CdpManager
       ✓ fallback(): reverts when called by an account that is not the Active Pool
     StabilityPool
-      ✓ offset(): reverts when called by an account that is not TroveManager
+      ✓ offset(): reverts when called by an account that is not CdpManager
       ✓ fallback(): reverts when called by an account that is not the Active Pool
     EBTCToken
       ✓ mint(): reverts when called by an account that is not BorrowerOperations
-      ✓ burn(): reverts when called by an account that is not BO nor TroveM nor SP
+      ✓ burn(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ sendToPool(): reverts when called by an account that is not StabilityPool
-      ✓ returnFromPool(): reverts when called by an account that is not TroveManager nor StabilityPool
-    SortedTroves
-      ✓ insert(): reverts when called by an account that is not BorrowerOps or TroveM
-      ✓ remove(): reverts when called by an account that is not TroveManager
-      ✓ reinsert(): reverts when called by an account that is neither BorrowerOps nor TroveManager
+      ✓ returnFromPool(): reverts when called by an account that is not CdpManager nor StabilityPool
+    SortedCdps
+      ✓ insert(): reverts when called by an account that is not BorrowerOps or CdpM
+      ✓ remove(): reverts when called by an account that is not CdpManager
+      ✓ reinsert(): reverts when called by an account that is neither BorrowerOps nor CdpManager
     LockupContract
       ✓ withdrawLQTY(): reverts when caller is not beneficiary (68ms)
     LQTYStaking
-      ✓ increaseF_EBTC(): reverts when caller is not TroveManager
+      ✓ increaseF_EBTC(): reverts when caller is not CdpManager
     LQTYToken
       ✓ sendToLQTYStaking(): reverts when caller is not the LQTYSstaking (49ms)
     CommunityIssuance
@@ -70,10 +70,10 @@ $ hardhat test
     Without proxy
       ✓ addColl(): reverts when top-up would leave cdp with ICR < MCR (278ms)
       ✓ addColl(): Increases the activePool ETH and raw ether balance by correct amount (203ms)
-      ✓ addColl(), active Trove: adds the correct collateral amount to the Trove (194ms)
-      ✓ addColl(), active Trove: Trove is in sortedList before and after (213ms)
-      ✓ addColl(), active Trove: updates the stake and updates the total stakes (225ms)
-      ✓ addColl(), active Trove: applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots (736ms)
+      ✓ addColl(), active Cdp: adds the correct collateral amount to the Cdp (194ms)
+      ✓ addColl(), active Cdp: Cdp is in sortedList before and after (213ms)
+      ✓ addColl(), active Cdp: updates the stake and updates the total stakes (225ms)
+      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots (736ms)
       ✓ addColl(), reverts if cdp is non-existent or closed (831ms)
       ✓ addColl(): can add collateral in Recovery Mode (252ms)
       ✓ withdrawColl(): reverts when withdrawal would leave cdp with ICR < MCR (349ms)
@@ -82,9 +82,9 @@ $ hardhat test
       ✓ withdrawColl(): reverts when requested ETH withdrawal is > the cdp's collateral (508ms)
       ✓ withdrawColl(): reverts when withdrawal would bring the user's ICR < MCR (313ms)
       ✓ withdrawColl(): reverts if system is in Recovery Mode (323ms)
-      ✓ withdrawColl(): doesn’t allow a user to completely withdraw all collateral from their Trove (due to gas compensation) (352ms)
-      ✓ withdrawColl(): leaves the Trove active when the user withdraws less than all the collateral (263ms)
-      ✓ withdrawColl(): reduces the Trove's collateral by the correct amount (316ms)
+      ✓ withdrawColl(): doesn’t allow a user to completely withdraw all collateral from their Cdp (due to gas compensation) (352ms)
+      ✓ withdrawColl(): leaves the Cdp active when the user withdraws less than all the collateral (263ms)
+      ✓ withdrawColl(): reduces the Cdp's collateral by the correct amount (316ms)
       ✓ withdrawColl(): reduces ActivePool ETH and raw ether by correct amount (291ms)
       ✓ withdrawColl(): updates the stake and updates the total stakes (342ms)
       ✓ withdrawColl(): sends the correct amount of ETH to the user (289ms)
@@ -99,7 +99,7 @@ $ hardhat test
       ✓ withdrawEBTC(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation (899ms)
       ✓ withdrawEBTC(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity (852ms)
       ✓ withdrawEBTC(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract (1004ms)
-      ✓ withdrawEBTC(): borrowing at non-zero base records the (drawn debt + fee) on the Trove struct (923ms)
+      ✓ withdrawEBTC(): borrowing at non-zero base records the (drawn debt + fee) on the Cdp struct (923ms)
       ✓ withdrawEBTC(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked (986ms)
       ✓ withdrawEBTC(): Borrowing at non-zero base rate sends requested amount to the user (1562ms)
       ✓ withdrawEBTC(): Borrowing at zero base rate changes EBTC fees-per-unit-staked (839ms)
@@ -110,7 +110,7 @@ $ hardhat test
       ✓ withdrawEBTC(): reverts when withdrawal would bring the cdp's ICR < MCR (347ms)
       ✓ withdrawEBTC(): reverts when a withdrawal would cause the TCR of the system to fall below the CCR (439ms)
       ✓ withdrawEBTC(): reverts if system is in Recovery Mode (312ms)
-      ✓ withdrawEBTC(): increases the Trove's EBTC debt by the correct amount (208ms)
+      ✓ withdrawEBTC(): increases the Cdp's EBTC debt by the correct amount (208ms)
       ✓ withdrawEBTC(): increases EBTC debt in ActivePool by correct amount (230ms)
       ✓ withdrawEBTC(): increases user EBTCToken balance by correct amount (243ms)
       ✓ repayEBTC(): reverts when repayment would leave cdp with ICR < MCR (392ms)
@@ -118,112 +118,112 @@ $ hardhat test
       ✓ repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt (256ms)
       ✓ repayEBTC(): reverts when calling address does not have active cdp (431ms)
       ✓ repayEBTC(): reverts when attempted repayment is > the debt of the cdp (418ms)
-      ✓ repayEBTC(): reduces the Trove's EBTC debt by the correct amount (403ms)
+      ✓ repayEBTC(): reduces the Cdp's EBTC debt by the correct amount (403ms)
       ✓ repayEBTC(): decreases EBTC debt in ActivePool by correct amount (406ms)
       ✓ repayEBTC(): decreases user EBTCToken balance by correct amount (404ms)
       ✓ repayEBTC(): can repay debt in Recovery Mode (557ms)
       ✓ repayEBTC(): Reverts if borrower has insufficient EBTC balance to cover his debt repayment (1122ms)
-      ✓ adjustTrove(): reverts when adjustment would leave cdp with ICR < MCR (572ms)
-      ✓ adjustTrove(): reverts if max fee < 0.5% in Normal mode (313ms)
-      ✓ adjustTrove(): allows max fee < 0.5% in Recovery mode (577ms)
-      ✓ adjustTrove(): decays a non-zero base rate (1218ms)
-      ✓ adjustTrove(): doesn't decay a non-zero base rate when user issues 0 debt (935ms)
-      ✓ adjustTrove(): doesn't change base rate if it is already zero (545ms)
-      ✓ adjustTrove(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation (819ms)
-      ✓ adjustTrove(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity (866ms)
-      ✓ adjustTrove(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract (889ms)
-      ✓ adjustTrove(): borrowing at non-zero base records the (drawn debt + fee) on the Trove struct (1013ms)
-      ✓ adjustTrove(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked (837ms)
-      ✓ adjustTrove(): Borrowing at non-zero base rate sends requested amount to the user (895ms)
-      ✓ adjustTrove(): Borrowing at zero base rate changes EBTC balance of LQTY staking contract (783ms)
-      ✓ adjustTrove(): Borrowing at zero base rate changes LQTY staking contract EBTC fees-per-unit-staked (881ms)
-      ✓ adjustTrove(): Borrowing at zero base rate sends total requested EBTC to the user (783ms)
-      ✓ adjustTrove(): reverts when calling address has no active cdp (416ms)
-      ✓ adjustTrove(): reverts in Recovery Mode when the adjustment would reduce the TCR (654ms)
-      ✓ adjustTrove(): collateral withdrawal reverts in Recovery Mode (370ms)
-      ✓ adjustTrove(): debt increase that would leave ICR < 150% reverts in Recovery Mode (497ms)
-      ✓ adjustTrove(): debt increase that would reduce the ICR reverts in Recovery Mode (596ms)
-      ✓ adjustTrove(): A cdp with ICR < CCR in Recovery Mode can adjust their cdp to ICR > CCR (599ms)
-      ✓ adjustTrove(): A cdp with ICR > CCR in Recovery Mode can improve their ICR (524ms)
-      ✓ adjustTrove(): debt increase in Recovery Mode charges no fee (543ms)
-      ✓ adjustTrove(): reverts when change would cause the TCR of the system to fall below the CCR (587ms)
-      ✓ adjustTrove(): reverts when EBTC repaid is > debt of the cdp (451ms)
-      ✓ adjustTrove(): reverts when attempted ETH withdrawal is >= the cdp's collateral (683ms)
-      ✓ adjustTrove(): reverts when change would cause the ICR of the cdp to fall below the MCR (521ms)
-      ✓ adjustTrove(): With 0 coll change, doesnt change borrower's coll or ActivePool coll (289ms)
-      ✓ adjustTrove(): With 0 debt change, doesnt change borrower's debt or ActivePool debt (354ms)
-      ✓ adjustTrove(): updates borrower's debt and coll with an increase in both (558ms)
-      ✓ adjustTrove(): updates borrower's debt and coll with a decrease in both (553ms)
-      ✓ adjustTrove(): updates borrower's  debt and coll with coll increase, debt decrease (375ms)
-      ✓ adjustTrove(): updates borrower's debt and coll with coll decrease, debt increase (346ms)
-      ✓ adjustTrove(): updates borrower's stake and totalStakes with a coll increase (385ms)
-      ✓ adjustTrove():  updates borrower's stake and totalStakes with a coll decrease (553ms)
-      ✓ adjustTrove(): changes EBTCToken balance by the requested decrease (529ms)
-      ✓ adjustTrove(): changes EBTCToken balance by the requested increase (577ms)
-      ✓ adjustTrove(): Changes the activePool ETH and raw ether balance by the requested decrease (1371ms)
-      ✓ adjustTrove(): Changes the activePool ETH and raw ether balance by the amount of ETH sent (548ms)
-      ✓ adjustTrove(): Changes the EBTC debt in ActivePool by requested decrease (541ms)
-      ✓ adjustTrove(): Changes the EBTC debt in ActivePool by requested increase (397ms)
-      ✓ adjustTrove(): new coll = 0 and new debt = 0 is not allowed, as gas compensation still counts toward ICR (385ms)
-      ✓ adjustTrove(): Reverts if requested debt increase and amount is zero (292ms)
-      ✓ adjustTrove(): Reverts if requested coll withdrawal and ether is sent (288ms)
-      ✓ adjustTrove(): Reverts if it’s zero adjustment (137ms)
-      ✓ adjustTrove(): Reverts if requested coll withdrawal is greater than cdp's collateral (402ms)
-      ✓ adjustTrove(): Reverts if borrower has insufficient EBTC balance to cover his debt repayment (496ms)
-      ✓ Internal _adjustTrove(): reverts when op is a withdrawal and _borrower param is not the msg.sender (475ms)
-      ✓ closeTrove(): reverts when it would lower the TCR below CCR (471ms)
-      ✓ closeTrove(): reverts when calling address does not have active cdp (221ms)
-      ✓ closeTrove(): reverts when system is in Recovery Mode (746ms)
-      ✓ closeTrove(): reverts when cdp is the only one in the system (497ms)
-      ✓ closeTrove(): reduces a Trove's collateral to zero (582ms)
-      ✓ closeTrove(): reduces a Trove's debt to zero (398ms)
-      ✓ closeTrove(): sets Trove's stake to zero (504ms)
-      ✓ closeTrove(): zero's the cdps reward snapshots (1002ms)
-      ✓ closeTrove(): sets cdp's status to closed and removes it from sorted cdps list (526ms)
-      ✓ closeTrove(): reduces ActivePool ETH and raw ether by correct amount (466ms)
-      ✓ closeTrove(): reduces ActivePool debt by correct amount (522ms)
-      ✓ closeTrove(): updates the the total stakes (790ms)
-      ✓ closeTrove(): sends the correct amount of ETH to the user (390ms)
-      ✓ closeTrove(): subtracts the debt of the closed Trove from the Borrower's EBTCToken balance (405ms)
-      ✓ closeTrove(): applies pending rewards (1267ms)
-      ✓ closeTrove(): reverts if borrower has insufficient EBTC balance to repay his entire debt (347ms)
-      ✓ openTrove(): emits a TroveUpdated event with the correct collateral and debt (820ms)
-      ✓ openTrove(): Opens a cdp with net debt >= minimum net debt (235ms)
-      ✓ openTrove(): reverts if net debt < minimum net debt (294ms)
-      ✓ openTrove(): decays a non-zero base rate (959ms)
-      ✓ openTrove(): doesn't change base rate if it is already zero (911ms)
-      ✓ openTrove(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation (953ms)
-      ✓ openTrove(): reverts if max fee > 100% (56ms)
-      ✓ openTrove(): reverts if max fee < 0.5% in Normal mode (85ms)
-      ✓ openTrove(): allows max fee < 0.5% in Recovery Mode (409ms)
-      ✓ openTrove(): reverts if fee exceeds max fee percentage (747ms)
-      ✓ openTrove(): succeeds when fee is less than max fee percentage (930ms)
-      ✓ openTrove(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity (965ms)
-      ✓ openTrove(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract (923ms)
-      ✓ openTrove(): borrowing at non-zero base records the (drawn debt + fee  + liq. reserve) on the Trove struct (865ms)
-      ✓ openTrove(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked (794ms)
-      ✓ openTrove(): Borrowing at non-zero base rate sends requested amount to the user (832ms)
-      ✓ openTrove(): Borrowing at zero base rate changes the LQTY staking contract EBTC fees-per-unit-staked (602ms)
-      ✓ openTrove(): Borrowing at zero base rate charges minimum fee (316ms)
-      ✓ openTrove(): reverts when system is in Recovery Mode and ICR < CCR (320ms)
-      ✓ openTrove(): reverts when cdp ICR < MCR (536ms)
-      ✓ openTrove(): reverts when opening the cdp would cause the TCR of the system to fall below the CCR (367ms)
-      ✓ openTrove(): reverts if cdp is already active (679ms)
-      ✓ openTrove(): Can open a cdp with ICR >= CCR when system is in Recovery Mode (499ms)
-      ✓ openTrove(): Reverts opening a cdp with min debt when system is in Recovery Mode (324ms)
-      ✓ openTrove(): creates a new Trove and assigns the correct collateral and debt amount (127ms)
-      ✓ openTrove(): adds Trove owner to TroveOwners array (136ms)
-      ✓ openTrove(): creates a stake and adds it to total stakes (281ms)
-      ✓ openTrove(): inserts Trove to Sorted Troves list (370ms)
-      ✓ openTrove(): Increases the activePool ETH and raw ether balance by correct amount (294ms)
-      ✓ openTrove(): records up-to-date initial snapshots of L_ETH and L_EBTCDebt (639ms)
-      ✓ openTrove(): allows a user to open a Trove, then close it, then re-open it (687ms)
-      ✓ openTrove(): increases the Trove's EBTC debt by the correct amount (129ms)
-      ✓ openTrove(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
-      ✓ openTrove(): increases user EBTCToken balance by correct amount (85ms)
+      ✓ adjustCdp(): reverts when adjustment would leave cdp with ICR < MCR (572ms)
+      ✓ adjustCdp(): reverts if max fee < 0.5% in Normal mode (313ms)
+      ✓ adjustCdp(): allows max fee < 0.5% in Recovery mode (577ms)
+      ✓ adjustCdp(): decays a non-zero base rate (1218ms)
+      ✓ adjustCdp(): doesn't decay a non-zero base rate when user issues 0 debt (935ms)
+      ✓ adjustCdp(): doesn't change base rate if it is already zero (545ms)
+      ✓ adjustCdp(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation (819ms)
+      ✓ adjustCdp(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity (866ms)
+      ✓ adjustCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract (889ms)
+      ✓ adjustCdp(): borrowing at non-zero base records the (drawn debt + fee) on the Cdp struct (1013ms)
+      ✓ adjustCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked (837ms)
+      ✓ adjustCdp(): Borrowing at non-zero base rate sends requested amount to the user (895ms)
+      ✓ adjustCdp(): Borrowing at zero base rate changes EBTC balance of LQTY staking contract (783ms)
+      ✓ adjustCdp(): Borrowing at zero base rate changes LQTY staking contract EBTC fees-per-unit-staked (881ms)
+      ✓ adjustCdp(): Borrowing at zero base rate sends total requested EBTC to the user (783ms)
+      ✓ adjustCdp(): reverts when calling address has no active cdp (416ms)
+      ✓ adjustCdp(): reverts in Recovery Mode when the adjustment would reduce the TCR (654ms)
+      ✓ adjustCdp(): collateral withdrawal reverts in Recovery Mode (370ms)
+      ✓ adjustCdp(): debt increase that would leave ICR < 150% reverts in Recovery Mode (497ms)
+      ✓ adjustCdp(): debt increase that would reduce the ICR reverts in Recovery Mode (596ms)
+      ✓ adjustCdp(): A cdp with ICR < CCR in Recovery Mode can adjust their cdp to ICR > CCR (599ms)
+      ✓ adjustCdp(): A cdp with ICR > CCR in Recovery Mode can improve their ICR (524ms)
+      ✓ adjustCdp(): debt increase in Recovery Mode charges no fee (543ms)
+      ✓ adjustCdp(): reverts when change would cause the TCR of the system to fall below the CCR (587ms)
+      ✓ adjustCdp(): reverts when EBTC repaid is > debt of the cdp (451ms)
+      ✓ adjustCdp(): reverts when attempted ETH withdrawal is >= the cdp's collateral (683ms)
+      ✓ adjustCdp(): reverts when change would cause the ICR of the cdp to fall below the MCR (521ms)
+      ✓ adjustCdp(): With 0 coll change, doesnt change borrower's coll or ActivePool coll (289ms)
+      ✓ adjustCdp(): With 0 debt change, doesnt change borrower's debt or ActivePool debt (354ms)
+      ✓ adjustCdp(): updates borrower's debt and coll with an increase in both (558ms)
+      ✓ adjustCdp(): updates borrower's debt and coll with a decrease in both (553ms)
+      ✓ adjustCdp(): updates borrower's  debt and coll with coll increase, debt decrease (375ms)
+      ✓ adjustCdp(): updates borrower's debt and coll with coll decrease, debt increase (346ms)
+      ✓ adjustCdp(): updates borrower's stake and totalStakes with a coll increase (385ms)
+      ✓ adjustCdp():  updates borrower's stake and totalStakes with a coll decrease (553ms)
+      ✓ adjustCdp(): changes EBTCToken balance by the requested decrease (529ms)
+      ✓ adjustCdp(): changes EBTCToken balance by the requested increase (577ms)
+      ✓ adjustCdp(): Changes the activePool ETH and raw ether balance by the requested decrease (1371ms)
+      ✓ adjustCdp(): Changes the activePool ETH and raw ether balance by the amount of ETH sent (548ms)
+      ✓ adjustCdp(): Changes the EBTC debt in ActivePool by requested decrease (541ms)
+      ✓ adjustCdp(): Changes the EBTC debt in ActivePool by requested increase (397ms)
+      ✓ adjustCdp(): new coll = 0 and new debt = 0 is not allowed, as gas compensation still counts toward ICR (385ms)
+      ✓ adjustCdp(): Reverts if requested debt increase and amount is zero (292ms)
+      ✓ adjustCdp(): Reverts if requested coll withdrawal and ether is sent (288ms)
+      ✓ adjustCdp(): Reverts if it’s zero adjustment (137ms)
+      ✓ adjustCdp(): Reverts if requested coll withdrawal is greater than cdp's collateral (402ms)
+      ✓ adjustCdp(): Reverts if borrower has insufficient EBTC balance to cover his debt repayment (496ms)
+      ✓ Internal _adjustCdp(): reverts when op is a withdrawal and _borrower param is not the msg.sender (475ms)
+      ✓ closeCdp(): reverts when it would lower the TCR below CCR (471ms)
+      ✓ closeCdp(): reverts when calling address does not have active cdp (221ms)
+      ✓ closeCdp(): reverts when system is in Recovery Mode (746ms)
+      ✓ closeCdp(): reverts when cdp is the only one in the system (497ms)
+      ✓ closeCdp(): reduces a Cdp's collateral to zero (582ms)
+      ✓ closeCdp(): reduces a Cdp's debt to zero (398ms)
+      ✓ closeCdp(): sets Cdp's stake to zero (504ms)
+      ✓ closeCdp(): zero's the cdps reward snapshots (1002ms)
+      ✓ closeCdp(): sets cdp's status to closed and removes it from sorted cdps list (526ms)
+      ✓ closeCdp(): reduces ActivePool ETH and raw ether by correct amount (466ms)
+      ✓ closeCdp(): reduces ActivePool debt by correct amount (522ms)
+      ✓ closeCdp(): updates the the total stakes (790ms)
+      ✓ closeCdp(): sends the correct amount of ETH to the user (390ms)
+      ✓ closeCdp(): subtracts the debt of the closed Cdp from the Borrower's EBTCToken balance (405ms)
+      ✓ closeCdp(): applies pending rewards (1267ms)
+      ✓ closeCdp(): reverts if borrower has insufficient EBTC balance to repay his entire debt (347ms)
+      ✓ openCdp(): emits a CdpUpdated event with the correct collateral and debt (820ms)
+      ✓ openCdp(): Opens a cdp with net debt >= minimum net debt (235ms)
+      ✓ openCdp(): reverts if net debt < minimum net debt (294ms)
+      ✓ openCdp(): decays a non-zero base rate (959ms)
+      ✓ openCdp(): doesn't change base rate if it is already zero (911ms)
+      ✓ openCdp(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation (953ms)
+      ✓ openCdp(): reverts if max fee > 100% (56ms)
+      ✓ openCdp(): reverts if max fee < 0.5% in Normal mode (85ms)
+      ✓ openCdp(): allows max fee < 0.5% in Recovery Mode (409ms)
+      ✓ openCdp(): reverts if fee exceeds max fee percentage (747ms)
+      ✓ openCdp(): succeeds when fee is less than max fee percentage (930ms)
+      ✓ openCdp(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity (965ms)
+      ✓ openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract (923ms)
+      ✓ openCdp(): borrowing at non-zero base records the (drawn debt + fee  + liq. reserve) on the Cdp struct (865ms)
+      ✓ openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked (794ms)
+      ✓ openCdp(): Borrowing at non-zero base rate sends requested amount to the user (832ms)
+      ✓ openCdp(): Borrowing at zero base rate changes the LQTY staking contract EBTC fees-per-unit-staked (602ms)
+      ✓ openCdp(): Borrowing at zero base rate charges minimum fee (316ms)
+      ✓ openCdp(): reverts when system is in Recovery Mode and ICR < CCR (320ms)
+      ✓ openCdp(): reverts when cdp ICR < MCR (536ms)
+      ✓ openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the CCR (367ms)
+      ✓ openCdp(): reverts if cdp is already active (679ms)
+      ✓ openCdp(): Can open a cdp with ICR >= CCR when system is in Recovery Mode (499ms)
+      ✓ openCdp(): Reverts opening a cdp with min debt when system is in Recovery Mode (324ms)
+      ✓ openCdp(): creates a new Cdp and assigns the correct collateral and debt amount (127ms)
+      ✓ openCdp(): adds Cdp owner to CdpOwners array (136ms)
+      ✓ openCdp(): creates a stake and adds it to total stakes (281ms)
+      ✓ openCdp(): inserts Cdp to Sorted Cdps list (370ms)
+      ✓ openCdp(): Increases the activePool ETH and raw ether balance by correct amount (294ms)
+      ✓ openCdp(): records up-to-date initial snapshots of L_ETH and L_EBTCDebt (639ms)
+      ✓ openCdp(): allows a user to open a Cdp, then close it, then re-open it (687ms)
+      ✓ openCdp(): increases the Cdp's EBTC debt by the correct amount (129ms)
+      ✓ openCdp(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
+      ✓ openCdp(): increases user EBTCToken balance by correct amount (85ms)
       ✓ getCompositeDebt(): returns debt + gas comp
-      ✓ closeTrove(): fails if owner cannot receive ETH (440ms)
-      getNewICRFromTroveChange() returns the correct ICR
+      ✓ closeCdp(): fails if owner cannot receive ETH (440ms)
+      getNewICRFromCdpChange() returns the correct ICR
         ✓ collChange = 0, debtChange = 0
         ✓ collChange = 0, debtChange is positive
         ✓ collChange = 0, debtChange is negative
@@ -233,7 +233,7 @@ $ hardhat test
         ✓ collChange is positive, debtChange is positive
         ✓ collChange is positive, debtChange is negative
         ✓ collChange is negative, debtChange is positive
-      getNewTCRFromTroveChange() returns the correct TCR
+      getNewTCRFromCdpChange() returns the correct TCR
         ✓ collChange = 0, debtChange = 0 (248ms)
         ✓ collChange = 0, debtChange is positive (630ms)
         ✓ collChange = 0, debtChange is negative (327ms)
@@ -250,32 +250,32 @@ $ hardhat test
     ✓ CollSurplusPool: claimColl(): Reverts if nothing to claim
     ✓ CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus (723ms)
     ✓ CollSurplusPool: reverts trying to send ETH to it
-    ✓ CollSurplusPool: accountSurplus: reverts if caller is not Trove Manager
+    ✓ CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager
 
   Contract: Deployment script - Sets correct contract addresses dependencies after deployment
-    ✓ Sets the correct PriceFeed address in TroveManager
-    ✓ Sets the correct EBTCToken address in TroveManager
-    ✓ Sets the correct SortedTroves address in TroveManager
-    ✓ Sets the correct BorrowerOperations address in TroveManager
-    ✓ Sets the correct ActivePool address in TroveManager
-    ✓ Sets the correct DefaultPool address in TroveManager
-    ✓ Sets the correct StabilityPool address in TroveManager
-    ✓ Sets the correct LQTYStaking address in TroveManager
+    ✓ Sets the correct PriceFeed address in CdpManager
+    ✓ Sets the correct EBTCToken address in CdpManager
+    ✓ Sets the correct SortedCdps address in CdpManager
+    ✓ Sets the correct BorrowerOperations address in CdpManager
+    ✓ Sets the correct ActivePool address in CdpManager
+    ✓ Sets the correct DefaultPool address in CdpManager
+    ✓ Sets the correct StabilityPool address in CdpManager
+    ✓ Sets the correct LQTYStaking address in CdpManager
     ✓ Sets the correct StabilityPool address in ActivePool
     ✓ Sets the correct DefaultPool address in ActivePool (133ms)
     ✓ Sets the correct BorrowerOperations address in ActivePool
-    ✓ Sets the correct TroveManager address in ActivePool
+    ✓ Sets the correct CdpManager address in ActivePool
     ✓ Sets the correct ActivePool address in StabilityPool
     ✓ Sets the correct BorrowerOperations address in StabilityPool
     ✓ Sets the correct EBTCToken address in StabilityPool
-    ✓ Sets the correct TroveManager address in StabilityPool
-    ✓ Sets the correct TroveManager address in DefaultPool
+    ✓ Sets the correct CdpManager address in StabilityPool
+    ✓ Sets the correct CdpManager address in DefaultPool
     ✓ Sets the correct ActivePool address in DefaultPool
-    ✓ Sets the correct TroveManager address in SortedTroves
-    ✓ Sets the correct BorrowerOperations address in SortedTroves
-    ✓ Sets the correct TroveManager address in BorrowerOperations
+    ✓ Sets the correct CdpManager address in SortedCdps
+    ✓ Sets the correct BorrowerOperations address in SortedCdps
+    ✓ Sets the correct CdpManager address in BorrowerOperations
     ✓ Sets the correct PriceFeed address in BorrowerOperations
-    ✓ Sets the correct SortedTroves address in BorrowerOperations
+    ✓ Sets the correct SortedCdps address in BorrowerOperations
     ✓ Sets the correct ActivePool address in BorrowerOperations
     ✓ Sets the correct DefaultPool address in BorrowerOperations
     ✓ Sets the correct LQTYStaking address in BorrowerOperations
@@ -336,13 +336,13 @@ TCR: 11.892415157517211309
     ✓ Gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1541ms)
     ✓ gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1498ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1547ms)
-    ✓ liquidateTroves(): full offset.  Compensates the correct amount, and liquidates the remainder (1810ms)
-    ✓ liquidateTroves(): full redistribution. Compensates the correct amount, and liquidates the remainder (1312ms)
-    ✓ liquidateTroves(): full offset. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1551ms)
-    ✓ liquidateTroves(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1790ms)
-    ✓ Trove ordering: same collateral, decreasing debt. Price successively increases. Troves should maintain ordering by ICR (1647ms)
-    ✓ Trove ordering: increasing collateral, constant debt. Price successively increases. Troves should maintain ordering by ICR (3885ms)
-    ✓ Trove ordering: Constant raw collateral ratio (excluding virtual debt). Price successively increases. Troves should maintain ordering by ICR (2042ms)
+    ✓ liquidateCdps(): full offset.  Compensates the correct amount, and liquidates the remainder (1810ms)
+    ✓ liquidateCdps(): full redistribution. Compensates the correct amount, and liquidates the remainder (1312ms)
+    ✓ liquidateCdps(): full offset. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1551ms)
+    ✓ liquidateCdps(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt (1790ms)
+    ✓ Cdp ordering: same collateral, decreasing debt. Price successively increases. Cdps should maintain ordering by ICR (1647ms)
+    ✓ Cdp ordering: increasing collateral, constant debt. Price successively increases. Cdps should maintain ordering by ICR (3885ms)
+    ✓ Cdp ordering: Constant raw collateral ratio (excluding virtual debt). Price successively increases. Cdps should maintain ordering by ICR (2042ms)
 
   Contract: LQTY Token
     ✓ balanceOf(): gets the balance of the account (43ms)
@@ -374,9 +374,9 @@ TCR: 11.892415157517211309
 
   Contract: HintHelpers
     ✓ setup: makes accounts with nominal ICRs increasing by 1% consecutively (76ms)
-    ✓ getApproxHint(): returns the address of a Trove within sqrt(length) positions of the correct insert position (1441ms)
+    ✓ getApproxHint(): returns the address of a Cdp within sqrt(length) positions of the correct insert position (1441ms)
     ✓ getApproxHint(): returns the head of the list if the CR is the max uint256 value (270ms)
-    ✓ getApproxHint(): returns the tail of the list if the CR is lower than ICR of any Trove (321ms)
+    ✓ getApproxHint(): returns the tail of the list if the CR is lower than ICR of any Cdp (321ms)
     ✓ computeNominalCR()
 
   Contract: Deploying and funding One Year Lockup Contracts
@@ -557,7 +557,7 @@ issuance fraction after: 949066037374286
     ✓ unstake(): reverts if caller has ETH gains and can't receive ETH (1149ms)
     ✓ receive(): reverts when it receives ETH from an address that is not the Active Pool
     ✓ unstake(): reverts if user has no stake
-    ✓ Test requireCallerIsTroveManager
+    ✓ Test requireCallerIsCdpManager
 
   Contract: EBTCToken
     Basic token functions, without Proxy
@@ -607,7 +607,7 @@ issuance fraction after: 949066037374286
       ✓ decreaseAllowance(): fails trying to decrease more than previously allowed (49ms)
 
   Contract: All Liquity functions with onlyOwner modifier
-    TroveManager
+    CdpManager
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (857ms)
     BorrowerOperations
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (765ms)
@@ -617,7 +617,7 @@ issuance fraction after: 949066037374286
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (441ms)
     ActivePool
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (468ms)
-    SortedTroves
+    SortedCdps
       ✓ setParams(): reverts when called by non-owner, with wrong addresses, or twice (157ms)
     CommunityIssuance
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (136ms)
@@ -765,9 +765,9 @@ issuance fraction after: 949066037374286
   Contract: BorrowerWrappers
     ✓ proxy owner can recover ETH (85ms)
     ✓ non proxy owner cannot recover ETH
-    ✓ claimCollateralAndOpenTrove(): reverts if nothing to claim (388ms)
-    ✓ claimCollateralAndOpenTrove(): without sending any value (1227ms)
-    ✓ claimCollateralAndOpenTrove(): sending value in the transaction (3969ms)
+    ✓ claimCollateralAndOpenCdp(): reverts if nothing to claim (388ms)
+    ✓ claimCollateralAndOpenCdp(): without sending any value (1227ms)
+    ✓ claimCollateralAndOpenCdp(): sending value in the transaction (3969ms)
     ✓ claimSPRewardsAndRecycle(): only owner can call it (598ms)
     ✓ claimSPRewardsAndRecycle(): (1272ms)
     ✓ claimStakingGainsAndRecycle(): only owner can call it (1384ms)
@@ -776,8 +776,8 @@ issuance fraction after: 949066037374286
     ✓ claimStakingGainsAndRecycle(): with only EBTC gain (821ms)
     ✓ claimStakingGainsAndRecycle(): with both ETH and EBTC gains (1593ms)
 
-  Contract: SortedTroves
-    SortedTroves
+  Contract: SortedCdps
+    SortedCdps
       ✓ contains(): returns true for addresses that have opened cdps (552ms)
       ✓ contains(): returns false for addresses that have not opened cdps (518ms)
       ✓ contains(): returns false for addresses that opened and then closed a cdp (1009ms)
@@ -788,7 +788,7 @@ issuance fraction after: 949066037374286
       ✓ getMaxSize(): Returns the maximum list size
       ✓ Finds the correct insert position given two addresses that loosely bound the correct position (1135ms)
       - stays ordered after cdps with 'infinite' ICR receive a redistribution
-    SortedTroves with mock dependencies
+    SortedCdps with mock dependencies
       when params are wrongly set
         ✓ setParams(): reverts if size is zero
       when params are properly set
@@ -856,36 +856,36 @@ alice deposit: 0
 
   Contract: StabilityPool - Withdrawal of stability deposit - Reward calculations
     Stability Pool Withdrawal
-      ✓ withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after one liquidation (1227ms)
-      ✓ withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two identical liquidations (1400ms)
-      ✓ withdrawETHGainToTrove():  Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three identical liquidations (1827ms)
-      ✓ withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two liquidations of increasing EBTC (1597ms)
-      ✓ withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three liquidations of increasing EBTC (1711ms)
-      ✓ withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after two identical liquidations (1782ms)
-      ✓ withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three identical liquidations (1798ms)
-      ✓ withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three varying liquidations (4488ms)
+      ✓ withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after one liquidation (1227ms)
+      ✓ withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two identical liquidations (1400ms)
+      ✓ withdrawETHGainToCdp():  Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three identical liquidations (1827ms)
+      ✓ withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two liquidations of increasing EBTC (1597ms)
+      ✓ withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three liquidations of increasing EBTC (1711ms)
+      ✓ withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after two identical liquidations (1782ms)
+      ✓ withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three identical liquidations (1798ms)
+      ✓ withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three varying liquidations (4488ms)
 
-      ✓ withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 1 liquidation. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2168ms)
-      ✓ withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (5085ms)
-      ✓ withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. Various deposit and liquidation vals.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2304ms)
-      ✓ withdrawETHGainToTrove(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2335ms)
-      ✓ withdrawETHGainToTrove(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. Various deposit and liquidation vals. A, B, C, D withdraw correct EBTC deposit and ETH Gain (2145ms)
-      ✓ withdrawETHGainToTrove(): A, B, D deposit -> 2 liquidations -> C makes deposit -> 1 liquidation -> D withdraws -> 1 liquidation. All deposits: 100 EBTC. Liquidations: 100,100,100,50.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2543ms)
-      ✓ withdrawETHGainToTrove(): Depositor withdraws correct compounded deposit after liquidation empties the pool (1889ms)
-      ✓ withdrawETHGainToTrove(): Pool-emptying liquidation increases epoch by one, resets scaleFactor to 0, and resets P to 1e18 (1891ms)
-      ✓ withdrawETHGainToTrove(): Depositors withdraw correct compounded deposit after liquidation empties the pool (2324ms)
-      ✓ withdrawETHGainToTrove(): single deposit fully offset. After subsequent liquidations, depositor withdraws 0 deposit and *only* the ETH Gain from one liquidation (1719ms)
-      ✓ withdrawETHGainToTrove(): Depositor withdraws correct compounded deposit after liquidation empties the pool (3958ms)
-      ✓ withdrawETHGainToTrove(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation (1276ms)
-      ✓ withdrawETHGainToTrove(): Several deposits of varying amounts span one scale factor change. Depositors withdraw correct compounded deposit and ETH Gain after one liquidation (4690ms)
-      ✓ withdrawETHGainToTrove(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation (1460ms)
-      ✓ withdrawETHGainToTrove(): Several deposits of varying amounts span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation (1986ms)
+      ✓ withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 1 liquidation. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2168ms)
+      ✓ withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (5085ms)
+      ✓ withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. Various deposit and liquidation vals.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2304ms)
+      ✓ withdrawETHGainToCdp(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2335ms)
+      ✓ withdrawETHGainToCdp(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. Various deposit and liquidation vals. A, B, C, D withdraw correct EBTC deposit and ETH Gain (2145ms)
+      ✓ withdrawETHGainToCdp(): A, B, D deposit -> 2 liquidations -> C makes deposit -> 1 liquidation -> D withdraws -> 1 liquidation. All deposits: 100 EBTC. Liquidations: 100,100,100,50.  A, B, C, D withdraw correct EBTC deposit and ETH Gain (2543ms)
+      ✓ withdrawETHGainToCdp(): Depositor withdraws correct compounded deposit after liquidation empties the pool (1889ms)
+      ✓ withdrawETHGainToCdp(): Pool-emptying liquidation increases epoch by one, resets scaleFactor to 0, and resets P to 1e18 (1891ms)
+      ✓ withdrawETHGainToCdp(): Depositors withdraw correct compounded deposit after liquidation empties the pool (2324ms)
+      ✓ withdrawETHGainToCdp(): single deposit fully offset. After subsequent liquidations, depositor withdraws 0 deposit and *only* the ETH Gain from one liquidation (1719ms)
+      ✓ withdrawETHGainToCdp(): Depositor withdraws correct compounded deposit after liquidation empties the pool (3958ms)
+      ✓ withdrawETHGainToCdp(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation (1276ms)
+      ✓ withdrawETHGainToCdp(): Several deposits of varying amounts span one scale factor change. Depositors withdraw correct compounded deposit and ETH Gain after one liquidation (4690ms)
+      ✓ withdrawETHGainToCdp(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation (1460ms)
+      ✓ withdrawETHGainToCdp(): Several deposits of varying amounts span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation (1986ms)
 alice deposit: 0
-      ✓ withdrawETHGainToTrove(): Deposit that decreases to less than 1e-9 of it's original value is reduced to 0 (3725ms)
-      ✓ withdrawETHGainToTrove(): Several deposits of 10000 EBTC span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation (2361ms)
-      ✓ withdrawETHGainToTrove(): 2 depositors can withdraw after each receiving half of a pool-emptying liquidation (3814ms)
-      ✓ withdrawETHGainToTrove(): Large liquidated coll/debt, deposits and ETH price (959ms)
-      ✓ withdrawETHGainToTrove(): Small liquidated coll/debt, large deposits and ETH price (784ms)
+      ✓ withdrawETHGainToCdp(): Deposit that decreases to less than 1e-9 of it's original value is reduced to 0 (3725ms)
+      ✓ withdrawETHGainToCdp(): Several deposits of 10000 EBTC span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation (2361ms)
+      ✓ withdrawETHGainToCdp(): 2 depositors can withdraw after each receiving half of a pool-emptying liquidation (3814ms)
+      ✓ withdrawETHGainToCdp(): Large liquidated coll/debt, deposits and ETH price (959ms)
+      ✓ withdrawETHGainToCdp(): Small liquidated coll/debt, large deposits and ETH price (784ms)
 
   Contract: StabilityPool
     Stability Pool Mechanisms
@@ -952,28 +952,28 @@ alice deposit: 0
       ✓ withdrawFromSP(), full withdrawal: zero's depositor's snapshots (1434ms)
       ✓ withdrawFromSP(), full withdrawal that reduces front end stake to 0: zero’s the front end’s snapshots (1248ms)
       ✓ withdrawFromSP(), reverts when initial deposit value is 0 (1037ms)
-      ✓ withdrawETHGainToTrove(): reverts when user has no active deposit (1043ms)
-      ✓ withdrawETHGainToTrove(): Applies EBTCLoss to user's deposit, and redirects ETH reward to user's Trove (932ms)
-      ✓ withdrawETHGainToTrove(): reverts if it would leave cdp with ICR < MCR (3920ms)
-      ✓ withdrawETHGainToTrove(): Subsequent deposit and withdrawal attempt from same account, with no intermediate liquidations, withdraws zero ETH (976ms)
-      ✓ withdrawETHGainToTrove(): decreases StabilityPool ETH and increases activePool ETH (976ms)
-      ✓ withdrawETHGainToTrove(): All depositors are able to withdraw their ETH gain from the SP to their Trove (5974ms)
-      ✓ withdrawETHGainToTrove(): All depositors withdraw, each withdraw their correct ETH gain (2591ms)
-      ✓ withdrawETHGainToTrove(): caller can withdraw full deposit and ETH gain to their cdp during Recovery Mode (1629ms)
-      ✓ withdrawETHGainToTrove(): reverts if user has no cdp (967ms)
-      ✓ withdrawETHGainToTrove(): triggers LQTY reward event - increases the sum G (1298ms)
-      ✓ withdrawETHGainToTrove(), partial withdrawal: doesn't change the front end tag (4778ms)
-      ✓ withdrawETHGainToTrove(), eligible deposit: depositor receives LQTY rewards (1607ms)
-      ✓ withdrawETHGainToTrove(), eligible deposit: tagged front end receives LQTY rewards (1701ms)
-      ✓ withdrawETHGainToTrove(), eligible deposit: tagged front end's stake decreases (5345ms)
-      ✓ withdrawETHGainToTrove(), eligible deposit: tagged front end's snapshots update (1984ms)
-      ✓ withdrawETHGainToTrove(): reverts when depositor has no ETH gain (1172ms)
+      ✓ withdrawETHGainToCdp(): reverts when user has no active deposit (1043ms)
+      ✓ withdrawETHGainToCdp(): Applies EBTCLoss to user's deposit, and redirects ETH reward to user's Cdp (932ms)
+      ✓ withdrawETHGainToCdp(): reverts if it would leave cdp with ICR < MCR (3920ms)
+      ✓ withdrawETHGainToCdp(): Subsequent deposit and withdrawal attempt from same account, with no intermediate liquidations, withdraws zero ETH (976ms)
+      ✓ withdrawETHGainToCdp(): decreases StabilityPool ETH and increases activePool ETH (976ms)
+      ✓ withdrawETHGainToCdp(): All depositors are able to withdraw their ETH gain from the SP to their Cdp (5974ms)
+      ✓ withdrawETHGainToCdp(): All depositors withdraw, each withdraw their correct ETH gain (2591ms)
+      ✓ withdrawETHGainToCdp(): caller can withdraw full deposit and ETH gain to their cdp during Recovery Mode (1629ms)
+      ✓ withdrawETHGainToCdp(): reverts if user has no cdp (967ms)
+      ✓ withdrawETHGainToCdp(): triggers LQTY reward event - increases the sum G (1298ms)
+      ✓ withdrawETHGainToCdp(), partial withdrawal: doesn't change the front end tag (4778ms)
+      ✓ withdrawETHGainToCdp(), eligible deposit: depositor receives LQTY rewards (1607ms)
+      ✓ withdrawETHGainToCdp(), eligible deposit: tagged front end receives LQTY rewards (1701ms)
+      ✓ withdrawETHGainToCdp(), eligible deposit: tagged front end's stake decreases (5345ms)
+      ✓ withdrawETHGainToCdp(), eligible deposit: tagged front end's snapshots update (1984ms)
+      ✓ withdrawETHGainToCdp(): reverts when depositor has no ETH gain (1172ms)
       ✓ registerFrontEnd(): registers the front end and chosen kickback rate (173ms)
       ✓ registerFrontEnd(): reverts if the front end is already registered (196ms)
       ✓ registerFrontEnd(): reverts if the kickback rate >1 (57ms)
       ✓ registerFrontEnd(): reverts if address has a non-zero deposit already (702ms)
 
-  Contract: TroveManager
+  Contract: CdpManager
 totalStakesSnapshot after L1: 200000002000000000000000000000
 totalCollateralSnapshot after L1: 399000002000000000000000000000
 Snapshots ratio after L1: 501253135332064484
@@ -1013,7 +1013,7 @@ Snapshots ratio after L11: 501253130344595837
 B stake after A11: 39999999999999999998008332745
     ✓ A given cdp's stake decline is negligible with adjustments and tiny liquidations (4988ms)
 
-  Contract: TroveManager - Redistribution reward calculations
+  Contract: CdpManager - Redistribution reward calculations
     ✓ redistribution: A, B Open. B Liquidated. C, D Open. D Liquidated. Distributes correct rewards (1514ms)
     ✓ redistribution: A, B, C Open. C Liquidated. D, E, F Open. F Liquidated. Distributes correct rewards (1537ms)
     ✓ redistribution: Sequence of alternate opening/liquidation: final surviving cdp has ETH from all previously liquidated cdps (1667ms)
@@ -1021,37 +1021,37 @@ B stake after A11: 39999999999999999998008332745
     ✓ redistribution: A,B,C,D open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt (1962ms)
     ✓ redistribution: A,B,C Open. Liq(C). B adds coll. Liq(A). B acquires all coll and debt (1102ms)
     ✓ redistribution: A,B,C Open. Liq(C). B tops up coll. D Opens. Liq(D). Distributes correct rewards. (1133ms)
-    ✓ redistribution: Trove with the majority stake tops up. A,B,C, D open. Liq(D). C tops up. E Enters, Liq(E). Distributes correct rewards (1217ms)
-    ✓ redistribution: Trove with the majority stake tops up. A,B,C, D open. Liq(D). A, B, C top up. E Enters, Liq(E). Distributes correct rewards (1627ms)
+    ✓ redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). C tops up. E Enters, Liq(E). Distributes correct rewards (1217ms)
+    ✓ redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). A, B, C top up. E Enters, Liq(E). Distributes correct rewards (1627ms)
     ✓ redistribution: A,B,C Open. Liq(C). B withdraws coll. Liq(A). B acquires all coll and debt (1062ms)
     ✓ redistribution: A,B,C Open. Liq(C). B withdraws coll. D Opens. Liq(D). Distributes correct rewards. (1050ms)
-    ✓ redistribution: Trove with the majority stake withdraws. A,B,C,D open. Liq(D). C withdraws some coll. E Enters, Liq(E). Distributes correct rewards (1254ms)
-    ✓ redistribution: Trove with the majority stake withdraws. A,B,C,D open. Liq(D). A, B, C withdraw. E Enters, Liq(E). Distributes correct rewards (2218ms)
+    ✓ redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). C withdraws some coll. E Enters, Liq(E). Distributes correct rewards (1254ms)
+    ✓ redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). A, B, C withdraw. E Enters, Liq(E). Distributes correct rewards (2218ms)
     ✓ redistribution, all operations: A,B,C open. Liq(A). D opens. B adds, C withdraws. Liq(B). E & F open. D adds. Liq(F). Distributes correct rewards (1990ms)
     ✓ redistribution, all operations: A,B,C open. Liq(A). D opens. B adds, C withdraws. Liq(B). E & F open. D adds. Liq(F). Varying coll. Distributes correct rewards (2513ms)
 
-  Contract: TroveManager - in Recovery Mode
+  Contract: CdpManager - in Recovery Mode
     ✓ checkRecoveryMode(): Returns true if TCR falls below CCR (555ms)
     ✓ checkRecoveryMode(): Returns true if TCR stays less than CCR (783ms)
     ✓ checkRecoveryMode(): returns false if TCR stays above CCR (775ms)
     ✓ checkRecoveryMode(): returns false if TCR rises above CCR (517ms)
     ✓ liquidate(), with ICR < 100%: removes stake and updates totalStakes (958ms)
     ✓ liquidate(), with ICR < 100%: updates system snapshots correctly (1181ms)
-    ✓ liquidate(), with ICR < 100%: closes the Trove and removes it from the Trove array (808ms)
-    ✓ liquidate(), with ICR < 100%: only redistributes to active Troves - no offset to Stability Pool (1527ms)
+    ✓ liquidate(), with ICR < 100%: closes the Cdp and removes it from the Cdp array (808ms)
+    ✓ liquidate(), with ICR < 100%: only redistributes to active Cdps - no offset to Stability Pool (1527ms)
     ✓ liquidate(), with 100 < ICR < 110%: removes stake and updates totalStakes (969ms)
     ✓ liquidate(), with 100% < ICR < 110%: updates system snapshots correctly (1292ms)
-    ✓ liquidate(), with 100% < ICR < 110%: closes the Trove and removes it from the Trove array (965ms)
+    ✓ liquidate(), with 100% < ICR < 110%: closes the Cdp and removes it from the Cdp array (965ms)
     ✓ liquidate(), with 100% < ICR < 110%: offsets as much debt as possible with the Stability Pool, then redistributes the remainder coll and debt (1034ms)
     ✓ liquidate(), with ICR > 110%, cdp has lowest ICR, and StabilityPool is empty: does nothing (1245ms)
     ✓ liquidate(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: offsets the cdp entirely with the pool (1265ms)
     ✓ liquidate(), with ICR% = 110 < TCR, and StabilityPool EBTC > debt to liquidate: offsets the cdp entirely with the pool, there’s no collateral surplus (1382ms)
     ✓ liquidate(), with  110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: removes stake and updates totalStakes (1361ms)
     ✓ liquidate(), with  110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: updates system snapshots (1287ms)
-    ✓ liquidate(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: closes the Trove (6532ms)
+    ✓ liquidate(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: closes the Cdp (6532ms)
     ✓ liquidate(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: can liquidate cdps out of order (2667ms)
-    ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: Trove remains active (985ms)
-    ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: Trove remains in TroveOwners array (1134ms)
+    ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: Cdp remains active (985ms)
+    ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: Cdp remains in CdpOwners array (1134ms)
     ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: nothing happens (1146ms)
     ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: updates system shapshots (1284ms)
     ✓ liquidate(), with ICR > 110%, and StabilityPool EBTC < liquidated debt: causes correct Pool offset and ETH gain, and doesn't redistribute to active cdps (1266ms)
@@ -1068,54 +1068,54 @@ B stake after A11: 39999999999999999998008332745
     ✓ liquidate(): does not alter the liquidated user's token balance (1312ms)
     ✓ liquidate(), with 110% < ICR < TCR, can claim collateral, re-open, be reedemed and claim again (2055ms)
     ✓ liquidate(), with 110% < ICR < TCR, can claim collateral, after another claim from a redemption (2300ms)
-    ✓ liquidateTroves(): With all ICRs > 110%, Liquidates Troves until system leaves recovery mode (3129ms)
-    ✓ liquidateTroves(): Liquidates Troves until 1) system has left recovery mode AND 2) it reaches a Trove with ICR >= 110% (2467ms)
-    ✓ liquidateTroves(): liquidates only up to the requested number of undercollateralized cdps (7021ms)
-    ✓ liquidateTroves(): does nothing if n = 0 (952ms)
-    ✓ liquidateTroves(): closes every Trove with ICR < MCR, when n > number of undercollateralized cdps (2065ms)
-    ✓ liquidateTroves(): a liquidation sequence containing Pool offsets increases the TCR (2024ms)
-    ✓ liquidateTroves(): A liquidation sequence of pure redistributions decreases the TCR, due to gas compensation, but up to 0.5% (6805ms)
-    ✓ liquidateTroves(): liquidates based on entire/collateral debt (including pending rewards), not raw collateral/debt (945ms)
-    ✓ liquidateTroves(): does nothing if all cdps have ICR > 110% and Stability Pool is empty (692ms)
-    ✓ liquidateTroves(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps (1300ms)
-    ✓ liquidateTroves():  emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps, including a partial (1362ms)
-    ✓ liquidateTroves(): does not affect the liquidated user's token balances (4805ms)
-    ✓ liquidateTroves(): Liquidating cdps at 100 < ICR < 110 with SP deposits correctly impacts their SP deposit and ETH gain (1556ms)
-    ✓ liquidateTroves(): Liquidating cdps at ICR <=100% with SP deposits does not alter their deposit or ETH gain (1391ms)
-    ✓ liquidateTroves() with a non fullfilled liquidation: non liquidated cdp remains active (1140ms)
-    ✓ liquidateTroves() with a non fullfilled liquidation: non liquidated cdp remains in TroveOwners Array (1378ms)
+    ✓ liquidateCdps(): With all ICRs > 110%, Liquidates Cdps until system leaves recovery mode (3129ms)
+    ✓ liquidateCdps(): Liquidates Cdps until 1) system has left recovery mode AND 2) it reaches a Cdp with ICR >= 110% (2467ms)
+    ✓ liquidateCdps(): liquidates only up to the requested number of undercollateralized cdps (7021ms)
+    ✓ liquidateCdps(): does nothing if n = 0 (952ms)
+    ✓ liquidateCdps(): closes every Cdp with ICR < MCR, when n > number of undercollateralized cdps (2065ms)
+    ✓ liquidateCdps(): a liquidation sequence containing Pool offsets increases the TCR (2024ms)
+    ✓ liquidateCdps(): A liquidation sequence of pure redistributions decreases the TCR, due to gas compensation, but up to 0.5% (6805ms)
+    ✓ liquidateCdps(): liquidates based on entire/collateral debt (including pending rewards), not raw collateral/debt (945ms)
+    ✓ liquidateCdps(): does nothing if all cdps have ICR > 110% and Stability Pool is empty (692ms)
+    ✓ liquidateCdps(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps (1300ms)
+    ✓ liquidateCdps():  emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps, including a partial (1362ms)
+    ✓ liquidateCdps(): does not affect the liquidated user's token balances (4805ms)
+    ✓ liquidateCdps(): Liquidating cdps at 100 < ICR < 110 with SP deposits correctly impacts their SP deposit and ETH gain (1556ms)
+    ✓ liquidateCdps(): Liquidating cdps at ICR <=100% with SP deposits does not alter their deposit or ETH gain (1391ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: non liquidated cdp remains active (1140ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: non liquidated cdp remains in CdpOwners Array (1378ms)
 gasUsed:  609826
 true
-    ✓ liquidateTroves() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, emptied pool (4864ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, emptied pool (4864ms)
 gasUsed:  609826
-    ✓ liquidateTroves() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, non emptied pool (1286ms)
-    ✓ liquidateTroves() with a non fullfilled liquidation: total liquidated coll and debt is correct (1175ms)
-    ✓ liquidateTroves() with a non fullfilled liquidation: emits correct liquidation event values (1364ms)
-    ✓ liquidateTroves() with a non fullfilled liquidation: ICR of non liquidated cdp does not change (1387ms)
-    ✓ batchLiquidateTroves(): Liquidates all cdps with ICR < 110%, transitioning Normal -> Recovery Mode (4957ms)
-    ✓ batchLiquidateTroves(): Liquidates all cdps with ICR < 110%, transitioning Recovery -> Normal Mode (1492ms)
-    ✓ batchLiquidateTroves(): Liquidates all cdps with ICR < 110%, transitioning Normal -> Recovery Mode (1922ms)
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: non liquidated cdp remains active (1286ms)
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: non liquidated cdp remains in Trove Owners array (1555ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, non emptied pool (1286ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: total liquidated coll and debt is correct (1175ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: emits correct liquidation event values (1364ms)
+    ✓ liquidateCdps() with a non fullfilled liquidation: ICR of non liquidated cdp does not change (1387ms)
+    ✓ batchLiquidateCdps(): Liquidates all cdps with ICR < 110%, transitioning Normal -> Recovery Mode (4957ms)
+    ✓ batchLiquidateCdps(): Liquidates all cdps with ICR < 110%, transitioning Recovery -> Normal Mode (1492ms)
+    ✓ batchLiquidateCdps(): Liquidates all cdps with ICR < 110%, transitioning Normal -> Recovery Mode (1922ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: non liquidated cdp remains active (1286ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: non liquidated cdp remains in Cdp Owners array (1555ms)
 gasUsed:  636956
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, emptied pool (1465ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, emptied pool (1465ms)
 gasUsed:  636956
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, non emptied pool (1521ms)
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: total liquidated coll and debt is correct (1320ms)
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: emits correct liquidation event values (1238ms)
-    ✓ batchLiquidateTroves() with a non fullfilled liquidation: ICR of non liquidated cdp does not change (1416ms)
-    ✓ batchLiquidateTroves(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: can liquidate cdps out of order (1357ms)
-    ✓ batchLiquidateTroves(), with 110% < ICR < TCR, and StabilityPool empty: doesn't liquidate any cdps (1161ms)
-    ✓ batchLiquidateTroves(): skips liquidation of cdps with ICR > TCR, regardless of Stability Pool size (2686ms)
-    ✓ batchLiquidateTroves(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps (1530ms)
-    ✓ batchLiquidateTroves(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps, including a partial (4965ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: still can liquidate further cdps after the non-liquidated, non emptied pool (1521ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: total liquidated coll and debt is correct (1320ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: emits correct liquidation event values (1238ms)
+    ✓ batchLiquidateCdps() with a non fullfilled liquidation: ICR of non liquidated cdp does not change (1416ms)
+    ✓ batchLiquidateCdps(), with 110% < ICR < TCR, and StabilityPool EBTC > debt to liquidate: can liquidate cdps out of order (1357ms)
+    ✓ batchLiquidateCdps(), with 110% < ICR < TCR, and StabilityPool empty: doesn't liquidate any cdps (1161ms)
+    ✓ batchLiquidateCdps(): skips liquidation of cdps with ICR > TCR, regardless of Stability Pool size (2686ms)
+    ✓ batchLiquidateCdps(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps (1530ms)
+    ✓ batchLiquidateCdps(): emits liquidation event with correct values when all cdps have ICR > 110% and Stability Pool covers a subset of cdps, including a partial (4965ms)
 
-  Contract: TroveManager
-    ✓ liquidate(): closes a Trove that has ICR < MCR (573ms)
+  Contract: CdpManager
+    ✓ liquidate(): closes a Cdp that has ICR < MCR (573ms)
     ✓ liquidate(): decreases ActivePool ETH and EBTCDebt by correct amounts (567ms)
     ✓ liquidate(): increases DefaultPool ETH and EBTC debt by correct amounts (553ms)
-    ✓ liquidate(): removes the Trove's stake from the total stakes (608ms)
-    ✓ liquidate(): Removes the correct cdp from the TroveOwners array, and moves the last array element to the new empty slot (1276ms)
+    ✓ liquidate(): removes the Cdp's stake from the total stakes (608ms)
+    ✓ liquidate(): Removes the correct cdp from the CdpOwners array, and moves the last array element to the new empty slot (1276ms)
     ✓ liquidate(): updates the snapshots of total stakes and total collateral (422ms)
     ✓ liquidate(): updates the L_ETH and L_EBTCDebt reward-per-unit-staked totals (984ms)
     ✓ liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system (503ms)
@@ -1132,31 +1132,31 @@ gasUsed:  636956
     ✓ liquidate(): liquidates based on entire/collateral debt (including pending rewards), not raw collateral/debt (1573ms)
     ✓ liquidate(): when SP > 0, triggers LQTY reward event - increases the sum G (1081ms)
     ✓ liquidate(): when SP is empty, doesn't update G (1127ms)
-    ✓ liquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards (5574ms)
-    ✓ liquidateTroves(): closes every Trove with ICR < MCR, when n > number of undercollateralized cdps (2003ms)
-    ✓ liquidateTroves(): liquidates  up to the requested number of undercollateralized cdps (1230ms)
-    ✓ liquidateTroves(): does nothing if all cdps have ICR > 110% (1021ms)
-    ✓ liquidateTroves(): liquidates based on entire/collateral debt (including pending rewards), not raw collateral/debt (1246ms)
-    ✓ liquidateTroves(): reverts if n = 0 (764ms)
-    ✓ liquidateTroves():  liquidates cdps with ICR < MCR (1751ms)
-    ✓ liquidateTroves(): does not affect the liquidated user's token balances (999ms)
-    ✓ liquidateTroves(): A liquidation sequence containing Pool offsets increases the TCR (6204ms)
-    ✓ liquidateTroves(): A liquidation sequence of pure redistributions decreases the TCR, due to gas compensation, but up to 0.5% (1929ms)
-    ✓ liquidateTroves(): Liquidating cdps with SP deposits correctly impacts their SP deposit and ETH gain (1214ms)
-    ✓ liquidateTroves(): when SP > 0, triggers LQTY reward event - increases the sum G (5057ms)
-    ✓ liquidateTroves(): when SP is empty, doesn't update G (1722ms)
-    ✓ batchLiquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards (1912ms)
-    ✓ batchLiquidateTroves(): closes every cdp with ICR < MCR in the given array (1351ms)
-    ✓ batchLiquidateTroves(): does not liquidate cdps that are not in the given array (5228ms)
-    ✓ batchLiquidateTroves(): does not close cdps with ICR >= MCR in the given array (1442ms)
-    ✓ batchLiquidateTroves(): reverts if array is empty (978ms)
-    ✓ batchLiquidateTroves(): skips if cdp is non-existent (1295ms)
-    ✓ batchLiquidateTroves(): skips if a cdp has been closed (5183ms)
-    ✓ batchLiquidateTroves: when SP > 0, triggers LQTY reward event - increases the sum G (1428ms)
-    ✓ batchLiquidateTroves(): when SP is empty, doesn't update G (1655ms)
-    ✓ getRedemptionHints(): gets the address of the first Trove and the final ICR of the last Trove involved in a redemption (621ms)
+    ✓ liquidateCdps(): liquidates a Cdp that a) was skipped in a previous liquidation and b) has pending rewards (5574ms)
+    ✓ liquidateCdps(): closes every Cdp with ICR < MCR, when n > number of undercollateralized cdps (2003ms)
+    ✓ liquidateCdps(): liquidates  up to the requested number of undercollateralized cdps (1230ms)
+    ✓ liquidateCdps(): does nothing if all cdps have ICR > 110% (1021ms)
+    ✓ liquidateCdps(): liquidates based on entire/collateral debt (including pending rewards), not raw collateral/debt (1246ms)
+    ✓ liquidateCdps(): reverts if n = 0 (764ms)
+    ✓ liquidateCdps():  liquidates cdps with ICR < MCR (1751ms)
+    ✓ liquidateCdps(): does not affect the liquidated user's token balances (999ms)
+    ✓ liquidateCdps(): A liquidation sequence containing Pool offsets increases the TCR (6204ms)
+    ✓ liquidateCdps(): A liquidation sequence of pure redistributions decreases the TCR, due to gas compensation, but up to 0.5% (1929ms)
+    ✓ liquidateCdps(): Liquidating cdps with SP deposits correctly impacts their SP deposit and ETH gain (1214ms)
+    ✓ liquidateCdps(): when SP > 0, triggers LQTY reward event - increases the sum G (5057ms)
+    ✓ liquidateCdps(): when SP is empty, doesn't update G (1722ms)
+    ✓ batchLiquidateCdps(): liquidates a Cdp that a) was skipped in a previous liquidation and b) has pending rewards (1912ms)
+    ✓ batchLiquidateCdps(): closes every cdp with ICR < MCR in the given array (1351ms)
+    ✓ batchLiquidateCdps(): does not liquidate cdps that are not in the given array (5228ms)
+    ✓ batchLiquidateCdps(): does not close cdps with ICR >= MCR in the given array (1442ms)
+    ✓ batchLiquidateCdps(): reverts if array is empty (978ms)
+    ✓ batchLiquidateCdps(): skips if cdp is non-existent (1295ms)
+    ✓ batchLiquidateCdps(): skips if a cdp has been closed (5183ms)
+    ✓ batchLiquidateCdps: when SP > 0, triggers LQTY reward event - increases the sum G (1428ms)
+    ✓ batchLiquidateCdps(): when SP is empty, doesn't update G (1655ms)
+    ✓ getRedemptionHints(): gets the address of the first Cdp and the final ICR of the last Cdp involved in a redemption (621ms)
     ✓ getRedemptionHints(): returns 0 as partialRedemptionHintNICR when reaching _maxIterations (715ms)
-    ✓ redeemCollateral(): cancels the provided EBTC with debt from Troves with the lowest ICRs and sends an equivalent amount of Ether (838ms)
+    ✓ redeemCollateral(): cancels the provided EBTC with debt from Cdps with the lowest ICRs and sends an equivalent amount of Ether (838ms)
     ✓ redeemCollateral(): with invalid first hint, zero address (991ms)
     ✓ redeemCollateral(): with invalid first hint, non-existent cdp (1003ms)
     ✓ redeemCollateral(): with invalid first hint, cdp below MCR (1392ms)
@@ -1166,8 +1166,8 @@ gasUsed:  636956
     ✓ redeemCollateral(): doesn't perform partial redemption if resultant debt would be < minimum net debt (1487ms)
     ✓ redeemCollateral(): doesnt perform the final partial redemption in the sequence if the hint is out-of-date (1583ms)
     - redeemCollateral(): can redeem if there is zero active debt but non-zero debt in DefaultPool
-    ✓ redeemCollateral(): doesn't touch Troves with ICR < 110% (4743ms)
-    ✓ redeemCollateral(): finds the last Trove with ICR == 110% even if there is more than one (1124ms)
+    ✓ redeemCollateral(): doesn't touch Cdps with ICR < 110% (4743ms)
+    ✓ redeemCollateral(): finds the last Cdp with ICR == 110% even if there is more than one (1124ms)
     ✓ redeemCollateral(): reverts when TCR < MCR (1238ms)
     ✓ redeemCollateral(): reverts when argument _amount is 0 (1038ms)
     ✓ redeemCollateral(): reverts if max fee > 100% (1918ms)
@@ -1189,7 +1189,7 @@ gasUsed:  636956
     ✓ redeemCollateral(): a redemption made at a non-zero base rate increases ETH-per-LQTY-staked in the staking contract (5971ms)
     ✓ redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - ETHFee) to the redeemer (1113ms)
     ✓ redeemCollateral(): a full redemption (leaving cdp with 0 debt), closes the cdp (1553ms)
-    ✓ redeemCollateral(): emits correct debt and coll values in each redeemed cdp's TroveUpdated event (1416ms)
+    ✓ redeemCollateral(): emits correct debt and coll values in each redeemed cdp's CdpUpdated event (1416ms)
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner to claim (5373ms)
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner after re-opening cdp (2154ms)
     ✓ redeemCollateral(): reverts if fee eats up all returned collateral (1412ms)
@@ -1205,10 +1205,10 @@ gasUsed:  636956
     ✓ checkRecoveryMode(): Returns false when TCR == 150% (366ms)
     ✓ checkRecoveryMode(): Returns false when TCR > 150% (365ms)
     ✓ checkRecoveryMode(): Returns false when TCR == 0 (604ms)
-    ✓ getTroveStake(): Returns stake (511ms)
-    ✓ getTroveColl(): Returns coll (494ms)
-    ✓ getTroveDebt(): Returns debt (400ms)
-    ✓ getTroveStatus(): Returns status (434ms)
+    ✓ getCdpStake(): Returns stake (511ms)
+    ✓ getCdpColl(): Returns coll (494ms)
+    ✓ getCdpDebt(): Returns debt (400ms)
+    ✓ getCdpStatus(): Returns status (434ms)
     ✓ hasPendingRewards(): Returns false it cdp is not active
 
   Contract: Unipool

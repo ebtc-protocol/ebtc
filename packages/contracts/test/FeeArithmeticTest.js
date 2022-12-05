@@ -2,7 +2,7 @@ const Decimal = require("decimal.js");
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 
 const th = testHelpers.TestHelper
@@ -331,8 +331,8 @@ contract('Fee arithmetic tests', async accounts => {
   ]
 
   before(async () => {
-    cdpManagerTester = await TroveManagerTester.new()
-    TroveManagerTester.setAsDeployed(cdpManagerTester)
+    cdpManagerTester = await CdpManagerTester.new()
+    CdpManagerTester.setAsDeployed(cdpManagerTester)
 
     mathTester = await LiquityMathTester.new()
     LiquityMathTester.setAsDeployed(mathTester)
@@ -436,7 +436,7 @@ contract('Fee arithmetic tests', async accounts => {
   it("decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.01", async () => {
     // baseRate = 0.01
     for (i = 0; i < decayBaseRateResults.seconds.length; i++) {
-      // Set base rate to 0.01 in TroveManager
+      // Set base rate to 0.01 in CdpManager
       await cdpManagerTester.setBaseRate(dec(1, 16))
       const contractBaseRate = await cdpManagerTester.baseRate()
       assert.equal(contractBaseRate, dec(1, 16))
@@ -470,7 +470,7 @@ contract('Fee arithmetic tests', async accounts => {
   it("decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.1", async () => {
     // baseRate = 0.1
     for (i = 0; i < decayBaseRateResults.seconds.length; i++) {
-      // Set base rate to 0.1 in TroveManager
+      // Set base rate to 0.1 in CdpManager
       await cdpManagerTester.setBaseRate(dec(1, 17))
       const contractBaseRate = await cdpManagerTester.baseRate()
       assert.equal(contractBaseRate, dec(1, 17))
@@ -504,7 +504,7 @@ contract('Fee arithmetic tests', async accounts => {
   it("decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.34539284", async () => {
     // baseRate = 0.34539284
     for (i = 0; i < decayBaseRateResults.seconds.length; i++) {
-      // Set base rate to 0.1 in TroveManager
+      // Set base rate to 0.1 in CdpManager
       await cdpManagerTester.setBaseRate('345392840000000000')
       const contractBaseRate = await cdpManagerTester.baseRate()
       await cdpManagerTester.setBaseRate('345392840000000000')
@@ -539,7 +539,7 @@ contract('Fee arithmetic tests', async accounts => {
   it("decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.9976", async () => {
     // baseRate = 0.9976
     for (i = 0; i < decayBaseRateResults.seconds.length; i++) {
-      // Set base rate to 0.9976 in TroveManager
+      // Set base rate to 0.9976 in CdpManager
       await cdpManagerTester.setBaseRate('997600000000000000')
       await cdpManagerTester.setBaseRate('997600000000000000')
 

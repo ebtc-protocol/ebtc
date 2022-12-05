@@ -1,6 +1,6 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const EBTCToken = artifacts.require("EBTCToken")
 
@@ -26,7 +26,7 @@ contract('Gas compensation tests', async accounts => {
 
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let activePool
   let stabilityPool
@@ -37,8 +37,8 @@ contract('Gas compensation tests', async accounts => {
   let cdpManagerTester
   let borrowerOperationsTester
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
   const logICRs = (ICRList) => {
     for (let i = 0; i < ICRList.length; i++) {
@@ -47,10 +47,10 @@ contract('Gas compensation tests', async accounts => {
   }
 
   before(async () => {
-    cdpManagerTester = await TroveManagerTester.new()
+    cdpManagerTester = await CdpManagerTester.new()
     borrowerOperationsTester = await BorrowerOperationsTester.new()
 
-    TroveManagerTester.setAsDeployed(cdpManagerTester)
+    CdpManagerTester.setAsDeployed(cdpManagerTester)
     BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
 	
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
@@ -59,7 +59,7 @@ contract('Gas compensation tests', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await TroveManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.stabilityPool.address,
@@ -69,7 +69,7 @@ contract('Gas compensation tests', async accounts => {
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
@@ -321,54 +321,54 @@ contract('Gas compensation tests', async accounts => {
   // --- Test ICRs with virtual debt ---
   it('getCurrentICR(): Incorporates virtual debt, and returns the correct ICR for new cdps', async () => {
     const price = await priceFeed.getPrice()
-    await openTrove({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
 
     // A opens with 1 ETH, 110 EBTC
-    await openTrove({ ICR: toBN('1818181818181818181'), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    const alice_ICR = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
+    await openCdp({ ICR: toBN('1818181818181818181'), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
     // Expect aliceICR = (1 * 200) / (110) = 181.81%
     assert.isAtMost(th.getDifference(alice_ICR, '1818181818181818181'), 1000)
 
     // B opens with 0.5 ETH, 50 EBTC
-    await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    const bob_ICR = (await cdpManager.getCurrentICR(_bobTroveId, price)).toString()
+    await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    const bob_ICR = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
     // Expect Bob's ICR = (0.5 * 200) / 50 = 200%
     assert.isAtMost(th.getDifference(bob_ICR, dec(2, 18)), 1000)
 
     // F opens with 1 ETH, 100 EBTC
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: flyn } })
-    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
-    const flyn_ICR = (await cdpManager.getCurrentICR(_flynTroveId, price)).toString()
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: flyn } })
+    let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
+    const flyn_ICR = (await cdpManager.getCurrentICR(_flynCdpId, price)).toString()
     // Expect Flyn's ICR = (1 * 200) / 100 = 200%
     assert.isAtMost(th.getDifference(flyn_ICR, dec(2, 18)), 1000)
 
     // C opens with 2.5 ETH, 160 EBTC
-    await openTrove({ ICR: toBN(dec(3125, 15)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    const carol_ICR = (await cdpManager.getCurrentICR(_carolTroveId, price)).toString()
+    await openCdp({ ICR: toBN(dec(3125, 15)), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    const carol_ICR = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
     // Expect Carol's ICR = (2.5 * 200) / (160) = 312.50%
     assert.isAtMost(th.getDifference(carol_ICR, '3125000000000000000'), 1000)
 
     // D opens with 1 ETH, 0 EBTC
-    await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
-    const dennis_ICR = (await cdpManager.getCurrentICR(_dennisTroveId, price)).toString()
+    await openCdp({ ICR: toBN(dec(4, 18)), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+    const dennis_ICR = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
     // Expect Dennis's ICR = (1 * 200) / (50) = 400.00%
     assert.isAtMost(th.getDifference(dennis_ICR, dec(4, 18)), 1000)
 
     // E opens with 4405.45 ETH, 32598.35 EBTC
-    await openTrove({ ICR: toBN('27028668628933700000'), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    const erin_ICR = (await cdpManager.getCurrentICR(_erinTroveId, price)).toString()
+    await openCdp({ ICR: toBN('27028668628933700000'), extraParams: { from: erin } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    const erin_ICR = (await cdpManager.getCurrentICR(_erinCdpId, price)).toString()
     // Expect Erin's ICR = (4405.45 * 200) / (32598.35) = 2702.87%
     assert.isAtMost(th.getDifference(erin_ICR, '27028668628933700000'), 100000)
 
     // H opens with 1 ETH, 180 EBTC
-    await openTrove({ ICR: toBN('1111111111111111111'), extraParams: { from: harriet } })
-    let _harrietTroveId = await sortedTroves.cdpOfOwnerByIndex(harriet, 0);
-    const harriet_ICR = (await cdpManager.getCurrentICR(_harrietTroveId, price)).toString()
+    await openCdp({ ICR: toBN('1111111111111111111'), extraParams: { from: harriet } })
+    let _harrietCdpId = await sortedCdps.cdpOfOwnerByIndex(harriet, 0);
+    const harriet_ICR = (await cdpManager.getCurrentICR(_harrietCdpId, price)).toString()
     // Expect Harriet's ICR = (1 * 200) / (180) = 111.11%
     assert.isAtMost(th.getDifference(harriet_ICR, '1111111111111111111'), 1000)
   })
@@ -376,20 +376,20 @@ contract('Gas compensation tests', async accounts => {
   // Test compensation amounts and liquidation amounts
 
   it('Gas compensation from pool-offset liquidations. All collateral paid as compensation', async () => {
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
 	
-    const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 	
-    const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(300, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(300, 18), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 	
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt.add(C_totalDebt), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt.add(C_totalDebt), extraParams: { from: erin } })
 
     // D, E each provide EBTC to SP
     await stabilityPool.provideToSP(A_totalDebt, ZERO_ADDRESS, { from: dennis, gasPrice: GAS_PRICE })
@@ -406,13 +406,13 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    let _liqAliceTx = await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE });
+    let _liqAliceTx = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE });
     const A_GAS_Used_Liquidator = th.gasUsed(_liqAliceTx)
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 	
@@ -438,12 +438,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by B's 0.5% of coll, 2 ETH
@@ -470,12 +470,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const carolColl = (await cdpManager.Troves(_carolTroveId))[1]
+    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const C_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_carolTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const C_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_carolCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by C's 0.5% of coll, 3 ETH
@@ -494,16 +494,16 @@ contract('Gas compensation tests', async accounts => {
 
   it('gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder', async () => {
     await priceFeed.setPrice(dec(400, 18))
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(120, 16)), extraEBTCAmount: dec(5000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    await openTrove({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    await openTrove({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(120, 16)), extraEBTCAmount: dec(5000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis , gasPrice: GAS_PRICE })
@@ -525,16 +525,16 @@ contract('Gas compensation tests', async accounts => {
     and (1 - 0.05000025000125001) = 0.94999974999875 ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceTroveId, price_1)
+    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -567,16 +567,16 @@ contract('Gas compensation tests', async accounts => {
     and (15 - 0.666666666666666666) ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobTroveId, price_2)
+    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by $10 worth of coll
@@ -600,16 +600,16 @@ contract('Gas compensation tests', async accounts => {
   it('gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder', async () => {
     // open cdps
     await priceFeed.setPrice(dec(400, 18))
-    await openTrove({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice,} })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(1875, 15)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob,} })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol} })
-    await openTrove({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis} })
-    await openTrove({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin} })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice,} })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(1875, 15)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob,} })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol} })
+    await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis} })
+    await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin} })
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis, gasPrice: GAS_PRICE })
@@ -630,17 +630,17 @@ contract('Gas compensation tests', async accounts => {
     and (10.001 - 0.050005) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceTroveId, price_1)
+    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -669,17 +669,17 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobTroveId, price_1)
+    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -703,16 +703,16 @@ contract('Gas compensation tests', async accounts => {
   // --- Event emission in single liquidation ---
 
   it('Gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(300, 18), extraParams: { from: carol } })
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt, extraParams: { from: erin } })
+    const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(300, 18), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt, extraParams: { from: erin } })
 
     // D, E each provide EBTC to SP
     await stabilityPool.provideToSP(A_totalDebt, ZERO_ADDRESS, { from: dennis })
@@ -730,14 +730,14 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const aliceDebt = (await cdpManager.Troves(_aliceTroveId))[0]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
 
     // th.logBN('TCR', await cdpManager.getTCR(await priceFeed.getPrice()))
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_A = aliceColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
@@ -758,12 +758,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const bobDebt = (await cdpManager.Troves(_bobTroveId))[0]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxB = await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_B = bobColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
@@ -779,16 +779,16 @@ contract('Gas compensation tests', async accounts => {
 
   it('gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
     await priceFeed.setPrice(dec(400, 18))
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(120, 16)), extraEBTCAmount: dec(5000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    await openTrove({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    await openTrove({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(200, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(120, 16)), extraEBTCAmount: dec(5000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis })
@@ -810,8 +810,8 @@ contract('Gas compensation tests', async accounts => {
     and (1 - 0.05000025000125001) = 0.94999974999875 ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const aliceDebt = (await cdpManager.Troves(_aliceTroveId))[0]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
     const aliceCollValueInUSD = (await borrowerOperationsTester.getUSDValue(aliceColl, price_1))
     assert.isTrue(aliceCollValueInUSD.gt(th.toBN(dec(10, 18))))
 
@@ -820,11 +820,11 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceTroveId, price_1)
+    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
@@ -849,17 +849,17 @@ contract('Gas compensation tests', async accounts => {
     and (15 - 0.666666666666666666) ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const bobDebt = (await cdpManager.Troves(_bobTroveId))[0]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
 
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobTroveId, price_2)
+    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives
-    const liquidationTxB = await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const expectedGasComp_B = _0pt5percent_bobColl
@@ -877,16 +877,16 @@ contract('Gas compensation tests', async accounts => {
   it('gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
     // open cdps
     await priceFeed.setPrice(dec(400, 18))
-    await openTrove({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
 
     // A-E open cdps
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(1875, 15)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    await openTrove({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    await openTrove({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(1875, 15)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis })
@@ -899,17 +899,17 @@ contract('Gas compensation tests', async accounts => {
     const price_1 = await priceFeed.getPrice()
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const aliceDebt = (await cdpManager.Troves(_aliceTroveId))[0]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceTroveId, price_1)
+    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await cdpManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(_0pt5percent_aliceColl)
@@ -931,17 +931,17 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const bobDebt = (await cdpManager.Troves(_bobTroveId))[0]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobTroveId, price_1)
+    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxB = await cdpManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_B = _0pt5percent_bobColl
     const expectedLiquidatedColl_B = bobColl.sub(_0pt5percent_bobColl)
@@ -955,25 +955,25 @@ contract('Gas compensation tests', async accounts => {
   })
 
 
-  // liquidateTroves - full offset
-  it('liquidateTroves(): full offset.  Compensates the correct amount, and liquidates the remainder', async () => {
+  // liquidateCdps - full offset
+  it('liquidateCdps(): full offset.  Compensates the correct amount, and liquidates the remainder', async () => {
     await priceFeed.setPrice(dec(1000, 18))
 
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-F open cdps
-    await openTrove({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    await openTrove({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
-    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
+    await openCdp({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
+    let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
@@ -989,21 +989,21 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_flynTroveId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_flynCdpId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const carolColl = (await cdpManager.Troves(_carolTroveId))[1]
-    const dennisColl = (await cdpManager.Troves(_dennisTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
+    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1033,7 +1033,7 @@ contract('Gas compensation tests', async accounts => {
     // Liquidate cdps A-D
 
     const liquidatorBalance_before = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateTroves(4, { from: liquidator, gasPrice: GAS_PRICE }))
+    const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check EBTC in SP has decreased
@@ -1049,21 +1049,21 @@ contract('Gas compensation tests', async accounts => {
     assert.equal(expectedLiquidatedColl, ETHinSP)
   })
 
-  // liquidateTroves - full redistribution
-  it('liquidateTroves(): full redistribution. Compensates the correct amount, and liquidates the remainder', async () => {
+  // liquidateCdps - full redistribution
+  it('liquidateCdps(): full redistribution. Compensates the correct amount, and liquidates the remainder', async () => {
     await priceFeed.setPrice(dec(1000, 18))
 
-    await openTrove({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
 
     // A-D open cdps
-    await openTrove({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    await openTrove({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    await openTrove({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    await openTrove({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    await openCdp({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     const EBTCinDefaultPool_0 = await defaultPool.getEBTCDebt()
 
@@ -1075,16 +1075,16 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const carolColl = (await cdpManager.Troves(_carolTroveId))[1]
-    const dennisColl = (await cdpManager.Troves(_dennisTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
+    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1113,7 +1113,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Liquidate cdps A-D
     const liquidatorBalance_before = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateTroves(4, { from: liquidator, gasPrice: GAS_PRICE }))
+    const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check EBTC in DefaultPool has decreased
@@ -1131,24 +1131,24 @@ contract('Gas compensation tests', async accounts => {
   })
 
   //  --- event emission in liquidation sequence ---
-  it('liquidateTroves(): full offset. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
+  it('liquidateCdps(): full offset. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
     await priceFeed.setPrice(dec(1000, 18))
 
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-F open cdps
-    const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
-    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
+    const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
+    let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
 
     // D, E each provide 10000 EBTC to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
@@ -1164,21 +1164,21 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_flynTroveId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_flynCdpId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const carolColl = (await cdpManager.Troves(_carolTroveId))[1]
-    const dennisColl = (await cdpManager.Troves(_dennisTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
+    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1209,7 +1209,7 @@ contract('Gas compensation tests', async accounts => {
     const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
 
     // Liquidate cdps A-D
-    const liquidationTxData = await cdpManager.liquidateTroves(4, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
     const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
@@ -1219,22 +1219,22 @@ contract('Gas compensation tests', async accounts => {
     assert.isAtMost(th.getDifference(expectedGasComp, loggedGasComp), 1000)
   })
 
-  it('liquidateTroves(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
+  it('liquidateCdps(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
     await priceFeed.setPrice(dec(1000, 18))
 
-    await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 
     // A-F open cdps
-    const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-    const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-    const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-    const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
-    await openTrove({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
+    const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(118, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
 
     const EBTCinDefaultPool_0 = await defaultPool.getEBTCDebt()
 
@@ -1246,15 +1246,15 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
 
-    const aliceColl = (await cdpManager.Troves(_aliceTroveId))[1]
-    const bobColl = (await cdpManager.Troves(_bobTroveId))[1]
-    const carolColl = (await cdpManager.Troves(_carolTroveId))[1]
-    const dennisColl = (await cdpManager.Troves(_dennisTroveId))[1]
+    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
+    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1282,7 +1282,7 @@ contract('Gas compensation tests', async accounts => {
     const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
 
     // Liquidate cdps A-D
-    const liquidationTxData = await cdpManager.liquidateTroves(4, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
     const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
@@ -1292,9 +1292,9 @@ contract('Gas compensation tests', async accounts => {
     assert.isAtMost(th.getDifference(expectedGasComp, loggedGasComp), 1000)
   })
 
-  // --- Trove ordering by ICR tests ---
+  // --- Cdp ordering by ICR tests ---
 
-  it('Trove ordering: same collateral, decreasing debt. Price successively increases. Troves should maintain ordering by ICR', async () => {
+  it('Cdp ordering: same collateral, decreasing debt. Price successively increases. Cdps should maintain ordering by ICR', async () => {
     const _10_accounts = accounts.slice(1, 11)
     let _account_cdps = {};
 
@@ -1303,16 +1303,16 @@ contract('Gas compensation tests', async accounts => {
     for (const account of _10_accounts) {
 
       const debtString = debt.toString().concat('000000000000000000')
-      await openTrove({ extraEBTCAmount: debtString, extraParams: { from: account, value: dec(30, 'ether') } })
-      _account_cdps[account] = await sortedTroves.cdpOfOwnerByIndex(account, 0);
+      await openCdp({ extraEBTCAmount: debtString, extraParams: { from: account, value: dec(30, 'ether') } })
+      _account_cdps[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
 
-      const squeezedTroveAddr = th.squeezeAddr(account)
+      const squeezedCdpAddr = th.squeezeAddr(account)
 
       debt -= 1
     }
 
     const initialPrice = await priceFeed.getPrice()
-    const firstColl = (await cdpManager.Troves(_account_cdps[_10_accounts[0]]))[1]
+    const firstColl = (await cdpManager.Cdps(_account_cdps[_10_accounts[0]]))[1]
 
     // Vary price 200-210
     let price = 200
@@ -1322,15 +1322,15 @@ contract('Gas compensation tests', async accounts => {
       await priceFeed.setPrice(priceString)
 
       const ICRList = []
-      const coll_firstTrove = (await cdpManager.Troves(_account_cdps[_10_accounts[0]]))[1]
-      const gasComp_firstTrove = (await cdpManagerTester.getCollGasCompensation(coll_firstTrove)).toString()
+      const coll_firstCdp = (await cdpManager.Cdps(_account_cdps[_10_accounts[0]]))[1]
+      const gasComp_firstCdp = (await cdpManagerTester.getCollGasCompensation(coll_firstCdp)).toString()
 
       for (account of _10_accounts) {
         // Check gas compensation is the same for all cdps
-        const coll = (await cdpManager.Troves(_account_cdps[account]))[1]
+        const coll = (await cdpManager.Cdps(_account_cdps[account]))[1]
         const gasCompensation = (await cdpManagerTester.getCollGasCompensation(coll)).toString()
 
-        assert.equal(gasCompensation, gasComp_firstTrove)
+        assert.equal(gasCompensation, gasComp_firstCdp)
 
         const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
         ICRList.push(ICR)
@@ -1353,7 +1353,7 @@ contract('Gas compensation tests', async accounts => {
     }
   })
 
-  it('Trove ordering: increasing collateral, constant debt. Price successively increases. Troves should maintain ordering by ICR', async () => {
+  it('Cdp ordering: increasing collateral, constant debt. Price successively increases. Cdps should maintain ordering by ICR', async () => {
     const _20_accounts = accounts.slice(1, 21)
     let _account_cdps = {};
 
@@ -1362,8 +1362,8 @@ contract('Gas compensation tests', async accounts => {
     for (const account of _20_accounts) {
 
       const collString = coll.toString().concat('000000000000000000')
-      await openTrove({ extraEBTCAmount: dec(100, 18), extraParams: { from: account, value: collString } })
-      _account_cdps[account] = await sortedTroves.cdpOfOwnerByIndex(account, 0);
+      await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: account, value: collString } })
+      _account_cdps[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
 
       coll += 5
     }
@@ -1400,7 +1400,7 @@ contract('Gas compensation tests', async accounts => {
     }
   })
 
-  it('Trove ordering: Constant raw collateral ratio (excluding virtual debt). Price successively increases. Troves should maintain ordering by ICR', async () => {
+  it('Cdp ordering: Constant raw collateral ratio (excluding virtual debt). Price successively increases. Cdps should maintain ordering by ICR', async () => {
     let collVals = [1, 5, 10, 25, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000].map(v => v * 20)
     const accountsList = accounts.slice(1, collVals.length + 1)
 
@@ -1418,8 +1418,8 @@ contract('Gas compensation tests', async accounts => {
       let _debtAmt = dec(100, 18);
       console.log('accountIdx=' + accountIdx + ',_debtAmt=' + _debtAmt + ',collString=' + collString);
       await bn8Signer.sendTransaction({ to: account, value: ethers.utils.parseUnits(collString, 0)});// sugardaddy the collateral Ether
-      await openTrove({ extraEBTCAmount: _debtAmt, extraParams: { from: account, value: collString } })
-      _account_cdps[account] = await sortedTroves.cdpOfOwnerByIndex(account, 0);
+      await openCdp({ extraEBTCAmount: _debtAmt, extraParams: { from: account, value: collString } })
+      _account_cdps[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
 
       accountIdx += 1
     }

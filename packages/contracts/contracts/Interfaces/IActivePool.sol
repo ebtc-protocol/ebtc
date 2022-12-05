@@ -8,7 +8,7 @@ import "./IPool.sol";
 interface IActivePool is IPool {
     // --- Events ---
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolETHBalanceUpdated(uint _ETH);
 

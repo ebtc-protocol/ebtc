@@ -1,5 +1,5 @@
-const SortedTroves = artifacts.require("./SortedTroves.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
@@ -25,13 +25,13 @@ const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
 
 // Proxy scripts
 const BorrowerOperationsScript = artifacts.require('BorrowerOperationsScript')
 const BorrowerWrappersScript = artifacts.require('BorrowerWrappersScript')
-const TroveManagerScript = artifacts.require('TroveManagerScript')
+const CdpManagerScript = artifacts.require('CdpManagerScript')
 const StabilityPoolScript = artifacts.require('StabilityPoolScript')
 const TokenScript = artifacts.require('TokenScript')
 const LQTYStakingScript = artifacts.require('LQTYStakingScript')
@@ -39,9 +39,9 @@ const {
   buildUserProxies,
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
-  TroveManagerProxy,
+  CdpManagerProxy,
   StabilityPoolProxy,
-  SortedTrovesProxy,
+  SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
 } = require('../utils/proxyHelpers.js')
@@ -92,8 +92,8 @@ class DeploymentHelper {
 
   static async deployLiquityCoreHardhat() {
     const priceFeedTestnet = await PriceFeedTestnet.new()
-    const sortedTroves = await SortedTroves.new()
-    const cdpManager = await TroveManager.new()
+    const sortedCdps = await SortedCdps.new()
+    const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
     const stabilityPool = await StabilityPool.new()
     const gasPool = await GasPool.new()
@@ -110,8 +110,8 @@ class DeploymentHelper {
     EBTCToken.setAsDeployed(ebtcToken)
     DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
-    SortedTroves.setAsDeployed(sortedTroves)
-    TroveManager.setAsDeployed(cdpManager)
+    SortedCdps.setAsDeployed(sortedCdps)
+    CdpManager.setAsDeployed(cdpManager)
     ActivePool.setAsDeployed(activePool)
     StabilityPool.setAsDeployed(stabilityPool)
     GasPool.setAsDeployed(gasPool)
@@ -123,7 +123,7 @@ class DeploymentHelper {
     const coreContracts = {
       priceFeedTestnet,
       ebtcToken,
-      sortedTroves,
+      sortedCdps,
       cdpManager,
       activePool,
       stabilityPool,
@@ -142,7 +142,7 @@ class DeploymentHelper {
 
     // Contract without testers (yet)
     testerContracts.priceFeedTestnet = await PriceFeedTestnet.new()
-    testerContracts.sortedTroves = await SortedTroves.new()
+    testerContracts.sortedCdps = await SortedCdps.new()
     // Actual tester contracts
     testerContracts.communityIssuance = await CommunityIssuanceTester.new()
     testerContracts.activePool = await ActivePoolTester.new()
@@ -152,7 +152,7 @@ class DeploymentHelper {
     testerContracts.collSurplusPool = await CollSurplusPool.new()
     testerContracts.math = await LiquityMathTester.new()
     testerContracts.borrowerOperations = await BorrowerOperationsTester.new()
-    testerContracts.cdpManager = await TroveManagerTester.new()
+    testerContracts.cdpManager = await CdpManagerTester.new()
     testerContracts.functionCaller = await FunctionCaller.new()
     testerContracts.hintHelpers = await HintHelpers.new()
     testerContracts.ebtcToken =  await EBTCTokenTester.new(
@@ -223,8 +223,8 @@ class DeploymentHelper {
 
   static async deployLiquityCoreTruffle() {
     const priceFeedTestnet = await PriceFeedTestnet.new()
-    const sortedTroves = await SortedTroves.new()
-    const cdpManager = await TroveManager.new()
+    const sortedCdps = await SortedCdps.new()
+    const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
     const stabilityPool = await StabilityPool.new()
     const gasPool = await GasPool.new()
@@ -241,7 +241,7 @@ class DeploymentHelper {
     const coreContracts = {
       priceFeedTestnet,
       ebtcToken,
-      sortedTroves,
+      sortedCdps,
       cdpManager,
       activePool,
       stabilityPool,
@@ -311,13 +311,13 @@ class DeploymentHelper {
     const borrowerOperationsScript = await BorrowerOperationsScript.new(contracts.borrowerOperations.address)
     contracts.borrowerOperations = new BorrowerOperationsProxy(owner, proxies, borrowerOperationsScript.address, contracts.borrowerOperations)
 
-    const cdpManagerScript = await TroveManagerScript.new(contracts.cdpManager.address)
-    contracts.cdpManager = new TroveManagerProxy(owner, proxies, cdpManagerScript.address, contracts.cdpManager)
+    const cdpManagerScript = await CdpManagerScript.new(contracts.cdpManager.address)
+    contracts.cdpManager = new CdpManagerProxy(owner, proxies, cdpManagerScript.address, contracts.cdpManager)
 
     const stabilityPoolScript = await StabilityPoolScript.new(contracts.stabilityPool.address)
     contracts.stabilityPool = new StabilityPoolProxy(owner, proxies, stabilityPoolScript.address, contracts.stabilityPool)
 
-    contracts.sortedTroves = new SortedTrovesProxy(owner, proxies, contracts.sortedTroves)
+    contracts.sortedCdps = new SortedCdpsProxy(owner, proxies, contracts.sortedCdps)
 
     const ebtcTokenScript = await TokenScript.new(contracts.ebtcToken.address)
     contracts.ebtcToken = new TokenProxy(owner, proxies, ebtcTokenScript.address, contracts.ebtcToken)
@@ -332,18 +332,18 @@ class DeploymentHelper {
   // Connect contracts to their dependencies
   static async connectCoreContracts(contracts, LQTYContracts) {
 
-    // set TroveManager addr in SortedTroves
-    await contracts.sortedTroves.setParams(
+    // set CdpManager addr in SortedCdps
+    await contracts.sortedCdps.setParams(
       maxBytes32,
       contracts.cdpManager.address,
       contracts.borrowerOperations.address
     )
 
     // set contract addresses in the FunctionCaller 
-    await contracts.functionCaller.setTroveManagerAddress(contracts.cdpManager.address)
-    await contracts.functionCaller.setSortedTrovesAddress(contracts.sortedTroves.address)
+    await contracts.functionCaller.setCdpManagerAddress(contracts.cdpManager.address)
+    await contracts.functionCaller.setSortedCdpsAddress(contracts.sortedCdps.address)
 
-    // set contracts in the Trove Manager
+    // set contracts in the Cdp Manager
     await contracts.cdpManager.setAddresses(
       contracts.borrowerOperations.address,
       contracts.activePool.address,
@@ -353,7 +353,7 @@ class DeploymentHelper {
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
       contracts.ebtcToken.address,
-      contracts.sortedTroves.address,
+      contracts.sortedCdps.address,
       LQTYContracts.lqtyToken.address,
       LQTYContracts.lqtyStaking.address
     )
@@ -367,7 +367,7 @@ class DeploymentHelper {
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
-      contracts.sortedTroves.address,
+      contracts.sortedCdps.address,
       contracts.ebtcToken.address,
       LQTYContracts.lqtyStaking.address
     )
@@ -378,7 +378,7 @@ class DeploymentHelper {
       contracts.cdpManager.address,
       contracts.activePool.address,
       contracts.ebtcToken.address,
-      contracts.sortedTroves.address,
+      contracts.sortedCdps.address,
       contracts.priceFeedTestnet.address,
       LQTYContracts.communityIssuance.address
     )
@@ -403,7 +403,7 @@ class DeploymentHelper {
 
     // set contracts in HintHelpers
     await contracts.hintHelpers.setAddresses(
-      contracts.sortedTroves.address,
+      contracts.sortedCdps.address,
       contracts.cdpManager.address
     )
   }

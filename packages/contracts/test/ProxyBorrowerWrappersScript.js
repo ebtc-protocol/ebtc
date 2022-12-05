@@ -1,7 +1,7 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const LQTYTokenTester = artifacts.require("LQTYTokenTester")
 
 const th = testHelpers.TestHelper
@@ -21,9 +21,9 @@ const {
   buildUserProxies,
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
-  TroveManagerProxy,
+  CdpManagerProxy,
   StabilityPoolProxy,
-  SortedTrovesProxy,
+  SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
 } = require('../utils/proxyHelpers.js')
@@ -41,7 +41,7 @@ contract('BorrowerWrappers', async accounts => {
 
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManagerOriginal
   let cdpManager
   let activePool
@@ -58,14 +58,14 @@ contract('BorrowerWrappers', async accounts => {
 
   let EBTC_GAS_COMPENSATION
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const getActualDebtFromComposite = async (compositeDebt) => th.getActualDebtFromComposite(compositeDebt, contracts)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await TroveManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new()
     contracts = await deploymentHelper.deployEBTCToken(contracts)
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
 
@@ -81,7 +81,7 @@ contract('BorrowerWrappers', async accounts => {
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
@@ -135,25 +135,25 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(balanceAfter, balanceBefore.toString())
   })
 
-  // --- claimCollateralAndOpenTrove ---
+  // --- claimCollateralAndOpenCdp ---
 
-  it('claimCollateralAndOpenTrove(): reverts if nothing to claim', async () => {
-    // Whale opens Trove
-    await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+  it('claimCollateralAndOpenCdp(): reverts if nothing to claim', async () => {
+    // Whale opens Cdp
+    await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
-    // alice opens Trove
-    const { ebtcAmount, collateral } = await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+    // alice opens Cdp
+    const { ebtcAmount, collateral } = await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(proxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // alice claims collateral and re-opens the cdp
     await assertRevert(
-      borrowerWrappers.claimCollateralAndOpenTrove(th._100pct, ebtcAmount, alice, alice, { from: alice }),
+      borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice }),
       'CollSurplusPool: No collateral available to claim'
     )
 
@@ -161,19 +161,19 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount)
-    assert.equal(await cdpManager.getTroveStatus(_aliceTroveId), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getTroveColl(_aliceTroveId), collateral)
+    assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 1)
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId), collateral)
   })
 
-  it('claimCollateralAndOpenTrove(): without sending any value', async () => {
-    // alice opens Trove
-    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openTrove({extraEBTCAmount: 0, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(5, 18)), extraParams: { from: whale } })
+  it('claimCollateralAndOpenCdp(): without sending any value', async () => {
+    // alice opens Cdp
+    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({extraEBTCAmount: 0, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(5, 18)), extraParams: { from: whale } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(proxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -186,28 +186,28 @@ contract('BorrowerWrappers', async accounts => {
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
-    assert.equal(await cdpManager.getTroveStatus(_aliceTroveId), 4) // closed by redemption
+    assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
-    await borrowerWrappers.claimCollateralAndOpenTrove(th._100pct, ebtcAmount, alice, alice, { from: alice })
-    let _aliceTroveId2 = await sortedTroves.cdpOfOwnerByIndex(proxyAddress, 0);
+    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice })
+    let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
-    assert.equal(await cdpManager.getTroveStatus(_aliceTroveId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getTroveColl(_aliceTroveId2), expectedSurplus)
+    assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus)
   })
 
-  it('claimCollateralAndOpenTrove(): sending value in the transaction', async () => {
-    // alice opens Trove
-    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openTrove({ extraParams: { from: alice } })
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+  it('claimCollateralAndOpenCdp(): sending value in the transaction', async () => {
+    // alice opens Cdp
+    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({ extraParams: { from: alice } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(proxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -220,42 +220,42 @@ contract('BorrowerWrappers', async accounts => {
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
-    assert.equal(await cdpManager.getTroveStatus(_aliceTroveId), 4) // closed by redemption
+    assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
-    await borrowerWrappers.claimCollateralAndOpenTrove(th._100pct, ebtcAmount, alice, alice, { from: alice, value: collateral })
-    let _aliceTroveId2 = await sortedTroves.cdpOfOwnerByIndex(proxyAddress, 0);
+    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice, value: collateral })
+    let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
-    assert.equal(await cdpManager.getTroveStatus(_aliceTroveId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getTroveColl(_aliceTroveId2), expectedSurplus.add(collateral))
+    assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.add(collateral))
   })
 
   // --- claimSPRewardsAndRecycle ---
 
   it('claimSPRewardsAndRecycle(): only owner can call it', async () => {
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
     // Whale deposits 1850 EBTC in StabilityPool
     await stabilityPool.provideToSP(dec(1850, 18), ZERO_ADDRESS, { from: whale })
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
-    await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
     await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
 
-    // Defaulter Trove opened
-    await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const defaulterProxyAddress = borrowerWrappers.getProxyAddressFromUser(defaulter_1);
-    let _defaulterTroveId1 = await sortedTroves.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
+    let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
-    // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+    // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
-    const liquidationTX_1 = await cdpManager.liquidate(_defaulterTroveId1, { from: owner })
+    const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 
     // Bob tries to claims SP rewards in behalf of Alice
@@ -266,30 +266,30 @@ contract('BorrowerWrappers', async accounts => {
   })
 
   it('claimSPRewardsAndRecycle():', async () => {
-    // Whale opens Trove
+    // Whale opens Cdp
     const whaleDeposit = toBN(dec(2350, 18))
-    await openTrove({ extraEBTCAmount: whaleDeposit, ICR: toBN(dec(4, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: whaleDeposit, ICR: toBN(dec(4, 18)), extraParams: { from: whale } })
     // Whale deposits 1850 EBTC in StabilityPool
     await stabilityPool.provideToSP(whaleDeposit, ZERO_ADDRESS, { from: whale })
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
     const aliceDeposit = toBN(dec(150, 18))
-    await openTrove({ extraEBTCAmount: aliceDeposit, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: aliceDeposit, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
     await stabilityPool.provideToSP(aliceDeposit, ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(aliceProxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const defaulterProxyAddress = borrowerWrappers.getProxyAddressFromUser(defaulter_1);
-    let _defaulterTroveId1 = await sortedTroves.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
+    let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
-    // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+    // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
-    const liquidationTX_1 = await cdpManager.liquidate(_defaulterTroveId1, { from: owner })
+    const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 
     // Alice EBTCLoss is ((150/2500) * liquidatedDebt)
@@ -304,11 +304,11 @@ contract('BorrowerWrappers', async accounts => {
     assert.isAtMost(th.getDifference(expectedCompoundedEBTCDeposit_A, compoundedEBTCDeposit_A), 1000)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
-    const cdpDebtBefore = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
@@ -325,14 +325,14 @@ contract('BorrowerWrappers', async accounts => {
 
     // Alice claims SP rewards and puts them back in the system through the proxy
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
-    await borrowerWrappers.claimSPRewardsAndRecycle(_aliceTroveId, th._100pct, _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerWrappers.claimSPRewardsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
-    const cdpDebtAfter = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
@@ -363,11 +363,11 @@ contract('BorrowerWrappers', async accounts => {
   // --- claimStakingGainsAndRecycle ---
 
   it('claimStakingGainsAndRecycle(): only owner can call it', async () => {
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
     // alice opens cdp
-    await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -377,8 +377,8 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(1850, 18), { from: whale })
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, totalDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -397,13 +397,13 @@ contract('BorrowerWrappers', async accounts => {
   it('claimStakingGainsAndRecycle(): reverts if user has no cdp', async () => {
     const price = toBN(dec(200, 18))
 
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
     // Whale deposits 1850 EBTC in StabilityPool
     await stabilityPool.provideToSP(dec(1850, 18), ZERO_ADDRESS, { from: whale })
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
-    //await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    //await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
     //await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
 
     // mint some LQTY
@@ -414,8 +414,8 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(1850, 18), { from: whale })
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, totalDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
@@ -429,9 +429,9 @@ contract('BorrowerWrappers', async accounts => {
     await th.redeemCollateral(whale, contracts, redeemedAmount, GAS_PRICE)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getTroveColl(th.DUMMY_BYTES32)
+    const cdpCollBefore = await cdpManager.getCdpColl(th.DUMMY_BYTES32)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
-    const cdpDebtBefore = await cdpManager.getTroveDebt(th.DUMMY_BYTES32)
+    const cdpDebtBefore = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
     const depositBefore = (await stabilityPool.deposits(alice))[0]
@@ -444,9 +444,9 @@ contract('BorrowerWrappers', async accounts => {
     )
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getTroveColl(th.DUMMY_BYTES32)
+    const cdpCollAfter = await cdpManager.getCdpColl(th.DUMMY_BYTES32)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
-    const cdpDebtAfter = await cdpManager.getTroveDebt(th.DUMMY_BYTES32)
+    const cdpDebtAfter = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
     const depositAfter = (await stabilityPool.deposits(alice))[0]
@@ -472,18 +472,18 @@ contract('BorrowerWrappers', async accounts => {
   it('claimStakingGainsAndRecycle(): with only ETH gain', async () => {
     const price = toBN(dec(200, 18))
 
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
-    await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
     await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(aliceProxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -505,11 +505,11 @@ contract('BorrowerWrappers', async accounts => {
     const expectedETHGain_A = redemptionFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18))).mul(mv._1e18BN).div(price)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
-    const cdpDebtBefore = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
@@ -521,18 +521,18 @@ contract('BorrowerWrappers', async accounts => {
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     // Alice claims staking rewards and puts them back in the system through the proxy
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceTroveId, th._100pct, _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
-    // Alice new EBTC gain due to her own Trove adjustment: ((150/2000) * (borrowing fee over netDebtChange))
+    // Alice new EBTC gain due to her own Cdp adjustment: ((150/2000) * (borrowing fee over netDebtChange))
     const newBorrowingFee = await cdpManagerOriginal.getBorrowingFeeWithDecay(netDebtChange)
     const expectedNewEBTCGain_A = newBorrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
-    const cdpDebtAfter = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
@@ -563,14 +563,14 @@ contract('BorrowerWrappers', async accounts => {
   it('claimStakingGainsAndRecycle(): with only EBTC gain', async () => {
     const price = toBN(dec(200, 18))
 
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
-    await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
     await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(aliceProxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -580,33 +580,33 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(1850, 18), { from: whale })
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
     const expectedEBTCGain_A = borrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
-    const cdpDebtBefore = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
 
     // Alice claims staking rewards and puts them back in the system through the proxy
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceTroveId, th._100pct, _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
-    const cdpDebtAfter = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
@@ -634,14 +634,14 @@ contract('BorrowerWrappers', async accounts => {
   it('claimStakingGainsAndRecycle(): with both ETH and EBTC gains', async () => {
     const price = toBN(dec(200, 18))
 
-    // Whale opens Trove
-    await openTrove({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    // Whale opens Cdp
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
     // alice opens cdp and provides 150 EBTC to StabilityPool
-    await openTrove({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
     await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
-    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(aliceProxyAddress, 0);
+    let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -651,8 +651,8 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(1850, 18), { from: whale })
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
-    // Defaulter Trove opened
-    const { ebtcAmount, netDebt, collateral } = await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    // Defaulter Cdp opened
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
@@ -670,11 +670,11 @@ contract('BorrowerWrappers', async accounts => {
     const expectedETHGain_A = redemptionFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18))).mul(mv._1e18BN).div(price)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
-    const cdpDebtBefore = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
@@ -686,18 +686,18 @@ contract('BorrowerWrappers', async accounts => {
     const expectedLQTYGain_A = toBN('839557069990108416000000')
 
     // Alice claims staking rewards and puts them back in the system through the proxy
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceTroveId, th._100pct, _aliceTroveId, _aliceTroveId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
-    // Alice new EBTC gain due to her own Trove adjustment: ((150/2000) * (borrowing fee over netDebtChange))
+    // Alice new EBTC gain due to her own Cdp adjustment: ((150/2000) * (borrowing fee over netDebtChange))
     const newBorrowingFee = await cdpManagerOriginal.getBorrowingFeeWithDecay(netDebtChange)
     const expectedNewEBTCGain_A = newBorrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getTroveColl(_aliceTroveId)
+    const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
-    const cdpDebtAfter = await cdpManager.getTroveDebt(_aliceTroveId)
+    const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
     const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 

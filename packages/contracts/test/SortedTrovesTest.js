@@ -1,9 +1,9 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 
-const SortedTroves = artifacts.require("SortedTroves")
-const SortedTrovesTester = artifacts.require("SortedTrovesTester")
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const SortedCdps = artifacts.require("SortedCdps")
+const SortedCdpsTester = artifacts.require("SortedCdpsTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const EBTCToken = artifacts.require("EBTCToken")
 
 const th = testHelpers.TestHelper
@@ -13,29 +13,29 @@ const mv = testHelpers.MoneyValues
 
 const hre = require("hardhat");
 
-contract('SortedTroves', async accounts => {
+contract('SortedCdps', async accounts => {
   
   const assertSortedListIsOrdered = async (contracts) => {
     const price = await contracts.priceFeedTestnet.getPrice()
 
-    let cdp = await contracts.sortedTroves.getLast()
-    while (cdp !== (await contracts.sortedTroves.getFirst())) {
+    let cdp = await contracts.sortedCdps.getLast()
+    while (cdp !== (await contracts.sortedCdps.getFirst())) {
       
       // Get the adjacent upper cdp ("prev" moves up the list, from lower ICR -> higher ICR)
-      const prevTrove = await contracts.sortedTroves.getPrev(cdp)
+      const prevCdp = await contracts.sortedCdps.getPrev(cdp)
      
       const cdpICR = await contracts.cdpManager.getCurrentICR(cdp, price)
-      const prevTroveICR = await contracts.cdpManager.getCurrentICR(prevTrove, price)
+      const prevCdpICR = await contracts.cdpManager.getCurrentICR(prevCdp, price)
       
-      assert.isTrue(prevTroveICR.gte(cdpICR))
+      assert.isTrue(prevCdpICR.gte(cdpICR))
 
       const cdpNICR = await contracts.cdpManager.getNominalICR(cdp)
-      const prevTroveNICR = await contracts.cdpManager.getNominalICR(prevTrove)
+      const prevCdpNICR = await contracts.cdpManager.getNominalICR(prevCdp)
       
-      assert.isTrue(prevTroveNICR.gte(cdpNICR))
+      assert.isTrue(prevCdpNICR.gte(cdpNICR))
 
       // climb the list
-      cdp = prevTrove
+      cdp = prevCdp
     }
   }
 
@@ -46,7 +46,7 @@ contract('SortedTroves', async accounts => {
     A, B, C, D, E, F, G, H, whale] = accounts;
 
   let priceFeed
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let borrowerOperations
   let ebtcToken
@@ -57,10 +57,10 @@ contract('SortedTroves', async accounts => {
 
   let contracts
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
-  describe('SortedTroves', () => {	
+  describe('SortedCdps', () => {	
 
     before(async () => {	
       await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
@@ -69,7 +69,7 @@ contract('SortedTroves', async accounts => {
 	
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
-      contracts.cdpManager = await TroveManagerTester.new()
+      contracts.cdpManager = await CdpManagerTester.new()
       contracts.ebtcToken = await EBTCToken.new(
         contracts.cdpManager.address,
         contracts.stabilityPool.address,
@@ -78,7 +78,7 @@ contract('SortedTroves', async accounts => {
       const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
       priceFeed = contracts.priceFeedTestnet
-      sortedTroves = contracts.sortedTroves
+      sortedCdps = contracts.sortedCdps
       cdpManager = contracts.cdpManager
       borrowerOperations = contracts.borrowerOperations
       ebtcToken = contracts.ebtcToken
@@ -107,47 +107,47 @@ contract('SortedTroves', async accounts => {
     })
 
     it('contains(): returns true for addresses that have opened cdps', async () => {
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Confirm cdp statuses became active
-      assert.equal((await cdpManager.Troves(_aliceTroveId))[3], '1')
-      assert.equal((await cdpManager.Troves(_bobTroveId))[3], '1')
-      assert.equal((await cdpManager.Troves(_carolTroveId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '1')
 
       // Check sorted list contains cdps
-      assert.isTrue(await sortedTroves.contains(_aliceTroveId))
-      assert.isTrue(await sortedTroves.contains(_bobTroveId))
-      assert.isTrue(await sortedTroves.contains(_carolTroveId))
+      assert.isTrue(await sortedCdps.contains(_aliceCdpId))
+      assert.isTrue(await sortedCdps.contains(_bobCdpId))
+      assert.isTrue(await sortedCdps.contains(_carolCdpId))
     })
 
     it('contains(): returns false for addresses that have not opened cdps', async () => {
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-      await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
-      await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
 
       // Confirm cdps have non-existent status
-      assert.equal((await cdpManager.Troves(dennis))[3], '0')
-      assert.equal((await cdpManager.Troves(erin))[3], '0')
+      assert.equal((await cdpManager.Cdps(dennis))[3], '0')
+      assert.equal((await cdpManager.Cdps(erin))[3], '0')
 
       // Check sorted list do not contain cdps
-      assert.isFalse(await sortedTroves.contains(dennis))
-      assert.isFalse(await sortedTroves.contains(erin))
+      assert.isFalse(await sortedCdps.contains(dennis))
+      assert.isFalse(await sortedCdps.contains(erin))
     })
 
     it('contains(): returns false for addresses that opened and then closed a cdp', async () => {
-      await openTrove({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
+      await openCdp({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -155,31 +155,31 @@ contract('SortedTroves', async accounts => {
       await ebtcToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close cdps
-      await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
-      await borrowerOperations.closeTrove(_bobTroveId, { from:bob })
-      await borrowerOperations.closeTrove(_carolTroveId, { from:carol })
+      await borrowerOperations.closeCdp(_aliceCdpId, { from: alice })
+      await borrowerOperations.closeCdp(_bobCdpId, { from:bob })
+      await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Troves(_aliceTroveId))[3], '2')
-      assert.equal((await cdpManager.Troves(_bobTroveId))[3], '2')
-      assert.equal((await cdpManager.Troves(_carolTroveId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
 
       // Check sorted list does not contain cdps
-      assert.isFalse(await sortedTroves.contains(_aliceTroveId))
-      assert.isFalse(await sortedTroves.contains(_bobTroveId))
-      assert.isFalse(await sortedTroves.contains(_carolTroveId))
+      assert.isFalse(await sortedCdps.contains(_aliceCdpId))
+      assert.isFalse(await sortedCdps.contains(_bobCdpId))
+      assert.isFalse(await sortedCdps.contains(_carolCdpId))
     })
 
     // true for addresses that opened -> closed -> opened a cdp
     it('contains(): returns true for addresses that opened, closed and then re-opened a cdp', async () => {
-      await openTrove({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
+      await openCdp({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -187,59 +187,59 @@ contract('SortedTroves', async accounts => {
       await ebtcToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close cdps
-      await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
-      await borrowerOperations.closeTrove(_bobTroveId, { from:bob })
-      await borrowerOperations.closeTrove(_carolTroveId, { from:carol })
+      await borrowerOperations.closeCdp(_aliceCdpId, { from: alice })
+      await borrowerOperations.closeCdp(_bobCdpId, { from:bob })
+      await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Troves(_aliceTroveId))[3], '2')
-      assert.equal((await cdpManager.Troves(_bobTroveId))[3], '2')
-      assert.equal((await cdpManager.Troves(_carolTroveId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
 
-      await openTrove({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
-      let _aliceTroveId2 = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ ICR: toBN(dec(2000, 18)), extraParams: { from: bob } })
-      let _bobTroveId2 = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ ICR: toBN(dec(3000, 18)), extraParams: { from: carol } })
-      let _carolTroveId2 = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
+      let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: bob } })
+      let _bobCdpId2 = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ ICR: toBN(dec(3000, 18)), extraParams: { from: carol } })
+      let _carolCdpId2 = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Confirm cdp statuses became open again
-      assert.equal((await cdpManager.Troves(_aliceTroveId2))[3], '1')
-      assert.equal((await cdpManager.Troves(_bobTroveId2))[3], '1')
-      assert.equal((await cdpManager.Troves(_carolTroveId2))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId2))[3], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId2))[3], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId2))[3], '1')
 
       // Check sorted list does  contain cdps
-      assert.isTrue(await sortedTroves.contains(_aliceTroveId2))
-      assert.isTrue(await sortedTroves.contains(_bobTroveId2))
-      assert.isTrue(await sortedTroves.contains(_carolTroveId2))
+      assert.isTrue(await sortedCdps.contains(_aliceCdpId2))
+      assert.isTrue(await sortedCdps.contains(_bobCdpId2))
+      assert.isTrue(await sortedCdps.contains(_carolCdpId2))
     })
 
     // false when list size is 0
     it('contains(): returns false when there are no cdps in the system', async () => {
-      assert.isFalse(await sortedTroves.contains(alice))
-      assert.isFalse(await sortedTroves.contains(bob))
-      assert.isFalse(await sortedTroves.contains(carol))
+      assert.isFalse(await sortedCdps.contains(alice))
+      assert.isFalse(await sortedCdps.contains(bob))
+      assert.isFalse(await sortedCdps.contains(carol))
     })
 
     // true when list size is 1 and the cdp the only one in system
     it('contains(): true when list size is 1 and the cdp the only one in system', async () => {
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
 
-      assert.isTrue(await sortedTroves.contains(_aliceTroveId))
+      assert.isTrue(await sortedCdps.contains(_aliceCdpId))
     })
 
     // false when list size is 1 and cdp is not in the system
     it('contains(): false when list size is 1 and cdp is not in the system', async () => {
-      await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
 
-      assert.isFalse(await sortedTroves.contains(bob))
+      assert.isFalse(await sortedCdps.contains(bob))
     })
 
     // --- getMaxSize ---
 
     it("getMaxSize(): Returns the maximum list size", async () => {
-      const max = await sortedTroves.getMaxSize()
+      const max = await sortedCdps.getMaxSize()
       assert.equal(web3.utils.toHex(max), th.maxBytes32)
     })
 
@@ -249,34 +249,34 @@ contract('SortedTroves', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
 
       // NICR sorted in descending order
-      await openTrove({ ICR: toBN(dec(500, 18)), extraParams: { from: whale } })
-      await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-      await openTrove({ ICR: toBN(dec(5, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-      await openTrove({ ICR: toBN(dec(250, 16)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
-      await openTrove({ ICR: toBN(dec(166, 16)), extraParams: { from: D } })
-      await openTrove({ ICR: toBN(dec(125, 16)), extraParams: { from: E } })
-      let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
+      await openCdp({ ICR: toBN(dec(500, 18)), extraParams: { from: whale } })
+      await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await openCdp({ ICR: toBN(dec(5, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await openCdp({ ICR: toBN(dec(250, 16)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await openCdp({ ICR: toBN(dec(166, 16)), extraParams: { from: D } })
+      await openCdp({ ICR: toBN(dec(125, 16)), extraParams: { from: E } })
+      let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
 
       // Expect a cdp with NICR 300% to be inserted between B and C
       const targetNICR = dec(3, 18)
 
       // Pass addresses that loosely bound the right postiion
-      const hints = await sortedTroves.findInsertPosition(targetNICR, _aTroveId, _eTroveId)
+      const hints = await sortedCdps.findInsertPosition(targetNICR, _aCdpId, _eCdpId)
 
       // Expect the exact correct insert hints have been returned
-      assert.equal(hints[0], _bTroveId)
-      assert.equal(hints[1], _cTroveId)
+      assert.equal(hints[0], _bCdpId)
+      assert.equal(hints[1], _cCdpId)
 
       // The price doesn’t affect the hints
       await priceFeed.setPrice(dec(500, 18))
-      const hints2 = await sortedTroves.findInsertPosition(targetNICR, _aTroveId, _eTroveId)
+      const hints2 = await sortedCdps.findInsertPosition(targetNICR, _aCdpId, _eCdpId)
 
       // Expect the exact correct insert hints have been returned
-      assert.equal(hints2[0], _bTroveId)
-      assert.equal(hints2[1], _cTroveId)
+      assert.equal(hints2[0], _bCdpId)
+      assert.equal(hints2[1], _cCdpId)
     })
 
     //--- Ordering --- 
@@ -284,27 +284,27 @@ contract('SortedTroves', async accounts => {
     it.skip("stays ordered after cdps with 'infinite' ICR receive a redistribution", async () => {
 
       // make several cdps with 0 debt and collateral, in random order
-      await borrowerOperations.openTrove(th._100pct, 0, whale, whale, { from: whale, value: dec(50, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, 0, A, A, { from: A, value: dec(1, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, 0, B, B, { from: B, value: dec(37, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, 0, C, C, { from: C, value: dec(5, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, 0, D, D, { from: D, value: dec(4, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, 0, E, E, { from: E, value: dec(19, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, whale, whale, { from: whale, value: dec(50, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, A, A, { from: A, value: dec(1, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, B, B, { from: B, value: dec(37, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, C, C, { from: C, value: dec(5, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, D, D, { from: D, value: dec(4, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, 0, E, E, { from: E, value: dec(19, 'ether') })
 
       // Make some cdps with non-zero debt, in random order
-      await borrowerOperations.openTrove(th._100pct, dec(5, 19), F, F, { from: F, value: dec(1, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, dec(3, 18), G, G, { from: G, value: dec(37, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, dec(2, 20), H, H, { from: H, value: dec(5, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, dec(17, 18), I, I, { from: I, value: dec(4, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, dec(5, 21), J, J, { from: J, value: dec(1345, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, dec(5, 19), F, F, { from: F, value: dec(1, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, dec(3, 18), G, G, { from: G, value: dec(37, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, dec(2, 20), H, H, { from: H, value: dec(5, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, dec(17, 18), I, I, { from: I, value: dec(4, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, dec(5, 21), J, J, { from: J, value: dec(1345, 'ether') })
 
       const price_1 = await priceFeed.getPrice()
       
       // Check cdps are ordered
       await assertSortedListIsOrdered(contracts)
 
-      await borrowerOperations.openTrove(th._100pct, dec(100, 18), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(1, 'ether') })
-      assert.isTrue(await sortedTroves.contains(defaulter_1))
+      await borrowerOperations.openCdp(th._100pct, dec(100, 18), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(1, 'ether') })
+      assert.isTrue(await sortedCdps.contains(defaulter_1))
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
@@ -312,80 +312,80 @@ contract('SortedTroves', async accounts => {
 
       // Liquidate a cdp
       await cdpManager.liquidate(defaulter_1)
-      assert.isFalse(await sortedTroves.contains(defaulter_1))
+      assert.isFalse(await sortedCdps.contains(defaulter_1))
 
       // Check cdps are ordered
       await assertSortedListIsOrdered(contracts)
     })
   })
 
-  describe('SortedTroves with mock dependencies', () => {
-    let sortedTrovesTester
+  describe('SortedCdps with mock dependencies', () => {
+    let sortedCdpsTester
 
     beforeEach(async () => {
-      sortedTroves = await SortedTroves.new()
-      sortedTrovesTester = await SortedTrovesTester.new()
+      sortedCdps = await SortedCdps.new()
+      sortedCdpsTester = await SortedCdpsTester.new()
 
-      await sortedTrovesTester.setSortedTroves(sortedTroves.address)
+      await sortedCdpsTester.setSortedCdps(sortedCdps.address)
     })
 
     context('when params are wrongly set', () => {
       it('setParams(): reverts if size is zero', async () => {
-        await th.assertRevert(sortedTroves.setParams(0, sortedTrovesTester.address, sortedTrovesTester.address), 'SortedTroves: Size can’t be zero')
+        await th.assertRevert(sortedCdps.setParams(0, sortedCdpsTester.address, sortedCdpsTester.address), 'SortedCdps: Size can’t be zero')
       })
     })
 
     context('when params are properly set', () => {
       beforeEach('set params', async() => {
-        await sortedTroves.setParams(2, sortedTrovesTester.address, sortedTrovesTester.address)
+        await sortedCdps.setParams(2, sortedCdpsTester.address, sortedCdpsTester.address)
       })
 
       it('insert(): fails if list is full', async () => {
-        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
-        let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-        await sortedTrovesTester.insert(bob, 1, _aliceTroveId, _aliceTroveId)
-        await th.assertRevert(sortedTrovesTester.insert(carol, 1, _aliceTroveId, _aliceTroveId), 'SortedTroves: List is full')
+        await sortedCdpsTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        await sortedCdpsTester.insert(bob, 1, _aliceCdpId, _aliceCdpId)
+        await th.assertRevert(sortedCdpsTester.insert(carol, 1, _aliceCdpId, _aliceCdpId), 'SortedCdps: List is full')
       })
 
       it('insert(): success even if list already contains the node', async () => {
-        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
-        let _aliceTroves = await sortedTroves.cdpCountOf(alice);
-        assert.equal(_aliceTroves, 1);
+        await sortedCdpsTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceCdps = await sortedCdps.cdpCountOf(alice);
+        assert.equal(_aliceCdps, 1);
 		
-        await sortedTrovesTester.insert(alice, 1, alice, alice)
-        _aliceTroves = await sortedTroves.cdpCountOf(alice);
-        assert.equal(_aliceTroves, 2);
+        await sortedCdpsTester.insert(alice, 1, alice, alice)
+        _aliceCdps = await sortedCdps.cdpCountOf(alice);
+        assert.equal(_aliceCdps, 2);
       })
 
       it('insert(): fails if id is zero', async () => {
-        await th.assertRevert(sortedTrovesTester.insert(alice, th.DUMMY_BYTES32, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: Id cannot be zero')
+        await th.assertRevert(sortedCdpsTester.insert(alice, th.DUMMY_BYTES32, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: Id cannot be zero')
       })
 
       it('insert(): fails if NICR is zero', async () => {
-        await th.assertRevert(sortedTrovesTester.insert(alice, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: NICR must be positive')
+        await th.assertRevert(sortedCdpsTester.insert(alice, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: NICR must be positive')
       })
 
       it('remove(): fails if id is not in the list', async () => {
-        await th.assertRevert(sortedTrovesTester.remove(alice), 'SortedTroves: List does not contain the id')
+        await th.assertRevert(sortedCdpsTester.remove(alice), 'SortedCdps: List does not contain the id')
       })
 
       it('reInsert(): fails if list doesn’t contain the node', async () => {
-        await th.assertRevert(sortedTrovesTester.reInsert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedTroves: List does not contain the id')
+        await th.assertRevert(sortedCdpsTester.reInsert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: List does not contain the id')
       })
 
       it('reInsert(): fails if new NICR is zero', async () => {
-        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
-        let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-        assert.isTrue(await sortedTroves.contains(_aliceTroveId), 'list should contain element')
-        await th.assertRevert(sortedTrovesTester.reInsert(_aliceTroveId, 0, _aliceTroveId, _aliceTroveId), 'SortedTroves: NICR must be positive')
-        assert.isTrue(await sortedTroves.contains(_aliceTroveId), 'list should contain element')
+        await sortedCdpsTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        assert.isTrue(await sortedCdps.contains(_aliceCdpId), 'list should contain element')
+        await th.assertRevert(sortedCdpsTester.reInsert(_aliceCdpId, 0, _aliceCdpId, _aliceCdpId), 'SortedCdps: NICR must be positive')
+        assert.isTrue(await sortedCdps.contains(_aliceCdpId), 'list should contain element')
       })
 
       it('findInsertPosition(): No prevId for hint - ascend list starting from nextId, result is after the tail', async () => {
-        await sortedTrovesTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
-        let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-        const pos = await sortedTroves.findInsertPosition(1, th.DUMMY_BYTES32, _aliceTroveId)
-        assert.equal(pos[0], _aliceTroveId, 'prevId result should be nextId param')
+        await sortedCdpsTester.insert(alice, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        const pos = await sortedCdps.findInsertPosition(1, th.DUMMY_BYTES32, _aliceCdpId)
+        assert.equal(pos[0], _aliceCdpId, 'prevId result should be nextId param')
         assert.equal(pos[1], th.DUMMY_BYTES32, 'nextId result should be zero')
       })
     })

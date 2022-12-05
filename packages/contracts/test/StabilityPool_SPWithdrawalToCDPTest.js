@@ -1,13 +1,13 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 
 const { dec, toBN } = testHelpers.TestHelper
 const th = testHelpers.TestHelper
 
 const hre = require("hardhat");
 
-contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calculations', async accounts => {
+contract('StabilityPool - Withdrawal to Cdp of stability deposit - Reward calculations', async accounts => {
 
   let [owner,
     defaulter_1,
@@ -46,7 +46,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let activePool
   let stabilityPool
@@ -57,9 +57,9 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
   const ZERO_ADDRESS = th.ZERO_ADDRESS
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
 
-  describe("Stability Pool Withdrawal To Trove", async () => {
+  describe("Stability Pool Withdrawal To Cdp", async () => {
 
     before(async () => {	  
       // let _forkBlock = hre.network.config['forking']['blockNumber'];
@@ -79,12 +79,12 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     beforeEach(async () => {		
       contracts = await deploymentHelper.deployLiquityCore()
       const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
-      contracts.cdpManager = await TroveManagerTester.new()
+      contracts.cdpManager = await CdpManagerTester.new()
       contracts = await deploymentHelper.deployEBTCToken(contracts)
 
       priceFeed = contracts.priceFeedTestnet
       ebtcToken = contracts.ebtcToken
-      sortedTroves = contracts.sortedTroves
+      sortedCdps = contracts.sortedCdps
       cdpManager = contracts.cdpManager
       activePool = contracts.activePool
       stabilityPool = contracts.stabilityPool
@@ -113,20 +113,20 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // --- Compounding tests ---
 
-    // --- withdrawETHGainToTrove() ---
+    // --- withdrawETHGainToCdp() ---
 
     // --- Identical deposits, identical liquidation amounts---
-    it("withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -136,19 +136,19 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter opens cdp with 200% ICR and 10k EBTC net debt
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
       // Check depositors' compounded deposit is 6666.66 EBTC and ETH Gain is 33.16 ETH
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -164,17 +164,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(carol_ETHWithdrawn, '33166666666666666667'), 10000)
     })
 
-    it("withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two identical liquidations", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two identical liquidations", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -184,22 +184,22 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Check depositors' compounded deposit is 3333.33 EBTC and ETH Gain is 66.33 ETH
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
       const bob_ETHWithdrawn = th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
@@ -214,17 +214,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(carol_ETHWithdrawn, '66333333333333333333'), 10000)
     })
 
-    it("withdrawETHGainToTrove():  Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three identical liquidations", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp():  Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three identical liquidations", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -234,25 +234,25 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Check depositors' compounded deposit is 0 EBTC and ETH Gain is 99.5 ETH 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -269,17 +269,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     })
 
     // --- Identical deposits, increasing liquidation amounts ---
-    it("withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two liquidations of increasing EBTC", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after two liquidations of increasing EBTC", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -289,22 +289,22 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '70000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '70000000000000000000' })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Check depositors' compounded deposit
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -321,17 +321,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(carol_ETHWithdrawn, dec(398, 17)), 10000)
     })
 
-    it("withdrawETHGainToTrove(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three liquidations of increasing EBTC", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with equal initial deposit withdraw correct compounded deposit and ETH Gain after three liquidations of increasing EBTC", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -341,25 +341,25 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(6000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '60000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '70000000000000000000' })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(6000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '60000000000000000000' })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '70000000000000000000' })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Check depositors' compounded deposit
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -377,17 +377,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     })
 
     // --- Increasing deposits, identical liquidation amounts ---
-    it("withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after two identical liquidations", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after two identical liquidations", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k, 20k, 30k EBTC to A, B and C respectively who then deposit it to the SP
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
@@ -398,22 +398,22 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
       // 2 Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Depositors attempt to withdraw everything
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -429,17 +429,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(carol_ETHWithdrawn, dec(995, 17)), 100000)
     })
 
-    it("withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three identical liquidations", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three identical liquidations", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k, 20k, 30k EBTC to A, B and C respectively who then deposit it to the SP
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
@@ -450,25 +450,25 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Depositors attempt to withdraw everything
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -485,18 +485,18 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     })
 
     // --- Varied deposits and varied liquidation amount ---
-    it("withdrawETHGainToTrove(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three varying liquidations", async () => {
-      // Whale opens Trove with 1m ETH
+    it("withdrawETHGainToCdp(): Depositors with varying deposits withdraw correct compounded deposit and ETH Gain after three varying liquidations", async () => {
+      // Whale opens Cdp with 1m ETH
       await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000000")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(1000000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(1000000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1000000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(1000000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       /* Depositors provide:-
       Alice:  2000 EBTC
@@ -516,25 +516,25 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Defaulter 2: 5000 EBTC & 50 ETH
       Defaulter 3: 46700 EBTC & 500 ETH
       */
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('207000000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2160, 18) })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5, 21)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(50, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('46700000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(500, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('207000000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2160, 18) })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5, 21)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(50, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('46700000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(500, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Depositors attempt to withdraw everything
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -554,19 +554,19 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // --- Deposit enters at t > 0
 
-    it("withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 1 liquidation. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 1 liquidation. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -576,31 +576,31 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId);
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId);
 
       // Whale transfers 10k to Dennis who then provides to SP
       await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third defaulter liquidated
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -622,19 +622,19 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '49750000000000000000'), 100000)
     })
 
-    it("withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
@@ -644,34 +644,34 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Dennis opens a cdp and provides to SP
       await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third and fourth defaulters liquidated
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -690,20 +690,20 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, dec(995, 17)), 100000)
     })
 
-    it("withdrawETHGainToTrove(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. Various deposit and liquidation vals.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 1m ETH
+    it("withdrawETHGainToCdp(): A, B, C Deposit -> 2 liquidations -> D deposits -> 2 liquidations. Various deposit and liquidation vals.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 1m ETH
       await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000000")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(1000000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(1000000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1000000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(1000000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       /* Depositors open cdps and make SP deposit:
       Alice: 60000 EBTC
@@ -724,35 +724,35 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Defaulter 3:  5000 EBTC, 50 ETH
       Defaulter 4:  40000 EBTC, 400 ETH
       */
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(25000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '250000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '50000000000000000000' })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(40000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(400, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(25000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '250000000000000000000' })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '50000000000000000000' })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(40000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(400, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Dennis provides 25000 EBTC
       await ebtcToken.transfer(dennis, dec(25000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(25000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Last two defaulters liquidated
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
       // Each depositor withdraws as much as possible
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -774,19 +774,19 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // --- Depositor leaves ---
 
-    it("withdrawETHGainToTrove(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. All deposits and liquidations = 100 EBTC.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol, dennis]
@@ -796,26 +796,26 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
       await priceFeed.setPrice(dec(200, 18))
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
       await priceFeed.setPrice(dec(100, 18))
 
       const dennis_ETHWithdrawn = th.getEventArgByName(txD, 'ETHGainWithdrawn', '_ETH').toString()
@@ -823,12 +823,12 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '49750000000000000000'), 100000)
 
       // Two more defaulters are liquidated
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -844,17 +844,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(carol_ETHWithdrawn, dec(995, 17)), 100000)
     })
 
-    it("withdrawETHGainToTrove(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. Various deposit and liquidation vals. A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): A, B, C, D deposit -> 2 liquidations -> D withdraws -> 2 liquidations. Various deposit and liquidation vals. A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
      
       /* Initial deposits:
       Alice: 20000 EBTC
@@ -878,21 +878,21 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Defaulter 3: 30000 EBTC
       Defaulter 4: 5000 EBTC
       */
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(30000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(300, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(30000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(300, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -906,12 +906,12 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '122461538461538466100'), 100000000000)
 
       // Two more defaulters are liquidated
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -929,17 +929,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     })
 
     // --- One deposit enters at t > 0, and another leaves later ---
-    it("withdrawETHGainToTrove(): A, B, D deposit -> 2 liquidations -> C makes deposit -> 1 liquidation -> D withdraws -> 1 liquidation. All deposits: 100 EBTC. Liquidations: 100,100,100,50.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): A, B, D deposit -> 2 liquidations -> C makes deposit -> 1 liquidation -> D withdraws -> 1 liquidation. All deposits: 100 EBTC. Liquidations: 100,100,100,50.  A, B, C, D withdraw correct EBTC deposit and ETH Gain", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
    
       // Whale transfers 10k EBTC to A, B and D who then deposit it to the SP
       const depositors = [alice, bob, dennis]
@@ -949,27 +949,27 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulters open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Carol makes deposit
       await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: carol })
 
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -981,11 +981,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference((await ebtcToken.balanceOf(dennis)).toString(), '1666666666666666666666'), 100000)
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '82916666666666666667'), 100000)
 
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1010,19 +1010,19 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // A, B withdraw 0EBTC & 100e
     // C, D withdraw 5000EBTC  & 500e
-    it("withdrawETHGainToTrove(): Depositor withdraws correct compounded deposit after liquidation empties the pool", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositor withdraws correct compounded deposit after liquidation empties the pool", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
@@ -1032,16 +1032,16 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // 2 Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated. 20000 EBTC fully offset with pool.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
@@ -1051,15 +1051,15 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
-      // await borrowerOperations.openTrove(th._100pct, dec(1, 18), account, account, { from: erin, value: dec(2, 'ether') })
+      // await borrowerOperations.openCdp(th._100pct, dec(1, 18), account, account, { from: erin, value: dec(2, 'ether') })
       // await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: erin })
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
       const bob_ETHWithdrawn = th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1089,15 +1089,15 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     // C, D deposit 10000
     // L3 cancels 10000, 1 
     // L2 20000, 200 empties Pool
-    it("withdrawETHGainToTrove(): Pool-emptying liquidation increases epoch by one, resets scaleFactor to 0, and resets P to 1e18", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Pool-emptying liquidation increases epoch by one, resets scaleFactor to 0, and resets P to 1e18", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
 
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
@@ -1107,14 +1107,14 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // 4 Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
@@ -1128,7 +1128,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(P_0, dec(1, 18))
 
       // Defaulter 1 liquidated. 10--0 EBTC fully offset, Pool remains non-zero
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_1 = (await stabilityPool.currentEpoch()).toString()
@@ -1140,7 +1140,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(P_1, dec(5, 17)), 1000)
 
       // Defaulter 2 liquidated. 1--00 EBTC, empties pool
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_2 = (await stabilityPool.currentEpoch()).toString()
@@ -1159,7 +1159,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 3 liquidated. 10000 EBTC fully offset, Pool remains non-zero
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_3 = (await stabilityPool.currentEpoch()).toString()
@@ -1171,7 +1171,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isAtMost(th.getDifference(P_3, dec(5, 17)), 1000)
 
       // Defaulter 4 liquidated. 10000 EBTC, empties pool
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_4 = (await stabilityPool.currentEpoch()).toString()
@@ -1191,22 +1191,22 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // A, B withdraw 0 EBTC & 100e
     // C, D withdraw 5000 EBTC  & 50e
-    it("withdrawETHGainToTrove(): Depositors withdraw correct compounded deposit after liquidation empties the pool", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositors withdraw correct compounded deposit after liquidation empties the pool", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       await beadpSigner.sendTransaction({ to: erin, value: ethers.utils.parseEther("9999")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: erin, value: dec(10000, 'ether') })
-      let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: erin, value: dec(10000, 'ether') })
+      let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
@@ -1216,16 +1216,16 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // 2 Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated. 20000 EBTC fully offset with pool.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
       // Carol, Dennis, Erin each deposit 10000, 20000, 30000 EBTC respectively
       await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
@@ -1238,13 +1238,13 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: erin })
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await cdpManager.liquidate(_defaulter2TroveId);
+      await cdpManager.liquidate(_defaulter2CdpId);
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
-      const txE = await stabilityPool.withdrawETHGainToTrove(_erinTroveId, _erinTroveId, _erinTroveId, { from: erin })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
+      const txE = await stabilityPool.withdrawETHGainToCdp(_erinCdpId, _erinCdpId, _erinCdpId, { from: erin })
 
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
       const bob_ETHWithdrawn = th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1273,37 +1273,37 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     // L1, L2, L3 liquidated with 10000 EBTC each
     // A withdraws all
     // Expect A to withdraw 0 deposit and ether only from reward L1
-    it("withdrawETHGainToTrove(): single deposit fully offset. After subsequent liquidations, depositor withdraws 0 deposit and *only* the ETH Gain from one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): single deposit fully offset. After subsequent liquidations, depositor withdraws 0 deposit and *only* the ETH Gain from one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
 
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1,2,3 withdraw 10000 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1, 2  and 3 liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1325,41 +1325,41 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // Expect all depositors withdraw 0 EBTC and 100 ETH
 
-    it("withdrawETHGainToTrove(): Depositor withdraws correct compounded deposit after liquidation empties the pool", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Depositor withdraws correct compounded deposit after liquidation empties the pool", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // A, B, C, D, E, F, G, H open cdps
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       await beadpSigner.sendTransaction({ to: erin, value: ethers.utils.parseEther("9999")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: erin, value: dec(10000, 'ether') })
-      let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: erin, value: dec(10000, 'ether') })
+      let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
       await beadpSigner.sendTransaction({ to: flyn, value: ethers.utils.parseEther("9999")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: flyn, value: dec(10000, 'ether') })
-      let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: flyn, value: dec(10000, 'ether') })
+      let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
       await beadpSigner.sendTransaction({ to: harriet, value: ethers.utils.parseEther("9999")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: harriet, value: dec(10000, 'ether') })
-      let _harrietTroveId = await sortedTroves.cdpOfOwnerByIndex(harriet, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: harriet, value: dec(10000, 'ether') })
+      let _harrietCdpId = await sortedCdps.cdpOfOwnerByIndex(harriet, 0);
       await beadpSigner.sendTransaction({ to: graham, value: ethers.utils.parseEther("9999")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: graham, value: dec(10000, 'ether') })
-      let _grahamTroveId = await sortedTroves.cdpOfOwnerByIndex(graham, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: graham, value: dec(10000, 'ether') })
+      let _grahamCdpId = await sortedCdps.cdpOfOwnerByIndex(graham, 0);
 
       // 4 Defaulters open cdp with 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(200, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(200, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
@@ -1372,7 +1372,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 1 liquidated. 20k EBTC fully offset with pool.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
@@ -1382,7 +1382,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Erin, Flyn each deposit 10000 EBTC
       const depositors_3 = [erin, flyn]
@@ -1392,7 +1392,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 3 liquidated. 10000 EBTC offset
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
 
       // Graham, Harriet each deposit 10000 EBTC
       const depositors_4 = [graham, harriet]
@@ -1402,16 +1402,16 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       }
 
       // Defaulter 4 liquidated. 10k EBTC offset
-      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
-      const txE = await stabilityPool.withdrawETHGainToTrove(_erinTroveId, _erinTroveId, _erinTroveId, { from: erin })
-      const txF = await stabilityPool.withdrawETHGainToTrove(_flynTroveId, _flynTroveId, _flynTroveId, { from: flyn })
-      const txG = await stabilityPool.withdrawETHGainToTrove(_grahamTroveId, _grahamTroveId, _grahamTroveId, { from: graham })
-      const txH = await stabilityPool.withdrawETHGainToTrove(_harrietTroveId, _harrietTroveId, _harrietTroveId, { from: harriet })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
+      const txE = await stabilityPool.withdrawETHGainToCdp(_erinCdpId, _erinCdpId, _erinCdpId, { from: erin })
+      const txF = await stabilityPool.withdrawETHGainToCdp(_flynCdpId, _flynCdpId, _flynCdpId, { from: flyn })
+      const txG = await stabilityPool.withdrawETHGainToCdp(_grahamCdpId, _grahamCdpId, _grahamCdpId, { from: graham })
+      const txH = await stabilityPool.withdrawETHGainToCdp(_harrietCdpId, _harrietCdpId, _harrietCdpId, { from: harriet })
 
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
       const bob_ETHWithdrawn = th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1457,32 +1457,32 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // expect d(B) = d0(B)/100
     // expect correct ETH gain, i.e. all of the reward
-    it("withdrawETHGainToTrove(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 withdraws 'almost' 10000 EBTC:  9999.99991 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       assert.equal(await stabilityPool.currentScale(), '0')
 
       // Defaulter 2 withdraws 9900 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(9900, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(60, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(9900, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(60, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P reduced to 9e9.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.equal((await stabilityPool.P()).toString(), dec(9, 9))
 
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -1497,11 +1497,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated.  9900 EBTC liquidated. P altered by a factor of 1-(9900/10000) = 0.01.  Scale changed.
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       assert.equal(await stabilityPool.currentScale(), '1')
 
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
       const bob_ETHWithdrawn = await th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
 
       // Expect Bob to retain 1% of initial deposit (100 EBTC) and all the liquidated ETH (60 ether)
@@ -1518,34 +1518,34 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
 
     // expect d(B) = d0(B)/100
     // expect correct ETH gain, i.e. all of the reward
-    it("withdrawETHGainToTrove(): Several deposits of varying amounts span one scale factor change. Depositors withdraw correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Several deposits of varying amounts span one scale factor change. Depositors withdraw correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 withdraws 'almost' 10k EBTC.
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Defaulter 2 withdraws 59400 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('59400000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(330, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('59400000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(330, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P reduced to 9e9
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.equal((await stabilityPool.P()).toString(), dec(9, 9))
 
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1566,14 +1566,14 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // 54000 EBTC liquidated.  P altered by a factor of 1-(59400/60000) = 0.01. Scale changed.
-      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
       assert.isTrue(txL2.receipt.status)
 
       assert.equal(await stabilityPool.currentScale(), '1')
 
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       /* Expect depositors to retain 1% of their initial deposit, and an ETH gain 
       in proportion to their initial deposit:
@@ -1607,29 +1607,29 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     // B withdraws
     // expect d(B) = d0(B) * 1e-5
     // expect B gets entire ETH gain from L2
-    it("withdrawETHGainToTrove(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): deposit spans one scale factor change: Single depositor withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
       
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 and default 2 each withdraw 9999.999999999 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter 1 ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P updated to  to 1e13
-      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.isTrue(txL1.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 13))  // P decreases. P = 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1645,12 +1645,12 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
-      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17))  // Scale changes and P changes. P = 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
 
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
       const bob_ETHWithdrawn = await th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
 
       // Bob should withdraw 1e-5 of initial deposit: 0.1 EBTC and the full ETH gain of 100 ether
@@ -1666,35 +1666,35 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     // B withdraws
     // expect d(B) = d0(B) * 1e-5
     // expect B gets entire ETH gain from L2
-    it("withdrawETHGainToTrove(): Several deposits of varying amounts span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Several deposits of varying amounts span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       
       await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 and default 2 withdraw up to debt of 9999.9 EBTC and 59999.4 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('59999400000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(600, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('59999400000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(600, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P updated to  to 9999999, i.e. in decimal, ~1e-10
-      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.equal(await stabilityPool.P(), dec(1, 13))  // P decreases. P = 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
 
@@ -1715,18 +1715,18 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 2 liquidated
-      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17))  // P decreases. P = 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
 
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
       const bob_ETHWithdrawn = await th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
 
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
       const carol_ETHWithdrawn = await th.getEventArgByName(txC, 'ETHGainWithdrawn', '_ETH').toString()
 
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
       const dennis_ETHWithdrawn = await th.getEventArgByName(txD, 'ETHGainWithdrawn', '_ETH').toString()
 
       // {B, C, D} should have a compounded deposit of {0.1, 0.2, 0.3} EBTC
@@ -1742,18 +1742,18 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     // A make deposit 10000 EBTC
     // L1 brings P to (~1e-10)*P. L1: 9999.9999999000000000 EBTC
     // Expect A to withdraw 0 deposit
-    it("withdrawETHGainToTrove(): Deposit that decreases to less than 1e-9 of it's original value is reduced to 0", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Deposit that decreases to less than 1e-9 of it's original value is reduced to 0", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
       
       // Defaulters 1 withdraws 9999.9999999 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999999900000000000'), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999999999900000000000'), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1762,7 +1762,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. P -> (~1e-10)*P
-      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.isTrue(txL1.receipt.status)
 
       const aliceDeposit = (await stabilityPool.getCompoundedEBTCDeposit(alice)).toString()
@@ -1782,28 +1782,28 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
     L4 decreases P by(~1e-5)P. L4:  9999.900000000000000000 EBTC, 1 ETH
     expect A, B, C, D each withdraw ~100 Ether
     */
-    it("withdrawETHGainToTrove(): Several deposits of 10000 EBTC span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Several deposits of 10000 EBTC span one scale factor change. Depositors withdraws correct compounded deposit and ETH Gain after one liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(10000, 'ether') })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       
       // Defaulters 1-4 each withdraw 9999.9 EBTC
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
+      let _defaulter4CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1812,7 +1812,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. 
-      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.isTrue(txL1.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 13)) // P decreases to 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1822,7 +1822,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
-      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17)) // Scale changes and P changes to 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1832,7 +1832,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: carol })
 
       // Defaulter 3 liquidated
-      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
       assert.isTrue(txL3.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 12)) // P decreases to 1e(17-5) = 1e12
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1842,15 +1842,15 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 4 liquidated
-      const txL4 = await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
+      const txL4 = await cdpManager.liquidate(_defaulter4CdpId, { from: owner });
       assert.isTrue(txL4.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 16)) // Scale changes and P changes to 1e(12-5+9) = 1e16
       assert.equal(await stabilityPool.currentScale(), '2')
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
-      const txC = await stabilityPool.withdrawETHGainToTrove(_carolTroveId, _carolTroveId, _carolTroveId, { from: carol })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dennisTroveId, _dennisTroveId, _dennisTroveId, { from: dennis })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis })
 
       const alice_ETHWithdrawn = await th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
       const bob_ETHWithdrawn = await th.getEventArgByName(txB, 'ETHGainWithdrawn', '_ETH').toString()
@@ -1872,39 +1872,39 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isTrue(toBN(dennis_ETHWithdrawn).sub(toBN(dec(995, 17))).abs().lte(toBN(dec(1, 17))))
     })
 
-    it("withdrawETHGainToTrove(): 2 depositors can withdraw after each receiving half of a pool-emptying liquidation", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): 2 depositors can withdraw after each receiving half of a pool-emptying liquidation", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       await beadpSigner.sendTransaction({ to: A, value: ethers.utils.parseEther("1")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(10000, 'ether') })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(10000, 'ether') })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
       await beadpSigner.sendTransaction({ to: B, value: ethers.utils.parseEther("1")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(10000, 'ether') })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(10000, 'ether') })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
       await beadpSigner.sendTransaction({ to: C, value: ethers.utils.parseEther("1")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(10000, 'ether') })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(10000, 'ether') })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
       await beadpSigner.sendTransaction({ to: D, value: ethers.utils.parseEther("1")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(10000, 'ether') })
-      let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(10000, 'ether') })
+      let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 	  
       E = defaulter_5;
       F = defaulter_6;
       await beadpSigner.sendTransaction({ to: E, value: ethers.utils.parseEther("10000")});
       await beadpSigner.sendTransaction({ to: F, value: ethers.utils.parseEther("10000")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(10000, 'ether') })
-      let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(10000, 'ether') })
-      let _fTroveId = await sortedTroves.cdpOfOwnerByIndex(F, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(10000, 'ether') })
+      let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(10000, 'ether') })
+      let _fCdpId = await sortedCdps.cdpOfOwnerByIndex(F, 0);
       
       // Defaulters 1-3 each withdraw 24100, 24300, 24500 EBTC (inc gas comp)
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24100, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24300, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24500, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(24100, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(24300, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(24500, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1916,7 +1916,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: B })
 
       // Defaulter 1 liquidated. SP emptied
-      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
       assert.isTrue(txL1.receipt.status)
 
       // Check compounded deposits
@@ -1940,8 +1940,8 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Attempt withdrawals
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
       await priceFeed.setPrice(dec(200, 18))
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
       await priceFeed.setPrice(dec(100, 18))
 
       assert.isTrue(txA.receipt.status)
@@ -1956,7 +1956,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: D })
 
       // Defaulter 2 liquidated.  SP emptied
-      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
       assert.isTrue(txL2.receipt.status)
 
       // Check compounded deposits
@@ -1980,8 +1980,8 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Attempt withdrawals
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
       await priceFeed.setPrice(dec(200, 18))
-      const txC = await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
-      const txD = await stabilityPool.withdrawETHGainToTrove(_dTroveId, _dTroveId, _dTroveId, { from: D })
+      const txC = await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
+      const txD = await stabilityPool.withdrawETHGainToCdp(_dCdpId, _dCdpId, _dCdpId, { from: D })
       await priceFeed.setPrice(dec(100, 18))
 
       assert.isTrue(txC.receipt.status)
@@ -1996,7 +1996,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: F })
 
       // Defaulter 3 liquidated. SP emptied
-      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3CdpId, { from: owner });
       assert.isTrue(txL3.receipt.status)
 
       // Check compounded deposits
@@ -2017,17 +2017,17 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(SPEBTCBalance_3, '0')
 
       // Attempt withdrawals
-      const txE = await stabilityPool.withdrawETHGainToTrove(_eTroveId, _eTroveId, _eTroveId, { from: E })
-      const txF = await stabilityPool.withdrawETHGainToTrove(_fTroveId, _fTroveId, _fTroveId, { from: F })
+      const txE = await stabilityPool.withdrawETHGainToCdp(_eCdpId, _eCdpId, _eCdpId, { from: E })
+      const txF = await stabilityPool.withdrawETHGainToCdp(_fCdpId, _fCdpId, _fCdpId, { from: F })
       assert.isTrue(txE.receipt.status)
       assert.isTrue(txF.receipt.status)
     })
 
     // --- Extreme values, confirm no overflows ---
 
-    it("withdrawETHGainToTrove(): Large liquidated coll/debt, deposits and ETH price", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), whale, whale, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Large liquidated coll/debt, deposits and ETH price", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), whale, whale, { from: whale, value: dec(100000, 'ether') })
 
       // ETH:USD price is $20 trillion per ETH
       await priceFeed.setPrice(dec(2, 31));
@@ -2037,26 +2037,26 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       const depositors = [alice, bob]
       for (account of depositors) {
         await bn8Signer.sendTransaction({ to: account, value: ethers.utils.parseEther("500000")});
-        await borrowerOperations.openTrove(th._100pct, _debtAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: _colAmt })
+        await borrowerOperations.openCdp(th._100pct, _debtAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: _colAmt })
         await stabilityPool.provideToSP(_debtAmt, ZERO_ADDRESS, { from: account })
       }
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
       // Defaulter opens cdp with 200% ICR
       await bn8Signer.sendTransaction({ to: defaulter_1, value: ethers.utils.parseEther("500000")});
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2, 23) })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2, 23) })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // ETH:USD price drops to $4 trillion per ETH
       let _newPrice = dec(4, 30);
       await priceFeed.setPrice(_newPrice);
 
       // Defaulter liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
-      const txA = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice })
-      const txB = await stabilityPool.withdrawETHGainToTrove(_bobTroveId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob })
+      const txA = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice })
+      const txB = await stabilityPool.withdrawETHGainToCdp(_bobCdpId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob })
 
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH')
@@ -2088,9 +2088,9 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.isTrue(bobETHDiff.lte(toBN(dec(1, 18))))
     })
 
-    it("withdrawETHGainToTrove(): Small liquidated coll/debt, large deposits and ETH price", async () => {
-      // Whale opens Trove with 100k ETH
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
+    it("withdrawETHGainToCdp(): Small liquidated coll/debt, large deposits and ETH price", async () => {
+      // Whale opens Cdp with 100k ETH
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
       // ETH:USD price is $2000 trillion per ETH
       await priceFeed.setPrice(dec(2, 33));
@@ -2101,25 +2101,25 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       const depositors = [alice, bob]
       for (account of depositors) {
         await bn7Signer.sendTransaction({ to: account, value: ethers.utils.parseEther("500000")});
-        await borrowerOperations.openTrove(th._100pct, _debtAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: _colAmt })
+        await borrowerOperations.openCdp(th._100pct, _debtAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: _colAmt })
         await stabilityPool.provideToSP(_debtAmt, ZERO_ADDRESS, { from: account })
       }
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
       // Defaulter opens cdp with 50e-7 ETH and  5000 EBTC. 200% ICR
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '10000000' })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '10000000' })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       
       // ETH:USD price drops to $400 trillion per ETH
       let _newPrice = dec(4, 32);
       await priceFeed.setPrice(_newPrice);
 
       // Defaulter liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner });
 
-      const txAPromise = stabilityPool.withdrawETHGainToTrove(_aliceTroveId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice })
-      const txBPromise = stabilityPool.withdrawETHGainToTrove(_bobTroveId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob })
+      const txAPromise = stabilityPool.withdrawETHGainToCdp(_aliceCdpId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice })
+      const txBPromise = stabilityPool.withdrawETHGainToCdp(_bobCdpId, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob })
 
       // Expect ETH gain per depositor of ~1e11 wei to be rounded to 0 by the ETHGainedPerUnitStaked calculation (e / D), where D is ~1e36.
       await th.assertRevert(txAPromise, 'StabilityPool: caller must have non-zero ETH Gain')

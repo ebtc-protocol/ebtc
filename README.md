@@ -59,7 +59,7 @@ Visit [liquity.org](https://www.liquity.org) to find out more and join the discu
   - [PriceFeed Logic](#pricefeed-logic)
   - [Testnet PriceFeed and PriceFeed tests](#testnet-pricefeed-and-pricefeed-tests)
   - [PriceFeed limitations and known issues](#pricefeed-limitations-and-known-issues)
-  - [Keeping a sorted list of Troves ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
+  - [Keeping a sorted list of Cdps ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
   - [Flow of Ether in Liquity](#flow-of-ether-in-liquity)
   - [Flow of EBTC tokens in Liquity](#flow-of-ebtc-tokens-in-liquity)
   - [Flow of LQTY Tokens in Liquity](#flow-of-lqty-tokens-in-liquity)
@@ -74,15 +74,15 @@ Visit [liquity.org](https://www.liquity.org) to find out more and join the discu
   - [Integer representations of decimals](#integer-representations-of-decimals)
 - [Public Data](#public-data)
 - [Public User-Facing Functions](#public-user-facing-functions)
-  - [Borrower (Trove) Operations - `BorrowerOperations.sol`](#borrower-cdp-operations---borroweroperationssol)
-  - [TroveManager Functions - `TroveManager.sol`](#cdpmanager-functions---cdpmanagersol)
+  - [Borrower (Cdp) Operations - `BorrowerOperations.sol`](#borrower-cdp-operations---borroweroperationssol)
+  - [CdpManager Functions - `CdpManager.sol`](#cdpmanager-functions---cdpmanagersol)
   - [Hint Helper Functions - `HintHelpers.sol`](#hint-helper-functions---hinthelperssol)
   - [Stability Pool Functions - `StabilityPool.sol`](#stability-pool-functions---stabilitypoolsol)
   - [LQTY Staking Functions  `LQTYStaking.sol`](#lqty-staking-functions--lqtystakingsol)
   - [Lockup Contract Factory `LockupContractFactory.sol`](#lockup-contract-factory-lockupcontractfactorysol)
   - [Lockup contract - `LockupContract.sol`](#lockup-contract---lockupcontractsol)
   - [EBTC token `EBTCToken.sol` and LQTY token `LQTYToken.sol`](#ebtc-token-ebtctokensol-and-lqty-token-lqtytokensol)
-- [Supplying Hints to Trove operations](#supplying-hints-to-cdp-operations)
+- [Supplying Hints to Cdp operations](#supplying-hints-to-cdp-operations)
   - [Hints for `redeemCollateral`](#hints-for-redeemcollateral)
     - [First redemption hint](#first-redemption-hint)
     - [Partial redemption hints](#partial-redemption-hints)
@@ -144,7 +144,7 @@ Visit [liquity.org](https://www.liquity.org) to find out more and join the discu
 
 ## Liquity Overview
 
-Liquity is a collateralized debt platform. Users can lock up Ether, and issue stablecoin tokens (EBTC) to their own Ethereum address, and subsequently transfer those tokens to any other Ethereum address. The individual collateralized debt positions are called Troves.
+Liquity is a collateralized debt platform. Users can lock up Ether, and issue stablecoin tokens (EBTC) to their own Ethereum address, and subsequently transfer those tokens to any other Ethereum address. The individual collateralized debt positions are called Cdps.
 
 The stablecoin tokens are economically geared towards maintaining value of 1 EBTC = \$1 USD, due to the following properties:
 
@@ -154,29 +154,29 @@ The stablecoin tokens are economically geared towards maintaining value of 1 EBT
 
 3. The system algorithmically controls the generation of EBTC through a variable issuance fee.
 
-After opening a Trove with some Ether, users may issue ("borrow") tokens such that the collateralization ratio of their Trove remains above 110%. A user with $1000 worth of ETH in a Trove can issue up to 909.09 EBTC.
+After opening a Cdp with some Ether, users may issue ("borrow") tokens such that the collateralization ratio of their Cdp remains above 110%. A user with $1000 worth of ETH in a Cdp can issue up to 909.09 EBTC.
 
-The tokens are freely exchangeable - anyone with an Ethereum address can send or receive EBTC tokens, whether they have an open Trove or not. The tokens are burned upon repayment of a Trove's debt.
+The tokens are freely exchangeable - anyone with an Ethereum address can send or receive EBTC tokens, whether they have an open Cdp or not. The tokens are burned upon repayment of a Cdp's debt.
 
-The Liquity system regularly updates the ETH:USD price via a decentralized data feed. When a Trove falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
+The Liquity system regularly updates the ETH:USD price via a decentralized data feed. When a Cdp falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
 
 ## Liquidation and the Stability Pool
 
 Liquity utilizes a two-step liquidation mechanism in the following order of priority: 
 
-1. Offset under-collateralized Troves against the Stability Pool containing EBTC tokens
+1. Offset under-collateralized Cdps against the Stability Pool containing EBTC tokens
 
-2. Redistribute under-collateralized Troves to other borrowers if the Stability Pool is emptied
+2. Redistribute under-collateralized Cdps to other borrowers if the Stability Pool is emptied
 
 Liquity primarily uses the EBTC tokens in its Stability Pool to absorb the under-collateralized debt, i.e. to repay the liquidated borrower's liability.
 
-Any user may deposit EBTC tokens to the Stability Pool. This allows them to earn the collateral from the liquidated Trove. When a liquidation occurs, the liquidated debt is cancelled with the same amount of EBTC in the Pool (which is burned as a result), and the liquidated Ether is proportionally distributed to depositors.
+Any user may deposit EBTC tokens to the Stability Pool. This allows them to earn the collateral from the liquidated Cdp. When a liquidation occurs, the liquidated debt is cancelled with the same amount of EBTC in the Pool (which is burned as a result), and the liquidated Ether is proportionally distributed to depositors.
 
-Stability Pool depositors can expect to earn net gains from liquidations, as in most cases, the value of the liquidated Ether will be greater than the value of the cancelled debt (since a liquidated Trove will likely have an ICR just slightly below 110%).
+Stability Pool depositors can expect to earn net gains from liquidations, as in most cases, the value of the liquidated Ether will be greater than the value of the cancelled debt (since a liquidated Cdp will likely have an ICR just slightly below 110%).
 
-If the liquidated debt is higher than the amount of EBTC in the Stability Pool, the system tries to cancel as much debt as possible with the tokens in the Stability Pool, and then redistributes the remaining liquidated collateral and debt across all active Troves.
+If the liquidated debt is higher than the amount of EBTC in the Stability Pool, the system tries to cancel as much debt as possible with the tokens in the Stability Pool, and then redistributes the remaining liquidated collateral and debt across all active Cdps.
 
-Anyone may call the public `liquidateTroves()` function, which will check for under-collateralized Troves, and liquidate them. Alternatively they can call `batchLiquidateTroves()` with a custom list of cdp addresses to attempt to liquidate.
+Anyone may call the public `liquidateCdps()` function, which will check for under-collateralized Cdps, and liquidate them. Alternatively they can call `batchLiquidateCdps()` with a custom list of cdp addresses to attempt to liquidate.
 
 ### Liquidation gas costs
 
@@ -184,26 +184,26 @@ Currently, mass liquidations performed via the above functions cost 60-65k gas p
 
 ### Liquidation Logic
 
-The precise behavior of liquidations depends on the ICR of the Trove being liquidated and global system conditions:  the total collateralization ratio (TCR) of the system, the size of the Stability Pool, etc.  
+The precise behavior of liquidations depends on the ICR of the Cdp being liquidated and global system conditions:  the total collateralization ratio (TCR) of the system, the size of the Stability Pool, etc.  
 
-Here is the liquidation logic for a single Trove in Normal Mode and Recovery Mode.  `SP.EBTC` represents the EBTC in the Stability Pool.
+Here is the liquidation logic for a single Cdp in Normal Mode and Recovery Mode.  `SP.EBTC` represents the EBTC in the Stability Pool.
 
 #### Liquidations in Normal Mode: TCR >= 150%
 
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Condition                      | Liquidation behavior                                                                                                                                                                                                                                                                                                |
 |----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ICR < MCR & SP.EBTC >= cdp.debt | EBTC in the StabilityPool equal to the Trove's debt is offset with the Trove's debt. The Trove's ETH collateral is shared between depositors.                                                                                                                                                                       |
-| ICR < MCR & SP.EBTC < cdp.debt | The total StabilityPool EBTC is offset with an equal amount of debt from the Trove.  A fraction of the Trove's collateral (equal to the ratio of its offset debt to its entire debt) is shared between depositors. The remaining debt and collateral (minus ETH gas compensation) is redistributed to active Troves |
-| ICR < MCR & SP.EBTC = 0          | Redistribute all debt and collateral (minus ETH gas compensation) to active Troves.                                                                                                                                                                                                                                 |
+| ICR < MCR & SP.EBTC >= cdp.debt | EBTC in the StabilityPool equal to the Cdp's debt is offset with the Cdp's debt. The Cdp's ETH collateral is shared between depositors.                                                                                                                                                                       |
+| ICR < MCR & SP.EBTC < cdp.debt | The total StabilityPool EBTC is offset with an equal amount of debt from the Cdp.  A fraction of the Cdp's collateral (equal to the ratio of its offset debt to its entire debt) is shared between depositors. The remaining debt and collateral (minus ETH gas compensation) is redistributed to active Cdps |
+| ICR < MCR & SP.EBTC = 0          | Redistribute all debt and collateral (minus ETH gas compensation) to active Cdps.                                                                                                                                                                                                                                 |
 | ICR  >= MCR                      | Do nothing.                                                                                                                                                                                                                                                                                                         |
 #### Liquidations in Recovery Mode: TCR < 150%
 
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Condition                                | Liquidation behavior                                                                                                                                                                                                                                                                                                                                                                                         |
 |------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ICR <=100%                               | Redistribute all debt and collateral (minus ETH gas compensation) to active Troves.                                                                                                                                                                                                                                                                                                                          |
-| 100% < ICR < MCR & SP.EBTC > cdp.debt  | EBTC in the StabilityPool equal to the Trove's debt is offset with the Trove's debt. The Trove's ETH collateral (minus ETH gas compensation) is shared between depsitors.                                                                                                                                                                                                                                    |
-| 100% < ICR < MCR & SP.EBTC < cdp.debt  | The total StabilityPool EBTC is offset with an equal amount of debt from the Trove.  A fraction of the Trove's collateral (equal to the ratio of its offset debt to its entire debt) is shared between depositors. The remaining debt and collateral (minus ETH gas compensation) is redistributed to active cdps                                                                                          |
-| MCR <= ICR < TCR & SP.EBTC >= cdp.debt  |  The Pool EBTC is offset with an equal amount of debt from the Trove. A fraction of ETH collateral with dollar value equal to `1.1 * debt` is shared between depositors. Nothing is redistributed to other active Troves. Since it's ICR was > 1.1, the Trove has a collateral remainder, which is sent to the `CollSurplusPool` and is claimable by the borrower. The Trove is closed. |
+| ICR <=100%                               | Redistribute all debt and collateral (minus ETH gas compensation) to active Cdps.                                                                                                                                                                                                                                                                                                                          |
+| 100% < ICR < MCR & SP.EBTC > cdp.debt  | EBTC in the StabilityPool equal to the Cdp's debt is offset with the Cdp's debt. The Cdp's ETH collateral (minus ETH gas compensation) is shared between depsitors.                                                                                                                                                                                                                                    |
+| 100% < ICR < MCR & SP.EBTC < cdp.debt  | The total StabilityPool EBTC is offset with an equal amount of debt from the Cdp.  A fraction of the Cdp's collateral (equal to the ratio of its offset debt to its entire debt) is shared between depositors. The remaining debt and collateral (minus ETH gas compensation) is redistributed to active cdps                                                                                          |
+| MCR <= ICR < TCR & SP.EBTC >= cdp.debt  |  The Pool EBTC is offset with an equal amount of debt from the Cdp. A fraction of ETH collateral with dollar value equal to `1.1 * debt` is shared between depositors. Nothing is redistributed to other active Cdps. Since it's ICR was > 1.1, the Cdp has a collateral remainder, which is sent to the `CollSurplusPool` and is claimable by the borrower. The Cdp is closed. |
 | MCR <= ICR < TCR & SP.EBTC  < cdp.debt | Do nothing.                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ICR >= TCR                               | Do nothing.                                                                                                                                                                                                                                                                                                                                                                                                  |
 
@@ -211,17 +211,17 @@ Here is the liquidation logic for a single Trove in Normal Mode and Recovery Mod
 
 Stability Pool depositors gain Ether over time, as liquidated debt is cancelled with their deposit. When they withdraw all or part of their deposited tokens, or top up their deposit, the system sends them their accumulated ETH gains.
 
-Similarly, a Trove's accumulated gains from liquidations are automatically applied to the Trove when the owner performs any operation - e.g. adding/withdrawing collateral, or issuing/repaying EBTC.
+Similarly, a Cdp's accumulated gains from liquidations are automatically applied to the Cdp when the owner performs any operation - e.g. adding/withdrawing collateral, or issuing/repaying EBTC.
 
 ## EBTC Token Redemption
 
-Any EBTC holder (whether or not they have an active Trove) may redeem their EBTC directly with the system. Their EBTC is exchanged for ETH, at face value: redeeming x EBTC tokens returns \$x worth of ETH (minus a [redemption fee](#redemption-fee)).
+Any EBTC holder (whether or not they have an active Cdp) may redeem their EBTC directly with the system. Their EBTC is exchanged for ETH, at face value: redeeming x EBTC tokens returns \$x worth of ETH (minus a [redemption fee](#redemption-fee)).
 
-When EBTC is redeemed for ETH, the system cancels the EBTC with debt from Troves, and the ETH is drawn from their collateral.
+When EBTC is redeemed for ETH, the system cancels the EBTC with debt from Cdps, and the ETH is drawn from their collateral.
 
-In order to fulfill the redemption request, Troves are redeemed from in ascending order of their collateralization ratio.
+In order to fulfill the redemption request, Cdps are redeemed from in ascending order of their collateralization ratio.
 
-A redemption sequence of `n` steps will **fully** redeem from up to `n-1` Troves, and, and **partially** redeems from up to 1 Trove, which is always the last Trove in the redemption sequence.
+A redemption sequence of `n` steps will **fully** redeem from up to `n-1` Cdps, and, and **partially** redeems from up to 1 Cdp, which is always the last Cdp in the redemption sequence.
 
 Redemptions are blocked when TCR < 110% (there is no need to restrict ICR < TCR). At that TCR redemptions would likely be unprofitable, as EBTC is probably trading above $1 if the system has crashed that badly, but it could be a way for an attacker with a lot of EBTC to lower the TCR even further.
 
@@ -229,17 +229,17 @@ Note that redemptions are disabled during the first 14 days of operation since d
 
 ### Partial redemption
 
-Most redemption transactions will include a partial redemption, since the amount redeemed is unlikely to perfectly match the total debt of a series of Troves.
+Most redemption transactions will include a partial redemption, since the amount redeemed is unlikely to perfectly match the total debt of a series of Cdps.
 
-The partially redeemed Trove is re-inserted into the sorted list of Troves, and remains active, with reduced collateral and debt.
+The partially redeemed Cdp is re-inserted into the sorted list of Cdps, and remains active, with reduced collateral and debt.
 
 ### Full redemption
 
-A Trove is defined as “fully redeemed from” when the redemption has caused (debt-200) of its debt to absorb (debt-200) EBTC. Then, its 200 EBTC Liquidation Reserve is cancelled with its remaining 200 debt: the Liquidation Reserve is burned from the gas address, and the 200 debt is zero’d.
+A Cdp is defined as “fully redeemed from” when the redemption has caused (debt-200) of its debt to absorb (debt-200) EBTC. Then, its 200 EBTC Liquidation Reserve is cancelled with its remaining 200 debt: the Liquidation Reserve is burned from the gas address, and the 200 debt is zero’d.
 
-Before closing, we must handle the Trove’s **collateral surplus**: that is, the excess ETH collateral remaining after redemption, due to its initial over-collateralization.
+Before closing, we must handle the Cdp’s **collateral surplus**: that is, the excess ETH collateral remaining after redemption, due to its initial over-collateralization.
 
-This collateral surplus is sent to the `CollSurplusPool`, and the borrower can reclaim it later. The Trove is then fully closed.
+This collateral surplus is sent to the `CollSurplusPool`, and the borrower can reclaim it later. The Cdp is then fully closed.
 
 ### Redemptions create a price floor
 
@@ -249,7 +249,7 @@ Economically, the redemption mechanism creates a hard price floor for EBTC, ensu
 
 Recovery Mode kicks in when the total collateralization ratio (TCR) of the system falls below 150%.
 
-During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New EBTC may only be issued by adjusting existing Troves in a way that improves their ICR, or by opening a new Trove with an ICR of >=150%. In general, if an existing Trove's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 150%
+During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New EBTC may only be issued by adjusting existing Cdps in a way that improves their ICR, or by opening a new Cdp with an ICR of >=150%. In general, if an existing Cdp's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 150%
 
 Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 150%, and to incentivize EBTC holders to replenish the Stability Pool.
 
@@ -363,21 +363,21 @@ All application logic and data is contained in these contracts - there is no nee
 
 The system has no admin key or human governance. Once deployed, it is fully automated, decentralized and no user holds any special privileges in or control over the system.
 
-The three main contracts - `BorrowerOperations.sol`, `TroveManager.sol` and `StabilityPool.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control Trove state updates and movements of Ether and EBTC tokens around the system.
+The three main contracts - `BorrowerOperations.sol`, `CdpManager.sol` and `StabilityPool.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control Cdp state updates and movements of Ether and EBTC tokens around the system.
 
 ### Core Smart Contracts
 
-`BorrowerOperations.sol` - contains the basic operations by which borrowers interact with their Trove: Trove creation, ETH top-up / withdrawal, stablecoin issuance and repayment. It also sends issuance fees to the `LQTYStaking` contract. BorrowerOperations functions call in to TroveManager, telling it to update Trove state, where necessary. BorrowerOperations functions also call in to the various Pools, telling them to move Ether/Tokens between Pools or between Pool <> user, where necessary.
+`BorrowerOperations.sol` - contains the basic operations by which borrowers interact with their Cdp: Cdp creation, ETH top-up / withdrawal, stablecoin issuance and repayment. It also sends issuance fees to the `LQTYStaking` contract. BorrowerOperations functions call in to CdpManager, telling it to update Cdp state, where necessary. BorrowerOperations functions also call in to the various Pools, telling them to move Ether/Tokens between Pools or between Pool <> user, where necessary.
 
-`TroveManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `LQTYStaking` contract. Also contains the state of each Trove - i.e. a record of the Trove’s collateral and debt. TroveManager does not hold value (i.e. Ether / other tokens). TroveManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
+`CdpManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `LQTYStaking` contract. Also contains the state of each Cdp - i.e. a record of the Cdp’s collateral and debt. CdpManager does not hold value (i.e. Ether / other tokens). CdpManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
 
-`LiquityBase.sol` - Both TroveManager and BorrowerOperations inherit from the parent contract LiquityBase, which contains global constants and some common functions.
+`LiquityBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract LiquityBase, which contains global constants and some common functions.
 
 `StabilityPool.sol` - contains functionality for Stability Pool operations: making deposits, and withdrawing compounded deposits and accumulated ETH and LQTY gains. Holds the EBTC Stability Pool deposits, and the ETH gains for depositors, from liquidations.
 
 `EBTCToken.sol` - the stablecoin token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to addresses like the StabilityPool and address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers EBTC tokens.
 
-`SortedTroves.sol` - a doubly linked list that stores addresses of Trove owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts Troves at the correct position, based on their ICR.
+`SortedCdps.sol` - a doubly linked list that stores addresses of Cdp owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts Cdps at the correct position, based on their ICR.
 
 `PriceFeed.sol` - Contains functionality for obtaining the current ETH:USD price, which the system uses for calculating collateralization ratios.
 
@@ -387,17 +387,17 @@ The three main contracts - `BorrowerOperations.sol`, `TroveManager.sol` and `Sta
 
 Along with `StabilityPool.sol`, these contracts hold Ether and/or tokens for their respective parts of the system, and contain minimal logic:
 
-`ActivePool.sol` - holds the total Ether balance and records the total stablecoin debt of the active Troves.
+`ActivePool.sol` - holds the total Ether balance and records the total stablecoin debt of the active Cdps.
 
-`DefaultPool.sol` - holds the total Ether balance and records the total stablecoin debt of the liquidated Troves that are pending redistribution to active Troves. If a Trove has pending ether/debt “rewards” in the DefaultPool, then they will be applied to the Trove when it next undergoes a borrower operation, a redemption, or a liquidation.
+`DefaultPool.sol` - holds the total Ether balance and records the total stablecoin debt of the liquidated Cdps that are pending redistribution to active Cdps. If a Cdp has pending ether/debt “rewards” in the DefaultPool, then they will be applied to the Cdp when it next undergoes a borrower operation, a redemption, or a liquidation.
 
-`CollSurplusPool.sol` - holds the ETH surplus from Troves that have been fully redeemed from as well as from Troves with an ICR > MCR that were liquidated in Recovery Mode. Sends the surplus back to the owning borrower, when told to do so by `BorrowerOperations.sol`.
+`CollSurplusPool.sol` - holds the ETH surplus from Cdps that have been fully redeemed from as well as from Cdps with an ICR > MCR that were liquidated in Recovery Mode. Sends the surplus back to the owning borrower, when told to do so by `BorrowerOperations.sol`.
 
-`GasPool.sol` - holds the total EBTC liquidation reserves. EBTC is moved into the `GasPool` when a Trove is opened, and moved out when a Trove is liquidated or closed.
+`GasPool.sol` - holds the total EBTC liquidation reserves. EBTC is moved into the `GasPool` when a Cdp is opened, and moved out when a Cdp is liquidated or closed.
 
 ### Contract Interfaces
 
-`ITroveManager.sol`, `IPool.sol` etc. These provide specification for a contract’s functions, without implementation. They are similar to interfaces in Java or C#.
+`ICdpManager.sol`, `IPool.sol` etc. These provide specification for a contract’s functions, without implementation. They are similar to interfaces in Java or C#.
 
 ### PriceFeed and Oracle
 
@@ -454,30 +454,30 @@ To summarize the Chainlink decimals issue:
 **Tellor Decimals**: Tellor uses 6 decimal precision for their ETHUSD price as determined by a social consensus of Tellor miners/data providers, and shown on Tellor's price feed page. Their decimals value is not offered in their on-chain contracts.  We rely on the continued social consensus around 6 decimals for their ETHUSD price feed. Tellor have informed us that if there was demand for an ETHUSD price at different precision, they would simply create a new `requestId`, and make no attempt to alter the social consensus around the precision of the current ETHUSD `requestId` (1) used by Liquity.
 
 
-### Keeping a sorted list of Troves ordered by ICR
+### Keeping a sorted list of Cdps ordered by ICR
 
-Liquity relies on a particular data structure: a sorted doubly-linked list of Troves that remains ordered by individual collateralization ratio (ICR), i.e. the amount of collateral (in USD) divided by the amount of debt (in EBTC).
+Liquity relies on a particular data structure: a sorted doubly-linked list of Cdps that remains ordered by individual collateralization ratio (ICR), i.e. the amount of collateral (in USD) divided by the amount of debt (in EBTC).
 
-This ordered list is critical for gas-efficient redemption sequences and for the `liquidateTroves` sequence, both of which target Troves in ascending order of ICR.
+This ordered list is critical for gas-efficient redemption sequences and for the `liquidateCdps` sequence, both of which target Cdps in ascending order of ICR.
 
-The sorted doubly-linked list is found in `SortedTroves.sol`. 
+The sorted doubly-linked list is found in `SortedCdps.sol`. 
 
-Nodes map to active Troves in the system - the ID property is the address of a cdp owner. The list accepts positional hints for efficient O(1) insertion - please see the [hints](#supplying-hints-to-cdp-operations) section for more details.
+Nodes map to active Cdps in the system - the ID property is the address of a cdp owner. The list accepts positional hints for efficient O(1) insertion - please see the [hints](#supplying-hints-to-cdp-operations) section for more details.
 
-ICRs are computed dynamically at runtime, and not stored on the node. This is because ICRs of active Troves change dynamically, when:
+ICRs are computed dynamically at runtime, and not stored on the node. This is because ICRs of active Cdps change dynamically, when:
 
-- The ETH:USD price varies, altering the USD of the collateral of every Trove
-- A liquidation that redistributes collateral and debt to active Troves occurs
+- The ETH:USD price varies, altering the USD of the collateral of every Cdp
+- A liquidation that redistributes collateral and debt to active Cdps occurs
 
-The list relies on the fact that a collateral and debt redistribution due to a liquidation preserves the ordering of all active Troves (though it does decrease the ICR of each active Trove above the MCR).
+The list relies on the fact that a collateral and debt redistribution due to a liquidation preserves the ordering of all active Cdps (though it does decrease the ICR of each active Cdp above the MCR).
 
 The fact that ordering is maintained as redistributions occur, is not immediately obvious: please see the [mathematical proof](https://github.com/liquity/dev/blob/main/papers) which shows that this holds in Liquity.
 
 A node inserted based on current ICR will maintain the correct position, relative to its peers, as liquidation gains accumulate, as long as its raw collateral and debt have not changed.
 
-Nodes also remain sorted as the ETH:USD price varies, since price fluctuations change the collateral value of each Trove by the same proportion.
+Nodes also remain sorted as the ETH:USD price varies, since price fluctuations change the collateral value of each Cdp by the same proportion.
 
-Thus, nodes need only be re-inserted to the sorted list upon a Trove operation - when the owner adds or removes collateral or debt to their position.
+Thus, nodes need only be re-inserted to the sorted list upon a Cdp operation - when the owner adds or removes collateral or debt to their position.
 
 ### Flow of Ether in Liquity
 
@@ -489,7 +489,7 @@ Ether in the system lives in three Pools: the ActivePool, the DefaultPool and th
 - From a Pool to a user
 - From one Pool to another Pool
 
-Ether is recorded on an _individual_ level, but stored in _aggregate_ in a Pool. An active Trove with collateral and debt has a struct in the TroveManager that stores its ether collateral value in a uint, but its actual Ether is in the balance of the ActivePool contract.
+Ether is recorded on an _individual_ level, but stored in _aggregate_ in a Pool. An active Cdp with collateral and debt has a struct in the CdpManager that stores its ether collateral value in a uint, but its actual Ether is in the balance of the ActivePool contract.
 
 Likewise, the StabilityPool holds the total accumulated ETH gains from liquidations for all depositors.
 
@@ -497,24 +497,24 @@ Likewise, the StabilityPool holds the total accumulated ETH gains from liquidati
 
 | Function                     | ETH quantity                        | Path                                       |
 |------------------------------|-------------------------------------|--------------------------------------------|
-| openTrove                    | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
+| openCdp                    | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
 | addColl                      | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
 | withdrawColl                 | _collWithdrawal parameter           | ActivePool->msg.sender                     |
-| adjustTrove: adding ETH      | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
-| adjustTrove: withdrawing ETH | _collWithdrawal parameter           | ActivePool->msg.sender                     |
-| closeTrove                   | All remaining                       | ActivePool->msg.sender                     |
+| adjustCdp: adding ETH      | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
+| adjustCdp: withdrawing ETH | _collWithdrawal parameter           | ActivePool->msg.sender                     |
+| closeCdp                   | All remaining                       | ActivePool->msg.sender                     |
 | claimCollateral              | CollSurplusPool.balance[msg.sender] | CollSurplusPool->msg.sender                |
 
-**Trove Manager**
+**Cdp Manager**
 
 | Function                                | ETH quantity                           | Path                          |
 |-----------------------------------------|----------------------------------------|-------------------------------|
 | liquidate (offset)                      | collateral to be offset                | ActivePool->StabilityPool     |
 | liquidate (redistribution)              | collateral to be redistributed         | ActivePool->DefaultPool       |
-| liquidateTroves (offset)                | collateral to be offset                | ActivePool->StabilityPool     |
-| liquidateTroves (redistribution)        | collateral to be redistributed         | ActivePool->DefaultPool       |
-| batchLiquidateTroves (offset)           | collateral to be offset                | ActivePool->StabilityPool     |
-| batchLiquidateTroves (redistribution).  | collateral to be redistributed         | ActivePool->DefaultPool       |
+| liquidateCdps (offset)                | collateral to be offset                | ActivePool->StabilityPool     |
+| liquidateCdps (redistribution)        | collateral to be redistributed         | ActivePool->DefaultPool       |
+| batchLiquidateCdps (offset)           | collateral to be offset                | ActivePool->StabilityPool     |
+| batchLiquidateCdps (redistribution).  | collateral to be redistributed         | ActivePool->DefaultPool       |
 | redeemCollateral                        | collateral to be swapped with redeemer | ActivePool->msg.sender        |
 | redeemCollateral                        | redemption fee                         | ActivePool->LQTYStaking       |
 | redeemCollateral                        | cdp's collateral surplus             | ActivePool->CollSurplusPool |
@@ -525,7 +525,7 @@ Likewise, the StabilityPool holds the total accumulated ETH gains from liquidati
 |------------------------|----------------------------------|---------------------------------------------------|
 | provideToSP            | depositor's accumulated ETH gain | StabilityPool -> msg.sender                       |
 | withdrawFromSP         | depositor's accumulated ETH gain | StabilityPool -> msg.sender                       |
-| withdrawETHGainToTrove | depositor's accumulated ETH gain | StabilityPool -> BorrowerOperations -> ActivePool |
+| withdrawETHGainToCdp | depositor's accumulated ETH gain | StabilityPool -> BorrowerOperations -> ActivePool |
 
 **LQTY Staking**
 
@@ -538,11 +538,11 @@ Likewise, the StabilityPool holds the total accumulated ETH gains from liquidati
 
 ![Flow of EBTC](images/EBTC_flows.svg)
 
-When a user issues debt from their Trove, EBTC tokens are minted to their own address, and a debt is recorded on the Trove. Conversely, when they repay their Trove’s EBTC debt, EBTC is burned from their address, and the debt on their Trove is reduced.
+When a user issues debt from their Cdp, EBTC tokens are minted to their own address, and a debt is recorded on the Cdp. Conversely, when they repay their Cdp’s EBTC debt, EBTC is burned from their address, and the debt on their Cdp is reduced.
 
-Redemptions burn EBTC from the redeemer’s balance, and reduce the debt of the Trove redeemed against.
+Redemptions burn EBTC from the redeemer’s balance, and reduce the debt of the Cdp redeemed against.
 
-Liquidations that involve a Stability Pool offset burn tokens from the Stability Pool’s balance, and reduce the EBTC debt of the liquidated Trove.
+Liquidations that involve a Stability Pool offset burn tokens from the Stability Pool’s balance, and reduce the EBTC debt of the liquidated Cdp.
 
 The only time EBTC is transferred to/from a Liquity contract, is when a user deposits EBTC to, or withdraws EBTC from, the StabilityPool.
 
@@ -550,23 +550,23 @@ The only time EBTC is transferred to/from a Liquity contract, is when a user dep
 
 | Function                      | EBTC Quantity | ERC20 Operation                      |
 |-------------------------------|---------------|--------------------------------------|
-| openTrove                     | Drawn EBTC    | EBTC._mint(msg.sender, _EBTCAmount)  |
+| openCdp                     | Drawn EBTC    | EBTC._mint(msg.sender, _EBTCAmount)  |
 |                               | Issuance fee  | EBTC._mint(LQTYStaking,  EBTCFee)    |
 | withdrawEBTC                  | Drawn EBTC    | EBTC._mint(msg.sender, _EBTCAmount)  |
 |                               | Issuance fee  | EBTC._mint(LQTYStaking,  EBTCFee)    |
 | repayEBTC                     | Repaid EBTC   | EBTC._burn(msg.sender, _EBTCAmount)  |
-| adjustTrove: withdrawing EBTC | Drawn EBTC    | EBTC._mint(msg.sender, _EBTCAmount)  |
+| adjustCdp: withdrawing EBTC | Drawn EBTC    | EBTC._mint(msg.sender, _EBTCAmount)  |
 |                               | Issuance fee  | EBTC._mint(LQTYStaking,  EBTCFee)    |
-| adjustTrove: repaying EBTC    | Repaid EBTC   | EBTC._burn(msg.sender, _EBTCAmount)  |
-| closeTrove                    | Repaid EBTC   | EBTC._burn(msg.sender, _EBTCAmount) |
+| adjustCdp: repaying EBTC    | Repaid EBTC   | EBTC._burn(msg.sender, _EBTCAmount)  |
+| closeCdp                    | Repaid EBTC   | EBTC._burn(msg.sender, _EBTCAmount) |
 
-**Trove Manager**
+**Cdp Manager**
 
 | Function                 | EBTC Quantity            | ERC20 Operation                                  |
 |--------------------------|--------------------------|--------------------------------------------------|
 | liquidate (offset)       | EBTC to offset with debt | EBTC._burn(stabilityPoolAddress, _debtToOffset); |
-| liquidateTroves (offset)   | EBTC to offset with debt | EBTC._burn(stabilityPoolAddress, _debtToOffset); |
-| batchLiquidateTroves (offset) | EBTC to offset with debt | EBTC._burn(stabilityPoolAddress, _debtToOffset); |
+| liquidateCdps (offset)   | EBTC to offset with debt | EBTC._burn(stabilityPoolAddress, _debtToOffset); |
+| batchLiquidateCdps (offset) | EBTC to offset with debt | EBTC._burn(stabilityPoolAddress, _debtToOffset); |
 | redeemCollateral         | EBTC to redeem           | EBTC._burn(msg.sender, _EBTC)                    |
 
 **Stability Pool**
@@ -597,7 +597,7 @@ Stability Providers and Frontend Operators receive LQTY gains according to their
 |                        | front end LQTY gain | LQTY._transfer(stabilityPoolAddress, _frontEnd, frontEndLQTYGain);   |
 | withdrawFromSP         | depositor LQTY gain | LQTY._transfer(stabilityPoolAddress, msg.sender, depositorLQTYGain); |
 |                        | front end LQTY gain | LQTY._transfer(stabilityPoolAddress, _frontEnd, frontEndLQTYGain);   |
-| withdrawETHGainToTrove | depositor LQTY gain | LQTY._transfer(stabilityPoolAddress, msg.sender, depositorLQTYGain); |
+| withdrawETHGainToCdp | depositor LQTY gain | LQTY._transfer(stabilityPoolAddress, msg.sender, depositorLQTYGain); |
 |                        | front end LQTY gain | LQTY._transfer(stabilityPoolAddress, _frontEnd, frontEndLQTYGain);   |
 
 **LQTY Staking Contract**
@@ -610,9 +610,9 @@ Stability Providers and Frontend Operators receive LQTY gains according to their
 
 ## Expected User Behaviors
 
-Generally, borrowers call functions that trigger Trove operations on their own Trove. Stability Pool users (who may or may not also be borrowers) call functions that trigger Stability Pool operations, such as depositing or withdrawing tokens to/from the Stability Pool.
+Generally, borrowers call functions that trigger Cdp operations on their own Cdp. Stability Pool users (who may or may not also be borrowers) call functions that trigger Stability Pool operations, such as depositing or withdrawing tokens to/from the Stability Pool.
 
-Anyone may call the public liquidation functions, and attempt to liquidate one or several Troves.
+Anyone may call the public liquidation functions, and attempt to liquidate one or several Cdps.
 
 EBTC token holders may also redeem their tokens, and swap an amount of tokens 1-for-1 in value (minus fees) with Ether.
 
@@ -622,7 +622,7 @@ LQTY token holders may stake their LQTY, to earn a share of the system fee reven
 
 All the core smart contracts inherit from the OpenZeppelin `Ownable.sol` contract template. As such all contracts have a single owning address, which is the deploying address. The contract's ownership is renounced either upon deployment, or immediately after its address setter has been called, connecting it to the rest of the core Liquity system. 
 
-Several public and external functions have modifiers such as `requireCallerIsTroveManager`, `requireCallerIsActivePool`, etc - ensuring they can only be called by the respective permitted contract.
+Several public and external functions have modifiers such as `requireCallerIsCdpManager`, `requireCallerIsActivePool`, etc - ensuring they can only be called by the respective permitted contract.
 
 ## Deployment to a Development Blockchain
 
@@ -727,51 +727,51 @@ etc.
 
 ## Public Data
 
-All data structures with the ‘public’ visibility specifier are ‘gettable’, with getters automatically generated by the compiler. Simply call `TroveManager::MCR()` to get the MCR, etc.
+All data structures with the ‘public’ visibility specifier are ‘gettable’, with getters automatically generated by the compiler. Simply call `CdpManager::MCR()` to get the MCR, etc.
 
 ## Public User-Facing Functions
 
-### Borrower (Trove) Operations - `BorrowerOperations.sol`
+### Borrower (Cdp) Operations - `BorrowerOperations.sol`
 
-`openTrove(uint _maxFeePercentage, uint _EBTCAmount, address _upperHint, address _lowerHint)`: payable function that creates a Trove for the caller with the requested debt, and the Ether received as collateral. Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). In addition to the requested debt, extra debt is issued to pay the issuance fee, and cover the gas compensation. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. 
+`openCdp(uint _maxFeePercentage, uint _EBTCAmount, address _upperHint, address _lowerHint)`: payable function that creates a Cdp for the caller with the requested debt, and the Ether received as collateral. Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). In addition to the requested debt, extra debt is issued to pay the issuance fee, and cover the gas compensation. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. 
 
-`addColl(address _upperHint, address _lowerHint))`: payable function that adds the received Ether to the caller's active Trove.
+`addColl(address _upperHint, address _lowerHint))`: payable function that adds the received Ether to the caller's active Cdp.
 
-`withdrawColl(uint _amount, address _upperHint, address _lowerHint)`: withdraws `_amount` of collateral from the caller’s Trove. Executes only if the user has an active Trove, the withdrawal would not pull the user’s Trove below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%. 
+`withdrawColl(uint _amount, address _upperHint, address _lowerHint)`: withdraws `_amount` of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%. 
 
-`function withdrawEBTC(uint _maxFeePercentage, uint _EBTCAmount, address _upperHint, address _lowerHint)`: issues `_amount` of EBTC from the caller’s Trove to the caller. Executes only if the Trove's collateralization ratio would remain above the minimum, and the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee.
+`function withdrawEBTC(uint _maxFeePercentage, uint _EBTCAmount, address _upperHint, address _lowerHint)`: issues `_amount` of EBTC from the caller’s Cdp to the caller. Executes only if the Cdp's collateralization ratio would remain above the minimum, and the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee.
 
-`repayEBTC(uint _amount, address _upperHint, address _lowerHint)`: repay `_amount` of EBTC to the caller’s Trove, subject to leaving 50 debt in the Trove (which corresponds to the 50 EBTC gas compensation).
+`repayEBTC(uint _amount, address _upperHint, address _lowerHint)`: repay `_amount` of EBTC to the caller’s Cdp, subject to leaving 50 debt in the Cdp (which corresponds to the 50 EBTC gas compensation).
 
-`_adjustTrove(address _borrower, uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease, address _upperHint, address _lowerHint, uint _maxFeePercentage)`: enables a borrower to simultaneously change both their collateral and debt, subject to all the restrictions that apply to individual increases/decreases of each quantity with the following particularity: if the adjustment reduces the collateralization ratio of the Trove, the function only executes if the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. The parameter is ignored if the debt is not increased with the transaction.
+`_adjustCdp(address _borrower, uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease, address _upperHint, address _lowerHint, uint _maxFeePercentage)`: enables a borrower to simultaneously change both their collateral and debt, subject to all the restrictions that apply to individual increases/decreases of each quantity with the following particularity: if the adjustment reduces the collateralization ratio of the Cdp, the function only executes if the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. The parameter is ignored if the debt is not increased with the transaction.
 
-`closeTrove()`: allows a borrower to repay all debt, withdraw all their collateral, and close their Trove. Requires the borrower have a EBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` EBTC.
+`closeCdp()`: allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a EBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` EBTC.
 
-`claimCollateral(address _user)`: when a borrower’s Trove has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their ETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
+`claimCollateral(address _user)`: when a borrower’s Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their ETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
 
-### TroveManager Functions - `TroveManager.sol`
+### CdpManager Functions - `CdpManager.sol`
 
-`liquidate(address _borrower)`: callable by anyone, attempts to liquidate the Trove of `_user`. Executes successfully if `_user`’s Trove meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Trove's ICR < the system MCR).  
+`liquidate(address _borrower)`: callable by anyone, attempts to liquidate the Cdp of `_user`. Executes successfully if `_user`’s Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).  
 
-`liquidateTroves(uint n)`: callable by anyone, checks for under-collateralized Troves below MCR and liquidates up to `n`, starting from the Trove with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Troves. The gas costs of `liquidateTroves(uint n)` mainly depend on the number of Troves that are liquidated, and whether the Troves are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Trove are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
+`liquidateCdps(uint n)`: callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
 
-`batchLiquidateTroves(address[] calldata _cdpArray)`: callable by anyone, accepts a custom list of Troves addresses as an argument. Steps through the provided list and attempts to liquidate every Trove, until it reaches the end or it runs out of gas. A Trove is liquidated only if it meets the conditions for liquidation. For a batch of 10 Troves, the gas costs per liquidated Trove are roughly between 75K-83K, for a batch of 50 Troves between 54K-69K.
+`batchLiquidateCdps(address[] calldata _cdpArray)`: callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
 
-`redeemCollateral(uint _EBTCAmount, address _firstRedemptionHint, address _upperPartialRedemptionHint, address _lowerPartialRedemptionHint, uint _partialRedemptionHintNICR, uint _maxIterations, uint _maxFeePercentage)`: redeems `_EBTCamount` of stablecoins for ether from the system. Decreases the caller’s EBTC balance, and sends them the corresponding amount of ETH. Executes successfully if the caller has sufficient EBTC to redeem. The number of Troves redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
+`redeemCollateral(uint _EBTCAmount, address _firstRedemptionHint, address _upperPartialRedemptionHint, address _lowerPartialRedemptionHint, uint _partialRedemptionHintNICR, uint _maxIterations, uint _maxFeePercentage)`: redeems `_EBTCamount` of stablecoins for ether from the system. Decreases the caller’s EBTC balance, and sends them the corresponding amount of ETH. Executes successfully if the caller has sufficient EBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
 
 `getCurrentICR(address _user, uint _price)`: computes the user’s individual collateralization ratio (ICR) based on their total collateral and total EBTC debt. Returns 2^256 -1 if they have 0 debt.
 
-`getTroveOwnersCount()`: get the number of active Troves in the system.
+`getCdpOwnersCount()`: get the number of active Cdps in the system.
 
-`getPendingETHReward(address _borrower)`: get the pending ETH reward from liquidation redistribution events, for the given Trove.
+`getPendingETHReward(address _borrower)`: get the pending ETH reward from liquidation redistribution events, for the given Cdp.
 
-`getPendingEBTCDebtReward(address _borrower)`: get the pending Trove debt "reward" (i.e. the amount of extra debt assigned to the Trove) from liquidation redistribution events.
+`getPendingEBTCDebtReward(address _borrower)`: get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events.
 
-`getEntireDebtAndColl(address _borrower)`: returns a Trove’s entire debt and collateral, which respectively include any pending debt rewards and ETH rewards from prior redistributions.
+`getEntireDebtAndColl(address _borrower)`: returns a Cdp’s entire debt and collateral, which respectively include any pending debt rewards and ETH rewards from prior redistributions.
 
-`getEntireSystemColl()`:  Returns the systemic entire collateral allocated to Troves, i.e. the sum of the ETH in the Active Pool and the Default Pool.
+`getEntireSystemColl()`:  Returns the systemic entire collateral allocated to Cdps, i.e. the sum of the ETH in the Active Pool and the Default Pool.
 
-`getEntireSystemDebt()` Returns the systemic entire debt assigned to Troves, i.e. the sum of the EBTCDebt in the Active Pool and the Default Pool.
+`getEntireSystemDebt()` Returns the systemic entire debt assigned to Cdps, i.e. the sum of the EBTCDebt in the Active Pool and the Default Pool.
 
 `getTCR()`: returns the total collateralization ratio (TCR) of the system.  The TCR is based on the the entire system debt and collateral (including pending rewards).
 
@@ -779,23 +779,23 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 
 ### Hint Helper Functions - `HintHelpers.sol`
 
-`function getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)`: helper function, returns a positional hint for the sorted list. Used for transactions that must efficiently re-insert a Trove to the sorted list.
+`function getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)`: helper function, returns a positional hint for the sorted list. Used for transactions that must efficiently re-insert a Cdp to the sorted list.
 
 `getRedemptionHints(uint _EBTCamount, uint _price, uint _maxIterations)`: helper function specifically for redemptions. Returns three hints:
 
-- `firstRedemptionHint` is a positional hint for the first redeemable Trove (i.e. Trove with the lowest ICR >= MCR).
-- `partialRedemptionHintNICR` is the final nominal ICR of the last Trove after being hit by partial redemption, or zero in case of no partial redemption (see [Hints for `redeemCollateral`](#hints-for-redeemcollateral)).
-- `truncatedEBTCamount` is the maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last Trove of the redemption sequence with less debt than the minimum allowed value.
+- `firstRedemptionHint` is a positional hint for the first redeemable Cdp (i.e. Cdp with the lowest ICR >= MCR).
+- `partialRedemptionHintNICR` is the final nominal ICR of the last Cdp after being hit by partial redemption, or zero in case of no partial redemption (see [Hints for `redeemCollateral`](#hints-for-redeemcollateral)).
+- `truncatedEBTCamount` is the maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last Cdp of the redemption sequence with less debt than the minimum allowed value.
 
-The number of Troves to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
+The number of Cdps to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
 
 ### Stability Pool Functions - `StabilityPool.sol`
 
 `provideToSP(uint _amount, address _frontEndTag)`: allows stablecoin holders to deposit `_amount` of EBTC to the Stability Pool. It sends `_amount` of EBTC from their address to the Pool, and tops up their EBTC deposit by `_amount` and their tagged front end’s stake by `_amount`. If the depositor already has a non-zero deposit, it sends their accumulated ETH and LQTY gains to their address, and pays out their front end’s LQTY gain to their front end.
 
-`withdrawFromSP(uint _amount)`: allows a stablecoin holder to withdraw `_amount` of EBTC from the Stability Pool, up to the value of their remaining Stability deposit. It decreases their EBTC balance by `_amount` and decreases their front end’s stake by `_amount`. It sends the depositor’s accumulated ETH and LQTY gains to their address, and pays out their front end’s LQTY gain to their front end. If the user makes a partial withdrawal, their deposit remainder will earn further gains. To prevent potential loss evasion by depositors, withdrawals from the Stability Pool are suspended when there are liquidable Troves with ICR < 110% in the system.
+`withdrawFromSP(uint _amount)`: allows a stablecoin holder to withdraw `_amount` of EBTC from the Stability Pool, up to the value of their remaining Stability deposit. It decreases their EBTC balance by `_amount` and decreases their front end’s stake by `_amount`. It sends the depositor’s accumulated ETH and LQTY gains to their address, and pays out their front end’s LQTY gain to their front end. If the user makes a partial withdrawal, their deposit remainder will earn further gains. To prevent potential loss evasion by depositors, withdrawals from the Stability Pool are suspended when there are liquidable Cdps with ICR < 110% in the system.
 
-`withdrawETHGainToTrove(address _hint)`: sends the user's entire accumulated ETH gain to the user's active Trove, and updates their Stability deposit with its accumulated loss from debt absorptions. Sends the depositor's LQTY gain to the depositor, and sends the tagged front end's LQTY gain to the front end.
+`withdrawETHGainToCdp(address _hint)`: sends the user's entire accumulated ETH gain to the user's active Cdp, and updates their Stability deposit with its accumulated loss from debt absorptions. Sends the depositor's LQTY gain to the depositor, and sends the tagged front end's LQTY gain to the front end.
 
 `registerFrontEnd(uint _kickbackRate)`: Registers an address as a front end and sets their chosen kickback rate in range `[0,1]`.
 
@@ -837,40 +837,40 @@ could be front-run and revert - which may hamper the execution flow of a contrac
 For more details please see the original proposal EIP-2612:
 https://eips.ethereum.org/EIPS/eip-2612
 
-## Supplying Hints to Trove operations
+## Supplying Hints to Cdp operations
 
-Troves in Liquity are recorded in a sorted doubly linked list, sorted by their NICR, from high to low. NICR stands for the nominal collateral ratio that is simply the amount of collateral (in ETH) multiplied by 100e18 and divided by the amount of debt (in EBTC), without taking the ETH:USD price into account. Given that all Troves are equally affected by Ether price changes, they do not need to be sorted by their real ICR.
+Cdps in Liquity are recorded in a sorted doubly linked list, sorted by their NICR, from high to low. NICR stands for the nominal collateral ratio that is simply the amount of collateral (in ETH) multiplied by 100e18 and divided by the amount of debt (in EBTC), without taking the ETH:USD price into account. Given that all Cdps are equally affected by Ether price changes, they do not need to be sorted by their real ICR.
 
-All Trove operations that change the collateralization ratio need to either insert or reinsert the Trove to the `SortedTroves` list. To reduce the computational complexity (and gas cost) of the insertion to the linked list, two ‘hints’ may be provided.
+All Cdp operations that change the collateralization ratio need to either insert or reinsert the Cdp to the `SortedCdps` list. To reduce the computational complexity (and gas cost) of the insertion to the linked list, two ‘hints’ may be provided.
 
-A hint is the address of a Trove with a position in the sorted list close to the correct insert position.
+A hint is the address of a Cdp with a position in the sorted list close to the correct insert position.
 
-All Trove operations take two ‘hint’ arguments: a `_lowerHint` referring to the `nextId` and an `_upperHint` referring to the `prevId` of the two adjacent nodes in the linked list that are (or would become) the neighbors of the given Trove. Taking both direct neighbors as hints has the advantage of being much more resilient to situations where a neighbor gets moved or removed before the caller's transaction is processed: the transaction would only fail if both neighboring Troves are affected during the pendency of the transaction.
+All Cdp operations take two ‘hint’ arguments: a `_lowerHint` referring to the `nextId` and an `_upperHint` referring to the `prevId` of the two adjacent nodes in the linked list that are (or would become) the neighbors of the given Cdp. Taking both direct neighbors as hints has the advantage of being much more resilient to situations where a neighbor gets moved or removed before the caller's transaction is processed: the transaction would only fail if both neighboring Cdps are affected during the pendency of the transaction.
 
-The better the ‘hint’ is, the shorter the list traversal, and the cheaper the gas cost of the function call. `SortedList::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)` that is called by the Trove operation firsts check if `prevId` is still existant and valid (larger NICR than the provided `_NICR`) and then descends the list starting from `prevId`. If the check fails, the function further checks if `nextId` is still existant and valid (smaller NICR than the provided `_NICR`) and then ascends list starting from `nextId`. 
+The better the ‘hint’ is, the shorter the list traversal, and the cheaper the gas cost of the function call. `SortedList::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)` that is called by the Cdp operation firsts check if `prevId` is still existant and valid (larger NICR than the provided `_NICR`) and then descends the list starting from `prevId`. If the check fails, the function further checks if `nextId` is still existant and valid (smaller NICR than the provided `_NICR`) and then ascends list starting from `nextId`. 
 
-The `HintHelpers::getApproxHint(...)` function can be used to generate a useful hint pointing to a Trove relatively close to the target position, which can then be passed as an argument to the desired Trove operation or to `SortedTroves::findInsertPosition(...)` to get its two direct neighbors as ‘exact‘ hints (based on the current state of the system).
+The `HintHelpers::getApproxHint(...)` function can be used to generate a useful hint pointing to a Cdp relatively close to the target position, which can then be passed as an argument to the desired Cdp operation or to `SortedCdps::findInsertPosition(...)` to get its two direct neighbors as ‘exact‘ hints (based on the current state of the system).
 
-`getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)` randomly selects `numTrials` amount of Troves, and returns the one with the closest position in the list to where a Trove with a nominal collateralization ratio of `_CR` should be inserted. It can be shown mathematically that for `numTrials = k * sqrt(n)`, the function's gas cost is with very high probability worst case `O(sqrt(n)) if k >= 10`. For scalability reasons (Infura is able to serve up to ~4900 trials), the function also takes a random seed `_inputRandomSeed` to make sure that calls with different seeds may lead to a different results, allowing for better approximations through multiple consecutive runs.
+`getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)` randomly selects `numTrials` amount of Cdps, and returns the one with the closest position in the list to where a Cdp with a nominal collateralization ratio of `_CR` should be inserted. It can be shown mathematically that for `numTrials = k * sqrt(n)`, the function's gas cost is with very high probability worst case `O(sqrt(n)) if k >= 10`. For scalability reasons (Infura is able to serve up to ~4900 trials), the function also takes a random seed `_inputRandomSeed` to make sure that calls with different seeds may lead to a different results, allowing for better approximations through multiple consecutive runs.
 
-**Trove operation without a hint**
+**Cdp operation without a hint**
 
-1. User performs Trove operation in their browser
-2. Call the Trove operation with `_lowerHint = _upperHint = userAddress`
+1. User performs Cdp operation in their browser
+2. Call the Cdp operation with `_lowerHint = _upperHint = userAddress`
 
-Gas cost will be worst case `O(n)`, where n is the size of the `SortedTroves` list.
+Gas cost will be worst case `O(n)`, where n is the size of the `SortedCdps` list.
 
-**Trove operation with hints**
+**Cdp operation with hints**
 
-1. User performs Trove operation in their browser
+1. User performs Cdp operation in their browser
 2. The front end computes a new collateralization ratio locally, based on the change in collateral and/or debt.
 3. Call `HintHelpers::getApproxHint(...)`, passing it the computed nominal collateralization ratio. Returns an address close to the correct insert position
-4. Call `SortedTroves::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)`, passing it the same approximate hint via both `_prevId` and `_nextId` and the new nominal collateralization ratio via `_NICR`. 
-5. Pass the ‘exact‘ hint in the form of the two direct neighbors, i.e. `_nextId` as `_lowerHint` and `_prevId` as `_upperHint`, to the Trove operation function call. (Note that the hint may become slightly inexact due to pending transactions that are processed first, though this is gracefully handled by the system that can ascend or descend the list as needed to find the right position.)
+4. Call `SortedCdps::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)`, passing it the same approximate hint via both `_prevId` and `_nextId` and the new nominal collateralization ratio via `_NICR`. 
+5. Pass the ‘exact‘ hint in the form of the two direct neighbors, i.e. `_nextId` as `_lowerHint` and `_prevId` as `_upperHint`, to the Cdp operation function call. (Note that the hint may become slightly inexact due to pending transactions that are processed first, though this is gracefully handled by the system that can ascend or descend the list as needed to find the right position.)
 
 Gas cost of steps 2-4 will be free, and step 5 will be `O(1)`.
 
-Hints allow cheaper Trove operations for the user, at the expense of a slightly longer time to completion, due to the need to await the result of the two read calls in steps 1 and 2 - which may be sent as JSON-RPC requests to Infura, unless the Frontend Operator is running a full Ethereum node.
+Hints allow cheaper Cdp operations for the user, at the expense of a slightly longer time to completion, due to the need to await the result of the two read calls in steps 1 and 2 - which may be sent as JSON-RPC requests to Infura, unless the Frontend Operator is running a full Ethereum node.
 
 ### Example Borrower Operations with Hints
 
@@ -882,7 +882,7 @@ Hints allow cheaper Trove operations for the user, at the expense of a slightly 
   const EBTCAmount = toBN(toWei('2500')) // borrower wants to withdraw 2500 EBTC
   const ETHColl = toBN(toWei('5')) // borrower wants to lock 5 ETH collateral
 
-  // Call deployed TroveManager contract to read the liquidation reserve and latest borrowing fee
+  // Call deployed CdpManager contract to read the liquidation reserve and latest borrowing fee
   const liquidationReserve = await cdpManager.EBTC_GAS_COMPENSATION()
   const expectedFee = await cdpManager.getBorrowingFeeWithDecay(EBTCAmount)
   
@@ -895,19 +895,19 @@ Hints allow cheaper Trove operations for the user, at the expense of a slightly 
 
   // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
-  let numTroves = await sortedTroves.getSize()
-  let numTrials = numTroves.mul(toBN('15'))
+  let numCdps = await sortedCdps.getSize()
+  let numTrials = numCdps.mul(toBN('15'))
   let { 0: approxHint } = await hintHelpers.getApproxHint(NICR, numTrials, 42)  // random seed of 42
 
-  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedTroves contract
-  let { 0: upperHint, 1: lowerHint } = await sortedTroves.findInsertPosition(NICR, approxHint, approxHint)
+  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedCdps contract
+  let { 0: upperHint, 1: lowerHint } = await sortedCdps.findInsertPosition(NICR, approxHint, approxHint)
 
-  // Finally, call openTrove with the exact upperHint and lowerHint
+  // Finally, call openCdp with the exact upperHint and lowerHint
   const maxFee = '5'.concat('0'.repeat(16)) // Slippage protection: 5%
-  await borrowerOperations.openTrove(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
+  await borrowerOperations.openCdp(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
 ```
 
-#### Adjusting a Trove
+#### Adjusting a Cdp
 ```
   const collIncrease = toBN(toWei('1'))  // borrower wants to add 1 ETH
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 EBTC
@@ -922,26 +922,26 @@ Hints allow cheaper Trove operations for the user, at the expense of a slightly 
 
   // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
-  numTroves = await sortedTroves.getSize()
-  numTrials = numTroves.mul(toBN('15'))
+  numCdps = await sortedCdps.getSize()
+  numTrials = numCdps.mul(toBN('15'))
   ({0: approxHint} = await hintHelpers.getApproxHint(NICR, numTrials, 42))
 
-  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedTroves contract
-  ({ 0: upperHint, 1: lowerHint } = await sortedTroves.findInsertPosition(NICR, approxHint, approxHint))
+  // Use the approximate hint to get the exact upper and lower hints from the deployed SortedCdps contract
+  ({ 0: upperHint, 1: lowerHint } = await sortedCdps.findInsertPosition(NICR, approxHint, approxHint))
 
-  // Call adjustTrove with the exact upperHint and lowerHint
-  await borrowerOperations.adjustTrove(maxFee, 0, EBTCRepayment, false, upperHint, lowerHint, {value: collIncrease})
+  // Call adjustCdp with the exact upperHint and lowerHint
+  await borrowerOperations.adjustCdp(maxFee, 0, EBTCRepayment, false, upperHint, lowerHint, {value: collIncrease})
 ```
 
 ### Hints for `redeemCollateral`
 
-`TroveManager::redeemCollateral` as a special case requires additional hints:
-- `_firstRedemptionHint` hints at the position of the first Trove that will be redeemed from,
-- `_lowerPartialRedemptionHint` hints at the `nextId` neighbor of the last redeemed Trove upon reinsertion, if it's partially redeemed,
-- `_upperPartialRedemptionHint` hints at the `prevId` neighbor of the last redeemed Trove upon reinsertion, if it's partially redeemed,
+`CdpManager::redeemCollateral` as a special case requires additional hints:
+- `_firstRedemptionHint` hints at the position of the first Cdp that will be redeemed from,
+- `_lowerPartialRedemptionHint` hints at the `nextId` neighbor of the last redeemed Cdp upon reinsertion, if it's partially redeemed,
+- `_upperPartialRedemptionHint` hints at the `prevId` neighbor of the last redeemed Cdp upon reinsertion, if it's partially redeemed,
 - `_partialRedemptionHintNICR` ensures that the transaction won't run out of gas if neither `_lowerPartialRedemptionHint` nor `_upperPartialRedemptionHint` are  valid anymore.
 
-`redeemCollateral` will only redeem from Troves that have an ICR >= MCR. In other words, if there are Troves at the bottom of the SortedTroves list that are below the minimum collateralization ratio (which can happen after an ETH:USD price drop), they will be skipped. To make this more gas-efficient, the position of the first redeemable Trove should be passed as `_firstRedemptionHint`.
+`redeemCollateral` will only redeem from Cdps that have an ICR >= MCR. In other words, if there are Cdps at the bottom of the SortedCdps list that are below the minimum collateralization ratio (which can happen after an ETH:USD price drop), they will be skipped. To make this more gas-efficient, the position of the first redeemable Cdp should be passed as `_firstRedemptionHint`.
 
 #### First redemption hint
 
@@ -951,13 +951,13 @@ If when the transaction is confirmed the address is in fact not valid - the syst
 
 #### Partial redemption hints
 
-All Troves that are fully redeemed from in a redemption sequence are left with zero debt, and are closed. The remaining collateral (the difference between the orginal collateral and the amount used for the redemption) will be claimable by the owner.
+All Cdps that are fully redeemed from in a redemption sequence are left with zero debt, and are closed. The remaining collateral (the difference between the orginal collateral and the amount used for the redemption) will be claimable by the owner.
 
-It’s likely that the last Trove in the redemption sequence would be partially redeemed from - i.e. only some of its debt cancelled with EBTC. In this case, it should be reinserted somewhere between top and bottom of the list. The `_lowerPartialRedemptionHint` and `_upperPartialRedemptionHint` hints passed to `redeemCollateral` describe the future neighbors the expected reinsert position.
+It’s likely that the last Cdp in the redemption sequence would be partially redeemed from - i.e. only some of its debt cancelled with EBTC. In this case, it should be reinserted somewhere between top and bottom of the list. The `_lowerPartialRedemptionHint` and `_upperPartialRedemptionHint` hints passed to `redeemCollateral` describe the future neighbors the expected reinsert position.
 
-However, if between the off-chain hint computation and on-chain execution a different transaction changes the state of a Trove that would otherwise be hit by the redemption sequence, then the off-chain hint computation could end up totally inaccurate. This could lead to the whole redemption sequence reverting due to out-of-gas error.
+However, if between the off-chain hint computation and on-chain execution a different transaction changes the state of a Cdp that would otherwise be hit by the redemption sequence, then the off-chain hint computation could end up totally inaccurate. This could lead to the whole redemption sequence reverting due to out-of-gas error.
 
-To mitigate this, another hint needs to be provided: `_partialRedemptionHintNICR`, the expected nominal ICR of the final partially-redeemed-from Trove. The on-chain redemption function checks whether, after redemption, the nominal ICR of this Trove would equal the nominal ICR hint.
+To mitigate this, another hint needs to be provided: `_partialRedemptionHintNICR`, the expected nominal ICR of the final partially-redeemed-from Cdp. The on-chain redemption function checks whether, after redemption, the nominal ICR of this Cdp would equal the nominal ICR hint.
 
 If not, the redemption sequence doesn’t perform the final partial redemption, and terminates early. This ensures that the transaction doesn’t revert, and most of the requested EBTC redemption can be fulfilled.
 
@@ -972,9 +972,9 @@ If not, the redemption sequence doesn’t perform the final partial redemption, 
   const { hintAddress: approxPartialRedemptionHint } = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, numTrials, 42)
   
   /* Use the approximate partial redemption hint to get the exact partial redemption hint from the 
-  * deployed SortedTroves contract
+  * deployed SortedCdps contract
   */
-  const exactPartialRedemptionHint = (await sortedTroves.findInsertPosition(partialRedemptionNewICR,
+  const exactPartialRedemptionHint = (await sortedCdps.findInsertPosition(partialRedemptionNewICR,
     approxPartialRedemptionHint,
     approxPartialRedemptionHint))
 
@@ -993,41 +993,41 @@ If not, the redemption sequence doesn’t perform the final partial redemption, 
 
 ## Gas compensation
 
-In Liquity, we want to maximize liquidation throughput, and ensure that undercollateralized Troves are liquidated promptly by “liquidators” - agents who may also hold Stability Pool deposits, and who expect to profit from liquidations.
+In Liquity, we want to maximize liquidation throughput, and ensure that undercollateralized Cdps are liquidated promptly by “liquidators” - agents who may also hold Stability Pool deposits, and who expect to profit from liquidations.
 
-However, gas costs in Ethereum are substantial. If the gas costs of our public liquidation functions are too high, this may discourage liquidators from calling them, and leave the system holding too many undercollateralized Troves for too long.
+However, gas costs in Ethereum are substantial. If the gas costs of our public liquidation functions are too high, this may discourage liquidators from calling them, and leave the system holding too many undercollateralized Cdps for too long.
 
 The protocol thus directly compensates liquidators for their gas costs, to incentivize prompt liquidations in both normal and extreme periods of high gas prices. Liquidators should be confident that they will at least break even by making liquidation transactions.
 
-Gas compensation is paid in a mix of EBTC and ETH. While the ETH is taken from the liquidated Trove, the EBTC is provided by the borrower. When a borrower first issues debt, some EBTC is reserved as a Liquidation Reserve. A liquidation transaction thus draws ETH from the cdp(s) it liquidates, and sends the both the reserved EBTC and the compensation in ETH to the caller, and liquidates the remainder.
+Gas compensation is paid in a mix of EBTC and ETH. While the ETH is taken from the liquidated Cdp, the EBTC is provided by the borrower. When a borrower first issues debt, some EBTC is reserved as a Liquidation Reserve. A liquidation transaction thus draws ETH from the cdp(s) it liquidates, and sends the both the reserved EBTC and the compensation in ETH to the caller, and liquidates the remainder.
 
-When a liquidation transaction liquidates multiple Troves, each Trove contributes EBTC and ETH towards the total compensation for the transaction.
+When a liquidation transaction liquidates multiple Cdps, each Cdp contributes EBTC and ETH towards the total compensation for the transaction.
 
-Gas compensation per liquidated Trove is given by the formula:
+Gas compensation per liquidated Cdp is given by the formula:
 
 Gas compensation = `200 EBTC + 0.5% of cdp’s collateral (ETH)`
 
 The intentions behind this formula are:
-- To ensure that smaller Troves are liquidated promptly in normal times, at least
-- To ensure that larger Troves are liquidated promptly even in extreme high gas price periods. The larger the Trove, the stronger the incentive to liquidate it.
+- To ensure that smaller Cdps are liquidated promptly in normal times, at least
+- To ensure that larger Cdps are liquidated promptly even in extreme high gas price periods. The larger the Cdp, the stronger the incentive to liquidate it.
 
 ### Gas compensation schedule
 
-When a borrower opens a Trove, an additional 200 EBTC debt is issued, and 200 EBTC is minted and sent to a dedicated contract (`GasPool`) for gas compensation - the "gas pool".
+When a borrower opens a Cdp, an additional 200 EBTC debt is issued, and 200 EBTC is minted and sent to a dedicated contract (`GasPool`) for gas compensation - the "gas pool".
 
-When a borrower closes their active Trove, this gas compensation is refunded: 200 EBTC is burned from the gas pool's balance, and the corresponding 200 EBTC debt on the Trove is cancelled.
+When a borrower closes their active Cdp, this gas compensation is refunded: 200 EBTC is burned from the gas pool's balance, and the corresponding 200 EBTC debt on the Cdp is cancelled.
 
-The purpose of the 200 EBTC Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the Trove's collateral size or the current ETH price.
+The purpose of the 200 EBTC Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the Cdp's collateral size or the current ETH price.
 
 ### Liquidation
 
-When a Trove is liquidated, 0.5% of its collateral is sent to the liquidator, along with the 200 EBTC Liquidation Reserve. Thus, a liquidator always receives `{200 EBTC + 0.5% collateral}` per Trove that they liquidate. The collateral remainder of the Trove is then either offset, redistributed or a combination of both, depending on the amount of EBTC in the Stability Pool.
+When a Cdp is liquidated, 0.5% of its collateral is sent to the liquidator, along with the 200 EBTC Liquidation Reserve. Thus, a liquidator always receives `{200 EBTC + 0.5% collateral}` per Cdp that they liquidate. The collateral remainder of the Cdp is then either offset, redistributed or a combination of both, depending on the amount of EBTC in the Stability Pool.
 
 ### Gas compensation and redemptions
 
-When a Trove is redeemed from, the redemption is made only against (debt - 200), not the entire debt.
+When a Cdp is redeemed from, the redemption is made only against (debt - 200), not the entire debt.
 
-But if the redemption causes an amount (debt - 200) to be cancelled, the Trove is then closed: the 200 EBTC Liquidation Reserve is cancelled with its remaining 200 debt. That is, the gas compensation is burned from the gas pool, and the 200 debt is zero’d. The ETH collateral surplus from the Trove remains in the system, to be later claimed by its owner.
+But if the redemption causes an amount (debt - 200) to be cancelled, the Cdp is then closed: the 200 EBTC Liquidation Reserve is cancelled with its remaining 200 debt. That is, the gas compensation is burned from the gas pool, and the 200 debt is zero’d. The ETH collateral surplus from the Cdp remains in the system, to be later claimed by its owner.
 
 ### Gas compensation helper functions
 
@@ -1045,7 +1045,7 @@ Since liquidations are expected to occur at an ICR of just below 110%, and even 
 
 We define the **collateral surplus** in a liquidation as `$(ETH) - debt`, where `$(...)` represents the dollar value.
 
-At an EBTC price of $1, Troves with `ICR > 100%` have a positive collateral surplus.
+At an EBTC price of $1, Cdps with `ICR > 100%` have a positive collateral surplus.
 
 After one or more liquidations, a deposit will have absorbed EBTC losses, and received ETH gains. The remaining reduced deposit is the **compounded deposit**.
 
@@ -1055,11 +1055,11 @@ Stability Providers expect a positive ROI on their initial deposit. That is:
 
 ### Mixed liquidations: offset and redistribution
 
-When a liquidation hits the Stability Pool, it is known as an **offset**: the debt of the Trove is offset against the EBTC in the Pool. When **x** EBTC debt is offset, the debt is cancelled, and **x** EBTC in the Pool is burned. When the EBTC Stability Pool is greater than the debt of the Trove, all the Trove's debt is cancelled, and all its ETH is shared between depositors. This is a **pure offset**.
+When a liquidation hits the Stability Pool, it is known as an **offset**: the debt of the Cdp is offset against the EBTC in the Pool. When **x** EBTC debt is offset, the debt is cancelled, and **x** EBTC in the Pool is burned. When the EBTC Stability Pool is greater than the debt of the Cdp, all the Cdp's debt is cancelled, and all its ETH is shared between depositors. This is a **pure offset**.
 
-It can happen that the EBTC in the Stability Pool is less than the debt of a Trove. In this case, the the whole Stability Pool will be used to offset a fraction of the Trove’s debt, and an equal fraction of the Trove’s ETH collateral will be assigned to Stability Providers. The remainder of the Trove’s debt and ETH gets redistributed to active Troves. This is a **mixed offset and redistribution**.
+It can happen that the EBTC in the Stability Pool is less than the debt of a Cdp. In this case, the the whole Stability Pool will be used to offset a fraction of the Cdp’s debt, and an equal fraction of the Cdp’s ETH collateral will be assigned to Stability Providers. The remainder of the Cdp’s debt and ETH gets redistributed to active Cdps. This is a **mixed offset and redistribution**.
 
-Because the ETH collateral fraction matches the offset debt fraction, the effective ICR of the collateral and debt that is offset, is equal to the ICR of the Trove. So, for depositors, the ROI per liquidation depends only on the ICR of the liquidated Trove.
+Because the ETH collateral fraction matches the offset debt fraction, the effective ICR of the collateral and debt that is offset, is equal to the ICR of the Cdp. So, for depositors, the ROI per liquidation depends only on the ICR of the liquidated Cdp.
 
 ### Stability Pool deposit losses and ETH gains - implementation
 
@@ -1067,9 +1067,9 @@ Deposit functionality is handled by `StabilityPool.sol` (`provideToSP`, `withdra
 
 When a liquidation is offset with the Stability Pool, debt from the liquidation is cancelled with an equal amount of EBTC in the pool, which is burned. 
 
-Individual deposits absorb the debt from the liquidated Trove in proportion to their deposit as a share of total deposits.
+Individual deposits absorb the debt from the liquidated Cdp in proportion to their deposit as a share of total deposits.
  
-Similarly the liquidated Trove’s ETH is assigned to depositors in the same proportion.
+Similarly the liquidated Cdp’s ETH is assigned to depositors in the same proportion.
 
 For example: a liquidation that empties 30% of the Stability Pool will reduce each deposit by 30%, no matter the size of the deposit.
 
@@ -1077,9 +1077,9 @@ For example: a liquidation that empties 30% of the Stability Pool will reduce ea
 
 Here’s an example of the Stability Pool absorbing liquidations. The Stability Pool contains 3 depositors, A, B and C, and the ETH:USD price is 100.
 
-There are two Troves to be liquidated, T1 and T2:
+There are two Cdps to be liquidated, T1 and T2:
 
-|   | Trove | Collateral (ETH) | Debt (EBTC) | ICR         | $(ETH) ($) | Collateral surplus ($) |
+|   | Cdp | Collateral (ETH) | Debt (EBTC) | ICR         | $(ETH) ($) | Collateral surplus ($) |
 |---|-------|------------------|-------------|-------------|------------|------------------------|
 |   | T1    | 1.6              | 150         | 1.066666667 | 160        | 10                     |
 |   | T2    | 2.45             | 225         | 1.088888889 | 245        | 20                     |
@@ -1234,23 +1234,23 @@ A LQTY holder may stake their LQTY, and earn a share of all system fees, proport
 
 Liquity generates revenue in two ways: redemptions, and issuance of new EBTC tokens.
 
-Redemptions fees are paid in ETH. Issuance fees (when a user opens a Trove, or issues more EBTC from their existing Trove) are paid in EBTC.
+Redemptions fees are paid in ETH. Issuance fees (when a user opens a Cdp, or issues more EBTC from their existing Cdp) are paid in EBTC.
 
 ### Redemption Fee
 
 The redemption fee is taken as a cut of the total ETH drawn from the system in a redemption. It is based on the current redemption rate.
 
-In the `TroveManager`, `redeemCollateral` calculates the ETH fee and transfers it to the staking contract, `LQTYStaking.sol`
+In the `CdpManager`, `redeemCollateral` calculates the ETH fee and transfers it to the staking contract, `LQTYStaking.sol`
 
 ### Issuance fee
 
-The issuance fee is charged on the EBTC drawn by the user and is added to the Trove's EBTC debt. It is based on the current borrowing rate.
+The issuance fee is charged on the EBTC drawn by the user and is added to the Cdp's EBTC debt. It is based on the current borrowing rate.
 
-When new EBTC are drawn via one of the `BorrowerOperations` functions `openTrove`, `withdrawEBTC` or `adjustTrove`, an extra amount `EBTCFee` is minted, and an equal amount of debt is added to the user’s Trove. The `EBTCFee` is transferred to the staking contract, `LQTYStaking.sol`.
+When new EBTC are drawn via one of the `BorrowerOperations` functions `openCdp`, `withdrawEBTC` or `adjustCdp`, an extra amount `EBTCFee` is minted, and an equal amount of debt is added to the user’s Cdp. The `EBTCFee` is transferred to the staking contract, `LQTYStaking.sol`.
 
 ### Fee Schedule
 
-Redemption and issuance fees are based on the `baseRate` state variable in TroveManager, which is dynamically updated. The `baseRate` increases with each redemption, and decays according to time passed since the last fee event - i.e. the last redemption or issuance of EBTC.
+Redemption and issuance fees are based on the `baseRate` state variable in CdpManager, which is dynamically updated. The `baseRate` increases with each redemption, and decays according to time passed since the last fee event - i.e. the last redemption or issuance of EBTC.
 
 The current fee schedule:
 
@@ -1292,43 +1292,43 @@ This staking formula and implementation follows the basic [“Batog” pull-base
 
 ## Redistributions and Corrected Stakes
 
-When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated Trove, to all active Troves in the system, in proportion to their collateral.
+When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated Cdp, to all active Cdps in the system, in proportion to their collateral.
 
-For two Troves A and B with collateral `A.coll > B.coll`, Trove A should earn a bigger share of the liquidated collateral and debt.
+For two Cdps A and B with collateral `A.coll > B.coll`, Cdp A should earn a bigger share of the liquidated collateral and debt.
 
-In Liquity it is important that all active Troves remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Troves’ collateral, preserves the ordering of active Troves by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
+In Liquity it is important that all active Cdps remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Cdps’ collateral, preserves the ordering of active Cdps by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
 
-However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all Troves and write new data to storage for each one. When a Trove receives redistribution rewards, the system does not update the Trove's collateral and debt properties - instead, the Trove’s rewards remain "pending" until the borrower's next operation.
+However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all Cdps and write new data to storage for each one. When a Cdp receives redistribution rewards, the system does not update the Cdp's collateral and debt properties - instead, the Cdp’s rewards remain "pending" until the borrower's next operation.
 
 These “pending rewards” can not be accounted for in future reward calculations in a scalable way.
 
-However: the ICR of a Trove is always calculated as the ratio of its total collateral to its total debt. So, a Trove’s ICR calculation **does** include all its previous accumulated rewards.
+However: the ICR of a Cdp is always calculated as the ratio of its total collateral to its total debt. So, a Cdp’s ICR calculation **does** include all its previous accumulated rewards.
 
 **This causes a problem: redistributions proportional to initial collateral can break cdp ordering.**
 
-Consider the case where new Trove is created after all active Troves have received a redistribution from a liquidation. This “fresh” Trove has then experienced fewer rewards than the older Troves, and thus, it receives a disproportionate share of subsequent rewards, relative to its total collateral.
+Consider the case where new Cdp is created after all active Cdps have received a redistribution from a liquidation. This “fresh” Cdp has then experienced fewer rewards than the older Cdps, and thus, it receives a disproportionate share of subsequent rewards, relative to its total collateral.
 
-The fresh cdp would earns rewards based on its **entire** collateral, whereas old Troves would earn rewards based only on **some portion** of their collateral - since a part of their collateral is pending, and not included in the Trove’s `coll` property.
+The fresh cdp would earns rewards based on its **entire** collateral, whereas old Cdps would earn rewards based only on **some portion** of their collateral - since a part of their collateral is pending, and not included in the Cdp’s `coll` property.
 
-This can break the ordering of Troves by ICR - see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
+This can break the ordering of Cdps by ICR - see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
 
 ### Corrected Stake Solution
 
-We use a corrected stake to account for this discrepancy, and ensure that newer Troves earn the same liquidation rewards per unit of total collateral, as do older Troves with pending rewards. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
+We use a corrected stake to account for this discrepancy, and ensure that newer Cdps earn the same liquidation rewards per unit of total collateral, as do older Cdps with pending rewards. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
 
-When a Trove is opened, its stake is calculated based on its collateral, and snapshots of the entire system collateral and debt which were taken immediately after the last liquidation.
+When a Cdp is opened, its stake is calculated based on its collateral, and snapshots of the entire system collateral and debt which were taken immediately after the last liquidation.
 
-A Trove’s stake is given by:
+A Cdp’s stake is given by:
 
 ```
 stake = _coll.mul(totalStakesSnapshot).div(totalCollateralSnapshot)
 ```
 
-It then earns redistribution rewards based on this corrected stake. A newly opened Trove’s stake will be less than its raw collateral, if the system contains active Troves with pending redistribution rewards when it was made.
+It then earns redistribution rewards based on this corrected stake. A newly opened Cdp’s stake will be less than its raw collateral, if the system contains active Cdps with pending redistribution rewards when it was made.
 
-Whenever a borrower adjusts their Trove’s collateral, their pending rewards are applied, and a fresh corrected stake is computed.
+Whenever a borrower adjusts their Cdp’s collateral, their pending rewards are applied, and a fresh corrected stake is computed.
 
-To convince yourself this corrected stake preserves ordering of active Troves by ICR, please see the [proofs section](https://github.com/liquity/dev/blob/main/papers).
+To convince yourself this corrected stake preserves ordering of active Cdps by ICR, please see the [proofs section](https://github.com/liquity/dev/blob/main/papers).
 
 ## Math Proofs
 
@@ -1336,36 +1336,36 @@ The Liquity implementation relies on some important system properties and mathem
 
 In particular, we have:
 
-- Proofs that Trove ordering is maintained throughout a series of liquidations and new Trove openings
+- Proofs that Cdp ordering is maintained throughout a series of liquidations and new Cdp openings
 - A derivation of a formula and implementation for a highly scalable (O(1) complexity) reward distribution in the Stability Pool, involving compounding and decreasing stakes.
 
 PDFs of these can be found in https://github.com/liquity/dev/blob/main/papers
 
 ## Definitions
 
-_**Trove:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
+_**Cdp:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
 
 _**EBTC**_:  The stablecoin that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with the US dollar, and can always be redeemed directly with the system: 1 EBTC is always exchangeable for $1 USD worth of ETH.
 
-_**Active Trove:**_ an Ethereum address owns an “active Trove” if there is a node in the `SortedTroves` list with ID equal to the address, and non-zero collateral is recorded on the Trove struct for that address.
+_**Active Cdp:**_ an Ethereum address owns an “active Cdp” if there is a node in the `SortedCdps` list with ID equal to the address, and non-zero collateral is recorded on the Cdp struct for that address.
 
-_**Closed Trove:**_ a Trove that was once active, but now has zero debt and zero collateral recorded on its struct, and there is no node in the `SortedTroves` list with ID equal to the owning address.
+_**Closed Cdp:**_ a Cdp that was once active, but now has zero debt and zero collateral recorded on its struct, and there is no node in the `SortedCdps` list with ID equal to the owning address.
 
-_**Active collateral:**_ the amount of ETH collateral recorded on a Trove’s struct
+_**Active collateral:**_ the amount of ETH collateral recorded on a Cdp’s struct
 
-_**Active debt:**_ the amount of EBTC debt recorded on a Trove’s struct
+_**Active debt:**_ the amount of EBTC debt recorded on a Cdp’s struct
 
-_**Entire collateral:**_ the sum of a Trove’s active collateral plus its pending collateral rewards accumulated from distributions
+_**Entire collateral:**_ the sum of a Cdp’s active collateral plus its pending collateral rewards accumulated from distributions
 
-_**Entire debt:**_ the sum of a Trove’s active debt plus its pending debt rewards accumulated from distributions
+_**Entire debt:**_ the sum of a Cdp’s active debt plus its pending debt rewards accumulated from distributions
 
-_**Individual collateralization ratio (ICR):**_ a Trove's ICR is the ratio of the dollar value of its entire collateral at the current ETH:USD price, to its entire debt
+_**Individual collateralization ratio (ICR):**_ a Cdp's ICR is the ratio of the dollar value of its entire collateral at the current ETH:USD price, to its entire debt
 
-_**Nominal collateralization ratio (nominal ICR, NICR):**_ a Trove's nominal ICR is its entire collateral (in ETH) multiplied by 100e18 and divided by its entire debt.
+_**Nominal collateralization ratio (nominal ICR, NICR):**_ a Cdp's nominal ICR is its entire collateral (in ETH) multiplied by 100e18 and divided by its entire debt.
 
-_**Total active collateral:**_ the sum of active collateral over all Troves. Equal to the ETH in the ActivePool.
+_**Total active collateral:**_ the sum of active collateral over all Cdps. Equal to the ETH in the ActivePool.
 
-_**Total active debt:**_ the sum of active debt over all Troves. Equal to the EBTC in the ActivePool.
+_**Total active debt:**_ the sum of active debt over all Cdps. Equal to the EBTC in the ActivePool.
 
 _**Total defaulted collateral:**_ the total ETH collateral in the DefaultPool
 
@@ -1379,31 +1379,31 @@ _**Total collateralization ratio (TCR):**_ the ratio of the dollar value of the 
 
 _**Critical collateralization ratio (CCR):**_ 150%. When the TCR is below the CCR, the system enters Recovery Mode.
 
-_**Borrower:**_ an externally owned account or contract that locks collateral in a Trove and issues EBTC tokens to their own address. They “borrow” EBTC tokens against their ETH collateral.
+_**Borrower:**_ an externally owned account or contract that locks collateral in a Cdp and issues EBTC tokens to their own address. They “borrow” EBTC tokens against their ETH collateral.
 
 _**Depositor:**_ an externally owned account or contract that has assigned EBTC tokens to the Stability Pool, in order to earn returns from liquidations, and receive LQTY token issuance.
 
 _**Redemption:**_ the act of swapping EBTC tokens with the system, in return for an equivalent value of ETH. Any account with a EBTC token balance may redeem them, whether or not they are a borrower.
 
-When EBTC is redeemed for ETH, the ETH is always withdrawn from the lowest collateral Troves, in ascending order of their collateralization ratio. A redeemer can not selectively target Troves with which to swap EBTC for ETH.
+When EBTC is redeemed for ETH, the ETH is always withdrawn from the lowest collateral Cdps, in ascending order of their collateralization ratio. A redeemer can not selectively target Cdps with which to swap EBTC for ETH.
 
-_**Repayment:**_ when a borrower sends EBTC tokens to their own Trove, reducing their debt, and increasing their collateralization ratio.
+_**Repayment:**_ when a borrower sends EBTC tokens to their own Cdp, reducing their debt, and increasing their collateralization ratio.
 
-_**Retrieval:**_ when a borrower with an active Trove withdraws some or all of their ETH collateral from their own cdp, either reducing their collateralization ratio, or closing their Trove (if they have zero debt and withdraw all their ETH)
+_**Retrieval:**_ when a borrower with an active Cdp withdraws some or all of their ETH collateral from their own cdp, either reducing their collateralization ratio, or closing their Cdp (if they have zero debt and withdraw all their ETH)
 
-_**Liquidation:**_ the act of force-closing an undercollateralized Trove and redistributing its collateral and debt. When the Stability Pool is sufficiently large, the liquidated debt is offset with the Stability Pool, and the ETH distributed to depositors. If the liquidated debt can not be offset with the Pool, the system redistributes the liquidated collateral and debt directly to the active Troves with >110% collateralization ratio.
+_**Liquidation:**_ the act of force-closing an undercollateralized Cdp and redistributing its collateral and debt. When the Stability Pool is sufficiently large, the liquidated debt is offset with the Stability Pool, and the ETH distributed to depositors. If the liquidated debt can not be offset with the Pool, the system redistributes the liquidated collateral and debt directly to the active Cdps with >110% collateralization ratio.
 
-Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized Trove, or batch liquidate Troves in ascending order of collateralization ratio.
+Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized Cdp, or batch liquidate Cdps in ascending order of collateralization ratio.
 
-_**Collateral Surplus**_: The difference between the dollar value of a Trove's ETH collateral, and the dollar value of its EBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
+_**Collateral Surplus**_: The difference between the dollar value of a Cdp's ETH collateral, and the dollar value of its EBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
 
 _**Offset:**_ cancellation of liquidated debt with EBTC in the Stability Pool, and assignment of liquidated collateral to Stability Pool depositors, in proportion to their deposit.
 
-_**Redistribution:**_ assignment of liquidated debt and collateral directly to active Troves, in proportion to their collateral.
+_**Redistribution:**_ assignment of liquidated debt and collateral directly to active Cdps, in proportion to their collateral.
 
-_**Pure offset:**_  when a Trove's debt is entirely cancelled with EBTC in the Stability Pool, and all of it's liquidated ETH collateral is assigned to Stability Providers.
+_**Pure offset:**_  when a Cdp's debt is entirely cancelled with EBTC in the Stability Pool, and all of it's liquidated ETH collateral is assigned to Stability Providers.
 
-_**Mixed offset and redistribution:**_  When the Stability Pool EBTC only covers a fraction of the liquidated Trove's debt.  This fraction of debt is cancelled with EBTC in the Stability Pool, and an equal fraction of the Trove's collateral is assigned to depositors. The remaining collateral & debt is redistributed directly to active Troves.
+_**Mixed offset and redistribution:**_  When the Stability Pool EBTC only covers a fraction of the liquidated Cdp's debt.  This fraction of debt is cancelled with EBTC in the Stability Pool, and an equal fraction of the Cdp's collateral is assigned to depositors. The remaining collateral & debt is redistributed directly to active Cdps.
 
 _**Gas compensation:**_ A refund, in EBTC and ETH, automatically paid to the caller of a liquidation function, intended to at least cover the gas cost of the transaction. Designed to ensure that liquidators are not dissuaded by potentially high gas costs.
 
@@ -1673,15 +1673,15 @@ Remember to customize both [docker-compose.yml](packages/dev-frontend/docker-com
 
 ## Known Issues
 
-### Temporary and slightly inaccurate TCR calculation within `batchLiquidateTroves` in Recovery Mode. 
+### Temporary and slightly inaccurate TCR calculation within `batchLiquidateCdps` in Recovery Mode. 
 
-When liquidating a cdp with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateTroves` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateTroves` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
+When liquidating a cdp with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateCdps` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateCdps` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
 
 There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 150% boundary, a large cdp must be liquidated, and the ETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
 
-### SortedTroves edge cases - top and bottom of the sorted list
+### SortedCdps edge cases - top and bottom of the sorted list
 
-When the cdp is at one end of the `SortedTroves` list and adjusted such that its ICR moves further away from its neighbor, `findInsertPosition` returns unhelpful positional hints, which if used can cause the `adjustTrove` transaction to run out of gas. This is due to the fact that one of the returned addresses is in fact the address of the cdp to move - however, at re-insertion, it has already been removed from the list. As such the insertion logic defaults to `0x0` for that hint address, causing the system to search for the cdp starting at the opposite end of the list. A workaround is possible, and this has been corrected in the SDK used by front ends.
+When the cdp is at one end of the `SortedCdps` list and adjusted such that its ICR moves further away from its neighbor, `findInsertPosition` returns unhelpful positional hints, which if used can cause the `adjustCdp` transaction to run out of gas. This is due to the fact that one of the returned addresses is in fact the address of the cdp to move - however, at re-insertion, it has already been removed from the list. As such the insertion logic defaults to `0x0` for that hint address, causing the system to search for the cdp starting at the opposite end of the list. A workaround is possible, and this has been corrected in the SDK used by front ends.
 
 ### Front-running issues
 

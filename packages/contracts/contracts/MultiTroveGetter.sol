@@ -3,12 +3,12 @@
 pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 
-import "./TroveManager.sol";
-import "./SortedTroves.sol";
+import "./CdpManager.sol";
+import "./SortedCdps.sol";
 
-/*  Helper contract for grabbing Trove data for the front end. Not part of the core Liquity system. */
-contract MultiTroveGetter {
-    struct CombinedTroveData {
+/*  Helper contract for grabbing Cdp data for the front end. Not part of the core Liquity system. */
+contract MultiCdpGetter {
+    struct CombinedCdpData {
         bytes32 id;
 
         uint debt;
@@ -19,16 +19,16 @@ contract MultiTroveGetter {
         uint snapshotEBTCDebt;
     }
 
-    TroveManager public cdpManager; // XXX Troves missing from ITroveManager?
-    ISortedTroves public sortedTroves;
+    CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
+    ISortedCdps public sortedCdps;
 
-    constructor(TroveManager _cdpManager, ISortedTroves _sortedTroves) public {
+    constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) public {
         cdpManager = _cdpManager;
-        sortedTroves = _sortedTroves;
+        sortedCdps = _sortedCdps;
     }
 
-    function getMultipleSortedTroves(int _startIdx, uint _count)
-        external view returns (CombinedTroveData[] memory _cdps)
+    function getMultipleSortedCdps(int _startIdx, uint _count)
+        external view returns (CombinedCdpData[] memory _cdps)
     {
         uint startIdx;
         bool descend;
@@ -41,80 +41,80 @@ contract MultiTroveGetter {
             descend = false;
         }
 
-        uint sortedTrovesSize = sortedTroves.getSize();
+        uint sortedCdpsSize = sortedCdps.getSize();
 
-        if (startIdx >= sortedTrovesSize) {
-            _cdps = new CombinedTroveData[](0);
+        if (startIdx >= sortedCdpsSize) {
+            _cdps = new CombinedCdpData[](0);
         } else {
-            uint maxCount = sortedTrovesSize - startIdx;
+            uint maxCount = sortedCdpsSize - startIdx;
 
             if (_count > maxCount) {
                 _count = maxCount;
             }
 
             if (descend) {
-                _cdps = _getMultipleSortedTrovesFromHead(startIdx, _count);
+                _cdps = _getMultipleSortedCdpsFromHead(startIdx, _count);
             } else {
-                _cdps = _getMultipleSortedTrovesFromTail(startIdx, _count);
+                _cdps = _getMultipleSortedCdpsFromTail(startIdx, _count);
             }
         }
     }
 
-    function _getMultipleSortedTrovesFromHead(uint _startIdx, uint _count)
-        internal view returns (CombinedTroveData[] memory _cdps)
+    function _getMultipleSortedCdpsFromHead(uint _startIdx, uint _count)
+        internal view returns (CombinedCdpData[] memory _cdps)
     {
-        bytes32 currentTroveId = sortedTroves.getFirst();
+        bytes32 currentCdpId = sortedCdps.getFirst();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
-            currentTroveId = sortedTroves.getNext(currentTroveId);
+            currentCdpId = sortedCdps.getNext(currentCdpId);
         }
 
-        _cdps = new CombinedTroveData[](_count);
+        _cdps = new CombinedCdpData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _cdps[idx].id = currentTroveId;
+            _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
                 _cdps[idx].coll,
                 _cdps[idx].stake,
                 /* status */,
                 /* arrayIndex */
-            ) = cdpManager.Troves(currentTroveId);
+            ) = cdpManager.Cdps(currentCdpId);
             (
                 _cdps[idx].snapshotETH,
                 _cdps[idx].snapshotEBTCDebt
-            ) = cdpManager.rewardSnapshots(currentTroveId);
+            ) = cdpManager.rewardSnapshots(currentCdpId);
 
-            currentTroveId = sortedTroves.getNext(currentTroveId);
+            currentCdpId = sortedCdps.getNext(currentCdpId);
         }
     }
 
-    function _getMultipleSortedTrovesFromTail(uint _startIdx, uint _count)
-        internal view returns (CombinedTroveData[] memory _cdps)
+    function _getMultipleSortedCdpsFromTail(uint _startIdx, uint _count)
+        internal view returns (CombinedCdpData[] memory _cdps)
     {
-        bytes32 currentTroveId = sortedTroves.getLast();
+        bytes32 currentCdpId = sortedCdps.getLast();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
-            currentTroveId = sortedTroves.getPrev(currentTroveId);
+            currentCdpId = sortedCdps.getPrev(currentCdpId);
         }
 
-        _cdps = new CombinedTroveData[](_count);
+        _cdps = new CombinedCdpData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _cdps[idx].id = currentTroveId;
+            _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
                 _cdps[idx].coll,
                 _cdps[idx].stake,
                 /* status */,
                 /* arrayIndex */
-            ) = cdpManager.Troves(currentTroveId);
+            ) = cdpManager.Cdps(currentCdpId);
             (
                 _cdps[idx].snapshotETH,
                 _cdps[idx].snapshotEBTCDebt
-            ) = cdpManager.rewardSnapshots(currentTroveId);
+            ) = cdpManager.rewardSnapshots(currentCdpId);
 
-            currentTroveId = sortedTroves.getPrev(currentTroveId);
+            currentCdpId = sortedCdps.getPrev(currentCdpId);
         }
     }
 }

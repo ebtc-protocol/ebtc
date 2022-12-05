@@ -1,10 +1,10 @@
 // Truffle migration script for deployment to Ganache
 
-const SortedTroves = artifacts.require("./SortedTroves.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const DefaultPool = artifacts.require("./DefaultPool.sol")
 const StabilityPool = artifacts.require("./StabilityPool.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
@@ -18,8 +18,8 @@ const connectContracts = deploymentHelpers.connectContracts
 module.exports = function(deployer) {
   deployer.deploy(BorrowerOperations)
   deployer.deploy(PriceFeed)
-  deployer.deploy(SortedTroves)
-  deployer.deploy(TroveManager)
+  deployer.deploy(SortedCdps)
+  deployer.deploy(CdpManager)
   deployer.deploy(ActivePool)
   deployer.deploy(StabilityPool)
   deployer.deploy(DefaultPool)
@@ -29,8 +29,8 @@ module.exports = function(deployer) {
   deployer.then(async () => {
     const borrowerOperations = await BorrowerOperations.deployed()
     const priceFeed = await PriceFeed.deployed()
-    const sortedTroves = await SortedTroves.deployed()
-    const cdpManager = await TroveManager.deployed()
+    const sortedCdps = await SortedCdps.deployed()
+    const cdpManager = await CdpManager.deployed()
     const activePool = await ActivePool.deployed()
     const stabilityPool = await StabilityPool.deployed()
     const defaultPool = await DefaultPool.deployed()
@@ -41,7 +41,7 @@ module.exports = function(deployer) {
       borrowerOperations,
       priceFeed,
       ebtcToken,
-      sortedTroves,
+      sortedCdps,
       cdpManager,
       activePool,
       stabilityPool,

@@ -1,7 +1,7 @@
 const fs = require('fs')
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 
 const th = testHelpers.TestHelper
@@ -19,8 +19,8 @@ contract('Gas costs for math functions', async accounts => {
   let mathTester
 
   before(async () => {
-    cdpManagerTester = await TroveManagerTester.new()
-    TroveManagerTester.setAsDeployed(cdpManagerTester)
+    cdpManagerTester = await CdpManagerTester.new()
+    CdpManagerTester.setAsDeployed(cdpManagerTester)
 
     mathTester = await LiquityMathTester.new()
     LiquityMathTester.setAsDeployed(mathTester)
@@ -32,7 +32,7 @@ contract('Gas costs for math functions', async accounts => {
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool

@@ -12,7 +12,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
   
   let contracts
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let activePool
   let stabilityPool
@@ -31,7 +31,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
@@ -77,7 +77,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
     await th.assertRevert(contract.setAddresses(...params, { from: owner }))
   }
 
-  describe('TroveManager', async accounts => {
+  describe('CdpManager', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
       await testSetAddresses(cdpManager, 11)
     })
@@ -107,25 +107,25 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
     })
   })
 
-  describe('SortedTroves', async accounts => {
+  describe('SortedCdps', async accounts => {
     it("setParams(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
       const dumbContract = await GasPool.new()
       const params = [10000001, dumbContract.address, dumbContract.address]
 
       // Attempt call from alice
-      await th.assertRevert(sortedTroves.setParams(...params, { from: alice }))
+      await th.assertRevert(sortedCdps.setParams(...params, { from: alice }))
 
       // Attempt to use zero address
-      await testZeroAddress(sortedTroves, params, 'setParams', 1)
+      await testZeroAddress(sortedCdps, params, 'setParams', 1)
       // Attempt to use non contract
-      await testNonContractAddress(sortedTroves, params, 'setParams', 1)
+      await testNonContractAddress(sortedCdps, params, 'setParams', 1)
 
       // Owner can successfully set params
-      const txOwner = await sortedTroves.setParams(...params, { from: owner })
+      const txOwner = await sortedCdps.setParams(...params, { from: owner })
       assert.isTrue(txOwner.receipt.status)
 
       // fails if called twice
-      await th.assertRevert(sortedTroves.setParams(...params, { from: owner }))
+      await th.assertRevert(sortedCdps.setParams(...params, { from: owner }))
     })
   })
 

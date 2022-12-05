@@ -218,13 +218,13 @@ class TestHelper {
   }
 
   static async logActiveAccounts(contracts, n) {
-    const count = await contracts.sortedTroves.getSize()
+    const count = await contracts.sortedCdps.getSize()
     const price = await contracts.priceFeedTestnet.getPrice()
 
     n = (typeof n == 'undefined') ? count : n
 
-    let account = await contracts.sortedTroves.getLast()
-    const head = await contracts.sortedTroves.getFirst()
+    let account = await contracts.sortedCdps.getLast()
+    const head = await contracts.sortedCdps.getFirst()
 
     console.log(`Total active accounts: ${count}`)
     console.log(`First ${n} accounts, in ascending ICR order:`)
@@ -232,15 +232,15 @@ class TestHelper {
     let i = 0
     while (i < n) {
       const squeezedAddr = this.squeezeAddr(account)
-      const coll = (await contracts.cdpManager.Troves(account))[1]
-      const debt = (await contracts.cdpManager.Troves(account))[0]
+      const coll = (await contracts.cdpManager.Cdps(account))[1]
+      const debt = (await contracts.cdpManager.Cdps(account))[0]
       const ICR = await contracts.cdpManager.getCurrentICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
 
       if (account == head) { break; }
 
-      account = await contracts.sortedTroves.getPrev(account)
+      account = await contracts.sortedCdps.getPrev(account)
 
       i++
     }
@@ -258,8 +258,8 @@ class TestHelper {
       const account = accounts[i]
 
       const squeezedAddr = this.squeezeAddr(account)
-      const coll = (await cdpManager.Troves(account))[1]
-      const debt = (await cdpManager.Troves(account))[0]
+      const coll = (await cdpManager.Cdps(account))[1]
+      const debt = (await cdpManager.Cdps(account))[0]
       const ICR = await cdpManager.getCurrentICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
@@ -307,33 +307,33 @@ class TestHelper {
     return compositeDebt
   }
 
-  static async getTroveEntireColl(contracts, cdp) {
+  static async getCdpEntireColl(contracts, cdp) {
     return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[1])
   }
 
-  static async getTroveEntireDebt(contracts, cdp) {
+  static async getCdpEntireDebt(contracts, cdp) {
     return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[0])
   }
 
-  static async getTroveStake(contracts, cdp) {
-    return (contracts.cdpManager.getTroveStake(cdp))
+  static async getCdpStake(contracts, cdp) {
+    return (contracts.cdpManager.getCdpStake(cdp))
   }
 
   /*
-   * given the requested EBTC amomunt in openTrove, returns the total debt
+   * given the requested EBTC amomunt in openCdp, returns the total debt
    * So, it adds the gas compensation and the borrowing fee
    */
-  static async getOpenTroveTotalDebt(contracts, ebtcAmount) {
+  static async getOpenCdpTotalDebt(contracts, ebtcAmount) {
     const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
     const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
     return compositeDebt.add(fee)
   }
 
   /*
-   * given the desired total debt, returns the EBTC amount that needs to be requested in openTrove
+   * given the desired total debt, returns the EBTC amount that needs to be requested in openCdp
    * So, it subtracts the gas compensation and then the borrowing fee
    */
-  static async getOpenTroveEBTCAmount(contracts, totalDebt) {
+  static async getOpenCdpEBTCAmount(contracts, totalDebt) {
     const actualDebt = await this.getActualDebtFromComposite(totalDebt, contracts)
     return this.getNetBorrowingAmount(contracts, actualDebt)
   }
@@ -461,7 +461,7 @@ class TestHelper {
     return events
   }
 
-  static getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, address) {
+  static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
     return [event.args[2], event.args[3]]
   }
@@ -471,14 +471,14 @@ class TestHelper {
     let _approxHints = await contracts.hintHelpers.getApproxHint(newNICR, 5, this.latestRandomSeed)
     this.latestRandomSeed = _approxHints[2];
 
-    const {0: upperHint, 1: lowerHint} = await contracts.sortedTroves.findInsertPosition(newNICR, _approxHints[0], _approxHints[0])
+    const {0: upperHint, 1: lowerHint} = await contracts.sortedCdps.findInsertPosition(newNICR, _approxHints[0], _approxHints[0])
     return {upperHint, lowerHint}
   }
 
   static async getEntireCollAndDebt(contracts, account) {
     // console.log(`account: ${account}`)
-    const rawColl = (await contracts.cdpManager.Troves(account))[1]
-    const rawDebt = (await contracts.cdpManager.Troves(account))[0]
+    const rawColl = (await contracts.cdpManager.Cdps(account))[1]
+    const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
     const pendingETHReward = await contracts.cdpManager.getPendingETHReward(account)
     const pendingEBTCDebtReward = await contracts.cdpManager.getPendingEBTCDebtReward(account)
     const entireColl = rawColl.add(pendingETHReward)
@@ -527,8 +527,8 @@ class TestHelper {
   static async getCollAndDebtFromAdjustment(contracts, account, ETHChange, EBTCChange) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
-    // const coll = (await contracts.cdpManager.Troves(account))[1]
-    // const debt = (await contracts.cdpManager.Troves(account))[0]
+    // const coll = (await contracts.cdpManager.Cdps(account))[1]
+    // const debt = (await contracts.cdpManager.Cdps(account))[0]
 
     const fee = EBTCChange.gt(this.toBN('0')) ? await contracts.cdpManager.getBorrowingFee(EBTCChange) : this.toBN('0')
     const newColl = entireColl.add(ETHChange)
@@ -540,53 +540,53 @@ class TestHelper {
  
   // --- BorrowerOperations gas functions ---
 
-  static async openTrove_allAccounts(accounts, contracts, ETHAmount, EBTCAmount) {
+  static async openCdp_allAccounts(accounts, contracts, ETHAmount, EBTCAmount) {
     const gasCostList = []
-    const totalDebt = await this.getOpenTroveTotalDebt(contracts, EBTCAmount)
+    const totalDebt = await this.getOpenCdpTotalDebt(contracts, EBTCAmount)
 
     for (const account of accounts) {
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove_allAccounts_randomETH(minETH, maxETH, accounts, contracts, EBTCAmount) {
+  static async openCdp_allAccounts_randomETH(minETH, maxETH, accounts, contracts, EBTCAmount) {
     const gasCostList = []
-    const totalDebt = await this.getOpenTroveTotalDebt(contracts, EBTCAmount)
+    const totalDebt = await this.getOpenCdpTotalDebt(contracts, EBTCAmount)
 
     for (const account of accounts) {
       const randCollAmount = this.randAmountInWei(minETH, maxETH)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: randCollAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: randCollAmount })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove_allAccounts_randomETH_ProportionalEBTC(minETH, maxETH, accounts, contracts, proportion) {
+  static async openCdp_allAccounts_randomETH_ProportionalEBTC(minETH, maxETH, accounts, contracts, proportion) {
     const gasCostList = []
   
     for (const account of accounts) {
       const randCollAmount = this.randAmountInWei(minETH, maxETH)
       const proportionalEBTC = (web3.utils.toBN(proportion)).mul(web3.utils.toBN(randCollAmount))
-      const totalDebt = await this.getOpenTroveTotalDebt(contracts, proportionalEBTC)
+      const totalDebt = await this.getOpenCdpTotalDebt(contracts, proportionalEBTC)
 
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove_allAccounts_randomETH_randomEBTC(minETH, maxETH, accounts, contracts, minEBTCProportion, maxEBTCProportion, logging = false) {
+  static async openCdp_allAccounts_randomETH_randomEBTC(minETH, maxETH, accounts, contracts, minEBTCProportion, maxEBTCProportion, logging = false) {
     const gasCostList = []
     const price = await contracts.priceFeedTestnet.getPrice()
     const _1e18 = web3.utils.toBN('1000000000000000000')
@@ -598,16 +598,16 @@ class TestHelper {
       // console.log(`randCollAmount ${randCollAmount }`)
       const randEBTCProportion = this.randAmountInWei(minEBTCProportion, maxEBTCProportion)
       const proportionalEBTC = (web3.utils.toBN(randEBTCProportion)).mul(web3.utils.toBN(randCollAmount).div(_1e18))
-      const totalDebt = await this.getOpenTroveTotalDebt(contracts, proportionalEBTC)
+      const totalDebt = await this.getOpenCdpTotalDebt(contracts, proportionalEBTC)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
       const feeFloor = this.dec(5, 16)
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
 
       if (logging && tx.receipt.status) {
         i++
         const ICR = await contracts.cdpManager.getCurrentICR(account, price)
-        // console.log(`${i}. Trove opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
+        // console.log(`${i}. Cdp opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
       }
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
@@ -615,43 +615,43 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove_allAccounts_randomEBTC(minEBTC, maxEBTC, accounts, contracts, ETHAmount) {
+  static async openCdp_allAccounts_randomEBTC(minEBTC, maxEBTC, accounts, contracts, ETHAmount) {
     const gasCostList = []
 
     for (const account of accounts) {
       const randEBTCAmount = this.randAmountInWei(minEBTC, maxEBTC)
-      const totalDebt = await this.getOpenTroveTotalDebt(contracts, randEBTCAmount)
+      const totalDebt = await this.getOpenCdpTotalDebt(contracts, randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, randEBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, randEBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async closeTrove_allAccounts(accounts, contracts) {
+  static async closeCdp_allAccounts(accounts, contracts) {
     const gasCostList = []
 
     for (const account of accounts) {
-      const tx = await contracts.borrowerOperations.closeTrove({ from: account })
+      const tx = await contracts.borrowerOperations.closeCdp({ from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove_allAccounts_decreasingEBTCAmounts(accounts, contracts, ETHAmount, maxEBTCAmount) {
+  static async openCdp_allAccounts_decreasingEBTCAmounts(accounts, contracts, ETHAmount, maxEBTCAmount) {
     const gasCostList = []
 
     let i = 0
     for (const account of accounts) {
       const EBTCAmount = (maxEBTCAmount - i).toString()
       const EBTCAmountWei = web3.utils.toWei(EBTCAmount, 'ether')
-      const totalDebt = await this.getOpenTroveTotalDebt(contracts, EBTCAmountWei)
+      const totalDebt = await this.getOpenCdpTotalDebt(contracts, EBTCAmountWei)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openTrove(this._100pct, EBTCAmountWei, upperHint, lowerHint, { from: account, value: ETHAmount })
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmountWei, upperHint, lowerHint, { from: account, value: ETHAmount })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
       i += 1
@@ -659,7 +659,7 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async openTrove(contracts, {
+  static async openCdp(contracts, {
     maxFeePercentage,
     extraEBTCAmount,
     upperHint,
@@ -681,7 +681,7 @@ class TestHelper {
     if (!ICR && !extraParams.value) ICR = this.toBN(this.dec(15, 17)) // 150%
     else if (typeof ICR == 'string') ICR = this.toBN(ICR)
 
-    const totalDebt = await this.getOpenTroveTotalDebt(contracts, ebtcAmount)
+    const totalDebt = await this.getOpenCdpTotalDebt(contracts, ebtcAmount)
     const netDebt = await this.getActualDebtFromComposite(totalDebt, contracts)
 
     if (ICR) {
@@ -689,7 +689,7 @@ class TestHelper {
       extraParams.value = ICR.mul(totalDebt).div(price)
     }
 
-    const tx = await contracts.borrowerOperations.openTrove(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
+    const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
       ebtcAmount,
@@ -737,7 +737,7 @@ class TestHelper {
     }
   }
 
-  static async adjustTrove_allAccounts(accounts, contracts, ETHAmount, EBTCAmount) {
+  static async adjustCdp_allAccounts(accounts, contracts, ETHAmount, EBTCAmount) {
     const gasCostList = []
 
     for (const account of accounts) {
@@ -756,11 +756,11 @@ class TestHelper {
 
       // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
-        tx = await contracts.borrowerOperations.adjustTrove(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
+        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
       // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
-        tx = await contracts.borrowerOperations.adjustTrove(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account })
+        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account })
       }
 
       const gas = this.gasUsed(tx)
@@ -769,7 +769,7 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async adjustTrove_allAccounts_randomAmount(accounts, contracts, ETHMin, ETHMax, EBTCMin, EBTCMax) {
+  static async adjustCdp_allAccounts_randomAmount(accounts, contracts, ETHMin, ETHMax, EBTCMin, EBTCMax) {
     const gasCostList = []
 
     for (const account of accounts) {
@@ -788,11 +788,11 @@ class TestHelper {
 
       // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
-        tx = await contracts.borrowerOperations.adjustTrove(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
+        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
       // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
-        tx = await contracts.borrowerOperations.adjustTrove(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, lowerHint,  upperHint,{ from: account })
+        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, lowerHint,  upperHint,{ from: account })
       }
 
       const gas = this.gasUsed(tx)
@@ -979,7 +979,7 @@ class TestHelper {
     let approxPartialRedemptionHint = _approxHints[0];
     this.latestRandomSeed = _approxHints[2];
 	
-    const exactPartialRedemptionHint = (await contracts.sortedTroves.findInsertPosition(partialRedemptionNewICR,
+    const exactPartialRedemptionHint = (await contracts.sortedCdps.findInsertPosition(partialRedemptionNewICR,
       approxPartialRedemptionHint,
       approxPartialRedemptionHint))
 
@@ -1000,13 +1000,13 @@ class TestHelper {
 
   // --- Composite functions ---
 
-  static async makeTrovesIncreasingICR(accounts, contracts) {
+  static async makeCdpsIncreasingICR(accounts, contracts) {
     let amountFinney = 2000
 
     for (const account of accounts) {
       const coll = web3.utils.toWei(amountFinney.toString(), 'finney')
 
-      await contracts.borrowerOperations.openTrove(this._100pct, '200000000000000000000', account, account, { from: account, value: coll })
+      await contracts.borrowerOperations.openCdp(this._100pct, '200000000000000000000', account, account, { from: account, value: coll })
 
       amountFinney += 10
     }
@@ -1056,7 +1056,7 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async withdrawETHGainToTrove_allAccounts(accounts, contracts) {
+  static async withdrawETHGainToCdp_allAccounts(accounts, contracts) {
     const gasCostList = []
     for (const account of accounts) {
 
@@ -1067,7 +1067,7 @@ class TestHelper {
       const newColl = entireColl.add(ETHGain)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, entireDebt)
 
-      const tx = await contracts.stabilityPool.withdrawETHGainToTrove(upperHint, lowerHint, { from: account })
+      const tx = await contracts.stabilityPool.withdrawETHGainToCdp(upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }

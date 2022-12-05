@@ -6,7 +6,7 @@ const toBN = th.toBN
 const mv = testHelpers.MoneyValues
 const timeValues = testHelpers.TimeValues
 
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const EBTCToken = artifacts.require("EBTCToken")
 const NonPayable = artifacts.require('NonPayable.sol')
 
@@ -40,7 +40,7 @@ contract('StabilityPool', async accounts => {
   let contracts
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let activePool
   let stabilityPool
@@ -51,8 +51,8 @@ contract('StabilityPool', async accounts => {
 
   let gasPriceInWei
 
-  const getOpenTroveEBTCAmount = async (totalDebt) => th.getOpenTroveEBTCAmount(contracts, totalDebt)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
+  const openCdp = async (params) => th.openCdp(contracts, params)
   const assertRevert = th.assertRevert
 
   describe("Stability Pool Mechanisms", async () => {
@@ -70,7 +70,7 @@ contract('StabilityPool', async accounts => {
 
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
-      contracts.cdpManager = await TroveManagerTester.new()
+      contracts.cdpManager = await CdpManagerTester.new()
       contracts.ebtcToken = await EBTCToken.new(
         contracts.cdpManager.address,
         contracts.stabilityPool.address,
@@ -80,7 +80,7 @@ contract('StabilityPool', async accounts => {
 
       priceFeed = contracts.priceFeedTestnet
       ebtcToken = contracts.ebtcToken
-      sortedTroves = contracts.sortedTroves
+      sortedCdps = contracts.sortedCdps
       cdpManager = contracts.cdpManager
       activePool = contracts.activePool
       stabilityPool = contracts.stabilityPool
@@ -119,7 +119,7 @@ contract('StabilityPool', async accounts => {
     // increases recorded EBTC at Stability Pool
     it("provideToSP(): increases the Stability Pool EBTC balance", async () => {
       // --- SETUP --- Give Alice a least 200
-      await openTrove({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
       // --- TEST ---
 
@@ -133,7 +133,7 @@ contract('StabilityPool', async accounts => {
 
     it("provideToSP(): updates the user's deposit record in StabilityPool", async () => {
       // --- SETUP --- Give Alice a least 200
-      await openTrove({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
       // --- TEST ---
       // check user's deposit record before
@@ -150,7 +150,7 @@ contract('StabilityPool', async accounts => {
 
     it("provideToSP(): reduces the user's EBTC balance by the correct amount", async () => {
       // --- SETUP --- Give Alice a least 200
-      await openTrove({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(200), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
       // --- TEST ---
       // get user's deposit record before
@@ -167,8 +167,8 @@ contract('StabilityPool', async accounts => {
     it("provideToSP(): increases totalEBTCDeposits by correct amount", async () => {
       // --- SETUP ---
 
-      // Whale opens Trove with 50 ETH, adds 2000 EBTC to StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+      // Whale opens Cdp with 50 ETH, adds 2000 EBTC to StabilityPool
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(2000, 18), frontEnd_1, { from: whale })
 
       const totalEBTCDeposits = await stabilityPool.getTotalEBTCDeposits()
@@ -178,31 +178,31 @@ contract('StabilityPool', async accounts => {
     it('provideToSP(): Correctly updates user snapshots of accumulated rewards per unit staked', async () => {
       // --- SETUP ---
 
-      // Whale opens Trove and deposits to SP
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      // Whale opens Cdp and deposits to SP
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
       const whaleEBTC = await ebtcToken.balanceOf(whale)
       await stabilityPool.provideToSP(whaleEBTC, frontEnd_1, { from: whale })
 
-      // 2 Troves opened, each withdraws minimum debt
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1, } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2, } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      // 2 Cdps opened, each withdraws minimum debt
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1, } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2, } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
-      // Alice makes Trove and withdraws 100 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(5, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
+      // Alice makes Cdp and withdraws 100 EBTC
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(5, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
 
 
-      // price drops: defaulter's Troves fall below MCR, whale doesn't
+      // price drops: defaulter's Cdps fall below MCR, whale doesn't
       await priceFeed.setPrice(dec(105, 18));
 
       const SPEBTC_Before = await stabilityPool.getTotalEBTCDeposits()
 
-      // Troves are closed
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner })
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      // Cdps are closed
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner })
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       // Confirm SP has decreased
       const SPEBTC_After = await stabilityPool.getTotalEBTCDeposits()
@@ -240,23 +240,23 @@ contract('StabilityPool', async accounts => {
 
     it("provideToSP(), multiple deposits: updates user's deposit and snapshots", async () => {
       // --- SETUP ---
-      // Whale opens Trove and deposits to SP
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      // Whale opens Cdp and deposits to SP
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
       const whaleEBTC = await ebtcToken.balanceOf(whale)
       await stabilityPool.provideToSP(whaleEBTC, frontEnd_1, { from: whale })
 
-      // 3 Troves opened. Two users withdraw 160 EBTC each
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1, value: dec(50, 'ether') } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2, value: dec(50, 'ether') } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_3, value: dec(50, 'ether') } })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      // 3 Cdps opened. Two users withdraw 160 EBTC each
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1, value: dec(50, 'ether') } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2, value: dec(50, 'ether') } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_3, value: dec(50, 'ether') } })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 150 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(250, 18)), ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(250, 18)), ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(150, 18), frontEnd_1, { from: alice })
 
       const alice_Snapshot_0 = await stabilityPool.depositSnapshots(alice)
@@ -265,12 +265,12 @@ contract('StabilityPool', async accounts => {
       assert.equal(alice_Snapshot_S_0, 0)
       assert.equal(alice_Snapshot_P_0, '1000000000000000000')
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
-      // 2 users with Trove with 180 EBTC drawn are closed
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })  // 180 EBTC closed
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner }) // 180 EBTC closed
+      // 2 users with Cdp with 180 EBTC drawn are closed
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })  // 180 EBTC closed
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner }) // 180 EBTC closed
 
       const alice_compoundedDeposit_1 = await stabilityPool.getCompoundedEBTCDeposit(alice)
 
@@ -295,11 +295,11 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(alice_Snapshot_P_1.eq(P_1))
 
       // Bob withdraws EBTC and deposits to StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await stabilityPool.provideToSP(dec(427, 18), frontEnd_1, { from: alice })
 
-      // Defaulter 3 Trove is closed
-      await cdpManager.liquidate(_defaulter3TroveId, { from: owner })
+      // Defaulter 3 Cdp is closed
+      await cdpManager.liquidate(_defaulter3CdpId, { from: owner })
 
       const alice_compoundedDeposit_2 = await stabilityPool.getCompoundedEBTCDeposit(alice)
 
@@ -320,10 +320,10 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): reverts if user tries to provide more than their EBTC balance", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob, value: dec(50, 'ether') } })
       const aliceEBTCbal = await ebtcToken.balanceOf(alice)
       const bobEBTCbal = await ebtcToken.balanceOf(bob)
 
@@ -339,9 +339,9 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): reverts if user tries to provide 2^256-1 EBTC, which exceeds their balance", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob, value: dec(50, 'ether') } })
 
       const maxBytes32 = web3.utils.toBN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
@@ -357,14 +357,14 @@ contract('StabilityPool', async accounts => {
     it("provideToSP(): reverts if cannot receive ETH Gain", async () => {
       // --- SETUP ---
       // Whale deposits 1850 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
       await stabilityPool.provideToSP(dec(1850, 18), frontEnd_1, { from: whale })
 
-      // Defaulter Troves opened
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      // Defaulter Cdps opened
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // --- TEST ---
 
@@ -378,12 +378,12 @@ contract('StabilityPool', async accounts => {
       const gain_0 = await stabilityPool.getDepositorETHGain(nonPayable.address)
       assert.isTrue(gain_0.eq(toBN(0)), 'NonPayable should not have accumulated gains')
 
-      // price drops: defaulters' Troves fall below MCR, nonPayable and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, nonPayable and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
       // 2 defaulters are closed
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner })
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner })
 
       const gain_1 = await stabilityPool.getDepositorETHGain(nonPayable.address)
       assert.isTrue(gain_1.gt(toBN(0)), 'NonPayable should have some accumulated gains')
@@ -394,34 +394,34 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): doesn't impact other users' deposits or ETH gains", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(2000, 18), frontEnd_1, { from: bob })
       await stabilityPool.provideToSP(dec(3000, 18), frontEnd_1, { from: carol })
 
       // D opens a cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
 
       // Would-be defaulters open cdps
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
 
       // Defaulters are liquidated
-      await cdpManager.liquidate(_defaulter1TroveId)
-      await cdpManager.liquidate(_defaulter2TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      await cdpManager.liquidate(_defaulter2CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       const alice_EBTCDeposit_Before = (await stabilityPool.getCompoundedEBTCDeposit(alice)).toString()
       const bob_EBTCDeposit_Before = (await stabilityPool.getCompoundedEBTCDeposit(bob)).toString()
@@ -460,34 +460,34 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): doesn't impact system debt, collateral or TCR", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(2000, 18), frontEnd_1, { from: bob })
       await stabilityPool.provideToSP(dec(3000, 18), frontEnd_1, { from: carol })
 
       // D opens a cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
 
       // Would-be defaulters open cdps
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: 0, ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
 
       // Defaulters are liquidated
-      await cdpManager.liquidate(_defaulter1TroveId)
-      await cdpManager.liquidate(_defaulter2TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      await cdpManager.liquidate(_defaulter2CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       const activeDebt_Before = (await activePool.getEBTCDebt()).toString()
       const defaultedDebt_Before = (await defaultPool.getEBTCDebt()).toString()
@@ -514,69 +514,69 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): doesn't impact any cdps, including the caller's cdp", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
-      let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      let _whaleCdpId = await sortedCdps.cdpOfOwnerByIndex(whale, 0);
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // A and B provide to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(2000, 18), frontEnd_1, { from: bob })
 
       // D opens a cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
       const price = await priceFeed.getPrice()
 
       // Get debt, collateral and ICR of all existing cdps
-      const whale_Debt_Before = (await cdpManager.Troves(_whaleTroveId))[0].toString()
-      const alice_Debt_Before = (await cdpManager.Troves(_aliceTroveId))[0].toString()
-      const bob_Debt_Before = (await cdpManager.Troves(_bobTroveId))[0].toString()
-      const carol_Debt_Before = (await cdpManager.Troves(_carolTroveId))[0].toString()
-      const dennis_Debt_Before = (await cdpManager.Troves(_dennisTroveId))[0].toString()
+      const whale_Debt_Before = (await cdpManager.Cdps(_whaleCdpId))[0].toString()
+      const alice_Debt_Before = (await cdpManager.Cdps(_aliceCdpId))[0].toString()
+      const bob_Debt_Before = (await cdpManager.Cdps(_bobCdpId))[0].toString()
+      const carol_Debt_Before = (await cdpManager.Cdps(_carolCdpId))[0].toString()
+      const dennis_Debt_Before = (await cdpManager.Cdps(_dennisCdpId))[0].toString()
 
-      const whale_Coll_Before = (await cdpManager.Troves(_whaleTroveId))[1].toString()
-      const alice_Coll_Before = (await cdpManager.Troves(_aliceTroveId))[1].toString()
-      const bob_Coll_Before = (await cdpManager.Troves(_bobTroveId))[1].toString()
-      const carol_Coll_Before = (await cdpManager.Troves(_carolTroveId))[1].toString()
-      const dennis_Coll_Before = (await cdpManager.Troves(_dennisTroveId))[1].toString()
+      const whale_Coll_Before = (await cdpManager.Cdps(_whaleCdpId))[1].toString()
+      const alice_Coll_Before = (await cdpManager.Cdps(_aliceCdpId))[1].toString()
+      const bob_Coll_Before = (await cdpManager.Cdps(_bobCdpId))[1].toString()
+      const carol_Coll_Before = (await cdpManager.Cdps(_carolCdpId))[1].toString()
+      const dennis_Coll_Before = (await cdpManager.Cdps(_dennisCdpId))[1].toString()
 
-      const whale_ICR_Before = (await cdpManager.getCurrentICR(_whaleTroveId, price)).toString()
-      const alice_ICR_Before = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
-      const bob_ICR_Before = (await cdpManager.getCurrentICR(_bobTroveId, price)).toString()
-      const carol_ICR_Before = (await cdpManager.getCurrentICR(_carolTroveId, price)).toString()
-      const dennis_ICR_Before = (await cdpManager.getCurrentICR(_dennisTroveId, price)).toString()
+      const whale_ICR_Before = (await cdpManager.getCurrentICR(_whaleCdpId, price)).toString()
+      const alice_ICR_Before = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
+      const bob_ICR_Before = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
+      const carol_ICR_Before = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
+      const dennis_ICR_Before = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
 
       // D makes an SP deposit
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: dennis })
       assert.equal((await stabilityPool.getCompoundedEBTCDeposit(dennis)).toString(), dec(1000, 18))
 
-      const whale_Debt_After = (await cdpManager.Troves(_whaleTroveId))[0].toString()
-      const alice_Debt_After = (await cdpManager.Troves(_aliceTroveId))[0].toString()
-      const bob_Debt_After = (await cdpManager.Troves(_bobTroveId))[0].toString()
-      const carol_Debt_After = (await cdpManager.Troves(_carolTroveId))[0].toString()
-      const dennis_Debt_After = (await cdpManager.Troves(_dennisTroveId))[0].toString()
+      const whale_Debt_After = (await cdpManager.Cdps(_whaleCdpId))[0].toString()
+      const alice_Debt_After = (await cdpManager.Cdps(_aliceCdpId))[0].toString()
+      const bob_Debt_After = (await cdpManager.Cdps(_bobCdpId))[0].toString()
+      const carol_Debt_After = (await cdpManager.Cdps(_carolCdpId))[0].toString()
+      const dennis_Debt_After = (await cdpManager.Cdps(_dennisCdpId))[0].toString()
 
-      const whale_Coll_After = (await cdpManager.Troves(_whaleTroveId))[1].toString()
-      const alice_Coll_After = (await cdpManager.Troves(_aliceTroveId))[1].toString()
-      const bob_Coll_After = (await cdpManager.Troves(_bobTroveId))[1].toString()
-      const carol_Coll_After = (await cdpManager.Troves(_carolTroveId))[1].toString()
-      const dennis_Coll_After = (await cdpManager.Troves(_dennisTroveId))[1].toString()
+      const whale_Coll_After = (await cdpManager.Cdps(_whaleCdpId))[1].toString()
+      const alice_Coll_After = (await cdpManager.Cdps(_aliceCdpId))[1].toString()
+      const bob_Coll_After = (await cdpManager.Cdps(_bobCdpId))[1].toString()
+      const carol_Coll_After = (await cdpManager.Cdps(_carolCdpId))[1].toString()
+      const dennis_Coll_After = (await cdpManager.Cdps(_dennisCdpId))[1].toString()
 
-      const whale_ICR_After = (await cdpManager.getCurrentICR(_whaleTroveId, price)).toString()
-      const alice_ICR_After = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
-      const bob_ICR_After = (await cdpManager.getCurrentICR(_bobTroveId, price)).toString()
-      const carol_ICR_After = (await cdpManager.getCurrentICR(_carolTroveId, price)).toString()
-      const dennis_ICR_After = (await cdpManager.getCurrentICR(_dennisTroveId, price)).toString()
+      const whale_ICR_After = (await cdpManager.getCurrentICR(_whaleCdpId, price)).toString()
+      const alice_ICR_After = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
+      const bob_ICR_After = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
+      const carol_ICR_After = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
+      const dennis_ICR_After = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
 
       assert.equal(whale_Debt_Before, whale_Debt_After)
       assert.equal(alice_Debt_Before, alice_Debt_After)
@@ -598,21 +598,21 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): doesn't protect the depositor's cdp from liquidation", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       // A, B provide 100 EBTC to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: bob })
 
       // Confirm Bob has an active cdp in the system
-      assert.isTrue(await sortedTroves.contains(_bobTroveId))
-      assert.equal((await cdpManager.getTroveStatus(_bobTroveId)).toString(), '1')  // Confirm Bob's cdp status is active
+      assert.isTrue(await sortedCdps.contains(_bobCdpId))
+      assert.equal((await cdpManager.getCdpStatus(_bobCdpId)).toString(), '1')  // Confirm Bob's cdp status is active
 
       // Confirm Bob has a Stability deposit
       assert.equal((await stabilityPool.getCompoundedEBTCDeposit(bob)).toString(), dec(1000, 18))
@@ -622,21 +622,21 @@ contract('StabilityPool', async accounts => {
       const price = await priceFeed.getPrice()
 
       // Liquidate bob
-      await cdpManager.liquidate(_bobTroveId)
+      await cdpManager.liquidate(_bobCdpId)
 
       // Check Bob's cdp has been removed from the system
-      assert.isFalse(await sortedTroves.contains(_bobTroveId))
-      assert.equal((await cdpManager.getTroveStatus(_bobTroveId)).toString(), '3')  // check Bob's cdp status was closed by liquidation
+      assert.isFalse(await sortedCdps.contains(_bobCdpId))
+      assert.equal((await cdpManager.getCdpStatus(_bobCdpId)).toString(), '3')  // check Bob's cdp status was closed by liquidation
     })
 
     it("provideToSP(): providing 0 EBTC reverts", async () => {
       // --- SETUP ---
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       // A, B, C provides 100, 50, 30 EBTC to SP
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: alice })
@@ -655,12 +655,12 @@ contract('StabilityPool', async accounts => {
 
     // --- LQTY functionality ---
     it("provideToSP(), new deposit: when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A provides to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: A })
@@ -683,12 +683,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit: when SP is empty, doesn't update G", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A provides to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: A })
@@ -722,13 +722,13 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit: sets the correct front end tag", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, C, D open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check A, B, C D have no front end tags
       const A_tagBefore = await getFrontEndTag(stabilityPool, A)
@@ -761,11 +761,11 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit: depositor does not receive any LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, value: dec(50, 'ether') } })
 
       // A, B, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
 
       // Get A, B, C LQTY balances before and confirm they're zero
       const A_LQTYBalance_Before = await lqtyToken.balanceOf(A)
@@ -789,16 +789,16 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit after past full withdrawal: depositor does not receive any LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- SETUP --- 
 
@@ -818,7 +818,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       // price bounces back to 200 
       await priceFeed.setPrice(dec(200, 18))
@@ -850,15 +850,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new eligible deposit: tagged front end receives LQTY rewards", async () => {	  
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
 
       // D, E, F provide to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: D })
@@ -900,12 +900,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new eligible deposit: tagged front end's stake increases", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Get front ends' stakes before
       const F1_Stake_Before = await stabilityPool.frontEndStakes(frontEnd_1)
@@ -937,18 +937,18 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new eligible deposit: tagged front end's snapshots update", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // D opens cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- SETUP ---
 
@@ -962,7 +962,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -1024,15 +1024,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit: depositor does not receive ETH gains", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // Whale transfers EBTC to A, B
       await ebtcToken.transfer(A, dec(100, 18), { from: whale })
       await ebtcToken.transfer(B, dec(200, 18), { from: whale })
 
       // C, D open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // --- TEST ---
 
@@ -1074,18 +1074,18 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), new deposit after past full withdrawal: depositor does not receive ETH gains", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // Whale transfers EBTC to A, B
       await ebtcToken.transfer(A, dec(1000, 18), { from: whale })
       await ebtcToken.transfer(B, dec(1000, 18), { from: whale })
 
       // C, D open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- SETUP ---
       // A, B, C, D provide to SP
@@ -1104,7 +1104,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       // Price bounces back
       await priceFeed.setPrice(dec(200, 18))
@@ -1153,12 +1153,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup: triggers LQTY reward event - increases the sum G", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C provide to SP
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: A })
@@ -1181,16 +1181,16 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup from different front end: doesn't change the front end tag", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // whale transfer to cdps D and E
       await ebtcToken.transfer(D, dec(100, 18), { from: whale })
       await ebtcToken.transfer(E, dec(200, 18), { from: whale })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
 
       // A, B, C, D, E provide to SP
@@ -1224,12 +1224,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup: depositor receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -1260,12 +1260,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup: tagged front end receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -1296,15 +1296,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup: tagged front end's stake increases", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, D, E, F open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-      await openTrove({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
 
       // A, B, C, D, E, F provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -1338,18 +1338,18 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(), topup: tagged front end's snapshots update", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(400, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(600, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(400, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(600, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // D opens cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- SETUP ---
 
@@ -1371,7 +1371,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -1430,10 +1430,10 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): reverts when amount is zero", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-      await openTrove({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(2000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
 
       // Whale transfers EBTC to C, D
       await ebtcToken.transfer(C, dec(100, 18), { from: whale })
@@ -1452,10 +1452,10 @@ contract('StabilityPool', async accounts => {
 
     it("provideToSP(): reverts if user is a registered front end", async () => {
       // C, D, E, F open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
 
       // C, E, F registers as front end
       await stabilityPool.registerFrontEnd(dec(1, 18), { from: C })
@@ -1474,9 +1474,9 @@ contract('StabilityPool', async accounts => {
     })
 
     it("provideToSP(): reverts if provided tag is not a registered front end", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
       const txPromise_C = stabilityPool.provideToSP(dec(10, 18), A, { from: C })  // passes another EOA
       const txPromise_D = stabilityPool.provideToSP(dec(10, 18), cdpManager.address, { from: D })
@@ -1492,8 +1492,8 @@ contract('StabilityPool', async accounts => {
     // --- withdrawFromSP ---
 
     it("withdrawFromSP(): reverts when user has no active deposit", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: alice })
 
@@ -1519,7 +1519,7 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): reverts when amount > 0 and system has an undercollateralized cdp", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: alice })
 
@@ -1527,7 +1527,7 @@ contract('StabilityPool', async accounts => {
       assert.equal(alice_initialDeposit, dec(100, 18))
 
       // defaulter opens cdp
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
 
       // ETH drops, defaulter is in liquidation range (but not liquidated yet)
       await priceFeed.setPrice(dec(100, 18))
@@ -1538,27 +1538,27 @@ contract('StabilityPool', async accounts => {
     it("withdrawFromSP(): partial retrieval - retrieves correct EBTC amount and the entire ETH Gain, and updates deposit", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
-      // 2 Troves opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      // 2 Cdps opened
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
-      // 2 users with Trove with 170 EBTC drawn are closed
-      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner })  // 170 EBTC closed
-      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner }) // 170 EBTC closed
+      // 2 users with Cdp with 170 EBTC drawn are closed
+      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner })  // 170 EBTC closed
+      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner }) // 170 EBTC closed
 
       const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
       const [liquidatedDebt_2] = await th.getEmittedLiquidationValues(liquidationTX_2)
@@ -1589,29 +1589,29 @@ contract('StabilityPool', async accounts => {
     it("withdrawFromSP(): partial retrieval - leaves the correct amount of EBTC in the Stability Pool", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
-      // 2 Troves opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      // 2 Cdps opened
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
       const SP_EBTC_Before = await stabilityPool.getTotalEBTCDeposits()
       assert.equal(SP_EBTC_Before, dec(200000, 18))
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
       // 2 users liquidated
-      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner })
+      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner })
 
       const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
       const [liquidatedDebt_2] = await th.getEmittedLiquidationValues(liquidationTX_2)
@@ -1634,30 +1634,30 @@ contract('StabilityPool', async accounts => {
     it("withdrawFromSP(): full retrieval - leaves the correct amount of EBTC in the Stability Pool", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
-      // 2 Troves opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      // 2 Cdps opened
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
       const SP_EBTC_Before = await stabilityPool.getTotalEBTCDeposits()
       assert.equal(SP_EBTC_Before, dec(200000, 18))
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
       // 2 defaulters liquidated
-      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner })
+      const liquidationTX_1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      const liquidationTX_2 = await cdpManager.liquidate(_defaulter2CdpId, { from: owner })
 
       const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
       const [liquidatedDebt_2] = await th.getEmittedLiquidationValues(liquidationTX_2)
@@ -1685,28 +1685,28 @@ contract('StabilityPool', async accounts => {
     it("withdrawFromSP(): Subsequent deposit and withdrawal attempt from same account, with no intermediate liquidations, withdraws zero ETH", async () => {
       // --- SETUP ---
       // Whale deposits 1850 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(18500, 18), frontEnd_1, { from: whale })
 
       // 2 defaulters open
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
       // defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner })
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner })
 
       // Alice retrieves all of her entitled EBTC:
       await stabilityPool.withdrawFromSP(dec(15000, 18), { from: alice })
@@ -1730,27 +1730,27 @@ contract('StabilityPool', async accounts => {
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
       assert.equal(await stabilityPool.getDepositorETHGain(alice), 0)
 
-      // Alice attempts third withdrawal (this time, frm SP to Trove)
-      const txPromise_A = stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      // Alice attempts third withdrawal (this time, frm SP to Cdp)
+      const txPromise_A = stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
       await th.assertRevert(txPromise_A)
     })
 
     it("withdrawFromSP(): it correctly updates the user's EBTC and ETH snapshots of entitled reward per unit staked", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // 2 defaulters open
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
       // check 'Before' snapshots
@@ -1760,12 +1760,12 @@ contract('StabilityPool', async accounts => {
       assert.equal(alice_snapshot_S_Before, 0)
       assert.equal(alice_snapshot_P_Before, '1000000000000000000')
 
-      // price drops: defaulters' Troves fall below MCR, alice and whale Trove remain active
+      // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
       // 2 defaulters liquidated
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
-      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
+      await cdpManager.liquidate(_defaulter2CdpId, { from: owner });
 
       // Alice retrieves part of her entitled EBTC: 9000 EBTC
       await stabilityPool.withdrawFromSP(dec(9000, 18), { from: alice })
@@ -1783,24 +1783,24 @@ contract('StabilityPool', async accounts => {
     it("withdrawFromSP(): decreases StabilityPool ETH", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // 1 defaulter opens
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // price drops: defaulter's Trove falls below MCR, alice and whale Trove remain active
+      // price drops: defaulter's Cdp falls below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice('100000000000000000000');
 
-      // defaulter's Trove is closed.
-      const liquidationTx_1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner })  // 180 EBTC closed
+      // defaulter's Cdp is closed.
+      const liquidationTx_1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner })  // 180 EBTC closed
       const [, liquidatedColl,] = th.getEmittedLiquidationValues(liquidationTx_1)
 
       //Get ActivePool and StabilityPool Ether before retrieval:
@@ -1829,21 +1829,21 @@ contract('StabilityPool', async accounts => {
 
     it("withdrawFromSP(): All depositors are able to withdraw from the SP to their account", async () => {
       // Whale opens cdp 
-      await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // 1 defaulter open
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // 6 Accounts open cdps and provide to SP
       const depositors = [alice, bob, carol, dennis, erin, flyn]
       for (account of depositors) {
-        await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+        await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
         await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: account })
       }
 
       await priceFeed.setPrice(dec(105, 18))
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       await priceFeed.setPrice(dec(200, 18))
 
@@ -1868,24 +1868,24 @@ contract('StabilityPool', async accounts => {
 
     it("withdrawFromSP(): increases depositor's EBTC token balance by the expected amount", async () => {
       // Whale opens cdp 
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // 1 defaulter opens cdp
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
 
       const defaulterDebt = (await cdpManager.getEntireDebtAndColl(defaulter_1))[0]
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // 6 Accounts open cdps and provide to SP
       const depositors = [alice, bob, carol, dennis, erin, flyn]
       for (account of depositors) {
-        await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+        await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
         await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: account });
       }
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
       await priceFeed.setPrice(dec(105, 18))
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const aliceBalBefore = await ebtcToken.balanceOf(alice)
       const bobBalBefore = await ebtcToken.balanceOf(bob)
@@ -1900,7 +1900,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(200, 18))
 
       // Bob issues a further 5000 EBTC from his cdp 
-      await borrowerOperations.withdrawEBTC(_bobTroveId, th._100pct, dec(5000, 18), _bobTroveId, _bobTroveId, { from: bob })
+      await borrowerOperations.withdrawEBTC(_bobCdpId, th._100pct, dec(5000, 18), _bobCdpId, _bobCdpId, { from: bob })
 
       // Expect Alice's EBTC balance increase be very close to 8333.3333333333333333 EBTC
       await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -1915,31 +1915,31 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): doesn't impact other users Stability deposits or ETH gains", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(20000, 18), frontEnd_1, { from: bob })
       await stabilityPool.provideToSP(dec(30000, 18), frontEnd_1, { from: carol })
 
       // Would-be defaulters open cdps
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
 
       // Defaulters are liquidated
-      await cdpManager.liquidate(_defaulter1TroveId)
-      await cdpManager.liquidate(_defaulter2TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      await cdpManager.liquidate(_defaulter2CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       const alice_EBTCDeposit_Before = (await stabilityPool.getCompoundedEBTCDeposit(alice)).toString()
       const bob_EBTCDeposit_Before = (await stabilityPool.getCompoundedEBTCDeposit(bob)).toString()
@@ -1976,31 +1976,31 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): doesn't impact system debt, collateral or TCR ", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
       await stabilityPool.provideToSP(dec(20000, 18), frontEnd_1, { from: bob })
       await stabilityPool.provideToSP(dec(30000, 18), frontEnd_1, { from: carol })
 
       // Would-be defaulters open cdps
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
 
       // Defaulters are liquidated
-      await cdpManager.liquidate(_defaulter1TroveId)
-      await cdpManager.liquidate(_defaulter2TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      await cdpManager.liquidate(_defaulter2CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       // Price rises
       await priceFeed.setPrice(dec(200, 18))
@@ -2031,16 +2031,16 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): doesn't impact any cdps, including the caller's cdp", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-      let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      let _whaleCdpId = await sortedCdps.cdpOfOwnerByIndex(whale, 0);
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-      let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
       // A, B and C provide to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
@@ -2052,20 +2052,20 @@ contract('StabilityPool', async accounts => {
       const price = await priceFeed.getPrice()
 
       // Get debt, collateral and ICR of all existing cdps
-      const whale_Debt_Before = (await cdpManager.Troves(_whaleTroveId))[0].toString()
-      const alice_Debt_Before = (await cdpManager.Troves(_aliceTroveId))[0].toString()
-      const bob_Debt_Before = (await cdpManager.Troves(_bobTroveId))[0].toString()
-      const carol_Debt_Before = (await cdpManager.Troves(_carolTroveId))[0].toString()
+      const whale_Debt_Before = (await cdpManager.Cdps(_whaleCdpId))[0].toString()
+      const alice_Debt_Before = (await cdpManager.Cdps(_aliceCdpId))[0].toString()
+      const bob_Debt_Before = (await cdpManager.Cdps(_bobCdpId))[0].toString()
+      const carol_Debt_Before = (await cdpManager.Cdps(_carolCdpId))[0].toString()
 
-      const whale_Coll_Before = (await cdpManager.Troves(_whaleTroveId))[1].toString()
-      const alice_Coll_Before = (await cdpManager.Troves(_aliceTroveId))[1].toString()
-      const bob_Coll_Before = (await cdpManager.Troves(_bobTroveId))[1].toString()
-      const carol_Coll_Before = (await cdpManager.Troves(_carolTroveId))[1].toString()
+      const whale_Coll_Before = (await cdpManager.Cdps(_whaleCdpId))[1].toString()
+      const alice_Coll_Before = (await cdpManager.Cdps(_aliceCdpId))[1].toString()
+      const bob_Coll_Before = (await cdpManager.Cdps(_bobCdpId))[1].toString()
+      const carol_Coll_Before = (await cdpManager.Cdps(_carolCdpId))[1].toString()
 
-      const whale_ICR_Before = (await cdpManager.getCurrentICR(_whaleTroveId, price)).toString()
-      const alice_ICR_Before = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
-      const bob_ICR_Before = (await cdpManager.getCurrentICR(_bobTroveId, price)).toString()
-      const carol_ICR_Before = (await cdpManager.getCurrentICR(_carolTroveId, price)).toString()
+      const whale_ICR_Before = (await cdpManager.getCurrentICR(_whaleCdpId, price)).toString()
+      const alice_ICR_Before = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
+      const bob_ICR_Before = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
+      const carol_ICR_Before = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
 
       // price rises
       await priceFeed.setPrice(dec(200, 18))
@@ -2075,20 +2075,20 @@ contract('StabilityPool', async accounts => {
       await stabilityPool.withdrawFromSP(dec(30000, 18), { from: carol })
       assert.equal(((await stabilityPool.deposits(carol))[0]).toString(), '0')
 
-      const whale_Debt_After = (await cdpManager.Troves(_whaleTroveId))[0].toString()
-      const alice_Debt_After = (await cdpManager.Troves(_aliceTroveId))[0].toString()
-      const bob_Debt_After = (await cdpManager.Troves(_bobTroveId))[0].toString()
-      const carol_Debt_After = (await cdpManager.Troves(_carolTroveId))[0].toString()
+      const whale_Debt_After = (await cdpManager.Cdps(_whaleCdpId))[0].toString()
+      const alice_Debt_After = (await cdpManager.Cdps(_aliceCdpId))[0].toString()
+      const bob_Debt_After = (await cdpManager.Cdps(_bobCdpId))[0].toString()
+      const carol_Debt_After = (await cdpManager.Cdps(_carolCdpId))[0].toString()
 
-      const whale_Coll_After = (await cdpManager.Troves(_whaleTroveId))[1].toString()
-      const alice_Coll_After = (await cdpManager.Troves(_aliceTroveId))[1].toString()
-      const bob_Coll_After = (await cdpManager.Troves(_bobTroveId))[1].toString()
-      const carol_Coll_After = (await cdpManager.Troves(_carolTroveId))[1].toString()
+      const whale_Coll_After = (await cdpManager.Cdps(_whaleCdpId))[1].toString()
+      const alice_Coll_After = (await cdpManager.Cdps(_aliceCdpId))[1].toString()
+      const bob_Coll_After = (await cdpManager.Cdps(_bobCdpId))[1].toString()
+      const carol_Coll_After = (await cdpManager.Cdps(_carolCdpId))[1].toString()
 
-      const whale_ICR_After = (await cdpManager.getCurrentICR(_whaleTroveId, price)).toString()
-      const alice_ICR_After = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
-      const bob_ICR_After = (await cdpManager.getCurrentICR(_bobTroveId, price)).toString()
-      const carol_ICR_After = (await cdpManager.getCurrentICR(_carolTroveId, price)).toString()
+      const whale_ICR_After = (await cdpManager.getCurrentICR(_whaleCdpId, price)).toString()
+      const alice_ICR_After = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
+      const bob_ICR_After = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
+      const carol_ICR_After = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
 
       // Check all cdps are unaffected by Carol's Stability deposit withdrawal
       assert.equal(whale_Debt_Before, whale_Debt_After)
@@ -2108,7 +2108,7 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): succeeds when amount is 0 and system has an undercollateralized cdp", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
 
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: A })
 
@@ -2116,25 +2116,25 @@ contract('StabilityPool', async accounts => {
       assert.equal(A_initialDeposit, dec(100, 18))
 
       // defaulters opens cdp
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // ETH drops, defaulters are in liquidation range
       await priceFeed.setPrice(dec(105, 18))
       const price = await priceFeed.getPrice()
-      assert.isTrue(await th.ICRbetween100and110(_defaulter1TroveId, cdpManager, price))
+      assert.isTrue(await th.ICRbetween100and110(_defaulter1CdpId, cdpManager, price))
 
       await th.fastForwardTime(timeValues.MINUTES_IN_ONE_WEEK, web3.currentProvider)
 
       // Liquidate d1
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       // Check d2 is undercollateralized
-      assert.isTrue(await th.ICRbetween100and110(_defaulter2TroveId, cdpManager, price))
-      assert.isTrue(await sortedTroves.contains(_defaulter2TroveId))
+      assert.isTrue(await th.ICRbetween100and110(_defaulter2CdpId, cdpManager, price))
+      assert.isTrue(await sortedCdps.contains(_defaulter2CdpId))
 
       const A_ETHBalBefore = toBN(await web3.eth.getBalance(A))
       const A_LQTYBalBefore = await lqtyToken.balanceOf(A)
@@ -2163,12 +2163,12 @@ contract('StabilityPool', async accounts => {
 
     it("withdrawFromSP(): withdrawing 0 EBTC doesn't alter the caller's deposit or the total EBTC in the Stability Pool", async () => {
       // --- SETUP ---
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       // A, B, C provides 100, 50, 30 EBTC to SP
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: alice })
@@ -2192,16 +2192,16 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(): withdrawing 0 ETH Gain does not alter the caller's ETH balance, their cdp collateral, or the ETH  in the Stability Pool", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       // Would-be defaulter open cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Price drops
       await priceFeed.setPrice(dec(105, 18))
@@ -2209,11 +2209,11 @@ contract('StabilityPool', async accounts => {
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
       // Defaulter 1 liquidated, full offset
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       // Dennis opens cdp and deposits to Stability Pool
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
-      let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: dennis })
 
       // Check Dennis has 0 ETHGain
@@ -2221,7 +2221,7 @@ contract('StabilityPool', async accounts => {
       assert.equal(dennis_ETHGain, '0')
 
       const dennis_ETHBalance_Before = (web3.eth.getBalance(dennis)).toString()
-      const dennis_Collateral_Before = ((await cdpManager.Troves(_dennisTroveId))[1]).toString()
+      const dennis_Collateral_Before = ((await cdpManager.Cdps(_dennisCdpId))[1]).toString()
       const ETHinSP_Before = (await stabilityPool.getETH()).toString()
 
       await priceFeed.setPrice(dec(200, 18))
@@ -2231,7 +2231,7 @@ contract('StabilityPool', async accounts => {
 
       // Check withdrawal does not alter Dennis' ETH balance or his cdp's collateral
       const dennis_ETHBalance_After = (web3.eth.getBalance(dennis)).toString()
-      const dennis_Collateral_After = ((await cdpManager.Troves(_dennisTroveId))[1]).toString()
+      const dennis_Collateral_After = ((await cdpManager.Cdps(_dennisCdpId))[1]).toString()
       const ETHinSP_After = (await stabilityPool.getETH()).toString()
 
       assert.equal(dennis_ETHBalance_Before, dennis_ETHBalance_After)
@@ -2243,15 +2243,15 @@ contract('StabilityPool', async accounts => {
 
     it("withdrawFromSP(): Request to withdraw > caller's deposit only withdraws the caller's compounded deposit", async () => {
       // --- SETUP ---
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // A, B, C provide EBTC to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
@@ -2262,7 +2262,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
 
       // Liquidate defaulter 1
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const alice_EBTC_Balance_Before = await ebtcToken.balanceOf(alice)
       const bob_EBTC_Balance_Before = await ebtcToken.balanceOf(bob)
@@ -2298,7 +2298,7 @@ contract('StabilityPool', async accounts => {
 
     it("withdrawFromSP(): Request to withdraw 2^256-1 EBTC only withdraws the caller's compounded deposit", async () => {
       // --- SETUP ---
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
       // A, B, C open cdps 
@@ -2307,12 +2307,12 @@ contract('StabilityPool', async accounts => {
       // A, B, C open cdps 
       // A, B, C open cdps 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // A, B, C provides 100, 50, 30 EBTC to SP
       await stabilityPool.provideToSP(dec(100, 18), frontEnd_1, { from: alice })
@@ -2323,7 +2323,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
 
       // Liquidate defaulter 1
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const bob_EBTC_Balance_Before = await ebtcToken.balanceOf(bob)
 
@@ -2355,17 +2355,17 @@ contract('StabilityPool', async accounts => {
 
       // Price doubles
       await priceFeed.setPrice(dec(400, 18))
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
       // Price halves
       await priceFeed.setPrice(dec(200, 18))
 
       // A, B, C open cdps and make Stability Pool deposits
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(4, 18)), extraParams: { from: carol } })
 
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // A, B, C provides 10000, 5000, 3000 EBTC to SP
       const A_GAS_Used = th.gasUsed(await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice, gasPrice: GAS_PRICE }))
@@ -2383,8 +2383,8 @@ contract('StabilityPool', async accounts => {
       const carol_ETH_Balance_Before = web3.utils.toBN(await web3.eth.getBalance(carol))
 
       // Liquidate defaulter 1
-      await cdpManager.liquidate(_defaulter1TroveId, {from: whale, gasPrice: GAS_PRICE})
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId, {from: whale, gasPrice: GAS_PRICE})
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       const alice_EBTC_Balance_Before = await ebtcToken.balanceOf(alice)
       const bob_EBTC_Balance_Before = await ebtcToken.balanceOf(bob)
@@ -2469,20 +2469,20 @@ contract('StabilityPool', async accounts => {
     })
 
     it("getDepositorETHGain(): depositor does not earn further ETH gains from liquidations while their compounded deposit == 0: ", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       // defaulters open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
-      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_3 } })
-      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_2 } })
+      let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_3 } })
+      let _defaulter3CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // A, B, provide 10000, 5000 EBTC to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
@@ -2492,8 +2492,8 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
 
       // Liquidate defaulter 1. Empties the Pool
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       const EBTCinSP = (await stabilityPool.getTotalEBTCDeposits()).toString()
       assert.equal(EBTCinSP, '0')
@@ -2513,8 +2513,8 @@ contract('StabilityPool', async accounts => {
       await stabilityPool.provideToSP(dec(1, 24), frontEnd_1, { from: whale })
 
       // Liquidation 2
-      await cdpManager.liquidate(_defaulter2TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
+      await cdpManager.liquidate(_defaulter2CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
 
       // Check Alice and Bob have not received ETH gain from liquidation 2 while their deposit was 0
       const alice_ETHGain_2 = (await stabilityPool.getDepositorETHGain(alice)).toString()
@@ -2524,8 +2524,8 @@ contract('StabilityPool', async accounts => {
       assert.equal(bob_ETHGain_1, bob_ETHGain_2)
 
       // Liquidation 3
-      await cdpManager.liquidate(_defaulter3TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter3TroveId))
+      await cdpManager.liquidate(_defaulter3CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter3CdpId))
 
       // Check Alice and Bob have not received ETH gain from liquidation 3 while their deposit was 0
       const alice_ETHGain_3 = (await stabilityPool.getDepositorETHGain(alice)).toString()
@@ -2537,12 +2537,12 @@ contract('StabilityPool', async accounts => {
 
     // --- LQTY functionality ---
     it("withdrawFromSP(): triggers LQTY reward event - increases the sum G", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1, 24)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A and B provide to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
@@ -2572,16 +2572,16 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), partial withdrawal: doesn't change the front end tag", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // whale transfer to cdps D and E
       await ebtcToken.transfer(D, dec(100, 18), { from: whale })
       await ebtcToken.transfer(E, dec(200, 18), { from: whale })
 
       // A, B, C open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C, D, E provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -2614,12 +2614,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), partial withdrawal: depositor receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -2650,12 +2650,12 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), partial withdrawal: tagged front end receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -2686,15 +2686,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), partial withdrawal: tagged front end's stake decreases", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, D, E, F open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
 
       // A, B, C, D, E, F provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -2728,18 +2728,18 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), partial withdrawal: tagged front end's snapshots update", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      await openTrove({ extraEBTCAmount: toBN(dec(60000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(60000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // D opens cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- SETUP ---
 
@@ -2761,7 +2761,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -2822,15 +2822,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), full withdrawal: removes deposit's front end tag", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // Whale transfers to A, B 
       await ebtcToken.transfer(A, dec(10000, 18), { from: whale })
       await ebtcToken.transfer(B, dec(20000, 18), { from: whale })
 
       //C, D open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // A, B, C, D make their initial deposits
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
@@ -2868,15 +2868,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), full withdrawal: zero's depositor's snapshots", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-      await openTrove({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       //  SETUP: Execute a series of operations to make G, S > 0 and P < 1  
 
       // E opens cdp and makes a deposit
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: E } })
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_3, { from: E })
 
       // Fast-forward time and make a second deposit, to trigger LQTY reward and make G > 0
@@ -2887,7 +2887,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -2911,8 +2911,8 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(200, 18))
 
       // C, D open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: D } })
 
       // A, B, C, D make their initial deposits
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
@@ -2954,15 +2954,15 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), full withdrawal that reduces front end stake to 0: zero’s the front end’s snapshots", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       //  SETUP: Execute a series of operations to make G, S > 0 and P < 1  
 
       // E opens cdp and makes a deposit
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_3, { from: E })
 
       // Fast-forward time and make a second deposit, to trigger LQTY reward and make G > 0
@@ -2973,7 +2973,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -2991,8 +2991,8 @@ contract('StabilityPool', async accounts => {
       // --- TEST ---
 
       // A, B open cdps
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
 
       // A, B, make their initial deposits
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
@@ -3031,14 +3031,14 @@ contract('StabilityPool', async accounts => {
     })
 
     it("withdrawFromSP(), reverts when initial deposit value is 0", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A opens cdp and join the Stability Pool
-      await openTrove({ extraEBTCAmount: toBN(dec(10100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
 
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       //  SETUP: Execute a series of operations to trigger LQTY and ETH rewards for depositor A
 
@@ -3050,8 +3050,8 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       await priceFeed.setPrice(dec(200, 18))
 
@@ -3074,15 +3074,15 @@ contract('StabilityPool', async accounts => {
       await th.assertRevert(withdrawalPromise_C, expectedRevertMessage)
     })
 
-    // --- withdrawETHGainToTrove ---
+    // --- withdrawETHGainToCdp ---
 
-    it("withdrawETHGainToTrove(): reverts when user has no active deposit", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(): reverts when user has no active deposit", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
 
@@ -3093,47 +3093,47 @@ contract('StabilityPool', async accounts => {
       assert.equal(bob_initialDeposit, '0')
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
-      const txAlice = await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      const txAlice = await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
       assert.isTrue(txAlice.receipt.status)
 
-      const txPromise_B = stabilityPool.withdrawETHGainToTrove(_bobTroveId, _bobTroveId, _bobTroveId, { from: bob })
+      const txPromise_B = stabilityPool.withdrawETHGainToCdp(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob })
       await th.assertRevert(txPromise_B)
     })
 
-    it("withdrawETHGainToTrove(): Applies EBTCLoss to user's deposit, and redirects ETH reward to user's Trove", async () => {
+    it("withdrawETHGainToCdp(): Applies EBTCLoss to user's deposit, and redirects ETH reward to user's Cdp", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // Defaulter opens cdp
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // check Alice's Trove recorded ETH Before:
-      const aliceTrove_Before = await cdpManager.Troves(_aliceTroveId)
-      const aliceTrove_ETH_Before = aliceTrove_Before[1]
-      assert.isTrue(aliceTrove_ETH_Before.gt(toBN('0')))
+      // check Alice's Cdp recorded ETH Before:
+      const aliceCdp_Before = await cdpManager.Cdps(_aliceCdpId)
+      const aliceCdp_ETH_Before = aliceCdp_Before[1]
+      assert.isTrue(aliceCdp_ETH_Before.gt(toBN('0')))
 
-      // price drops: defaulter's Trove falls below MCR, alice and whale Trove remain active
+      // price drops: defaulter's Cdp falls below MCR, alice and whale Cdp remain active
       await priceFeed.setPrice(dec(105, 18));
 
-      // Defaulter's Trove is closed
-      const liquidationTx_1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
+      // Defaulter's Cdp is closed
+      const liquidationTx_1 = await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
       const [liquidatedDebt, liquidatedColl, ,] = th.getEmittedLiquidationValues(liquidationTx_1)
 
       const ETHGain_A = await stabilityPool.getDepositorETHGain(alice)
@@ -3146,95 +3146,95 @@ contract('StabilityPool', async accounts => {
 
       assert.isAtMost(th.getDifference(expectedCompoundedDeposit_A, compoundedDeposit_A), 100000)
 
-      // Alice sends her ETH Gains to her Trove
-      await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      // Alice sends her ETH Gains to her Cdp
+      await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
 
       // check Alice's EBTCLoss has been applied to her deposit expectedCompoundedDeposit_A
       alice_deposit_afterDefault = ((await stabilityPool.deposits(alice))[0])
       assert.isAtMost(th.getDifference(alice_deposit_afterDefault, expectedCompoundedDeposit_A), 100000)
 
-      // check alice's Trove recorded ETH has increased by the expected reward amount
-      const aliceTrove_After = await cdpManager.Troves(_aliceTroveId)
-      const aliceTrove_ETH_After = aliceTrove_After[1]
+      // check alice's Cdp recorded ETH has increased by the expected reward amount
+      const aliceCdp_After = await cdpManager.Cdps(_aliceCdpId)
+      const aliceCdp_ETH_After = aliceCdp_After[1]
 
-      const Trove_ETH_Increase = (aliceTrove_ETH_After.sub(aliceTrove_ETH_Before)).toString()
+      const Cdp_ETH_Increase = (aliceCdp_ETH_After.sub(aliceCdp_ETH_Before)).toString()
 
-      assert.equal(Trove_ETH_Increase, ETHGain_A)
+      assert.equal(Cdp_ETH_Increase, ETHGain_A)
     })
 
-    it("withdrawETHGainToTrove(): reverts if it would leave cdp with ICR < MCR", async () => {
+    it("withdrawETHGainToCdp(): reverts if it would leave cdp with ICR < MCR", async () => {
       // --- SETUP ---
       // Whale deposits 1850 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // defaulter opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // check alice's Trove recorded ETH Before:
-      const aliceTrove_Before = await cdpManager.Troves(_aliceTroveId)
-      const aliceTrove_ETH_Before = aliceTrove_Before[1]
-      assert.isTrue(aliceTrove_ETH_Before.gt(toBN('0')))
+      // check alice's Cdp recorded ETH Before:
+      const aliceCdp_Before = await cdpManager.Cdps(_aliceCdpId)
+      const aliceCdp_ETH_Before = aliceCdp_Before[1]
+      assert.isTrue(aliceCdp_ETH_Before.gt(toBN('0')))
 
-      // price drops: defaulter's Trove falls below MCR
+      // price drops: defaulter's Cdp falls below MCR
       await priceFeed.setPrice(dec(10, 18));
 
-      // defaulter's Trove is closed.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
+      // defaulter's Cdp is closed.
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
 
-      // Alice attempts to  her ETH Gains to her Trove
-      await assertRevert(stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice }),
+      // Alice attempts to  her ETH Gains to her Cdp
+      await assertRevert(stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice }),
       "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
     })
 
-    it("withdrawETHGainToTrove(): Subsequent deposit and withdrawal attempt from same account, with no intermediate liquidations, withdraws zero ETH", async () => {
+    it("withdrawETHGainToCdp(): Subsequent deposit and withdrawal attempt from same account, with no intermediate liquidations, withdraws zero ETH", async () => {
       // --- SETUP ---
       // Whale deposits 1850 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // defaulter opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // check alice's Trove recorded ETH Before:
-      const aliceTrove_Before = await cdpManager.Troves(_aliceTroveId)
-      const aliceTrove_ETH_Before = aliceTrove_Before[1]
-      assert.isTrue(aliceTrove_ETH_Before.gt(toBN('0')))
+      // check alice's Cdp recorded ETH Before:
+      const aliceCdp_Before = await cdpManager.Cdps(_aliceCdpId)
+      const aliceCdp_ETH_Before = aliceCdp_Before[1]
+      assert.isTrue(aliceCdp_ETH_Before.gt(toBN('0')))
 
-      // price drops: defaulter's Trove falls below MCR
+      // price drops: defaulter's Cdp falls below MCR
       await priceFeed.setPrice(dec(105, 18));
 
-      // defaulter's Trove is closed.
-      await cdpManager.liquidate(_defaulter1TroveId, { from: owner })
+      // defaulter's Cdp is closed.
+      await cdpManager.liquidate(_defaulter1CdpId, { from: owner })
 
       // price bounces back
       await priceFeed.setPrice(dec(200, 18));
 
-      // Alice sends her ETH Gains to her Trove
-      await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      // Alice sends her ETH Gains to her Cdp
+      await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
 
       assert.equal(await stabilityPool.getDepositorETHGain(alice), 0)
 
       const ETHinSP_Before = (await stabilityPool.getETH()).toString()
 
-      // Alice attempts second withdrawal from SP to Trove - reverts, due to 0 ETH Gain
-      const txPromise_A = stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      // Alice attempts second withdrawal from SP to Cdp - reverts, due to 0 ETH Gain
+      const txPromise_A = stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
       await th.assertRevert(txPromise_A)
 
       // Check ETH in pool does not change
@@ -3251,28 +3251,28 @@ contract('StabilityPool', async accounts => {
       assert.equal(ETHinSP_Before, ETHinSP_2)
     })
 
-    it("withdrawETHGainToTrove(): decreases StabilityPool ETH and increases activePool ETH", async () => {
+    it("withdrawETHGainToCdp(): decreases StabilityPool ETH and increases activePool ETH", async () => {
       // --- SETUP ---
       // Whale deposits 185000 EBTC in StabilityPool
-      await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await stabilityPool.provideToSP(dec(185000, 18), frontEnd_1, { from: whale })
 
       // defaulter opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // --- TEST ---
 
       // Alice makes deposit #1: 15000 EBTC
-      await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await stabilityPool.provideToSP(dec(15000, 18), frontEnd_1, { from: alice })
 
-      // price drops: defaulter's Trove falls below MCR
+      // price drops: defaulter's Cdp falls below MCR
       await priceFeed.setPrice(dec(100, 18));
 
-      // defaulter's Trove is closed.
-      const liquidationTx = await cdpManager.liquidate(_defaulter1TroveId)
+      // defaulter's Cdp is closed.
+      const liquidationTx = await cdpManager.liquidate(_defaulter1CdpId)
       const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
       // Expect alice to be entitled to 15000/200000 of the liquidated coll
@@ -3287,8 +3287,8 @@ contract('StabilityPool', async accounts => {
       const active_ETH_Before = await activePool.getETH()
       const stability_ETH_Before = await stabilityPool.getETH()
 
-      // Alice retrieves redirects ETH gain to her Trove
-      await stabilityPool.withdrawETHGainToTrove(_aliceTroveId, _aliceTroveId, _aliceTroveId, { from: alice })
+      // Alice retrieves redirects ETH gain to her Cdp
+      await stabilityPool.withdrawETHGainToCdp(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
 
       const active_ETH_After = await activePool.getETH()
       const stability_ETH_After = await stabilityPool.getETH()
@@ -3301,68 +3301,68 @@ contract('StabilityPool', async accounts => {
       assert.isAtMost(th.getDifference(stability_ETH_Difference, aliceETHGain), 10000)
     })
 
-    it("withdrawETHGainToTrove(): All depositors are able to withdraw their ETH gain from the SP to their Trove", async () => {
+    it("withdrawETHGainToCdp(): All depositors are able to withdraw their ETH gain from the SP to their Cdp", async () => {
       // Whale opens cdp 
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // Defaulter opens cdp
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // 6 Accounts open cdps and provide to SP
       const depositors = [alice, bob, carol, dennis, erin, flyn]
       let _cdpIds = {};
       for (account of depositors) {
-        await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+        await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
         await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: account })
-        _cdpIds[account] = await sortedTroves.cdpOfOwnerByIndex(account, 0);
+        _cdpIds[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
       }
 
       await priceFeed.setPrice(dec(105, 18))
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       // price bounces back
       await priceFeed.setPrice(dec(200, 18));
 
       // All depositors attempt to withdraw
-      const tx1 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[alice], _cdpIds[alice], _cdpIds[alice], { from: alice })
+      const tx1 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[alice], _cdpIds[alice], _cdpIds[alice], { from: alice })
       assert.isTrue(tx1.receipt.status)
-      const tx2 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[bob], _cdpIds[bob], _cdpIds[bob], { from: bob })
+      const tx2 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[bob], _cdpIds[bob], _cdpIds[bob], { from: bob })
       assert.isTrue(tx1.receipt.status)
-      const tx3 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[carol], _cdpIds[carol], _cdpIds[carol], { from: carol })
+      const tx3 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[carol], _cdpIds[carol], _cdpIds[carol], { from: carol })
       assert.isTrue(tx1.receipt.status)
-      const tx4 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[dennis], _cdpIds[dennis], _cdpIds[dennis], { from: dennis })
+      const tx4 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[dennis], _cdpIds[dennis], _cdpIds[dennis], { from: dennis })
       assert.isTrue(tx1.receipt.status)
-      const tx5 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[erin], _cdpIds[erin], _cdpIds[erin], { from: erin })
+      const tx5 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[erin], _cdpIds[erin], _cdpIds[erin], { from: erin })
       assert.isTrue(tx1.receipt.status)
-      const tx6 = await stabilityPool.withdrawETHGainToTrove(_cdpIds[flyn], _cdpIds[flyn], _cdpIds[flyn], { from: flyn })
+      const tx6 = await stabilityPool.withdrawETHGainToCdp(_cdpIds[flyn], _cdpIds[flyn], _cdpIds[flyn], { from: flyn })
       assert.isTrue(tx1.receipt.status)
     })
 
-    it("withdrawETHGainToTrove(): All depositors withdraw, each withdraw their correct ETH gain", async () => {
+    it("withdrawETHGainToCdp(): All depositors withdraw, each withdraw their correct ETH gain", async () => {
       // Whale opens cdp 
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // defaulter opened
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // 6 Accounts open cdps and provide to SP
       const depositors = [alice, bob, carol, dennis, erin, flyn]
       let _cdpIds = {};
       for (account of depositors) {
-        await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+        await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
         await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: account })
-        _cdpIds[account] = await sortedTroves.cdpOfOwnerByIndex(account, 0);
+        _cdpIds[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
       }
-      const collBefore = (await cdpManager.Troves(_cdpIds[alice]))[1] // all cdps have same coll before
+      const collBefore = (await cdpManager.Cdps(_cdpIds[alice]))[1] // all cdps have same coll before
 
       await priceFeed.setPrice(dec(105, 18))
-      const liquidationTx = await cdpManager.liquidate(_defaulter1TroveId)
+      const liquidationTx = await cdpManager.liquidate(_defaulter1CdpId)
       const [, liquidatedColl, ,] = th.getEmittedLiquidationValues(liquidationTx)
 
 
-      /* All depositors attempt to withdraw their ETH gain to their Trove. Each depositor 
+      /* All depositors attempt to withdraw their ETH gain to their Cdp. Each depositor 
       receives (liquidatedColl/ 6).
 
       Thus, expected new collateral for each depositor with 1 Ether in their cdp originally, is 
@@ -3373,45 +3373,45 @@ contract('StabilityPool', async accounts => {
 
       await priceFeed.setPrice(dec(200, 18))
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[alice], _cdpIds[alice], _cdpIds[alice], { from: alice })
-      const aliceCollAfter = (await cdpManager.Troves(_cdpIds[alice]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[alice], _cdpIds[alice], _cdpIds[alice], { from: alice })
+      const aliceCollAfter = (await cdpManager.Cdps(_cdpIds[alice]))[1]
       assert.isAtMost(th.getDifference(aliceCollAfter.sub(collBefore), expectedCollGain), 10000)
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[bob], _cdpIds[bob], _cdpIds[bob], { from: bob })
-      const bobCollAfter = (await cdpManager.Troves(_cdpIds[bob]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[bob], _cdpIds[bob], _cdpIds[bob], { from: bob })
+      const bobCollAfter = (await cdpManager.Cdps(_cdpIds[bob]))[1]
       assert.isAtMost(th.getDifference(bobCollAfter.sub(collBefore), expectedCollGain), 10000)
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[carol], _cdpIds[carol], _cdpIds[carol], { from: carol })
-      const carolCollAfter = (await cdpManager.Troves(_cdpIds[carol]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[carol], _cdpIds[carol], _cdpIds[carol], { from: carol })
+      const carolCollAfter = (await cdpManager.Cdps(_cdpIds[carol]))[1]
       assert.isAtMost(th.getDifference(carolCollAfter.sub(collBefore), expectedCollGain), 10000)
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[dennis], _cdpIds[dennis], _cdpIds[dennis], { from: dennis })
-      const dennisCollAfter = (await cdpManager.Troves(_cdpIds[dennis]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[dennis], _cdpIds[dennis], _cdpIds[dennis], { from: dennis })
+      const dennisCollAfter = (await cdpManager.Cdps(_cdpIds[dennis]))[1]
       assert.isAtMost(th.getDifference(dennisCollAfter.sub(collBefore), expectedCollGain), 10000)
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[erin], _cdpIds[erin], _cdpIds[erin], { from: erin })
-      const erinCollAfter = (await cdpManager.Troves(_cdpIds[erin]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[erin], _cdpIds[erin], _cdpIds[erin], { from: erin })
+      const erinCollAfter = (await cdpManager.Cdps(_cdpIds[erin]))[1]
       assert.isAtMost(th.getDifference(erinCollAfter.sub(collBefore), expectedCollGain), 10000)
 
-      await stabilityPool.withdrawETHGainToTrove(_cdpIds[flyn], _cdpIds[flyn], _cdpIds[flyn], { from: flyn })
-      const flynCollAfter = (await cdpManager.Troves(_cdpIds[flyn]))[1]
+      await stabilityPool.withdrawETHGainToCdp(_cdpIds[flyn], _cdpIds[flyn], _cdpIds[flyn], { from: flyn })
+      const flynCollAfter = (await cdpManager.Cdps(_cdpIds[flyn]))[1]
       assert.isAtMost(th.getDifference(flynCollAfter.sub(collBefore), expectedCollGain), 10000)
     })
 
-    it("withdrawETHGainToTrove(): caller can withdraw full deposit and ETH gain to their cdp during Recovery Mode", async () => {
+    it("withdrawETHGainToCdp(): caller can withdraw full deposit and ETH gain to their cdp during Recovery Mode", async () => {
       // --- SETUP ---
 
      // Defaulter opens
-     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+     await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
       
       // A, B, C provides 10000, 5000, 3000 EBTC to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: alice })
@@ -3427,34 +3427,34 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check defaulter 1 has ICR: 100% < ICR < 110%.
-      assert.isTrue(await th.ICRbetween100and110(_defaulter1TroveId, cdpManager, price))
+      assert.isTrue(await th.ICRbetween100and110(_defaulter1CdpId, cdpManager, price))
 
-      const alice_Collateral_Before = (await cdpManager.Troves(_aTroveId))[1]
-      const bob_Collateral_Before = (await cdpManager.Troves(_bTroveId))[1]
-      const carol_Collateral_Before = (await cdpManager.Troves(_cTroveId))[1]
+      const alice_Collateral_Before = (await cdpManager.Cdps(_aCdpId))[1]
+      const bob_Collateral_Before = (await cdpManager.Cdps(_bCdpId))[1]
+      const carol_Collateral_Before = (await cdpManager.Cdps(_cCdpId))[1]
 
       // Liquidate defaulter 1
-      assert.isTrue(await sortedTroves.contains(_defaulter1TroveId))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      assert.isTrue(await sortedCdps.contains(_defaulter1CdpId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       const alice_ETHGain_Before = await stabilityPool.getDepositorETHGain(alice)
       const bob_ETHGain_Before = await stabilityPool.getDepositorETHGain(bob)
       const carol_ETHGain_Before = await stabilityPool.getDepositorETHGain(carol)
 
       // A, B, C withdraw their full ETH gain from the Stability Pool to their cdp
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: alice })
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: bob })
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: carol })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: alice })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: bob })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: carol })
 
       // Check collateral of cdps A, B, C has increased by the value of their ETH gain from liquidations, respectively
       const alice_expectedCollateral = (alice_Collateral_Before.add(alice_ETHGain_Before)).toString()
       const bob_expectedColalteral = (bob_Collateral_Before.add(bob_ETHGain_Before)).toString()
       const carol_expectedCollateral = (carol_Collateral_Before.add(carol_ETHGain_Before)).toString()
 
-      const alice_Collateral_After = (await cdpManager.Troves(_aTroveId))[1]
-      const bob_Collateral_After = (await cdpManager.Troves(_bTroveId))[1]
-      const carol_Collateral_After = (await cdpManager.Troves(_cTroveId))[1]
+      const alice_Collateral_After = (await cdpManager.Cdps(_aCdpId))[1]
+      const bob_Collateral_After = (await cdpManager.Cdps(_bCdpId))[1]
+      const carol_Collateral_After = (await cdpManager.Cdps(_cCdpId))[1]
 
       assert.equal(alice_expectedCollateral, alice_Collateral_After)
       assert.equal(bob_expectedColalteral, bob_Collateral_After)
@@ -3465,17 +3465,17 @@ contract('StabilityPool', async accounts => {
       assert.isAtMost(th.getDifference(ETHinSP_After, '0'), 100000)
     })
 
-    it("withdrawETHGainToTrove(): reverts if user has no cdp", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(): reverts if user has no cdp", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
       
      // Defaulter opens
-     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+     await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // A transfers EBTC to D
       await ebtcToken.transfer(dennis, dec(10000, 18), { from: alice })
@@ -3487,35 +3487,35 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
 
       //Liquidate defaulter 1
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       await priceFeed.setPrice(dec(200, 18))
 
-      // D attempts to withdraw his ETH gain to Trove
-      await th.assertRevert(stabilityPool.withdrawETHGainToTrove(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis }), "caller must have an active cdp to withdraw ETHGain to")
+      // D attempts to withdraw his ETH gain to Cdp
+      await th.assertRevert(stabilityPool.withdrawETHGainToCdp(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis }), "caller must have an active cdp to withdraw ETHGain to")
     })
 
-    it("withdrawETHGainToTrove(): triggers LQTY reward event - increases the sum G", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(): triggers LQTY reward event - increases the sum G", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       
       // A and B provide to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: B })
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       const G_Before = await stabilityPool.epochToScaleToG(0, 0)
 
@@ -3537,7 +3537,7 @@ contract('StabilityPool', async accounts => {
       assert.isTrue((await stabilityPool.getDepositorETHGain(B)).gt(ZERO))
 
       // B withdraws to cdp
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
 
       const G_2 = await stabilityPool.epochToScaleToG(0, 0)
 
@@ -3545,16 +3545,16 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(G_2.gt(G_1))
     })
 
-    it("withdrawETHGainToTrove(), partial withdrawal: doesn't change the front end tag", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(), partial withdrawal: doesn't change the front end tag", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
       
       // A, B, C, D, E provide to SP
       await stabilityPool.provideToSP(dec(10000, 18), frontEnd_1, { from: A })
@@ -3562,12 +3562,12 @@ contract('StabilityPool', async accounts => {
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: C })
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -3579,9 +3579,9 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(200, 18))
 
       // A, B, C withdraw to cdp
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
 
       const frontEndTag_A = (await stabilityPool.deposits(A))[1]
       const frontEndTag_B = (await stabilityPool.deposits(B))[1]
@@ -3593,16 +3593,16 @@ contract('StabilityPool', async accounts => {
       assert.equal(frontEndTag_C, ZERO_ADDRESS)
     })
 
-    it("withdrawETHGainToTrove(), eligible deposit: depositor receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(), eligible deposit: depositor receives LQTY rewards", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
        // A, B, C open cdps 
-       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-       await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-       await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+       await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+       await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+       await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
        
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: A })
@@ -3612,12 +3612,12 @@ contract('StabilityPool', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       // Get A, B, C LQTY balance before
       const A_LQTYBalance_Before = await lqtyToken.balanceOf(A)
@@ -3632,9 +3632,9 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(200, 18))
 
       // A, B, C withdraw to cdp
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
 
       // Get LQTY balance after
       const A_LQTYBalance_After = await lqtyToken.balanceOf(A)
@@ -3647,16 +3647,16 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(C_LQTYBalance_After.gt(C_LQTYBalance_Before))
     })
 
-    it("withdrawETHGainToTrove(), eligible deposit: tagged front end receives LQTY rewards", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(), eligible deposit: tagged front end receives LQTY rewards", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
      // A, B, C open cdps 
-     await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
      
       // A, B, C, provide to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: A })
@@ -3666,12 +3666,12 @@ contract('StabilityPool', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
      await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       // Get front ends' LQTY balance before
       const F1_LQTYBalance_Before = await lqtyToken.balanceOf(frontEnd_1)
@@ -3686,9 +3686,9 @@ contract('StabilityPool', async accounts => {
       assert.isTrue((await stabilityPool.getDepositorETHGain(C)).gt(ZERO))
 
       // A, B, C withdraw
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
 
       // Get front ends' LQTY balance after
       const F1_LQTYBalance_After = await lqtyToken.balanceOf(frontEnd_1)
@@ -3701,19 +3701,19 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(F3_LQTYBalance_After.gt(F3_LQTYBalance_Before))
     })
 
-    it("withdrawETHGainToTrove(), eligible deposit: tagged front end's stake decreases", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(), eligible deposit: tagged front end's stake decreases", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, D, E, F open cdps 
-     await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-      await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+     await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
       
       // A, B, C, D, E, F provide to SP
       await stabilityPool.provideToSP(dec(1000, 18), frontEnd_1, { from: A })
@@ -3724,12 +3724,12 @@ contract('StabilityPool', async accounts => {
       await stabilityPool.provideToSP(dec(3000, 18), frontEnd_3, { from: F })
 
       // Defaulter opens a cdp, price drops, defaulter gets liquidated
-      await openTrove({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({  ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await cdpManager.liquidate(_defaulter1TroveId)
-      assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
+      await cdpManager.liquidate(_defaulter1CdpId)
+      assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -3746,9 +3746,9 @@ contract('StabilityPool', async accounts => {
       assert.isTrue((await stabilityPool.getDepositorETHGain(C)).gt(ZERO))
 
       // A, B, C withdraw to cdp
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
 
       // Get front ends' stakes after
       const F1_Stake_After = await stabilityPool.frontEndStakes(frontEnd_1)
@@ -3761,22 +3761,22 @@ contract('StabilityPool', async accounts => {
       assert.isTrue(F3_Stake_After.lt(F3_Stake_Before))
     })
 
-    it("withdrawETHGainToTrove(), eligible deposit: tagged front end's snapshots update", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(), eligible deposit: tagged front end's snapshots update", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // A, B, C, open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-     await openTrove({ extraEBTCAmount: toBN(dec(60000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+     await openCdp({ extraEBTCAmount: toBN(dec(60000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
      
       // D opens cdp
-      await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
      
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
+      let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
      
       // --- SETUP ---
 
@@ -3798,7 +3798,7 @@ contract('StabilityPool', async accounts => {
       await priceFeed.setPrice(dec(105, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await cdpManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1CdpId)
 
       const currentEpoch = await stabilityPool.currentEpoch()
       const currentScale = await stabilityPool.currentScale()
@@ -3836,13 +3836,13 @@ contract('StabilityPool', async accounts => {
       // A, B, C withdraw ETH gain to cdps. Grab G at each stage, as it can increase a bit
       // between topups, because some block.timestamp time passes (and LQTY is issued) between ops
       const G1 = await stabilityPool.epochToScaleToG(currentScale, currentEpoch)
-      await stabilityPool.withdrawETHGainToTrove(_aTroveId, _aTroveId, _aTroveId, { from: A })
+      await stabilityPool.withdrawETHGainToCdp(_aCdpId, _aCdpId, _aCdpId, { from: A })
 
       const G2 = await stabilityPool.epochToScaleToG(currentScale, currentEpoch)
-      await stabilityPool.withdrawETHGainToTrove(_bTroveId, _bTroveId, _bTroveId, { from: B })
+      await stabilityPool.withdrawETHGainToCdp(_bCdpId, _bCdpId, _bCdpId, { from: B })
 
       const G3 = await stabilityPool.epochToScaleToG(currentScale, currentEpoch)
-      await stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
+      await stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
 
       const frontEnds = [frontEnd_1, frontEnd_2, frontEnd_3]
       const G_Values = [G1, G2, G3]
@@ -3863,18 +3863,18 @@ contract('StabilityPool', async accounts => {
       }
     })
 
-    it("withdrawETHGainToTrove(): reverts when depositor has no ETH gain", async () => {
-      await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    it("withdrawETHGainToCdp(): reverts when depositor has no ETH gain", async () => {
+      await openCdp({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       // Whale transfers EBTC to A, B
       await ebtcToken.transfer(A, dec(10000, 18), { from: whale })
       await ebtcToken.transfer(B, dec(20000, 18), { from: whale })
 
       // C, D open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
-      await openTrove({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await openCdp({ extraEBTCAmount: toBN(dec(4000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
       
       // A, B, C, D provide to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: A })
@@ -3884,7 +3884,7 @@ contract('StabilityPool', async accounts => {
 
       // fastforward time, and E makes a deposit, creating LQTY rewards for all
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-      await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
       await stabilityPool.provideToSP(dec(3000, 18), ZERO_ADDRESS, { from: E })
 
       // Confirm A, B, C have zero ETH gain since no liquidation
@@ -3893,11 +3893,11 @@ contract('StabilityPool', async accounts => {
       assert.equal(await stabilityPool.getDepositorETHGain(C), '0')
       assert.equal(await stabilityPool.getDepositorETHGain(D), '0')
 
-      // Check withdrawETHGainToTrove reverts for A, B, C
-      const txPromise_A = stabilityPool.withdrawETHGainToTrove(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A }) // A got no Trove
-      const txPromise_B = stabilityPool.withdrawETHGainToTrove(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B }) // B got no Trove
-      const txPromise_C = stabilityPool.withdrawETHGainToTrove(_cTroveId, _cTroveId, _cTroveId, { from: C })
-      const txPromise_D = stabilityPool.withdrawETHGainToTrove(_dTroveId, _dTroveId, _dTroveId, { from: D })
+      // Check withdrawETHGainToCdp reverts for A, B, C
+      const txPromise_A = stabilityPool.withdrawETHGainToCdp(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A }) // A got no Cdp
+      const txPromise_B = stabilityPool.withdrawETHGainToCdp(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B }) // B got no Cdp
+      const txPromise_C = stabilityPool.withdrawETHGainToCdp(_cCdpId, _cCdpId, _cCdpId, { from: C })
+      const txPromise_D = stabilityPool.withdrawETHGainToCdp(_dCdpId, _dCdpId, _dCdpId, { from: D })
 
       await th.assertRevert(txPromise_A)
       await th.assertRevert(txPromise_B)
@@ -3966,9 +3966,9 @@ contract('StabilityPool', async accounts => {
 
     it("registerFrontEnd(): reverts if address has a non-zero deposit already", async () => {
       // C, D, E open cdps 
-      await openTrove({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-      await openTrove({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
       
       // C, E provides to SP
       await stabilityPool.provideToSP(dec(10, 18), frontEnd_1, { from: C })

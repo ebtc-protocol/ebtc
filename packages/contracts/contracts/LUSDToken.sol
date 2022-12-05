@@ -60,7 +60,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     address public immutable borrowerOperationsAddress;
     
     // --- Events ---
-    event TroveManagerAddressChanged(address _cdpManagerAddress);
+    event CdpManagerAddressChanged(address _cdpManagerAddress);
     event StabilityPoolAddressChanged(address _newStabilityPoolAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
@@ -77,7 +77,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
         checkContract(_borrowerOperationsAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
-        emit TroveManagerAddressChanged(_cdpManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
 
         stabilityPoolAddress = _stabilityPoolAddress;
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
@@ -102,7 +102,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     }
 
     function burn(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorTroveMorSP();
+        _requireCallerIsBOorCdpMorSP();
         _burn(_account, _amount);
     }
 
@@ -112,7 +112,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     }
 
     function returnFromPool(address _poolAddress, address _receiver, uint256 _amount) external override {
-        _requireCallerIsTroveMorSP();
+        _requireCallerIsCdpMorSP();
         _transfer(_poolAddress, _receiver, _amount);
     }
 
@@ -255,7 +255,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
             _recipient != stabilityPoolAddress && 
             _recipient != cdpManagerAddress && 
             _recipient != borrowerOperationsAddress, 
-            "EBTC: Cannot transfer tokens directly to the StabilityPool, TroveManager or BorrowerOps"
+            "EBTC: Cannot transfer tokens directly to the StabilityPool, CdpManager or BorrowerOps"
         );
     }
 
@@ -263,12 +263,12 @@ contract EBTCToken is CheckContract, IEBTCToken {
         require(msg.sender == borrowerOperationsAddress, "EBTCToken: Caller is not BorrowerOperations");
     }
 
-    function _requireCallerIsBOorTroveMorSP() internal view {
+    function _requireCallerIsBOorCdpMorSP() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
             msg.sender == cdpManagerAddress ||
             msg.sender == stabilityPoolAddress,
-            "EBTC: Caller is neither BorrowerOperations nor TroveManager nor StabilityPool"
+            "EBTC: Caller is neither BorrowerOperations nor CdpManager nor StabilityPool"
         );
     }
 
@@ -276,10 +276,10 @@ contract EBTCToken is CheckContract, IEBTCToken {
         require(msg.sender == stabilityPoolAddress, "EBTC: Caller is not the StabilityPool");
     }
 
-    function _requireCallerIsTroveMorSP() internal view {
+    function _requireCallerIsCdpMorSP() internal view {
         require(
             msg.sender == cdpManagerAddress || msg.sender == stabilityPoolAddress,
-            "EBTC: Caller is neither TroveManager nor StabilityPool");
+            "EBTC: Caller is neither CdpManager nor StabilityPool");
     }
 
     // --- Optional functions ---

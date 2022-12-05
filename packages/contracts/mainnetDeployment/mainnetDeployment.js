@@ -80,7 +80,7 @@ async function mainnetDeploy(configParams) {
   await mdh.connectLQTYContractsToCoreMainnet(LQTYContracts, liquityCore)
 
   // Deploy a read-only multi-cdp getter
-  const multiTroveGetter = await mdh.deployMultiTroveGetterMainnet(liquityCore, deploymentState)
+  const multiCdpGetter = await mdh.deployMultiCdpGetterMainnet(liquityCore, deploymentState)
 
   // Connect Unipool to LQTYToken and the EBTC-WETH pair address, with a 6 week duration
   const LPRewardsDuration = timeVals.SECONDS_IN_SIX_WEEKS
@@ -137,14 +137,14 @@ async function mainnetDeploy(configParams) {
   // // --- TESTS AND CHECKS  ---
 
   // Deployer repay EBTC
-  // console.log(`deployer cdp debt before repaying: ${await liquityCore.cdpManager.getTroveDebt(deployerWallet.address)}`)
+  // console.log(`deployer cdp debt before repaying: ${await liquityCore.cdpManager.getCdpDebt(deployerWallet.address)}`)
  // await mdh.sendAndWaitForTransaction(liquityCore.borrowerOperations.repayEBTC(dec(800, 18), th.ZERO_ADDRESS, th.ZERO_ADDRESS, {gasPrice, gasLimit: 1000000}))
-  // console.log(`deployer cdp debt after repaying: ${await liquityCore.cdpManager.getTroveDebt(deployerWallet.address)}`)
+  // console.log(`deployer cdp debt after repaying: ${await liquityCore.cdpManager.getCdpDebt(deployerWallet.address)}`)
   
   // Deployer add coll
-  // console.log(`deployer cdp coll before adding coll: ${await liquityCore.cdpManager.getTroveColl(deployerWallet.address)}`)
+  // console.log(`deployer cdp coll before adding coll: ${await liquityCore.cdpManager.getCdpColl(deployerWallet.address)}`)
   // await mdh.sendAndWaitForTransaction(liquityCore.borrowerOperations.addColl(th.ZERO_ADDRESS, th.ZERO_ADDRESS, {value: dec(2, 'ether'), gasPrice, gasLimit: 1000000}))
-  // console.log(`deployer cdp coll after addingColl: ${await liquityCore.cdpManager.getTroveColl(deployerWallet.address)}`)
+  // console.log(`deployer cdp coll after addingColl: ${await liquityCore.cdpManager.getCdpColl(deployerWallet.address)}`)
   
   // Check chainlink proxy price ---
 
@@ -243,13 +243,13 @@ async function mainnetDeploy(configParams) {
   // console.log(`Unipool's stored EBTC-ETH Uniswap Pair address: ${unipoolUniswapPairAddr}`)
 
   // console.log("SYSTEM GLOBAL VARS CHECKS")
-  // // --- Sorted Troves ---
+  // // --- Sorted Cdps ---
 
   // // Check max size
-  // const sortedTrovesMaxSize = (await liquityCore.sortedTroves.data())[2]
-  // assert.equal(sortedTrovesMaxSize, '115792089237316195423570985008687907853269984665640564039457584007913129639935')
+  // const sortedCdpsMaxSize = (await liquityCore.sortedCdps.data())[2]
+  // assert.equal(sortedCdpsMaxSize, '115792089237316195423570985008687907853269984665640564039457584007913129639935')
 
-  // // --- TroveManager ---
+  // // --- CdpManager ---
 
   // const liqReserve = await liquityCore.cdpManager.EBTC_GAS_COMPENSATION()
   // const minNetDebt = await liquityCore.cdpManager.MIN_NET_DEBT()
@@ -260,13 +260,13 @@ async function mainnetDeploy(configParams) {
   // // --- Make first EBTC-ETH liquidity provision ---
 
   // // Open cdp if not yet opened
-  // const cdpStatus = await liquityCore.cdpManager.getTroveStatus(deployerWallet.address)
+  // const cdpStatus = await liquityCore.cdpManager.getCdpStatus(deployerWallet.address)
   // if (cdpStatus.toString() != '1') {
   //   let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
   //   let _3ETHcoll = th.dec(3, 'ether') // 3 ETH
   //   console.log('Opening cdp...')
   //   await mdh.sendAndWaitForTransaction(
-  //     liquityCore.borrowerOperations.openTrove(
+  //     liquityCore.borrowerOperations.openCdp(
   //       th._100pct,
   //       _3kEBTCWithdrawal,
   //       th.ZERO_ADDRESS,
@@ -279,13 +279,13 @@ async function mainnetDeploy(configParams) {
   // }
 
   // // Check deployer now has an open cdp
-  // console.log(`deployer is in sorted list after making cdp: ${await liquityCore.sortedTroves.contains(deployerWallet.address)}`)
+  // console.log(`deployer is in sorted list after making cdp: ${await liquityCore.sortedCdps.contains(deployerWallet.address)}`)
 
-  // const deployerTrove = await liquityCore.cdpManager.Troves(deployerWallet.address)
-  // th.logBN('deployer debt', deployerTrove[0])
-  // th.logBN('deployer coll', deployerTrove[1])
-  // th.logBN('deployer stake', deployerTrove[2])
-  // console.log(`deployer's cdp status: ${deployerTrove[3]}`)
+  // const deployerCdp = await liquityCore.cdpManager.Cdps(deployerWallet.address)
+  // th.logBN('deployer debt', deployerCdp[0])
+  // th.logBN('deployer coll', deployerCdp[1])
+  // th.logBN('deployer stake', deployerCdp[2])
+  // console.log(`deployer's cdp status: ${deployerCdp[3]}`)
 
   // // Check deployer has EBTC
   // let deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
@@ -488,7 +488,7 @@ async function mainnetDeploy(configParams) {
 
 
   // // --- 2nd Account opens cdp ---
-  // const cdp2Status = await liquityCore.cdpManager.getTroveStatus(account2Wallet.address)
+  // const cdp2Status = await liquityCore.cdpManager.getCdpStatus(account2Wallet.address)
   // if (cdp2Status.toString() != '1') {
   //   console.log("Acct 2 opens a cdp ...")
   //   let _2kEBTCWithdrawal = th.dec(2000, 18) // 2000 EBTC
@@ -496,16 +496,16 @@ async function mainnetDeploy(configParams) {
   //   const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
   //   const borrowerOpsAcct2 = await new ethers.Contract(liquityCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
 
-  //   await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openTrove(th._100pct, _2kEBTCWithdrawal, th.ZERO_ADDRESS, th.ZERO_ADDRESS, { value: _1pt5_ETHcoll, gasPrice, gasLimit: 1000000 }))
+  //   await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openCdp(th._100pct, _2kEBTCWithdrawal, th.ZERO_ADDRESS, th.ZERO_ADDRESS, { value: _1pt5_ETHcoll, gasPrice, gasLimit: 1000000 }))
   // } else {
   //   console.log('Acct 2 already has an active cdp')
   // }
 
-  // const acct2Trove = await liquityCore.cdpManager.Troves(account2Wallet.address)
-  // th.logBN('acct2 debt', acct2Trove[0])
-  // th.logBN('acct2 coll', acct2Trove[1])
-  // th.logBN('acct2 stake', acct2Trove[2])
-  // console.log(`acct2 cdp status: ${acct2Trove[3]}`)
+  // const acct2Cdp = await liquityCore.cdpManager.Cdps(account2Wallet.address)
+  // th.logBN('acct2 debt', acct2Cdp[0])
+  // th.logBN('acct2 coll', acct2Cdp[1])
+  // th.logBN('acct2 stake', acct2Cdp[2])
+  // console.log(`acct2 cdp status: ${acct2Cdp[3]}`)
 
   // // Log deployer's pending EBTC gain - check fees went to staker (deloyer)
   // deployerEBTCRevShare = await LQTYContracts.lqtyStaking.getPendingEBTCGain(deployerWallet.address)
@@ -534,12 +534,12 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
   // Number of cdps
-  const numTroves = await liquityCore.cdpManager.getTroveOwnersCount()
-  console.log(`number of cdps: ${numTroves} `)
+  const numCdps = await liquityCore.cdpManager.getCdpOwnersCount()
+  console.log(`number of cdps: ${numCdps} `)
 
   // Sorted list size
-  const listSize = await liquityCore.sortedTroves.getSize()
-  console.log(`Trove list size: ${listSize} `)
+  const listSize = await liquityCore.sortedCdps.getSize()
+  console.log(`Cdp list size: ${listSize} `)
 
   // Total system debt and coll
   const entireSystemDebt = await liquityCore.cdpManager.getEntireSystemDebt()
@@ -571,8 +571,8 @@ async function mainnetDeploy(configParams) {
 
   // --- State variables ---
 
-  // TroveManager 
-  console.log("TroveManager state variables:")
+  // CdpManager 
+  console.log("CdpManager state variables:")
   const totalStakes = await liquityCore.cdpManager.totalStakes()
   const totalStakesSnapshot = await liquityCore.cdpManager.totalStakesSnapshot()
   const totalCollateralSnapshot = await liquityCore.cdpManager.totalCollateralSnapshot()

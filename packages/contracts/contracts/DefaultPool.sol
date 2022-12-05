@@ -25,7 +25,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     uint256 internal ETH;  // deposited ETH tracker
     uint256 internal EBTCDebt;  // debt
 
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event DefaultPoolEBTCDebtUpdated(uint _EBTCDebt);
     event DefaultPoolETHBalanceUpdated(uint _ETH);
 
@@ -44,7 +44,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
 
-        emit TroveManagerAddressChanged(_cdpManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -68,7 +68,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Pool functionality ---
 
     function sendETHToActivePool(uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
@@ -79,13 +79,13 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     }
 
     function increaseEBTCDebt(uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
         EBTCDebt = EBTCDebt.add(_amount);
         emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
         EBTCDebt = EBTCDebt.sub(_amount);
         emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
@@ -96,8 +96,8 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         require(msg.sender == activePoolAddress, "DefaultPool: Caller is not the ActivePool");
     }
 
-    function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the TroveManager");
+    function _requireCallerIsCdpManager() internal view {
+        require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the CdpManager");
     }
 
     // --- Fallback function ---

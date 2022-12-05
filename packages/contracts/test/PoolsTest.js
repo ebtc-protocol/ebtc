@@ -121,14 +121,14 @@ contract('ActivePool', async accounts => {
 
 contract('DefaultPool', async accounts => {
  
-  let defaultPool, mockTroveManager, mockActivePool
+  let defaultPool, mockCdpManager, mockActivePool
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
     defaultPool = await DefaultPool.new()
-    mockTroveManager = await NonPayable.new()
+    mockCdpManager = await NonPayable.new()
     mockActivePool = await NonPayable.new()
-    await defaultPool.setAddresses(mockTroveManager.address, mockActivePool.address)
+    await defaultPool.setAddresses(mockCdpManager.address, mockActivePool.address)
   })
 
   it('getETH(): gets the recorded EBTC balance', async () => {
@@ -145,9 +145,9 @@ contract('DefaultPool', async accounts => {
     const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 0)
 
-    // await defaultPool.increaseEBTCDebt(100, { from: mockTroveManagerAddress })
+    // await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx = await mockTroveManager.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx = await mockCdpManager.forward(defaultPool.address, increaseEBTCDebtData)
     assert.isTrue(tx.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -156,17 +156,17 @@ contract('DefaultPool', async accounts => {
   
   it('decreaseEBTC(): decreases the recorded EBTC balance by the correct amount', async () => {
     // start the pool on 100 wei
-    //await defaultPool.increaseEBTCDebt(100, { from: mockTroveManagerAddress })
+    //await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx1 = await mockTroveManager.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx1 = await mockCdpManager.forward(defaultPool.address, increaseEBTCDebtData)
     assert.isTrue(tx1.receipt.status)
 
     const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 100)
 
-    // await defaultPool.decreaseEBTCDebt(100, { from: mockTroveManagerAddress })
+    // await defaultPool.decreaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const decreaseEBTCDebtData = th.getTransactionData('decreaseEBTCDebt(uint256)', ['0x64'])
-    const tx2 = await mockTroveManager.forward(defaultPool.address, decreaseEBTCDebtData)
+    const tx2 = await mockCdpManager.forward(defaultPool.address, decreaseEBTCDebtData)
     assert.isTrue(tx2.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -190,10 +190,10 @@ contract('DefaultPool', async accounts => {
     assert.equal(defaultPool_BalanceBeforeTx, dec(2, 'ether'))
 
     // send ether from pool to alice
-    //await defaultPool.sendETHToActivePool(dec(1, 'ether'), { from: mockTroveManagerAddress })
+    //await defaultPool.sendETHToActivePool(dec(1, 'ether'), { from: mockCdpManagerAddress })
     const sendETHData = th.getTransactionData('sendETHToActivePool(uint256)', [web3.utils.toHex(dec(1, 'ether'))])
     await mockActivePool.setPayable(true)
-    const tx2 = await mockTroveManager.forward(defaultPool.address, sendETHData, { from: owner })
+    const tx2 = await mockCdpManager.forward(defaultPool.address, sendETHData, { from: owner })
     assert.isTrue(tx2.receipt.status)
 
     const defaultPool_BalanceAfterTx = web3.utils.toBN(await web3.eth.getBalance(defaultPool.address))

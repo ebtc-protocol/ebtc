@@ -1,6 +1,6 @@
 // Hardhat script
-const SortedTroves = artifacts.require("./SortedTroves.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
@@ -20,7 +20,7 @@ const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
 
 const { TestHelper: th } = require("../utils/testHelpers.js")
@@ -32,8 +32,8 @@ const coreContractABIs = [
   BorrowerOperations,
   PriceFeed,
   EBTCToken,
-  SortedTroves,
-  TroveManager,
+  SortedCdps,
+  CdpManager,
   ActivePool,
   StabilityPool,
   DefaultPool,
@@ -54,7 +54,7 @@ const TesterContractABIs  = [
   DefaultPoolTester,
   LiquityMathTester,
   BorrowerOperationsTester,
-  TroveManagerTester,
+  CdpManagerTester,
   EBTCTokenTester,
 ]
 

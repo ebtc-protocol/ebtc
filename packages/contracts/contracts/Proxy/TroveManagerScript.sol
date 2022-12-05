@@ -3,15 +3,15 @@
 pragma solidity 0.6.11;
 
 import "../Dependencies/CheckContract.sol";
-import "../Interfaces/ITroveManager.sol";
+import "../Interfaces/ICdpManager.sol";
 
 
-contract TroveManagerScript is CheckContract {
-    string constant public NAME = "TroveManagerScript";
+contract CdpManagerScript is CheckContract {
+    string constant public NAME = "CdpManagerScript";
 
-    ITroveManager immutable cdpManager;
+    ICdpManager immutable cdpManager;
 
-    constructor(ITroveManager _cdpManager) public {
+    constructor(ICdpManager _cdpManager) public {
         checkContract(address(_cdpManager));
         cdpManager = _cdpManager;
     }

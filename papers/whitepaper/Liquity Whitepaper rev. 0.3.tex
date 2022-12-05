@@ -28,9 +28,9 @@
 \maketitle
 
 \section*{Abstract}
-Liquity is a decentralized protocol that allows Ether holders to obtain maximum liquidity against their collateral without paying interest. After locking up ETH as collateral in a smart contract and creating an individual position called a “Trove”, the user can get instant liquidity by minting EBTC, a USD-pegged stablecoin. Each Trove is required to be collateralized at a minimum of 110\%. Any owner of EBTC can redeem their stablecoins for the underlying collateral at any time. The redemption mechanism along with algorithmically adjusted fees guarantee a minimum stablecoin value of \$1. 
+Liquity is a decentralized protocol that allows Ether holders to obtain maximum liquidity against their collateral without paying interest. After locking up ETH as collateral in a smart contract and creating an individual position called a “Cdp”, the user can get instant liquidity by minting EBTC, a USD-pegged stablecoin. Each Cdp is required to be collateralized at a minimum of 110\%. Any owner of EBTC can redeem their stablecoins for the underlying collateral at any time. The redemption mechanism along with algorithmically adjusted fees guarantee a minimum stablecoin value of \$1. 
 
-An unprecedented liquidation mechanism based on incentivized stability deposits and a redistribution cycle from riskier to safer Troves provides stability at a much lower collateral ratio than current systems. Stability is maintained via economically-driven user interactions and arbitrage, rather than by active governance or monetary interventions. 
+An unprecedented liquidation mechanism based on incentivized stability deposits and a redistribution cycle from riskier to safer Cdps provides stability at a much lower collateral ratio than current systems. Stability is maintained via economically-driven user interactions and arbitrage, rather than by active governance or monetary interventions. 
 The protocol has built-in incentives that encourage both early adoption and the operation of multiple front ends, enhancing decentralization.
 
 \newpage
@@ -105,32 +105,32 @@ The allocation of LQTY between Frontend Operators and users is based on a kickba
 
 \section{System functionality}
 \subsection{Borrower operations }
-Anyone may obtain liquidity anytime in an entirely permissionless manner after depositing ETH into a \textbf{Trove\footnote{Each Trove is linked to a specific Ethereum address. An Ethereum address can only own one single Trove.} }.The deposited ETH collateral gets locked up in the Trove and allows its owner to withdraw up to \textbf{90.91\%}\footnote{Called loan-to-value ratio or LTV.} of its current dollar value in the form of EBTC stablecoins. In other words, the Trove must always maintain a \textbf{Minimum Collateral Ratio (MCR)} of 110\%, defined as the ratio of the current dollar value of the collateral to the withdrawn liquidity. Borrowers can repay or borrow more liquidity within the limits of the MCR whenever they wish. Within the same limit, they can retrieve their collateral. Moreover, a Trove can be topped up with more collateral as needed. 
+Anyone may obtain liquidity anytime in an entirely permissionless manner after depositing ETH into a \textbf{Cdp\footnote{Each Cdp is linked to a specific Ethereum address. An Ethereum address can only own one single Cdp.} }.The deposited ETH collateral gets locked up in the Cdp and allows its owner to withdraw up to \textbf{90.91\%}\footnote{Called loan-to-value ratio or LTV.} of its current dollar value in the form of EBTC stablecoins. In other words, the Cdp must always maintain a \textbf{Minimum Collateral Ratio (MCR)} of 110\%, defined as the ratio of the current dollar value of the collateral to the withdrawn liquidity. Borrowers can repay or borrow more liquidity within the limits of the MCR whenever they wish. Within the same limit, they can retrieve their collateral. Moreover, a Cdp can be topped up with more collateral as needed. 
 
-The protocol imposes a minimum debt of 2,000 EBTC.\footnote{This requirement prevents the system from being spammed with small Troves with low collateral ratios which could impair the redemption mechanism by making its gas costs prohibitive.}. Thus, Troves can only be opened with an initial debt of at least 2,000 EBTC and may never go below a debt of 2,000 EBTC, unless when fully repaid and closed.
+The protocol imposes a minimum debt of 2,000 EBTC.\footnote{This requirement prevents the system from being spammed with small Cdps with low collateral ratios which could impair the redemption mechanism by making its gas costs prohibitive.}. Thus, Cdps can only be opened with an initial debt of at least 2,000 EBTC and may never go below a debt of 2,000 EBTC, unless when fully repaid and closed.
 \\
 
 
-\textit{Liquidation Reserve}. When a borrower opens a new Trove, an amount of 200 EBTC is reserved and held back by the protocol as a compensation for the gas costs if the Trove needs to be liquidated at some point. The 200 EBTC is added to the Trove's debt, impacting its collateral ratio. When a borrower closes their Trove, the Liquidation Reserve is refunded, i.e. the corresponding 200 EBTC debt on the Trove is cancelled. The borrower thus needs to pay back 200 EBTC less to fully pay off their debt. \\
+\textit{Liquidation Reserve}. When a borrower opens a new Cdp, an amount of 200 EBTC is reserved and held back by the protocol as a compensation for the gas costs if the Cdp needs to be liquidated at some point. The 200 EBTC is added to the Cdp's debt, impacting its collateral ratio. When a borrower closes their Cdp, the Liquidation Reserve is refunded, i.e. the corresponding 200 EBTC debt on the Cdp is cancelled. The borrower thus needs to pay back 200 EBTC less to fully pay off their debt. \\
 
-\textit{Borrowing Fee}.   The protocol charges a one-time Borrowing Fee for the borrowed liquidity. The fee is added to the Trove's debt and is given by a \textbf{base rate} + 0.5\% (see 3.3 Redemption mechanism “Redemption fee and base rate”) multiplied by the amount of liquidity drawn by the borrower. The minimum Borrowing Fee is 0.5\%, and the maximum is 5\%. \\
+\textit{Borrowing Fee}.   The protocol charges a one-time Borrowing Fee for the borrowed liquidity. The fee is added to the Cdp's debt and is given by a \textbf{base rate} + 0.5\% (see 3.3 Redemption mechanism “Redemption fee and base rate”) multiplied by the amount of liquidity drawn by the borrower. The minimum Borrowing Fee is 0.5\%, and the maximum is 5\%. \\
 
 \begin{tcolorbox}
 \textbf{Example}\\
-The base rate stands at 0.5\%. The borrower opens a new Trove by depositing 4 ETH and draws 4,000 EBTC. Being subject to a Liquidation Reserve of 200 EBTC and charged a 1\% fee on the 4,000 EBTC, the borrower will obtain 4,000 EBTC, while incurring a debt of 4,240 EBTC (4,000 + 200 + 40). To close the Trove and fully retrieve the 4 ETH, the borrower needs to repay 4,040 EBTC as the Liquidation Reserve gets refunded.
+The base rate stands at 0.5\%. The borrower opens a new Cdp by depositing 4 ETH and draws 4,000 EBTC. Being subject to a Liquidation Reserve of 200 EBTC and charged a 1\% fee on the 4,000 EBTC, the borrower will obtain 4,000 EBTC, while incurring a debt of 4,240 EBTC (4,000 + 200 + 40). To close the Cdp and fully retrieve the 4 ETH, the borrower needs to repay 4,040 EBTC as the Liquidation Reserve gets refunded.
 \end{tcolorbox}
 
 \textit{Restrictions due to Recovery Mode}.   Borrower operations are restricted in several respects when the system is in Recovery Mode or at the verge of it (see 5 Recovery Mode). 
 
-To avoid liquidation despite ETH price changes, it is highly recommended to keep the collateral ratio of a Trove well above the MCR. Given that in Recovery Mode, liquidations may even affect Troves with higher collateral ratios (maximally up to 150\%), risk averse borrowers should sufficiently collateralize their Troves to avoid being near the bottom tiers of collateralization relative to other Troves whenever the system is close to Recovery Mode. Maintaining a relatively high collateral ratio high also reduces the risk of getting hit by a redemption (see 3.3 Redemption mechanism).
+To avoid liquidation despite ETH price changes, it is highly recommended to keep the collateral ratio of a Cdp well above the MCR. Given that in Recovery Mode, liquidations may even affect Cdps with higher collateral ratios (maximally up to 150\%), risk averse borrowers should sufficiently collateralize their Cdps to avoid being near the bottom tiers of collateralization relative to other Cdps whenever the system is close to Recovery Mode. Maintaining a relatively high collateral ratio high also reduces the risk of getting hit by a redemption (see 3.3 Redemption mechanism).
 
 \subsection{Stability Pool operations}
-The Stability Pool is the first line of defense in maintaining system solvency: stability deposits absorb and cancel the debt from defaulted Troves. In return, Stability Pool participants are rewarded with the acquisition of collateral from liquidated positions at a significant discount. Participants will also continuously receive an allocation of LQTY tokens.
-EBTC holders can become Stability Providers by depositing EBTC tokens into the Stability Pool. In principle, the deposited tokens can be withdrawn from the pool anytime, so long as they have not been used for absorbing defaulted Troves. However, deposit withdrawal is temporarily disabled when there are undercollateralized Troves in the system that can be liquidated.
+The Stability Pool is the first line of defense in maintaining system solvency: stability deposits absorb and cancel the debt from defaulted Cdps. In return, Stability Pool participants are rewarded with the acquisition of collateral from liquidated positions at a significant discount. Participants will also continuously receive an allocation of LQTY tokens.
+EBTC holders can become Stability Providers by depositing EBTC tokens into the Stability Pool. In principle, the deposited tokens can be withdrawn from the pool anytime, so long as they have not been used for absorbing defaulted Cdps. However, deposit withdrawal is temporarily disabled when there are undercollateralized Cdps in the system that can be liquidated.
 
-When a Trove is liquidated, some amount of EBTC in the Stability Pool which corresponds to the debt of the liquidated Trove is burned. In exchange, the Stability Pool receives all of the collateral from that Trove. Because liquidations happen just below 110\%, this means participants achieve a collateral gain in ETH at the time of liquidation. The Stability Providers’s current deposit as a proportion of the total EBTC in the pool determines the collateral share it receives from the liquidation\footnote{As a deposit will shrink over time by absorbing liquidations, the reward calculation results in a “negative” compounding of the deposited EBTC.}. 
+When a Cdp is liquidated, some amount of EBTC in the Stability Pool which corresponds to the debt of the liquidated Cdp is burned. In exchange, the Stability Pool receives all of the collateral from that Cdp. Because liquidations happen just below 110\%, this means participants achieve a collateral gain in ETH at the time of liquidation. The Stability Providers’s current deposit as a proportion of the total EBTC in the pool determines the collateral share it receives from the liquidation\footnote{As a deposit will shrink over time by absorbing liquidations, the reward calculation results in a “negative” compounding of the deposited EBTC.}. 
 
-While Stability Providers are free to withdraw all or part of their remaining EBTC deposit, the system always pays out the entire collateral gain made by the depositor. Stability Providers that are also borrowers can choose to transfer the collateral gain to their Troves instead of paying it out to their Ethereum addresses. In other words, the system uses the accumulated ETH to top up their own collateral. 
+While Stability Providers are free to withdraw all or part of their remaining EBTC deposit, the system always pays out the entire collateral gain made by the depositor. Stability Providers that are also borrowers can choose to transfer the collateral gain to their Cdps instead of paying it out to their Ethereum addresses. In other words, the system uses the accumulated ETH to top up their own collateral. 
 
 \subsection{Redemption mechanism}
 Liquity’s token, EBTC, is a fully redeemable stablecoin. At any time\footnote{To protect the system from bank run-like situations, redemptions are suspended if the Total Collateral Ratio (TCR) is below 110\%.}, the system allows holders to redeem their EBTC tokens for the underlying ETH collateral based on the face value of the redeemed tokens, the current ETH:USD rate and the current base rate. This enables direct arbitrage whenever EBTC trades for less than \$1, by creating a \textbf{price floor for EBTC}.\\
@@ -143,9 +143,9 @@ Liquity’s token, EBTC, is a fully redeemable stablecoin. At any time\footnote{
 \includegraphics[width=6.75cm]{a4.png}
 \end{figure}
 
-When redeemed, the system uses the EBTC to repay the riskiest Trove(s) with the currently lowest collateral ratio, and transfers the respective amount of ETH from the affected positions to the redeemer. The amount taken from each borrower is capped by their corresponding debt, so the affected borrowers can keep their collateral surpluses. In other words, borrowers lose the same nominal amount of debt (in EBTC) as they lose collateral (in USD) and do not suffer a net loss from redemptions. On the flipside, redemptions have a positive effect on the total collateralization of the system, increasing robustness and price stability.
+When redeemed, the system uses the EBTC to repay the riskiest Cdp(s) with the currently lowest collateral ratio, and transfers the respective amount of ETH from the affected positions to the redeemer. The amount taken from each borrower is capped by their corresponding debt, so the affected borrowers can keep their collateral surpluses. In other words, borrowers lose the same nominal amount of debt (in EBTC) as they lose collateral (in USD) and do not suffer a net loss from redemptions. On the flipside, redemptions have a positive effect on the total collateralization of the system, increasing robustness and price stability.
 
-Troves that are fully redeemed from, i.e. whose debt is 0, are automatically closed, and the borrower can reclaim the ETH surplus. The protocol enforces by truncating the redeemed amount that no Trove can be left with a non-zero debt below 2,000 EBTC. \\
+Cdps that are fully redeemed from, i.e. whose debt is 0, are automatically closed, and the borrower can reclaim the ETH surplus. The protocol enforces by truncating the redeemed amount that no Cdp can be left with a non-zero debt below 2,000 EBTC. \\
 
 \textit{Redemption Fee and base rate}. Liquity aims to determine the Redemption Fee in function of the current base rate and the redeemed EBTC amount as a proportion of the entire stablecoin supply. The base rate is initialized to 0\% at system launch.
 
@@ -171,24 +171,24 @@ $$b(t):=b(t-1)+0.5\times\frac{m}{n}=0.01237+0.5\times\frac{150000}{10000000}=0.0
 As a result, the redeemer receives 147,019.44 USD [$150,000 \times (1 - 0.01987)$] worth of ETH. Since the exchanged EBTC is currently worth only 142,500 USD [$150,000 \times 0.95$], the redeemer achieves an arbitrage gain of USD 4,519.44.
 \end{tcolorbox}
 
-\section{Trove liquidation mechanism}
-To ensure that the entire stablecoin supply remains fully backed by collateral, Troves that fall under the Minimum Collateral Ratio of 110\% (referred to as “undercollateralized”) are subject to liquidation.
+\section{Cdp liquidation mechanism}
+To ensure that the entire stablecoin supply remains fully backed by collateral, Cdps that fall under the Minimum Collateral Ratio of 110\% (referred to as “undercollateralized”) are subject to liquidation.
 
-Liquidation can be triggered by anybody and allows liquidating multiple Troves in one batch, either by specifying a set of Troves or in ascending order starting from the Trove with the lowest collateral ratio. While the former approach allows to quickly liquidate large Troves, the latter is more resilient against the race conditions that may occur in case of multiple simultaneous liquidations.
+Liquidation can be triggered by anybody and allows liquidating multiple Cdps in one batch, either by specifying a set of Cdps or in ascending order starting from the Cdp with the lowest collateral ratio. While the former approach allows to quickly liquidate large Cdps, the latter is more resilient against the race conditions that may occur in case of multiple simultaneous liquidations.
 
-In most cases, Stability Providers and/or high-collateral Troves will have a financial incentive to trigger liquidations as fast as possible. To compensate for the gas costs of a liquidation even in times of high gas prices, Liquity pays the reserved 200 EBTC (see 3.1 Borrower operations) plus 0.5\% of the Trove’s collateral (ETH) to the liquidator.
+In most cases, Stability Providers and/or high-collateral Cdps will have a financial incentive to trigger liquidations as fast as possible. To compensate for the gas costs of a liquidation even in times of high gas prices, Liquity pays the reserved 200 EBTC (see 3.1 Borrower operations) plus 0.5\% of the Cdp’s collateral (ETH) to the liquidator.
 \\
 
 Liquity utilizes a two-step liquidation mechanism in the following order of priority:
 \begin{enumerate}
-    \item Offset undercollateralized Troves against the Stability Pool
-    \item Redistribute undercollateralized Troves to other borrowers
+    \item Offset undercollateralized Cdps against the Stability Pool
+    \item Redistribute undercollateralized Cdps to other borrowers
 \end{enumerate}
 
-\subsection{Offset undercollateralized Troves against the Stability Pool}
+\subsection{Offset undercollateralized Cdps against the Stability Pool}
 As mentioned above, the Stability Pool is funded by Stability Providers who deposit EBTC tokens to the contract. It primarily functions as a “shock absorber”: deposited tokens soak up liquidated EBTC debts, and depositors are rewarded for their contribution. 
 
-When a Trove becomes undercollateralized ($<$110\%) due to a drop in the ETH price, the debt (in EBTC) can be immediately offset against the same amount of pooled EBTC tokens, which get burned by the system. In return, the system transfers 99.5\% of the collateral (in ETH) from the liquidated Trove to the Stability Pool, while paying out the remaining 0.5\% to the liquidator.\\
+When a Cdp becomes undercollateralized ($<$110\%) due to a drop in the ETH price, the debt (in EBTC) can be immediately offset against the same amount of pooled EBTC tokens, which get burned by the system. In return, the system transfers 99.5\% of the collateral (in ETH) from the liquidated Cdp to the Stability Pool, while paying out the remaining 0.5\% to the liquidator.\\
 
 \begin{figure}[h]
 \centering
@@ -206,25 +206,25 @@ A Stability Provider receives shares of the liquidations that occur during the l
 
 An individual’s share of the surplus gains depends on the ratio of its remaining EBTC deposit (as reduced by past liquidations) to the total amount of EBTC contained in the pool. If no new deposits are made, all individual shares will stay the same throughout liquidations. As new deposits are made, earlier depositors are incentivized to top up their deposit, to maintain their share of future rewards.
 
-\subsection{Redistribute undercollateralized Troves to other borrowers}
-It is possible that the EBTC tokens contained in the Stability Pool are not sufficient to offset all undercollateralized Troves, or that a cdp’s debt can only be partially absorbed as the Stability Pool runs out of EBTC during a liquidation. In such a case, the system redistributes the remaining debt and collateral from the partially liquidated Trove as well as the remaining undercollateralized Troves to all existing positions.
+\subsection{Redistribute undercollateralized Cdps to other borrowers}
+It is possible that the EBTC tokens contained in the Stability Pool are not sufficient to offset all undercollateralized Cdps, or that a cdp’s debt can only be partially absorbed as the Stability Pool runs out of EBTC during a liquidation. In such a case, the system redistributes the remaining debt and collateral from the partially liquidated Cdp as well as the remaining undercollateralized Cdps to all existing positions.
 
-The redistribution of the collateral and debt is done in proportion to the recipient Trove’s collateral amount. This means that Troves which are heavily collateralized will receive more debt and collateral from liquidated positions than those with low collateralization, ensuring that the system does not create cascading liquidations.\\
+The redistribution of the collateral and debt is done in proportion to the recipient Cdp’s collateral amount. This means that Cdps which are heavily collateralized will receive more debt and collateral from liquidated positions than those with low collateralization, ensuring that the system does not create cascading liquidations.\\
 
 \begin{tcolorbox}
 \textbf{Example}\\
-The two charts show the Troves A, B, C and D with their debt and collateral amounts. Trove D has become undercollateralized and is redistributed to A, B and C.
+The two charts show the Cdps A, B, C and D with their debt and collateral amounts. Cdp D has become undercollateralized and is redistributed to A, B and C.
 \end{tcolorbox}
 
 \renewcommand{\arraystretch}{1.3}
 \begin{table}[hbt!]
   \small
   \begin{center}
-    \caption{Trove debt and collateral amounts.}
+    \caption{Cdp debt and collateral amounts.}
     \label{tab:table1}
     \begin{tabular}{|m{0.053\textwidth}|m{0.045\textwidth}|m{0.06\textwidth}|m{0.044\textwidth}|m{0.08\textwidth}|m{0.08\textwidth}|m{0.068\textwidth}|m{0.087\textwidth}|m{0.1\textwidth}|m{0.1\textwidth}|}
     \hline
-    \thead{Trove} & \thead{Debt} & \thead{Coll. \\ ETH} & \thead{CR} & \thead{Debt \\ increase} & \thead{Coll. \\ increase} & \thead{New \\ debt} & \thead{New coll. \\ ETH} & \thead{New CR} & \thead{Net gain \\ USD} \\
+    \thead{Cdp} & \thead{Debt} & \thead{Coll. \\ ETH} & \thead{CR} & \thead{Debt \\ increase} & \thead{Coll. \\ increase} & \thead{New \\ debt} & \thead{New coll. \\ ETH} & \thead{New CR} & \thead{Net gain \\ USD} \\
      \hline
       A & $2000$ & $1.5$ & $150\%$ & $960.00$ & $0.52$ & $2960.00$ & $2.02$ & $136\%$ & $72$ \\
      \hline
@@ -245,12 +245,12 @@ The two charts show the Troves A, B, C and D with their debt and collateral amou
 \includegraphics[width=16cm]{a12.png}
 \end{figure} 
 
-Receiving collateral and debt shares should generally result in a \textbf{net gain for borrowers}, though at the same time it reduces their own collateral ratios. The risk of being drawn down and becoming undercollateralized as a recipient is minimal, and only affects Troves that are already very close to the Minimum Collateral Ratio (e.g. 111\%).
+Receiving collateral and debt shares should generally result in a \textbf{net gain for borrowers}, though at the same time it reduces their own collateral ratios. The risk of being drawn down and becoming undercollateralized as a recipient is minimal, and only affects Cdps that are already very close to the Minimum Collateral Ratio (e.g. 111\%).
 
 \section{Recovery mode}
-System solvency depends on the amount of EBTC tokens in the Stability Pool and ultimately on the Total Collateral Ratio (TCR) across all Troves, given by the total collateral (in USD) divided by the total debt (in EBTC). 
+System solvency depends on the amount of EBTC tokens in the Stability Pool and ultimately on the Total Collateral Ratio (TCR) across all Cdps, given by the total collateral (in USD) divided by the total debt (in EBTC). 
 
-To keep the system sufficiently collateralized even in times of crisis, the protocol incorporates a Recovery Mode, which is triggered as an \textbf{ultima ratio} if the TCR falls below the critical threshold of 150\%. In this special mode of operation, Troves with a collateral ratio between 110\% and the current TCR become subject to liquidation as well. Such extra liquidations are only possible against the Stability Pool (i.e. they are exempt from redistribution), and require that the entire debt can be liquidated at once. 
+To keep the system sufficiently collateralized even in times of crisis, the protocol incorporates a Recovery Mode, which is triggered as an \textbf{ultima ratio} if the TCR falls below the critical threshold of 150\%. In this special mode of operation, Cdps with a collateral ratio between 110\% and the current TCR become subject to liquidation as well. Such extra liquidations are only possible against the Stability Pool (i.e. they are exempt from redistribution), and require that the entire debt can be liquidated at once. 
 
 To protect the borrower from an excessive loss, the collateral that is offset against the Stability Pool is capped at 110\% of the liquidated debt. The borrower can reclaim any collateral remainder above 110\% any time after the liquidation.
 
@@ -261,14 +261,14 @@ During Recovery Mode, the liquidation mechanism is thus described by the followi
     \caption{Recovery Mode.}
     \label{tab:table1}
     \begin{tabular}{l|l} % <-- Alignments: 1st column left, 2nd middle and 3rd right, with vertical lines in between
-      \textbf{Trove's Collateral Ratio} & \textbf{Liquidation Procedure}\\
+      \textbf{Cdp's Collateral Ratio} & \textbf{Liquidation Procedure}\\
 
       \hline
-      $<100\%$ & \makecell[tl]{The Trove is liquidated by directly redistributing its entire debt \\ and collateral to other Troves, with no prior Stability Pool offset.} \\
+      $<100\%$ & \makecell[tl]{The Cdp is liquidated by directly redistributing its entire debt \\ and collateral to other Cdps, with no prior Stability Pool offset.} \\
       
-      between $100\%$ and $110\%$ & \makecell[tl]{As under normal operation, the Trove is liquidated by \\ first offsetting its debt and collateral against the Stability Pool \\ and redistributing any remainders to other Troves.} \\
+      between $100\%$ and $110\%$ & \makecell[tl]{As under normal operation, the Cdp is liquidated by \\ first offsetting its debt and collateral against the Stability Pool \\ and redistributing any remainders to other Cdps.} \\
       
-      between $110\%$ and TCR & \makecell[tl]{The Trove is liquidated by offsetting its debt against the \\ Stability Pool, provided that the entire debt can be liquidated. \\ The liquidated collateral is capped at $110\%$ of the debt, \\ and the remainder above $110\%$ is reclaimable by the borrower.} \\
+      between $110\%$ and TCR & \makecell[tl]{The Cdp is liquidated by offsetting its debt against the \\ Stability Pool, provided that the entire debt can be liquidated. \\ The liquidated collateral is capped at $110\%$ of the debt, \\ and the remainder above $110\%$ is reclaimable by the borrower.} \\
       
       $>$ TCR & \makecell[tl]{No liquidation possible.} \\
     \end{tabular}
@@ -280,15 +280,15 @@ These changes incentivize Stability Providers to increase their deposits during 
 
 The existence of Recovery Mode alone helps to avert the system falling below the critical threshold: the threat of the extra liquidations incentivizes risky borrowers to improve their collateral ratios and Stability Providers to increase their deposits, long before the system actually reaches the threshold ratio of 150\%. On the other hand, risk-averse borrowers are recommended to maintain a collateral ratio above 150\% at all times.\\
 
-\textit{Restrictions on Trove operations}. All Trove operations that would deteriorate the TCR are temporarily disabled if the system is in Recovery Mode or if the operation would trigger Recovery Mode by pushing the TCR below 150\%. In Recovery Mode, it is only possible to:
+\textit{Restrictions on Cdp operations}. All Cdp operations that would deteriorate the TCR are temporarily disabled if the system is in Recovery Mode or if the operation would trigger Recovery Mode by pushing the TCR below 150\%. In Recovery Mode, it is only possible to:
 \begin{itemize}
     \item top up collateral
     \item repay debt
     \item top up collateral and repay debt in the same transaction 
-    \item top up collateral and increase debt in a way that pushes the Trove's collateral ratio above 150\%
+    \item top up collateral and increase debt in a way that pushes the Cdp's collateral ratio above 150\%
 \end{itemize}
 
-Furthermore, new Troves can only be opened during Recovery Mode if their collateral ratio is at least 150\%. This prevents users from inadvertently creating Troves that may immediately fall victim to a liquidation.
+Furthermore, new Cdps can only be opened during Recovery Mode if their collateral ratio is at least 150\%. This prevents users from inadvertently creating Cdps that may immediately fall victim to a liquidation.
 
 \section{Conclusion}
 The following diagram summarizes the token flows between the protocol and its users:\\

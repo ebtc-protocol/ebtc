@@ -8,7 +8,7 @@ interface ILQTYStaking {
     
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
     event EBTCTokenAddressSet(address _ebtcTokenAddress);
-    event TroveManagerAddressSet(address _cdpManager);
+    event CdpManagerAddressSet(address _cdpManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
 

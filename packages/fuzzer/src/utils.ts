@@ -7,8 +7,8 @@ import {
   Decimalish,
   Difference,
   Percent,
-  Trove,
-  TroveWithPendingRedistribution,
+  Cdp,
+  CdpWithPendingRedistribution,
   ReadableLiquity,
   EBTC_LIQUIDATION_RESERVE
 } from "@liquity/lib-base";
@@ -32,7 +32,7 @@ export const createRandomWallets = (numberOfWallets: number, provider: Provider)
   return accounts;
 };
 
-export const createRandomTrove = (price: Decimal) => {
+export const createRandomCdp = (price: Decimal) => {
   let randomValue = truncateLastDigits(benford(1000));
 
   if (Math.random() < 0.5) {
@@ -40,7 +40,7 @@ export const createRandomTrove = (price: Decimal) => {
     const maxDebt = parseInt(price.mul(collateral).toString(0));
     const debt = EBTC_LIQUIDATION_RESERVE.add(truncateLastDigits(maxDebt - benford(maxDebt)));
 
-    return new Trove(collateral, debt);
+    return new Cdp(collateral, debt);
   } else {
     const debt = EBTC_LIQUIDATION_RESERVE.add(100 * randomValue);
 
@@ -52,62 +52,62 @@ export const createRandomTrove = (price: Decimal) => {
         .toString(4)
     );
 
-    return new Trove(collateral, debt);
+    return new Cdp(collateral, debt);
   }
 };
 
-export const randomCollateralChange = ({ collateral }: Trove) =>
+export const randomCollateralChange = ({ collateral }: Cdp) =>
   Math.random() < 0.5
     ? { withdrawCollateral: collateral.mul(1.1 * Math.random()) }
     : { depositCollateral: collateral.mul(0.5 * Math.random()) };
 
-export const randomDebtChange = ({ debt }: Trove) =>
+export const randomDebtChange = ({ debt }: Cdp) =>
   Math.random() < 0.5
     ? { repayEBTC: debt.mul(1.1 * Math.random()) }
     : { borrowEBTC: debt.mul(0.5 * Math.random()) };
 
-export const getListOfTroves = async (liquity: ReadableLiquity) =>
-  liquity.getTroves({
-    first: await liquity.getNumberOfTroves(),
+export const getListOfCdps = async (liquity: ReadableLiquity) =>
+  liquity.getCdps({
+    first: await liquity.getNumberOfCdps(),
     sortedBy: "descendingCollateralRatio",
     beforeRedistribution: false
   });
 
-export const getListOfTrovesBeforeRedistribution = async (liquity: ReadableLiquity) =>
-  liquity.getTroves({
-    first: await liquity.getNumberOfTroves(),
+export const getListOfCdpsBeforeRedistribution = async (liquity: ReadableLiquity) =>
+  liquity.getCdps({
+    first: await liquity.getNumberOfCdps(),
     sortedBy: "descendingCollateralRatio",
     beforeRedistribution: true
   });
 
-export const getListOfTroveOwners = async (liquity: ReadableLiquity) =>
-  getListOfTrovesBeforeRedistribution(liquity).then(cdps =>
+export const getListOfCdpOwners = async (liquity: ReadableLiquity) =>
+  getListOfCdpsBeforeRedistribution(liquity).then(cdps =>
     cdps.map(cdp => cdp.ownerAddress)
   );
 
 const tinyDifference = Decimal.from("0.000000001");
 
 const sortedByICR = (
-  listOfTroves: TroveWithPendingRedistribution[],
-  totalRedistributed: Trove,
+  listOfCdps: CdpWithPendingRedistribution[],
+  totalRedistributed: Cdp,
   price: Decimalish
 ) => {
-  if (listOfTroves.length < 2) {
+  if (listOfCdps.length < 2) {
     return true;
   }
 
-  let currentTrove = listOfTroves[0].applyRedistribution(totalRedistributed);
+  let currentCdp = listOfCdps[0].applyRedistribution(totalRedistributed);
 
-  for (let i = 1; i < listOfTroves.length; ++i) {
-    const nextTrove = listOfTroves[i].applyRedistribution(totalRedistributed);
+  for (let i = 1; i < listOfCdps.length; ++i) {
+    const nextCdp = listOfCdps[i].applyRedistribution(totalRedistributed);
 
     if (
-      nextTrove.collateralRatio(price).gt(currentTrove.collateralRatio(price).add(tinyDifference))
+      nextCdp.collateralRatio(price).gt(currentCdp.collateralRatio(price).add(tinyDifference))
     ) {
       return false;
     }
 
-    currentTrove = nextTrove;
+    currentCdp = nextCdp;
   }
 
   return true;
@@ -118,9 +118,9 @@ export const listDifference = (listA: string[], listB: string[]) => {
   return listA.filter(x => !setB.has(x));
 };
 
-export const listOfTrovesShouldBeEqual = (
-  listA: TroveWithPendingRedistribution[],
-  listB: TroveWithPendingRedistribution[]
+export const listOfCdpsShouldBeEqual = (
+  listA: CdpWithPendingRedistribution[],
+  listB: CdpWithPendingRedistribution[]
 ) => {
   if (listA.length !== listB.length) {
     throw new Error("length of cdp lists is different");
@@ -141,43 +141,43 @@ export const listOfTrovesShouldBeEqual = (
   });
 };
 
-export const checkTroveOrdering = (
-  listOfTroves: TroveWithPendingRedistribution[],
-  totalRedistributed: Trove,
+export const checkCdpOrdering = (
+  listOfCdps: CdpWithPendingRedistribution[],
+  totalRedistributed: Cdp,
   price: Decimal,
-  previousListOfTroves?: TroveWithPendingRedistribution[]
+  previousListOfCdps?: CdpWithPendingRedistribution[]
 ) => {
-  if (!sortedByICR(listOfTroves, totalRedistributed, price)) {
-    if (previousListOfTroves) {
+  if (!sortedByICR(listOfCdps, totalRedistributed, price)) {
+    if (previousListOfCdps) {
       console.log();
-      console.log("// List of Troves before:");
-      dumpTroves(previousListOfTroves, totalRedistributed, price);
+      console.log("// List of Cdps before:");
+      dumpCdps(previousListOfCdps, totalRedistributed, price);
 
       console.log();
-      console.log("// List of Troves after:");
+      console.log("// List of Cdps after:");
     }
 
-    dumpTroves(listOfTroves, totalRedistributed, price);
+    dumpCdps(listOfCdps, totalRedistributed, price);
     throw new Error("ordering is broken");
   }
 };
 
 export const checkPoolBalances = async (
   liquity: ReadableEthersLiquity,
-  listOfTroves: TroveWithPendingRedistribution[],
-  totalRedistributed: Trove
+  listOfCdps: CdpWithPendingRedistribution[],
+  totalRedistributed: Cdp
 ) => {
   const activePool = await liquity._getActivePool();
   const defaultPool = await liquity._getDefaultPool();
 
-  const [activeTotal, defaultTotal] = listOfTroves.reduce(
+  const [activeTotal, defaultTotal] = listOfCdps.reduce(
     ([activeTotal, defaultTotal], cdpActive) => {
       const cdpTotal = cdpActive.applyRedistribution(totalRedistributed);
       const cdpDefault = cdpTotal.subtract(cdpActive);
 
       return [activeTotal.add(cdpActive), defaultTotal.add(cdpDefault)];
     },
-    [new Trove(), new Trove()]
+    [new Cdp(), new Cdp()]
   );
 
   const diffs = [
@@ -196,15 +196,15 @@ export const checkPoolBalances = async (
     console.log(`  Total default: ${defaultTotal}`);
     console.log();
 
-    throw new Error("discrepancy between Troves & Pools");
+    throw new Error("discrepancy between Cdps & Pools");
   }
 };
 
 const numbersEqual = (a: number, b: number) => a === b;
 const decimalsEqual = (a: Decimal, b: Decimal) => a.eq(b);
-const cdpsEqual = (a: Trove, b: Trove) => a.equals(b);
+const cdpsEqual = (a: Cdp, b: Cdp) => a.equals(b);
 
-const cdpsRoughlyEqual = (cdpA: Trove, cdpB: Trove) =>
+const cdpsRoughlyEqual = (cdpA: Cdp, cdpB: Cdp) =>
   [
     [cdpA.collateral, cdpB.collateral],
     [cdpA.debt, cdpB.debt]
@@ -235,7 +235,7 @@ class EqualityCheck<T> {
 }
 
 const checks = [
-  new EqualityCheck("numberOfTroves", l => l.getNumberOfTroves(), numbersEqual),
+  new EqualityCheck("numberOfCdps", l => l.getNumberOfCdps(), numbersEqual),
   new EqualityCheck("price", l => l.getPrice(), decimalsEqual),
   new EqualityCheck("total", l => l.getTotal(), cdpsRoughlyEqual),
   new EqualityCheck("totalRedistributed", l => l.getTotalRedistributed(), cdpsEqual),
@@ -245,17 +245,17 @@ const checks = [
 export const checkSubgraph = async (subgraph: SubgraphLiquity, l1Liquity: ReadableLiquity) => {
   await Promise.all(checks.map(check => check.allEqual([subgraph, l1Liquity])));
 
-  const l1ListOfTroves = await getListOfTrovesBeforeRedistribution(l1Liquity);
-  const subgraphListOfTroves = await getListOfTrovesBeforeRedistribution(subgraph);
-  listOfTrovesShouldBeEqual(l1ListOfTroves, subgraphListOfTroves);
+  const l1ListOfCdps = await getListOfCdpsBeforeRedistribution(l1Liquity);
+  const subgraphListOfCdps = await getListOfCdpsBeforeRedistribution(subgraph);
+  listOfCdpsShouldBeEqual(l1ListOfCdps, subgraphListOfCdps);
 
   const totalRedistributed = await subgraph.getTotalRedistributed();
   const price = await subgraph.getPrice();
 
-  if (!sortedByICR(subgraphListOfTroves, totalRedistributed, price)) {
+  if (!sortedByICR(subgraphListOfCdps, totalRedistributed, price)) {
     console.log();
-    console.log("// List of Troves returned by subgraph:");
-    dumpTroves(subgraphListOfTroves, totalRedistributed, price);
+    console.log("// List of Cdps returned by subgraph:");
+    dumpCdps(subgraphListOfCdps, totalRedistributed, price);
     throw new Error("subgraph sorting broken");
   }
 };
@@ -263,8 +263,8 @@ export const checkSubgraph = async (subgraph: SubgraphLiquity, l1Liquity: Readab
 export const shortenAddress = (address: string) => address.substr(0, 6) + "..." + address.substr(-4);
 
 const cdpToString = (
-  cdpWithPendingRewards: TroveWithPendingRedistribution,
-  totalRedistributed: Trove,
+  cdpWithPendingRewards: CdpWithPendingRedistribution,
+  totalRedistributed: Cdp,
   price: Decimalish
 ) => {
   const cdp = cdpWithPendingRewards.applyRedistribution(totalRedistributed);
@@ -281,34 +281,34 @@ const cdpToString = (
   );
 };
 
-export const dumpTroves = (
-  listOfTroves: TroveWithPendingRedistribution[],
-  totalRedistributed: Trove,
+export const dumpCdps = (
+  listOfCdps: CdpWithPendingRedistribution[],
+  totalRedistributed: Cdp,
   price: Decimalish
 ) => {
-  if (listOfTroves.length === 0) {
+  if (listOfCdps.length === 0) {
     return;
   }
 
-  let currentTrove = listOfTroves[0];
-  console.log(`   ${cdpToString(currentTrove, totalRedistributed, price)}`);
+  let currentCdp = listOfCdps[0];
+  console.log(`   ${cdpToString(currentCdp, totalRedistributed, price)}`);
 
-  for (let i = 1; i < listOfTroves.length; ++i) {
-    const nextTrove = listOfTroves[i];
+  for (let i = 1; i < listOfCdps.length; ++i) {
+    const nextCdp = listOfCdps[i];
 
     if (
-      nextTrove
+      nextCdp
         .applyRedistribution(totalRedistributed)
         .collateralRatio(price)
         .sub(tinyDifference)
-        .gt(currentTrove.applyRedistribution(totalRedistributed).collateralRatio(price))
+        .gt(currentCdp.applyRedistribution(totalRedistributed).collateralRatio(price))
     ) {
-      console.log(`!! ${cdpToString(nextTrove, totalRedistributed, price)}`.red);
+      console.log(`!! ${cdpToString(nextCdp, totalRedistributed, price)}`.red);
     } else {
-      console.log(`   ${cdpToString(nextTrove, totalRedistributed, price)}`);
+      console.log(`   ${cdpToString(nextCdp, totalRedistributed, price)}`);
     }
 
-    currentTrove = nextTrove;
+    currentCdp = nextCdp;
   }
 };
 

@@ -117,9 +117,9 @@ for i in range(1, month):
   shock_LQTY = random.normalvariate(0,sd_LQTY)  
   price_LQTY.append(price_LQTY[i-1]*(1+shock_LQTY)*(1+drift_LQTY))
 
-"""# Troves
+"""# Cdps
 
-Liquidate Troves
+Liquidate Cdps
 """
 
 def liquidate_cdps(cdps, index, data):
@@ -150,7 +150,7 @@ def liquidate_cdps(cdps, index, data):
   
   return[cdps, return_stability, debt_liquidated, ether_liquidated, liquidation_gain, airdrop_gain, n_liquidate]
 
-"""Close Troves"""
+"""Close Cdps"""
 
 def close_cdps(cdps, index2, price_EBTC_previous):
   np.random.seed(208+index2)
@@ -175,7 +175,7 @@ def close_cdps(cdps, index2, price_EBTC_previous):
 
   return[cdps, number_closecdps]
 
-"""Adjust Troves"""
+"""Adjust Cdps"""
 
 def adjust_cdps(cdps, index):
   issuance_EBTC_adjust = 0
@@ -202,7 +202,7 @@ def adjust_cdps(cdps, index):
     cdps.loc[i] = working_cdp
   return[cdps, issuance_EBTC_adjust]
 
-"""Open Troves"""
+"""Open Cdps"""
 
 def open_cdps(cdps, index1, price_EBTC_previous):
   random.seed(2019*index1)  
@@ -482,7 +482,7 @@ fig.show()
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_cdps'], name="Number of Troves"),
+    go.Scatter(x=data.index/720, y=data['n_cdps'], name="Number of Cdps"),
     secondary_y=False,
 )
 fig.add_trace(
@@ -490,45 +490,45 @@ fig.add_trace(
     secondary_y=True,
 )
 fig.update_layout(
-    title_text="Dynamics of Trove Numbers and EBTC Supply"
+    title_text="Dynamics of Cdp Numbers and EBTC Supply"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Number of Troves", secondary_y=False)
+fig.update_yaxes(title_text="Number of Cdps", secondary_y=False)
 fig.update_yaxes(title_text="EBTC Supply", secondary_y=True)
 fig.show()
 
 fig = make_subplots(rows=2, cols=1)
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_open'], name="Number of Troves Opened", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_open'], name="Number of Cdps Opened", mode='markers'),
     row=1, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_close'], name="Number of Troves Closed", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_close'], name="Number of Cdps Closed", mode='markers'),
     row=2, col=1, secondary_y=False
 )
 fig.update_layout(
-    title_text="Dynamics of Number of Troves Opened and Closed"
+    title_text="Dynamics of Number of Cdps Opened and Closed"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Troves Opened", row=1, col=1)
-fig.update_yaxes(title_text="Troves Closed", row=2, col=1)
+fig.update_yaxes(title_text="Cdps Opened", row=1, col=1)
+fig.update_yaxes(title_text="Cdps Closed", row=2, col=1)
 fig.show()
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_liquidate'], name="Number of Liquidated Troves", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_liquidate'], name="Number of Liquidated Cdps", mode='markers'),
     secondary_y=False,
 )
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_redempt'], name="Number of Redempted Troves", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_redempt'], name="Number of Redempted Cdps", mode='markers'),
     secondary_y=False,
 )
 fig.update_layout(
-    title_text="Dynamics of Number of Liquidated and Redempted Troves"
+    title_text="Dynamics of Number of Liquidated and Redempted Cdps"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Number of Liquidated Troves", secondary_y=False)
-fig.update_yaxes(title_text="Number of Redempted Troves", secondary_y=True)
+fig.update_yaxes(title_text="Number of Liquidated Cdps", secondary_y=False)
+fig.update_yaxes(title_text="Number of Redempted Cdps", secondary_y=True)
 fig.show()
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -767,7 +767,7 @@ fig.show()
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_cdps'], name="Number of Troves"),
+    go.Scatter(x=data.index/720, y=data['n_cdps'], name="Number of Cdps"),
     secondary_y=False,
 )
 fig.add_trace(
@@ -775,7 +775,7 @@ fig.add_trace(
     secondary_y=True,
 )
 fig.add_trace(
-    go.Scatter(x=data2.index/720, y=data2['n_cdps'], name="Number of Troves New", line = dict(dash='dot')),
+    go.Scatter(x=data2.index/720, y=data2['n_cdps'], name="Number of Cdps New", line = dict(dash='dot')),
     secondary_y=False,
 )
 fig.add_trace(
@@ -783,61 +783,61 @@ fig.add_trace(
     secondary_y=True,
 )
 fig.update_layout(
-    title_text="Dynamics of Trove Numbers and EBTC Supply"
+    title_text="Dynamics of Cdp Numbers and EBTC Supply"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Number of Troves", secondary_y=False)
+fig.update_yaxes(title_text="Number of Cdps", secondary_y=False)
 fig.update_yaxes(title_text="EBTC Supply", secondary_y=True)
 fig.show()
 
 fig = make_subplots(rows=2, cols=2)
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_open'], name="Number of Troves Opened", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_open'], name="Number of Cdps Opened", mode='markers'),
     row=1, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_close'], name="Number of Troves Closed", mode='markers'),
+    go.Scatter(x=data.index/720, y=data['n_close'], name="Number of Cdps Closed", mode='markers'),
     row=2, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data2.index/720, y=data2['n_open'], name="Number of Troves Opened New", mode='markers'),
+    go.Scatter(x=data2.index/720, y=data2['n_open'], name="Number of Cdps Opened New", mode='markers'),
     row=1, col=2, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data2.index/720, y=data2['n_close'], name="Number of Troves Closed New", mode='markers'),
+    go.Scatter(x=data2.index/720, y=data2['n_close'], name="Number of Cdps Closed New", mode='markers'),
     row=2, col=2, secondary_y=False
 )
 fig.update_layout(
-    title_text="Dynamics of Number of Troves Opened and Closed"
+    title_text="Dynamics of Number of Cdps Opened and Closed"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Troves Opened", row=1, col=1)
-fig.update_yaxes(title_text="Troves Closed", row=2, col=1)
+fig.update_yaxes(title_text="Cdps Opened", row=1, col=1)
+fig.update_yaxes(title_text="Cdps Closed", row=2, col=1)
 fig.show()
 
 fig = make_subplots(rows=2, cols=1)
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_liquidate'], name="Number of Liquidated Troves"),
+    go.Scatter(x=data.index/720, y=data['n_liquidate'], name="Number of Liquidated Cdps"),
     row=1, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data.index/720, y=data['n_redempt'], name="Number of Redempted Troves"),
+    go.Scatter(x=data.index/720, y=data['n_redempt'], name="Number of Redempted Cdps"),
     row=2, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data2.index/720, y=data2['n_liquidate'], name="Number of Liquidated Troves New", line = dict(dash='dot')),
+    go.Scatter(x=data2.index/720, y=data2['n_liquidate'], name="Number of Liquidated Cdps New", line = dict(dash='dot')),
     row=1, col=1, secondary_y=False
 )
 fig.add_trace(
-    go.Scatter(x=data2.index/720, y=data2['n_redempt'], name="Number of Redempted Troves New", line = dict(dash='dot')),
+    go.Scatter(x=data2.index/720, y=data2['n_redempt'], name="Number of Redempted Cdps New", line = dict(dash='dot')),
     row=2, col=1, secondary_y=False
 )
 fig.update_layout(
-    title_text="Dynamics of Number of Liquidated and Redempted Troves"
+    title_text="Dynamics of Number of Liquidated and Redempted Cdps"
 )
 fig.update_xaxes(tick0=0, dtick=1, title_text="Month")
-fig.update_yaxes(title_text="Troves Liquidated", row=1, col=1)
-fig.update_yaxes(title_text="Troves Redempted", row=2, col=1)
+fig.update_yaxes(title_text="Cdps Liquidated", row=1, col=1)
+fig.update_yaxes(title_text="Cdps Redempted", row=2, col=1)
 fig.show()
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])

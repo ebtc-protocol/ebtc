@@ -4,8 +4,8 @@ import {
   Decimal,
   Difference,
   EBTC_MINIMUM_DEBT,
-  Trove,
-  TroveWithPendingRedistribution
+  Cdp,
+  CdpWithPendingRedistribution
 } from "@liquity/lib-base";
 
 import { Fixture } from "../fixture";
@@ -14,10 +14,10 @@ import { deployer, funder, provider, subgraph } from "../globals";
 import {
   checkPoolBalances,
   checkSubgraph,
-  checkTroveOrdering,
+  checkCdpOrdering,
   connectUsers,
   createRandomWallets,
-  getListOfTrovesBeforeRedistribution,
+  getListOfCdpsBeforeRedistribution,
   shortenAddress
 } from "../utils";
 
@@ -49,7 +49,7 @@ export const chaos = async ({
     frontendLiquity
   );
 
-  let previousListOfTroves: TroveWithPendingRedistribution[] | undefined = undefined;
+  let previousListOfCdps: CdpWithPendingRedistribution[] | undefined = undefined;
 
   console.log();
   console.log("// Keys");
@@ -61,7 +61,7 @@ export const chaos = async ({
     console.log(`// Round #${i}`);
 
     const price = await fixture.setRandomPrice();
-    await fixture.liquidateRandomNumberOfTroves(price);
+    await fixture.liquidateRandomNumberOfCdps(price);
 
     for (let i = 0; i < randomUsers.length; ++i) {
       const user = randomUsers[i];
@@ -70,15 +70,15 @@ export const chaos = async ({
       const x = Math.random();
 
       if (x < 0.5) {
-        const cdp = await liquity.getTrove();
+        const cdp = await liquity.getCdp();
 
         if (cdp.isEmpty) {
-          await fixture.openRandomTrove(user.address, liquity);
+          await fixture.openRandomCdp(user.address, liquity);
         } else {
           if (x < 0.4) {
-            await fixture.randomlyAdjustTrove(user.address, liquity, cdp);
+            await fixture.randomlyAdjustCdp(user.address, liquity, cdp);
           } else {
-            await fixture.closeTrove(user.address, liquity, cdp);
+            await fixture.closeCdp(user.address, liquity, cdp);
           }
         }
       } else if (x < 0.7) {
@@ -104,13 +104,13 @@ export const chaos = async ({
       // await fixture.sweepEBTC(liquity);
       await fixture.sweepLQTY(liquity);
 
-      const listOfTroves = await getListOfTrovesBeforeRedistribution(deployerLiquity);
+      const listOfCdps = await getListOfCdpsBeforeRedistribution(deployerLiquity);
       const totalRedistributed = await deployerLiquity.getTotalRedistributed();
 
-      checkTroveOrdering(listOfTroves, totalRedistributed, price, previousListOfTroves);
-      await checkPoolBalances(deployerLiquity, listOfTroves, totalRedistributed);
+      checkCdpOrdering(listOfCdps, totalRedistributed, price, previousListOfCdps);
+      await checkPoolBalances(deployerLiquity, listOfCdps, totalRedistributed);
 
-      previousListOfTroves = listOfTroves;
+      previousListOfCdps = listOfCdps;
     }
 
     if (shouldCheckSubgraph) {
@@ -127,69 +127,69 @@ export const order = async () => {
   const [deployerLiquity, funderLiquity] = await connectUsers([deployer, funder]);
 
   const initialPrice = await deployerLiquity.getPrice();
-  // let initialNumberOfTroves = await funderLiquity.getNumberOfTroves();
+  // let initialNumberOfCdps = await funderLiquity.getNumberOfCdps();
 
-  let [firstTrove] = await funderLiquity.getTroves({
+  let [firstCdp] = await funderLiquity.getCdps({
     first: 1,
     sortedBy: "descendingCollateralRatio"
   });
 
-  if (firstTrove.ownerAddress !== funder.address) {
-    const funderTrove = await funderLiquity.getTrove();
+  if (firstCdp.ownerAddress !== funder.address) {
+    const funderCdp = await funderLiquity.getCdp();
 
     const targetCollateralRatio = Decimal.max(
-      firstTrove.collateralRatio(initialPrice).add(0.00001),
+      firstCdp.collateralRatio(initialPrice).add(0.00001),
       1.51
     );
 
-    if (funderTrove.isEmpty) {
-      const targetTrove = new Trove(
+    if (funderCdp.isEmpty) {
+      const targetCdp = new Cdp(
         EBTC_MINIMUM_DEBT.mulDiv(targetCollateralRatio, initialPrice),
         EBTC_MINIMUM_DEBT
       );
 
       const fees = await funderLiquity.getFees();
 
-      await funderLiquity.openTrove(Trove.recreate(targetTrove, fees.borrowingRate()));
+      await funderLiquity.openCdp(Cdp.recreate(targetCdp, fees.borrowingRate()));
     } else {
-      const targetTrove = funderTrove.setCollateral(
-        funderTrove.debt.mulDiv(targetCollateralRatio, initialPrice)
+      const targetCdp = funderCdp.setCollateral(
+        funderCdp.debt.mulDiv(targetCollateralRatio, initialPrice)
       );
 
-      await funderLiquity.adjustTrove(funderTrove.adjustTo(targetTrove));
+      await funderLiquity.adjustCdp(funderCdp.adjustTo(targetCdp));
     }
   }
 
-  [firstTrove] = await funderLiquity.getTroves({
+  [firstCdp] = await funderLiquity.getCdps({
     first: 1,
     sortedBy: "descendingCollateralRatio"
   });
 
-  if (firstTrove.ownerAddress !== funder.address) {
-    throw new Error("didn't manage to hoist Funder's Trove to head of SortedTroves");
+  if (firstCdp.ownerAddress !== funder.address) {
+    throw new Error("didn't manage to hoist Funder's Cdp to head of SortedCdps");
   }
 
   await deployerLiquity.setPrice(0.001);
 
-  let numberOfTroves: number;
-  while ((numberOfTroves = await funderLiquity.getNumberOfTroves()) > 1) {
-    const numberOfTrovesToLiquidate = numberOfTroves > 10 ? 10 : numberOfTroves - 1;
+  let numberOfCdps: number;
+  while ((numberOfCdps = await funderLiquity.getNumberOfCdps()) > 1) {
+    const numberOfCdpsToLiquidate = numberOfCdps > 10 ? 10 : numberOfCdps - 1;
 
-    console.log(`${numberOfTroves} Troves left.`);
-    await funderLiquity.liquidateUpTo(numberOfTrovesToLiquidate);
+    console.log(`${numberOfCdps} Cdps left.`);
+    await funderLiquity.liquidateUpTo(numberOfCdpsToLiquidate);
   }
 
   await deployerLiquity.setPrice(initialPrice);
 
-  if ((await funderLiquity.getNumberOfTroves()) !== 1) {
-    throw new Error("didn't manage to liquidate every Trove");
+  if ((await funderLiquity.getNumberOfCdps()) !== 1) {
+    throw new Error("didn't manage to liquidate every Cdp");
   }
 
-  const funderTrove = await funderLiquity.getTrove();
+  const funderCdp = await funderLiquity.getCdp();
   const total = await funderLiquity.getTotal();
 
-  const collateralDifference = Difference.between(total.collateral, funderTrove.collateral);
-  const debtDifference = Difference.between(total.debt, funderTrove.debt);
+  const collateralDifference = Difference.between(total.collateral, funderCdp.collateral);
+  const debtDifference = Difference.between(total.debt, funderCdp.debt);
 
   console.log();
   console.log("Discrepancies:");

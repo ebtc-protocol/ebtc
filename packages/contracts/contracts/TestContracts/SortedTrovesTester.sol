@@ -2,30 +2,30 @@
 
 pragma solidity 0.6.11;
 
-import "../Interfaces/ISortedTroves.sol";
+import "../Interfaces/ISortedCdps.sol";
 
 
-contract SortedTrovesTester {
-    ISortedTroves sortedTroves;
+contract SortedCdpsTester {
+    ISortedCdps sortedCdps;
 
-    function setSortedTroves(address _sortedTrovesAddress) external {
-        sortedTroves = ISortedTroves(_sortedTrovesAddress);
+    function setSortedCdps(address _sortedCdpsAddress) external {
+        sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }
 
     function insert(address _owner, bytes32 _cdpId, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
-        sortedTroves.insert(_owner, _cdpId, _NICR, _prevId, _nextId);
+        sortedCdps.insert(_owner, _cdpId, _NICR, _prevId, _nextId);
     }
 
     function insert(address _owner, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
-        sortedTroves.insert(_owner, _NICR, _prevId, _nextId);
+        sortedCdps.insert(_owner, _NICR, _prevId, _nextId);
     }
 
     function remove(bytes32 _id) external {
-        sortedTroves.remove(_id);
+        sortedCdps.remove(_id);
     }
 
     function reInsert(bytes32 _id, uint256 _newNICR, bytes32 _prevId, bytes32 _nextId) external {
-        sortedTroves.reInsert(_id, _newNICR, _prevId, _nextId);
+        sortedCdps.reInsert(_id, _newNICR, _prevId, _nextId);
     }
 
     function getNominalICR(bytes32) external pure returns (uint) {

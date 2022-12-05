@@ -5,9 +5,9 @@ pragma solidity 0.6.11;
 import './Interfaces/IBorrowerOperations.sol';
 import './Interfaces/IStabilityPool.sol';
 import './Interfaces/IBorrowerOperations.sol';
-import './Interfaces/ITroveManager.sol';
+import './Interfaces/ICdpManager.sol';
 import './Interfaces/IEBTCToken.sol';
-import './Interfaces/ISortedTroves.sol';
+import './Interfaces/ISortedCdps.sol';
 import "./Interfaces/ICommunityIssuance.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/SafeMath.sol";
@@ -152,18 +152,18 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     IBorrowerOperations public borrowerOperations;
 
-    ITroveManager public cdpManager;
+    ICdpManager public cdpManager;
 
     IEBTCToken public ebtcToken;
 
     // Needed to check if there are pending liquidations
-    ISortedTroves public sortedTroves;
+    ISortedCdps public sortedCdps;
 
     ICommunityIssuance public communityIssuance;
 
     uint256 internal ETH;  // deposited ether tracker
 
-    // Tracker for EBTC held in the pool. Changes when users deposit/withdraw, and when Trove debt is offset.
+    // Tracker for EBTC held in the pool. Changes when users deposit/withdraw, and when Cdp debt is offset.
     uint256 internal totalEBTCDeposits;
 
    // --- Data structures ---
@@ -240,11 +240,11 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
     event StabilityPoolEBTCBalanceUpdated(uint _newBalance);
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
     event DefaultPoolAddressChanged(address _newDefaultPoolAddress);
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
-    event SortedTrovesAddressChanged(address _newSortedTrovesAddress);
+    event SortedCdpsAddressChanged(address _newSortedCdpsAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event CommunityIssuanceAddressChanged(address _newCommunityIssuanceAddress);
 
@@ -274,7 +274,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _ebtcTokenAddress,
-        address _sortedTrovesAddress,
+        address _sortedCdpsAddress,
         address _priceFeedAddress,
         address _communityIssuanceAddress
     )
@@ -286,23 +286,23 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
         checkContract(_ebtcTokenAddress);
-        checkContract(_sortedTrovesAddress);
+        checkContract(_sortedCdpsAddress);
         checkContract(_priceFeedAddress);
         checkContract(_communityIssuanceAddress);
 
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
-        cdpManager = ITroveManager(_cdpManagerAddress);
+        cdpManager = ICdpManager(_cdpManagerAddress);
         activePool = IActivePool(_activePoolAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        sortedTroves = ISortedTroves(_sortedTrovesAddress);
+        sortedCdps = ISortedCdps(_sortedCdpsAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
         communityIssuance = ICommunityIssuance(_communityIssuanceAddress);
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_cdpManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit EBTCTokenAddressChanged(_ebtcTokenAddress);
-        emit SortedTrovesAddressChanged(_sortedTrovesAddress);
+        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit CommunityIssuanceAddressChanged(_communityIssuanceAddress);
 
@@ -377,7 +377,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
     * If _amount > userDeposit, the user withdraws all of their compounded deposit.
     */
     function withdrawFromSP(uint _amount) external override {
-        if (_amount !=0) {_requireNoUnderCollateralizedTroves();}
+        if (_amount !=0) {_requireNoUnderCollateralizedCdps();}
         uint initialDeposit = deposits[msg.sender].initialValue;
         _requireUserHasDeposit(initialDeposit);
 
@@ -413,17 +413,17 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         _sendETHGainToDepositor(depositorETHGain);
     }
 
-    /* withdrawETHGainToTrove:
+    /* withdrawETHGainToCdp:
     * - Triggers a LQTY issuance, based on time passed since the last issuance. The LQTY issuance is shared between *all* depositors and front ends
     * - Sends all depositor's LQTY gain to  depositor
     * - Sends all tagged front end's LQTY gain to the tagged front end
     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's cdp
     * - Leaves their compounded deposit in the Stability Pool
     * - Updates snapshots for deposit and tagged front end stake */
-    function withdrawETHGainToTrove(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external override {
+    function withdrawETHGainToCdp(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external override {
         uint initialDeposit = deposits[msg.sender].initialValue;
         _requireUserHasDeposit(initialDeposit);
-        _requireUserHasTrove(_cdpId);
+        _requireUserHasCdp(_cdpId);
         _requireUserHasETHGain(msg.sender);
 
         ICommunityIssuance communityIssuanceCached = communityIssuance;
@@ -447,9 +447,9 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
         _updateDepositAndSnapshots(msg.sender, compoundedEBTCDeposit);
 
-        /* Emit events before transferring ETH gain to Trove.
+        /* Emit events before transferring ETH gain to Cdp.
          This lets the event log make more sense (i.e. so it appears that first the ETH gain is withdrawn
-        and then it is deposited into the Trove, not the other way around). */
+        and then it is deposited into the Cdp, not the other way around). */
         emit ETHGainWithdrawn(msg.sender, depositorETHGain, EBTCLoss);
         emit UserDepositChanged(msg.sender, compoundedEBTCDeposit);
 
@@ -457,7 +457,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         emit StabilityPoolETHBalanceUpdated(ETH);
         emit EtherSent(msg.sender, depositorETHGain);
 
-        borrowerOperations.moveETHGainToTrove{ value: depositorETHGain }(_cdpId, _upperHint, _lowerHint);
+        borrowerOperations.moveETHGainToCdp{ value: depositorETHGain }(_cdpId, _upperHint, _lowerHint);
     }
 
     // --- LQTY issuance functions ---
@@ -509,11 +509,11 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     /*
     * Cancels out the specified debt against the EBTC contained in the Stability Pool (as far as possible)
-    * and transfers the Trove's ETH collateral from ActivePool to StabilityPool.
-    * Only called by liquidation functions in the TroveManager.
+    * and transfers the Cdp's ETH collateral from ActivePool to StabilityPool.
+    * Only called by liquidation functions in the CdpManager.
     */
     function offset(uint _debtToOffset, uint _collToAdd) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
         uint totalEBTC = totalEBTCDeposits; // cached to save an SLOAD
         if (totalEBTC == 0 || _debtToOffset == 0) { return; }
 
@@ -942,14 +942,14 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         require( msg.sender == address(activePool), "StabilityPool: Caller is not ActivePool");
     }
 
-    function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == address(cdpManager), "StabilityPool: Caller is not TroveManager");
+    function _requireCallerIsCdpManager() internal view {
+        require(msg.sender == address(cdpManager), "StabilityPool: Caller is not CdpManager");
     }
 
-    function _requireNoUnderCollateralizedTroves() internal {
+    function _requireNoUnderCollateralizedCdps() internal {
         uint price = priceFeed.fetchPrice();
-        bytes32 lowestTrove = sortedTroves.getLast();
-        uint ICR = cdpManager.getCurrentICR(lowestTrove, price);
+        bytes32 lowestCdp = sortedCdps.getLast();
+        uint ICR = cdpManager.getCurrentICR(lowestCdp, price);
         require(ICR >= MCR, "StabilityPool: Cannot withdraw while there are cdps with ICR < MCR");
     }
 
@@ -966,9 +966,9 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         require(_amount > 0, 'StabilityPool: Amount must be non-zero');
     }
 
-    function _requireUserHasTrove(bytes32 _cdpId) internal view {
-        require(cdpManager.getTroveStatus(_cdpId) == 1, "StabilityPool: caller must have an active cdp to withdraw ETHGain to");
-        require(sortedTroves.existTroveOwners(_cdpId) == msg.sender, "StabilityPool: caller must be the owner of the cdp");
+    function _requireUserHasCdp(bytes32 _cdpId) internal view {
+        require(cdpManager.getCdpStatus(_cdpId) == 1, "StabilityPool: caller must have an active cdp to withdraw ETHGain to");
+        require(sortedCdps.existCdpOwners(_cdpId) == msg.sender, "StabilityPool: caller must be the owner of the cdp");
     }
 
     function _requireUserHasETHGain(address _depositor) internal view {

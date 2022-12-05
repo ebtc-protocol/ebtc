@@ -14,7 +14,7 @@ from simulation_helpers import *
 @dataclass
 class Contracts:
     priceFeedTestnet: Optional[Contract] = None
-    sortedTroves: Optional[Contract] = None
+    sortedCdps: Optional[Contract] = None
     cdpManager: Optional[Contract] = None
     activePool: Optional[Contract] = None
     stabilityPool: Optional[Contract] = None
@@ -31,7 +31,7 @@ class Contracts:
 
 
 def set_addresses(contracts):
-    contracts.sortedTroves.setParams(
+    contracts.sortedCdps.setParams(
         MAX_BYTES_32,
         contracts.cdpManager.address,
         contracts.borrowerOperations.address,
@@ -47,7 +47,7 @@ def set_addresses(contracts):
         contracts.collSurplusPool.address,
         contracts.priceFeedTestnet.address,
         contracts.ebtcToken.address,
-        contracts.sortedTroves.address,
+        contracts.sortedCdps.address,
         contracts.lqtyToken.address,
         contracts.lqtyStaking.address,
         {'from': accounts[0]}
@@ -61,7 +61,7 @@ def set_addresses(contracts):
         contracts.gasPool.address,
         contracts.collSurplusPool.address,
         contracts.priceFeedTestnet.address,
-        contracts.sortedTroves.address,
+        contracts.sortedCdps.address,
         contracts.ebtcToken.address,
         contracts.lqtyStaking.address,
         {'from': accounts[0]}
@@ -72,7 +72,7 @@ def set_addresses(contracts):
         contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.ebtcToken.address,
-        contracts.sortedTroves.address,
+        contracts.sortedCdps.address,
         contracts.priceFeedTestnet.address,
         contracts.communityIssuance.address,
         {'from': accounts[0]}
@@ -100,7 +100,7 @@ def set_addresses(contracts):
     )
 
     contracts.hintHelpers.setAddresses(
-        contracts.sortedTroves.address,
+        contracts.sortedCdps.address,
         contracts.cdpManager.address,
         {'from': accounts[0]}
     )
@@ -134,8 +134,8 @@ def contracts():
     contracts = Contracts()
 
     contracts.priceFeedTestnet = PriceFeedTestnet.deploy({'from': accounts[0]})  # noqa
-    contracts.sortedTroves = SortedTroves.deploy({'from': accounts[0]})  # noqa
-    contracts.cdpManager = TroveManager.deploy({'from': accounts[0]})  # noqa
+    contracts.sortedCdps = SortedCdps.deploy({'from': accounts[0]})  # noqa
+    contracts.cdpManager = CdpManager.deploy({'from': accounts[0]})  # noqa
     contracts.activePool = ActivePool.deploy({'from': accounts[0]})  # noqa
     contracts.stabilityPool = StabilityPool.deploy({'from': accounts[0]})  # noqa
     contracts.gasPool = GasPool.deploy({'from': accounts[0]})  # noqa
@@ -214,7 +214,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
     contracts.priceFeedTestnet.setPrice(floatToWei(price_ether[0]), {'from': accounts[0]})
     # whale
     whale_coll = 30000.0
-    contracts.borrowerOperations.openTrove(MAX_FEE, Wei(10e24), ZERO_ADDRESS, ZERO_ADDRESS,
+    contracts.borrowerOperations.openCdp(MAX_FEE, Wei(10e24), ZERO_ADDRESS, ZERO_ADDRESS,
                                            {'from': accounts[0], 'value': floatToWei(whale_coll)})
     contracts.stabilityPool.provideToSP(floatToWei(stability_initial), ZERO_ADDRESS,
                                         {'from': accounts[0]})

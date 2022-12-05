@@ -13,7 +13,7 @@ def get_ebtc_amount_from_net_debt(contracts, net_debt):
 
 def logGlobalState(contracts):
     print('\n ---- Global state ----')
-    num_cdps = contracts.sortedTroves.getSize()
+    num_cdps = contracts.sortedCdps.getSize()
     print('Num cdps      ', num_cdps)
     activePoolColl = contracts.activePool.getETH()
     activePoolDebt = contracts.activePool.getEBTCDebt()
@@ -40,7 +40,7 @@ def logGlobalState(contracts):
     print('Coll snapshot   ', coll_snapshot.to("ether"))
     if stakes_snapshot > 0:
         print('Snapshot ratio  ', coll_snapshot / stakes_snapshot)
-    last_cdp = contracts.sortedTroves.getLast()
+    last_cdp = contracts.sortedCdps.getLast()
     last_ICR = contracts.cdpManager.getCurrentICR(last_cdp, price_ether_current).to("ether")
     #print('Last cdp      ', last_cdp)
     print('Last cdp’s ICR', last_ICR)

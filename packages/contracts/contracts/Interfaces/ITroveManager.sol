@@ -9,8 +9,8 @@ import "./ILQTYToken.sol";
 import "./ILQTYStaking.sol";
 
 
-// Common interface for the Trove Manager.
-interface ITroveManager is ILiquityBase {
+// Common interface for the Cdp Manager.
+interface ICdpManager is ILiquityBase {
     
     // --- Events ---
 
@@ -22,21 +22,21 @@ interface ITroveManager is ILiquityBase {
     event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event SortedTrovesAddressChanged(address _sortedTrovesAddress);
+    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event TroveUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
-    event TroveLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
+    event CdpUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
+    event CdpLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event TroveSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event TroveIndexUpdated(bytes32 _borrower, uint _newIndex);
+    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
+    event CdpIndexUpdated(bytes32 _borrower, uint _newIndex);
 
     // --- Functions ---
 
@@ -49,7 +49,7 @@ interface ITroveManager is ILiquityBase {
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _ebtcTokenAddress,
-        address _sortedTrovesAddress,
+        address _sortedCdpsAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress
     ) external;
@@ -59,18 +59,18 @@ interface ITroveManager is ILiquityBase {
     function lqtyToken() external view returns (ILQTYToken);
     function lqtyStaking() external view returns (ILQTYStaking);
 
-    function getTroveIdsCount() external view returns (uint);
+    function getCdpIdsCount() external view returns (uint);
 
-    function getIdFromTroveIdsArray(uint _index) external view returns (bytes32);
+    function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);
     function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
     function liquidate(bytes32 _cdpId) external;
 
-    function liquidateTroves(uint _n) external;
+    function liquidateCdps(uint _n) external;
 
-    function batchLiquidateTroves(bytes32[] calldata _cdpArray) external;
+    function batchLiquidateCdps(bytes32[] calldata _cdpArray) external;
 
     function redeemCollateral(
         uint _EBTCAmount,
@@ -84,9 +84,9 @@ interface ITroveManager is ILiquityBase {
 
     function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint);
 
-    function updateTroveRewardSnapshots(bytes32 _cdpId) external;
+    function updateCdpRewardSnapshots(bytes32 _cdpId) external;
 
-    function addTroveIdToArray(bytes32 _cdpId) external returns (uint index);
+    function addCdpIdToArray(bytes32 _cdpId) external returns (uint index);
 
     function applyPendingRewards(bytes32 _cdpId) external;
 
@@ -103,7 +103,7 @@ interface ITroveManager is ILiquityBase {
         uint pendingETHReward
     );
 
-    function closeTrove(bytes32 _cdpId) external;
+    function closeCdp(bytes32 _cdpId) external;
 
     function removeStake(bytes32 _cdpId) external;
 
@@ -120,23 +120,23 @@ interface ITroveManager is ILiquityBase {
 
     function decayBaseRateFromBorrowing() external;
 
-    function getTroveStatus(bytes32 _cdpId) external view returns (uint);
+    function getCdpStatus(bytes32 _cdpId) external view returns (uint);
     
-    function getTroveStake(bytes32 _cdpId) external view returns (uint);
+    function getCdpStake(bytes32 _cdpId) external view returns (uint);
 
-    function getTroveDebt(bytes32 _cdpId) external view returns (uint);
+    function getCdpDebt(bytes32 _cdpId) external view returns (uint);
 
-    function getTroveColl(bytes32 _cdpId) external view returns (uint);
+    function getCdpColl(bytes32 _cdpId) external view returns (uint);
 
-    function setTroveStatus(bytes32 _cdpId, uint num) external;
+    function setCdpStatus(bytes32 _cdpId, uint num) external;
 
-    function increaseTroveColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
+    function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
 
-    function decreaseTroveColl(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
+    function decreaseCdpColl(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
 
-    function increaseTroveDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint); 
+    function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint); 
 
-    function decreaseTroveDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
+    function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
 
     function getTCR(uint _price) external view returns (uint);
 

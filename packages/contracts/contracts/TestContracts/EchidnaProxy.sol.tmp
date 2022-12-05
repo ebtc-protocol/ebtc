@@ -2,19 +2,19 @@
 
 pragma solidity 0.6.11;
 
-import "../TroveManager.sol";
+import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../StabilityPool.sol";
 import "../EBTCToken.sol";
 
 contract EchidnaProxy {
-    TroveManager cdpManager;
+    CdpManager cdpManager;
     BorrowerOperations borrowerOperations;
     StabilityPool stabilityPool;
     EBTCToken ebtcToken;
 
     constructor(
-        TroveManager _cdpManager,
+        CdpManager _cdpManager,
         BorrowerOperations _borrowerOperations,
         StabilityPool _stabilityPool,
         EBTCToken _ebtcToken
@@ -29,18 +29,18 @@ contract EchidnaProxy {
         // do nothing
     }
 
-    // TroveManager
+    // CdpManager
 
     function liquidatePrx(address _user) external {
         cdpManager.liquidate(_user);
     }
 
-    function liquidateTrovesPrx(uint _n) external {
-        cdpManager.liquidateTroves(_n);
+    function liquidateCdpsPrx(uint _n) external {
+        cdpManager.liquidateCdps(_n);
     }
 
-    function batchLiquidateTrovesPrx(address[] calldata _cdpArray) external {
-        cdpManager.batchLiquidateTroves(_cdpArray);
+    function batchLiquidateCdpsPrx(address[] calldata _cdpArray) external {
+        cdpManager.batchLiquidateCdps(_cdpArray);
     }
 
     function redeemCollateralPrx(
@@ -56,8 +56,8 @@ contract EchidnaProxy {
     }
 
     // Borrower Operations
-    function openTrovePrx(uint _ETH, uint _EBTCAmount, address _upperHint, address _lowerHint, uint _maxFee) external payable {
-        borrowerOperations.openTrove{value: _ETH}(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
+    function openCdpPrx(uint _ETH, uint _EBTCAmount, address _upperHint, address _lowerHint, uint _maxFee) external payable {
+        borrowerOperations.openCdp{value: _ETH}(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function addCollPrx(uint _ETH, address _upperHint, address _lowerHint) external payable {
@@ -76,12 +76,12 @@ contract EchidnaProxy {
         borrowerOperations.repayEBTC(_amount, _upperHint, _lowerHint);
     }
 
-    function closeTrovePrx() external {
-        borrowerOperations.closeTrove();
+    function closeCdpPrx() external {
+        borrowerOperations.closeCdp();
     }
 
-    function adjustTrovePrx(uint _ETH, uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease, address _upperHint, address _lowerHint, uint _maxFee) external payable {
-        borrowerOperations.adjustTrove{value: _ETH}(_maxFee, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint);
+    function adjustCdpPrx(uint _ETH, uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease, address _upperHint, address _lowerHint, uint _maxFee) external payable {
+        borrowerOperations.adjustCdp{value: _ETH}(_maxFee, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint);
     }
 
     // Pool Manager

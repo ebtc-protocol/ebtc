@@ -48,7 +48,7 @@ library LiquityMath {
     * Uses the efficient "exponentiation by squaring" algorithm. O(log(n)) complexity. 
     * 
     * Called by two functions that represent time in units of minutes:
-    * 1) TroveManager._calcDecayedBaseRate
+    * 1) CdpManager._calcDecayedBaseRate
     * 2) CommunityIssuance._getCumulativeIssuanceFraction 
     * 
     * The exponent is capped to avoid reverting due to overflow. The cap 525600000 equals
@@ -93,7 +93,7 @@ library LiquityMath {
         if (_debt > 0) {
             return _coll.mul(NICR_PRECISION).div(_debt);
         }
-        // Return the maximal value for uint256 if the Trove has a debt of 0. Represents "infinite" CR.
+        // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else { // if (_debt == 0)
             return 2**256 - 1;
         }
@@ -105,7 +105,7 @@ library LiquityMath {
 
             return newCollRatio;
         }
-        // Return the maximal value for uint256 if the Trove has a debt of 0. Represents "infinite" CR.
+        // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else { // if (_debt == 0)
             return 2**256 - 1; 
         }

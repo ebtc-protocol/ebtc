@@ -7,19 +7,19 @@ import {
   EBTC_MINIMUM_DEBT,
   StabilityDeposit,
   TransactableLiquity,
-  Trove,
-  TroveAdjustmentParams
+  Cdp,
+  CdpAdjustmentParams
 } from "@liquity/lib-base";
 
 import { EthersLiquity as Liquity } from "@liquity/lib-ethers";
 
 import {
-  createRandomTrove,
+  createRandomCdp,
   shortenAddress,
   benford,
-  getListOfTroveOwners,
+  getListOfCdpOwners,
   listDifference,
-  getListOfTroves,
+  getListOfCdps,
   randomCollateralChange,
   randomDebtChange,
   objToString
@@ -33,9 +33,9 @@ type _GasHistogramsFrom<T> = {
 
 type GasHistograms = Pick<
   _GasHistogramsFrom<TransactableLiquity>,
-  | "openTrove"
-  | "adjustTrove"
-  | "closeTrove"
+  | "openCdp"
+  | "adjustCdp"
+  | "closeCdp"
   | "redeemEBTC"
   | "depositEBTCInStabilityPool"
   | "withdrawEBTCFromStabilityPool"
@@ -71,9 +71,9 @@ export class Fixture {
     this.price = price;
 
     this.gasHistograms = {
-      openTrove: new GasHistogram(),
-      adjustTrove: new GasHistogram(),
-      closeTrove: new GasHistogram(),
+      openCdp: new GasHistogram(),
+      adjustCdp: new GasHistogram(),
+      closeCdp: new GasHistogram(),
       redeemEBTC: new GasHistogram(),
       depositEBTCInStabilityPool: new GasHistogram(),
       withdrawEBTCFromStabilityPool: new GasHistogram(),
@@ -110,7 +110,7 @@ export class Fixture {
     const ebtcBalance = await this.funderLiquity.getEBTCBalance();
 
     if (ebtcBalance.lt(amount)) {
-      const cdp = await this.funderLiquity.getTrove();
+      const cdp = await this.funderLiquity.getCdp();
       const total = await this.funderLiquity.getTotal();
       const fees = await this.funderLiquity.getFees();
 
@@ -119,33 +119,33 @@ export class Fixture {
           ? 1.51
           : Decimal.max(cdp.collateralRatio(this.price).add(0.00001), 1.11);
 
-      let newTrove = cdp.isEmpty ? Trove.create({ depositCollateral: 1, borrowEBTC: 0 }) : cdp;
-      newTrove = newTrove.adjust({ borrowEBTC: amount.sub(ebtcBalance).mul(2) });
+      let newCdp = cdp.isEmpty ? Cdp.create({ depositCollateral: 1, borrowEBTC: 0 }) : cdp;
+      newCdp = newCdp.adjust({ borrowEBTC: amount.sub(ebtcBalance).mul(2) });
 
-      if (newTrove.debt.lt(EBTC_MINIMUM_DEBT)) {
-        newTrove = newTrove.setDebt(EBTC_MINIMUM_DEBT);
+      if (newCdp.debt.lt(EBTC_MINIMUM_DEBT)) {
+        newCdp = newCdp.setDebt(EBTC_MINIMUM_DEBT);
       }
 
-      newTrove = newTrove.setCollateral(newTrove.debt.mulDiv(targetCollateralRatio, this.price));
+      newCdp = newCdp.setCollateral(newCdp.debt.mulDiv(targetCollateralRatio, this.price));
 
       if (cdp.isEmpty) {
-        const params = Trove.recreate(newTrove, fees.borrowingRate());
-        console.log(`[funder] openTrove(${objToString(params)})`);
-        await this.funderLiquity.openTrove(params);
+        const params = Cdp.recreate(newCdp, fees.borrowingRate());
+        console.log(`[funder] openCdp(${objToString(params)})`);
+        await this.funderLiquity.openCdp(params);
       } else {
-        let newTotal = total.add(newTrove).subtract(cdp);
+        let newTotal = total.add(newCdp).subtract(cdp);
 
         if (
           !total.collateralRatioIsBelowCritical(this.price) &&
           newTotal.collateralRatioIsBelowCritical(this.price)
         ) {
           newTotal = newTotal.setCollateral(newTotal.debt.mulDiv(1.51, this.price));
-          newTrove = cdp.add(newTotal).subtract(total);
+          newCdp = cdp.add(newTotal).subtract(total);
         }
 
-        const params = cdp.adjustTo(newTrove, fees.borrowingRate());
-        console.log(`[funder] adjustTrove(${objToString(params)})`);
-        await this.funderLiquity.adjustTrove(params);
+        const params = cdp.adjustTo(newCdp, fees.borrowingRate());
+        console.log(`[funder] adjustCdp(${objToString(params)})`);
+        await this.funderLiquity.adjustCdp(params);
       }
     }
 
@@ -160,98 +160,98 @@ export class Fixture {
     return this.price;
   }
 
-  async liquidateRandomNumberOfTroves(price: Decimal) {
+  async liquidateRandomNumberOfCdps(price: Decimal) {
     const ebtcInStabilityPoolBefore = await this.deployerLiquity.getEBTCInStabilityPool();
     console.log(`// Stability Pool balance: ${ebtcInStabilityPoolBefore}`);
 
-    const cdpsBefore = await getListOfTroves(this.deployerLiquity);
+    const cdpsBefore = await getListOfCdps(this.deployerLiquity);
 
     if (cdpsBefore.length === 0) {
-      console.log("// No Troves to liquidate");
+      console.log("// No Cdps to liquidate");
       return;
     }
 
     const cdpOwnersBefore = cdpsBefore.map(cdp => cdp.ownerAddress);
-    const lastTrove = cdpsBefore[cdpsBefore.length - 1];
+    const lastCdp = cdpsBefore[cdpsBefore.length - 1];
 
-    if (!lastTrove.collateralRatioIsBelowMinimum(price)) {
-      console.log("// No Troves to liquidate");
+    if (!lastCdp.collateralRatioIsBelowMinimum(price)) {
+      console.log("// No Cdps to liquidate");
       return;
     }
 
-    const maximumNumberOfTrovesToLiquidate = Math.floor(50 * Math.random()) + 1;
-    console.log(`[deployer] liquidateUpTo(${maximumNumberOfTrovesToLiquidate})`);
-    await this.deployerLiquity.liquidateUpTo(maximumNumberOfTrovesToLiquidate);
+    const maximumNumberOfCdpsToLiquidate = Math.floor(50 * Math.random()) + 1;
+    console.log(`[deployer] liquidateUpTo(${maximumNumberOfCdpsToLiquidate})`);
+    await this.deployerLiquity.liquidateUpTo(maximumNumberOfCdpsToLiquidate);
 
-    const cdpOwnersAfter = await getListOfTroveOwners(this.deployerLiquity);
-    const liquidatedTroves = listDifference(cdpOwnersBefore, cdpOwnersAfter);
+    const cdpOwnersAfter = await getListOfCdpOwners(this.deployerLiquity);
+    const liquidatedCdps = listDifference(cdpOwnersBefore, cdpOwnersAfter);
 
-    if (liquidatedTroves.length > 0) {
-      for (const liquidatedTrove of liquidatedTroves) {
-        console.log(`// Liquidated ${shortenAddress(liquidatedTrove)}`);
+    if (liquidatedCdps.length > 0) {
+      for (const liquidatedCdp of liquidatedCdps) {
+        console.log(`// Liquidated ${shortenAddress(liquidatedCdp)}`);
       }
     }
 
-    this.totalNumberOfLiquidations += liquidatedTroves.length;
+    this.totalNumberOfLiquidations += liquidatedCdps.length;
 
     const ebtcInStabilityPoolAfter = await this.deployerLiquity.getEBTCInStabilityPool();
     console.log(`// Stability Pool balance: ${ebtcInStabilityPoolAfter}`);
   }
 
-  async openRandomTrove(userAddress: string, liquity: Liquity) {
+  async openRandomCdp(userAddress: string, liquity: Liquity) {
     const total = await liquity.getTotal();
     const fees = await liquity.getFees();
 
-    let newTrove: Trove;
+    let newCdp: Cdp;
 
-    const cannotOpen = (newTrove: Trove) =>
-      newTrove.debt.lt(EBTC_MINIMUM_DEBT) ||
+    const cannotOpen = (newCdp: Cdp) =>
+      newCdp.debt.lt(EBTC_MINIMUM_DEBT) ||
       (total.collateralRatioIsBelowCritical(this.price)
-        ? !newTrove.isOpenableInRecoveryMode(this.price)
-        : newTrove.collateralRatioIsBelowMinimum(this.price) ||
-          total.add(newTrove).collateralRatioIsBelowCritical(this.price));
+        ? !newCdp.isOpenableInRecoveryMode(this.price)
+        : newCdp.collateralRatioIsBelowMinimum(this.price) ||
+          total.add(newCdp).collateralRatioIsBelowCritical(this.price));
 
     // do {
-    newTrove = createRandomTrove(this.price);
-    // } while (cannotOpen(newTrove));
+    newCdp = createRandomCdp(this.price);
+    // } while (cannotOpen(newCdp));
 
     await this.funder.sendTransaction({
       to: userAddress,
-      value: newTrove.collateral.hex
+      value: newCdp.collateral.hex
     });
 
-    const params = Trove.recreate(newTrove, fees.borrowingRate());
+    const params = Cdp.recreate(newCdp, fees.borrowingRate());
 
-    if (cannotOpen(newTrove)) {
+    if (cannotOpen(newCdp)) {
       console.log(
-        `// [${shortenAddress(userAddress)}] openTrove(${objToString(params)}) expected to fail`
+        `// [${shortenAddress(userAddress)}] openCdp(${objToString(params)}) expected to fail`
       );
 
-      await this.gasHistograms.openTrove.expectFailure(() =>
-        liquity.openTrove(params, undefined, { gasPrice: 0 })
+      await this.gasHistograms.openCdp.expectFailure(() =>
+        liquity.openCdp(params, undefined, { gasPrice: 0 })
       );
     } else {
-      console.log(`[${shortenAddress(userAddress)}] openTrove(${objToString(params)})`);
+      console.log(`[${shortenAddress(userAddress)}] openCdp(${objToString(params)})`);
 
-      await this.gasHistograms.openTrove.expectSuccess(() =>
-        liquity.send.openTrove(params, undefined, { gasPrice: 0 })
+      await this.gasHistograms.openCdp.expectSuccess(() =>
+        liquity.send.openCdp(params, undefined, { gasPrice: 0 })
       );
     }
   }
 
-  async randomlyAdjustTrove(userAddress: string, liquity: Liquity, cdp: Trove) {
+  async randomlyAdjustCdp(userAddress: string, liquity: Liquity, cdp: Cdp) {
     const total = await liquity.getTotal();
     const fees = await liquity.getFees();
     const x = Math.random();
 
-    const params: TroveAdjustmentParams<Decimal> =
+    const params: CdpAdjustmentParams<Decimal> =
       x < 0.333
         ? randomCollateralChange(cdp)
         : x < 0.666
         ? randomDebtChange(cdp)
         : { ...randomCollateralChange(cdp), ...randomDebtChange(cdp) };
 
-    const cannotAdjust = (cdp: Trove, params: TroveAdjustmentParams<Decimal>) => {
+    const cannotAdjust = (cdp: Cdp, params: CdpAdjustmentParams<Decimal>) => {
       if (
         params.withdrawCollateral?.gte(cdp.collateral) ||
         params.repayEBTC?.gt(cdp.debt.sub(EBTC_MINIMUM_DEBT))
@@ -283,36 +283,36 @@ export class Fixture {
 
     if (cannotAdjust(cdp, params)) {
       console.log(
-        `// [${shortenAddress(userAddress)}] adjustTrove(${objToString(params)}) expected to fail`
+        `// [${shortenAddress(userAddress)}] adjustCdp(${objToString(params)}) expected to fail`
       );
 
-      await this.gasHistograms.adjustTrove.expectFailure(() =>
-        liquity.adjustTrove(params, undefined, { gasPrice: 0 })
+      await this.gasHistograms.adjustCdp.expectFailure(() =>
+        liquity.adjustCdp(params, undefined, { gasPrice: 0 })
       );
     } else {
-      console.log(`[${shortenAddress(userAddress)}] adjustTrove(${objToString(params)})`);
+      console.log(`[${shortenAddress(userAddress)}] adjustCdp(${objToString(params)})`);
 
-      await this.gasHistograms.adjustTrove.expectSuccess(() =>
-        liquity.send.adjustTrove(params, undefined, { gasPrice: 0 })
+      await this.gasHistograms.adjustCdp.expectSuccess(() =>
+        liquity.send.adjustCdp(params, undefined, { gasPrice: 0 })
       );
     }
   }
 
-  async closeTrove(userAddress: string, liquity: Liquity, cdp: Trove) {
+  async closeCdp(userAddress: string, liquity: Liquity, cdp: Cdp) {
     const total = await liquity.getTotal();
 
     if (total.collateralRatioIsBelowCritical(this.price)) {
-      // Cannot close Trove during recovery mode
-      console.log("// Skipping closeTrove() in recovery mode");
+      // Cannot close Cdp during recovery mode
+      console.log("// Skipping closeCdp() in recovery mode");
       return;
     }
 
     await this.sendEBTCFromFunder(userAddress, cdp.netDebt);
 
-    console.log(`[${shortenAddress(userAddress)}] closeTrove()`);
+    console.log(`[${shortenAddress(userAddress)}] closeCdp()`);
 
-    await this.gasHistograms.closeTrove.expectSuccess(() =>
-      liquity.send.closeTrove({ gasPrice: 0 })
+    await this.gasHistograms.closeCdp.expectSuccess(() =>
+      liquity.send.closeCdp({ gasPrice: 0 })
     );
   }
 
@@ -361,7 +361,7 @@ export class Fixture {
     liquity: Liquity,
     deposit: StabilityDeposit
   ) {
-    const [lastTrove] = await liquity.getTroves({
+    const [lastCdp] = await liquity.getCdps({
       first: 1,
       sortedBy: "ascendingCollateralRatio"
     });
@@ -369,7 +369,7 @@ export class Fixture {
     const amount = deposit.currentEBTC.mul(1.1 * Math.random()).add(10 * Math.random());
 
     const cannotWithdraw = (amount: Decimal) =>
-      amount.nonZero && lastTrove.collateralRatioIsBelowMinimum(this.price);
+      amount.nonZero && lastCdp.collateralRatioIsBelowMinimum(this.price);
 
     if (cannotWithdraw(amount)) {
       console.log(

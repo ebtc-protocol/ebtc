@@ -4,7 +4,7 @@ const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
 
 const LQTYStakingTester = artifacts.require('LQTYStakingTester')
-const TroveManagerTester = artifacts.require("TroveManagerTester")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
 const NonPayable = artifacts.require("./NonPayable.sol")
 
 const th = testHelpers.TestHelper
@@ -21,7 +21,7 @@ const GAS_PRICE = 10000000
  * gains are non-zero, occur when they should, and are in correct proportion to the user's stake. 
  *
  * Specific ETH/EBTC gain values will depend on the final fee schedule used, and the final choices for
- * parameters BETA and MINUTE_DECAY_FACTOR in the TroveManager, which are still TBD based on economic
+ * parameters BETA and MINUTE_DECAY_FACTOR in the CdpManager, which are still TBD based on economic
  * modelling.
  * 
  */ 
@@ -34,7 +34,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
 
   let priceFeed
   let ebtcToken
-  let sortedTroves
+  let sortedCdps
   let cdpManager
   let activePool
   let stabilityPool
@@ -45,11 +45,11 @@ contract('LQTYStaking revenue share tests', async accounts => {
 
   let contracts
 
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await TroveManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new()
     contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     
@@ -60,7 +60,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     nonPayable = await NonPayable.new() 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
-    sortedTroves = contracts.sortedTroves
+    sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
@@ -87,10 +87,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("ETH fee per LQTY staked increases when a redemption fee is triggered and totalStakes > 0", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -129,11 +129,11 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("ETH fee per LQTY staked doesn't change when a redemption fee is triggered and totalStakes == 0", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -162,12 +162,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("EBTC fee per LQTY staked increases when a redemption fee is triggered and totalStakes > 0", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -195,7 +195,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawEBTC(_dTroveId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(tx))
@@ -211,12 +211,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("EBTC fee per LQTY staked doesn't change when a redemption fee is triggered and totalStakes == 0", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -240,7 +240,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawEBTC(_dTroveId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(tx))
@@ -252,13 +252,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("LQTY Staking: A single staker earns all ETH and LQTY fees that occur", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -293,14 +293,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedEBTCFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
@@ -327,13 +327,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("stake(): Top-up sends out all accumulated ETH and EBTC gains to the staker", async () => { 
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -368,14 +368,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedEBTCFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
@@ -401,11 +401,11 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("getPendingETHGain(): Returns the staker's correct pending ETH gain", async () => { 
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -447,13 +447,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
 
   it("getPendingEBTCGain(): Returns the staker's correct pending EBTC gain", async () => { 
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -488,14 +488,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedEBTCFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check EBTC fee value in event is non-zero
     const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
@@ -509,16 +509,16 @@ contract('LQTYStaking revenue share tests', async accounts => {
 
   // - multi depositors, several rewards
   it("LQTY Staking: Multiple stakers earn the correct share of all ETH and LQTY fees, based on their stake size", async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
-    let _fTroveId = await sortedTroves.cdpOfOwnerByIndex(F, 0);
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: G } })
-    let _gTroveId = await sortedTroves.cdpOfOwnerByIndex(G, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+    let _fCdpId = await sortedCdps.cdpOfOwnerByIndex(F, 0);
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: G } })
+    let _gCdpId = await sortedCdps.cdpOfOwnerByIndex(G, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -552,12 +552,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // F draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_fTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: F})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_fCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: F})
     const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedEBTCFee_1.gt(toBN('0')))
 
     // G draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_gTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_gCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
     const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
     assert.isTrue(emittedEBTCFee_2.gt(toBN('0')))
 
@@ -576,7 +576,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_3.gt(toBN('0')))
 
      // G draws debt
-    const borrowingTx_3 = await borrowerOperations.withdrawEBTC(_gTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
+    const borrowingTx_3 = await borrowerOperations.withdrawEBTC(_gCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
     const emittedEBTCFee_3 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_3))
     assert.isTrue(emittedEBTCFee_3.gt(toBN('0')))
      
@@ -678,11 +678,11 @@ contract('LQTYStaking revenue share tests', async accounts => {
   })
  
   it("unstake(): reverts if caller has ETH gains and can't receive ETH",  async () => {
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })  
-    await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-    await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-    await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })  
+    await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
+    await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
+    await openCdp({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -730,8 +730,8 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await assertRevert(unstakeTxPromise2)
   })
 
-  it('Test requireCallerIsTroveManager', async () => {
+  it('Test requireCallerIsCdpManager', async () => {
     const lqtyStakingTester = await LQTYStakingTester.new()
-    await assertRevert(lqtyStakingTester.requireCallerIsTroveManager(), 'LQTYStaking: caller is not TroveM')
+    await assertRevert(lqtyStakingTester.requireCallerIsCdpManager(), 'LQTYStaking: caller is not CdpM')
   })
 })

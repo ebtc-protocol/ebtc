@@ -1,10 +1,10 @@
 // Buidler-Truffle fixture for deployment to Buidler EVM
 
-const SortedTroves = artifacts.require("./SortedTroves.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const DefaultPool = artifacts.require("./DefaultPool.sol")
 const StabilityPool = artifacts.require("./StabilityPool.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
@@ -18,8 +18,8 @@ const connectContracts = deploymentHelpers.connectContracts
 module.exports = async () => {
   const borrowerOperations = await BorrowerOperations.new()
   const priceFeed = await PriceFeed.new()
-  const sortedTroves = await SortedTroves.new()
-  const cdpManager = await TroveManager.new()
+  const sortedCdps = await SortedCdps.new()
+  const cdpManager = await CdpManager.new()
   const activePool = await ActivePool.new()
   const stabilityPool = await StabilityPool.new()
   const defaultPool = await DefaultPool.new()
@@ -31,8 +31,8 @@ module.exports = async () => {
   )
   BorrowerOperations.setAsDeployed(borrowerOperations)
   PriceFeed.setAsDeployed(priceFeed)
-  SortedTroves.setAsDeployed(sortedTroves)
-  TroveManager.setAsDeployed(cdpManager)
+  SortedCdps.setAsDeployed(sortedCdps)
+  CdpManager.setAsDeployed(cdpManager)
   ActivePool.setAsDeployed(activePool)
   StabilityPool.setAsDeployed(stabilityPool)
   DefaultPool.setAsDeployed(defaultPool)
@@ -43,7 +43,7 @@ module.exports = async () => {
     borrowerOperations,
     priceFeed,
     ebtcToken,
-    sortedTroves,
+    sortedCdps,
     cdpManager,
     activePool,
     stabilityPool,
