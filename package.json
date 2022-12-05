@@ -11,7 +11,9 @@
       "**/jest*",
       "**/@babel/*",
       "**/babel*",
-      "**/react-scripts"
+      "**/react-scripts",
+      "**/contracts",
+      "**/contracts/**"
     ]
   },
   "release": {
