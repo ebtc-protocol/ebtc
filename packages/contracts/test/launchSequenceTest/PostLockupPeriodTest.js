@@ -16,7 +16,7 @@ contract('After the initial lockup period has passed', async accounts => {
     investor_3,
     A, B, C, D, E, F, G, H, I, J, K] = accounts;
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   const SECONDS_IN_ONE_DAY = timeValues.SECONDS_IN_ONE_DAY
   const SECONDS_IN_ONE_MONTH = timeValues.SECONDS_IN_ONE_MONTH

@@ -62,7 +62,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         lqtyStaking = lqtyStakingCached;
     }
 
-    function claimCollateralAndOpenTrove(uint _maxFee, uint _LUSDAmount, address _upperHint, address _lowerHint) external payable {
+    function claimCollateralAndOpenTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
         uint balanceBefore = address(this).balance;
 
         // Claim collateral
@@ -79,7 +79,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         borrowerOperations.openTrove{ value: totalCollateral }(_maxFee, _LUSDAmount, _upperHint, _lowerHint);
     }
 
-    function claimSPRewardsAndRecycle(uint _maxFee, address _upperHint, address _lowerHint) external {
+    function claimSPRewardsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
         uint collBalanceBefore = address(this).balance;
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
 
@@ -92,9 +92,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         // Add claimed ETH to trove, get more LUSD and stake it into the Stability Pool
         if (claimedCollateral > 0) {
-            _requireUserHasTrove(address(this));
-            uint LUSDAmount = _getNetLUSDAmount(claimedCollateral);
-            borrowerOperations.adjustTrove{ value: claimedCollateral }(_maxFee, 0, LUSDAmount, true, _upperHint, _lowerHint);
+            _requireUserHasTrove(_troveId);
+            uint LUSDAmount = _getNetLUSDAmount(_troveId, claimedCollateral);
+            borrowerOperations.adjustTrove{ value: claimedCollateral }(_troveId, _maxFee, 0, LUSDAmount, true, _upperHint, _lowerHint);
             // Provide withdrawn LUSD to Stability Pool
             if (LUSDAmount > 0) {
                 stabilityPool.provideToSP(LUSDAmount, address(0));
@@ -108,7 +108,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         }
     }
 
-    function claimStakingGainsAndRecycle(uint _maxFee, address _upperHint, address _lowerHint) external {
+    function claimStakingGainsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
         uint collBalanceBefore = address(this).balance;
         uint lusdBalanceBefore = lusdToken.balanceOf(address(this));
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
@@ -122,9 +122,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint netLUSDAmount;
         // Top up trove and get more LUSD, keeping ICR constant
         if (gainedCollateral > 0) {
-            _requireUserHasTrove(address(this));
-            netLUSDAmount = _getNetLUSDAmount(gainedCollateral);
-            borrowerOperations.adjustTrove{ value: gainedCollateral }(_maxFee, 0, netLUSDAmount, true, _upperHint, _lowerHint);
+            _requireUserHasTrove(_troveId);
+            netLUSDAmount = _getNetLUSDAmount(_troveId, gainedCollateral);
+            borrowerOperations.adjustTrove{ value: gainedCollateral }(_troveId, _maxFee, 0, netLUSDAmount, true, _upperHint, _lowerHint);
         }
 
         uint totalLUSD = gainedLUSD.add(netLUSDAmount);
@@ -141,9 +141,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     }
 
-    function _getNetLUSDAmount(uint _collateral) internal returns (uint) {
+    function _getNetLUSDAmount(bytes32 _troveId, uint _collateral) internal returns (uint) {
         uint price = priceFeed.fetchPrice();
-        uint ICR = troveManager.getCurrentICR(address(this), price);
+        uint ICR = troveManager.getCurrentICR(_troveId, price);
 
         uint LUSDAmount = _collateral.mul(price).div(ICR);
         uint borrowingRate = troveManager.getBorrowingRateWithDecay();
@@ -152,7 +152,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         return netDebt;
     }
 
-    function _requireUserHasTrove(address _depositor) internal view {
-        require(troveManager.getTroveStatus(_depositor) == 1, "BorrowerWrappersScript: caller must have an active trove");
+    function _requireUserHasTrove(bytes32 _troveId) internal view {
+        require(troveManager.getTroveStatus(_troveId) == 1, "BorrowerWrappersScript: caller must have an active trove");
     }
 }

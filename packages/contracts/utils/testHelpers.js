@@ -170,8 +170,8 @@ class TestHelper {
     return ICR
   }
 
-  static async ICRbetween100and110(account, troveManager, price) {
-    const ICR = await troveManager.getCurrentICR(account, price)
+  static async ICRbetween100and110(troveId, troveManager, price) {
+    const ICR = await troveManager.getCurrentICR(troveId, price)
     return (ICR.gt(MoneyValues._ICR100)) && (ICR.lt(MoneyValues._MCR))
   }
 
@@ -463,18 +463,15 @@ class TestHelper {
 
   static getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, address) {
     const event = troveUpdatedEvents.filter(event => event.args[0] === address)[0]
-    return [event.args[1], event.args[2]]
+    return [event.args[2], event.args[3]]
   }
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
     const newNICR = await contracts.hintHelpers.computeNominalCR(newColl, newDebt)
-    const {
-      hintAddress: approxfullListHint,
-      latestRandomSeed
-    } = await contracts.hintHelpers.getApproxHint(newNICR, 5, this.latestRandomSeed)
-    this.latestRandomSeed = latestRandomSeed
+    let _approxHints = await contracts.hintHelpers.getApproxHint(newNICR, 5, this.latestRandomSeed)
+    this.latestRandomSeed = _approxHints[2];
 
-    const {0: upperHint, 1: lowerHint} = await contracts.sortedTroves.findInsertPosition(newNICR, approxfullListHint, approxfullListHint)
+    const {0: upperHint, 1: lowerHint} = await contracts.sortedTroves.findInsertPosition(newNICR, _approxHints[0], _approxHints[0])
     return {upperHint, lowerHint}
   }
 
@@ -673,8 +670,8 @@ class TestHelper {
     if (!maxFeePercentage) maxFeePercentage = this._100pct
     if (!extraLUSDAmount) extraLUSDAmount = this.toBN(0)
     else if (typeof extraLUSDAmount == 'string') extraLUSDAmount = this.toBN(extraLUSDAmount)
-    if (!upperHint) upperHint = this.ZERO_ADDRESS
-    if (!lowerHint) lowerHint = this.ZERO_ADDRESS
+    if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
+    if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
 
     const MIN_DEBT = (
       await this.getNetBorrowingAmount(contracts, await contracts.borrowerOperations.MIN_NET_DEBT())
@@ -705,6 +702,7 @@ class TestHelper {
   }
 
   static async withdrawLUSD(contracts, {
+    _troveId,
     maxFeePercentage,
     lusdAmount,
     ICR,
@@ -713,15 +711,15 @@ class TestHelper {
     extraParams
   }) {
     if (!maxFeePercentage) maxFeePercentage = this._100pct
-    if (!upperHint) upperHint = this.ZERO_ADDRESS
-    if (!lowerHint) lowerHint = this.ZERO_ADDRESS
+    if (!upperHint) upperHint = this.DUMMY_BYTES32
+    if (!lowerHint) lowerHint = this.DUMMY_BYTES32
 
     assert(!(lusdAmount && ICR) && (lusdAmount || ICR), "Specify either lusd amount or target ICR, but not both")
 
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.troveManager.getEntireDebtAndColl(extraParams.from)
+      const { debt, coll } = await contracts.troveManager.getEntireDebtAndColl(_troveId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")
@@ -731,7 +729,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, lusdAmount)
     }
 
-    await contracts.borrowerOperations.withdrawLUSD(maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawLUSD(_troveId, maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
 
     return {
       lusdAmount,
@@ -950,7 +948,7 @@ class TestHelper {
   static async redeemCollateralAndGetTxObject(redeemer, contracts, LUSDAmount, gasPrice, maxFee = this._100pct) {
     // console.log("GAS PRICE:  " + gasPrice)
     if (gasPrice == undefined){
-      gasPrice = 0;
+      gasPrice = 10000000000;//10 GWEI
     }
     const price = await contracts.priceFeedTestnet.getPrice()
     const tx = await this.performRedemptionTx(redeemer, price, contracts, LUSDAmount, maxFee, gasPrice)
@@ -976,17 +974,16 @@ class TestHelper {
 
     const firstRedemptionHint = redemptionhint[0]
     const partialRedemptionNewICR = redemptionhint[1]
-
-    const {
-      hintAddress: approxPartialRedemptionHint,
-      latestRandomSeed
-    } = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, 50, this.latestRandomSeed)
-    this.latestRandomSeed = latestRandomSeed
-
+	
+    let _approxHints = await contracts.hintHelpers.getApproxHint(partialRedemptionNewICR, 50, this.latestRandomSeed);
+    let approxPartialRedemptionHint = _approxHints[0];
+    this.latestRandomSeed = _approxHints[2];
+	
     const exactPartialRedemptionHint = (await contracts.sortedTroves.findInsertPosition(partialRedemptionNewICR,
       approxPartialRedemptionHint,
       approxPartialRedemptionHint))
 
+    //console.log('gasPrice_toUse=' + gasPrice_toUse + ',LUSDAmount=' + LUSDAmount + ',firstHint=' + firstRedemptionHint + ',lHint=' + exactPartialRedemptionHint[0] + ',hHint=' + exactPartialRedemptionHint[1] + ',partialRedemptionNewICR=' + partialRedemptionNewICR);
     const tx = await contracts.troveManager.redeemCollateral(LUSDAmount,
       firstRedemptionHint,
       exactPartialRedemptionHint[0],
@@ -995,6 +992,8 @@ class TestHelper {
       0, maxFee,
       { from: redeemer, gasPrice: gasPrice_toUse},
     )
+	
+    //for (let i = 0; i < tx.logs.length; i++) { if (tx.logs[i].event === "Redemption") { console.log(tx.logs[i]); } }
 
     return tx
   }
@@ -1214,6 +1213,8 @@ TestHelper.ZERO_ADDRESS = '0x' + '0'.repeat(40)
 TestHelper.maxBytes32 = '0x' + 'f'.repeat(64)
 TestHelper._100pct = '1000000000000000000'
 TestHelper.latestRandomSeed = 31337
+TestHelper.DUMMY_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000'
+TestHelper.RANDOM_INDEX = "0xb26afa65c1c675627f1764dfb025aa01be04832ebe5e3780290c443ac01c3279";
 
 module.exports = {
   TestHelper,

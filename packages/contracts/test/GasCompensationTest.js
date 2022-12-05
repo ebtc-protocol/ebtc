@@ -12,13 +12,17 @@ const ZERO_ADDRESS = th.ZERO_ADDRESS
 
 const GAS_PRICE = 10000000
 
+const hre = require("hardhat");
+
 contract('Gas compensation tests', async accounts => {
   const [
     owner, liquidator,
     alice, bob, carol, dennis, erin, flyn, graham, harriet, ida,
     defaulter_1, defaulter_2, defaulter_3, defaulter_4, whale] = accounts;
 
-    const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+    const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
+    const bn8 = "0x00000000219ab540356cBB839Cbe05303d7705Fa";//beacon deposit
+    let bn8Signer;
 
   let priceFeed
   let lusdToken
@@ -48,6 +52,9 @@ contract('Gas compensation tests', async accounts => {
 
     TroveManagerTester.setAsDeployed(troveManagerTester)
     BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
+	
+    await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
+    bn8Signer = await ethers.provider.getSigner(bn8);
   })
 
   beforeEach(async () => {
@@ -72,6 +79,24 @@ contract('Gas compensation tests', async accounts => {
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
+
+    ownerSigner = await ethers.provider.getSigner(owner);
+    let _ownerBal = await web3.eth.getBalance(owner);
+    let _bn8Bal = await web3.eth.getBalance(bn8);
+    let _ownerRicher = toBN(_ownerBal.toString()).gt(toBN(_bn8Bal.toString()));
+    let _signer = _ownerRicher? ownerSigner : bn8Signer;
+	
+    await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("14000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("12000")});
+    await _signer.sendTransaction({ to: erin, value: ethers.utils.parseEther("12000")});
+    
+    const signer_address = await _signer.getAddress()
+    const b8nSigner_address = await bn8Signer.getAddress()
+
+    // Ensure bn8Signer has funds if it doesn't in this fork state
+    if (signer_address != b8nSigner_address) {
+      await _signer.sendTransaction({ to: b8nSigner_address, value: ethers.utils.parseEther("2000000")});
+    }
   })
 
   // --- Raw gas compensation calculations ---
@@ -300,43 +325,50 @@ contract('Gas compensation tests', async accounts => {
 
     // A opens with 1 ETH, 110 LUSD
     await openTrove({ ICR: toBN('1818181818181818181'), extraParams: { from: alice } })
-    const alice_ICR = (await troveManager.getCurrentICR(alice, price)).toString()
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    const alice_ICR = (await troveManager.getCurrentICR(_aliceTroveId, price)).toString()
     // Expect aliceICR = (1 * 200) / (110) = 181.81%
     assert.isAtMost(th.getDifference(alice_ICR, '1818181818181818181'), 1000)
 
     // B opens with 0.5 ETH, 50 LUSD
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-    const bob_ICR = (await troveManager.getCurrentICR(bob, price)).toString()
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    const bob_ICR = (await troveManager.getCurrentICR(_bobTroveId, price)).toString()
     // Expect Bob's ICR = (0.5 * 200) / 50 = 200%
     assert.isAtMost(th.getDifference(bob_ICR, dec(2, 18)), 1000)
 
     // F opens with 1 ETH, 100 LUSD
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(100, 18), extraParams: { from: flyn } })
-    const flyn_ICR = (await troveManager.getCurrentICR(flyn, price)).toString()
+    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
+    const flyn_ICR = (await troveManager.getCurrentICR(_flynTroveId, price)).toString()
     // Expect Flyn's ICR = (1 * 200) / 100 = 200%
     assert.isAtMost(th.getDifference(flyn_ICR, dec(2, 18)), 1000)
 
     // C opens with 2.5 ETH, 160 LUSD
     await openTrove({ ICR: toBN(dec(3125, 15)), extraParams: { from: carol } })
-    const carol_ICR = (await troveManager.getCurrentICR(carol, price)).toString()
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    const carol_ICR = (await troveManager.getCurrentICR(_carolTroveId, price)).toString()
     // Expect Carol's ICR = (2.5 * 200) / (160) = 312.50%
     assert.isAtMost(th.getDifference(carol_ICR, '3125000000000000000'), 1000)
 
     // D opens with 1 ETH, 0 LUSD
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: dennis } })
-    const dennis_ICR = (await troveManager.getCurrentICR(dennis, price)).toString()
+    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    const dennis_ICR = (await troveManager.getCurrentICR(_dennisTroveId, price)).toString()
     // Expect Dennis's ICR = (1 * 200) / (50) = 400.00%
     assert.isAtMost(th.getDifference(dennis_ICR, dec(4, 18)), 1000)
 
     // E opens with 4405.45 ETH, 32598.35 LUSD
     await openTrove({ ICR: toBN('27028668628933700000'), extraParams: { from: erin } })
-    const erin_ICR = (await troveManager.getCurrentICR(erin, price)).toString()
+    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    const erin_ICR = (await troveManager.getCurrentICR(_erinTroveId, price)).toString()
     // Expect Erin's ICR = (4405.45 * 200) / (32598.35) = 2702.87%
     assert.isAtMost(th.getDifference(erin_ICR, '27028668628933700000'), 100000)
 
     // H opens with 1 ETH, 180 LUSD
     await openTrove({ ICR: toBN('1111111111111111111'), extraParams: { from: harriet } })
-    const harriet_ICR = (await troveManager.getCurrentICR(harriet, price)).toString()
+    let _harrietTroveId = await sortedTroves.troveOfOwnerByIndex(harriet, 0);
+    const harriet_ICR = (await troveManager.getCurrentICR(_harrietTroveId, price)).toString()
     // Expect Harriet's ICR = (1 * 200) / (180) = 111.11%
     assert.isAtMost(th.getDifference(harriet_ICR, '1111111111111111111'), 1000)
   })
@@ -348,8 +380,14 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(100, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+	
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(200, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+	
     const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(300, 18), extraParams: { from: carol } })
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+	
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: A_totalDebt, extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: B_totalDebt.add(C_totalDebt), extraParams: { from: erin } })
 
@@ -368,15 +406,16 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const A_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE }))
+    let _liqAliceTx = await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE });
+    const A_GAS_Used_Liquidator = th.gasUsed(_liqAliceTx)
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-
+	
     // Check liquidator's balance increases by 0.5% of A's coll (1 ETH)
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A).add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))).toString()
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -399,12 +438,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const bobColl = (await troveManager.Troves(bob))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by B's 0.5% of coll, 2 ETH
@@ -431,12 +470,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const carolColl = (await troveManager.Troves(carol))[1]
+    const carolColl = (await troveManager.Troves(_carolTroveId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const C_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(carol, { from: liquidator, gasPrice: GAS_PRICE }))
+    const C_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_carolTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by C's 0.5% of coll, 3 ETH
@@ -459,7 +498,9 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(200, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(120, 16)), extraLUSDAmount: dec(5000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(60, 18)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(80, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(80, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
@@ -484,16 +525,16 @@ contract('Gas compensation tests', async accounts => {
     and (1 - 0.05000025000125001) = 0.94999974999875 ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await troveManager.getCurrentICR(alice, price_1)
+    const aliceICR = await troveManager.getCurrentICR(_aliceTroveId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const A_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE }))
+    const A_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -526,16 +567,16 @@ contract('Gas compensation tests', async accounts => {
     and (15 - 0.666666666666666666) ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const bobColl = (await troveManager.Troves(bob))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await troveManager.getCurrentICR(bob, price_2)
+    const bobICR = await troveManager.getCurrentICR(_bobTroveId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by $10 worth of coll
@@ -563,7 +604,9 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice,} })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(1875, 15)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob,} })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol} })
     await openTrove({ ICR: toBN(dec(4, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis} })
     await openTrove({ ICR: toBN(dec(4, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin} })
@@ -587,17 +630,17 @@ contract('Gas compensation tests', async accounts => {
     and (10.001 - 0.050005) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await troveManager.getCurrentICR(alice, price_1)
+    const aliceICR = await troveManager.getCurrentICR(_aliceTroveId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const A_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE }))
+    const A_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -626,17 +669,17 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await troveManager.Troves(bob))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await troveManager.getCurrentICR(bob, price_1)
+    const bobICR = await troveManager.getCurrentICR(_bobTroveId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
-    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE }))
+    const B_GAS_Used_Liquidator = th.gasUsed(await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
@@ -664,7 +707,9 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(100, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(200, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(300, 18), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: A_totalDebt, extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: B_totalDebt, extraParams: { from: erin } })
@@ -685,14 +730,14 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const aliceDebt = (await troveManager.Troves(alice))[0]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const aliceDebt = (await troveManager.Troves(_aliceTroveId))[0]
 
     // th.logBN('TCR', await troveManager.getTCR(await priceFeed.getPrice()))
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_A = aliceColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
@@ -713,12 +758,12 @@ contract('Gas compensation tests', async accounts => {
     -> Expect 0.5% of collaterall to be sent to liquidator, as gas compensation */
 
     // Check collateral value in USD is < $10
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const bobDebt = (await troveManager.Troves(bob))[0]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const bobDebt = (await troveManager.Troves(_bobTroveId))[0]
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxB = await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_B = bobColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
@@ -738,7 +783,9 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(200, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(120, 16)), extraLUSDAmount: dec(5000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(60, 18)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(80, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(80, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
@@ -763,8 +810,8 @@ contract('Gas compensation tests', async accounts => {
     and (1 - 0.05000025000125001) = 0.94999974999875 ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const aliceDebt = (await troveManager.Troves(alice))[0]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const aliceDebt = (await troveManager.Troves(_aliceTroveId))[0]
     const aliceCollValueInUSD = (await borrowerOperationsTester.getUSDValue(aliceColl, price_1))
     assert.isTrue(aliceCollValueInUSD.gt(th.toBN(dec(10, 18))))
 
@@ -773,11 +820,11 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await troveManager.getCurrentICR(alice, price_1)
+    const aliceICR = await troveManager.getCurrentICR(_aliceTroveId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
@@ -802,17 +849,17 @@ contract('Gas compensation tests', async accounts => {
     and (15 - 0.666666666666666666) ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const bobDebt = (await troveManager.Troves(bob))[0]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const bobDebt = (await troveManager.Troves(_bobTroveId))[0]
 
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await troveManager.getCurrentICR(bob, price_2)
+    const bobICR = await troveManager.getCurrentICR(_bobTroveId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives
-    const liquidationTxB = await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const expectedGasComp_B = _0pt5percent_bobColl
@@ -834,7 +881,9 @@ contract('Gas compensation tests', async accounts => {
 
     // A-E open troves
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(1875, 15)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(2, 18)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(4, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(4, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
@@ -850,17 +899,17 @@ contract('Gas compensation tests', async accounts => {
     const price_1 = await priceFeed.getPrice()
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const aliceDebt = (await troveManager.Troves(alice))[0]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const aliceDebt = (await troveManager.Troves(_aliceTroveId))[0]
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await troveManager.getCurrentICR(alice, price_1)
+    const aliceICR = await troveManager.getCurrentICR(_aliceTroveId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxA = await troveManager.liquidate(alice, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxA = await troveManager.liquidate(_aliceTroveId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(_0pt5percent_aliceColl)
@@ -882,17 +931,17 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const bobDebt = (await troveManager.Troves(bob))[0]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const bobDebt = (await troveManager.Troves(_bobTroveId))[0]
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await troveManager.getCurrentICR(bob, price_1)
+    const bobICR = await troveManager.getCurrentICR(_bobTroveId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
-    const liquidationTxB = await troveManager.liquidate(bob, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxB = await troveManager.liquidate(_bobTroveId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_B = _0pt5percent_bobColl
     const expectedLiquidatedColl_B = bobColl.sub(_0pt5percent_bobColl)
@@ -914,11 +963,17 @@ contract('Gas compensation tests', async accounts => {
 
     // A-F open troves
     await openTrove({ ICR: toBN(dec(118, 16)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(526, 16)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(488, 16)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
     await openTrove({ ICR: toBN(dec(545, 16)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
+    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: flyn } })
+    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
 
     // D, E each provide 10000 LUSD to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
@@ -934,21 +989,21 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await troveManager.getCurrentICR(alice, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(bob, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(carol, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(dennis, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await troveManager.getCurrentICR(erin, price)).gt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(flyn, price)).gt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_flynTroveId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const carolColl = (await troveManager.Troves(carol))[1]
-    const dennisColl = (await troveManager.Troves(dennis))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const carolColl = (await troveManager.Troves(_carolTroveId))[1]
+    const dennisColl = (await troveManager.Troves(_dennisTroveId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1002,9 +1057,13 @@ contract('Gas compensation tests', async accounts => {
 
     // A-D open troves
     await openTrove({ ICR: toBN(dec(118, 16)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(526, 16)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(488, 16)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
     await openTrove({ ICR: toBN(dec(545, 16)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
 
     const LUSDinDefaultPool_0 = await defaultPool.getLUSDDebt()
 
@@ -1016,16 +1075,16 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await troveManager.getCurrentICR(alice, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(bob, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(carol, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(dennis, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const carolColl = (await troveManager.Troves(carol))[1]
-    const dennisColl = (await troveManager.Troves(dennis))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const carolColl = (await troveManager.Troves(_carolTroveId))[1]
+    const dennisColl = (await troveManager.Troves(_dennisTroveId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1079,11 +1138,17 @@ contract('Gas compensation tests', async accounts => {
 
     // A-F open troves
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(118, 16)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(526, 16)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(488, 16)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
     const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(545, 16)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
+    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: flyn } })
+    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
 
     // D, E each provide 10000 LUSD to SP
     await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
@@ -1099,21 +1164,21 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await troveManager.getCurrentICR(alice, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(bob, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(carol, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(dennis, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await troveManager.getCurrentICR(erin, price)).gt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(flyn, price)).gt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_flynTroveId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const carolColl = (await troveManager.Troves(carol))[1]
-    const dennisColl = (await troveManager.Troves(dennis))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const carolColl = (await troveManager.Troves(_carolTroveId))[1]
+    const dennisColl = (await troveManager.Troves(_dennisTroveId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1161,9 +1226,13 @@ contract('Gas compensation tests', async accounts => {
 
     // A-F open troves
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(118, 16)), extraLUSDAmount: dec(2000, 18), extraParams: { from: alice } })
+    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(526, 16)), extraLUSDAmount: dec(8000, 18), extraParams: { from: bob } })
+    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(488, 16)), extraLUSDAmount: dec(600, 18), extraParams: { from: carol } })
+    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
     const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(545, 16)), extraLUSDAmount: dec(1, 23), extraParams: { from: dennis } })
+    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: erin } })
     await openTrove({ ICR: toBN(dec(10, 18)), extraLUSDAmount: dec(1, 23), extraParams: { from: flyn } })
 
@@ -1177,15 +1246,15 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await troveManager.getCurrentICR(alice, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(bob, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(carol, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(dennis, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
 
-    const aliceColl = (await troveManager.Troves(alice))[1]
-    const bobColl = (await troveManager.Troves(bob))[1]
-    const carolColl = (await troveManager.Troves(carol))[1]
-    const dennisColl = (await troveManager.Troves(dennis))[1]
+    const aliceColl = (await troveManager.Troves(_aliceTroveId))[1]
+    const bobColl = (await troveManager.Troves(_bobTroveId))[1]
+    const carolColl = (await troveManager.Troves(_carolTroveId))[1]
+    const dennisColl = (await troveManager.Troves(_dennisTroveId))[1]
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1227,6 +1296,7 @@ contract('Gas compensation tests', async accounts => {
 
   it('Trove ordering: same collateral, decreasing debt. Price successively increases. Troves should maintain ordering by ICR', async () => {
     const _10_accounts = accounts.slice(1, 11)
+    let _account_troves = {};
 
     let debt = 50
     // create 10 troves, constant coll, descending debt 100 to 90 LUSD
@@ -1234,6 +1304,7 @@ contract('Gas compensation tests', async accounts => {
 
       const debtString = debt.toString().concat('000000000000000000')
       await openTrove({ extraLUSDAmount: debtString, extraParams: { from: account, value: dec(30, 'ether') } })
+      _account_troves[account] = await sortedTroves.troveOfOwnerByIndex(account, 0);
 
       const squeezedTroveAddr = th.squeezeAddr(account)
 
@@ -1241,7 +1312,7 @@ contract('Gas compensation tests', async accounts => {
     }
 
     const initialPrice = await priceFeed.getPrice()
-    const firstColl = (await troveManager.Troves(_10_accounts[0]))[1]
+    const firstColl = (await troveManager.Troves(_account_troves[_10_accounts[0]]))[1]
 
     // Vary price 200-210
     let price = 200
@@ -1251,17 +1322,17 @@ contract('Gas compensation tests', async accounts => {
       await priceFeed.setPrice(priceString)
 
       const ICRList = []
-      const coll_firstTrove = (await troveManager.Troves(_10_accounts[0]))[1]
+      const coll_firstTrove = (await troveManager.Troves(_account_troves[_10_accounts[0]]))[1]
       const gasComp_firstTrove = (await troveManagerTester.getCollGasCompensation(coll_firstTrove)).toString()
 
       for (account of _10_accounts) {
         // Check gas compensation is the same for all troves
-        const coll = (await troveManager.Troves(account))[1]
+        const coll = (await troveManager.Troves(_account_troves[account]))[1]
         const gasCompensation = (await troveManagerTester.getCollGasCompensation(coll)).toString()
 
         assert.equal(gasCompensation, gasComp_firstTrove)
 
-        const ICR = await troveManager.getCurrentICR(account, price)
+        const ICR = await troveManager.getCurrentICR(_account_troves[account], price)
         ICRList.push(ICR)
 
 
@@ -1284,6 +1355,7 @@ contract('Gas compensation tests', async accounts => {
 
   it('Trove ordering: increasing collateral, constant debt. Price successively increases. Troves should maintain ordering by ICR', async () => {
     const _20_accounts = accounts.slice(1, 21)
+    let _account_troves = {};
 
     let coll = 50
     // create 20 troves, increasing collateral, constant debt = 100LUSD
@@ -1291,6 +1363,7 @@ contract('Gas compensation tests', async accounts => {
 
       const collString = coll.toString().concat('000000000000000000')
       await openTrove({ extraLUSDAmount: dec(100, 18), extraParams: { from: account, value: collString } })
+      _account_troves[account] = await sortedTroves.troveOfOwnerByIndex(account, 0);
 
       coll += 5
     }
@@ -1307,7 +1380,7 @@ contract('Gas compensation tests', async accounts => {
       const ICRList = []
 
       for (account of _20_accounts) {
-        const ICR = await troveManager.getCurrentICR(account, price)
+        const ICR = await troveManager.getCurrentICR(_account_troves[account], price)
         ICRList.push(ICR)
 
         // Check trove ordering by ICR is maintained
@@ -1328,17 +1401,25 @@ contract('Gas compensation tests', async accounts => {
   })
 
   it('Trove ordering: Constant raw collateral ratio (excluding virtual debt). Price successively increases. Troves should maintain ordering by ICR', async () => {
-    let collVals = [1, 5, 10, 25, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000].map(v => v * 20)
+    let collVals = [1, 5, 10, 25, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000].map(v => v * 20)
     const accountsList = accounts.slice(1, collVals.length + 1)
 
     let accountIdx = 0
+    let _account_troves = {};
     for (const coll of collVals) {
 
       const debt = coll * 110
 
       const account = accountsList[accountIdx]
+
+      let _ownerBal = await web3.eth.getBalance(account);
+
       const collString = coll.toString().concat('000000000000000000')
-      await openTrove({ extraLUSDAmount: dec(100, 18), extraParams: { from: account, value: collString } })
+      let _debtAmt = dec(100, 18);
+      console.log('accountIdx=' + accountIdx + ',_debtAmt=' + _debtAmt + ',collString=' + collString);
+      await bn8Signer.sendTransaction({ to: account, value: ethers.utils.parseUnits(collString, 0)});// sugardaddy the collateral Ether
+      await openTrove({ extraLUSDAmount: _debtAmt, extraParams: { from: account, value: collString } })
+      _account_troves[account] = await sortedTroves.troveOfOwnerByIndex(account, 0);
 
       accountIdx += 1
     }
@@ -1355,7 +1436,7 @@ contract('Gas compensation tests', async accounts => {
       const ICRList = []
 
       for (account of accountsList) {
-        const ICR = await troveManager.getCurrentICR(account, price)
+        const ICR = await troveManager.getCurrentICR(_account_troves[account], price)
         ICRList.push(ICR)
 
         // Check trove ordering by ICR is maintained

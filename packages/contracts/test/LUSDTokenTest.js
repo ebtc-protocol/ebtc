@@ -6,9 +6,11 @@ const { defaultAbiCoder } = require('@ethersproject/abi');
 const { toUtf8Bytes } = require('@ethersproject/strings');
 const { pack } = require('@ethersproject/solidity');
 const { hexlify } = require("@ethersproject/bytes");
-const { ecsign } = require('ethereumjs-util');
+const { ecsign, ecrecover, privateToPublic, pubToAddress } = require('ethereumjs-util');
 
 const { toBN, assertRevert, assertAssert, dec, ZERO_ADDRESS } = testHelpers.TestHelper
+
+const hre = require("hardhat");
 
 const sign = (digest, privateKey) => {
   return ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(privateKey.slice(2), 'hex'))
@@ -46,12 +48,16 @@ const getPermitDigest = ( name, address, chainId, version,
 
 contract('LUSDToken', async accounts => {
   const [owner, alice, bob, carol, dennis] = accounts;
+  
+  const hhAccounts = hre.config.networks.hardhat.accounts;
+  const walletA = ethers.Wallet.fromMnemonic(hhAccounts.mnemonic, hhAccounts.path + `/1`);// the 1st-indexed address in accounts
+  console.log('A=' + walletA.address + ':' + walletA.privateKey);
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   // the second account our hardhatenv creates (for Alice)
   // from https://github.com/liquity/dev/blob/main/packages/contracts/hardhatAccountsList2k.js#L3
-  const alicePrivateKey = '0xeaa445c85f7b438dEd6e831d06a4eD0CEBDc2f8527f84Fcda6EBB5fCfAd4C0e9'
+  const alicePrivateKey = walletA.privateKey
 
   let chainId
   let lusdTokenOriginal
