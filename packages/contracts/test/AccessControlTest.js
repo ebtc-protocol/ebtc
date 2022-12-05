@@ -17,7 +17,7 @@ test/launchSequenceTest/DuringLockupPeriodTest.js */
 contract('Access Control: Liquity functions with the caller restricted to Liquity contract(s)', async accounts => {
 
   const [owner, alice, bob, carol] = accounts;
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   let coreContracts
 
@@ -151,7 +151,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("addTroveOwnerToArray(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.addTroveOwnerToArray(bob, { from: alice })
+        const txAlice = await troveManager.addTroveIdToArray(th.DUMMY_BYTES32, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")

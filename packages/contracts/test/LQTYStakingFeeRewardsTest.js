@@ -28,7 +28,7 @@ const GAS_PRICE = 10000000
 
 contract('LQTYStaking revenue share tests', async accounts => {
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
   
   const [owner, A, B, C, D, E, F, G, whale] = accounts;
 
@@ -167,6 +167,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -194,7 +195,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawLUSD(th._100pct, dec(27, 18), D, D, {from: D})
+    const tx = await borrowerOperations.withdrawLUSD(_dTroveId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(tx))
@@ -215,6 +216,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -238,7 +240,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawLUSD(th._100pct, dec(27, 18), D, D, {from: D})
+    const tx = await borrowerOperations.withdrawLUSD(_dTroveId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(tx))
@@ -253,8 +255,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -289,14 +293,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(th._100pct, dec(104, 18), D, D, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_1 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedLUSDFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(th._100pct, dec(17, 18), B, B, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_2 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_2))
@@ -326,8 +330,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -362,14 +368,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(th._100pct, dec(104, 18), D, D, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_1 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedLUSDFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(th._100pct, dec(17, 18), B, B, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_2 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_2))
@@ -444,8 +450,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
+    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
+    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -480,14 +488,14 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(th._100pct, dec(104, 18), D, D, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(_dTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_1 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedLUSDFee_1.gt(toBN('0')))
 
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(th._100pct, dec(17, 18), B, B, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(_bTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
     // Check LUSD fee value in event is non-zero
     const emittedLUSDFee_2 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_2))
@@ -508,7 +516,9 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
     await openTrove({ extraLUSDAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
+    let _fTroveId = await sortedTroves.troveOfOwnerByIndex(F, 0);
     await openTrove({ extraLUSDAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: G } })
+    let _gTroveId = await sortedTroves.troveOfOwnerByIndex(G, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -542,12 +552,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // F draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(th._100pct, dec(104, 18), F, F, {from: F})
+    const borrowingTx_1 = await borrowerOperations.withdrawLUSD(_fTroveId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: F})
     const emittedLUSDFee_1 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_1))
     assert.isTrue(emittedLUSDFee_1.gt(toBN('0')))
 
     // G draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(th._100pct, dec(17, 18), G, G, {from: G})
+    const borrowingTx_2 = await borrowerOperations.withdrawLUSD(_gTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
     const emittedLUSDFee_2 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_2))
     assert.isTrue(emittedLUSDFee_2.gt(toBN('0')))
 
@@ -566,7 +576,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_3.gt(toBN('0')))
 
      // G draws debt
-    const borrowingTx_3 = await borrowerOperations.withdrawLUSD(th._100pct, dec(17, 18), G, G, {from: G})
+    const borrowingTx_3 = await borrowerOperations.withdrawLUSD(_gTroveId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
     const emittedLUSDFee_3 = toBN(th.getLUSDFeeFromLUSDBorrowingEvent(borrowingTx_3))
     assert.isTrue(emittedLUSDFee_3.gt(toBN('0')))
      

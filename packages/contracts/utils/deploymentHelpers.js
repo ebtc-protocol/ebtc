@@ -62,6 +62,11 @@ const maxBytes32 = '0x' + 'f'.repeat(64)
 class DeploymentHelper {
 
   static async deployLiquityCore() {
+    let blockNumber = await ethers.provider.getBlockNumber();
+    let netwk = await ethers.provider.getNetwork();
+    //let feeData = await ethers.provider.getFeeData();
+    console.log(`blockNumber: ${blockNumber}, networkId: ${netwk.chainId}`)//, lastBaseFeePerGas: ${feeData.lastBaseFeePerGas}`)
+	
     const cmdLineArgs = process.argv
     const frameworkPath = cmdLineArgs[1]
     // console.log(`Framework used:  ${frameworkPath}`)

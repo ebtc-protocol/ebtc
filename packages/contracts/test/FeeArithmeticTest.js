@@ -16,7 +16,7 @@ contract('Fee arithmetic tests', async accounts => {
   let troveManagerTester
   let mathTester
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   // see: https://docs.google.com/spreadsheets/d/1RbD8VGzq7xFgeK1GOkz_9bbKVIx-xkOz0VsVelnUFdc/edit#gid=0
   // Results array, maps seconds to expected hours passed output (rounded down to nearest hour).

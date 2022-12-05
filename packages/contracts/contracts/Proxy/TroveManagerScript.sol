@@ -18,9 +18,9 @@ contract TroveManagerScript is CheckContract {
 
     function redeemCollateral(
         uint _LUSDAmount,
-        address _firstRedemptionHint,
-        address _upperPartialRedemptionHint,
-        address _lowerPartialRedemptionHint,
+        bytes32 _firstRedemptionHint,
+        bytes32 _upperPartialRedemptionHint,
+        bytes32 _lowerPartialRedemptionHint,
         uint _partialRedemptionHintNICR,
         uint _maxIterations,
         uint _maxFee

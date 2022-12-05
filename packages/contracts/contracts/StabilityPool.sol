@@ -420,10 +420,10 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's trove
     * - Leaves their compounded deposit in the Stability Pool
     * - Updates snapshots for deposit and tagged front end stake */
-    function withdrawETHGainToTrove(address _upperHint, address _lowerHint) external override {
+    function withdrawETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external override {
         uint initialDeposit = deposits[msg.sender].initialValue;
         _requireUserHasDeposit(initialDeposit);
-        _requireUserHasTrove(msg.sender);
+        _requireUserHasTrove(_troveId);
         _requireUserHasETHGain(msg.sender);
 
         ICommunityIssuance communityIssuanceCached = communityIssuance;
@@ -457,7 +457,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         emit StabilityPoolETHBalanceUpdated(ETH);
         emit EtherSent(msg.sender, depositorETHGain);
 
-        borrowerOperations.moveETHGainToTrove{ value: depositorETHGain }(msg.sender, _upperHint, _lowerHint);
+        borrowerOperations.moveETHGainToTrove{ value: depositorETHGain }(_troveId, _upperHint, _lowerHint);
     }
 
     // --- LQTY issuance functions ---
@@ -948,7 +948,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     function _requireNoUnderCollateralizedTroves() internal {
         uint price = priceFeed.fetchPrice();
-        address lowestTrove = sortedTroves.getLast();
+        bytes32 lowestTrove = sortedTroves.getLast();
         uint ICR = troveManager.getCurrentICR(lowestTrove, price);
         require(ICR >= MCR, "StabilityPool: Cannot withdraw while there are troves with ICR < MCR");
     }
@@ -966,8 +966,9 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         require(_amount > 0, 'StabilityPool: Amount must be non-zero');
     }
 
-    function _requireUserHasTrove(address _depositor) internal view {
-        require(troveManager.getTroveStatus(_depositor) == 1, "StabilityPool: caller must have an active trove to withdraw ETHGain to");
+    function _requireUserHasTrove(bytes32 _troveId) internal view {
+        require(troveManager.getTroveStatus(_troveId) == 1, "StabilityPool: caller must have an active trove to withdraw ETHGain to");
+        require(sortedTroves.existTroveOwners(_troveId) == msg.sender, "StabilityPool: caller must be the owner of the trove");
     }
 
     function _requireUserHasETHGain(address _depositor) internal view {

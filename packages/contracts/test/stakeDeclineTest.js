@@ -23,7 +23,7 @@ contract('TroveManager', async accounts => {
   const ZERO_ADDRESS = th.ZERO_ADDRESS
   const [owner, A, B, C, D, E, F] = accounts.slice(0, 7);
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   let priceFeed
   let lusdToken
@@ -47,6 +47,13 @@ contract('TroveManager', async accounts => {
 
     return ratio
   }
+
+  before(async () => {	  
+    // let _forkBlock = hre.network.config['forking']['blockNumber'];
+    // let _forkUrl = hre.network.config['forking']['url'];
+    // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+    // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+  })
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
@@ -80,49 +87,57 @@ contract('TroveManager', async accounts => {
   })
 
   it("A given trove's stake decline is negligible with adjustments and tiny liquidations", async () => {
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(400, 18))
   
     // Make 1 mega troves A at ~50% total collateral
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 31)), ZERO_ADDRESS, ZERO_ADDRESS, { from: A, value: dec(2, 29) })
+    let _aColAmt = dec(8, 19);
+    let _aDebtAmt = dec(1, 22);
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _aColAmt })
+    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
     
     // Make 5 large troves B, C, D, E, F at ~10% total collateral
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: B, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: C, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: D, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: E, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: F, value: dec(4, 28) })
+    let _colAmt = dec(4, 19);
+    let _debtAmt = dec(1, 22);
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
+    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: _colAmt })
+    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: _colAmt })
   
     // Make 10 tiny troves at relatively negligible collateral (~1e-9 of total)
     const tinyTroves = accounts.slice(10, 20)
+    let _tinyTroveIds = {}
     for (account of tinyTroves) {
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 22)), ZERO_ADDRESS, ZERO_ADDRESS, { from: account, value: dec(2, 20) })
+      await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: dec(2, 20) })
+      _tinyTroveIds[account] = await sortedTroves.troveOfOwnerByIndex(account, 0);
     }
 
     // liquidate 1 trove at ~50% total system collateral
     await priceFeed.setPrice(dec(50, 18))
     assert.isTrue(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
-    await troveManager.liquidate(A)
+    await troveManager.liquidate(_aTroveId)
 
     console.log(`totalStakesSnapshot after L1: ${await troveManager.totalStakesSnapshot()}`)
     console.log(`totalCollateralSnapshot after L1: ${await troveManager.totalCollateralSnapshot()}`)
     console.log(`Snapshots ratio after L1: ${await getSnapshotsRatio()}`)
     console.log(`B pending ETH reward after L1: ${await troveManager.getPendingETHReward(B)}`)
-    console.log(`B stake after L1: ${(await troveManager.Troves(B))[2]}`)
+    console.log(`B stake after L1: ${(await troveManager.Troves(_bTroveId))[2]}`)
 
     // adjust trove B 1 wei: apply rewards
-    await borrowerOperations.adjustTrove(th._100pct, 0, 1, false, ZERO_ADDRESS, ZERO_ADDRESS, {from: B})  // B repays 1 wei
-    console.log(`B stake after A1: ${(await troveManager.Troves(B))[2]}`)
+    await borrowerOperations.adjustTrove(_bTroveId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // B repays 1 wei
+    console.log(`B stake after A1: ${(await troveManager.Troves(_bTroveId))[2]}`)
     console.log(`Snapshots ratio after A1: ${await getSnapshotsRatio()}`)
 
     // Loop over tiny troves, and alternately:
     // - Liquidate a tiny trove
     // - Adjust B's collateral by 1 wei
     for (let [idx, trove] of tinyTroves.entries()) {
-      await troveManager.liquidate(trove)
-      console.log(`B stake after L${idx + 2}: ${(await troveManager.Troves(B))[2]}`)
+      await troveManager.liquidate(_tinyTroveIds[trove])
+      console.log(`B stake after L${idx + 2}: ${(await troveManager.Troves(_bTroveId))[2]}`)
       console.log(`Snapshots ratio after L${idx + 2}: ${await getSnapshotsRatio()}`)
-      await borrowerOperations.adjustTrove(th._100pct, 0, 1, false, ZERO_ADDRESS, ZERO_ADDRESS, {from: B})  // A repays 1 wei
-      console.log(`B stake after A${idx + 2}: ${(await troveManager.Troves(B))[2]}`)
+      await borrowerOperations.adjustTrove(_bTroveId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei
+      console.log(`B stake after A${idx + 2}: ${(await troveManager.Troves(_bTroveId))[2]}`)
     }
   })
 
