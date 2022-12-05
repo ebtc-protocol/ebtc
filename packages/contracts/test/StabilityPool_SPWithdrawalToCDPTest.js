@@ -45,7 +45,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
   let contracts
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -83,7 +83,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       contracts = await deploymentHelper.deployEBTCToken(contracts)
 
       priceFeed = contracts.priceFeedTestnet
-      lusdToken = contracts.lusdToken
+      ebtcToken = contracts.ebtcToken
       sortedTroves = contracts.sortedTroves
       troveManager = contracts.troveManager
       activePool = contracts.activePool
@@ -131,7 +131,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -179,7 +179,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -229,7 +229,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -284,7 +284,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -336,7 +336,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -390,11 +390,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k, 20k, 30k EBTC to A, B and C respectively who then deposit it to the SP
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
-      await lusdToken.transfer(bob, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: bob })
-      await lusdToken.transfer(carol, dec(30000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
       // 2 Defaulters open trove with 200% ICR
@@ -442,11 +442,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // Whale transfers 10k, 20k, 30k EBTC to A, B and C respectively who then deposit it to the SP
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
-      await lusdToken.transfer(bob, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: bob })
-      await lusdToken.transfer(carol, dec(30000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
       // Defaulters open trove with 200% ICR
@@ -503,11 +503,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Bob:  456000 EBTC
       Carol: 13100 EBTC */
       // Whale transfers EBTC to  A, B and C respectively who then deposit it to the SP
-      await lusdToken.transfer(alice, dec(2000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(2000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(2000, 18), ZERO_ADDRESS, { from: alice })
-      await lusdToken.transfer(bob, dec(456000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(456000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(456000, 18), ZERO_ADDRESS, { from: bob })
-      await lusdToken.transfer(carol, dec(13100, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(13100, 18), { from: whale })
       await stabilityPool.provideToSP(dec(13100, 18), ZERO_ADDRESS, { from: carol })
 
       /* Defaulters open troves
@@ -571,7 +571,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -591,7 +591,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await troveManager.liquidate(_defaulter2TroveId);
 
       // Whale transfers 10k to Dennis who then provides to SP
-      await lusdToken.transfer(dennis, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third defaulter liquidated
@@ -639,7 +639,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -661,7 +661,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await troveManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Dennis opens a trove and provides to SP
-      await lusdToken.transfer(dennis, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third and fourth defaulters liquidated
@@ -711,11 +711,11 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Carol: 15000 EBTC
       */
       // Whale transfers EBTC to  A, B and C respectively who then deposit it to the SP
-      await lusdToken.transfer(alice, dec(60000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(60000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(60000, 18), ZERO_ADDRESS, { from: alice })
-      await lusdToken.transfer(bob, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: bob })
-      await lusdToken.transfer(carol, dec(15000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(15000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(15000, 18), ZERO_ADDRESS, { from: carol })
 
       /* Defaulters open troves:
@@ -741,7 +741,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await troveManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Dennis provides 25000 EBTC
-      await lusdToken.transfer(dennis, dec(25000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(25000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(25000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Last two defaulters liquidated
@@ -791,7 +791,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and C who then deposit it to the SP
       const depositors = [alice, bob, carol, dennis]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -863,13 +863,13 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       Dennis: 40000 EBTC
       */
       // Whale transfers EBTC to  A, B,C and D respectively who then deposit it to the SP
-      await lusdToken.transfer(alice, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: alice })
-      await lusdToken.transfer(bob, dec(25000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(25000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(25000, 18), ZERO_ADDRESS, { from: bob })
-      await lusdToken.transfer(carol, dec(12500, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(12500, 18), { from: whale })
       await stabilityPool.provideToSP(dec(12500, 18), ZERO_ADDRESS, { from: carol })
-      await lusdToken.transfer(dennis, dec(40000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(40000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(40000, 18), ZERO_ADDRESS, { from: dennis })
 
       /* Defaulters open troves:
@@ -901,7 +901,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18))
 
       const dennis_ETHWithdrawn = th.getEventArgByName(txD, 'ETHGainWithdrawn', '_ETH').toString()
-      assert.isAtMost(th.getDifference((await lusdToken.balanceOf(dennis)).toString(), '27692307692307700000000'), 100000000000)
+      assert.isAtMost(th.getDifference((await ebtcToken.balanceOf(dennis)).toString(), '27692307692307700000000'), 100000000000)
       // 300*0.995 * 40000/97500
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '122461538461538466100'), 100000000000)
 
@@ -944,7 +944,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B and D who then deposit it to the SP
       const depositors = [alice, bob, dennis]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -966,7 +966,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await troveManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Carol makes deposit
-      await lusdToken.transfer(carol, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: carol })
 
       await troveManager.liquidate(_defaulter3TroveId, { from: owner });
@@ -978,7 +978,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18))
 
       const dennis_ETHWithdrawn = th.getEventArgByName(txD, 'ETHGainWithdrawn', '_ETH').toString()
-      assert.isAtMost(th.getDifference((await lusdToken.balanceOf(dennis)).toString(), '1666666666666666666666'), 100000)
+      assert.isAtMost(th.getDifference((await ebtcToken.balanceOf(dennis)).toString(), '1666666666666666666666'), 100000)
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '82916666666666666667'), 100000)
 
       await troveManager.liquidate(_defaulter4TroveId, { from: owner });
@@ -1027,7 +1027,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1046,7 +1046,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
       for (account of depositors_2) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1102,7 +1102,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1154,7 +1154,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1211,7 +1211,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Whale transfers 10k EBTC to A, B who then deposit it to the SP
       const depositors = [alice, bob]
       for (account of depositors) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1228,13 +1228,13 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await troveManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // Carol, Dennis, Erin each deposit 10000, 20000, 30000 EBTC respectively
-      await lusdToken.transfer(carol, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: carol })
 
-      await lusdToken.transfer(dennis, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: dennis })
 
-      await lusdToken.transfer(erin, dec(30000, 18), { from: whale })
+      await ebtcToken.transfer(erin, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: erin })
 
       // Defaulter 2 liquidated. 10000 EBTC offset
@@ -1284,7 +1284,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
 
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1,2,3 withdraw 10000 EBTC
@@ -1367,7 +1367,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Alice, Bob each deposit 10k EBTC
       const depositors_1 = [alice, bob]
       for (account of depositors_1) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1377,7 +1377,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
       for (account of depositors_2) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1387,7 +1387,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Erin, Flyn each deposit 10000 EBTC
       const depositors_3 = [erin, flyn]
       for (account of depositors_3) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1397,7 +1397,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Graham, Harriet each deposit 10000 EBTC
       const depositors_4 = [graham, harriet]
       for (account of depositors_4) {
-        await lusdToken.transfer(account, dec(10000, 18), { from: whale })
+        await ebtcToken.transfer(account, dec(10000, 18), { from: whale })
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
@@ -1465,7 +1465,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(10000, 'ether') })
       let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
 
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 withdraws 'almost' 10000 EBTC:  9999.99991 EBTC
@@ -1493,7 +1493,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Grab the ETH gain from the emitted event in the tx log
       const alice_ETHWithdrawn = await th.getEventArgByName(txA, 'ETHGainWithdrawn', '_ETH').toString()
 
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated.  9900 EBTC liquidated. P altered by a factor of 1-(9900/10000) = 0.01.  Scale changed.
@@ -1530,7 +1530,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
       let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
       
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 withdraws 'almost' 10k EBTC.
@@ -1556,13 +1556,13 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18))
 
       //B, C, D deposit to Stability Pool
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
-      await lusdToken.transfer(carol, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: carol })
 
-      await lusdToken.transfer(dennis, dec(30000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // 54000 EBTC liquidated.  P altered by a factor of 1-(59400/60000) = 0.01. Scale changed.
@@ -1616,7 +1616,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(10000, 'ether') })
       
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 and default 2 each withdraw 9999.999999999 EBTC
@@ -1641,7 +1641,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18))
 
       // Bob deposits 10k EBTC
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
@@ -1679,7 +1679,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: dennis, value: dec(10000, 'ether') })
       let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
       
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 and default 2 withdraw up to debt of 9999.9 EBTC and 59999.4 EBTC
@@ -1705,13 +1705,13 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18))
 
       // B, C, D deposit 10000, 20000, 30000 EBTC
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
-      await lusdToken.transfer(carol, dec(20000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(20000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(20000, 18), ZERO_ADDRESS, { from: carol })
 
-      await lusdToken.transfer(dennis, dec(30000, 18), { from: whale })
+      await ebtcToken.transfer(dennis, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 2 liquidated
@@ -1758,7 +1758,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // Price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. P -> (~1e-10)*P
@@ -1808,7 +1808,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. 
@@ -1818,7 +1818,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(await stabilityPool.currentScale(), '0')
 
       // B deposits 9999.9 EBTC
-      await lusdToken.transfer(bob, dec(99999, 17), { from: whale })
+      await ebtcToken.transfer(bob, dec(99999, 17), { from: whale })
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
@@ -1828,7 +1828,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(await stabilityPool.currentScale(), '1')
 
       // C deposits 9999.9 EBTC
-      await lusdToken.transfer(carol, dec(99999, 17), { from: whale })
+      await ebtcToken.transfer(carol, dec(99999, 17), { from: whale })
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: carol })
 
       // Defaulter 3 liquidated
@@ -1838,7 +1838,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(await stabilityPool.currentScale(), '1')
 
       // D deposits 9999.9 EBTC
-      await lusdToken.transfer(dennis, dec(99999, 17), { from: whale })
+      await ebtcToken.transfer(dennis, dec(99999, 17), { from: whale })
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 4 liquidated
@@ -1910,8 +1910,8 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await priceFeed.setPrice(dec(100, 18));
 
       // A, B provide 10k EBTC 
-      await lusdToken.transfer(A, dec(10000, 18), { from: whale })
-      await lusdToken.transfer(B, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(A, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(B, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: A })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: B })
 
@@ -1933,7 +1933,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(EBTCinSP_1, '0')
 
       // Check SP EBTC balance is zero
-      const SPEBTCBalance_1 = await lusdToken.balanceOf(stabilityPool.address)
+      const SPEBTCBalance_1 = await ebtcToken.balanceOf(stabilityPool.address)
       // console.log(`SPEBTCBalance_1: ${SPEBTCBalance_1}`)
       assert.equal(SPEBTCBalance_1, '0')
 
@@ -1950,8 +1950,8 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // ==========
 
       // C, D provide 10k EBTC 
-      await lusdToken.transfer(C, dec(10000, 18), { from: whale })
-      await lusdToken.transfer(D, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(C, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(D, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: C })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: D })
 
@@ -1973,7 +1973,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(EBTCinSP_2, '0')
 
       // Check SP EBTC balance is zero
-      const SPEBTCBalance_2 = await lusdToken.balanceOf(stabilityPool.address)
+      const SPEBTCBalance_2 = await ebtcToken.balanceOf(stabilityPool.address)
       // console.log(`SPEBTCBalance_2: ${SPEBTCBalance_2}`)
       assert.equal(SPEBTCBalance_2, '0')
 
@@ -1990,8 +1990,8 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       // ============
 
       // E, F provide 10k EBTC 
-      await lusdToken.transfer(E, dec(10000, 18), { from: whale })
-      await lusdToken.transfer(F, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(E, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(F, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: E })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: F })
 
@@ -2012,7 +2012,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       assert.equal(EBTCinSP_3, '0')
 
       // Check SP EBTC balance is zero
-      const SPEBTCBalance_3 = await lusdToken.balanceOf(stabilityPool.address)
+      const SPEBTCBalance_3 = await ebtcToken.balanceOf(stabilityPool.address)
       // console.log(`SPEBTCBalance_3: ${SPEBTCBalance_3}`)
       assert.equal(SPEBTCBalance_3, '0')
 
@@ -2126,7 +2126,7 @@ contract('StabilityPool - Withdrawal to Trove of stability deposit - Reward calc
       await th.assertRevert(txBPromise, 'StabilityPool: caller must have non-zero ETH Gain')
 
       const aliceEBTCBalance = await stabilityPool.getCompoundedEBTCDeposit(alice)
-      // const aliceEBTCBalance = await lusdToken.balanceOf(alice)
+      // const aliceEBTCBalance = await ebtcToken.balanceOf(alice)
       const aliceExpectedEBTCBalance = toBN('99999999999999997500000000000000000000')
       const aliceEBTCBalDiff = aliceEBTCBalance.sub(aliceExpectedEBTCBalance).abs()
 

@@ -323,9 +323,9 @@ class TestHelper {
    * given the requested EBTC amomunt in openTrove, returns the total debt
    * So, it adds the gas compensation and the borrowing fee
    */
-  static async getOpenTroveTotalDebt(contracts, lusdAmount) {
-    const fee = await contracts.troveManager.getBorrowingFee(lusdAmount)
-    const compositeDebt = await this.getCompositeDebt(contracts, lusdAmount)
+  static async getOpenTroveTotalDebt(contracts, ebtcAmount) {
+    const fee = await contracts.troveManager.getBorrowingFee(ebtcAmount)
+    const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
     return compositeDebt.add(fee)
   }
 
@@ -345,9 +345,9 @@ class TestHelper {
   }
 
   // Adds the borrowing fee
-  static async getAmountWithBorrowingFee(contracts, lusdAmount) {
-    const fee = await contracts.troveManager.getBorrowingFee(lusdAmount)
-    return lusdAmount.add(fee)
+  static async getAmountWithBorrowingFee(contracts, ebtcAmount) {
+    const fee = await contracts.troveManager.getBorrowingFee(ebtcAmount)
+    return ebtcAmount.add(fee)
   }
 
   // Adds the redemption fee
@@ -388,9 +388,9 @@ class TestHelper {
         const liquidatedDebt = liquidationTx.logs[i].args[0]
         const liquidatedColl = liquidationTx.logs[i].args[1]
         const collGasComp = liquidationTx.logs[i].args[2]
-        const lusdGasComp = liquidationTx.logs[i].args[3]
+        const ebtcGasComp = liquidationTx.logs[i].args[3]
 
-        return [liquidatedDebt, liquidatedColl, collGasComp, lusdGasComp]
+        return [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp]
       }
     }
     throw ("The transaction logs do not contain a liquidation event")
@@ -676,12 +676,12 @@ class TestHelper {
     const MIN_DEBT = (
       await this.getNetBorrowingAmount(contracts, await contracts.borrowerOperations.MIN_NET_DEBT())
     ).add(this.toBN(1)) // add 1 to avoid rounding issues
-    const lusdAmount = MIN_DEBT.add(extraEBTCAmount)
+    const ebtcAmount = MIN_DEBT.add(extraEBTCAmount)
 
     if (!ICR && !extraParams.value) ICR = this.toBN(this.dec(15, 17)) // 150%
     else if (typeof ICR == 'string') ICR = this.toBN(ICR)
 
-    const totalDebt = await this.getOpenTroveTotalDebt(contracts, lusdAmount)
+    const totalDebt = await this.getOpenTroveTotalDebt(contracts, ebtcAmount)
     const netDebt = await this.getActualDebtFromComposite(totalDebt, contracts)
 
     if (ICR) {
@@ -689,10 +689,10 @@ class TestHelper {
       extraParams.value = ICR.mul(totalDebt).div(price)
     }
 
-    const tx = await contracts.borrowerOperations.openTrove(maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
+    const tx = await contracts.borrowerOperations.openTrove(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
-      lusdAmount,
+      ebtcAmount,
       netDebt,
       totalDebt,
       ICR,
@@ -704,7 +704,7 @@ class TestHelper {
   static async withdrawEBTC(contracts, {
     _troveId,
     maxFeePercentage,
-    lusdAmount,
+    ebtcAmount,
     ICR,
     upperHint,
     lowerHint,
@@ -714,7 +714,7 @@ class TestHelper {
     if (!upperHint) upperHint = this.DUMMY_BYTES32
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32
 
-    assert(!(lusdAmount && ICR) && (lusdAmount || ICR), "Specify either lusd amount or target ICR, but not both")
+    assert(!(ebtcAmount && ICR) && (ebtcAmount || ICR), "Specify either ebtc amount or target ICR, but not both")
 
     let increasedTotalDebt
     if (ICR) {
@@ -724,15 +724,15 @@ class TestHelper {
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")
       increasedTotalDebt = targetDebt.sub(debt)
-      lusdAmount = await this.getNetBorrowingAmount(contracts, increasedTotalDebt)
+      ebtcAmount = await this.getNetBorrowingAmount(contracts, increasedTotalDebt)
     } else {
-      increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, lusdAmount)
+      increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, ebtcAmount)
     }
 
-    await contracts.borrowerOperations.withdrawEBTC(_troveId, maxFeePercentage, lusdAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawEBTC(_troveId, maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
-      lusdAmount,
+      ebtcAmount,
       increasedTotalDebt
     }
   }

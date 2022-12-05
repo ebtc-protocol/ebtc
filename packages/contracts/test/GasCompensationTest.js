@@ -25,7 +25,7 @@ contract('Gas compensation tests', async accounts => {
     let bn8Signer;
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -60,7 +60,7 @@ contract('Gas compensation tests', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await EBTCToken.new(
+    contracts.ebtcToken = await EBTCToken.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -68,7 +68,7 @@ contract('Gas compensation tests', async accounts => {
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     priceFeed = contracts.priceFeedTestnet
-    lusdToken = contracts.lusdToken
+    ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
     troveManager = contracts.troveManager
     activePool = contracts.activePool

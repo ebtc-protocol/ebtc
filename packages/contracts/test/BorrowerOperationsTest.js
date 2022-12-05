@@ -43,7 +43,7 @@ contract('BorrowerOperations', async accounts => {
   // const frontEnds = [frontEnd_1, frontEnd_2, frontEnd_3]
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -96,7 +96,7 @@ contract('BorrowerOperations', async accounts => {
       }
 
       priceFeed = contracts.priceFeedTestnet
-      lusdToken = contracts.lusdToken
+      ebtcToken = contracts.ebtcToken
       sortedTroves = contracts.sortedTroves
       troveManager = contracts.troveManager
       activePool = contracts.activePool
@@ -889,7 +889,7 @@ contract('BorrowerOperations', async accounts => {
       const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
       const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
 
-      const A_EBTCBal = await lusdToken.balanceOf(A)
+      const A_EBTCBal = await ebtcToken.balanceOf(A)
 
       // Artificially set base rate to 5%
       await troveManager.setBaseRate(dec(5, 16))
@@ -957,7 +957,7 @@ contract('BorrowerOperations', async accounts => {
       const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
       const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
 
-      const totalSupply = await lusdToken.totalSupply()
+      const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
       await troveManager.setBaseRate(dec(5, 16))
@@ -1009,7 +1009,7 @@ contract('BorrowerOperations', async accounts => {
       const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
       const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
 
-      const totalSupply = await lusdToken.totalSupply()
+      const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
       await troveManager.setBaseRate(dec(5, 16))
@@ -1175,7 +1175,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1199,7 +1199,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(th._100pct, dec(37, 18), C, C, { from: D })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -1284,7 +1284,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1304,18 +1304,18 @@ contract('BorrowerOperations', async accounts => {
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      const D_EBTCBalanceBefore = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceBefore = await ebtcToken.balanceOf(D)
 
       // D withdraws EBTC
       const D_EBTCRequest = toBN(dec(37, 18))
       await borrowerOperations.withdrawEBTC(th._100pct, D_EBTCRequest, D, D, { from: D })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance now equals their initial balance plus request EBTC
-      const D_EBTCBalanceAfter = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceAfter = await ebtcToken.balanceOf(D)
       assert.isTrue(D_EBTCBalanceAfter.eq(D_EBTCBalanceBefore.add(D_EBTCRequest)))
     })
 
@@ -1363,14 +1363,14 @@ contract('BorrowerOperations', async accounts => {
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      const D_EBTCBalanceBefore = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceBefore = await ebtcToken.balanceOf(D)
 
       // D withdraws EBTC
       const D_EBTCRequest = toBN(dec(37, 18))
       await borrowerOperations.withdrawEBTC(th._100pct, dec(37, 18), D, D, { from: D })
 
       // Check D's EBTC balance now equals their requested EBTC
-      const D_EBTCBalanceAfter = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceAfter = await ebtcToken.balanceOf(D)
 
       // Check D's trove debt == D's EBTC balance + liquidation reserve
       assert.isTrue(D_EBTCBalanceAfter.eq(D_EBTCBalanceBefore.add(D_EBTCRequest)))
@@ -1546,13 +1546,13 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
 
       // check before
-      const alice_EBTCTokenBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
       await borrowerOperations.withdrawEBTC(aliceIndex, th._100pct, dec(10000, 18), aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.add(toBN(dec(10000, 18)))))
     })
 
@@ -1612,7 +1612,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: repayAmount, ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
       const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
 
-      await lusdToken.transfer(alice, repayAmount, { from: bob })
+      await ebtcToken.transfer(alice, repayAmount, { from: bob })
 
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, repayAmount, false, aliceIndex, aliceIndex, { from: alice }),
                          "SafeMath: subtraction overflow")
@@ -1711,13 +1711,13 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
 
       // check before
-      const alice_EBTCTokenBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
       await borrowerOperations.repayEBTC(aliceIndex, aliceDebtBefore.div(toBN(10)), aliceIndex, aliceIndex, { from: alice })  // Repays 1/10 her debt
 
       // check after
-      const alice_EBTCTokenBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
       th.assertIsApproximatelyEqual(alice_EBTCTokenBalance_After, alice_EBTCTokenBalance_Before.sub(aliceDebtBefore.div(toBN(10))))
     })
 
@@ -1753,14 +1753,14 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
       const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
 
-      const bobBalBefore = await lusdToken.balanceOf(B)
+      const bobBalBefore = await ebtcToken.balanceOf(B)
       assert.isTrue(bobBalBefore.gt(toBN('0')))
 
       // Bob transfers all but 5 of his EBTC to Carol
-      await lusdToken.transfer(C, bobBalBefore.sub((toBN(dec(5, 18)))), { from: B })
+      await ebtcToken.transfer(C, bobBalBefore.sub((toBN(dec(5, 18)))), { from: B })
 
       //Confirm B's EBTC balance has decreased to 5 EBTC
-      const bobBalAfter = await lusdToken.balanceOf(B)
+      const bobBalAfter = await ebtcToken.balanceOf(B)
 
       assert.isTrue(bobBalAfter.eq(toBN(dec(5, 18))))
       
@@ -1992,7 +1992,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -2015,7 +2015,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -2101,7 +2101,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -2110,7 +2110,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const D_EBTCBalanceBefore = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceBefore = await ebtcToken.balanceOf(D)
 
       // Artificially make baseRate 5%
       await troveManager.setBaseRate(dec(5, 16))
@@ -2128,11 +2128,11 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustTrove(th._100pct, 0, EBTCRequest_D, true, D, D, { from: D })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance has increased by their requested EBTC
-      const D_EBTCBalanceAfter = await lusdToken.balanceOf(D)
+      const D_EBTCBalanceAfter = await ebtcToken.balanceOf(D)
       assert.isTrue(D_EBTCBalanceAfter.eq(D_EBTCBalanceBefore.add(EBTCRequest_D)))
     })
 
@@ -2151,14 +2151,14 @@ contract('BorrowerOperations', async accounts => {
       th.fastForwardTime(7200, web3.currentProvider)
 
       // Check staking EBTC balance before > 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_Before.gt(toBN('0')))
 
       // D adjusts trove
       await borrowerOperations.adjustTrove(DIndex, th._100pct, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance after > staking balance before
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -2201,21 +2201,21 @@ contract('BorrowerOperations', async accounts => {
 
       const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
 
-      const D_EBTCBalBefore = await lusdToken.balanceOf(D)
+      const D_EBTCBalBefore = await ebtcToken.balanceOf(D)
 
       // Origination fee is assumed to be zero
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      const DUSDBalanceBefore = await lusdToken.balanceOf(D)
+      const DUSDBalanceBefore = await ebtcToken.balanceOf(D)
 
       // D adjusts trove
       const EBTCRequest_D = toBN(dec(40, 18))
       await borrowerOperations.adjustTrove(DIndex, th._100pct, 0, EBTCRequest_D, true, DIndex, DIndex, { from: D })
 
       // Check D's EBTC balance increased by their requested EBTC
-      const EBTCBalanceAfter = await lusdToken.balanceOf(D)
+      const EBTCBalanceAfter = await ebtcToken.balanceOf(D)
       assert.isTrue(EBTCBalanceAfter.eq(D_EBTCBalBefore.add(EBTCRequest_D)))
     })
 
@@ -2469,7 +2469,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyToken.unprotectedMint(bob, dec(100, 18))
       await lqtyStaking.stake(dec(100, 18), { from: bob })
 
-      const lqtyStakingEBTCBalanceBefore = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStakingEBTCBalanceBefore = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStakingEBTCBalanceBefore.gt(toBN('0')))
 
       const txAlice = await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(100, 'ether') })
@@ -2482,7 +2482,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check no fee was sent to staking contract
-      const lqtyStakingEBTCBalanceAfter = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStakingEBTCBalanceAfter = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStakingEBTCBalanceAfter.toString(), lqtyStakingEBTCBalanceBefore.toString())
     })
 
@@ -2523,7 +2523,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(bobFee.gt(toBN('0')))
 
       // Alice transfers EBTC to bob to compensate borrowing fees
-      await lusdToken.transfer(bob, bobFee, { from: alice })
+      await ebtcToken.transfer(bob, bobFee, { from: alice })
 
       const remainingDebt = (await troveManager.getTroveDebt(bobIndex)).sub(EBTC_GAS_COMPENSATION)
 
@@ -2748,14 +2748,14 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
-      const alice_EBTCTokenBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll decrease and debt decrease
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.sub(toBN(dec(10, 18)))))
     })
 
@@ -2765,14 +2765,14 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
-      const alice_EBTCTokenBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts trove - coll increase and debt increase
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       // check after
-      const alice_EBTCTokenBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.add(toBN(dec(100, 18)))))
     })
 
@@ -2918,10 +2918,10 @@ contract('BorrowerOperations', async accounts => {
       const bobDebt = await getTroveEntireDebt(BIndex)
 
       // Bob transfers some EBTC to carol
-      await lusdToken.transfer(C, dec(10, 18), { from: B })
+      await ebtcToken.transfer(C, dec(10, 18), { from: B })
 
       //Confirm B's EBTC balance is less than 50 EBTC
-      const B_EBTCBal = await lusdToken.balanceOf(B)
+      const B_EBTCBal = await ebtcToken.balanceOf(B)
       assert.isTrue(B_EBTCBal.lt(bobDebt))
 
       const repayEBTCPromise_B = borrowerOperations.adjustTrove(BIndex, th._100pct, 0, bobDebt, false, BIndex, BIndex, { from: B })
@@ -2957,7 +2957,7 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
       
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, dec(300, 18), { from: bob })
+      await ebtcToken.transfer(alice, dec(300, 18), { from: bob })
 
       assert.isFalse(await troveManager.checkRecoveryMode(price))
     
@@ -3006,9 +3006,9 @@ contract('BorrowerOperations', async accounts => {
       const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
 
       // Alice transfers her EBTC to Bob and Carol so they can cover fees
-      const aliceBal = await lusdToken.balanceOf(alice)
-      await lusdToken.transfer(bob, aliceBal.div(toBN(2)), { from: alice })
-      await lusdToken.transfer(carol, aliceBal.div(toBN(2)), { from: alice })
+      const aliceBal = await ebtcToken.balanceOf(alice)
+      await ebtcToken.transfer(bob, aliceBal.div(toBN(2)), { from: alice })
+      await ebtcToken.transfer(carol, aliceBal.div(toBN(2)), { from: alice })
 
       // check Recovery Mode 
       assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -3031,10 +3031,10 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       // Artificially mint to Alice so she has enough to close her trove
-      await lusdToken.unprotectedMint(alice, dec(100000, 18))
+      await ebtcToken.unprotectedMint(alice, dec(100000, 18))
 
       // Check she has more EBTC than her trove debt
-      const aliceBal = await lusdToken.balanceOf(alice)
+      const aliceBal = await ebtcToken.balanceOf(alice)
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceBal.gt(aliceDebt))
 
@@ -3052,12 +3052,12 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
-      const dennisEBTC = await lusdToken.balanceOf(dennis)
+      const dennisEBTC = await ebtcToken.balanceOf(dennis)
       assert.isTrue(aliceCollBefore.gt(toBN('0')))
       assert.isTrue(dennisEBTC.gt(toBN('0')))
 
       // To compensate borrowing fees
-      await lusdToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
+      await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
       // Alice attempts to close trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3073,12 +3073,12 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const aliceDebtBefore = await getTroveEntireColl(aliceIndex)
-      const dennisEBTC = await lusdToken.balanceOf(dennis)
+      const dennisEBTC = await ebtcToken.balanceOf(dennis)
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
       assert.isTrue(dennisEBTC.gt(toBN('0')))
 
       // To compensate borrowing fees
-      await lusdToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
+      await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
       // Alice attempts to close trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3096,12 +3096,12 @@ contract('BorrowerOperations', async accounts => {
       const aliceStakeBefore = await getTroveStake(aliceIndex)
       assert.isTrue(aliceStakeBefore.gt(toBN('0')))
 
-      const dennisEBTC = await lusdToken.balanceOf(dennis)
+      const dennisEBTC = await ebtcToken.balanceOf(dennis)
       assert.isTrue(aliceStakeBefore.gt(toBN('0')))
       assert.isTrue(dennisEBTC.gt(toBN('0')))
 
       // To compensate borrowing fees
-      await lusdToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
+      await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
       // Alice attempts to close trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3156,7 +3156,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
       await priceFeed.setPrice(dec(200, 18))
 
@@ -3185,7 +3185,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(await sortedTroves.contains(aliceIndex))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
       // Close the trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3217,7 +3217,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_RawEther_before.eq(activePool_ETH_before))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
       // Close the trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3247,7 +3247,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_Debt_before.gt(toBN('0')))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
       // Close the trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3279,7 +3279,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(totalStakesBefore.eq(aliceStakeBefore.add(bobStakeBefore).add(dennisStakeBefore)))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
       // Alice closes trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3303,7 +3303,7 @@ contract('BorrowerOperations', async accounts => {
         const alice_ETHBalance_Before = web3.utils.toBN(await web3.eth.getBalance(alice))
 
         // to compensate borrowing fees
-        await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+        await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
         await borrowerOperations.closeTrove(aliceIndex, { from: alice, gasPrice: 0 })
 
@@ -3324,16 +3324,16 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebt.gt(toBN('0')))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
+      await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
-      const alice_EBTCBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCBalance_Before.gt(toBN('0')))
 
       // close trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // check alice EBTC balance after
-      const alice_EBTCBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCBalance_After = await ebtcToken.balanceOf(alice)
       th.assertIsApproximatelyEqual(alice_EBTCBalance_After, alice_EBTCBalance_Before.sub(aliceDebt.sub(EBTC_GAS_COMPENSATION)))
     })
 
@@ -3358,8 +3358,8 @@ contract('BorrowerOperations', async accounts => {
       const carolColl = await getTroveEntireColl(carolIndex)
 
       // Whale transfers to A and B to cover their fees
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(10000, 18), { from: whale })
 
       // --- TEST ---
 
@@ -3437,7 +3437,7 @@ contract('BorrowerOperations', async accounts => {
       const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
 
       //Confirm Bob's EBTC balance is less than his trove debt
-      const B_EBTCBal = await lusdToken.balanceOf(B)
+      const B_EBTCBal = await ebtcToken.balanceOf(B)
       const B_troveDebt = await getTroveEntireDebt(BIndex)
 
       assert.isTrue(B_EBTCBal.lt(B_troveDebt))
@@ -3687,7 +3687,7 @@ contract('BorrowerOperations', async accounts => {
       const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
       const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
 
-      const totalSupply = await lusdToken.totalSupply()
+      const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
       await troveManager.setBaseRate(dec(5, 16))
@@ -3799,7 +3799,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -3822,7 +3822,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -3867,7 +3867,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -3891,11 +3891,11 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.openTrove(th._100pct, EBTCRequest_D, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(500, 'ether') })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await lusdToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance now equals their requested EBTC
-      const EBTCBalance_D = await lusdToken.balanceOf(D)
+      const EBTCBalance_D = await ebtcToken.balanceOf(D)
       assert.isTrue(EBTCRequest_D.eq(EBTCBalance_D))
     })
 
@@ -4229,7 +4229,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(await sortedTroves.contains(aliceIndex))
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(10000, 18), { from: whale })
 
       // Repay and close Trove
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -4286,14 +4286,14 @@ contract('BorrowerOperations', async accounts => {
 
     it("openTrove(): increases user EBTCToken balance by correct amount", async () => {
       // check before
-      const alice_EBTCTokenBalance_Before = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.equal(alice_EBTCTokenBalance_Before, 0)
 
       await borrowerOperations.openTrove(th._100pct, dec(10000, 18), alice, alice, { from: alice, value: dec(100, 'ether') })
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       // check after
-      const alice_EBTCTokenBalance_After = await lusdToken.balanceOf(alice)
+      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
       assert.equal(alice_EBTCTokenBalance_After, dec(10000, 18))
     })
 
@@ -4731,7 +4731,7 @@ contract('BorrowerOperations', async accounts => {
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
         // Alice sends EBTC to NonPayable so its EBTC balance covers its debt
-        await lusdToken.transfer(nonPayable.address, dec(10000, 18), {from: alice})
+        await ebtcToken.transfer(nonPayable.address, dec(10000, 18), {from: alice})
 
         // open trove from NonPayable proxy contract
         const _100pctHex = '0xde0b6b3a7640000'

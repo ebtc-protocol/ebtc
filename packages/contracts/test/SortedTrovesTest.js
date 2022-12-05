@@ -49,7 +49,7 @@ contract('SortedTroves', async accounts => {
   let sortedTroves
   let troveManager
   let borrowerOperations
-  let lusdToken
+  let ebtcToken
 
   const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
   const bn8 = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";//wrapped Ether
@@ -70,7 +70,7 @@ contract('SortedTroves', async accounts => {
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       contracts.troveManager = await TroveManagerTester.new()
-      contracts.lusdToken = await EBTCToken.new(
+      contracts.ebtcToken = await EBTCToken.new(
         contracts.troveManager.address,
         contracts.stabilityPool.address,
         contracts.borrowerOperations.address
@@ -81,7 +81,7 @@ contract('SortedTroves', async accounts => {
       sortedTroves = contracts.sortedTroves
       troveManager = contracts.troveManager
       borrowerOperations = contracts.borrowerOperations
-      lusdToken = contracts.lusdToken
+      ebtcToken = contracts.ebtcToken
 
       await deploymentHelper.connectLQTYContracts(LQTYContracts)
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -150,9 +150,9 @@ contract('SortedTroves', async accounts => {
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, dec(1000, 18), { from: whale })
-      await lusdToken.transfer(bob, dec(1000, 18), { from: whale })
-      await lusdToken.transfer(carol, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close troves
       await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
@@ -182,9 +182,9 @@ contract('SortedTroves', async accounts => {
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
       // to compensate borrowing fees
-      await lusdToken.transfer(alice, dec(1000, 18), { from: whale })
-      await lusdToken.transfer(bob, dec(1000, 18), { from: whale })
-      await lusdToken.transfer(carol, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(bob, dec(1000, 18), { from: whale })
+      await ebtcToken.transfer(carol, dec(1000, 18), { from: whale })
 
       // A, B, C close troves
       await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })

@@ -29,7 +29,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     ILQTYStaking public lqtyStaking;
     address public lqtyStakingAddress;
 
-    IEBTCToken public lusdToken;
+    IEBTCToken public ebtcToken;
 
     // A doubly linked list of Troves, sorted by their collateral ratios
     ISortedTroves public sortedTroves;
@@ -69,7 +69,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     struct ContractsCache {
         ITroveManager troveManager;
         IActivePool activePool;
-        IEBTCToken lusdToken;
+        IEBTCToken ebtcToken;
     }
 
     enum BorrowerOperation {
@@ -86,7 +86,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address  _newPriceFeedAddress);
     event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event EBTCTokenAddressChanged(address _lusdTokenAddress);
+    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
     event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
@@ -104,7 +104,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedTrovesAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _lqtyStakingAddress
     )
         external
@@ -122,7 +122,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
         checkContract(_sortedTrovesAddress);
-        checkContract(_lusdTokenAddress);
+        checkContract(_ebtcTokenAddress);
         checkContract(_lqtyStakingAddress);
 
         troveManager = ITroveManager(_troveManagerAddress);
@@ -133,7 +133,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
-        lusdToken = IEBTCToken(_lusdTokenAddress);
+        ebtcToken = IEBTCToken(_ebtcTokenAddress);
         lqtyStakingAddress = _lqtyStakingAddress;
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
 
@@ -145,7 +145,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit SortedTrovesAddressChanged(_sortedTrovesAddress);
-        emit EBTCTokenAddressChanged(_lusdTokenAddress);
+        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
 
         _renounceOwnership();
@@ -154,7 +154,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     // --- Borrower Trove Operations ---
 
     function openTrove(uint _maxFeePercentage, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
+        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, ebtcToken);
         LocalVariables_openTrove memory vars;
 
         vars.price = priceFeed.fetchPrice();
@@ -167,7 +167,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         vars.netDebt = _EBTCAmount;
 
         if (!isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.lusdToken, _EBTCAmount, _maxFeePercentage);
+            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.ebtcToken, _EBTCAmount, _maxFeePercentage);
             vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
         _requireAtLeastMinNetDebt(vars.netDebt);
@@ -202,9 +202,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         // Move the ether to the Active Pool, and mint the EBTCAmount to the borrower
         _activePoolAddColl(contractsCache.activePool, msg.value);
-        _withdrawEBTC(contractsCache.activePool, contractsCache.lusdToken, msg.sender, _EBTCAmount, vars.netDebt);
+        _withdrawEBTC(contractsCache.activePool, contractsCache.ebtcToken, msg.sender, _EBTCAmount, vars.netDebt);
         // Move the EBTC gas compensation to the Gas Pool
-        _withdrawEBTC(contractsCache.activePool, contractsCache.lusdToken, gasPoolAddress, EBTC_GAS_COMPENSATION, EBTC_GAS_COMPENSATION);
+        _withdrawEBTC(contractsCache.activePool, contractsCache.ebtcToken, gasPoolAddress, EBTC_GAS_COMPENSATION, EBTC_GAS_COMPENSATION);
 
         emit TroveUpdated(_troveId, msg.sender, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
         emit EBTCBorrowingFeePaid(_troveId, vars.EBTCFee);
@@ -254,7 +254,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     */
     function _adjustTroveInternal(bytes32 _troveId, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
 		
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
+        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, ebtcToken);
         LocalVariables_adjustTrove memory vars;
 
         _requireTroveisActive(contractsCache.troveManager, _troveId);
@@ -283,7 +283,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         // If the adjustment incorporates a debt increase and system is in Normal Mode, then trigger a borrowing fee
         if (_isDebtIncrease && !isRecoveryMode) { 
-            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.lusdToken, _EBTCChange, _maxFeePercentage);
+            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.ebtcToken, _EBTCChange, _maxFeePercentage);
             vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
         }
 
@@ -302,7 +302,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         if (!_isDebtIncrease && _EBTCChange > 0) {
             _requireAtLeastMinNetDebt(_getNetDebt(vars.debt).sub(vars.netDebtChange));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
-            _requireSufficientEBTCBalance(contractsCache.lusdToken, _borrower, vars.netDebtChange);
+            _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
 
         (vars.newColl, vars.newDebt) = _updateTroveFromAdjustment(contractsCache.troveManager, _troveId, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
@@ -318,7 +318,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         _moveTokensAndETHfromAdjustment(
             contractsCache.activePool,
-            contractsCache.lusdToken,
+            contractsCache.ebtcToken,
             msg.sender,
             vars.collChange,
             vars.isCollIncrease,
@@ -333,7 +333,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 		
         ITroveManager troveManagerCached = troveManager;
         IActivePool activePoolCached = activePool;
-        IEBTCToken lusdTokenCached = lusdToken;
+        IEBTCToken ebtcTokenCached = ebtcToken;
 
         _requireTroveisActive(troveManagerCached, _troveId);
         uint price = priceFeed.fetchPrice();
@@ -344,7 +344,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint coll = troveManagerCached.getTroveColl(_troveId);
         uint debt = troveManagerCached.getTroveDebt(_troveId);
 
-        _requireSufficientEBTCBalance(lusdTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
+        _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
 
         uint newTCR = _getNewTCRFromTroveChange(coll, false, debt, false, price);
         _requireNewTCRisAboveCCR(newTCR);
@@ -356,8 +356,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         emit TroveUpdated(_troveId, msg.sender, 0, 0, 0, BorrowerOperation.closeTrove);
 
         // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
-        _repayEBTC(activePoolCached, lusdTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
-        _repayEBTC(activePoolCached, lusdTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
+        _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
+        _repayEBTC(activePoolCached, ebtcTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
 
         // Send the collateral back to the user
         activePoolCached.sendETH(msg.sender, coll);
@@ -373,7 +373,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- Helper functions ---
 
-    function _triggerBorrowingFee(ITroveManager _troveManager, IEBTCToken _lusdToken, uint _EBTCAmount, uint _maxFeePercentage) internal returns (uint) {
+    function _triggerBorrowingFee(ITroveManager _troveManager, IEBTCToken _ebtcToken, uint _EBTCAmount, uint _maxFeePercentage) internal returns (uint) {
         _troveManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
         uint EBTCFee = _troveManager.getBorrowingFee(_EBTCAmount);
 
@@ -381,7 +381,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         
         // Send fee to LQTY staking contract
         lqtyStaking.increaseF_EBTC(EBTCFee);
-        _lusdToken.mint(lqtyStakingAddress, EBTCFee);
+        _ebtcToken.mint(lqtyStakingAddress, EBTCFee);
 
         return EBTCFee;
     }
@@ -432,7 +432,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function _moveTokensAndETHfromAdjustment
     (
         IActivePool _activePool,
-        IEBTCToken _lusdToken,
+        IEBTCToken _ebtcToken,
         address _borrower,
         uint _collChange,
         bool _isCollIncrease,
@@ -443,9 +443,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         internal
     {
         if (_isDebtIncrease) {
-            _withdrawEBTC(_activePool, _lusdToken, _borrower, _EBTCChange, _netDebtChange);
+            _withdrawEBTC(_activePool, _ebtcToken, _borrower, _EBTCChange, _netDebtChange);
         } else {
-            _repayEBTC(_activePool, _lusdToken, _borrower, _EBTCChange);
+            _repayEBTC(_activePool, _ebtcToken, _borrower, _EBTCChange);
         }
 
         if (_isCollIncrease) {
@@ -462,15 +462,15 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     // Issue the specified amount of EBTC to _account and increases the total active debt (_netDebtIncrease potentially includes a EBTCFee)
-    function _withdrawEBTC(IActivePool _activePool, IEBTCToken _lusdToken, address _account, uint _EBTCAmount, uint _netDebtIncrease) internal {
+    function _withdrawEBTC(IActivePool _activePool, IEBTCToken _ebtcToken, address _account, uint _EBTCAmount, uint _netDebtIncrease) internal {
         _activePool.increaseEBTCDebt(_netDebtIncrease);
-        _lusdToken.mint(_account, _EBTCAmount);
+        _ebtcToken.mint(_account, _EBTCAmount);
     }
 
     // Burn the specified amount of EBTC from _account and decreases the total active debt
-    function _repayEBTC(IActivePool _activePool, IEBTCToken _lusdToken, address _account, uint _EBTC) internal {
+    function _repayEBTC(IActivePool _activePool, IEBTCToken _ebtcToken, address _account, uint _EBTC) internal {
         _activePool.decreaseEBTCDebt(_EBTC);
-        _lusdToken.burn(_account, _EBTC);
+        _ebtcToken.burn(_account, _EBTC);
     }
 
     // --- 'Require' wrapper functions ---
@@ -578,8 +578,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         require(msg.sender == stabilityPoolAddress, "BorrowerOps: Caller is not Stability Pool");
     }
 
-     function _requireSufficientEBTCBalance(IEBTCToken _lusdToken, address _borrower, uint _debtRepayment) internal view {
-        require(_lusdToken.balanceOf(_borrower) >= _debtRepayment, "BorrowerOps: Caller doesnt have enough EBTC to make repayment");
+     function _requireSufficientEBTCBalance(IEBTCToken _ebtcToken, address _borrower, uint _debtRepayment) internal view {
+        require(_ebtcToken.balanceOf(_borrower) >= _debtRepayment, "BorrowerOps: Caller doesnt have enough EBTC to make repayment");
     }
 
     function _requireValidMaxFeePercentage(uint _maxFeePercentage, bool _isRecoveryMode) internal pure {

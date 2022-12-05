@@ -36,8 +36,8 @@ export const warzone = async ({ troves: numberOfTroves }: WarzoneParams) => {
     );
 
     if (i % 4 === 0) {
-      const lusdBalance = await liquity.getEBTCBalance();
-      await liquity.depositEBTCInStabilityPool(lusdBalance);
+      const ebtcBalance = await liquity.getEBTCBalance();
+      await liquity.depositEBTCInStabilityPool(ebtcBalance);
     }
 
     if (i % 10 === 0) {

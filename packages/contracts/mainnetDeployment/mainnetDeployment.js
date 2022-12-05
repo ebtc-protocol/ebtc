@@ -42,8 +42,8 @@ async function mainnetDeploy(configParams) {
   await mdh.logContractObjects(liquityCore)
 
   // Check Uniswap Pair EBTC-ETH pair before pair creation
-  let EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.lusdToken.address, configParams.externalAddrs.WETH_ERC20)
-  let WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.lusdToken.address)
+  let EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
+  let WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.ebtcToken.address)
   assert.equal(EBTCWETHPairAddr, WETHEBTCPairAddr)
 
 
@@ -51,14 +51,14 @@ async function mainnetDeploy(configParams) {
     // Deploy Unipool for EBTC-WETH
     await mdh.sendAndWaitForTransaction(uniswapV2Factory.createPair(
       configParams.externalAddrs.WETH_ERC20,
-      liquityCore.lusdToken.address,
+      liquityCore.ebtcToken.address,
       { gasPrice }
     ))
 
     // Check Uniswap Pair EBTC-WETH pair after pair creation (forwards and backwards should have same address)
-    EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.lusdToken.address, configParams.externalAddrs.WETH_ERC20)
+    EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
     assert.notEqual(EBTCWETHPairAddr, th.ZERO_ADDRESS)
-    WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.lusdToken.address)
+    WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.ebtcToken.address)
     console.log(`EBTC-WETH pair contract address after Uniswap pair creation: ${EBTCWETHPairAddr}`)
     assert.equal(WETHEBTCPairAddr, EBTCWETHPairAddr)
   }
@@ -288,7 +288,7 @@ async function mainnetDeploy(configParams) {
   // console.log(`deployer's trove status: ${deployerTrove[3]}`)
 
   // // Check deployer has EBTC
-  // let deployerEBTCBal = await liquityCore.lusdToken.balanceOf(deployerWallet.address)
+  // let deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
   // th.logBN("deployer's EBTC balance", deployerEBTCBal)
 
   // // Check Uniswap pool has EBTC and WETH tokens
@@ -301,7 +301,7 @@ async function mainnetDeploy(configParams) {
   // const token0Addr = await EBTCETHPair.token0()
   // const token1Addr = await EBTCETHPair.token1()
   // console.log(`EBTC-ETH Pair token 0: ${th.squeezeAddr(token0Addr)},
-  //       EBTCToken contract addr: ${th.squeezeAddr(liquityCore.lusdToken.address)}`)
+  //       EBTCToken contract addr: ${th.squeezeAddr(liquityCore.ebtcToken.address)}`)
   // console.log(`EBTC-ETH Pair token 1: ${th.squeezeAddr(token1Addr)},
   //       WETH ERC20 contract addr: ${th.squeezeAddr(configParams.externalAddrs.WETH_ERC20)}`)
 
@@ -322,10 +322,10 @@ async function mainnetDeploy(configParams) {
   // if (deployerLPTokenBal.toString() == '0') {
   //   console.log('Providing liquidity to Uniswap...')
   //   // Give router an allowance for EBTC
-  //   await liquityCore.lusdToken.increaseAllowance(uniswapV2Router02.address, dec(10000, 18))
+  //   await liquityCore.ebtcToken.increaseAllowance(uniswapV2Router02.address, dec(10000, 18))
 
   //   // Check Router's spending allowance
-  //   const routerEBTCAllowanceFromDeployer = await liquityCore.lusdToken.allowance(deployerWallet.address, uniswapV2Router02.address)
+  //   const routerEBTCAllowanceFromDeployer = await liquityCore.ebtcToken.allowance(deployerWallet.address, uniswapV2Router02.address)
   //   th.logBN("router's spending allowance for deployer's EBTC", routerEBTCAllowanceFromDeployer)
 
   //   // Get amounts for liquidity provision
@@ -346,7 +346,7 @@ async function mainnetDeploy(configParams) {
   //   // Provide liquidity to EBTC-ETH pair
   //   await mdh.sendAndWaitForTransaction(
   //     uniswapV2Router02.addLiquidityETH(
-  //       liquityCore.lusdToken.address, // address of EBTC token
+  //       liquityCore.ebtcToken.address, // address of EBTC token
   //       EBTCAmount, // EBTC provision
   //       minEBTCAmount, // minimum EBTC provision
   //       LP_ETH, // minimum ETH provision
@@ -515,14 +515,14 @@ async function mainnetDeploy(configParams) {
   // console.log("CHECK DEPLOYER WITHDRAWING STAKING GAINS")
 
   // // check deployer's EBTC balance before withdrawing staking gains
-  // deployerEBTCBal = await liquityCore.lusdToken.balanceOf(deployerWallet.address)
+  // deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
   // th.logBN('deployer EBTC bal before withdrawing staking gains', deployerEBTCBal)
 
   // // Deployer withdraws staking gains
   // await mdh.sendAndWaitForTransaction(LQTYContracts.lqtyStaking.unstake(0, { gasPrice, gasLimit: 1000000 }))
 
   // // check deployer's EBTC balance after withdrawing staking gains
-  // deployerEBTCBal = await liquityCore.lusdToken.balanceOf(deployerWallet.address)
+  // deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
   // th.logBN('deployer EBTC bal after withdrawing staking gains', deployerEBTCBal)
 
 

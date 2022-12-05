@@ -7,7 +7,7 @@ def floatToWei(amount):
     return Wei(amount * 1e18)
 
 # Subtracts the borrowing fee
-def get_lusd_amount_from_net_debt(contracts, net_debt):
+def get_ebtc_amount_from_net_debt(contracts, net_debt):
     borrowing_rate = contracts.troveManager.getBorrowingRateWithDecay()
     return Wei(net_debt * Wei(1e18) / (Wei(1e18) + borrowing_rate))
 

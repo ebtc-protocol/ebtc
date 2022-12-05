@@ -27,7 +27,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     ICollSurplusPool collSurplusPool;
 
-    IEBTCToken public override lusdToken;
+    IEBTCToken public override ebtcToken;
 
     ILQTYToken public override lqtyToken;
 
@@ -170,7 +170,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     struct ContractsCache {
         IActivePool activePool;
         IDefaultPool defaultPool;
-        IEBTCToken lusdToken;
+        IEBTCToken ebtcToken;
         ILQTYStaking lqtyStaking;
         ISortedTroves sortedTroves;
         ICollSurplusPool collSurplusPool;
@@ -239,7 +239,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _sortedTrovesAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress
@@ -255,7 +255,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
-        checkContract(_lusdTokenAddress);
+        checkContract(_ebtcTokenAddress);
         checkContract(_sortedTrovesAddress);
         checkContract(_lqtyTokenAddress);
         checkContract(_lqtyStakingAddress);
@@ -267,7 +267,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
-        lusdToken = IEBTCToken(_lusdTokenAddress);
+        ebtcToken = IEBTCToken(_ebtcTokenAddress);
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
@@ -279,7 +279,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit EBTCTokenAddressChanged(_lusdTokenAddress);
+        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit SortedTrovesAddressChanged(_sortedTrovesAddress);
         emit LQTYTokenAddressChanged(_lqtyTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
@@ -802,7 +802,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     function _sendGasCompensation(IActivePool _activePool, address _liquidator, uint _EBTC, uint _ETH) internal {
         if (_EBTC > 0) {
-            lusdToken.returnFromPool(gasPoolAddress, _liquidator, _EBTC);
+            ebtcToken.returnFromPool(gasPoolAddress, _liquidator, _EBTC);
         }
 
         if (_ETH > 0) {
@@ -894,7 +894,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     * Any surplus ETH left in the trove, is sent to the Coll surplus pool, and can be later claimed by the borrower.
     */
     function _redeemCloseTrove(ContractsCache memory _contractsCache, bytes32 _troveId, uint _EBTC, uint _ETH, address _b) internal {
-        _contractsCache.lusdToken.burn(gasPoolAddress, _EBTC);
+        _contractsCache.ebtcToken.burn(gasPoolAddress, _EBTC);
         // Update Active Pool EBTC, and send ETH to account
         _contractsCache.activePool.decreaseEBTCDebt(_EBTC);
 
@@ -948,7 +948,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         ContractsCache memory contractsCache = ContractsCache(
             activePool,
             defaultPool,
-            lusdToken,
+            ebtcToken,
             lqtyStaking,
             sortedTroves,
             collSurplusPool,
@@ -961,11 +961,11 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
-        _requireEBTCBalanceCoversRedemption(contractsCache.lusdToken, msg.sender, _EBTCamount);
+        _requireEBTCBalanceCoversRedemption(contractsCache.ebtcToken, msg.sender, _EBTCamount);
 
         totals.totalEBTCSupplyAtStart = getEntireSystemDebt();
         // Confirm redeemer's balance is less than total EBTC supply
-        assert(contractsCache.lusdToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
+        assert(contractsCache.ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
 
         totals.remainingEBTC = _EBTCamount;
         address currentBorrower;
@@ -1027,7 +1027,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 
         // Burn the total EBTC that is cancelled with debt, and send the redeemed ETH to msg.sender
-        contractsCache.lusdToken.burn(msg.sender, totals.totalEBTCToRedeem);
+        contractsCache.ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
         // Update Active Pool EBTC, and send ETH to account
         contractsCache.activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
         contractsCache.activePool.sendETH(msg.sender, totals.ETHToSendToRedeemer);
@@ -1492,8 +1492,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         require(Troves[_troveId].status == Status.active, "TroveManager: Trove does not exist or is closed");
     }
 
-    function _requireEBTCBalanceCoversRedemption(IEBTCToken _lusdToken, address _redeemer, uint _amount) internal view {
-        require(_lusdToken.balanceOf(_redeemer) >= _amount, "TroveManager: Requested redemption amount must be <= user's EBTC token balance");
+    function _requireEBTCBalanceCoversRedemption(IEBTCToken _ebtcToken, address _redeemer, uint _amount) internal view {
+        require(_ebtcToken.balanceOf(_redeemer) >= _amount, "TroveManager: Requested redemption amount must be <= user's EBTC token balance");
     }
 
     function _requireMoreThanOneTroveInSystem(uint TroveOwnersArrayLength) internal view {

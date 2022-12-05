@@ -48,14 +48,14 @@ interface ITroveManager is ILiquityBase {
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _sortedTrovesAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress
     ) external;
 
     function stabilityPool() external view returns (IStabilityPool);
-    function lusdToken() external view returns (IEBTCToken);
+    function ebtcToken() external view returns (IEBTCToken);
     function lqtyToken() external view returns (ILQTYToken);
     function lqtyStaking() external view returns (ILQTYStaking);
 

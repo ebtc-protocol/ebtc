@@ -18,14 +18,14 @@ const deployLiquity = async () => {
   const defaultPool = await DefaultPool.new()
   const functionCaller = await FunctionCaller.new()
   const borrowerOperations = await BorrowerOperations.new()
-  const lusdToken = await EBTCToken.new(
+  const ebtcToken = await EBTCToken.new(
     troveManager.address,
     stabilityPool.address,
     borrowerOperations.address
   )
   DefaultPool.setAsDeployed(defaultPool)
   PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
-  EBTCToken.setAsDeployed(lusdToken)
+  EBTCToken.setAsDeployed(ebtcToken)
   SortedTroves.setAsDeployed(sortedTroves)
   TroveManager.setAsDeployed(troveManager)
   ActivePool.setAsDeployed(activePool)
@@ -35,7 +35,7 @@ const deployLiquity = async () => {
 
   const contracts = {
     priceFeedTestnet,
-    lusdToken,
+    ebtcToken,
     sortedTroves,
     troveManager,
     activePool,
@@ -51,7 +51,7 @@ const getAddresses = (contracts) => {
   return {
     BorrowerOperations: contracts.borrowerOperations.address,
     PriceFeedTestnet: contracts.priceFeedTestnet.address,
-    EBTCToken: contracts.lusdToken.address,
+    EBTCToken: contracts.ebtcToken.address,
     SortedTroves: contracts.sortedTroves.address,
     TroveManager: contracts.troveManager.address,
     StabilityPool: contracts.stabilityPool.address,

@@ -31,7 +31,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
   let contracts
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let stabilityPool
   let sortedTroves
   let troveManager
@@ -62,7 +62,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       contracts.troveManager = await TroveManagerTester.new()
-      contracts.lusdToken = await EBTCToken.new(
+      contracts.ebtcToken = await EBTCToken.new(
         contracts.troveManager.address,
         contracts.stabilityPool.address,
         contracts.borrowerOperations.address
@@ -70,7 +70,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
 
       priceFeed = contracts.priceFeedTestnet
-      lusdToken = contracts.lusdToken
+      ebtcToken = contracts.ebtcToken
       stabilityPool = contracts.stabilityPool
       sortedTroves = contracts.sortedTroves
       troveManager = contracts.troveManager

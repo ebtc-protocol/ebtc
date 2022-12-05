@@ -102,12 +102,12 @@ class DeploymentHelper {
     const functionCaller = await FunctionCaller.new()
     const borrowerOperations = await BorrowerOperations.new()
     const hintHelpers = await HintHelpers.new()
-    const lusdToken = await EBTCToken.new(
+    const ebtcToken = await EBTCToken.new(
       troveManager.address,
       stabilityPool.address,
       borrowerOperations.address
     )
-    EBTCToken.setAsDeployed(lusdToken)
+    EBTCToken.setAsDeployed(ebtcToken)
     DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
     SortedTroves.setAsDeployed(sortedTroves)
@@ -122,7 +122,7 @@ class DeploymentHelper {
 
     const coreContracts = {
       priceFeedTestnet,
-      lusdToken,
+      ebtcToken,
       sortedTroves,
       troveManager,
       activePool,
@@ -155,7 +155,7 @@ class DeploymentHelper {
     testerContracts.troveManager = await TroveManagerTester.new()
     testerContracts.functionCaller = await FunctionCaller.new()
     testerContracts.hintHelpers = await HintHelpers.new()
-    testerContracts.lusdToken =  await EBTCTokenTester.new(
+    testerContracts.ebtcToken =  await EBTCTokenTester.new(
       testerContracts.troveManager.address,
       testerContracts.stabilityPool.address,
       testerContracts.borrowerOperations.address
@@ -233,14 +233,14 @@ class DeploymentHelper {
     const functionCaller = await FunctionCaller.new()
     const borrowerOperations = await BorrowerOperations.new()
     const hintHelpers = await HintHelpers.new()
-    const lusdToken = await EBTCToken.new(
+    const ebtcToken = await EBTCToken.new(
       troveManager.address,
       stabilityPool.address,
       borrowerOperations.address
     )
     const coreContracts = {
       priceFeedTestnet,
-      lusdToken,
+      ebtcToken,
       sortedTroves,
       troveManager,
       activePool,
@@ -281,7 +281,7 @@ class DeploymentHelper {
   }
 
   static async deployEBTCToken(contracts) {
-    contracts.lusdToken = await EBTCToken.new(
+    contracts.ebtcToken = await EBTCToken.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -290,7 +290,7 @@ class DeploymentHelper {
   }
 
   static async deployEBTCTokenTester(contracts) {
-    contracts.lusdToken = await EBTCTokenTester.new(
+    contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -319,8 +319,8 @@ class DeploymentHelper {
 
     contracts.sortedTroves = new SortedTrovesProxy(owner, proxies, contracts.sortedTroves)
 
-    const lusdTokenScript = await TokenScript.new(contracts.lusdToken.address)
-    contracts.lusdToken = new TokenProxy(owner, proxies, lusdTokenScript.address, contracts.lusdToken)
+    const ebtcTokenScript = await TokenScript.new(contracts.ebtcToken.address)
+    contracts.ebtcToken = new TokenProxy(owner, proxies, ebtcTokenScript.address, contracts.ebtcToken)
 
     const lqtyTokenScript = await TokenScript.new(LQTYContracts.lqtyToken.address)
     LQTYContracts.lqtyToken = new TokenProxy(owner, proxies, lqtyTokenScript.address, LQTYContracts.lqtyToken)
@@ -352,7 +352,7 @@ class DeploymentHelper {
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
-      contracts.lusdToken.address,
+      contracts.ebtcToken.address,
       contracts.sortedTroves.address,
       LQTYContracts.lqtyToken.address,
       LQTYContracts.lqtyStaking.address
@@ -368,7 +368,7 @@ class DeploymentHelper {
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
       contracts.sortedTroves.address,
-      contracts.lusdToken.address,
+      contracts.ebtcToken.address,
       LQTYContracts.lqtyStaking.address
     )
 
@@ -377,7 +377,7 @@ class DeploymentHelper {
       contracts.borrowerOperations.address,
       contracts.troveManager.address,
       contracts.activePool.address,
-      contracts.lusdToken.address,
+      contracts.ebtcToken.address,
       contracts.sortedTroves.address,
       contracts.priceFeedTestnet.address,
       LQTYContracts.communityIssuance.address
@@ -416,7 +416,7 @@ class DeploymentHelper {
   static async connectLQTYContractsToCore(LQTYContracts, coreContracts) {
     await LQTYContracts.lqtyStaking.setAddresses(
       LQTYContracts.lqtyToken.address,
-      coreContracts.lusdToken.address,
+      coreContracts.ebtcToken.address,
       coreContracts.troveManager.address, 
       coreContracts.borrowerOperations.address,
       coreContracts.activePool.address

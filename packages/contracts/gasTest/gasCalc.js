@@ -32,7 +32,7 @@ contract('Gas cost tests', async accounts => {
   let contracts
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -50,7 +50,7 @@ contract('Gas cost tests', async accounts => {
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress)
 
     priceFeed = contracts.priceFeedTestnet
-    lusdToken = contracts.lusdToken
+    ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
     troveManager = contracts.troveManager
     activePool = contracts.activePool
@@ -292,7 +292,7 @@ contract('Gas cost tests', async accounts => {
     await th.openTrove_allAccounts_decreasingEBTCAmounts(_10_Accounts, contracts, dec(10, 'ether'), 200)
 
     for (account of _10_Accounts ) {
-      await lusdToken.unprotectedMint(account, dec(1000, 18))
+      await ebtcToken.unprotectedMint(account, dec(1000, 18))
     }
 
     const tx = await borrowerOperations.closeTrove({ from: accounts[1] })
@@ -308,7 +308,7 @@ contract('Gas cost tests', async accounts => {
     await th.openTrove_allAccounts_decreasingEBTCAmounts(_20_Accounts, contracts, dec(10, 'ether'), 200)
 
     for (account of _20_Accounts ) {
-      await lusdToken.unprotectedMint(account, dec(1000, 18))
+      await ebtcToken.unprotectedMint(account, dec(1000, 18))
     }
     
     const gasResults = await th.closeTrove_allAccounts(_20_Accounts.slice(1), contracts)

@@ -23,7 +23,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   const lpRewardsAddress = accounts[999]
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let troveManager
   let stabilityPool
   let sortedTroves
@@ -69,7 +69,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     const randomIndex = Math.floor(Math.random() * (depositorAccounts.length))
     const randomDepositor = depositorAccounts[randomIndex]
 
-    const userBalance = (await lusdToken.balanceOf(randomDepositor))
+    const userBalance = (await ebtcToken.balanceOf(randomDepositor))
     const maxEBTCDeposit = userBalance.div(toBN(dec(1, 18)))
 
     const randomEBTCAmount = th.randAmountInWei(1, maxEBTCDeposit)
@@ -148,7 +148,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       const lowestTrove = await sortedTroves.getLast()
       const lastTroveDebt = (await troveManager.getEntireDebtAndColl(trove))[0]
       await borrowerOperations.adjustTrove(0, 0 , lastTroveDebt, true, whale, {from: whale})
-      await lusdToken.transfer(lowestTrove, lowestTroveDebt, {from: whale})
+      await ebtcToken.transfer(lowestTrove, lowestTroveDebt, {from: whale})
       await borrowerOperations.closeTrove({from: lowestTrove})
     }
 
@@ -183,7 +183,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       const ETHinSPAfter = (await stabilityPool.getETH()).toString()
       const EBTCinSPAfter = (await stabilityPool.getTotalEBTCDeposits()).toString()
-      const EBTCBalanceSPAfter = (await lusdToken.balanceOf(stabilityPool.address))
+      const EBTCBalanceSPAfter = (await ebtcToken.balanceOf(stabilityPool.address))
       const depositAfter = await stabilityPool.getCompoundedEBTCDeposit(depositor)
 
       console.log(`--Before withdrawal--
@@ -219,7 +219,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
       stabilityPool = contracts.stabilityPool
       priceFeed = contracts.priceFeedTestnet
-      lusdToken = contracts.lusdToken
+      ebtcToken = contracts.ebtcToken
       stabilityPool = contracts.stabilityPool
       troveManager = contracts.troveManager
       borrowerOperations = contracts.borrowerOperations

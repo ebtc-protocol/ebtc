@@ -30,7 +30,7 @@ contract('CollSurplusPool', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await EBTCToken.new(
+    contracts.ebtcToken = await EBTCToken.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -82,9 +82,9 @@ contract('CollSurplusPool', async accounts => {
 
     // open trove from NonPayable proxy contract
     const B_coll = toBN(dec(60, 18))
-    const B_lusdAmount = toBN(dec(3000, 18))
-    const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_lusdAmount)
-    const openTroveData = th.getTransactionData('openTrove(uint256,uint256,bytes32,bytes32)', ['0xde0b6b3a7640000', web3.utils.toHex(B_lusdAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32])
+    const B_ebtcAmount = toBN(dec(3000, 18))
+    const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)
+    const openTroveData = th.getTransactionData('openTrove(uint256,uint256,bytes32,bytes32)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32])
     await nonPayable.forward(borrowerOperations.address, openTroveData, { value: B_coll })
     await openTrove({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
 

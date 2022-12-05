@@ -13,7 +13,7 @@ const StabilityPool = artifacts.require('StabilityPool')
 contract('Echidna debugger', async accounts => {
   let echidnaTester
   let troveManager
-  let lusdToken
+  let ebtcToken
   let activePool
   let defaultPool
   let stabilityPool
@@ -22,7 +22,7 @@ contract('Echidna debugger', async accounts => {
   before(async () => {
     echidnaTester = await EchidnaTester.new({ value: dec(11, 25) })
     troveManager = await TroveManager.at(await echidnaTester.troveManager())
-    lusdToken = await EBTCToken.at(await echidnaTester.lusdToken())
+    ebtcToken = await EBTCToken.at(await echidnaTester.ebtcToken())
     activePool = await ActivePool.at(await echidnaTester.activePool())
     defaultPool = await DefaultPool.at(await echidnaTester.defaultPool())
     stabilityPool = await StabilityPool.at(await echidnaTester.stabilityPool())
@@ -68,13 +68,13 @@ contract('Echidna debugger', async accounts => {
   it.only('EBTC balance', async () => {
     await echidnaTester.openTroveExt('0', '0', '4210965169908805439447313562489173090')
 
-    const totalSupply = await lusdToken.totalSupply();
-    const gasPoolBalance = await lusdToken.balanceOf(GAS_POOL_ADDRESS);
+    const totalSupply = await ebtcToken.totalSupply();
+    const gasPoolBalance = await ebtcToken.balanceOf(GAS_POOL_ADDRESS);
     const activePoolBalance = await activePool.getEBTCDebt();
     const defaultPoolBalance = await defaultPool.getEBTCDebt();
     const stabilityPoolBalance = await stabilityPool.getTotalEBTCDeposits();
     const currentTrove = await echidnaTester.echidnaProxies(0);
-    const troveBalance = lusdToken.balanceOf(currentTrove);
+    const troveBalance = ebtcToken.balanceOf(currentTrove);
 
     console.log('totalSupply', totalSupply.toString());
     console.log('gasPoolBalance', gasPoolBalance.toString());

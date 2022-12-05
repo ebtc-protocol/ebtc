@@ -33,7 +33,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     }
     
     ILQTYToken public lqtyToken;
-    IEBTCToken public lusdToken;
+    IEBTCToken public ebtcToken;
 
     address public troveManagerAddress;
     address public borrowerOperationsAddress;
@@ -42,7 +42,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     // --- Events ---
 
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
-    event EBTCTokenAddressSet(address _lusdTokenAddress);
+    event EBTCTokenAddressSet(address _ebtcTokenAddress);
     event TroveManagerAddressSet(address _troveManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
@@ -60,7 +60,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     function setAddresses
     (
         address _lqtyTokenAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _troveManagerAddress, 
         address _borrowerOperationsAddress,
         address _activePoolAddress
@@ -70,19 +70,19 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         override 
     {
         checkContract(_lqtyTokenAddress);
-        checkContract(_lusdTokenAddress);
+        checkContract(_ebtcTokenAddress);
         checkContract(_troveManagerAddress);
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
 
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
-        lusdToken = IEBTCToken(_lusdTokenAddress);
+        ebtcToken = IEBTCToken(_ebtcTokenAddress);
         troveManagerAddress = _troveManagerAddress;
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePoolAddress = _activePoolAddress;
 
         emit LQTYTokenAddressSet(_lqtyTokenAddress);
-        emit LQTYTokenAddressSet(_lusdTokenAddress);
+        emit LQTYTokenAddressSet(_ebtcTokenAddress);
         emit TroveManagerAddressSet(_troveManagerAddress);
         emit BorrowerOperationsAddressSet(_borrowerOperationsAddress);
         emit ActivePoolAddressSet(_activePoolAddress);
@@ -121,7 +121,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
          // Send accumulated EBTC and ETH gains to the caller
         if (currentStake != 0) {
-            lusdToken.transfer(msg.sender, EBTCGain);
+            ebtcToken.transfer(msg.sender, EBTCGain);
             _sendETHGainToUser(ETHGain);
         }
     }
@@ -157,7 +157,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         emit StakingGainsWithdrawn(msg.sender, EBTCGain, ETHGain);
 
         // Send accumulated EBTC and ETH gains to the caller
-        lusdToken.transfer(msg.sender, EBTCGain);
+        ebtcToken.transfer(msg.sender, EBTCGain);
         _sendETHGainToUser(ETHGain);
     }
 

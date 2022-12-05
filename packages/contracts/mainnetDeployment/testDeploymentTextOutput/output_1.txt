@@ -5,7 +5,7 @@ Uniswap Factory number of pairs: 31966
 deployer's ETH balance before deployments: 24798501997000000000
 Contract objects addresses:
 priceFeed: 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
-lusdToken: 0xaa052d8b915c9311e5EA234dd24105d6208087A5
+ebtcToken: 0xaa052d8b915c9311e5EA234dd24105d6208087A5
 sortedTroves: 0xb8493cD0E7135462502DF048deeFc9b650fa789F
 troveManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 activePool: 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313

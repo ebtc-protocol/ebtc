@@ -493,7 +493,7 @@ def is_new_tcr_above_ccr(
 
 
 def close_troves(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
-                 price_lusd, index):
+                 price_ebtc, index):
     if len(active_accounts) == 0:
         return [0]
 
@@ -506,11 +506,11 @@ def close_troves(accounts, contracts, active_accounts, inactive_accounts, price_
 
     if index <= 240:
         number_closetroves = np.random.uniform(0, 1)
-    elif price_lusd >= 1:
+    elif price_ebtc >= 1:
         number_closetroves = max(0, n_steady * (1 + shock_closetroves))
     else:
         number_closetroves = max(0, n_steady * (1 + shock_closetroves)) + beta * (
-                1 - price_lusd) * n_troves
+                1 - price_ebtc) * n_troves
 
     number_closetroves = min(int(round(number_closetroves)), len(active_accounts) - 1)
     random.seed(293 + 100 * index)
@@ -521,7 +521,7 @@ def close_troves(accounts, contracts, active_accounts, inactive_accounts, price_
         amounts = contracts.troveManager.getEntireDebtAndColl(account)
         coll = amounts['coll']
         debt = amounts['debt']
-        pending = get_lusd_to_repay(accounts, contracts, active_accounts, inactive_accounts,
+        pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
                                     account, debt)
         if pending == 0:
             if is_new_tcr_above_ccr(contracts, coll, False, debt, False,
@@ -537,30 +537,30 @@ def close_troves(accounts, contracts, active_accounts, inactive_accounts, price_
 
 """Adjust Troves"""
 def transfer_from_to(contracts, from_account, to_account, amount):
-    balance = contracts.lusdToken.balanceOf(from_account)
+    balance = contracts.ebtcToken.balanceOf(from_account)
     transfer_amount = min(balance, amount)
     if transfer_amount == 0:
         return amount
     if from_account == to_account:
         return amount
-    contracts.lusdToken.transfer(to_account, transfer_amount, {'from': from_account})
+    contracts.ebtcToken.transfer(to_account, transfer_amount, {'from': from_account})
     pending = amount - transfer_amount
 
     return pending
 
 
-def get_lusd_to_repay(accounts, contracts, active_accounts, inactive_accounts, account, debt):
-    lusd_balance = contracts.lusdToken.balanceOf(account)
-    if debt > lusd_balance:
-        pending = debt - lusd_balance
+def get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts, account, debt):
+    ebtc_balance = contracts.ebtcToken.balanceOf(account)
+    if debt > ebtc_balance:
+        pending = debt - ebtc_balance
         # first try to withdraw from SP
         initial_deposit = contracts.stabilityPool.deposits(account)[0]
         if initial_deposit > 0:
             contracts.stabilityPool.withdrawFromSP(pending, {'from': account, 'gas_limit': 8000000,
                                                              'allow_revert': True})
             # it can only withdraw up to the deposit, so we check the balance again
-            lusd_balance = contracts.lusdToken.balanceOf(account)
-            pending = debt - lusd_balance
+            ebtc_balance = contracts.ebtcToken.balanceOf(account)
+            pending = debt - ebtc_balance
         # try with whale
         pending = transfer_from_to(contracts, accounts[0], account, pending)
         # try with active accounts, which are more likely to hold EBTC
@@ -622,7 +622,7 @@ def adjust_troves(accounts, contracts, active_accounts, inactive_accounts, price
     random.seed(57984 - 3 * index)
     ratio = random.uniform(0, 1)
     coll_added_float = 0
-    issuance_lusd_adjust = 0
+    issuance_ebtc_adjust = 0
 
     for i, working_trove in enumerate(active_accounts):
         account = accounts[working_trove['index']]
@@ -650,7 +650,7 @@ def adjust_troves(accounts, contracts, active_accounts, inactive_accounts, price
             if check < -1:
                 # pay back
                 repay_amount = floatToWei(debt - debt_new)
-                pending = get_lusd_to_repay(accounts, contracts, active_accounts, inactive_accounts,
+                pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
                                             account, repay_amount)
                 if pending == 0:
                     contracts.borrowerOperations.repayEBTC(repay_amount, hints[0], hints[1],
@@ -664,7 +664,7 @@ def adjust_troves(accounts, contracts, active_accounts, inactive_accounts, price
                     contracts.borrowerOperations.withdrawEBTC(MAX_FEE, withdraw_amount_wei,
                                                               hints[0], hints[1], {'from': account})
                     rate_issuance = contracts.troveManager.getBorrowingRateWithDecay() / 1e18
-                    issuance_lusd_adjust = issuance_lusd_adjust + rate_issuance * withdraw_amount
+                    issuance_ebtc_adjust = issuance_ebtc_adjust + rate_issuance * withdraw_amount
         # Another part of the troves are adjusted by adjusting collaterals
         elif p < ratio:
             coll_new = working_trove['CR_initial'] * debt / price_ether_current
@@ -684,7 +684,7 @@ def adjust_troves(accounts, contracts, active_accounts, inactive_accounts, price
                     contracts.borrowerOperations.withdrawColl(coll_withdrawn, hints[0], hints[1],
                                                               {'from': account})
 
-    return [coll_added_float, issuance_lusd_adjust]
+    return [coll_added_float, issuance_ebtc_adjust]
 
 
 def open_trove(accounts, contracts, active_accounts, inactive_accounts, supply_trove,
@@ -699,10 +699,10 @@ def open_trove(accounts, contracts, active_accounts, inactive_accounts, supply_t
                                    supply_trove, price_ether_current)
     coll = floatToWei(quantity_ether)
     debt_change = floatToWei(supply_trove) + EBTC_GAS_COMPENSATION
-    lusd = get_lusd_amount_from_net_debt(contracts, floatToWei(supply_trove))
+    ebtc = get_ebtc_amount_from_net_debt(contracts, floatToWei(supply_trove))
     if is_new_tcr_above_ccr(contracts, coll, True, debt_change, True,
                             floatToWei(price_ether_current)):
-        contracts.borrowerOperations.openTrove(MAX_FEE, lusd, hints[0], hints[1],
+        contracts.borrowerOperations.openTrove(MAX_FEE, ebtc, hints[0], hints[1],
                                                {'from': accounts[inactive_accounts[0]],
                                                 'value': coll})
         new_account = {"index": inactive_accounts[0], "CR_initial": cr_ratio,
@@ -715,21 +715,21 @@ def open_trove(accounts, contracts, active_accounts, inactive_accounts, supply_t
 
 
 def open_troves(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
-                price_lusd, index):
+                price_ebtc, index):
     random.seed(2019 * index)
     shock_opentroves = random.normalvariate(0, sd_opentroves)
     n_troves = len(active_accounts)
     rate_issuance = contracts.troveManager.getBorrowingRateWithDecay() / 1e18
     coll_added = 0
-    issuance_lusd_open = 0
+    issuance_ebtc_open = 0
 
     if index <= 0:
         number_opentroves = initial_open
-    elif price_lusd <= 1 + rate_issuance:
+    elif price_ebtc <= 1 + rate_issuance:
         number_opentroves = max(0, n_steady * (1 + shock_opentroves))
     else:
         number_opentroves = max(0, n_steady * (1 + shock_opentroves)) + \
-                            alpha * (price_lusd - rate_issuance - 1) * n_troves
+                            alpha * (price_ebtc - rate_issuance - 1) * n_troves
 
     number_opentroves = min(int(round(float(number_opentroves))), len(inactive_accounts))
 
@@ -748,16 +748,16 @@ def open_troves(accounts, contracts, active_accounts, inactive_accounts, price_e
             supply_trove = MIN_NET_DEBT
             quantity_ether = CR_ratio * supply_trove / price_ether_current
 
-        issuance_lusd_open = issuance_lusd_open + rate_issuance * supply_trove
+        issuance_ebtc_open = issuance_ebtc_open + rate_issuance * supply_trove
         if open_trove(accounts, contracts, active_accounts, inactive_accounts, supply_trove,
                       quantity_ether, CR_ratio, rational_inattention, price_ether_current):
             coll_added = coll_added + quantity_ether
 
-    return [coll_added, issuance_lusd_open]
+    return [coll_added, issuance_ebtc_open]
 
 
 def stability_update(accounts, contracts, active_accounts, return_stability, index):
-    supply = contracts.lusdToken.totalSupply() / 1e18
+    supply = contracts.ebtcToken.totalSupply() / 1e18
     stability_pool_previous = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
 
     np.random.seed(27 + 3 * index)
@@ -781,7 +781,7 @@ def stability_update(accounts, contracts, active_accounts, return_stability, ind
         i = 0
         while remaining > 0 and i < len(active_accounts):
             account = index2address(accounts, active_accounts, i)
-            balance = contracts.lusdToken.balanceOf(account) / 1e18
+            balance = contracts.ebtcToken.balanceOf(account) / 1e18
             deposit = min(balance, remaining)
             if deposit > 0:
                 contracts.stabilityPool.provideToSP(floatToWei(deposit), ZERO_ADDRESS,
@@ -814,12 +814,12 @@ Solving this equation gives that:
 """
 
 
-def calculate_price(price_lusd, liquidity_pool, liquidity_pool_next):
+def calculate_price(price_ebtc, liquidity_pool, liquidity_pool_next):
     # liquidity_pool = supply - stability_pool
     # liquidity_pool_next = liquidity_pool_previous * drift_liquidity * (1+shock_liquidity)
-    price_lusd_current = price_lusd * (liquidity_pool / liquidity_pool_next) ** (1 / delta)
+    price_ebtc_current = price_ebtc * (liquidity_pool / liquidity_pool_next) ** (1 / delta)
 
-    return price_lusd_current
+    return price_ebtc_current
 
 
 """ **Stabilizers**
@@ -892,9 +892,9 @@ redemption_start = 0.8
 
 
 def redeem_trove(accounts, contracts, i, price_ether_current):
-    lusd_balance = contracts.lusdToken.balanceOf(accounts[i])
+    ebtc_balance = contracts.ebtcToken.balanceOf(accounts[i])
     [first_redemption_hint, partial_redemption_hint_nicr,
-     truncated_lus_damount] = contracts.hintHelpers.getRedemptionHints(lusd_balance,
+     truncated_lus_damount] = contracts.hintHelpers.getRedemptionHints(ebtc_balance,
                                                                        price_ether_current, 70)
     if truncated_lus_damount == Wei(0):
         return None
@@ -916,10 +916,10 @@ def redeem_trove(accounts, contracts, i, price_ether_current):
     except:
         print(f"\n   Redemption failed! ")
         print(f"Trove Manager: {contracts.troveManager.address}")
-        print(f"EBTC Token:    {contracts.lusdToken.address}")
+        print(f"EBTC Token:    {contracts.ebtcToken.address}")
         print(f"i: {i}")
         print(f"account: {accounts[i]}")
-        print(f"EBTC bal: {lusd_balance / 1e18}")
+        print(f"EBTC bal: {ebtc_balance / 1e18}")
         print(f"truncated: {truncated_lus_damount / 1e18}")
         print(
             f"Redemption rate: "
@@ -941,13 +941,13 @@ def redeem_trove(accounts, contracts, i, price_ether_current):
 
 
 def price_stabilizer(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
-                     price_lusd, index):
+                     price_ebtc, index):
     stability_pool = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
     redemption_pool = 0
     redemption_fee = 0
-    issuance_lusd_stabilizer = 0
+    issuance_ebtc_stabilizer = 0
 
-    supply = contracts.lusdToken.totalSupply() / 1e18
+    supply = contracts.ebtcToken.totalSupply() / 1e18
     # Liquidity Pool
     liquidity_pool = supply - stability_pool
 
@@ -958,51 +958,51 @@ def price_stabilizer(accounts, contracts, active_accounts, inactive_accounts, pr
     liquidity_pool_next = liquidity_pool * drift_liquidity * (1 + shock_liquidity)
 
     # Calculating Price
-    price_lusd_current = calculate_price(price_lusd, liquidity_pool, liquidity_pool_next)
+    price_ebtc_current = calculate_price(price_ebtc, liquidity_pool, liquidity_pool_next)
     rate_issuance = contracts.troveManager.getBorrowingRateWithDecay() / 1e18
     rate_redemption = contracts.troveManager.getRedemptionRateWithDecay() / 1e18
 
     # Stabilizer
     # Ceiling Arbitrageurs
-    if price_lusd_current > 1.1 + rate_issuance:
+    if price_ebtc_current > 1.1 + rate_issuance:
         supply_wanted = stability_pool + \
                         liquidity_pool_next * \
-                        ((1.1 + rate_issuance) / price_lusd) ** delta
+                        ((1.1 + rate_issuance) / price_ebtc) ** delta
         supply_trove = min(supply_wanted - supply, MIN_NET_DEBT)
 
         cr_ratio = 1.1
         rational_inattention = 0.1
         quantity_ether = supply_trove * cr_ratio / price_ether_current
-        issuance_lusd_stabilizer = rate_issuance * supply_trove
+        issuance_ebtc_stabilizer = rate_issuance * supply_trove
         if open_trove(accounts, contracts, active_accounts, inactive_accounts, supply_trove,
                       quantity_ether, cr_ratio, rational_inattention):
-            price_lusd_current = 1.1 + rate_issuance
+            price_ebtc_current = 1.1 + rate_issuance
             liquidity_pool = supply_wanted - stability_pool
 
     # Floor Arbitrageurs
-    if price_lusd_current < 1 - rate_redemption:
+    if price_ebtc_current < 1 - rate_redemption:
         np.random.seed(30 * index)
         shock_redemption = np.random.normal(0, sd_redemption)
         redemption_ratio = max(1, redemption_start * (1 + shock_redemption))
 
         supply_target = stability_pool + \
                         liquidity_pool_next * \
-                        ((1 - rate_redemption) / price_lusd) ** delta
+                        ((1 - rate_redemption) / price_ebtc) ** delta
         supply_diff = supply - supply_target
         if supply_diff < redemption_ratio * liquidity_pool:
             redemption_pool = supply_diff
             # liquidity_pool = liquidity_pool - redemption_pool
-            price_lusd_current = 1 - rate_redemption
+            price_ebtc_current = 1 - rate_redemption
         else:
             redemption_pool = redemption_ratio * liquidity_pool
             # liquidity_pool = (1-redemption_ratio)*liquidity_pool
-            price_lusd_current = calculate_price(price_lusd, liquidity_pool, liquidity_pool_next)
+            price_ebtc_current = calculate_price(price_ebtc, liquidity_pool, liquidity_pool_next)
 
         remaining = redemption_pool
         i = 0
         while remaining > 0 and i < len(active_accounts):
             account = index2address(accounts, active_accounts, i)
-            balance = contracts.lusdToken.balanceOf(account) / 1e18
+            balance = contracts.ebtcToken.balanceOf(account) / 1e18
             redemption = min(balance, remaining)
             if redemption > 0:
                 tx = redeem_trove(accounts, contracts, 0, price_ether_current)
@@ -1020,7 +1020,7 @@ def price_stabilizer(accounts, contracts, active_accounts, inactive_accounts, pr
     # Redemption Fee
     redemption_fee = redemption_pool * (rate_redemption + redemption_pool / supply)
 
-    return [price_lusd_current, redemption_pool, redemption_fee, issuance_lusd_stabilizer]
+    return [price_ebtc_current, redemption_pool, redemption_fee, issuance_ebtc_stabilizer]
 
 
 def lqty_market(index, data):

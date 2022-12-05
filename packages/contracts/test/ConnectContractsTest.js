@@ -6,7 +6,7 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
   
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -24,7 +24,7 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     priceFeed = coreContracts.priceFeedTestnet
-    lusdToken = coreContracts.lusdToken
+    ebtcToken = coreContracts.ebtcToken
     sortedTroves = coreContracts.sortedTroves
     troveManager = coreContracts.troveManager
     activePool = coreContracts.activePool
@@ -52,11 +52,11 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   })
 
   it('Sets the correct EBTCToken address in TroveManager', async () => {
-    const lusdTokenAddress = lusdToken.address
+    const ebtcTokenAddress = ebtcToken.address
 
-    const recordedClvTokenAddress = await troveManager.lusdToken()
+    const recordedClvTokenAddress = await troveManager.ebtcToken()
 
-    assert.equal(lusdTokenAddress, recordedClvTokenAddress)
+    assert.equal(ebtcTokenAddress, recordedClvTokenAddress)
   })
 
   it('Sets the correct SortedTroves address in TroveManager', async () => {
@@ -161,11 +161,11 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   })
 
   it('Sets the correct EBTCToken address in StabilityPool', async () => {
-    const lusdTokenAddress = lusdToken.address
+    const ebtcTokenAddress = ebtcToken.address
 
-    const recordedClvTokenAddress = await stabilityPool.lusdToken()
+    const recordedClvTokenAddress = await stabilityPool.ebtcToken()
 
-    assert.equal(lusdTokenAddress, recordedClvTokenAddress)
+    assert.equal(ebtcTokenAddress, recordedClvTokenAddress)
   })
 
   it('Sets the correct TroveManager address in StabilityPool', async () => {
@@ -276,10 +276,10 @@ contract('Deployment script - Sets correct contract addresses dependencies after
 
   // Sets EBTCToken in LQTYStaking
   it('Sets the correct ActivePool address in LQTYStaking', async () => {
-    const lusdTokenAddress = lusdToken.address
+    const ebtcTokenAddress = ebtcToken.address
 
-    const recordedEBTCTokenAddress = await lqtyStaking.lusdToken()
-    assert.equal(lusdTokenAddress, recordedEBTCTokenAddress)
+    const recordedEBTCTokenAddress = await lqtyStaking.ebtcToken()
+    assert.equal(ebtcTokenAddress, recordedEBTCTokenAddress)
   })
 
   // Sets TroveManager in LQTYStaking

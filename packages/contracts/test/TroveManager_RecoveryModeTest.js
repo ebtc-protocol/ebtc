@@ -41,7 +41,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     let beadpSigner;
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let sortedTroves
   let troveManager
   let activePool
@@ -69,7 +69,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await EBTCToken.new(
+    contracts.ebtcToken = await EBTCToken.new(
       contracts.troveManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
@@ -77,7 +77,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     priceFeed = contracts.priceFeedTestnet
-    lusdToken = contracts.lusdToken
+    ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
     troveManager = contracts.troveManager
     activePool = contracts.activePool
@@ -1224,7 +1224,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
 
 
     // to compensate borrowing fees
-    await lusdToken.transfer(bob, dec(100, 18), { from: alice })
+    await ebtcToken.transfer(bob, dec(100, 18), { from: alice })
 
     // Remove Bob from system to test Carol's trove: price rises, Bob closes trove, price drops to 100 again
     await priceFeed.setPrice(dec(200, 18))
@@ -1597,7 +1597,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
     // Bob sends tokens to Dennis, who has no trove
-    await lusdToken.transfer(dennis, spDeposit, { from: bob })
+    await ebtcToken.transfer(dennis, spDeposit, { from: bob })
 
     //Dennis provides 200 EBTC to SP
     await stabilityPool.provideToSP(spDeposit, ZERO_ADDRESS, { from: dennis })
@@ -1634,9 +1634,9 @@ contract('TroveManager - in Recovery Mode', async accounts => {
   it("liquidate(): does not alter the liquidated user's token balance", async () => {
     await openTrove({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(1000, 18), extraParams: { from: whale } })
 
-    const { lusdAmount: A_lusdAmount } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(300, 18), extraParams: { from: alice } })
-    const { lusdAmount: B_lusdAmount } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
-    const { lusdAmount: C_lusdAmount } = await openTrove({ ICR: toBN(dec(206, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: carol } })
+    const { ebtcAmount: A_ebtcAmount } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(300, 18), extraParams: { from: alice } })
+    const { ebtcAmount: B_ebtcAmount } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(200, 18), extraParams: { from: bob } })
+    const { ebtcAmount: C_ebtcAmount } = await openTrove({ ICR: toBN(dec(206, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: carol } })
     let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
@@ -1647,9 +1647,9 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Check token balances 
-    assert.equal((await lusdToken.balanceOf(alice)).toString(), A_lusdAmount)
-    assert.equal((await lusdToken.balanceOf(bob)).toString(), B_lusdAmount)
-    assert.equal((await lusdToken.balanceOf(carol)).toString(), C_lusdAmount)
+    assert.equal((await ebtcToken.balanceOf(alice)).toString(), A_ebtcAmount)
+    assert.equal((await ebtcToken.balanceOf(bob)).toString(), B_ebtcAmount)
+    assert.equal((await ebtcToken.balanceOf(carol)).toString(), C_ebtcAmount)
 
     // Check sortedList size is 4
     assert.equal((await sortedTroves.getSize()).toString(), '4')
@@ -1668,9 +1668,9 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '1')
 
     // Confirm token balances have not changed
-    assert.equal((await lusdToken.balanceOf(alice)).toString(), A_lusdAmount)
-    assert.equal((await lusdToken.balanceOf(bob)).toString(), B_lusdAmount)
-    assert.equal((await lusdToken.balanceOf(carol)).toString(), C_lusdAmount)
+    assert.equal((await ebtcToken.balanceOf(alice)).toString(), A_ebtcAmount)
+    assert.equal((await ebtcToken.balanceOf(bob)).toString(), B_ebtcAmount)
+    assert.equal((await ebtcToken.balanceOf(carol)).toString(), C_ebtcAmount)
   })
 
   it("liquidate(), with 110% < ICR < TCR, can claim collateral, re-open, be reedemed and claim again", async () => {
@@ -2601,9 +2601,9 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     await openTrove({ ICR: toBN(dec(300, 16)), extraParams: { from: whale } })
 
     // D, E, F open troves that will fall below MCR when price drops to 100
-    const { lusdAmount: lusdAmountD } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: dennis } })
-    const { lusdAmount: lusdAmountE } = await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: erin } })
-    const { lusdAmount: lusdAmountF } = await openTrove({ ICR: toBN(dec(111, 16)), extraParams: { from: freddy } })
+    const { ebtcAmount: ebtcAmountD } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: dennis } })
+    const { ebtcAmount: ebtcAmountE } = await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: erin } })
+    const { ebtcAmount: ebtcAmountF } = await openTrove({ ICR: toBN(dec(111, 16)), extraParams: { from: freddy } })
     let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
     let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
     let _freddyTroveId = await sortedTroves.troveOfOwnerByIndex(freddy, 0);
@@ -2613,9 +2613,9 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '4')
 
     // Check token balances before
-    assert.equal((await lusdToken.balanceOf(dennis)).toString(), lusdAmountD)
-    assert.equal((await lusdToken.balanceOf(erin)).toString(), lusdAmountE)
-    assert.equal((await lusdToken.balanceOf(freddy)).toString(), lusdAmountF)
+    assert.equal((await ebtcToken.balanceOf(dennis)).toString(), ebtcAmountD)
+    assert.equal((await ebtcToken.balanceOf(erin)).toString(), ebtcAmountE)
+    assert.equal((await ebtcToken.balanceOf(freddy)).toString(), ebtcAmountF)
 
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
@@ -2635,28 +2635,28 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     assert.isFalse(await sortedTroves.contains(_freddyTroveId))
 
     // Check token balances of users whose troves were liquidated, have not changed
-    assert.equal((await lusdToken.balanceOf(dennis)).toString(), lusdAmountD)
-    assert.equal((await lusdToken.balanceOf(erin)).toString(), lusdAmountE)
-    assert.equal((await lusdToken.balanceOf(freddy)).toString(), lusdAmountF)
+    assert.equal((await ebtcToken.balanceOf(dennis)).toString(), ebtcAmountD)
+    assert.equal((await ebtcToken.balanceOf(erin)).toString(), ebtcAmountE)
+    assert.equal((await ebtcToken.balanceOf(freddy)).toString(), ebtcAmountF)
   })
 
   it("liquidateTroves(): Liquidating troves at 100 < ICR < 110 with SP deposits correctly impacts their SP deposit and ETH gain", async () => {
     // Whale provides EBTC to the SP
-    const { lusdAmount: W_lusdAmount } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(4000, 18), extraParams: { from: whale } })
-    await stabilityPool.provideToSP(W_lusdAmount, ZERO_ADDRESS, { from: whale })
+    const { ebtcAmount: W_ebtcAmount } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(4000, 18), extraParams: { from: whale } })
+    await stabilityPool.provideToSP(W_ebtcAmount, ZERO_ADDRESS, { from: whale })
 
-    const { lusdAmount: A_lusdAmount, totalDebt: A_totalDebt, collateral: A_coll } = await openTrove({ ICR: toBN(dec(191, 16)), extraEBTCAmount: dec(40, 18), extraParams: { from: alice } })
-    const { lusdAmount: B_lusdAmount, totalDebt: B_totalDebt, collateral: B_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: bob } })
+    const { ebtcAmount: A_ebtcAmount, totalDebt: A_totalDebt, collateral: A_coll } = await openTrove({ ICR: toBN(dec(191, 16)), extraEBTCAmount: dec(40, 18), extraParams: { from: alice } })
+    const { ebtcAmount: B_ebtcAmount, totalDebt: B_totalDebt, collateral: B_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: bob } })
     const { totalDebt: C_totalDebt, collateral: C_coll} = await openTrove({ ICR: toBN(dec(209, 16)), extraParams: { from: carol } })
     let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
     let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
     let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
 
     // A, B provide to the SP
-    await stabilityPool.provideToSP(A_lusdAmount, ZERO_ADDRESS, { from: alice })
-    await stabilityPool.provideToSP(B_lusdAmount, ZERO_ADDRESS, { from: bob })
+    await stabilityPool.provideToSP(A_ebtcAmount, ZERO_ADDRESS, { from: alice })
+    await stabilityPool.provideToSP(B_ebtcAmount, ZERO_ADDRESS, { from: bob })
 
-    const totalDeposit = W_lusdAmount.add(A_lusdAmount).add(B_lusdAmount)
+    const totalDeposit = W_ebtcAmount.add(A_ebtcAmount).add(B_ebtcAmount)
 
     assert.equal((await sortedTroves.getSize()).toString(), '4')
 
@@ -2732,13 +2732,13 @@ contract('TroveManager - in Recovery Mode', async accounts => {
 
     const liquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
     const liquidatedColl = A_coll.add(B_coll).add(C_coll)
-    assert.isAtMost(th.getDifference(whale_Deposit_After, W_lusdAmount.sub(liquidatedDebt.mul(W_lusdAmount).div(totalDeposit))), 100000)
-    assert.isAtMost(th.getDifference(alice_Deposit_After, A_lusdAmount.sub(liquidatedDebt.mul(A_lusdAmount).div(totalDeposit))), 100000)
-    assert.isAtMost(th.getDifference(bob_Deposit_After, B_lusdAmount.sub(liquidatedDebt.mul(B_lusdAmount).div(totalDeposit))), 100000)
+    assert.isAtMost(th.getDifference(whale_Deposit_After, W_ebtcAmount.sub(liquidatedDebt.mul(W_ebtcAmount).div(totalDeposit))), 100000)
+    assert.isAtMost(th.getDifference(alice_Deposit_After, A_ebtcAmount.sub(liquidatedDebt.mul(A_ebtcAmount).div(totalDeposit))), 100000)
+    assert.isAtMost(th.getDifference(bob_Deposit_After, B_ebtcAmount.sub(liquidatedDebt.mul(B_ebtcAmount).div(totalDeposit))), 100000)
 
-    assert.isAtMost(th.getDifference(whale_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(W_lusdAmount).div(totalDeposit)), 2000)
-    assert.isAtMost(th.getDifference(alice_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(A_lusdAmount).div(totalDeposit)), 2000)
-    assert.isAtMost(th.getDifference(bob_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(B_lusdAmount).div(totalDeposit)), 2000)
+    assert.isAtMost(th.getDifference(whale_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(W_ebtcAmount).div(totalDeposit)), 2000)
+    assert.isAtMost(th.getDifference(alice_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(A_ebtcAmount).div(totalDeposit)), 2000)
+    assert.isAtMost(th.getDifference(bob_ETHGain, th.applyLiquidationFee(liquidatedColl).mul(B_ebtcAmount).div(totalDeposit)), 2000)
 
     // Check total remaining deposits and ETH gain in Stability Pool
     const total_EBTCinSP = (await stabilityPool.getTotalEBTCDeposits()).toString()
@@ -3129,13 +3129,13 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     That leaves 50 EBTC in the Pool which won’t be enough for any other liquidation */
     const liquidationTx = await troveManager.liquidateTroves(10)
 
-    const [liquidatedDebt, liquidatedColl, collGasComp, lusdGasComp] = th.getEmittedLiquidationValues(liquidationTx)
+    const [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
     th.assertIsApproximatelyEqual(liquidatedDebt, A_totalDebt.add(B_totalDebt))
     const equivalentColl = A_totalDebt.add(B_totalDebt).mul(toBN(dec(11, 17))).div(price)
     th.assertIsApproximatelyEqual(liquidatedColl, th.applyLiquidationFee(equivalentColl))
     th.assertIsApproximatelyEqual(collGasComp, equivalentColl.sub(th.applyLiquidationFee(equivalentColl))) // 0.5% of 283/120*1.1
-    assert.equal(lusdGasComp.toString(), dec(400, 18))
+    assert.equal(ebtcGasComp.toString(), dec(400, 18))
 
     // check collateral surplus
     const alice_remainingCollateral = A_coll.sub(A_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
@@ -3441,7 +3441,7 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     await stabilityPool.provideToSP(spDeposit, ZERO_ADDRESS, { from: alice })
 
     // to compensate borrowing fee
-    await lusdToken.transfer(alice, A_totalDebt, { from: whale })
+    await ebtcToken.transfer(alice, A_totalDebt, { from: whale })
     // Deprecated Alice closes trove. If trove closed, ntohing to liquidate later
     await borrowerOperations.closeTrove(_aliceTroveId, { from: alice })
 
@@ -3827,13 +3827,13 @@ contract('TroveManager - in Recovery Mode', async accounts => {
     const trovesToLiquidate = [_aliceTroveId, _bobTroveId, _carolTroveId]
     const liquidationTx = await troveManager.batchLiquidateTroves(trovesToLiquidate)
 
-    const [liquidatedDebt, liquidatedColl, collGasComp, lusdGasComp] = th.getEmittedLiquidationValues(liquidationTx)
+    const [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
     th.assertIsApproximatelyEqual(liquidatedDebt, A_totalDebt.add(B_totalDebt))
     const equivalentColl = A_totalDebt.add(B_totalDebt).mul(toBN(dec(11, 17))).div(price)
     th.assertIsApproximatelyEqual(liquidatedColl, th.applyLiquidationFee(equivalentColl))
     th.assertIsApproximatelyEqual(collGasComp, equivalentColl.sub(th.applyLiquidationFee(equivalentColl))) // 0.5% of 283/120*1.1
-    assert.equal(lusdGasComp.toString(), dec(400, 18))
+    assert.equal(ebtcGasComp.toString(), dec(400, 18))
 
     // check collateral surplus
     const alice_remainingCollateral = A_coll.sub(A_totalDebt.mul(th.toBN(dec(11, 17))).div(price))

@@ -15,7 +15,7 @@ interface IBorrowerOperations {
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address  _newPriceFeedAddress);
     event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event EBTCTokenAddressChanged(address _lusdTokenAddress);
+    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
     event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
@@ -33,7 +33,7 @@ interface IBorrowerOperations {
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedTrovesAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _lqtyStakingAddress
     ) external;
 

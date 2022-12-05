@@ -110,9 +110,9 @@ async function main() {
   // Tokens must be in the same order
   // Values must be decimal-normalized!
   const weth_balance = INITIAL_FUNDING.mul(weights[1]).div(eth_price);
-  const lusd_balance = INITIAL_FUNDING.mul(weights[0]).div(toBigNum(dec(1, 18)));
-  const initialBalances = [lusd_balance, weth_balance];
-  th.logBN('Initial EBTC', lusd_balance);
+  const ebtc_balance = INITIAL_FUNDING.mul(weights[0]).div(toBigNum(dec(1, 18)));
+  const initialBalances = [ebtc_balance, weth_balance];
+  th.logBN('Initial EBTC', ebtc_balance);
   th.logBN('Initial WETH', weth_balance);
 
   const JOIN_KIND_INIT = 0;
@@ -154,12 +154,12 @@ async function main() {
   console.log('Approve WETH gas: ', approveWethReceipt.gasUsed.toString());
 
   // Approve EBTC
-  const lusd = new ethers.Contract(
+  const ebtc = new ethers.Contract(
     EBTC,
     ERC20.abi,
     deployerWallet
   );
-  const txApproveLusd = await lusd.approve(VAULT, lusd_balance);
+  const txApproveLusd = await ebtc.approve(VAULT, ebtc_balance);
   const approveLusdReceipt = await txApproveLusd.wait();
   console.log('Approve EBTC gas: ', approveLusdReceipt.gasUsed.toString());
 

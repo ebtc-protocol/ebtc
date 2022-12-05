@@ -24,7 +24,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     ITroveManager immutable troveManager;
     IStabilityPool immutable stabilityPool;
     IPriceFeed immutable priceFeed;
-    IERC20 immutable lusdToken;
+    IERC20 immutable ebtcToken;
     IERC20 immutable lqtyToken;
     ILQTYStaking immutable lqtyStaking;
 
@@ -49,9 +49,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         checkContract(address(priceFeedCached));
         priceFeed = priceFeedCached;
 
-        address lusdTokenCached = address(troveManagerCached.lusdToken());
-        checkContract(lusdTokenCached);
-        lusdToken = IERC20(lusdTokenCached);
+        address ebtcTokenCached = address(troveManagerCached.ebtcToken());
+        checkContract(ebtcTokenCached);
+        ebtcToken = IERC20(ebtcTokenCached);
 
         address lqtyTokenCached = address(troveManagerCached.lqtyToken());
         checkContract(lqtyTokenCached);
@@ -110,14 +110,14 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     function claimStakingGainsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
         uint collBalanceBefore = address(this).balance;
-        uint lusdBalanceBefore = lusdToken.balanceOf(address(this));
+        uint ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
 
         // Claim gains
         lqtyStaking.unstake(0);
 
         uint gainedCollateral = address(this).balance.sub(collBalanceBefore); // stack too deep issues :'(
-        uint gainedEBTC = lusdToken.balanceOf(address(this)).sub(lusdBalanceBefore);
+        uint gainedEBTC = ebtcToken.balanceOf(address(this)).sub(ebtcBalanceBefore);
 
         uint netEBTCAmount;
         // Top up trove and get more EBTC, keeping ICR constant

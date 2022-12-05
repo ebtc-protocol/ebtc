@@ -107,9 +107,9 @@ export class Fixture {
   private async sendEBTCFromFunder(toAddress: string, amount: Decimalish) {
     amount = Decimal.from(amount);
 
-    const lusdBalance = await this.funderLiquity.getEBTCBalance();
+    const ebtcBalance = await this.funderLiquity.getEBTCBalance();
 
-    if (lusdBalance.lt(amount)) {
+    if (ebtcBalance.lt(amount)) {
       const trove = await this.funderLiquity.getTrove();
       const total = await this.funderLiquity.getTotal();
       const fees = await this.funderLiquity.getFees();
@@ -120,7 +120,7 @@ export class Fixture {
           : Decimal.max(trove.collateralRatio(this.price).add(0.00001), 1.11);
 
       let newTrove = trove.isEmpty ? Trove.create({ depositCollateral: 1, borrowEBTC: 0 }) : trove;
-      newTrove = newTrove.adjust({ borrowEBTC: amount.sub(lusdBalance).mul(2) });
+      newTrove = newTrove.adjust({ borrowEBTC: amount.sub(ebtcBalance).mul(2) });
 
       if (newTrove.debt.lt(EBTC_MINIMUM_DEBT)) {
         newTrove = newTrove.setDebt(EBTC_MINIMUM_DEBT);
@@ -161,8 +161,8 @@ export class Fixture {
   }
 
   async liquidateRandomNumberOfTroves(price: Decimal) {
-    const lusdInStabilityPoolBefore = await this.deployerLiquity.getEBTCInStabilityPool();
-    console.log(`// Stability Pool balance: ${lusdInStabilityPoolBefore}`);
+    const ebtcInStabilityPoolBefore = await this.deployerLiquity.getEBTCInStabilityPool();
+    console.log(`// Stability Pool balance: ${ebtcInStabilityPoolBefore}`);
 
     const trovesBefore = await getListOfTroves(this.deployerLiquity);
 
@@ -194,8 +194,8 @@ export class Fixture {
 
     this.totalNumberOfLiquidations += liquidatedTroves.length;
 
-    const lusdInStabilityPoolAfter = await this.deployerLiquity.getEBTCInStabilityPool();
-    console.log(`// Stability Pool balance: ${lusdInStabilityPoolAfter}`);
+    const ebtcInStabilityPoolAfter = await this.deployerLiquity.getEBTCInStabilityPool();
+    console.log(`// Stability Pool balance: ${ebtcInStabilityPoolAfter}`);
   }
 
   async openRandomTrove(userAddress: string, liquity: Liquity) {
@@ -421,10 +421,10 @@ export class Fixture {
   }
 
   async sweepEBTC(liquity: Liquity) {
-    const lusdBalance = await liquity.getEBTCBalance();
+    const ebtcBalance = await liquity.getEBTCBalance();
 
-    if (lusdBalance.nonZero) {
-      await liquity.sendEBTC(this.funderAddress, lusdBalance, { gasPrice: 0 });
+    if (ebtcBalance.nonZero) {
+      await liquity.sendEBTC(this.funderAddress, ebtcBalance, { gasPrice: 0 });
     }
   }
 

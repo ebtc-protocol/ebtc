@@ -154,7 +154,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     ITroveManager public troveManager;
 
-    IEBTCToken public lusdToken;
+    IEBTCToken public ebtcToken;
 
     // Needed to check if there are pending liquidations
     ISortedTroves public sortedTroves;
@@ -273,7 +273,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         address _borrowerOperationsAddress,
         address _troveManagerAddress,
         address _activePoolAddress,
-        address _lusdTokenAddress,
+        address _ebtcTokenAddress,
         address _sortedTrovesAddress,
         address _priceFeedAddress,
         address _communityIssuanceAddress
@@ -285,7 +285,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         checkContract(_borrowerOperationsAddress);
         checkContract(_troveManagerAddress);
         checkContract(_activePoolAddress);
-        checkContract(_lusdTokenAddress);
+        checkContract(_ebtcTokenAddress);
         checkContract(_sortedTrovesAddress);
         checkContract(_priceFeedAddress);
         checkContract(_communityIssuanceAddress);
@@ -293,7 +293,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         troveManager = ITroveManager(_troveManagerAddress);
         activePool = IActivePool(_activePoolAddress);
-        lusdToken = IEBTCToken(_lusdTokenAddress);
+        ebtcToken = IEBTCToken(_ebtcTokenAddress);
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
         communityIssuance = ICommunityIssuance(_communityIssuanceAddress);
@@ -301,7 +301,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit TroveManagerAddressChanged(_troveManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
-        emit EBTCTokenAddressChanged(_lusdTokenAddress);
+        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit SortedTrovesAddressChanged(_sortedTrovesAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit CommunityIssuanceAddressChanged(_communityIssuanceAddress);
@@ -629,7 +629,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
         _decreaseEBTC(_debtToOffset);
 
         // Burn the debt that was successfully offset
-        lusdToken.burn(address(this), _debtToOffset);
+        ebtcToken.burn(address(this), _debtToOffset);
 
         activePoolCached.sendETH(address(this), _collToAdd);
     }
@@ -823,7 +823,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
 
     // Transfer the EBTC tokens from the user to the Stability Pool's address, and update its recorded EBTC
     function _sendEBTCtoStabilityPool(address _address, uint _amount) internal {
-        lusdToken.sendToPool(_address, address(this), _amount);
+        ebtcToken.sendToPool(_address, address(this), _amount);
         uint newTotalEBTCDeposits = totalEBTCDeposits.add(_amount);
         totalEBTCDeposits = newTotalEBTCDeposits;
         emit StabilityPoolEBTCBalanceUpdated(newTotalEBTCDeposits);
@@ -844,7 +844,7 @@ contract StabilityPool is LiquityBase, Ownable, CheckContract, IStabilityPool {
     function _sendEBTCToDepositor(address _depositor, uint EBTCWithdrawal) internal {
         if (EBTCWithdrawal == 0) {return;}
 
-        lusdToken.returnFromPool(address(this), _depositor, EBTCWithdrawal);
+        ebtcToken.returnFromPool(address(this), _depositor, EBTCWithdrawal);
         _decreaseEBTC(EBTCWithdrawal);
     }
 
