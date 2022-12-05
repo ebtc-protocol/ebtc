@@ -12,14 +12,14 @@ const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 const deployLiquity = async () => {
   const priceFeedTestnet = await PriceFeedTestnet.new()
   const sortedTroves = await SortedTroves.new()
-  const troveManager = await TroveManager.new()
+  const cdpManager = await TroveManager.new()
   const activePool = await ActivePool.new()
   const stabilityPool = await StabilityPool.new()
   const defaultPool = await DefaultPool.new()
   const functionCaller = await FunctionCaller.new()
   const borrowerOperations = await BorrowerOperations.new()
   const ebtcToken = await EBTCToken.new(
-    troveManager.address,
+    cdpManager.address,
     stabilityPool.address,
     borrowerOperations.address
   )
@@ -27,7 +27,7 @@ const deployLiquity = async () => {
   PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
   EBTCToken.setAsDeployed(ebtcToken)
   SortedTroves.setAsDeployed(sortedTroves)
-  TroveManager.setAsDeployed(troveManager)
+  TroveManager.setAsDeployed(cdpManager)
   ActivePool.setAsDeployed(activePool)
   StabilityPool.setAsDeployed(stabilityPool)
   FunctionCaller.setAsDeployed(functionCaller)
@@ -37,7 +37,7 @@ const deployLiquity = async () => {
     priceFeedTestnet,
     ebtcToken,
     sortedTroves,
-    troveManager,
+    cdpManager,
     activePool,
     stabilityPool,
     defaultPool,
@@ -53,7 +53,7 @@ const getAddresses = (contracts) => {
     PriceFeedTestnet: contracts.priceFeedTestnet.address,
     EBTCToken: contracts.ebtcToken.address,
     SortedTroves: contracts.sortedTroves.address,
-    TroveManager: contracts.troveManager.address,
+    TroveManager: contracts.cdpManager.address,
     StabilityPool: contracts.stabilityPool.address,
     ActivePool: contracts.activePool.address,
     DefaultPool: contracts.defaultPool.address,
@@ -74,13 +74,13 @@ const connectContracts = async (contracts, addresses) => {
   await contracts.priceFeedTestnet.setTroveManagerAddress(addresses.TroveManager)
 
   // set contracts in the Trove Manager
-  await contracts.troveManager.setEBTCToken(addresses.EBTCToken)
-  await contracts.troveManager.setSortedTroves(addresses.SortedTroves)
-  await contracts.troveManager.setPriceFeed(addresses.PriceFeedTestnet)
-  await contracts.troveManager.setActivePool(addresses.ActivePool)
-  await contracts.troveManager.setDefaultPool(addresses.DefaultPool)
-  await contracts.troveManager.setStabilityPool(addresses.StabilityPool)
-  await contracts.troveManager.setBorrowerOperations(addresses.BorrowerOperations)
+  await contracts.cdpManager.setEBTCToken(addresses.EBTCToken)
+  await contracts.cdpManager.setSortedTroves(addresses.SortedTroves)
+  await contracts.cdpManager.setPriceFeed(addresses.PriceFeedTestnet)
+  await contracts.cdpManager.setActivePool(addresses.ActivePool)
+  await contracts.cdpManager.setDefaultPool(addresses.DefaultPool)
+  await contracts.cdpManager.setStabilityPool(addresses.StabilityPool)
+  await contracts.cdpManager.setBorrowerOperations(addresses.BorrowerOperations)
 
   // set contracts in BorrowerOperations 
   await contracts.borrowerOperations.setSortedTroves(addresses.SortedTroves)

@@ -171,8 +171,8 @@ class BorrowerWrappersProxy extends Proxy {
 }
 
 class TroveManagerProxy extends Proxy {
-  constructor(owner, proxies, troveManagerScriptAddress, troveManager) {
-    super(owner, proxies, troveManagerScriptAddress, troveManager)
+  constructor(owner, proxies, cdpManagerScriptAddress, cdpManager) {
+    super(owner, proxies, cdpManagerScriptAddress, cdpManager)
   }
 
   async Troves(user) {
@@ -315,8 +315,8 @@ class SortedTrovesProxy extends Proxy {
     return this.proxyFunction('findInsertPosition', params)
   }
 
-  async troveOfOwnerByIndex(...params) {
-    return this.forwardFunction(params, 'troveOfOwnerByIndex(address,uint)')
+  async cdpOfOwnerByIndex(...params) {
+    return this.forwardFunction(params, 'cdpOfOwnerByIndex(address,uint)')
   }
 
   async existTroveOwners(...params) {

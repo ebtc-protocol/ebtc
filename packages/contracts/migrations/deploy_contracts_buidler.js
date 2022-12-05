@@ -19,20 +19,20 @@ module.exports = async () => {
   const borrowerOperations = await BorrowerOperations.new()
   const priceFeed = await PriceFeed.new()
   const sortedTroves = await SortedTroves.new()
-  const troveManager = await TroveManager.new()
+  const cdpManager = await TroveManager.new()
   const activePool = await ActivePool.new()
   const stabilityPool = await StabilityPool.new()
   const defaultPool = await DefaultPool.new()
   const functionCaller = await FunctionCaller.new()
   const ebtcToken = await EBTCToken.new(
-    troveManager.address,
+    cdpManager.address,
     stabilityPool.address,
     borrowerOperations.address
   )
   BorrowerOperations.setAsDeployed(borrowerOperations)
   PriceFeed.setAsDeployed(priceFeed)
   SortedTroves.setAsDeployed(sortedTroves)
-  TroveManager.setAsDeployed(troveManager)
+  TroveManager.setAsDeployed(cdpManager)
   ActivePool.setAsDeployed(activePool)
   StabilityPool.setAsDeployed(stabilityPool)
   DefaultPool.setAsDeployed(defaultPool)
@@ -44,7 +44,7 @@ module.exports = async () => {
     priceFeed,
     ebtcToken,
     sortedTroves,
-    troveManager,
+    cdpManager,
     activePool,
     stabilityPool,
     defaultPool,

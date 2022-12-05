@@ -56,7 +56,7 @@
 //    // Set the Trove Manager address in the testnet PriceFeed
 //     // const res = await testnetPriceFeed.setTroveManagerAddress('0x405143dAe9a8a703a1fE82ad4B65BBFE5505AF63')
 //     // res.wait()
-//     const recordedTroveManagerAddressTestnet = await testnetPriceFeed.troveManagerAddress()
+//     const recordedTroveManagerAddressTestnet = await testnetPriceFeed.cdpManagerAddress()
 //     console.log(`recorded TroveManager Address is ${recordedTroveManagerAddressTestnet}`)
    
 

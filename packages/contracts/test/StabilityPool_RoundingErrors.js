@@ -18,7 +18,7 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
   let priceFeed
   let ebtcToken
   let stabilityPool
-  let troveManager
+  let cdpManager
   let borrowerOperations
 
   beforeEach(async () => {
@@ -27,7 +27,7 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     stabilityPool = contracts.stabilityPool
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     borrowerOperations = contracts.borrowerOperations
 
     const contractAddresses = getAddresses(contracts)
@@ -45,7 +45,7 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
       await stabilityPool.provideToSP(dec(100, 18), { from: account })
     }
 
-    // Defaulter opens trove with 200% ICR
+    // Defaulter opens cdp with 200% ICR
     for (let defaulter of defaulters) {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter } })
       }
@@ -56,7 +56,7 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
 
     // Defaulters liquidated
     for (let defaulter of defaulters) {
-      await troveManager.liquidate(defaulter, { from: owner });
+      await cdpManager.liquidate(defaulter, { from: owner });
     }
 
     const SP_TotalDeposits = await stabilityPool.getTotalEBTCDeposits()

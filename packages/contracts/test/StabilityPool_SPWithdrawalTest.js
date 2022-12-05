@@ -47,7 +47,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let defaultPool
@@ -80,13 +80,13 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
-      contracts.troveManager = await TroveManagerTester.new()
+      contracts.cdpManager = await TroveManagerTester.new()
       contracts = await deploymentHelper.deployEBTCToken(contracts)
 
       priceFeed = contracts.priceFeedTestnet
       ebtcToken = contracts.ebtcToken
       sortedTroves = contracts.sortedTroves
-      troveManager = contracts.troveManager
+      cdpManager = contracts.cdpManager
       activePool = contracts.activePool
       stabilityPool = contracts.stabilityPool
       defaultPool = contracts.defaultPool
@@ -122,15 +122,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulter opens trove with 200% ICR and 10k EBTC net debt
+      // Defaulter opens cdp with 200% ICR and 10k EBTC net debt
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // Check depositors' compounded deposit is 6666.66 EBTC and ETH Gain is 33.16 ETH
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -162,18 +162,18 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Check depositors' compounded deposit is 3333.33 EBTC and ETH Gain is 66.33 ETH
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -204,21 +204,21 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Check depositors' compounded deposit is 0 EBTC and ETH Gain is 99.5 ETH 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -251,18 +251,18 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '70000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Check depositors' compounded deposit
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -295,21 +295,21 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '50000000000000000000' })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(6000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '60000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(7000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '70000000000000000000' })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Check depositors' compounded deposit
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -344,18 +344,18 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await ebtcToken.transfer(carol, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
-      // 2 Defaulters open trove with 200% ICR
+      // 2 Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Depositors attempt to withdraw everything
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -388,21 +388,21 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await ebtcToken.transfer(carol, dec(30000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: carol })
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Depositors attempt to withdraw everything
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
@@ -441,26 +441,26 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await ebtcToken.transfer(carol, dec(13100, 18), { from: whale })
       await stabilityPool.provideToSP(dec(13100, 18), ZERO_ADDRESS, { from: carol })
 
-      /* Defaulters open troves
+      /* Defaulters open cdps
      
       Defaulter 1: 207000 EBTC & 2160 ETH
       Defaulter 2: 5000 EBTC & 50 ETH
       Defaulter 3: 46700 EBTC & 500 ETH
       */
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('207000000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2160, 18) })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5, 21)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(50, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('46700000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(500, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Three defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId);
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId);
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Depositors attempt to withdraw everything
       const txA = await stabilityPool.withdrawFromSP(dec(500000, 18), { from: alice })
@@ -496,27 +496,27 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Whale transfers 10k to Dennis who then provides to SP
       await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third defaulter liquidated
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -554,30 +554,30 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId);
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId);
 
-      // Dennis opens a trove and provides to SP
+      // Dennis opens a cdp and provides to SP
       await ebtcToken.transfer(dennis, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Third and fourth defaulters liquidated
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -606,7 +606,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await bn8Signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000000")});
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(1000000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(1000000, 'ether') })
 
-      /* Depositors open troves and make SP deposit:
+      /* Depositors open cdps and make SP deposit:
       Alice: 60000 EBTC
       Bob: 20000 EBTC
       Carol: 15000 EBTC
@@ -619,35 +619,35 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await ebtcToken.transfer(carol, dec(15000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(15000, 18), ZERO_ADDRESS, { from: carol })
 
-      /* Defaulters open troves:
+      /* Defaulters open cdps:
       Defaulter 1:  10000 EBTC, 100 ETH
       Defaulter 2:  25000 EBTC, 250 ETH
       Defaulter 3:  5000 EBTC, 50 ETH
       Defaulter 4:  40000 EBTC, 400 ETH
       */
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(25000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: '250000000000000000000' })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: '50000000000000000000' })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(40000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(400, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Dennis provides 25000 EBTC
       await ebtcToken.transfer(dennis, dec(25000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(25000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Last two defaulters liquidated
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       // Each depositor withdraws as much as possible
       const txA = await stabilityPool.withdrawFromSP(dec(100000, 18), { from: alice })
@@ -686,22 +686,22 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open trove with 200% ICR
+      // Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -714,8 +714,8 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '49750000000000000000'), 100000)
 
       // Two more defaulters are liquidated
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -755,27 +755,27 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await ebtcToken.transfer(dennis, dec(40000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(40000, 18), ZERO_ADDRESS, { from: dennis })
 
-      /* Defaulters open troves:
+      /* Defaulters open cdps:
       Defaulter 1: 10000 EBTC
       Defaulter 2: 20000 EBTC
       Defaulter 3: 30000 EBTC
       Defaulter 4: 5000 EBTC
       */
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(30000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(300, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -789,8 +789,8 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '122461538461538466100'), 100000000000)
 
       // Two more defaulters are liquidated
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(100000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(100000, 18), { from: bob })
@@ -823,28 +823,28 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulters open troves
+      // Defaulters open cdps
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: '50000000000000000000' })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // First two defaulters liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Carol makes deposit
       await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: carol })
 
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Dennis withdraws his deposit and ETH gain
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -856,7 +856,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.isAtMost(th.getDifference((await ebtcToken.balanceOf(dennis)).toString(), '1666666666666666666666'), 100000)
       assert.isAtMost(th.getDifference(dennis_ETHWithdrawn, '82916666666666666667'), 100000)
 
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -896,17 +896,17 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // 2 Defaulters open trove with 200% ICR
+      // 2 Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated. 20000 EBTC fully offset with pool.
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
@@ -916,7 +916,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // await borrowerOperations.openTrove(th._100pct, dec(1, 18), account, account, { from: erin, value: dec(2, 'ether') })
       // await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: erin })
@@ -965,15 +965,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // 4 Defaulters open trove with 200% ICR
+      // 4 Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
@@ -987,7 +987,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.equal(P_0, dec(1, 18))
 
       // Defaulter 1 liquidated. 10--0 EBTC fully offset, Pool remains non-zero
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_1 = (await stabilityPool.currentEpoch()).toString()
@@ -999,7 +999,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.isAtMost(th.getDifference(P_1, dec(5, 17)), 1000)
 
       // Defaulter 2 liquidated. 1--00 EBTC, empties pool
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_2 = (await stabilityPool.currentEpoch()).toString()
@@ -1018,7 +1018,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 3 liquidated. 10000 EBTC fully offset, Pool remains non-zero
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_3 = (await stabilityPool.currentEpoch()).toString()
@@ -1030,7 +1030,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       assert.isAtMost(th.getDifference(P_3, dec(5, 17)), 1000)
 
       // Defaulter 4 liquidated. 10000 EBTC, empties pool
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       //Check epoch, scale and sum
       const epoch_4 = (await stabilityPool.currentEpoch()).toString()
@@ -1061,17 +1061,17 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: account })
       }
 
-      // 2 Defaulters open trove with 200% ICR
+      // 2 Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated. 20000 EBTC fully offset with pool.
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // Carol, Dennis, Erin each deposit 10000, 20000, 30000 EBTC respectively
       await ebtcToken.transfer(carol, dec(10000, 18), { from: whale })
@@ -1084,7 +1084,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: erin })
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await troveManager.liquidate(_defaulter2TroveId);
+      await cdpManager.liquidate(_defaulter2TroveId);
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -1128,19 +1128,19 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulter 1,2,3 withdraw 10000 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1, 2  and 3 liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
 
@@ -1168,15 +1168,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       // Whale opens Trove with 100k ETH
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(100000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: whale, value: dec(100000, 'ether') })
 
-      // 4 Defaulters open trove with 200% ICR
+      // 4 Defaulters open cdp with 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(200, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
@@ -1189,7 +1189,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 1 liquidated. 20k EBTC fully offset with pool.
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // Carol, Dennis each deposit 10000 EBTC
       const depositors_2 = [carol, dennis]
@@ -1199,7 +1199,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 2 liquidated. 10000 EBTC offset
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Erin, Flyn each deposit 10000 EBTC
       const depositors_3 = [erin, flyn]
@@ -1209,7 +1209,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 3 liquidated. 10000 EBTC offset
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Graham, Harriet each deposit 10000 EBTC
       const depositors_4 = [graham, harriet]
@@ -1219,7 +1219,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       }
 
       // Defaulter 4 liquidated. 10k EBTC offset
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: alice })
       const txB = await stabilityPool.withdrawFromSP(dec(10000, 18), { from: bob })
@@ -1283,19 +1283,19 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulter 1 withdraws 'almost' 10000 EBTC:  9999.99991 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       assert.equal(await stabilityPool.currentScale(), '0')
 
       // Defaulter 2 withdraws 9900 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(9900, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(60, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P reduced to 9e9.
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.equal((await stabilityPool.P()).toString(), dec(9, 9))
 
       // Increasing the price for a moment to avoid pending liquidations to block withdrawal
@@ -1310,7 +1310,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated.  9900 EBTC liquidated. P altered by a factor of 1-(9900/10000) = 0.01.  Scale changed.
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       assert.equal(await stabilityPool.currentScale(), '1')
 
@@ -1339,17 +1339,17 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulter 1 withdraws 'almost' 10k EBTC.
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999910000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Defaulter 2 withdraws 59400 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('59400000000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(330, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P reduced to 9e9
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.equal((await stabilityPool.P()).toString(), dec(9, 9))
 
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1370,7 +1370,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // 54000 EBTC liquidated.  P altered by a factor of 1-(59400/60000) = 0.01. Scale changed.
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
 
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1420,15 +1420,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulter 1 and default 2 each withdraw 9999.999999999 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%: defaulter 1 ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P updated to  to 1e13
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isTrue(txL1.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 13))  // P decreases. P = 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1444,7 +1444,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17))  // Scale changes and P changes. P = 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1474,15 +1474,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulter 1 and default 2 withdraw up to debt of 9999.9 EBTC and 59999.4 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('59999400000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(600, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
 
       // Defaulter 1 liquidated.  Value of P updated to  to 9999999, i.e. in decimal, ~1e-10
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.equal(await stabilityPool.P(), dec(1, 13))  // P decreases. P = 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
 
@@ -1503,7 +1503,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(30000, 18), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17))  // P decreases. P = 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1536,7 +1536,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulters 1 withdraws 9999.9999999 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999999999900000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1545,7 +1545,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. P -> (~1e-10)*P
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isTrue(txL1.receipt.status)
 
       const aliceDeposit = (await stabilityPool.getCompoundedEBTCDeposit(alice)).toString()
@@ -1571,13 +1571,13 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulters 1-4 each withdraw 9999.9 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1586,7 +1586,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. 
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isTrue(txL1.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 13)) // P decreases to 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1596,7 +1596,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17)) // Scale changes and P changes to 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1606,7 +1606,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: carol })
 
       // Defaulter 3 liquidated
-      const txL3 = await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
       assert.isTrue(txL3.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 12)) // P decreases to 1e(17-5) = 1e12
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1616,7 +1616,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 4 liquidated
-      const txL4 = await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      const txL4 = await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
       assert.isTrue(txL4.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 16)) // Scale changes and P changes to 1e(12-5+9) = 1e16
       assert.equal(await stabilityPool.currentScale(), '2')
@@ -1652,11 +1652,11 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulters 1-3 each withdraw 24100, 24300, 24500 EBTC (inc gas comp)
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24100, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24300, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(24500, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(200, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1668,7 +1668,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: B })
 
       // Defaulter 1 liquidated. SP emptied
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isTrue(txL1.receipt.status)
 
       // Check compounded deposits
@@ -1708,7 +1708,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: D })
 
       // Defaulter 2 liquidated.  SP emptied
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
 
       // Check compounded deposits
@@ -1750,7 +1750,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: F })
 
       // Defaulter 3 liquidated. SP emptied
-      const txL3 = await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
       assert.isTrue(txL3.receipt.status)
 
       // Check compounded deposits
@@ -1783,15 +1783,15 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
 
       // Defaulters 1-5 each withdraw up to debt of 9999.9999999 EBTC
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_2, value: dec(100, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_4, value: dec(100, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_5, value: dec(100, 'ether') })
-      let _defaulter5TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_5, 0);
+      let _defaulter5TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_5, 0);
 
       // price drops by 50%
       await priceFeed.setPrice(dec(100, 18));
@@ -1800,7 +1800,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: alice })
 
       // Defaulter 1 liquidated. 
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isTrue(txL1.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 13)) // P decreases to 1e(18-5) = 1e13
       assert.equal(await stabilityPool.currentScale(), '0')
@@ -1810,7 +1810,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: bob })
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isTrue(txL2.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 17)) // Scale changes and P changes to 1e(13-5+9) = 1e17
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1820,7 +1820,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: carol })
 
       // Defaulter 3 liquidated
-      const txL3 = await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
       assert.isTrue(txL3.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 12)) // P decreases to 1e(17-5) = 1e12
       assert.equal(await stabilityPool.currentScale(), '1')
@@ -1830,7 +1830,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: dennis })
 
       // Defaulter 4 liquidated
-      const txL4 = await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      const txL4 = await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
       assert.isTrue(txL4.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 16)) // Scale changes and P changes to 1e(12-5+9) = 1e16
       assert.equal(await stabilityPool.currentScale(), '2')
@@ -1842,7 +1842,7 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
       await stabilityPool.provideToSP(dec(99999, 17), ZERO_ADDRESS, { from: erin })
   
       // Defaulter 5 liquidated
-      const txL5 = await troveManager.liquidate(_defaulter5TroveId, { from: owner });
+      const txL5 = await cdpManager.liquidate(_defaulter5TroveId, { from: owner });
       assert.isTrue(txL5.receipt.status)
       assert.equal(await stabilityPool.P(), dec(1, 11)) // P decreases to 1e(16-5) = 1e11
       assert.equal(await stabilityPool.currentScale(), '2')
@@ -1873,17 +1873,17 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(_debtAmt, ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulter opens trove with 200% ICR
+      // Defaulter opens cdp with 200% ICR
       await bn8Signer.sendTransaction({ to: defaulter_1, value: ethers.utils.parseEther("500000")});
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: dec(2, 23) })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // ETH:USD price drops to $4 trillion per ETH
       let _newPrice = dec(4, 30);
       await priceFeed.setPrice(_newPrice);
 
       // Defaulter liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(_debtAmt, { from: alice })
       const txB = await stabilityPool.withdrawFromSP(_debtAmt, { from: bob })
@@ -1935,16 +1935,16 @@ contract('StabilityPool - Withdrawal of stability deposit - Reward calculations'
         await stabilityPool.provideToSP(_debtAmt, ZERO_ADDRESS, { from: account })
       }
 
-      // Defaulter opens trove with 50e-7 ETH and  5000 EBTC. 200% ICR
+      // Defaulter opens cdp with 50e-7 ETH and  5000 EBTC. 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(5000, 18)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: defaulter_1, value: '10000000' })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // ETH:USD price drops to $400 trillion per ETH
       let _newPrice = dec(4, 32);
       await priceFeed.setPrice(_newPrice);
 
       // Defaulter liquidated
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       const txA = await stabilityPool.withdrawFromSP(_debtAmt, { from: alice })
       const txB = await stabilityPool.withdrawFromSP(_debtAmt, { from: bob })

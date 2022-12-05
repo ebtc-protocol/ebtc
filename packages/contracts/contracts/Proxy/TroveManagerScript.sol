@@ -9,11 +9,11 @@ import "../Interfaces/ITroveManager.sol";
 contract TroveManagerScript is CheckContract {
     string constant public NAME = "TroveManagerScript";
 
-    ITroveManager immutable troveManager;
+    ITroveManager immutable cdpManager;
 
-    constructor(ITroveManager _troveManager) public {
-        checkContract(address(_troveManager));
-        troveManager = _troveManager;
+    constructor(ITroveManager _cdpManager) public {
+        checkContract(address(_cdpManager));
+        cdpManager = _cdpManager;
     }
 
     function redeemCollateral(
@@ -25,7 +25,7 @@ contract TroveManagerScript is CheckContract {
         uint _maxIterations,
         uint _maxFee
     ) external returns (uint) {
-        troveManager.redeemCollateral(
+        cdpManager.redeemCollateral(
             _EBTCAmount,
             _firstRedemptionHint,
             _upperPartialRedemptionHint,

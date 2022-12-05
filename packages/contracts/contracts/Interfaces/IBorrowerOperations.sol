@@ -18,14 +18,14 @@ interface IBorrowerOperations {
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
-    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event EBTCBorrowingFeePaid(bytes32 indexed _troveId, uint _EBTCFee);
+    event TroveCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event TroveUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
+    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
 
     // --- Functions ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
         address _stabilityPoolAddress,
@@ -39,19 +39,19 @@ interface IBorrowerOperations {
 
     function openTrove(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function moveETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function moveETHGainToTrove(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function withdrawColl(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawColl(bytes32 _cdpId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function withdrawEBTC(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawEBTC(bytes32 _cdpId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function repayEBTC(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function repayEBTC(bytes32 _cdpId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
 
-    function closeTrove(bytes32 _troveId) external;
+    function closeTrove(bytes32 _cdpId) external;
 
-    function adjustTrove(bytes32 _troveId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function adjustTrove(bytes32 _cdpId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
     function claimCollateral() external;
 

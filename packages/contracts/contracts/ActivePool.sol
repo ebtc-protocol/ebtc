@@ -9,9 +9,9 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
 /*
- * The Active Pool holds the ETH collateral and EBTC debt (but not EBTC tokens) for all active troves.
+ * The Active Pool holds the ETH collateral and EBTC debt (but not EBTC tokens) for all active cdps.
  *
- * When a trove is liquidated, it's ETH and EBTC debt are transferred from the Active Pool, to either the
+ * When a cdp is liquidated, it's ETH and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
@@ -21,7 +21,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     string constant public NAME = "ActivePool";
 
     address public borrowerOperationsAddress;
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public stabilityPoolAddress;
     address public defaultPoolAddress;
     uint256 internal ETH;  // deposited ether tracker
@@ -38,7 +38,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
 
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _stabilityPoolAddress,
         address _defaultPoolAddress
     )
@@ -46,17 +46,17 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         onlyOwner
     {
         checkContract(_borrowerOperationsAddress);
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_stabilityPoolAddress);
         checkContract(_defaultPoolAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         stabilityPoolAddress = _stabilityPoolAddress;
         defaultPoolAddress = _defaultPoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
 
@@ -114,7 +114,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     function _requireCallerIsBOorTroveMorSP() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
-            msg.sender == troveManagerAddress ||
+            msg.sender == cdpManagerAddress ||
             msg.sender == stabilityPoolAddress,
             "ActivePool: Caller is neither BorrowerOperations nor TroveManager nor StabilityPool");
     }
@@ -122,7 +122,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     function _requireCallerIsBOorTroveM() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
-            msg.sender == troveManagerAddress,
+            msg.sender == cdpManagerAddress,
             "ActivePool: Caller is neither BorrowerOperations nor TroveManager");
     }
 

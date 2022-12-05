@@ -170,13 +170,13 @@ class TestHelper {
     return ICR
   }
 
-  static async ICRbetween100and110(troveId, troveManager, price) {
-    const ICR = await troveManager.getCurrentICR(troveId, price)
+  static async ICRbetween100and110(cdpId, cdpManager, price) {
+    const ICR = await cdpManager.getCurrentICR(cdpId, price)
     return (ICR.gt(MoneyValues._ICR100)) && (ICR.lt(MoneyValues._MCR))
   }
 
-  static async isUndercollateralized(account, troveManager, price) {
-    const ICR = await troveManager.getCurrentICR(account, price)
+  static async isUndercollateralized(account, cdpManager, price) {
+    const ICR = await cdpManager.getCurrentICR(account, price)
     return ICR.lt(MoneyValues._MCR)
   }
 
@@ -232,9 +232,9 @@ class TestHelper {
     let i = 0
     while (i < n) {
       const squeezedAddr = this.squeezeAddr(account)
-      const coll = (await contracts.troveManager.Troves(account))[1]
-      const debt = (await contracts.troveManager.Troves(account))[0]
-      const ICR = await contracts.troveManager.getCurrentICR(account, price)
+      const coll = (await contracts.cdpManager.Troves(account))[1]
+      const debt = (await contracts.cdpManager.Troves(account))[0]
+      const ICR = await contracts.cdpManager.getCurrentICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
 
@@ -246,7 +246,7 @@ class TestHelper {
     }
   }
 
-  static async logAccountsArray(accounts, troveManager, price, n) {
+  static async logAccountsArray(accounts, cdpManager, price, n) {
     const length = accounts.length
 
     n = (typeof n == 'undefined') ? length : n
@@ -258,9 +258,9 @@ class TestHelper {
       const account = accounts[i]
 
       const squeezedAddr = this.squeezeAddr(account)
-      const coll = (await troveManager.Troves(account))[1]
-      const debt = (await troveManager.Troves(account))[0]
-      const ICR = await troveManager.getCurrentICR(account, price)
+      const coll = (await cdpManager.Troves(account))[1]
+      const debt = (await cdpManager.Troves(account))[0]
+      const ICR = await cdpManager.getCurrentICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
     }
@@ -284,12 +284,12 @@ class TestHelper {
 
   static async checkRecoveryMode(contracts) {
     const price = await contracts.priceFeedTestnet.getPrice()
-    return contracts.troveManager.checkRecoveryMode(price)
+    return contracts.cdpManager.checkRecoveryMode(price)
   }
 
   static async getTCR(contracts) {
     const price = await contracts.priceFeedTestnet.getPrice()
-    return contracts.troveManager.getTCR(price)
+    return contracts.cdpManager.getTCR(price)
   }
 
   // --- Gas compensation calculation functions ---
@@ -297,7 +297,7 @@ class TestHelper {
   // Given a composite debt, returns the actual debt  - i.e. subtracts the virtual debt.
   // Virtual debt = 50 EBTC.
   static async getActualDebtFromComposite(compositeDebt, contracts) {
-    const issuedDebt = await contracts.troveManager.getActualDebtFromComposite(compositeDebt)
+    const issuedDebt = await contracts.cdpManager.getActualDebtFromComposite(compositeDebt)
     return issuedDebt
   }
 
@@ -307,16 +307,16 @@ class TestHelper {
     return compositeDebt
   }
 
-  static async getTroveEntireColl(contracts, trove) {
-    return this.toBN((await contracts.troveManager.getEntireDebtAndColl(trove))[1])
+  static async getTroveEntireColl(contracts, cdp) {
+    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[1])
   }
 
-  static async getTroveEntireDebt(contracts, trove) {
-    return this.toBN((await contracts.troveManager.getEntireDebtAndColl(trove))[0])
+  static async getTroveEntireDebt(contracts, cdp) {
+    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[0])
   }
 
-  static async getTroveStake(contracts, trove) {
-    return (contracts.troveManager.getTroveStake(trove))
+  static async getTroveStake(contracts, cdp) {
+    return (contracts.cdpManager.getTroveStake(cdp))
   }
 
   /*
@@ -324,7 +324,7 @@ class TestHelper {
    * So, it adds the gas compensation and the borrowing fee
    */
   static async getOpenTroveTotalDebt(contracts, ebtcAmount) {
-    const fee = await contracts.troveManager.getBorrowingFee(ebtcAmount)
+    const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
     const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
     return compositeDebt.add(fee)
   }
@@ -340,28 +340,28 @@ class TestHelper {
 
   // Subtracts the borrowing fee
   static async getNetBorrowingAmount(contracts, debtWithFee) {
-    const borrowingRate = await contracts.troveManager.getBorrowingRateWithDecay()
+    const borrowingRate = await contracts.cdpManager.getBorrowingRateWithDecay()
     return this.toBN(debtWithFee).mul(MoneyValues._1e18BN).div(MoneyValues._1e18BN.add(borrowingRate))
   }
 
   // Adds the borrowing fee
   static async getAmountWithBorrowingFee(contracts, ebtcAmount) {
-    const fee = await contracts.troveManager.getBorrowingFee(ebtcAmount)
+    const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
     return ebtcAmount.add(fee)
   }
 
   // Adds the redemption fee
   static async getRedemptionGrossAmount(contracts, expected) {
-    const redemptionRate = await contracts.troveManager.getRedemptionRate()
+    const redemptionRate = await contracts.cdpManager.getRedemptionRate()
     return expected.mul(MoneyValues._1e18BN).div(MoneyValues._1e18BN.add(redemptionRate))
   }
 
-  // Get's total collateral minus total gas comp, for a series of troves.
-  static async getExpectedTotalCollMinusTotalGasComp(troveList, contracts) {
+  // Get's total collateral minus total gas comp, for a series of cdps.
+  static async getExpectedTotalCollMinusTotalGasComp(cdpList, contracts) {
     let totalCollRemainder = web3.utils.toBN('0')
 
-    for (const trove of troveList) {
-      const remainingColl = this.getCollMinusGasComp(trove, contracts)
+    for (const cdp of cdpList) {
+      const remainingColl = this.getCollMinusGasComp(cdp, contracts)
       totalCollRemainder = totalCollRemainder.add(remainingColl)
     }
     return totalCollRemainder
@@ -461,8 +461,8 @@ class TestHelper {
     return events
   }
 
-  static getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, address) {
-    const event = troveUpdatedEvents.filter(event => event.args[0] === address)[0]
+  static getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, address) {
+    const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
     return [event.args[2], event.args[3]]
   }
 
@@ -477,10 +477,10 @@ class TestHelper {
 
   static async getEntireCollAndDebt(contracts, account) {
     // console.log(`account: ${account}`)
-    const rawColl = (await contracts.troveManager.Troves(account))[1]
-    const rawDebt = (await contracts.troveManager.Troves(account))[0]
-    const pendingETHReward = await contracts.troveManager.getPendingETHReward(account)
-    const pendingEBTCDebtReward = await contracts.troveManager.getPendingEBTCDebtReward(account)
+    const rawColl = (await contracts.cdpManager.Troves(account))[1]
+    const rawDebt = (await contracts.cdpManager.Troves(account))[0]
+    const pendingETHReward = await contracts.cdpManager.getPendingETHReward(account)
+    const pendingEBTCDebtReward = await contracts.cdpManager.getPendingEBTCDebtReward(account)
     const entireColl = rawColl.add(pendingETHReward)
     const entireDebt = rawDebt.add(pendingEBTCDebtReward)
 
@@ -506,7 +506,7 @@ class TestHelper {
   }
 
   static async getCollAndDebtFromWithdrawEBTC(contracts, account, amount) {
-    const fee = await contracts.troveManager.getBorrowingFee(amount)
+    const fee = await contracts.cdpManager.getBorrowingFee(amount)
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
@@ -527,10 +527,10 @@ class TestHelper {
   static async getCollAndDebtFromAdjustment(contracts, account, ETHChange, EBTCChange) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
-    // const coll = (await contracts.troveManager.Troves(account))[1]
-    // const debt = (await contracts.troveManager.Troves(account))[0]
+    // const coll = (await contracts.cdpManager.Troves(account))[1]
+    // const debt = (await contracts.cdpManager.Troves(account))[0]
 
-    const fee = EBTCChange.gt(this.toBN('0')) ? await contracts.troveManager.getBorrowingFee(EBTCChange) : this.toBN('0')
+    const fee = EBTCChange.gt(this.toBN('0')) ? await contracts.cdpManager.getBorrowingFee(EBTCChange) : this.toBN('0')
     const newColl = entireColl.add(ETHChange)
     const newDebt = entireDebt.add(EBTCChange).add(fee)
 
@@ -606,7 +606,7 @@ class TestHelper {
 
       if (logging && tx.receipt.status) {
         i++
-        const ICR = await contracts.troveManager.getCurrentICR(account, price)
+        const ICR = await contracts.cdpManager.getCurrentICR(account, price)
         // console.log(`${i}. Trove opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
       }
       const gas = this.gasUsed(tx)
@@ -702,7 +702,7 @@ class TestHelper {
   }
 
   static async withdrawEBTC(contracts, {
-    _troveId,
+    _cdpId,
     maxFeePercentage,
     ebtcAmount,
     ICR,
@@ -719,7 +719,7 @@ class TestHelper {
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.troveManager.getEntireDebtAndColl(_troveId)
+      const { debt, coll } = await contracts.cdpManager.getEntireDebtAndColl(_cdpId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")
@@ -729,7 +729,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, ebtcAmount)
     }
 
-    await contracts.borrowerOperations.withdrawEBTC(_troveId, maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawEBTC(_cdpId, maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
       ebtcAmount,
@@ -754,10 +754,10 @@ class TestHelper {
       let isDebtIncrease = EBTCChangeBN.gt(zero)
       EBTCChangeBN = EBTCChangeBN.abs() 
 
-      // Add ETH to trove
+      // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
         tx = await contracts.borrowerOperations.adjustTrove(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
-      // Withdraw ETH from trove
+      // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
         tx = await contracts.borrowerOperations.adjustTrove(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account })
@@ -786,10 +786,10 @@ class TestHelper {
       let isDebtIncrease = EBTCChangeBN.gt(zero)
       EBTCChangeBN = EBTCChangeBN.abs() 
 
-      // Add ETH to trove
+      // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
         tx = await contracts.borrowerOperations.adjustTrove(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
-      // Withdraw ETH from trove
+      // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
         tx = await contracts.borrowerOperations.adjustTrove(this._100pct, ETHChangeBN, EBTCChangeBN, isDebtIncrease, lowerHint,  upperHint,{ from: account })
@@ -929,7 +929,7 @@ class TestHelper {
     const price = await contracts.priceFeedTestnet.getPrice()
 
     for (const account of accounts) {
-      const tx = await functionCaller.troveManager_getCurrentICR(account, price)
+      const tx = await functionCaller.cdpManager_getCurrentICR(account, price)
       const gas = this.gasUsed(tx) - 21000
       gasCostList.push(gas)
     }
@@ -984,7 +984,7 @@ class TestHelper {
       approxPartialRedemptionHint))
 
     //console.log('gasPrice_toUse=' + gasPrice_toUse + ',EBTCAmount=' + EBTCAmount + ',firstHint=' + firstRedemptionHint + ',lHint=' + exactPartialRedemptionHint[0] + ',hHint=' + exactPartialRedemptionHint[1] + ',partialRedemptionNewICR=' + partialRedemptionNewICR);
-    const tx = await contracts.troveManager.redeemCollateral(EBTCAmount,
+    const tx = await contracts.cdpManager.redeemCollateral(EBTCAmount,
       firstRedemptionHint,
       exactPartialRedemptionHint[0],
       exactPartialRedemptionHint[1],

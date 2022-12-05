@@ -63,7 +63,7 @@ contract('EBTCToken', async accounts => {
   let ebtcTokenOriginal
   let ebtcTokenTester
   let stabilityPool
-  let troveManager
+  let cdpManager
   let borrowerOperations
 
   let tokenName
@@ -93,7 +93,7 @@ contract('EBTCToken', async accounts => {
       chainId = await ebtcTokenOriginal.getChainId()
 
       stabilityPool = contracts.stabilityPool
-      troveManager = contracts.stabilityPool
+      cdpManager = contracts.stabilityPool
       borrowerOperations = contracts.borrowerOperations
 
       tokenVersion = await ebtcTokenOriginal.version()
@@ -220,7 +220,7 @@ contract('EBTCToken', async accounts => {
     it('transfer(): transferring to a blacklisted address reverts', async () => {
       await assertRevert(ebtcTokenTester.transfer(ebtcTokenTester.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(ZERO_ADDRESS, 1, { from: alice }))
-      await assertRevert(ebtcTokenTester.transfer(troveManager.address, 1, { from: alice }))
+      await assertRevert(ebtcTokenTester.transfer(cdpManager.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(stabilityPool.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(borrowerOperations.address, 1, { from: alice }))
     })
@@ -293,7 +293,7 @@ contract('EBTCToken', async accounts => {
     it('transfer(): transferring to a blacklisted address reverts', async () => {
       await assertRevert(ebtcTokenTester.transfer(ebtcTokenTester.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(ZERO_ADDRESS, 1, { from: alice }))
-      await assertRevert(ebtcTokenTester.transfer(troveManager.address, 1, { from: alice }))
+      await assertRevert(ebtcTokenTester.transfer(cdpManager.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(stabilityPool.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(borrowerOperations.address, 1, { from: alice }))
     })

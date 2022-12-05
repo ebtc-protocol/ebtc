@@ -24,7 +24,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let nameRegistry
   let activePool
   let stabilityPool
@@ -39,14 +39,14 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   before(async () => {
     coreContracts = await deploymentHelper.deployLiquityCore()
-    coreContracts.troveManager = await TroveManagerTester.new()
+    coreContracts.cdpManager = await TroveManagerTester.new()
     coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     
     priceFeed = coreContracts.priceFeed
     ebtcToken = coreContracts.ebtcToken
     sortedTroves = coreContracts.sortedTroves
-    troveManager = coreContracts.troveManager
+    cdpManager = coreContracts.cdpManager
     nameRegistry = coreContracts.nameRegistry
     activePool = coreContracts.activePool
     stabilityPool = coreContracts.stabilityPool
@@ -91,7 +91,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("applyPendingRewards(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.applyPendingRewards(bob, { from: alice })
+        const txAlice = await cdpManager.applyPendingRewards(bob, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -103,7 +103,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.updateTroveRewardSnapshots(bob, { from: alice })
+        const txAlice = await cdpManager.updateTroveRewardSnapshots(bob, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert" )
@@ -115,7 +115,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("removeStake(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.removeStake(bob, { from: alice })
+        const txAlice = await cdpManager.removeStake(bob, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -127,7 +127,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.updateStakeAndTotalStakes(bob, { from: alice })
+        const txAlice = await cdpManager.updateStakeAndTotalStakes(bob, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -139,7 +139,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("closeTrove(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.closeTrove(bob, { from: alice })
+        const txAlice = await cdpManager.closeTrove(bob, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -151,7 +151,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("addTroveOwnerToArray(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.addTroveIdToArray(th.DUMMY_BYTES32, { from: alice })
+        const txAlice = await cdpManager.addTroveIdToArray(th.DUMMY_BYTES32, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -163,7 +163,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("setTroveStatus(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.setTroveStatus(bob, 1, { from: alice })
+        const txAlice = await cdpManager.setTroveStatus(bob, 1, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -175,7 +175,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("increaseTroveColl(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.increaseTroveColl(bob, 100, { from: alice })
+        const txAlice = await cdpManager.increaseTroveColl(bob, 100, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -187,7 +187,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("decreaseTroveColl(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.decreaseTroveColl(bob, 100, { from: alice })
+        const txAlice = await cdpManager.decreaseTroveColl(bob, 100, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -199,7 +199,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("increaseTroveDebt(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.increaseTroveDebt(bob, 100, { from: alice })
+        const txAlice = await cdpManager.increaseTroveDebt(bob, 100, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
@@ -211,7 +211,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("decreaseTroveDebt(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await troveManager.decreaseTroveDebt(bob, 100, { from: alice })
+        const txAlice = await cdpManager.decreaseTroveDebt(bob, 100, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")

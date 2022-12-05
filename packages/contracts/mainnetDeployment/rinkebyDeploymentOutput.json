@@ -9,7 +9,7 @@
     "txHash": "0x63216bb1524ae7ea751845f80461ceaf0adb2ca2c1d0ac725965b9ebf1bb9ff2",
     "verification": "https://rinkeby.etherscan.io/address/0x1Bd5C59d6dfed9e629d3ad73a7c693dCd27B5c72#code"
   },
-  "troveManager": {
+  "cdpManager": {
     "address": "0xEAe908f8CD40aF6D318074713E5043E348200451",
     "txHash": "0xa58dafe1c75921ede9736d63e25991c5a8ee1a7b214bf05ad7e8a8204e3a6041",
     "verification": "https://rinkeby.etherscan.io/address/0xEAe908f8CD40aF6D318074713E5043E348200451#code"

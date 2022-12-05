@@ -29,9 +29,9 @@ contract('CollSurplusPool', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.troveManager = await TroveManagerTester.new()
+    contracts.cdpManager = await TroveManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
-      contracts.troveManager.address,
+      contracts.cdpManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
@@ -80,7 +80,7 @@ contract('CollSurplusPool', async accounts => {
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price)
 
-    // open trove from NonPayable proxy contract
+    // open cdp from NonPayable proxy contract
     const B_coll = toBN(dec(60, 18))
     const B_ebtcAmount = toBN(dec(3000, 18))
     const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)

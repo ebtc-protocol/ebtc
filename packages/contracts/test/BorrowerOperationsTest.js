@@ -45,7 +45,7 @@ contract('BorrowerOperations', async accounts => {
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let defaultPool
@@ -59,9 +59,9 @@ contract('BorrowerOperations', async accounts => {
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
   const getActualDebtFromComposite = async (compositeDebt) => th.getActualDebtFromComposite(compositeDebt, contracts)
   const openTrove = async (params) => th.openTrove(contracts, params)
-  const getTroveEntireColl = async (trove) => th.getTroveEntireColl(contracts, trove)
-  const getTroveEntireDebt = async (trove) => th.getTroveEntireDebt(contracts, trove)
-  const getTroveStake = async (trove) => th.getTroveStake(contracts, trove)
+  const getTroveEntireColl = async (cdp) => th.getTroveEntireColl(contracts, cdp)
+  const getTroveEntireDebt = async (cdp) => th.getTroveEntireDebt(contracts, cdp)
+  const getTroveStake = async (cdp) => th.getTroveStake(contracts, cdp)
 
   let EBTC_GAS_COMPENSATION
   let MIN_NET_DEBT
@@ -82,7 +82,7 @@ contract('BorrowerOperations', async accounts => {
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       contracts.borrowerOperations = await BorrowerOperationsTester.new()
-      contracts.troveManager = await TroveManagerTester.new()
+      contracts.cdpManager = await TroveManagerTester.new()
       contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
       const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
 
@@ -98,7 +98,7 @@ contract('BorrowerOperations', async accounts => {
       priceFeed = contracts.priceFeedTestnet
       ebtcToken = contracts.ebtcToken
       sortedTroves = contracts.sortedTroves
-      troveManager = contracts.troveManager
+      cdpManager = contracts.cdpManager
       activePool = contracts.activePool
       stabilityPool = contracts.stabilityPool
       defaultPool = contracts.defaultPool
@@ -142,17 +142,17 @@ contract('BorrowerOperations', async accounts => {
 	  let _openedTroveEvts = th.getAllEventsByName(tx, 'TroveOpened');
 	  let _ei = 0;
 	  for(;_ei < _openedTroveEvts.length - 1;_ei++){
-	      let _troveId = _openedTroveEvts[_ei].args[0];
-	      //console.log(_troveId);
-	      let _troveStatus = await troveManager.getTroveStatus(_troveId);
-	      assert.equal(_troveStatus, 1);			
-	      let _troveOwner = await sortedTroves.existTroveOwners(_troveId);
-	      assert.equal(_troveOwner, mtsTester.address);	  
+	      let _cdpId = _openedTroveEvts[_ei].args[0];
+	      //console.log(_cdpId);
+	      let _cdpStatus = await cdpManager.getTroveStatus(_cdpId);
+	      assert.equal(_cdpStatus, 1);			
+	      let _cdpOwner = await sortedTroves.existTroveOwners(_cdpId);
+	      assert.equal(_cdpOwner, mtsTester.address);	  
 	      let _ii = _ei + 1;
 	      for(;_ii < _openedTroveEvts.length;_ii++){
 	          let _iTroveId = _openedTroveEvts[_ii].args[0];
-	          assert.notEqual(_iTroveId, _troveId);
-	          let _iTroveStatus = await troveManager.getTroveStatus(_iTroveId);
+	          assert.notEqual(_iTroveId, _cdpId);
+	          let _iTroveStatus = await cdpManager.getTroveStatus(_iTroveId);
 	          assert.equal(_iTroveStatus, 1);  		
 	          let _iTroveOwner = await sortedTroves.existTroveOwners(_iTroveId);
 	          assert.equal(_iTroveOwner, mtsTester.address);
@@ -164,24 +164,24 @@ contract('BorrowerOperations', async accounts => {
     it("openTrove(): mutiple Trove per user", async () => {		  
 	  // first Trove
 	  await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
-	  let troveSize = await sortedTroves.getSize();
-	  let troveIds = await troveManager.getTroveIdsCount();
-	  assert.isTrue(troveSize == 1);
-	  assert.isTrue((troveSize - troveIds) == 0);
+	  let cdpSize = await sortedTroves.getSize();
+	  let cdpIds = await cdpManager.getTroveIdsCount();
+	  assert.isTrue(cdpSize == 1);
+	  assert.isTrue((cdpSize - cdpIds) == 0);
 	  let lastTroveId = await sortedTroves.getLast();
 	  let lastTroveOwner = await sortedTroves.existTroveOwners(lastTroveId);
 	  assert.isTrue(lastTroveOwner == alice);
-	  let _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  let _aliceOwnedTroves = await sortedTroves.cdpCountOf(alice);
 	  assert.isTrue(_aliceOwnedTroves == 1);	  
-	  let _aliceOwnedTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  let _aliceOwnedTrove = await sortedTroves.cdpOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
 	  assert.isTrue(_aliceOwnedTrove == lastTroveId);
 	  
 	  // Second Trove
 	  await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
-	  troveSize = await sortedTroves.getSize();
-	  troveIds = await troveManager.getTroveIdsCount();
-	  assert.isTrue(troveSize == 2);
-	  assert.isTrue((troveIds - troveSize) == 0);
+	  cdpSize = await sortedTroves.getSize();
+	  cdpIds = await cdpManager.getTroveIdsCount();
+	  assert.isTrue(cdpSize == 2);
+	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastTroveId = await sortedTroves.getLast();
 	  lastTroveOwner = await sortedTroves.existTroveOwners(lastTroveId);
 	  let firstTroveId = await sortedTroves.getFirst();
@@ -189,32 +189,32 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(lastTroveOwner == alice);
 	  assert.isTrue(firstTroveOwner == alice);
 	  assert.isTrue(firstTroveId != lastTroveId);
-	  _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  _aliceOwnedTroves = await sortedTroves.cdpCountOf(alice);
 	  assert.isTrue(_aliceOwnedTroves == 2);	  
-	  let _aliceOwnedFirstTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 2);
-	  let _aliceOwnedSecondTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  let _aliceOwnedFirstTrove = await sortedTroves.cdpOfOwnerByIndex(alice, _aliceOwnedTroves - 2);
+	  let _aliceOwnedSecondTrove = await sortedTroves.cdpOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
 	  assert.isTrue(_aliceOwnedFirstTrove == lastTroveId);
 	  assert.isTrue(_aliceOwnedSecondTrove == firstTroveId);
 	  
 	  // Close Second Trove	  	
-	  await assertRevert(borrowerOperations.closeTrove(lastTroveId, { from: bob }), "!troveOwner");	
+	  await assertRevert(borrowerOperations.closeTrove(lastTroveId, { from: bob }), "!cdpOwner");	
 	  const txClose = await borrowerOperations.closeTrove(lastTroveId, { from: alice });
 	  assert.isTrue(txClose.receipt.status);
-	  troveSize = await sortedTroves.getSize();
-	  troveIds = await troveManager.getTroveIdsCount();
-	  assert.isTrue(troveSize == 1);
-	  assert.isTrue((troveIds - troveSize) == 0);
+	  cdpSize = await sortedTroves.getSize();
+	  cdpIds = await cdpManager.getTroveIdsCount();
+	  assert.isTrue(cdpSize == 1);
+	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastTroveId = await sortedTroves.getLast();
 	  lastTroveOwner = await sortedTroves.existTroveOwners(lastTroveId);
 	  assert.isTrue(firstTroveId == lastTroveId);	
 	  assert.isTrue(firstTroveOwner == lastTroveOwner); 
-	  _aliceOwnedTroves = await sortedTroves.troveCountOf(alice);
+	  _aliceOwnedTroves = await sortedTroves.cdpCountOf(alice);
 	  assert.isTrue(_aliceOwnedTroves == 1);	
-	  let _aliceOwnedLeftTrove = await sortedTroves.troveOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
+	  let _aliceOwnedLeftTrove = await sortedTroves.cdpOfOwnerByIndex(alice, _aliceOwnedTroves - 1);
 	  assert.isTrue(_aliceOwnedLeftTrove == firstTroveId);   
     })
 
-    it("addColl(): reverts when top-up would leave trove with ICR < MCR", async () => {
+    it("addColl(): reverts when top-up would leave cdp with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
@@ -223,10 +223,10 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const icr = await troveManager.getCurrentICR(aliceIndex, price)
-      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const icr = await cdpManager.getCurrentICR(aliceIndex, price)
+      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const collTopUp = 1  // 1 wei top up
 
@@ -237,7 +237,7 @@ contract('BorrowerOperations', async accounts => {
     it("addColl(): Increases the activePool ETH and raw ether balance by correct amount", async () => {
       const { collateral: aliceColl } = await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
@@ -256,9 +256,9 @@ contract('BorrowerOperations', async accounts => {
     it("addColl(), active Trove: adds the correct collateral amount to the Trove", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const coll_before = alice_Trove_Before[1]
       const status_Before = alice_Trove_Before[3]
 
@@ -268,7 +268,7 @@ contract('BorrowerOperations', async accounts => {
       // Alice adds second collateral
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(1, 'ether') })
 
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const coll_After = alice_Trove_After[1]
       const status_After = alice_Trove_After[3]
 
@@ -280,7 +280,7 @@ contract('BorrowerOperations', async accounts => {
     it("addColl(), active Trove: Trove is in sortedList before and after", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // check Alice is in list before
       const aliceTroveInList_Before = await sortedTroves.contains(aliceIndex)
@@ -300,11 +300,11 @@ contract('BorrowerOperations', async accounts => {
     it("addColl(), active Trove: updates the stake and updates the total stakes", async () => {
       //  Alice creates initial Trove with 1 ether
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const alice_Stake_Before = alice_Trove_Before[2]
-      const totalStakes_Before = (await troveManager.totalStakes())
+      const totalStakes_Before = (await cdpManager.totalStakes())
 
       assert.isTrue(totalStakes_Before.eq(alice_Stake_Before))
 
@@ -312,9 +312,9 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(2, 'ether') })
 
       // Check stake and total stakes get updated
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const alice_Stake_After = alice_Trove_After[2]
-      const totalStakes_After = (await troveManager.totalStakes())
+      const totalStakes_After = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_After.eq(alice_Stake_Before.add(toBN(dec(2, 'ether')))))
       assert.isTrue(totalStakes_After.eq(totalStakes_Before.add(toBN(dec(2, 'ether')))))
@@ -324,13 +324,13 @@ contract('BorrowerOperations', async accounts => {
       // --- SETUP ---
 
       const { collateral: aliceCollBefore, totalDebt: aliceDebtBefore } = await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       
       const { collateral: bobCollBefore, totalDebt: bobDebtBefore } = await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       // --- TEST ---
 
@@ -338,19 +338,19 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice('100000000000000000000');
 
       // Liquidate Carol's Trove,
-      const tx = await troveManager.liquidate(carolIndex, { from: owner });
+      const tx = await cdpManager.liquidate(carolIndex, { from: owner });
 
       assert.isFalse(await sortedTroves.contains(carolIndex))
 
-      const L_ETH = await troveManager.L_ETH()
-      const L_EBTCDebt = await troveManager.L_EBTCDebt()
+      const L_ETH = await cdpManager.L_ETH()
+      const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Troves
-      const alice_rewardSnapshot_Before = await troveManager.rewardSnapshots(aliceIndex)
+      const alice_rewardSnapshot_Before = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_Before = alice_rewardSnapshot_Before[0]
       const alice_EBTCDebtRewardSnapshot_Before = alice_rewardSnapshot_Before[1]
 
-      const bob_rewardSnapshot_Before = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot_Before = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_Before = bob_rewardSnapshot_Before[0]
       const bob_EBTCDebtRewardSnapshot_Before = bob_rewardSnapshot_Before[1]
 
@@ -359,10 +359,10 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_ETHrewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const alicePendingETHReward = await troveManager.getPendingETHReward(aliceIndex)
-      const bobPendingETHReward = await troveManager.getPendingETHReward(bobIndex)
-      const alicePendingEBTCDebtReward = await troveManager.getPendingEBTCDebtReward(aliceIndex)
-      const bobPendingEBTCDebtReward = await troveManager.getPendingEBTCDebtReward(bobIndex)
+      const alicePendingETHReward = await cdpManager.getPendingETHReward(aliceIndex)
+      const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
+      const alicePendingEBTCDebtReward = await cdpManager.getPendingEBTCDebtReward(aliceIndex)
+      const bobPendingEBTCDebtReward = await cdpManager.getPendingEBTCDebtReward(bobIndex)
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
@@ -387,11 +387,11 @@ contract('BorrowerOperations', async accounts => {
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_ETH and L_EBTCDebt */
-      const alice_rewardSnapshot_After = await troveManager.rewardSnapshots(aliceIndex)
+      const alice_rewardSnapshot_After = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_After = alice_rewardSnapshot_After[0]
       const alice_EBTCDebtRewardSnapshot_After = alice_rewardSnapshot_After[1]
 
-      const bob_rewardSnapshot_After = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot_After = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_After = bob_rewardSnapshot_After[0]
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
@@ -417,9 +417,9 @@ contract('BorrowerOperations', async accounts => {
     //   await priceFeed.setPrice('100000000000000000000');
 
     //   // close Carol's Trove, liquidating her 5 ether and 900EBTC.
-    //   await troveManager.liquidate(carol, { from: owner });
+    //   await cdpManager.liquidate(carol, { from: owner });
 
-    //   // dennis tops up his trove by 1 ETH
+    //   // dennis tops up his cdp by 1 ETH
     //   await borrowerOperations.addColl(dennis, dennis, { from: dennis, value: dec(1, 'ether') })
 
     //   /* Check that Dennis's recorded stake is the right corrected stake, less than his collateral. A corrected 
@@ -434,7 +434,7 @@ contract('BorrowerOperations', async accounts => {
     //   totalCollateral = (alice_Collateral + bob_Collateral + dennis_orig_coll + totalPendingETHReward) = (15 + 4 + 1 + 5)  = 25 ETH.
 
     //   Therefore, as Dennis adds 1 ether collateral, his corrected stake should be:  s = 2 * (20 / 25 ) = 1.6 ETH */
-    //   const dennis_Trove = await troveManager.Troves(dennis)
+    //   const dennis_Trove = await cdpManager.Troves(dennis)
 
     //   const dennis_Stake = dennis_Trove[2]
     //   console.log(dennis_Stake.toString())
@@ -442,56 +442,56 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    it("addColl(), reverts if trove is not owned by caller", async () => {
-      // A, B open troves
+    it("addColl(), reverts if cdp is not owned by caller", async () => {
+      // A, B open cdps
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // random index
       const carolIndex = th.RANDOM_INDEX;
 
-      // Carol attempts to add collateral to her non-existent trove
+      // Carol attempts to add collateral to her non-existent cdp
       try {
         const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(1, 'ether') })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOps: Caller must be trove owner")
+        assert.include(error.message, "BorrowerOps: Caller must be cdp owner")
       }
     })
 
-    it("addColl(), reverts if trove is non-existent or closed", async () => {
-      // A, B open troves
+    it("addColl(), reverts if cdp is non-existent or closed", async () => {
+      // A, B open cdps
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
 
       // Bob gets liquidated
-      await troveManager.liquidate(bobIndex)
+      await cdpManager.liquidate(bobIndex)
 
       assert.isFalse(await sortedTroves.contains(bobIndex))
 
-      // Bob attempts to add collateral to his closed trove
+      // Bob attempts to add collateral to his closed cdp
       try {
         const txBob = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: dec(1, 'ether') })
         assert.isFalse(txBob.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOps: Caller must be trove owner")
+        assert.include(error.message, "BorrowerOps: Caller must be cdp owner")
       }
     })
 
     it("addColl(): can add collateral in Recovery Mode", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -504,26 +504,26 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: collTopUp })
 
       // Check Alice's collateral
-      const aliceCollAfter = (await troveManager.Troves(aliceIndex))[1]
+      const aliceCollAfter = (await cdpManager.Troves(aliceIndex))[1]
       assert.isTrue(aliceCollAfter.eq(aliceCollBefore.add(collTopUp)))
     })
 
     // --- withdrawColl() ---
 
-    it("withdrawColl(): reverts when withdrawal would leave trove with ICR < MCR", async () => {
+    it("withdrawColl(): reverts when withdrawal would leave cdp with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
-      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
+      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const collWithdrawal = 1  // 1 wei withdrawal
 
@@ -531,20 +531,20 @@ contract('BorrowerOperations', async accounts => {
       "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
     })
 
-    // reverts when calling address does not have active trove  
-    it("withdrawColl(): reverts when calling address does not have active trove", async () => {
+    // reverts when calling address does not have active cdp  
+    it("withdrawColl(): reverts when calling address does not have active cdp", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
       const carolIndex = th.RANDOM_INDEX;
 
       // Bob successfully withdraws some coll
       const txBob = await borrowerOperations.withdrawColl(bobIndex, dec(100, 'finney'), bobIndex, bobIndex, { from: bob })
       assert.isTrue(txBob.receipt.status)
 
-      // Carol with no active trove attempts to withdraw
+      // Carol with no active cdp attempts to withdraw
       try {
         const txCarol = await borrowerOperations.withdrawColl(carolIndex, dec(1, 'ether'), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol })
         assert.isFalse(txCarol.receipt.status)
@@ -557,8 +557,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -579,14 +579,14 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("withdrawColl(): reverts when requested ETH withdrawal is > the trove's collateral", async () => {
+    it("withdrawColl(): reverts when requested ETH withdrawal is > the cdp's collateral", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       const carolColl = await getTroveEntireColl(carolIndex)
       const bobColl = await getTroveEntireColl(bobIndex)
@@ -609,8 +609,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ ICR: toBN(dec(11, 17)), extraParams: { from: bob } }) // 110% ICR
 
-      const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const whaleIndex = await sortedTroves.cdpOfOwnerByIndex(whale,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Bob attempts to withdraws 1 wei, Which would leave him with < 110% ICR.
 
@@ -625,12 +625,12 @@ contract('BorrowerOperations', async accounts => {
     it("withdrawColl(): reverts if system is in Recovery Mode", async () => {
       // --- SETUP ---
 
-      // A and B open troves at 150% ICR
+      // A and B open cdps at 150% ICR
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const TCR = (await th.getTCR(contracts)).toString()
       assert.equal(TCR, '1500000000000000000')
@@ -653,13 +653,13 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
-      const aliceColl = (await troveManager.getEntireDebtAndColl(aliceIndex))[1]
+      const aliceColl = (await cdpManager.getEntireDebtAndColl(aliceIndex))[1]
 
       // Check Trove is active
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const status_Before = alice_Trove_Before[3]
       assert.equal(status_Before, 1)
       assert.isTrue(await sortedTroves.contains(aliceIndex))
@@ -675,10 +675,10 @@ contract('BorrowerOperations', async accounts => {
       // Open Trove 
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // Check Trove is active
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const status_Before = alice_Trove_Before[3]
       assert.equal(status_Before, 1)
       assert.isTrue(await sortedTroves.contains(aliceIndex))
@@ -687,7 +687,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawColl(aliceIndex, dec(100, 'finney'), aliceIndex, aliceIndex, { from: alice })
 
       // Check Trove is still active
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const status_After = alice_Trove_After[3]
       assert.equal(status_After, 1)
       assert.isTrue(await sortedTroves.contains(aliceIndex))
@@ -695,14 +695,14 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawColl(): reduces the Trove's collateral by the correct amount", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
 
       // Alice withdraws 1 ether
       await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice })
 
       // Check 1 ether remaining
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
 
       assert.isTrue(aliceCollAfter.eq(aliceCollBefore.sub(toBN(dec(1, 'ether')))))
@@ -710,7 +710,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawColl(): reduces ActivePool ETH and raw ether by correct amount", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
 
       // check before
@@ -729,13 +729,13 @@ contract('BorrowerOperations', async accounts => {
     it("withdrawColl(): updates the stake and updates the total stakes", async () => {
       //  Alice creates initial Trove with 2 ether
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: toBN(dec(5, 'ether')) } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       const aliceColl = await getTroveEntireColl(aliceIndex)
       assert.isTrue(aliceColl.gt(toBN('0')))
 
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const alice_Stake_Before = alice_Trove_Before[2]
-      const totalStakes_Before = (await troveManager.totalStakes())
+      const totalStakes_Before = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_Before.eq(aliceColl))
       assert.isTrue(totalStakes_Before.eq(aliceColl))
@@ -744,9 +744,9 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice })
 
       // Check stake and total stakes get updated
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const alice_Stake_After = alice_Trove_After[2]
-      const totalStakes_After = (await troveManager.totalStakes())
+      const totalStakes_After = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_After.eq(alice_Stake_Before.sub(toBN(dec(1, 'ether')))))
       assert.isTrue(totalStakes_After.eq(totalStakes_Before.sub(toBN(dec(1, 'ether')))))
@@ -754,7 +754,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawColl(): sends the correct amount of ETH to the user", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(2, 'ether') } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
       await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
@@ -773,10 +773,10 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: bob, value: toBN(dec(100, 'ether')) } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol, value: toBN(dec(10, 'ether')) } })
 
-      const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const whaleIndex = await sortedTroves.cdpOfOwnerByIndex(whale,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
@@ -789,17 +789,17 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice('100000000000000000000');
 
       // close Carol's Trove, liquidating her 1 ether and 180EBTC.
-      await troveManager.liquidate(carolIndex, { from: owner });
+      await cdpManager.liquidate(carolIndex, { from: owner });
 
-      const L_ETH = await troveManager.L_ETH()
-      const L_EBTCDebt = await troveManager.L_EBTCDebt()
+      const L_ETH = await cdpManager.L_ETH()
+      const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Troves
-      const alice_rewardSnapshot_Before = await troveManager.rewardSnapshots(aliceIndex)
+      const alice_rewardSnapshot_Before = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_Before = alice_rewardSnapshot_Before[0]
       const alice_EBTCDebtRewardSnapshot_Before = alice_rewardSnapshot_Before[1]
 
-      const bob_rewardSnapshot_Before = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot_Before = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_Before = bob_rewardSnapshot_Before[0]
       const bob_EBTCDebtRewardSnapshot_Before = bob_rewardSnapshot_Before[1]
 
@@ -809,10 +809,10 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
       // Check A and B have pending rewards
-      const pendingCollReward_A = await troveManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = await troveManager.getPendingEBTCDebtReward(aliceIndex)
-      const pendingCollReward_B = await troveManager.getPendingETHReward(bobIndex)
-      const pendingDebtReward_B = await troveManager.getPendingEBTCDebtReward(bobIndex)
+      const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
+      const pendingDebtReward_A = await cdpManager.getPendingEBTCDebtReward(aliceIndex)
+      const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
+      const pendingDebtReward_B = await cdpManager.getPendingEBTCDebtReward(bobIndex)
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
@@ -830,7 +830,7 @@ contract('BorrowerOperations', async accounts => {
       const bobCollAfter = await getTroveEntireColl(bobIndex)
       const bobDebtAfter = await getTroveEntireDebt(bobIndex)
 
-      // Check rewards have been applied to troves
+      // Check rewards have been applied to cdps
       th.assertIsApproximatelyEqual(aliceCollAfter, aliceCollBefore.add(pendingCollReward_A).sub(aliceCollWithdrawal), 10000)
       th.assertIsApproximatelyEqual(aliceDebtAfter, aliceDebtBefore.add(pendingDebtReward_A), 10000)
       th.assertIsApproximatelyEqual(bobCollAfter, bobCollBefore.add(pendingCollReward_B).sub(bobCollWithdrawal), 10000)
@@ -838,11 +838,11 @@ contract('BorrowerOperations', async accounts => {
 
       /* After top up, both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_ETH and L_EBTCDebt */
-      const alice_rewardSnapshot_After = await troveManager.rewardSnapshots(aliceIndex)
+      const alice_rewardSnapshot_After = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_After = alice_rewardSnapshot_After[0]
       const alice_EBTCDebtRewardSnapshot_After = alice_rewardSnapshot_After[1]
 
-      const bob_rewardSnapshot_After = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot_After = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_After = bob_rewardSnapshot_After[0]
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
@@ -854,20 +854,20 @@ contract('BorrowerOperations', async accounts => {
 
     // --- withdrawEBTC() ---
 
-    it("withdrawEBTC(): reverts when withdrawal would leave trove with ICR < MCR", async () => {
+    it("withdrawEBTC(): reverts when withdrawal would leave cdp with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
-      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
+      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCwithdrawal = 1  // withdraw 1 wei EBTC
 
@@ -883,19 +883,19 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(20, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
       await openTrove({ extraEBTCAmount: toBN(dec(20, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
-      const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
+      const whaleIndex = await sortedTroves.cdpOfOwnerByIndex(whale,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
+      const EIndex = await sortedTroves.cdpOfOwnerByIndex(E,0)
 
       const A_EBTCBal = await ebtcToken.balanceOf(A)
 
       // Artificially set base rate to 5%
-      await troveManager.setBaseRate(dec(5, 16))
+      await cdpManager.setBaseRate(dec(5, 16))
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
@@ -905,7 +905,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(DIndex, th._100pct, dec(1, 18), AIndex, AIndex, { from: D })
 
       // Check baseRate has decreased
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
 
       // 1 hour passes
@@ -914,7 +914,7 @@ contract('BorrowerOperations', async accounts => {
       // E withdraws EBTC
       await borrowerOperations.withdrawEBTC(EIndex, th._100pct, dec(1, 18), AIndex, AIndex, { from: E })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.isTrue(baseRate_3.lt(baseRate_2))
     })
 
@@ -924,7 +924,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
 
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, dec(2, 18), dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, '1000000000000000001', dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
@@ -936,7 +936,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
 
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, 0, dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, 1, dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
@@ -950,20 +950,20 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(80, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
       await openTrove({ extraEBTCAmount: toBN(dec(180, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
-      const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
+      const whaleIndex = await sortedTroves.cdpOfOwnerByIndex(whale,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
+      const EIndex = await sortedTroves.cdpOfOwnerByIndex(E,0)
 
       const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
-      let baseRate = await troveManager.baseRate() // expect 5% base rate
+      let baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
 
       // 100%: 1e18,  10%: 1e17,  1%: 1e16,  0.1%: 1e15
@@ -980,17 +980,17 @@ contract('BorrowerOperations', async accounts => {
       const lessThan5pct = '49999999999999999'
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, lessThan5pct, dec(3, 18), AIndex, AIndex, { from: A }), "Fee exceeded provided maximum")
 
-      baseRate = await troveManager.baseRate() // expect 5% base rate
+      baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
       // Attempt with maxFee 1%
       await assertRevert(borrowerOperations.withdrawEBTC(BIndex, dec(1, 16), dec(1, 18), AIndex, AIndex, { from: B }), "Fee exceeded provided maximum")
 
-      baseRate = await troveManager.baseRate()  // expect 5% base rate
+      baseRate = await cdpManager.baseRate()  // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
       // Attempt with maxFee 3.754%
       await assertRevert(borrowerOperations.withdrawEBTC(CIndex, dec(3754, 13), dec(1, 18), AIndex, AIndex, { from: C }), "Fee exceeded provided maximum")
 
-      baseRate = await troveManager.baseRate()  // expect 5% base rate
+      baseRate = await cdpManager.baseRate()  // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
       // Attempt with maxFee 0.5%%
       await assertRevert(borrowerOperations.withdrawEBTC(DIndex, dec(5, 15), dec(1, 18), AIndex, AIndex, { from: D }), "Fee exceeded provided maximum")
@@ -1003,19 +1003,19 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(80, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
       await openTrove({ extraEBTCAmount: toBN(dec(180, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
-      const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
+      const EIndex = await sortedTroves.cdpOfOwnerByIndex(E,0)
 
       const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
-      let baseRate = await troveManager.baseRate() // expect 5% base rate
+      let baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.isTrue(baseRate.eq(toBN(dec(5, 16))))
 
       // Attempt with maxFee > 5%
@@ -1023,21 +1023,21 @@ contract('BorrowerOperations', async accounts => {
       const tx1 = await borrowerOperations.withdrawEBTC(AIndex, moreThan5pct, dec(1, 18), AIndex, AIndex, { from: A })
       assert.isTrue(tx1.receipt.status)
 
-      baseRate = await troveManager.baseRate() // expect 5% base rate
+      baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
 
       // Attempt with maxFee = 5%
       const tx2 = await borrowerOperations.withdrawEBTC(BIndex, dec(5, 16), dec(1, 18), AIndex, AIndex, { from: B })
       assert.isTrue(tx2.receipt.status)
 
-      baseRate = await troveManager.baseRate() // expect 5% base rate
+      baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
 
       // Attempt with maxFee 10%
       const tx3 = await borrowerOperations.withdrawEBTC(CIndex, dec(1, 17), dec(1, 18), AIndex, AIndex, { from: C })
       assert.isTrue(tx3.receipt.status)
 
-      baseRate = await troveManager.baseRate() // expect 5% base rate
+      baseRate = await cdpManager.baseRate() // expect 5% base rate
       assert.equal(baseRate, dec(5, 16))
 
       // Attempt with maxFee 37.659%
@@ -1058,14 +1058,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
-      const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
+      const EIndex = await sortedTroves.cdpOfOwnerByIndex(E,0)
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // 2 hours pass
@@ -1075,16 +1075,16 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(DIndex, th._100pct, dec(37, 18), AIndex, AIndex, { from: D })
 
       // Check baseRate is still 0
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.equal(baseRate_2, '0')
 
       // 1 hour passes
       th.fastForwardTime(3600, web3.currentProvider)
 
-      // E opens trove 
+      // E opens cdp 
       await borrowerOperations.withdrawEBTC(EIndex, th._100pct, dec(12, 18), AIndex, AIndex, { from: E })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.equal(baseRate_3, '0')
     })
 
@@ -1095,17 +1095,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
-      const lastFeeOpTime_1 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
 
       // 10 seconds pass
       th.fastForwardTime(10, web3.currentProvider)
@@ -1113,7 +1113,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower C triggers a fee
       await borrowerOperations.withdrawEBTC(CIndex, th._100pct, dec(1, 18), CIndex, CIndex, { from: C })
 
-      const lastFeeOpTime_2 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time did not update, as borrower D's debt issuance occured
       // since before minimum interval had passed 
@@ -1129,7 +1129,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower C triggers a fee
       await borrowerOperations.withdrawEBTC(CIndex, th._100pct, dec(1, 18), CIndex, CIndex, { from: C })
 
-      const lastFeeOpTime_3 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time DID update, as borrower's debt issuance occured
       // after minimum interval had passed 
@@ -1144,11 +1144,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 30 seconds pass
@@ -1164,7 +1164,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(th._100pct, dec(1, 18), C, C, { from: C })
 
       // Check base rate has decreased even though Borrower tried to stop it decaying
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
@@ -1185,11 +1185,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
@@ -1218,11 +1218,11 @@ contract('BorrowerOperations', async accounts => {
         const D_debtBefore = await getTroveEntireDebt(D)
 
         // Artificially make baseRate 5%
-        await troveManager.setBaseRate(dec(5, 16))
-        await troveManager.setLastFeeOpTimeToNow()
+        await cdpManager.setBaseRate(dec(5, 16))
+        await cdpManager.setLastFeeOpTimeToNow()
 
         // Check baseRate is now non-zero
-        const baseRate_1 = await troveManager.baseRate()
+        const baseRate_1 = await cdpManager.baseRate()
         assert.isTrue(baseRate_1.gt(toBN('0')))
 
         // 2 hours pass
@@ -1235,7 +1235,7 @@ contract('BorrowerOperations', async accounts => {
         const emittedFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(withdrawalTx))
         assert.isTrue(emittedFee.gt(toBN('0')))
 
-        const newDebt = (await troveManager.Troves(D))[0]
+        const newDebt = (await cdpManager.Troves(D))[0]
 
         // Check debt on Trove struct equals initial debt + withdrawal + emitted fee
         th.assertIsApproximatelyEqual(newDebt, D_debtBefore.add(withdrawal_D).add(emittedFee), 10000)
@@ -1259,11 +1259,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
@@ -1294,11 +1294,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
@@ -1327,7 +1327,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // A artificially receives LQTY, then stakes it
@@ -1357,7 +1357,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // 2 hours pass
@@ -1372,23 +1372,23 @@ contract('BorrowerOperations', async accounts => {
       // Check D's EBTC balance now equals their requested EBTC
       const D_EBTCBalanceAfter = await ebtcToken.balanceOf(D)
 
-      // Check D's trove debt == D's EBTC balance + liquidation reserve
+      // Check D's cdp debt == D's EBTC balance + liquidation reserve
       assert.isTrue(D_EBTCBalanceAfter.eq(D_EBTCBalanceBefore.add(D_EBTCRequest)))
     })
 
-    it("withdrawEBTC(): reverts when calling address does not have active trove", async () => {
+    it("withdrawEBTC(): reverts when calling address does not have active cdp", async () => {
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
       const carolIndex = th.RANDOM_INDEX
 
       // Bob successfully withdraws EBTC
       const txBob = await borrowerOperations.withdrawEBTC(bobIndex, th._100pct, dec(100, 18), bobIndex, bobIndex, { from: bob })
       assert.isTrue(txBob.receipt.status)
 
-      // Carol with no active trove attempts to withdraw EBTC
+      // Carol with no active cdp attempts to withdraw EBTC
       try {
         const txCarol = await borrowerOperations.withdrawEBTC(carolIndex, th._100pct, dec(100, 18), bobIndex, bobIndex, { from: carol })
         assert.isFalse(txCarol.receipt.status)
@@ -1401,8 +1401,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
       const carolIndex = th.RANDOM_INDEX
 
       // Bob successfully withdraws 1e-18 EBTC
@@ -1423,9 +1423,9 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -1446,12 +1446,12 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("withdrawEBTC(): reverts when withdrawal would bring the trove's ICR < MCR", async () => {
+    it("withdrawEBTC(): reverts when withdrawal would bring the cdp's ICR < MCR", async () => {
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(11, 17)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Bob tries to withdraw EBTC that would bring his ICR < MCR
       try {
@@ -1466,12 +1466,12 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      // Alice and Bob creates troves with 150% ICR.  System TCR = 150%.
+      // Alice and Bob creates cdps with 150% ICR.  System TCR = 150%.
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       var TCR = (await th.getTCR(contracts)).toString()
       assert.equal(TCR, '1500000000000000000')
@@ -1491,8 +1491,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // --- TEST ---
 
@@ -1510,7 +1510,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawEBTC(): increases the Trove's EBTC debt by the correct amount", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
 
       // check before
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
@@ -1525,7 +1525,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawEBTC(): increases EBTC debt in ActivePool by correct amount", async () => {
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: alice, value: toBN(dec(100, 'ether')) } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN(0)))
@@ -1543,7 +1543,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("withdrawEBTC(): increases user EBTCToken balance by correct amount", async () => {
       await openTrove({ extraParams: { value: toBN(dec(100, 'ether')), from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
 
       // check before
       const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
@@ -1557,20 +1557,20 @@ contract('BorrowerOperations', async accounts => {
     })
 
     // --- repayEBTC() ---
-    it("repayEBTC(): reverts when repayment would leave trove with ICR < MCR", async () => {
+    it("repayEBTC(): reverts when repayment would leave cdp with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
-      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
+      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCRepayment = 1  // 1 wei repayment
 
@@ -1578,25 +1578,25 @@ contract('BorrowerOperations', async accounts => {
       "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
     })
 
-    it("repayEBTC(): Succeeds when it would leave trove with net debt >= minimum net debt", async () => {
+    it("repayEBTC(): Succeeds when it would leave cdp with net debt >= minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
       await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
 
       const repayTxA = await borrowerOperations.repayEBTC(AIndex, 1, AIndex, AIndex, { from: A })
       assert.isTrue(repayTxA.receipt.status)
 
       await borrowerOperations.openTrove(th._100pct, dec(20, 25), B, B, { from: B, value: dec(100, 30) })
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
 
       const repayTxB = await borrowerOperations.repayEBTC(BIndex, dec(19, 25), BIndex, BIndex, { from: B })
       assert.isTrue(repayTxB.receipt.status)
     })
 
-    it("repayEBTC(): reverts when it would leave trove with net debt < minimum net debt", async () => {
+    it("repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
       await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
       await assertRevert(repayTxAPromise, "BorrowerOps: Trove's net debt must be greater than minimum")
@@ -1604,13 +1604,13 @@ contract('BorrowerOperations', async accounts => {
 
     it("adjustTrove(): Reverts if repaid amount is greater than current debt", async () => {
       const { totalDebt } = await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)  
       
       EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
       const repayAmount = totalDebt.sub(EBTC_GAS_COMPENSATION).add(toBN(1))
 
       await openTrove({ extraEBTCAmount: repayAmount, ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       await ebtcToken.transfer(alice, repayAmount, { from: bob })
 
@@ -1618,18 +1618,18 @@ contract('BorrowerOperations', async accounts => {
                          "SafeMath: subtraction overflow")
     })
 
-    xit("repayEBTC(): reverts when calling address does not own trove index supplied", async () => {
+    xit("repayEBTC(): reverts when calling address does not own cdp index supplied", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)  
 
       // Bob successfully repays some EBTC
       const txBob = await borrowerOperations.repayEBTC(bobIndex, dec(10, 18), bobIndex, bobIndex, { from: bob })
       assert.isTrue(txBob.receipt.status)
 
-      // Carol with no active trove attempts to repayEBTC
+      // Carol with no active cdp attempts to repayEBTC
       try {
         const txCarol = await borrowerOperations.repayEBTC(bobIndex, dec(10, 18), bobIndex, bobIndex, { from: carol })
         assert.isFalse(txCarol.receipt.status)
@@ -1638,12 +1638,12 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("repayEBTC(): reverts when attempted repayment is > the debt of the trove", async () => {
+    it("repayEBTC(): reverts when attempted repayment is > the debt of the cdp", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)  
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)  
 
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
 
@@ -1665,8 +1665,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
@@ -1683,8 +1683,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
@@ -1704,8 +1704,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
@@ -1726,8 +1726,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
@@ -1750,8 +1750,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
 
       const bobBalBefore = await ebtcToken.balanceOf(B)
       assert.isTrue(bobBalBefore.gt(toBN('0')))
@@ -1772,20 +1772,20 @@ contract('BorrowerOperations', async accounts => {
 
     // --- adjustTrove() ---
 
-    it("adjustTrove(): reverts when adjustment would leave trove with ICR < MCR", async () => {
+    it("adjustTrove(): reverts when adjustment would leave cdp with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
-      assert.isTrue((await troveManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
+      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCRepayment = 1  // 1 wei repayment
       const collTopUp = 1
@@ -1796,7 +1796,7 @@ contract('BorrowerOperations', async accounts => {
 
     xit("adjustTrove(): reverts if max fee < 0.5% in Normal mode", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
 
       await assertRevert(borrowerOperations.adjustTrove(AIndex, 0, 0, dec(1, 18), true, AIndex, AIndex, { from: A, value: dec(2, 16) }), "Max fee percentage must be between 0.5% and 100%")
       await assertRevert(borrowerOperations.adjustTrove(AIndex, 1, 0, dec(1, 18), true, AIndex, AIndex, { from: A, value: dec(2, 16) }), "Max fee percentage must be between 0.5% and 100%")
@@ -1829,30 +1829,30 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove
+      // D adjusts cdp
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(37, 18), true, D, D, { from: D })
 
       // Check baseRate has decreased
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
 
       // 1 hour passes
       th.fastForwardTime(3600, web3.currentProvider)
 
-      // E adjusts trove
+      // E adjusts cdp
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(37, 15), true, E, E, { from: D })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.isTrue(baseRate_3.lt(baseRate_2))
     })
 
@@ -1863,24 +1863,24 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove with 0 debt
+      // D adjusts cdp with 0 debt
       await borrowerOperations.adjustTrove(th._100pct, 0, 0, false, D, D, { from: D, value: dec(1, 'ether') })
 
       // Check baseRate has not decreased 
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.eq(baseRate_1))
     })
 
@@ -1889,26 +1889,26 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove
+      // D adjusts cdp
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(37, 18), true, D, D, { from: D })
 
       // Check baseRate is still 0
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.equal(baseRate_2, '0')
 
       // 1 hour passes
       th.fastForwardTime(3600, web3.currentProvider)
 
-      // E adjusts trove
+      // E adjusts cdp
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(37, 15), true, E, E, { from: D })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.equal(baseRate_3, '0')
     })
 
@@ -1919,14 +1919,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
-      const lastFeeOpTime_1 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
 
       // 10 seconds pass
       th.fastForwardTime(10, web3.currentProvider)
@@ -1934,7 +1934,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower C triggers a fee
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(1, 18), true, C, C, { from: C })
 
-      const lastFeeOpTime_2 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time did not update, as borrower D's debt issuance occured
       // since before minimum interval had passed 
@@ -1950,7 +1950,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower C triggers a fee
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(1, 18), true, C, C, { from: C })
 
-      const lastFeeOpTime_3 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time DID update, as borrower's debt issuance occured
       // after minimum interval had passed 
@@ -1964,11 +1964,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // Borrower C triggers a fee, before decay interval of 1 minute has passed
@@ -1981,7 +1981,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(1, 18), true, C, C, { from: C })
 
       // Check base rate has decreased even though Borrower tried to stop it decaying
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
@@ -2001,17 +2001,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove
+      // D adjusts cdp
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
@@ -2034,11 +2034,11 @@ contract('BorrowerOperations', async accounts => {
         const D_debtBefore = await getTroveEntireDebt(D)
 
         // Artificially make baseRate 5%
-        await troveManager.setBaseRate(dec(5, 16))
-        await troveManager.setLastFeeOpTimeToNow()
+        await cdpManager.setBaseRate(dec(5, 16))
+        await cdpManager.setLastFeeOpTimeToNow()
 
         // Check baseRate is now non-zero
-        const baseRate_1 = await troveManager.baseRate()
+        const baseRate_1 = await cdpManager.baseRate()
         assert.isTrue(baseRate_1.gt(toBN('0')))
 
         // 2 hours pass
@@ -2052,7 +2052,7 @@ contract('BorrowerOperations', async accounts => {
         const emittedFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(adjustmentTx))
         assert.isTrue(emittedFee.gt(toBN('0')))
 
-        const D_newDebt = (await troveManager.Troves(D))[0]
+        const D_newDebt = (await cdpManager.Troves(D))[0]
     
         // Check debt on Trove struct equals initila debt plus drawn debt plus emitted fee
         assert.isTrue(D_newDebt.eq(D_debtBefore.add(withdrawal_D).add(emittedFee)))
@@ -2076,17 +2076,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove
+      // D adjusts cdp
       await borrowerOperations.adjustTrove(th._100pct, 0, dec(37, 18), true, D, D, { from: D })
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
@@ -2113,17 +2113,17 @@ contract('BorrowerOperations', async accounts => {
       const D_EBTCBalanceBefore = await ebtcToken.balanceOf(D)
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D adjusts trove
+      // D adjusts cdp
       const EBTCRequest_D = toBN(dec(40, 18))
       await borrowerOperations.adjustTrove(th._100pct, 0, EBTCRequest_D, true, D, D, { from: D })
 
@@ -2143,7 +2143,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
 
       // Origination fee is assumed to be zero
 
@@ -2154,7 +2154,7 @@ contract('BorrowerOperations', async accounts => {
       const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_Before.gt(toBN('0')))
 
-      // D adjusts trove
+      // D adjusts cdp
       await borrowerOperations.adjustTrove(DIndex, th._100pct, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance after > staking balance before
@@ -2169,7 +2169,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
 
       // Origination fee is assumed to be zero
 
@@ -2184,7 +2184,7 @@ contract('BorrowerOperations', async accounts => {
       const F_EBTC_Before = await lqtyStaking.F_EBTC()
       assert.isTrue(F_EBTC_Before.eq(toBN('0')))
 
-      // D adjusts trove
+      // D adjusts cdp
       await borrowerOperations.adjustTrove(DIndex, th._100pct, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance increases
@@ -2199,7 +2199,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
+      const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
 
       const D_EBTCBalBefore = await ebtcToken.balanceOf(D)
 
@@ -2210,7 +2210,7 @@ contract('BorrowerOperations', async accounts => {
 
       const DUSDBalanceBefore = await ebtcToken.balanceOf(D)
 
-      // D adjusts trove
+      // D adjusts cdp
       const EBTCRequest_D = toBN(dec(40, 18))
       await borrowerOperations.adjustTrove(DIndex, th._100pct, 0, EBTCRequest_D, true, DIndex, DIndex, { from: D })
 
@@ -2219,12 +2219,12 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(EBTCBalanceAfter.eq(D_EBTCBalBefore.add(EBTCRequest_D)))
     })
 
-    it("adjustTrove(): reverts when calling address does not own the trove index specified", async () => {
+    it("adjustTrove(): reverts when calling address does not own the cdp index specified", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Alice coll and debt increase(+1 ETH, +50EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
@@ -2241,8 +2241,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2279,8 +2279,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2296,10 +2296,10 @@ contract('BorrowerOperations', async accounts => {
     it("adjustTrove(): debt increase that would leave ICR < 150% reverts in Recovery Mode", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const CCR = await troveManager.CCR()
+      const CCR = await cdpManager.CCR()
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2308,7 +2308,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const ICR_A = await troveManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
 
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
       const aliceColl = await getTroveEntireColl(aliceIndex)
@@ -2316,21 +2316,21 @@ contract('BorrowerOperations', async accounts => {
       const collIncrease = toBN(dec(1, 'ether'))
 
       // Check the new ICR would be an improvement, but less than the CCR (150%)
-      const newICR = await troveManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
+      const newICR = await cdpManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
 
       assert.isTrue(newICR.gt(ICR_A) && newICR.lt(CCR))
 
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, debtIncrease, true, aliceIndex, aliceIndex, { from: alice, value: collIncrease }),
-        "BorrowerOps: Operation must leave trove with ICR >= CCR")
+        "BorrowerOps: Operation must leave cdp with ICR >= CCR")
     })
 
     it("adjustTrove(): debt increase that would reduce the ICR reverts in Recovery Mode", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const CCR = await troveManager.CCR()
+      const CCR = await cdpManager.CCR()
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2341,7 +2341,7 @@ contract('BorrowerOperations', async accounts => {
 
       //--- Alice with ICR > 150% tries to reduce her ICR ---
 
-      const ICR_A = await troveManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
 
       // Check Alice's initial ICR is above 150%
       assert.isTrue(ICR_A.gt(CCR))
@@ -2351,7 +2351,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceDebtIncrease = toBN(dec(150, 18))
       const aliceCollIncrease = toBN(dec(1, 'ether'))
 
-      const newICR_A = await troveManager.computeICR(aliceColl.add(aliceCollIncrease), aliceDebt.add(aliceDebtIncrease), price)
+      const newICR_A = await cdpManager.computeICR(aliceColl.add(aliceCollIncrease), aliceDebt.add(aliceDebtIncrease), price)
 
       // Check Alice's new ICR would reduce but still be greater than 150%
       assert.isTrue(newICR_A.lt(ICR_A) && newICR_A.gt(CCR))
@@ -2361,7 +2361,7 @@ contract('BorrowerOperations', async accounts => {
 
       //--- Bob with ICR < 150% tries to reduce his ICR ---
 
-      const ICR_B = await troveManager.getCurrentICR(bobIndex, price)
+      const ICR_B = await cdpManager.getCurrentICR(bobIndex, price)
 
       // Check Bob's initial ICR is below 150%
       assert.isTrue(ICR_B.lt(CCR))
@@ -2371,22 +2371,22 @@ contract('BorrowerOperations', async accounts => {
       const bobDebtIncrease = toBN(dec(450, 18))
       const bobCollIncrease = toBN(dec(1, 'ether'))
 
-      const newICR_B = await troveManager.computeICR(bobColl.add(bobCollIncrease), bobDebt.add(bobDebtIncrease), price)
+      const newICR_B = await cdpManager.computeICR(bobColl.add(bobCollIncrease), bobDebt.add(bobDebtIncrease), price)
 
       // Check Bob's new ICR would reduce 
       assert.isTrue(newICR_B.lt(ICR_B))
 
       await assertRevert(borrowerOperations.adjustTrove(bobIndex, th._100pct, 0, bobDebtIncrease, true, bobIndex, bobIndex, { from: bob, value: bobCollIncrease }),
-        " BorrowerOps: Operation must leave trove with ICR >= CCR")
+        " BorrowerOps: Operation must leave cdp with ICR >= CCR")
     })
 
-    it("adjustTrove(): A trove with ICR < CCR in Recovery Mode can adjust their trove to ICR > CCR", async () => {
+    it("adjustTrove(): A cdp with ICR < CCR in Recovery Mode can adjust their cdp to ICR > CCR", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const CCR = await troveManager.CCR()
+      const CCR = await cdpManager.CCR()
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2395,7 +2395,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const ICR_A = await troveManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
       // Check initial ICR is below 150%
       assert.isTrue(ICR_A.lt(CCR))
 
@@ -2404,7 +2404,7 @@ contract('BorrowerOperations', async accounts => {
       const debtIncrease = toBN(dec(5000, 18))
       const collIncrease = toBN(dec(150, 'ether'))
 
-      const newICR = await troveManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
+      const newICR = await cdpManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
 
       // Check new ICR would be > 150%
       assert.isTrue(newICR.gt(CCR))
@@ -2412,17 +2412,17 @@ contract('BorrowerOperations', async accounts => {
       const tx = await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, debtIncrease, true, aliceIndex, aliceIndex, { from: alice, value: collIncrease })
       assert.isTrue(tx.receipt.status)
 
-      const actualNewICR = await troveManager.getCurrentICR(aliceIndex, price)
+      const actualNewICR = await cdpManager.getCurrentICR(aliceIndex, price)
       assert.isTrue(actualNewICR.gt(CCR))
     })
 
-    it("adjustTrove(): A trove with ICR > CCR in Recovery Mode can improve their ICR", async () => {
+    it("adjustTrove(): A cdp with ICR > CCR in Recovery Mode can improve their ICR", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const CCR = await troveManager.CCR()
+      const CCR = await cdpManager.CCR()
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2431,7 +2431,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const initialICR = await troveManager.getCurrentICR(aliceIndex, price)
+      const initialICR = await cdpManager.getCurrentICR(aliceIndex, price)
       // Check initial ICR is above 150%
       assert.isTrue(initialICR.gt(CCR))
 
@@ -2440,7 +2440,7 @@ contract('BorrowerOperations', async accounts => {
       const debtIncrease = toBN(dec(5000, 18))
       const collIncrease = toBN(dec(150, 'ether'))
 
-      const newICR = await troveManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
+      const newICR = await cdpManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
 
       // Check new ICR would be > old ICR
       assert.isTrue(newICR.gt(initialICR))
@@ -2448,7 +2448,7 @@ contract('BorrowerOperations', async accounts => {
       const tx = await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, debtIncrease, true, aliceIndex, aliceIndex, { from: alice, value: collIncrease })
       assert.isTrue(tx.receipt.status)
 
-      const actualNewICR = await troveManager.getCurrentICR(aliceIndex, price)
+      const actualNewICR = await cdpManager.getCurrentICR(aliceIndex, price)
       assert.isTrue(actualNewICR.gt(initialICR))
     })
 
@@ -2456,8 +2456,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(200000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -2492,8 +2492,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Check TCR and Recovery Mode
       const TCR = (await th.getTCR(contracts)).toString()
@@ -2509,12 +2509,12 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("adjustTrove(): reverts when EBTC repaid is > debt of the trove", async () => {
+    it("adjustTrove(): reverts when EBTC repaid is > debt of the cdp", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       const bobOpenTx = (await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })).tx
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const bobDebt = await getTroveEntireDebt(bobIndex)
       assert.isTrue(bobDebt.gt(toBN('0')))
@@ -2525,7 +2525,7 @@ contract('BorrowerOperations', async accounts => {
       // Alice transfers EBTC to bob to compensate borrowing fees
       await ebtcToken.transfer(bob, bobFee, { from: alice })
 
-      const remainingDebt = (await troveManager.getTroveDebt(bobIndex)).sub(EBTC_GAS_COMPENSATION)
+      const remainingDebt = (await cdpManager.getTroveDebt(bobIndex)).sub(EBTC_GAS_COMPENSATION)
 
       // Bob attempts an adjustment that would repay 1 wei more than his debt
       await assertRevert(
@@ -2534,14 +2534,14 @@ contract('BorrowerOperations', async accounts => {
       )
     })
 
-    it("adjustTrove(): reverts when attempted ETH withdrawal is >= the trove's collateral", async () => {
+    it("adjustTrove(): reverts when attempted ETH withdrawal is >= the cdp's collateral", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       const carolColl = await getTroveEntireColl(carolIndex)
 
@@ -2554,7 +2554,7 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("adjustTrove(): reverts when change would cause the ICR of the trove to fall below the MCR", async () => {
+    it("adjustTrove(): reverts when change would cause the ICR of the cdp to fall below the MCR", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
       await priceFeed.setPrice(dec(100, 18))
@@ -2562,7 +2562,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(11, 17)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(11, 17)), extraParams: { from: bob } })
 
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Bob attempts to increase debt by 100 EBTC and 1 ether, i.e. a change that constitutes a 100% ratio of coll:debt.
       // Since his ICR prior is 110%, this change would reduce his ICR below MCR.
@@ -2577,7 +2577,7 @@ contract('BorrowerOperations', async accounts => {
     it("adjustTrove(): With 0 coll change, doesnt change borrower's coll or ActivePool coll", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       const activePoolCollBefore = await activePool.getETH()
@@ -2585,7 +2585,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceCollBefore.gt(toBN('0')))
       assert.isTrue(aliceCollBefore.eq(activePoolCollBefore))
 
-      // Alice adjusts trove. No coll change, and a debt increase (+50EBTC)
+      // Alice adjusts cdp. No coll change, and a debt increase (+50EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), true, aliceIndex, aliceIndex, { from: alice, value: 0 })
 
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
@@ -2598,7 +2598,7 @@ contract('BorrowerOperations', async accounts => {
     it("adjustTrove(): With 0 debt change, doesnt change borrower's debt or ActivePool debt", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       const activePoolDebtBefore = await activePool.getEBTCDebt()
@@ -2606,7 +2606,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
       assert.isTrue(aliceDebtBefore.eq(activePoolDebtBefore))
 
-      // Alice adjusts trove. Coll change, no debt change
+      // Alice adjusts cdp. Coll change, no debt change
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, false, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const aliceDebtAfter = await getTroveEntireDebt(aliceIndex)
@@ -2620,14 +2620,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const debtBefore = await getTroveEntireDebt(aliceIndex)
       const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
-      // Alice adjusts trove. Coll and debt increase(+1 ETH, +50EBTC)
+      // Alice adjusts cdp. Coll and debt increase(+1 ETH, +50EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, await getNetBorrowingAmount(dec(50, 18)), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const debtAfter = await getTroveEntireDebt(aliceIndex)
@@ -2641,14 +2641,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const debtBefore = await getTroveEntireDebt(aliceIndex)
       const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
-      // Alice adjusts trove coll and debt decrease (-0.5 ETH, -50EBTC)
+      // Alice adjusts cdp coll and debt decrease (-0.5 ETH, -50EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(500, 'finney'), dec(50, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       const debtAfter = await getTroveEntireDebt(aliceIndex)
@@ -2662,14 +2662,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const debtBefore = await getTroveEntireDebt(aliceIndex)
       const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
-      // Alice adjusts trove - coll increase and debt decrease (+0.5 ETH, -50EBTC)
+      // Alice adjusts cdp - coll increase and debt decrease (+0.5 ETH, -50EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), false, aliceIndex, aliceIndex, { from: alice, value: dec(500, 'finney') })
 
       const debtAfter = await getTroveEntireDebt(aliceIndex)
@@ -2683,14 +2683,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const debtBefore = await getTroveEntireDebt(aliceIndex)
       const collBefore = await getTroveEntireColl(aliceIndex)
       assert.isTrue(debtBefore.gt(toBN('0')))
       assert.isTrue(collBefore.gt(toBN('0')))
 
-      // Alice adjusts trove - coll decrease and debt increase (0.1 ETH, 10EBTC)
+      // Alice adjusts cdp - coll decrease and debt increase (0.1 ETH, 10EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(1, 17), await getNetBorrowingAmount(dec(1, 18)), true, aliceIndex, aliceIndex, { from: alice })
 
       const debtAfter = await getTroveEntireDebt(aliceIndex)
@@ -2704,18 +2704,18 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      const stakeBefore = await troveManager.getTroveStake(aliceIndex)
-      const totalStakesBefore = await troveManager.totalStakes();
+      const stakeBefore = await cdpManager.getTroveStake(aliceIndex)
+      const totalStakesBefore = await cdpManager.totalStakes();
       assert.isTrue(stakeBefore.gt(toBN('0')))
       assert.isTrue(totalStakesBefore.gt(toBN('0')))
 
-      // Alice adjusts trove - coll and debt increase (+1 ETH, +50 EBTC)
+      // Alice adjusts cdp - coll and debt increase (+1 ETH, +50 EBTC)
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(50, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
-      const stakeAfter = await troveManager.getTroveStake(aliceIndex)
-      const totalStakesAfter = await troveManager.totalStakes();
+      const stakeAfter = await cdpManager.getTroveStake(aliceIndex)
+      const totalStakesAfter = await cdpManager.totalStakes();
 
       assert.isTrue(stakeAfter.eq(stakeBefore.add(toBN(dec(1, 18)))))
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.add(toBN(dec(1, 18)))))
@@ -2725,18 +2725,18 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      const stakeBefore = await troveManager.getTroveStake(aliceIndex)
-      const totalStakesBefore = await troveManager.totalStakes();
+      const stakeBefore = await cdpManager.getTroveStake(aliceIndex)
+      const totalStakesBefore = await cdpManager.totalStakes();
       assert.isTrue(stakeBefore.gt(toBN('0')))
       assert.isTrue(totalStakesBefore.gt(toBN('0')))
 
-      // Alice adjusts trove - coll decrease and debt decrease
+      // Alice adjusts cdp - coll decrease and debt decrease
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(500, 'finney'), dec(50, 18), false, aliceIndex, aliceIndex, { from: alice })
 
-      const stakeAfter = await troveManager.getTroveStake(aliceIndex)
-      const totalStakesAfter = await troveManager.totalStakes();
+      const stakeAfter = await cdpManager.getTroveStake(aliceIndex)
+      const totalStakesAfter = await cdpManager.totalStakes();
 
       assert.isTrue(stakeAfter.eq(stakeBefore.sub(toBN(dec(5, 17)))))
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.sub(toBN(dec(5, 17)))))
@@ -2746,12 +2746,12 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll decrease and debt decrease
+      // Alice adjusts cdp - coll decrease and debt decrease
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       // check after
@@ -2763,12 +2763,12 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll increase and debt increase
+      // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       // check after
@@ -2780,14 +2780,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_Before.gt(toBN('0')))
       assert.isTrue(activePool_RawEther_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll decrease and debt decrease
+      // Alice adjusts cdp - coll decrease and debt decrease
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       const activePool_ETH_After = await activePool.getETH()
@@ -2800,14 +2800,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const activePool_ETH_Before = await activePool.getETH()
       const activePool_RawEther_Before = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_Before.gt(toBN('0')))
       assert.isTrue(activePool_RawEther_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll increase and debt increase
+      // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_ETH_After = await activePool.getETH()
@@ -2820,12 +2820,12 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
       assert.isTrue(activePool_EBTCDebt_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll increase and debt decrease
+      // Alice adjusts cdp - coll increase and debt decrease
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, dec(30, 18), false, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_EBTCDebt_After = await activePool.getEBTCDebt()
@@ -2836,12 +2836,12 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
       assert.isTrue(activePool_EBTCDebt_Before.gt(toBN('0')))
 
-      // Alice adjusts trove - coll increase and debt increase
+      // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, await getNetBorrowingAmount(dec(100, 18)), true, aliceIndex, aliceIndex, { from: alice, value: dec(1, 'ether') })
 
       const activePool_EBTCDebt_After = await activePool.getEBTCDebt()
@@ -2853,11 +2853,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceColl = await getTroveEntireColl(aliceIndex)
       const aliceDebt = await getTroveEntireColl(aliceIndex)
-      const status_Before = await troveManager.getTroveStatus(aliceIndex)
+      const status_Before = await cdpManager.getTroveStatus(aliceIndex)
       const isInSortedList_Before = await sortedTroves.contains(aliceIndex)
 
       assert.equal(status_Before, 1)  // 1: Active
@@ -2873,7 +2873,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, true, aliceIndex, aliceIndex, { from: alice }),
         'BorrowerOps: Debt increase requires non-zero debtChange')
@@ -2883,7 +2883,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, dec(1, 'ether'), dec(100, 18), true, aliceIndex, aliceIndex, { from: alice, value: dec(3, 'ether') }), 'BorrowerOperations: Cannot withdraw and add coll')
     })
@@ -2891,21 +2891,21 @@ contract('BorrowerOperations', async accounts => {
     it("adjustTrove(): Reverts if it’s zero adjustment", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, 0, 0, false, aliceIndex, aliceIndex, { from: alice }),
                          'BorrowerOps: There must be either a collateral change or a debt change')
     })
 
-    it("adjustTrove(): Reverts if requested coll withdrawal is greater than trove's collateral", async () => {
+    it("adjustTrove(): Reverts if requested coll withdrawal is greater than cdp's collateral", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceColl = await getTroveEntireColl(aliceIndex)
 
-      // Requested coll withdrawal > coll in the trove
+      // Requested coll withdrawal > coll in the cdp
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, aliceColl.add(toBN(1)), 0, false, aliceIndex, aliceIndex, { from: alice }))
       await assertRevert(borrowerOperations.adjustTrove(aliceIndex, th._100pct, aliceColl.add(toBN(dec(37, 'ether'))), 0, false, aliceIndex, aliceIndex, { from: bob }))
     })
@@ -2914,7 +2914,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: B } })
 
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
       const bobDebt = await getTroveEntireDebt(BIndex)
 
       // Bob transfers some EBTC to carol
@@ -2952,14 +2952,14 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(300, 16)), extraParams:{ from: alice } })
       await openTrove({ ICR: toBN(dec(120, 16)), extraEBTCAmount: toBN(dec(300, 18)), extraParams:{ from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const price = await priceFeed.getPrice()
       
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, dec(300, 18), { from: bob })
 
-      assert.isFalse(await troveManager.checkRecoveryMode(price))
+      assert.isFalse(await cdpManager.checkRecoveryMode(price))
     
       await assertRevert(
         borrowerOperations.closeTrove(aliceIndex, { from: alice }),
@@ -2967,13 +2967,13 @@ contract('BorrowerOperations', async accounts => {
       )
     })
 
-    it("closeTrove(): reverts when calling address does not own specified trove", async () => {
+    it("closeTrove(): reverts when calling address does not own specified cdp", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      // Carol with no active trove attempts to close a non-existant trove
+      // Carol with no active cdp attempts to close a non-existant cdp
       try {
         const txCarol = await borrowerOperations.closeTrove(aliceIndex, { from: carol })
         assert.isFalse(txCarol.receipt.status)
@@ -2982,13 +2982,13 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("closeTrove(): reverts when specified trove does not exist", async () => {
+    it("closeTrove(): reverts when specified cdp does not exist", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
 
       const carolIndex = th.RANDOM_INDEX;
 
-      // Carol with no active trove attempts to close a non-existant trove
+      // Carol with no active cdp attempts to close a non-existant cdp
       try {
         const txCarol = await borrowerOperations.closeTrove(carolIndex, { from: carol })
         assert.isFalse(txCarol.receipt.status)
@@ -3002,8 +3002,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       // Alice transfers her EBTC to Bob and Carol so they can cover fees
       const aliceBal = await ebtcToken.balanceOf(alice)
@@ -3013,7 +3013,7 @@ contract('BorrowerOperations', async accounts => {
       // check Recovery Mode 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      // Bob successfully closes his trove
+      // Bob successfully closes his cdp
       const txBob = await borrowerOperations.closeTrove(bobIndex, { from: bob })
       assert.isTrue(txBob.receipt.status)
 
@@ -3021,19 +3021,19 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      // Carol attempts to close her trove during Recovery Mode
+      // Carol attempts to close her cdp during Recovery Mode
       await assertRevert(borrowerOperations.closeTrove(carolIndex, { from: carol }), "BorrowerOps: Operation not permitted during Recovery Mode")
     })
 
-    it("closeTrove(): reverts when trove is the only one in the system", async () => {
+    it("closeTrove(): reverts when cdp is the only one in the system", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(100000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
-      // Artificially mint to Alice so she has enough to close her trove
+      // Artificially mint to Alice so she has enough to close her cdp
       await ebtcToken.unprotectedMint(alice, dec(100000, 18))
 
-      // Check she has more EBTC than her trove debt
+      // Check she has more EBTC than her cdp debt
       const aliceBal = await ebtcToken.balanceOf(alice)
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceBal.gt(aliceDebt))
@@ -3041,15 +3041,15 @@ contract('BorrowerOperations', async accounts => {
       // check Recovery Mode
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      // Alice attempts to close her trove
-      await assertRevert(borrowerOperations.closeTrove(aliceIndex, { from: alice }), "TroveManager: Only one trove in the system")
+      // Alice attempts to close her cdp
+      await assertRevert(borrowerOperations.closeTrove(aliceIndex, { from: alice }), "TroveManager: Only one cdp in the system")
     })
 
     it("closeTrove(): reduces a Trove's collateral to zero", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       const dennisEBTC = await ebtcToken.balanceOf(dennis)
@@ -3059,7 +3059,7 @@ contract('BorrowerOperations', async accounts => {
       // To compensate borrowing fees
       await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
-      // Alice attempts to close trove
+      // Alice attempts to close cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
@@ -3070,7 +3070,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceDebtBefore = await getTroveEntireColl(aliceIndex)
       const dennisEBTC = await ebtcToken.balanceOf(dennis)
@@ -3080,7 +3080,7 @@ contract('BorrowerOperations', async accounts => {
       // To compensate borrowing fees
       await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
-      // Alice attempts to close trove
+      // Alice attempts to close cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
@@ -3091,7 +3091,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceStakeBefore = await getTroveStake(aliceIndex)
       assert.isTrue(aliceStakeBefore.gt(toBN('0')))
@@ -3103,54 +3103,54 @@ contract('BorrowerOperations', async accounts => {
       // To compensate borrowing fees
       await ebtcToken.transfer(alice, dennisEBTC.div(toBN(2)), { from: dennis })
 
-      // Alice attempts to close trove
+      // Alice attempts to close cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
-      const stakeAfter = ((await troveManager.Troves(aliceIndex))[2]).toString()
+      const stakeAfter = ((await cdpManager.Troves(aliceIndex))[2]).toString()
       assert.equal(stakeAfter, '0')
       // check withdrawal was successful
     })
 
-    it("closeTrove(): zero's the troves reward snapshots", async () => {
-      // Dennis opens trove and transfers tokens to alice
+    it("closeTrove(): zero's the cdps reward snapshots", async () => {
+      // Dennis opens cdp and transfers tokens to alice
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
       
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
 
       // Liquidate Bob
-      await troveManager.liquidate(bobIndex)
+      await cdpManager.liquidate(bobIndex)
       assert.isFalse(await sortedTroves.contains(bobIndex))
 
       // Price bounces back
       await priceFeed.setPrice(dec(200, 18))
 
-      // Alice and Carol open troves
+      // Alice and Carol open cdps
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       // Price drops ...again
       await priceFeed.setPrice(dec(100, 18))
 
       // Get Alice's pending reward snapshots 
-      const L_ETH_A_Snapshot = (await troveManager.rewardSnapshots(aliceIndex))[0]
-      const L_EBTCDebt_A_Snapshot = (await troveManager.rewardSnapshots(aliceIndex))[1]
+      const L_ETH_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_EBTCDebt_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[1]
       assert.isTrue(L_ETH_A_Snapshot.gt(toBN('0')))
       assert.isTrue(L_EBTCDebt_A_Snapshot.gt(toBN('0')))
 
       // Liquidate Carol
-      await troveManager.liquidate(carolIndex)
+      await cdpManager.liquidate(carolIndex)
       assert.isFalse(await sortedTroves.contains(carolIndex))
 
       // Get Alice's pending reward snapshots after Carol's liquidation. Check above 0
-      const L_ETH_Snapshot_A_AfterLiquidation = (await troveManager.rewardSnapshots(aliceIndex))[0]
-      const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await troveManager.rewardSnapshots(aliceIndex))[1]
+      const L_ETH_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[1]
 
       assert.isTrue(L_ETH_Snapshot_A_AfterLiquidation.gt(toBN('0')))
       assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
@@ -3160,25 +3160,25 @@ contract('BorrowerOperations', async accounts => {
 
       await priceFeed.setPrice(dec(200, 18))
 
-      // Alice closes trove
+      // Alice closes cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // Check Alice's pending reward snapshots are zero
-      const L_ETH_Snapshot_A_afterAliceCloses = (await troveManager.rewardSnapshots(aliceIndex))[0]
-      const L_EBTCDebt_Snapshot_A_afterAliceCloses = (await troveManager.rewardSnapshots(aliceIndex))[1]
+      const L_ETH_Snapshot_A_afterAliceCloses = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_EBTCDebt_Snapshot_A_afterAliceCloses = (await cdpManager.rewardSnapshots(aliceIndex))[1]
 
       assert.equal(L_ETH_Snapshot_A_afterAliceCloses, '0')
       assert.equal(L_EBTCDebt_Snapshot_A_afterAliceCloses, '0')
     })
 
-    it("closeTrove(): sets trove's status to closed and removes it from sorted troves list", async () => {
+    it("closeTrove(): sets cdp's status to closed and removes it from sorted cdps list", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // Check Trove is active
-      const alice_Trove_Before = await troveManager.Troves(aliceIndex)
+      const alice_Trove_Before = await cdpManager.Troves(aliceIndex)
       const status_Before = alice_Trove_Before[3]
 
       assert.equal(status_Before, 1)
@@ -3187,10 +3187,10 @@ contract('BorrowerOperations', async accounts => {
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
-      // Close the trove
+      // Close the cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const status_After = alice_Trove_After[3]
 
       assert.equal(status_After, 2)
@@ -3201,8 +3201,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const dennisIndex = await sortedTroves.troveOfOwnerByIndex(dennis,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const dennisIndex = await sortedTroves.cdpOfOwnerByIndex(dennis,0)
 
       const dennisColl = await getTroveEntireColl(dennisIndex)
       const aliceColl = await getTroveEntireColl(aliceIndex)
@@ -3219,7 +3219,7 @@ contract('BorrowerOperations', async accounts => {
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
-      // Close the trove
+      // Close the cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // Check after
@@ -3233,8 +3233,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const dennisIndex = await sortedTroves.troveOfOwnerByIndex(dennis,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const dennisIndex = await sortedTroves.cdpOfOwnerByIndex(dennis,0)
 
       const dennisDebt = await getTroveEntireDebt(dennisIndex)
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
@@ -3249,7 +3249,7 @@ contract('BorrowerOperations', async accounts => {
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
-      // Close the trove
+      // Close the cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // Check after
@@ -3262,9 +3262,9 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const dennisIndex = await sortedTroves.troveOfOwnerByIndex(dennis,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const dennisIndex = await sortedTroves.cdpOfOwnerByIndex(dennis,0)
 
       // Get individual stakes
       const aliceStakeBefore = await getTroveStake(aliceIndex)
@@ -3274,19 +3274,19 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(bobStakeBefore.gt('0'))
       assert.isTrue(dennisStakeBefore.gt('0'))
 
-      const totalStakesBefore = await troveManager.totalStakes()
+      const totalStakesBefore = await cdpManager.totalStakes()
 
       assert.isTrue(totalStakesBefore.eq(aliceStakeBefore.add(bobStakeBefore).add(dennisStakeBefore)))
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
 
-      // Alice closes trove
+      // Alice closes cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // Check stake and total stakes get updated
       const aliceStakeAfter = await getTroveStake(aliceIndex)
-      const totalStakesAfter = await troveManager.totalStakes()
+      const totalStakesAfter = await cdpManager.totalStakes()
 
       assert.equal(aliceStakeAfter, 0)
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.sub(aliceStakeBefore)))
@@ -3318,7 +3318,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebt.gt(toBN('0')))
@@ -3329,7 +3329,7 @@ contract('BorrowerOperations', async accounts => {
       const alice_EBTCBalance_Before = await ebtcToken.balanceOf(alice)
       assert.isTrue(alice_EBTCBalance_Before.gt(toBN('0')))
 
-      // close trove
+      // close cdp
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // check alice EBTC balance after
@@ -3341,7 +3341,7 @@ contract('BorrowerOperations', async accounts => {
       // --- SETUP ---
       await openTrove({ extraEBTCAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-      const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
+      const whaleIndex = await sortedTroves.cdpOfOwnerByIndex(whale,0)
 
       const whaleDebt = await getTroveEntireDebt(whaleIndex)
       const whaleColl = await getTroveEntireColl(whaleIndex)
@@ -3350,9 +3350,9 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       const carolDebt = await getTroveEntireDebt(carolIndex)
       const carolColl = await getTroveEntireColl(carolIndex)
@@ -3368,23 +3368,23 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       // liquidate Carol's Trove, Alice and Bob earn rewards.
-      const liquidationTx = await troveManager.liquidate(carolIndex, { from: owner });
+      const liquidationTx = await cdpManager.liquidate(carolIndex, { from: owner });
       const [liquidatedDebt_C, liquidatedColl_C, gasComp_C] = th.getEmittedLiquidationValues(liquidationTx)
 
       // Dennis opens a new Trove (Carol?)
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const carolIndex2 = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const carolIndex2 = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
-      // Second trove should have a new index
+      // Second cdp should have a new index
       assert.notEqual(carolIndex, carolIndex2);
 
       // check Alice and Bob's reward snapshots are zero before they alter their Troves
-      const alice_rewardSnapshot_Before = await troveManager.rewardSnapshots(aliceIndex)
+      const alice_rewardSnapshot_Before = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_Before = alice_rewardSnapshot_Before[0]
       const alice_EBTCDebtRewardSnapshot_Before = alice_rewardSnapshot_Before[1]
 
-      const bob_rewardSnapshot_Before = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot_Before = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot_Before = bob_rewardSnapshot_Before[0]
       const bob_EBTCDebtRewardSnapshot_Before = bob_rewardSnapshot_Before[1]
 
@@ -3400,12 +3400,12 @@ contract('BorrowerOperations', async accounts => {
       assert.isAtMost(th.getDifference(defaultPool_ETH, liquidatedColl_C), 100)
       assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, liquidatedDebt_C), 100)
 
-      const pendingCollReward_A = await troveManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = await troveManager.getPendingEBTCDebtReward(aliceIndex)
+      const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
+      const pendingDebtReward_A = await cdpManager.getPendingEBTCDebtReward(aliceIndex)
       assert.isTrue(pendingCollReward_A.gt('0'))
       assert.isTrue(pendingDebtReward_A.gt('0'))
 
-      // Close Alice's trove. Alice's pending rewards should be removed from the DefaultPool when she close.
+      // Close Alice's cdp. Alice's pending rewards should be removed from the DefaultPool when she close.
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       const defaultPool_ETH_afterAliceCloses = await defaultPool.getETH()
@@ -3416,10 +3416,10 @@ contract('BorrowerOperations', async accounts => {
       assert.isAtMost(th.getDifference(defaultPool_EBTCDebt_afterAliceCloses,
         defaultPool_EBTCDebt.sub(pendingDebtReward_A)), 1000)
 
-      // whale adjusts trove, pulling their rewards out of DefaultPool
+      // whale adjusts cdp, pulling their rewards out of DefaultPool
       await borrowerOperations.adjustTrove(whaleIndex, th._100pct, 0, dec(1, 18), true, whaleIndex, whaleIndex, { from: whale })
 
-      // Close Bob's trove. Expect DefaultPool coll and debt to drop to 0, since closing pulls his rewards out.
+      // Close Bob's cdp. Expect DefaultPool coll and debt to drop to 0, since closing pulls his rewards out.
       await borrowerOperations.closeTrove(bobIndex, { from: bob })
 
       const defaultPool_ETH_afterBobCloses = await defaultPool.getETH()
@@ -3433,18 +3433,18 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(15000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
 
-      //Confirm Bob's EBTC balance is less than his trove debt
+      //Confirm Bob's EBTC balance is less than his cdp debt
       const B_EBTCBal = await ebtcToken.balanceOf(B)
-      const B_troveDebt = await getTroveEntireDebt(BIndex)
+      const B_cdpDebt = await getTroveEntireDebt(BIndex)
 
-      assert.isTrue(B_EBTCBal.lt(B_troveDebt))
+      assert.isTrue(B_EBTCBal.lt(B_cdpDebt))
 
       const closeTrovePromise_B = borrowerOperations.closeTrove(BIndex, { from: B })
 
-      // Check closing trove reverts
+      // Check closing cdp reverts
       await assertRevert(closeTrovePromise_B, "BorrowerOps: Caller doesnt have enough EBTC to make repayment")
     })
 
@@ -3456,9 +3456,9 @@ contract('BorrowerOperations', async accounts => {
         const txB = (await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })).tx
         const txC = (await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })).tx
 
-        const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-        const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-        const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
+        const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+        const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+        const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
 
         const A_Coll = await getTroveEntireColl(AIndex)
         const B_Coll = await getTroveEntireColl(BIndex)
@@ -3484,19 +3484,19 @@ contract('BorrowerOperations', async accounts => {
         assert.isTrue(B_Coll.eq(B_emittedColl))
         assert.isTrue(C_Coll.eq(C_emittedColl))
 
-        const baseRateBefore = await troveManager.baseRate()
+        const baseRateBefore = await cdpManager.baseRate()
 
         // Artificially make baseRate 5%
-        await troveManager.setBaseRate(dec(5, 16))
-        await troveManager.setLastFeeOpTimeToNow()
+        await cdpManager.setBaseRate(dec(5, 16))
+        await cdpManager.setLastFeeOpTimeToNow()
 
-        assert.isTrue((await troveManager.baseRate()).gt(baseRateBefore))
+        assert.isTrue((await cdpManager.baseRate()).gt(baseRateBefore))
 
         const txD = (await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })).tx
         const txE = (await openTrove({ extraEBTCAmount: toBN(dec(3000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })).tx
 
-        const DIndex = await sortedTroves.troveOfOwnerByIndex(D,0)
-        const EIndex = await sortedTroves.troveOfOwnerByIndex(E,0)
+        const DIndex = await sortedTroves.cdpOfOwnerByIndex(D,0)
+        const EIndex = await sortedTroves.cdpOfOwnerByIndex(E,0)
         
         const D_Coll = await getTroveEntireColl(DIndex)
         const E_Coll = await getTroveEntireColl(EIndex)
@@ -3519,17 +3519,17 @@ contract('BorrowerOperations', async accounts => {
       })
     }
 
-    it("openTrove(): Opens a trove with net debt >= minimum net debt", async () => {
+    it("openTrove(): Opens a cdp with net debt >= minimum net debt", async () => {
       // Add 1 wei to correct for rounding error in helper function
       const txA = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
       assert.isTrue(txA.receipt.status)
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
       assert.isTrue(await sortedTroves.contains(AIndex))
 
       const txC = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(dec(47789898, 22)))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
       assert.isTrue(txC.receipt.status)
 
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
       assert.isTrue(await sortedTroves.contains(CIndex))
     })
 
@@ -3551,30 +3551,30 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate has decreased
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
 
       // 1 hour passes
       th.fastForwardTime(3600, web3.currentProvider)
 
-      // E opens trove 
+      // E opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(12, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.isTrue(baseRate_3.lt(baseRate_2))
     })
 
@@ -3585,26 +3585,26 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check baseRate is still 0
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.equal(baseRate_2, '0')
 
       // 1 hour passes
       th.fastForwardTime(3600, web3.currentProvider)
 
-      // E opens trove 
+      // E opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(12, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const baseRate_3 = await troveManager.baseRate()
+      const baseRate_3 = await cdpManager.baseRate()
       assert.equal(baseRate_3, '0')
     })
 
@@ -3615,19 +3615,19 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
-      const lastFeeOpTime_1 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
 
       // Borrower D triggers a fee
       await openTrove({ extraEBTCAmount: toBN(dec(1, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const lastFeeOpTime_2 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time did not update, as borrower D's debt issuance occured
       // since before minimum interval had passed 
@@ -3643,7 +3643,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower E triggers a fee
       await openTrove({ extraEBTCAmount: toBN(dec(1, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const lastFeeOpTime_3 = await troveManager.lastFeeOperationTime()
+      const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
 
       // Check that the last fee operation time DID update, as borrower's debt issuance occured
       // after minimum interval had passed 
@@ -3683,35 +3683,35 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
-      const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
-      const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
-      const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
+      const AIndex = await sortedTroves.cdpOfOwnerByIndex(A,0)
+      const BIndex = await sortedTroves.cdpOfOwnerByIndex(B,0)
+      const CIndex = await sortedTroves.cdpOfOwnerByIndex(C,0)
 
       const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       //       actual fee percentage: 0.005000000186264514
       // user's max fee percentage:  0.0049999999999999999
-      let borrowingRate = await troveManager.getBorrowingRate() // expect max(0.5 + 5%, 5%) rate
+      let borrowingRate = await cdpManager.getBorrowingRate() // expect max(0.5 + 5%, 5%) rate
       assert.equal(borrowingRate, dec(5, 16))
 
       const lessThan5pct = '49999999999999999'
       await assertRevert(borrowerOperations.openTrove(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
       // Attempt with maxFee 1%
       await assertRevert(borrowerOperations.openTrove(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
       // Attempt with maxFee 3.754%
       await assertRevert(borrowerOperations.openTrove(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
       // Attempt with maxFee 1e-16%
       await assertRevert(borrowerOperations.openTrove(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
@@ -3723,10 +3723,10 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
-      let borrowingRate = await troveManager.getBorrowingRate() // expect min(0.5 + 5%, 5%) rate
+      let borrowingRate = await cdpManager.getBorrowingRate() // expect min(0.5 + 5%, 5%) rate
       assert.equal(borrowingRate, dec(5, 16))
 
       // Attempt with maxFee > 5%
@@ -3734,21 +3734,21 @@ contract('BorrowerOperations', async accounts => {
       const tx1 = await borrowerOperations.openTrove(moreThan5pct, dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(100, 'ether') })
       assert.isTrue(tx1.receipt.status)
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
 
       // Attempt with maxFee = 5%
       const tx2 = await borrowerOperations.openTrove(dec(5, 16), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: H, value: dec(100, 'ether') })
       assert.isTrue(tx2.receipt.status)
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
 
       // Attempt with maxFee 10%
       const tx3 = await borrowerOperations.openTrove(dec(1, 17), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(100, 'ether') })
       assert.isTrue(tx3.receipt.status)
 
-      borrowingRate = await troveManager.getBorrowingRate() // expect 5% rate
+      borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.equal(borrowingRate, dec(5, 16))
 
       // Attempt with maxFee 37.659%
@@ -3767,11 +3767,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 59 minutes pass
@@ -3788,7 +3788,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(1, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
       // Check base rate has decreased even though Borrower tried to stop it decaying
-      const baseRate_2 = await troveManager.baseRate()
+      const baseRate_2 = await cdpManager.baseRate()
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
@@ -3808,17 +3808,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
@@ -3842,17 +3842,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is now non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
@@ -3876,17 +3876,17 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Artificially make baseRate 5%
-      await troveManager.setBaseRate(dec(5, 16))
-      await troveManager.setLastFeeOpTimeToNow()
+      await cdpManager.setBaseRate(dec(5, 16))
+      await cdpManager.setLastFeeOpTimeToNow()
 
       // Check baseRate is non-zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
-      // D opens trove 
+      // D opens cdp 
       const EBTCRequest_D = toBN(dec(40000, 18))
       await borrowerOperations.openTrove(th._100pct, EBTCRequest_D, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(500, 'ether') })
 
@@ -3905,7 +3905,7 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
 
       // Check baseRate is zero
-      const baseRate_1 = await troveManager.baseRate()
+      const baseRate_1 = await cdpManager.baseRate()
       assert.equal(baseRate_1, '0')
 
       // 2 hours pass
@@ -3919,7 +3919,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyToken.unprotectedMint(A, dec(100, 18))
       await lqtyStaking.stake(dec(100, 18), { from: A })
 
-      // D opens trove 
+      // D opens cdp 
       await openTrove({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check EBTC reward per LQTY staked > 0
@@ -3949,7 +3949,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      // Bob tries to open a trove with 149% ICR during Recovery Mode
+      // Bob tries to open a cdp with 149% ICR during Recovery Mode
       try {
         const txBob = await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(149, 16)), extraParams: { from: alice } })
         assert.isFalse(txBob.receipt.status)
@@ -3958,13 +3958,13 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("openTrove(): reverts when trove ICR < MCR", async () => {
+    it("openTrove(): reverts when cdp ICR < MCR", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      // Bob attempts to open a 109% ICR trove in Normal Mode
+      // Bob attempts to open a 109% ICR cdp in Normal Mode
       try {
         const txBob = (await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(109, 16)), extraParams: { from: bob } })).tx
         assert.isFalse(txBob.receipt.status)
@@ -3977,7 +3977,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      // Bob attempts to open a 109% ICR trove in Recovery Mode
+      // Bob attempts to open a 109% ICR cdp in Recovery Mode
       try {
         const txBob = await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(109, 16)), extraParams: { from: bob } })
         assert.isFalse(txBob.receipt.status)
@@ -3986,16 +3986,16 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("openTrove(): reverts when opening the trove would cause the TCR of the system to fall below the CCR", async () => {
+    it("openTrove(): reverts when opening the cdp would cause the TCR of the system to fall below the CCR", async () => {
       await priceFeed.setPrice(dec(100, 18))
 
-      // Alice creates trove with 150% ICR.  System TCR = 150%.
+      // Alice creates cdp with 150% ICR.  System TCR = 150%.
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
 
       const TCR = await th.getTCR(contracts)
       assert.equal(TCR, dec(150, 16))
 
-      // Bob attempts to open a trove with ICR = 149% 
+      // Bob attempts to open a cdp with ICR = 149% 
       // System TCR would fall below 150%
       try {
         const txBob = await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(149, 16)), extraParams: { from: bob } })
@@ -4005,7 +4005,7 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("openTrove(): account can open multiple troves", async () => {
+    it("openTrove(): account can open multiple cdps", async () => {
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
@@ -4015,10 +4015,10 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
     })
 
-    xit("[TODO] openTrove(): multiple troves opened by same account have different indicies", async () => {
+    xit("[TODO] openTrove(): multiple cdps opened by same account have different indicies", async () => {
     })
 
-    it("openTrove(): Can open a trove with ICR >= CCR when system is in Recovery Mode", async () => {
+    it("openTrove(): Can open a cdp with ICR >= CCR when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
@@ -4036,24 +4036,24 @@ contract('BorrowerOperations', async accounts => {
       // Carol opens at 150% ICR in Recovery Mode
       const txCarol = (await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: carol } })).tx
       assert.isTrue(txCarol.receipt.status)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
       assert.isTrue(await sortedTroves.contains(carolIndex))
 
-      const carol_TroveStatus = await troveManager.getTroveStatus(carolIndex)
+      const carol_TroveStatus = await cdpManager.getTroveStatus(carolIndex)
       assert.equal(carol_TroveStatus, 1)
 
-      const carolICR = await troveManager.getCurrentICR(carolIndex, price)
+      const carolICR = await cdpManager.getCurrentICR(carolIndex, price)
       assert.isTrue(carolICR.gt(toBN(dec(150, 16))))
     })
 
-    it("openTrove(): Reverts opening a trove with min debt when system is in Recovery Mode", async () => {
+    it("openTrove(): Reverts opening a cdp with min debt when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       const TCR = (await th.getTCR(contracts)).toString()
       assert.equal(TCR, '1500000000000000000')
@@ -4068,11 +4068,11 @@ contract('BorrowerOperations', async accounts => {
 
     it("openTrove(): creates a new Trove and assigns the correct collateral and debt amount", async () => {
 
-      // We can't know the troveID beforehand unless we know the block at which the operation will be mined and ensure no more troves are minted in the intermediate term
+      // We can't know the cdpID beforehand unless we know the block at which the operation will be mined and ensure no more cdps are minted in the intermediate term
       const aliceIndexNonExistant = th.RANDOM_INDEX
       const debt_Before = await getTroveEntireDebt(aliceIndexNonExistant)
       const coll_Before = await getTroveEntireColl(aliceIndexNonExistant)
-      const status_Before = await troveManager.getTroveStatus(aliceIndexNonExistant)
+      const status_Before = await cdpManager.getTroveStatus(aliceIndexNonExistant)
 
       // check coll and debt before
       assert.equal(debt_Before, 0)
@@ -4083,15 +4083,15 @@ contract('BorrowerOperations', async accounts => {
 
       const EBTCRequest = MIN_NET_DEBT
       await borrowerOperations.openTrove(th._100pct, MIN_NET_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(100, 'ether') })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // Get the expected debt based on the EBTC request (adding fee and liq. reserve on top)
       const expectedDebt = EBTCRequest
-        .add(await troveManager.getBorrowingFee(EBTCRequest))
+        .add(await cdpManager.getBorrowingFee(EBTCRequest))
         .add(EBTC_GAS_COMPENSATION)
       const debt_After = await getTroveEntireDebt(aliceIndex)
       const coll_After = await getTroveEntireColl(aliceIndex)
-      const status_After = await troveManager.getTroveStatus(aliceIndex)
+      const status_After = await cdpManager.getTroveStatus(aliceIndex)
       // check coll and debt after
       assert.isTrue(coll_After.gt('0'))
       assert.isTrue(debt_After.gt('0'))
@@ -4103,29 +4103,29 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openTrove(): adds Trove ID to TroveID array", async () => {
-      const TroveIdsCount_Before = (await troveManager.getTroveIdsCount()).toString();
+      const TroveIdsCount_Before = (await cdpManager.getTroveIdsCount()).toString();
       assert.equal(TroveIdsCount_Before, '0')
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
 
-      const TroveIdsCount_After = (await troveManager.getTroveIdsCount()).toString();
+      const TroveIdsCount_After = (await cdpManager.getTroveIdsCount()).toString();
       assert.equal(TroveIdsCount_After, '1')
     })
 
-    xit("[TODO] openTrove(): adds Trove owner to TroveOwners array [Or: if we're not doing this, how do we enumerate all active trove owners?]", async () => {
+    xit("[TODO] openTrove(): adds Trove owner to TroveOwners array [Or: if we're not doing this, how do we enumerate all active cdp owners?]", async () => {
     })
 
     it("openTrove(): creates a stake and adds it to total stakes", async () => {
-      // TODO: Call this function to see where alice's next trove would get deployed if it did. Then, check this index.
-      // Can a trove ever be opened at the same index twice?
+      // TODO: Call this function to see where alice's next cdp would get deployed if it did. Then, check this index.
+      // Can a cdp ever be opened at the same index twice?
       const aliceStakeBefore = await getTroveStake(alice)
-      const totalStakesBefore = await troveManager.totalStakes()
+      const totalStakesBefore = await cdpManager.totalStakes()
 
       assert.equal(aliceStakeBefore, '0')
       assert.equal(totalStakesBefore, '0')
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
       const aliceStakeAfter = await getTroveStake(aliceIndex)
@@ -4133,7 +4133,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceCollAfter.gt(toBN('0')))
       assert.isTrue(aliceStakeAfter.eq(aliceCollAfter))
 
-      const totalStakesAfter = await troveManager.totalStakes()
+      const totalStakesAfter = await cdpManager.totalStakes()
 
       assert.isTrue(totalStakesAfter.eq(aliceStakeAfter))
     })
@@ -4147,7 +4147,7 @@ contract('BorrowerOperations', async accounts => {
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // check after
       const aliceTroveInList_After = await sortedTroves.contains(aliceIndex)
@@ -4165,7 +4165,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(activePool_RawEther_Before, 0)
 
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       const aliceCollAfter = await getTroveEntireColl(aliceIndex)
 
       const activePool_ETH_After = await activePool.getETH()
@@ -4179,8 +4179,8 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       // --- TEST ---
 
@@ -4188,24 +4188,24 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(100, 18));
 
       // close Carol's Trove, liquidating her 1 ether and 180EBTC.
-      const liquidationTx = await troveManager.liquidate(carolIndex, { from: owner });
+      const liquidationTx = await cdpManager.liquidate(carolIndex, { from: owner });
       const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
       /* with total stakes = 10 ether, after liquidation, L_ETH should equal 1/10 ether per-ether-staked,
        and L_EBTC should equal 18 EBTC per-ether-staked. */
 
-      const L_ETH = await troveManager.L_ETH()
-      const L_EBTC = await troveManager.L_EBTCDebt()
+      const L_ETH = await cdpManager.L_ETH()
+      const L_EBTC = await cdpManager.L_EBTCDebt()
 
       assert.isTrue(L_ETH.gt(toBN('0')))
       assert.isTrue(L_EBTC.gt(toBN('0')))
 
-      // Bob opens trove
+      // Bob opens cdp
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
       // Check Bob's snapshots of L_ETH and L_EBTC equal the respective current values
-      const bob_rewardSnapshot = await troveManager.rewardSnapshots(bobIndex)
+      const bob_rewardSnapshot = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot = bob_rewardSnapshot[0]
       const bob_EBTCDebtRewardSnapshot = bob_rewardSnapshot[1]
 
@@ -4219,11 +4219,11 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+      const carolIndex = await sortedTroves.cdpOfOwnerByIndex(carol,0)
 
       // Check Trove is active
-      const alice_Trove_1 = await troveManager.Troves(aliceIndex)
+      const alice_Trove_1 = await cdpManager.Troves(aliceIndex)
       const status_1 = alice_Trove_1[3]
       assert.equal(status_1, 1)
       assert.isTrue(await sortedTroves.contains(aliceIndex))
@@ -4235,7 +4235,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
 
       // Check Trove is closed
-      const alice_Trove_2 = await troveManager.Troves(aliceIndex)
+      const alice_Trove_2 = await cdpManager.Troves(aliceIndex)
       const status_2 = alice_Trove_2[3]
       assert.equal(status_2, 2)
       assert.isFalse(await sortedTroves.contains(aliceIndex))
@@ -4243,12 +4243,12 @@ contract('BorrowerOperations', async accounts => {
       // Re-open Trove
       await openTrove({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
 
-      const aliceIndex2 = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex2 = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       assert.notEqual(aliceIndex, aliceIndex2)
 
       // Check Trove is re-opened
-      const alice_Trove_3 = await troveManager.Troves(aliceIndex2)
+      const alice_Trove_3 = await cdpManager.Troves(aliceIndex2)
       const status_3 = alice_Trove_3[3]
       assert.equal(status_3, 1)
       assert.isTrue(await sortedTroves.contains(aliceIndex2))
@@ -4257,25 +4257,25 @@ contract('BorrowerOperations', async accounts => {
 
     it("openTrove(): increases the Trove's EBTC debt by the correct amount", async () => {
       // check before
-      const alice_Trove_Before = await troveManager.Troves(alice)
+      const alice_Trove_Before = await cdpManager.Troves(alice)
       const debt_Before = alice_Trove_Before[0]
       assert.equal(debt_Before, 0)
 
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), alice, alice, { from: alice, value: dec(100, 'ether') })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // check after
-      const alice_Trove_After = await troveManager.Troves(aliceIndex)
+      const alice_Trove_After = await cdpManager.Troves(aliceIndex)
       const debt_After = alice_Trove_After[0]
       th.assertIsApproximatelyEqual(debt_After, dec(10000, 18), 10000)
     })
 
-    it("openTrove(): increases EBTC debt in ActivePool by the debt of the trove", async () => {
+    it("openTrove(): increases EBTC debt in ActivePool by the debt of the cdp", async () => {
       const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
       assert.equal(activePool_EBTCDebt_Before, 0)
 
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
       
       const aliceDebt = await getTroveEntireDebt(aliceIndex)
       assert.isTrue(aliceDebt.gt(toBN('0')))
@@ -4290,7 +4290,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(alice_EBTCTokenBalance_Before, 0)
 
       await borrowerOperations.openTrove(th._100pct, dec(10000, 18), alice, alice, { from: alice, value: dec(100, 'ether') })
-      const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+      const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
       // check after
       const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
@@ -4431,18 +4431,18 @@ contract('BorrowerOperations', async accounts => {
       // 0, 0
       it("collChange = 0, debtChange = 0", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4455,8 +4455,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price)
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (cdpColl.add(liquidatedColl)).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4464,18 +4464,18 @@ contract('BorrowerOperations', async accounts => {
       // 0, +ve
       it("collChange = 0, debtChange is positive", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4488,8 +4488,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(200, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
+        const expectedTCR = (cdpColl.add(liquidatedColl)).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4497,18 +4497,18 @@ contract('BorrowerOperations', async accounts => {
       // 0, -ve
       it("collChange = 0, debtChange is negative", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4520,8 +4520,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, false, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
+        const expectedTCR = (cdpColl.add(liquidatedColl)).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4529,18 +4529,18 @@ contract('BorrowerOperations', async accounts => {
       // +ve, 0
       it("collChange is positive, debtChange is 0", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4552,8 +4552,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).add(toBN(collChange))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (cdpColl.add(liquidatedColl).add(toBN(collChange))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4561,18 +4561,18 @@ contract('BorrowerOperations', async accounts => {
       // -ve, 0
       it("collChange is negative, debtChange is 0", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4585,8 +4585,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, false, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).sub(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (cdpColl.add(liquidatedColl).sub(toBN(dec(1, 'ether')))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4594,18 +4594,18 @@ contract('BorrowerOperations', async accounts => {
       // -ve, -ve
       it("collChange is negative, debtChange is negative", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4618,8 +4618,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, false, debtChange, false, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).sub(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
+        const expectedTCR = (cdpColl.add(liquidatedColl).sub(toBN(dec(1, 'ether')))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4627,17 +4627,17 @@ contract('BorrowerOperations', async accounts => {
       // +ve, +ve 
       it("collChange is positive, debtChange is positive", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
 
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4650,8 +4650,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).add(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).add(toBN(dec(100, 18))))
+        const expectedTCR = (cdpColl.add(liquidatedColl).add(toBN(dec(1, 'ether')))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).add(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4659,17 +4659,17 @@ contract('BorrowerOperations', async accounts => {
       // +ve, -ve
       it("collChange is positive, debtChange is negative", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, alice, alice, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, bob, bob, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, alice, alice, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, bob, bob, { from: bob, value: cdpColl })
 
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4682,8 +4682,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, false, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).add(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
+        const expectedTCR = (cdpColl.add(liquidatedColl).add(toBN(dec(1, 'ether')))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4691,17 +4691,17 @@ contract('BorrowerOperations', async accounts => {
       // -ve, +ve
       xit("collChange is negative, debtChange is positive", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
-        const troveColl = toBN(dec(1000, 'ether'))
-        const troveTotalDebt = toBN(dec(100000, 18))
-        const troveEBTCAmount = await getOpenTroveEBTCAmount(troveTotalDebt)
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, alice, alice, { from: alice, value: troveColl })
-        await borrowerOperations.openTrove(th._100pct, troveEBTCAmount, bob, bob, { from: bob, value: troveColl })
+        const cdpColl = toBN(dec(1000, 'ether'))
+        const cdpTotalDebt = toBN(dec(100000, 18))
+        const cdpEBTCAmount = await getOpenTroveEBTCAmount(cdpTotalDebt)
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, alice, alice, { from: alice, value: cdpColl })
+        await borrowerOperations.openTrove(th._100pct, cdpEBTCAmount, bob, bob, { from: bob, value: cdpColl })
 
-        const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+        const bobIndex = await sortedTroves.cdpOfOwnerByIndex(bob,0)
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await cdpManager.liquidate(bobIndex)
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4714,8 +4714,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = await getNetBorrowingAmount(dec(200, 18))
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, false, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).sub(toBN(collChange))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
+        const expectedTCR = (cdpColl.add(liquidatedColl).sub(toBN(collChange))).mul(price)
+          .div(cdpTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4725,25 +4725,25 @@ contract('BorrowerOperations', async accounts => {
       it("closeTrove(): fails if owner cannot receive ETH", async () => {
         const nonPayable = await NonPayable.new()
 
-        // we need 2 troves to be able to close 1 and have 1 remaining in the system
+        // we need 2 cdps to be able to close 1 and have 1 remaining in the system
         await borrowerOperations.openTrove(th._100pct, dec(100000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(1000, 18) })
 
-        const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
+        const aliceIndex = await sortedTroves.cdpOfOwnerByIndex(alice,0)
 
         // Alice sends EBTC to NonPayable so its EBTC balance covers its debt
         await ebtcToken.transfer(nonPayable.address, dec(10000, 18), {from: alice})
 
-        // open trove from NonPayable proxy contract
+        // open cdp from NonPayable proxy contract
         const _100pctHex = '0xde0b6b3a7640000'
         const _1e25Hex = '0xd3c21bcecceda1000000'
         const openTroveData = th.getTransactionData('openTrove(uint256,uint256,bytes32,bytes32)', [_100pctHex, _1e25Hex, th.DUMMY_BYTES32, th.DUMMY_BYTES32])
         await nonPayable.forward(borrowerOperations.address, openTroveData, { value: dec(10000, 'ether') })
 
-        const nonPayableIndex = await sortedTroves.troveOfOwnerByIndex(nonPayable.address,0)
+        const nonPayableIndex = await sortedTroves.cdpOfOwnerByIndex(nonPayable.address,0)
 
-        assert.equal((await troveManager.getTroveStatus(nonPayableIndex)).toString(), '1', 'NonPayable proxy should have a trove')
+        assert.equal((await cdpManager.getTroveStatus(nonPayableIndex)).toString(), '1', 'NonPayable proxy should have a cdp')
         assert.isFalse(await th.checkRecoveryMode(contracts), 'System should not be in Recovery Mode')
-        // open trove from NonPayable proxy contract
+        // open cdp from NonPayable proxy contract
         const closeTroveData = th.getTransactionData('closeTrove(bytes32)', [nonPayableIndex])
         await th.assertRevert(nonPayable.forward(borrowerOperations.address, closeTroveData), 'ActivePool: sending ETH failed')
       })

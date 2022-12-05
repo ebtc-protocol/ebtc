@@ -6,7 +6,7 @@ Uniswap Factory number of pairs: 32121
 deployer's ETH balance before deployments: 7598181619391335371
 Using previously deployed priceFeed contract at address 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
 Using previously deployed sortedTroves contract at address 0xb8493cD0E7135462502DF048deeFc9b650fa789F
-Using previously deployed troveManager contract at address 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
+Using previously deployed cdpManager contract at address 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 Using previously deployed activePool contract at address 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 Using previously deployed stabilityPool contract at address 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
 Using previously deployed gasPool contract at address 0x069529499472d2b7bF3525f548F51F8F807e33A9
@@ -21,7 +21,7 @@ Contract objects addresses:
 priceFeed: 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
 ebtcToken: 0xaa052d8b915c9311e5EA234dd24105d6208087A5
 sortedTroves: 0xb8493cD0E7135462502DF048deeFc9b650fa789F
-troveManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
+cdpManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 activePool: 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 stabilityPool: 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
 gasPool: 0x069529499472d2b7bF3525f548F51F8F807e33A9
@@ -71,12 +71,12 @@ PriceFeed initial status: 0
 Unipool's stored EBTC-ETH Uniswap Pair address: 0x01365a50da15e38e9Fcc5Ee193E67D4845ff118E
 system liquidation reserve: 200.000000000000000000
 system min net debt      : 1800.000000000000000000
-Deployer already has an active trove
-deployer is in sorted list after making trove: true
+Deployer already has an active cdp
+deployer is in sorted list after making cdp: true
 deployer debt: 3215.000000000000000000
 deployer coll: 3.000000000000000000
 deployer stake: 3.000000000000000000
-deployer's trove status: 1
+deployer's cdp status: 1
 deployer's EBTC balance: 2273.674452917999958289
 EBTC-ETH Pair token 0: 0xaa05...87A5,
       EBTCToken contract addr: 0xaa05...87A5

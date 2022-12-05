@@ -55,29 +55,29 @@ contract EBTCToken is CheckContract, IEBTCToken {
     mapping (address => mapping (address => uint256)) private _allowances;  
     
     // --- Addresses ---
-    address public immutable troveManagerAddress;
+    address public immutable cdpManagerAddress;
     address public immutable stabilityPoolAddress;
     address public immutable borrowerOperationsAddress;
     
     // --- Events ---
-    event TroveManagerAddressChanged(address _troveManagerAddress);
+    event TroveManagerAddressChanged(address _cdpManagerAddress);
     event StabilityPoolAddressChanged(address _newStabilityPoolAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
     constructor
     ( 
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _stabilityPoolAddress,
         address _borrowerOperationsAddress
     ) 
         public 
     {  
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_stabilityPoolAddress);
         checkContract(_borrowerOperationsAddress);
 
-        troveManagerAddress = _troveManagerAddress;
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        cdpManagerAddress = _cdpManagerAddress;
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
 
         stabilityPoolAddress = _stabilityPoolAddress;
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
@@ -253,7 +253,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
         );
         require(
             _recipient != stabilityPoolAddress && 
-            _recipient != troveManagerAddress && 
+            _recipient != cdpManagerAddress && 
             _recipient != borrowerOperationsAddress, 
             "EBTC: Cannot transfer tokens directly to the StabilityPool, TroveManager or BorrowerOps"
         );
@@ -266,7 +266,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     function _requireCallerIsBOorTroveMorSP() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
-            msg.sender == troveManagerAddress ||
+            msg.sender == cdpManagerAddress ||
             msg.sender == stabilityPoolAddress,
             "EBTC: Caller is neither BorrowerOperations nor TroveManager nor StabilityPool"
         );
@@ -278,7 +278,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
 
     function _requireCallerIsTroveMorSP() internal view {
         require(
-            msg.sender == troveManagerAddress || msg.sender == stabilityPoolAddress,
+            msg.sender == cdpManagerAddress || msg.sender == stabilityPoolAddress,
             "EBTC: Caller is neither TroveManager nor StabilityPool");
     }
 

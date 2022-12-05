@@ -48,14 +48,14 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 
     string constant public NAME = "SortedTroves";
 
-    event TroveManagerAddressChanged(address _troveManagerAddress);
+    event TroveManagerAddressChanged(address _cdpManagerAddress);
     event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
     event NodeAdded(bytes32 _id, uint _NICR);
     event NodeRemoved(bytes32 _id);
 
     address public borrowerOperationsAddress;
 
-    ITroveManager public troveManager;
+    ITroveManager public cdpManager;
 
     // Information for a node in the list
     struct Node {
@@ -75,32 +75,32 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 
     Data public data;
 	
-    mapping(bytes32 => address) public troveOwners;
+    mapping(bytes32 => address) public cdpOwners;
     uint256 public nextTroveNonce;
     bytes32 public dummyId;
 	
-    // Mapping from trove owner to list of owned trove IDs
+    // Mapping from cdp owner to list of owned cdp IDs
     mapping(address => mapping(uint256 => bytes32)) public override _ownedTroves;
 
-    // Mapping from trove ID to index within owner trove list
+    // Mapping from cdp ID to index within owner cdp list
     mapping(bytes32 => uint256) public override _ownedTroveIndex;
 
-    // Mapping from trove owner to its owned troves count
+    // Mapping from cdp owner to its owned cdps count
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
 
-    function setParams(uint256 _size, address _troveManagerAddress, address _borrowerOperationsAddress) external override onlyOwner {
+    function setParams(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) external override onlyOwner {
         require(_size > 0, "SortedTroves: Size can’t be zero");
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
 
         data.maxSize = _size;
 
-        troveManager = ITroveManager(_troveManagerAddress);
+        cdpManager = ITroveManager(_cdpManagerAddress);
         borrowerOperationsAddress = _borrowerOperationsAddress;
 
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
         _renounceOwnership();
@@ -119,24 +119,24 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         return serialized;
     }
 	
-    function getOwnerAddress(bytes32 troveId) public pure returns (address) {
-        return address(uint256(troveId) >> (12 * 8));
+    function getOwnerAddress(bytes32 cdpId) public pure returns (address) {
+        return address(uint256(cdpId) >> (12 * 8));
     }
 	
-    function existTroveOwners(bytes32 troveId) public view override returns (address) {
-        return troveOwners[troveId];
+    function existTroveOwners(bytes32 cdpId) public view override returns (address) {
+        return cdpOwners[cdpId];
     }
 
     function nonExistId() public view override returns (bytes32){
         return dummyId;
     }
 	
-    function troveOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
+    function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
         require(index < _ownedCount[owner], "!index");
         return _ownedTroves[owner][index];
     }
 
-    function troveCountOf(address owner) public view override returns (uint256) {
+    function cdpCountOf(address owner) public view override returns (uint256) {
         return _ownedCount[owner];
     }
 	
@@ -155,17 +155,17 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
      */
 
     function insert(address owner, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) public override {
-        ITroveManager troveManagerCached = troveManager;
+        ITroveManager cdpManagerCached = cdpManager;
 
-        _requireCallerIsBOorTroveM(troveManagerCached);
-        _insert(troveManagerCached, _id, _NICR, _prevId, _nextId);
+        _requireCallerIsBOorTroveM(cdpManagerCached);
+        _insert(cdpManagerCached, _id, _NICR, _prevId, _nextId);
 		
         nextTroveNonce += 1;
-        troveOwners[_id] = owner;
+        cdpOwners[_id] = owner;
         _addTroveToOwnerEnumeration(owner, _id);
     }
 
-    function _insert(ITroveManager _troveManager, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
+    function _insert(ITroveManager _cdpManager, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
         // List must not be full
         require(!isFull(), "SortedTroves: List is full");
         // List must not already contain node
@@ -178,10 +178,10 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         bytes32 prevId = _prevId;
         bytes32 nextId = _nextId;
 
-        if (!_validInsertPosition(_troveManager, _NICR, prevId, nextId)) {
+        if (!_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
             // Sender's hint was not a valid insert position
             // Use sender's hint to find a valid insert position
-            (prevId, nextId) = _findInsertPosition(_troveManager, _NICR, prevId, nextId);
+            (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
         }
 
          data.nodes[_id].exists = true;
@@ -216,9 +216,9 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         _requireCallerIsTroveManager();
         _remove(_id);
 
-        address _owner = troveOwners[_id];
+        address _owner = cdpOwners[_id];
         _removeTroveFromOwnerEnumeration(_owner, _id);
-        delete troveOwners[_id];
+        delete cdpOwners[_id];
     }
 
     /*
@@ -270,9 +270,9 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
      * @param _nextId Id of next node for the new insert position
      */
     function reInsert(bytes32 _id, uint256 _newNICR, bytes32 _prevId, bytes32 _nextId) external override {
-        ITroveManager troveManagerCached = troveManager;
+        ITroveManager cdpManagerCached = cdpManager;
 
-        _requireCallerIsBOorTroveM(troveManagerCached);
+        _requireCallerIsBOorTroveM(cdpManagerCached);
         // List must contain the node
         require(contains(_id), "SortedTroves: List does not contain the id");
         // NICR must be non-zero
@@ -281,38 +281,38 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         // Remove node from the list
         _remove(_id);
 
-        _insert(troveManagerCached, _id, _newNICR, _prevId, _nextId);
+        _insert(cdpManagerCached, _id, _newNICR, _prevId, _nextId);
     }
 	
     /**
-     * @dev Private function to add a trove to ownership-tracking data structures.
-     * @param to address representing the owner of the given trove ID
-     * @param troveId bytes32 ID of the trove to be added to the owned list of the given owner
+     * @dev Private function to add a cdp to ownership-tracking data structures.
+     * @param to address representing the owner of the given cdp ID
+     * @param cdpId bytes32 ID of the cdp to be added to the owned list of the given owner
      */
-    function _addTroveToOwnerEnumeration(address to, bytes32 troveId) private {
+    function _addTroveToOwnerEnumeration(address to, bytes32 cdpId) private {
         uint256 length = _ownedCount[to];
-        _ownedTroves[to][length] = troveId;
-        _ownedTroveIndex[troveId] = length;
+        _ownedTroves[to][length] = cdpId;
+        _ownedTroveIndex[cdpId] = length;
         _ownedCount[to] = _ownedCount[to] + 1;
     }
 
     /**
-     * @dev Private function to remove a trove from ownership-tracking data structures.
+     * @dev Private function to remove a cdp from ownership-tracking data structures.
      * This has O(1) time complexity, but alters the ordering within the _ownedTroves.
-     * @param from address representing the owner of the given trove ID
-     * @param troveId bytes32 ID of the trove to be removed from the owned list of the given owner
+     * @param from address representing the owner of the given cdp ID
+     * @param cdpId bytes32 ID of the cdp to be removed from the owned list of the given owner
      */
-    function _removeTroveFromOwnerEnumeration(address from, bytes32 troveId) private {
+    function _removeTroveFromOwnerEnumeration(address from, bytes32 cdpId) private {
         uint256 lastTroveIndex = _ownedCount[from] - 1;
-        uint256 troveIndex = _ownedTroveIndex[troveId];
+        uint256 cdpIndex = _ownedTroveIndex[cdpId];
 
-        if (troveIndex != lastTroveIndex) {
+        if (cdpIndex != lastTroveIndex) {
             bytes32 lastTroveId = _ownedTroves[from][lastTroveIndex];
-            _ownedTroves[from][troveIndex] = lastTroveId; // Move the last trove to the slot of the to-delete trove
-            _ownedTroveIndex[lastTroveId] = troveIndex; // Update the moved trove's index
+            _ownedTroves[from][cdpIndex] = lastTroveId; // Move the last cdp to the slot of the to-delete cdp
+            _ownedTroveIndex[lastTroveId] = cdpIndex; // Update the moved cdp's index
         }
 
-        delete _ownedTroveIndex[troveId];
+        delete _ownedTroveIndex[cdpId];
         delete _ownedTroves[from][lastTroveIndex];
         _ownedCount[from] = lastTroveIndex;
     }
@@ -389,36 +389,36 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
      * @param _nextId Id of next node for the insert position
      */
     function validInsertPosition(uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external view override returns (bool) {
-        return _validInsertPosition(troveManager, _NICR, _prevId, _nextId);
+        return _validInsertPosition(cdpManager, _NICR, _prevId, _nextId);
     }
 
-    function _validInsertPosition(ITroveManager _troveManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bool) {
+    function _validInsertPosition(ITroveManager _cdpManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bool) {
         if (_prevId == dummyId && _nextId == dummyId) {
             // `(null, null)` is a valid insert position if the list is empty
             return isEmpty();
         } else if (_prevId == dummyId) {
             // `(null, _nextId)` is a valid insert position if `_nextId` is the head of the list
-            return data.head == _nextId && _NICR >= _troveManager.getNominalICR(_nextId);
+            return data.head == _nextId && _NICR >= _cdpManager.getNominalICR(_nextId);
         } else if (_nextId == dummyId) {
             // `(_prevId, null)` is a valid insert position if `_prevId` is the tail of the list
-            return data.tail == _prevId && _NICR <= _troveManager.getNominalICR(_prevId);
+            return data.tail == _prevId && _NICR <= _cdpManager.getNominalICR(_prevId);
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_NICR` falls between the two nodes' NICRs
             return data.nodes[_prevId].nextId == _nextId &&
-                   _troveManager.getNominalICR(_prevId) >= _NICR &&
-                   _NICR >= _troveManager.getNominalICR(_nextId);
+                   _cdpManager.getNominalICR(_prevId) >= _NICR &&
+                   _NICR >= _cdpManager.getNominalICR(_nextId);
         }
     }
 
     /*
      * @dev Descend the list (larger NICRs to smaller NICRs) to find a valid insert position
-     * @param _troveManager TroveManager contract, passed in as param to save SLOAD’s
+     * @param _cdpManager TroveManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start descending the list from
      */
-    function _descendList(ITroveManager _troveManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
+    function _descendList(ITroveManager _cdpManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
-        if (data.head == _startId && _NICR >= _troveManager.getNominalICR(_startId)) {
+        if (data.head == _startId && _NICR >= _cdpManager.getNominalICR(_startId)) {
             return (dummyId, _startId);
         }
 
@@ -426,7 +426,7 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         bytes32 nextId = data.nodes[prevId].nextId;
 
         // Descend the list until we reach the end or until we find a valid insert position
-        while (prevId != dummyId && !_validInsertPosition(_troveManager, _NICR, prevId, nextId)) {
+        while (prevId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
             prevId = data.nodes[prevId].nextId;
             nextId = data.nodes[prevId].nextId;
         }
@@ -436,13 +436,13 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 
     /*
      * @dev Ascend the list (smaller NICRs to larger NICRs) to find a valid insert position
-     * @param _troveManager TroveManager contract, passed in as param to save SLOAD’s
+     * @param _cdpManager TroveManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start ascending the list from
      */
-    function _ascendList(ITroveManager _troveManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
+    function _ascendList(ITroveManager _cdpManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
-        if (data.tail == _startId && _NICR <= _troveManager.getNominalICR(_startId)) {
+        if (data.tail == _startId && _NICR <= _cdpManager.getNominalICR(_startId)) {
             return (_startId, dummyId);
         }
 
@@ -450,7 +450,7 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         bytes32 prevId = data.nodes[nextId].prevId;
 
         // Ascend the list until we reach the end or until we find a valid insertion point
-        while (nextId != dummyId && !_validInsertPosition(_troveManager, _NICR, prevId, nextId)) {
+        while (nextId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
             nextId = data.nodes[nextId].prevId;
             prevId = data.nodes[nextId].prevId;
         }
@@ -465,22 +465,22 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
      * @param _nextId Id of next node for the insert position
      */
     function findInsertPosition(uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external view override returns (bytes32, bytes32) {
-        return _findInsertPosition(troveManager, _NICR, _prevId, _nextId);
+        return _findInsertPosition(cdpManager, _NICR, _prevId, _nextId);
     }
 
-    function _findInsertPosition(ITroveManager _troveManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bytes32, bytes32) {
+    function _findInsertPosition(ITroveManager _cdpManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bytes32, bytes32) {
         bytes32 prevId = _prevId;
         bytes32 nextId = _nextId;
 
         if (prevId != dummyId) {
-            if (!contains(prevId) || _NICR > _troveManager.getNominalICR(prevId)) {
+            if (!contains(prevId) || _NICR > _cdpManager.getNominalICR(prevId)) {
                 // `prevId` does not exist anymore or now has a smaller NICR than the given NICR
                 prevId = dummyId;
             }
         }
 
         if (nextId != dummyId) {
-            if (!contains(nextId) || _NICR < _troveManager.getNominalICR(nextId)) {
+            if (!contains(nextId) || _NICR < _cdpManager.getNominalICR(nextId)) {
                 // `nextId` does not exist anymore or now has a larger NICR than the given NICR
                 nextId = dummyId;
             }
@@ -488,27 +488,27 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
 
         if (prevId == dummyId && nextId == dummyId) {
             // No hint - descend list starting from head
-            return _descendList(_troveManager, _NICR, data.head);
+            return _descendList(_cdpManager, _NICR, data.head);
         } else if (prevId == dummyId) {
             // No `prevId` for hint - ascend list starting from `nextId`
-            return _ascendList(_troveManager, _NICR, nextId);
+            return _ascendList(_cdpManager, _NICR, nextId);
         } else if (nextId == dummyId) {
             // No `nextId` for hint - descend list starting from `prevId`
-            return _descendList(_troveManager, _NICR, prevId);
+            return _descendList(_cdpManager, _NICR, prevId);
         } else {
             // Descend list starting from `prevId`
-            return _descendList(_troveManager, _NICR, prevId);
+            return _descendList(_cdpManager, _NICR, prevId);
         }
     }
 
     // --- 'require' functions ---
 
     function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == address(troveManager), "SortedTroves: Caller is not the TroveManager");
+        require(msg.sender == address(cdpManager), "SortedTroves: Caller is not the TroveManager");
     }
 
-    function _requireCallerIsBOorTroveM(ITroveManager _troveManager) internal view {
-        require(msg.sender == borrowerOperationsAddress || msg.sender == address(_troveManager),
+    function _requireCallerIsBOorTroveM(ITroveManager _cdpManager) internal view {
+        require(msg.sender == borrowerOperationsAddress || msg.sender == address(_cdpManager),
                 "SortedTroves: Caller is neither BO nor TroveM");
     }
 }

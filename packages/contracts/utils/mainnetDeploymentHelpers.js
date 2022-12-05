@@ -66,7 +66,7 @@ class MainnetDeploymentHelper {
     // Get contract factories
     const priceFeedFactory = await this.getFactory("PriceFeed")
     const sortedTrovesFactory = await this.getFactory("SortedTroves")
-    const troveManagerFactory = await this.getFactory("TroveManager")
+    const cdpManagerFactory = await this.getFactory("TroveManager")
     const activePoolFactory = await this.getFactory("ActivePool")
     const stabilityPoolFactory = await this.getFactory("StabilityPool")
     const gasPoolFactory = await this.getFactory("GasPool")
@@ -80,7 +80,7 @@ class MainnetDeploymentHelper {
     // Deploy txs
     const priceFeed = await this.loadOrDeploy(priceFeedFactory, 'priceFeed', deploymentState)
     const sortedTroves = await this.loadOrDeploy(sortedTrovesFactory, 'sortedTroves', deploymentState)
-    const troveManager = await this.loadOrDeploy(troveManagerFactory, 'troveManager', deploymentState)
+    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'cdpManager', deploymentState)
     const activePool = await this.loadOrDeploy(activePoolFactory, 'activePool', deploymentState)
     const stabilityPool = await this.loadOrDeploy(stabilityPoolFactory, 'stabilityPool', deploymentState)
     const gasPool = await this.loadOrDeploy(gasPoolFactory, 'gasPool', deploymentState)
@@ -91,7 +91,7 @@ class MainnetDeploymentHelper {
     const tellorCaller = await this.loadOrDeploy(tellorCallerFactory, 'tellorCaller', deploymentState, [tellorMasterAddr])
 
     const ebtcTokenParams = [
-      troveManager.address,
+      cdpManager.address,
       stabilityPool.address,
       borrowerOperations.address
     ]
@@ -107,7 +107,7 @@ class MainnetDeploymentHelper {
     } else {
       await this.verifyContract('priceFeed', deploymentState)
       await this.verifyContract('sortedTroves', deploymentState)
-      await this.verifyContract('troveManager', deploymentState)
+      await this.verifyContract('cdpManager', deploymentState)
       await this.verifyContract('activePool', deploymentState)
       await this.verifyContract('stabilityPool', deploymentState)
       await this.verifyContract('gasPool', deploymentState)
@@ -123,7 +123,7 @@ class MainnetDeploymentHelper {
       priceFeed,
       ebtcToken,
       sortedTroves,
-      troveManager,
+      cdpManager,
       activePool,
       stabilityPool,
       gasPool,
@@ -196,7 +196,7 @@ class MainnetDeploymentHelper {
   async deployMultiTroveGetterMainnet(liquityCore, deploymentState) {
     const multiTroveGetterFactory = await this.getFactory("MultiTroveGetter")
     const multiTroveGetterParams = [
-      liquityCore.troveManager.address,
+      liquityCore.cdpManager.address,
       liquityCore.sortedTroves.address
     ]
     const multiTroveGetter = await this.loadOrDeploy(
@@ -231,14 +231,14 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.sortedTroves) ||
       await this.sendAndWaitForTransaction(contracts.sortedTroves.setParams(
         maxBytes32,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.borrowerOperations.address, 
 	{gasPrice}
       ))
 
     // set contracts in the Trove Manager
-    await this.isOwnershipRenounced(contracts.troveManager) ||
-      await this.sendAndWaitForTransaction(contracts.troveManager.setAddresses(
+    await this.isOwnershipRenounced(contracts.cdpManager) ||
+      await this.sendAndWaitForTransaction(contracts.cdpManager.setAddresses(
         contracts.borrowerOperations.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
@@ -256,7 +256,7 @@ class MainnetDeploymentHelper {
     // set contracts in BorrowerOperations 
     await this.isOwnershipRenounced(contracts.borrowerOperations) ||
       await this.sendAndWaitForTransaction(contracts.borrowerOperations.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
         contracts.stabilityPool.address,
@@ -273,7 +273,7 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.stabilityPool) ||
       await this.sendAndWaitForTransaction(contracts.stabilityPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.ebtcToken.address,
         contracts.sortedTroves.address,
@@ -285,7 +285,7 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.activePool) ||
       await this.sendAndWaitForTransaction(contracts.activePool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.stabilityPool.address,
         contracts.defaultPool.address,
 	{gasPrice}
@@ -293,7 +293,7 @@ class MainnetDeploymentHelper {
 
     await this.isOwnershipRenounced(contracts.defaultPool) ||
       await this.sendAndWaitForTransaction(contracts.defaultPool.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
 	{gasPrice}
       ))
@@ -301,7 +301,7 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.collSurplusPool) ||
       await this.sendAndWaitForTransaction(contracts.collSurplusPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
 	{gasPrice}
       ))
@@ -310,7 +310,7 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.hintHelpers) ||
       await this.sendAndWaitForTransaction(contracts.hintHelpers.setAddresses(
         contracts.sortedTroves.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
 	{gasPrice}
       ))
   }
@@ -328,7 +328,7 @@ class MainnetDeploymentHelper {
       await this.sendAndWaitForTransaction(LQTYContracts.lqtyStaking.setAddresses(
         LQTYContracts.lqtyToken.address,
         coreContracts.ebtcToken.address,
-        coreContracts.troveManager.address, 
+        coreContracts.cdpManager.address, 
         coreContracts.borrowerOperations.address,
         coreContracts.activePool.address,
 	{gasPrice}

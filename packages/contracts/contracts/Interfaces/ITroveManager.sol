@@ -28,8 +28,8 @@ interface ITroveManager is ILiquityBase {
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
-    event TroveLiquidated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
+    event TroveUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
+    event TroveLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
@@ -63,14 +63,14 @@ interface ITroveManager is ILiquityBase {
 
     function getIdFromTroveIdsArray(uint _index) external view returns (bytes32);
 
-    function getNominalICR(bytes32 _troveId) external view returns (uint);
-    function getCurrentICR(bytes32 _troveId, uint _price) external view returns (uint);
+    function getNominalICR(bytes32 _cdpId) external view returns (uint);
+    function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
-    function liquidate(bytes32 _troveId) external;
+    function liquidate(bytes32 _cdpId) external;
 
     function liquidateTroves(uint _n) external;
 
-    function batchLiquidateTroves(bytes32[] calldata _troveArray) external;
+    function batchLiquidateTroves(bytes32[] calldata _cdpArray) external;
 
     function redeemCollateral(
         uint _EBTCAmount,
@@ -82,30 +82,30 @@ interface ITroveManager is ILiquityBase {
         uint _maxFee
     ) external; 
 
-    function updateStakeAndTotalStakes(bytes32 _troveId) external returns (uint);
+    function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint);
 
-    function updateTroveRewardSnapshots(bytes32 _troveId) external;
+    function updateTroveRewardSnapshots(bytes32 _cdpId) external;
 
-    function addTroveIdToArray(bytes32 _troveId) external returns (uint index);
+    function addTroveIdToArray(bytes32 _cdpId) external returns (uint index);
 
-    function applyPendingRewards(bytes32 _troveId) external;
+    function applyPendingRewards(bytes32 _cdpId) external;
 
-    function getPendingETHReward(bytes32 _troveId) external view returns (uint);
+    function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
 
-    function getPendingEBTCDebtReward(bytes32 _troveId) external view returns (uint);
+    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
-    function hasPendingRewards(bytes32 _troveId) external view returns (bool);
+    function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
-    function getEntireDebtAndColl(bytes32 _troveId) external view returns (
+    function getEntireDebtAndColl(bytes32 _cdpId) external view returns (
         uint debt, 
         uint coll, 
         uint pendingEBTCDebtReward, 
         uint pendingETHReward
     );
 
-    function closeTrove(bytes32 _troveId) external;
+    function closeTrove(bytes32 _cdpId) external;
 
-    function removeStake(bytes32 _troveId) external;
+    function removeStake(bytes32 _cdpId) external;
 
     function getRedemptionRate() external view returns (uint);
     function getRedemptionRateWithDecay() external view returns (uint);
@@ -120,23 +120,23 @@ interface ITroveManager is ILiquityBase {
 
     function decayBaseRateFromBorrowing() external;
 
-    function getTroveStatus(bytes32 _troveId) external view returns (uint);
+    function getTroveStatus(bytes32 _cdpId) external view returns (uint);
     
-    function getTroveStake(bytes32 _troveId) external view returns (uint);
+    function getTroveStake(bytes32 _cdpId) external view returns (uint);
 
-    function getTroveDebt(bytes32 _troveId) external view returns (uint);
+    function getTroveDebt(bytes32 _cdpId) external view returns (uint);
 
-    function getTroveColl(bytes32 _troveId) external view returns (uint);
+    function getTroveColl(bytes32 _cdpId) external view returns (uint);
 
-    function setTroveStatus(bytes32 _troveId, uint num) external;
+    function setTroveStatus(bytes32 _cdpId, uint num) external;
 
-    function increaseTroveColl(bytes32 _troveId, uint _collIncrease) external returns (uint);
+    function increaseTroveColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
 
-    function decreaseTroveColl(bytes32 _troveId, uint _collDecrease) external returns (uint); 
+    function decreaseTroveColl(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
 
-    function increaseTroveDebt(bytes32 _troveId, uint _debtIncrease) external returns (uint); 
+    function increaseTroveDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint); 
 
-    function decreaseTroveDebt(bytes32 _troveId, uint _collDecrease) external returns (uint); 
+    function decreaseTroveDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
 
     function getTCR(uint _price) external view returns (uint);
 

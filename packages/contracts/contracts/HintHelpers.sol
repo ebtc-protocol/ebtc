@@ -12,30 +12,30 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     string constant public NAME = "HintHelpers";
 
     ISortedTroves public sortedTroves;
-    ITroveManager public troveManager;
+    ITroveManager public cdpManager;
 
     // --- Events ---
 
     event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event TroveManagerAddressChanged(address _troveManagerAddress);
+    event TroveManagerAddressChanged(address _cdpManagerAddress);
 
     // --- Dependency setters ---
 
     function setAddresses(
         address _sortedTrovesAddress,
-        address _troveManagerAddress
+        address _cdpManagerAddress
     )
         external
         onlyOwner
     {
         checkContract(_sortedTrovesAddress);
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
 
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
-        troveManager = ITroveManager(_troveManagerAddress);
+        cdpManager = ITroveManager(_cdpManagerAddress);
 
         emit SortedTrovesAddressChanged(_sortedTrovesAddress);
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
 
         _renounceOwnership();
     }
@@ -77,7 +77,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         bytes32 currentTroveId = sortedTrovesCached.getLast();
         address currentTroveuser = sortedTroves.existTroveOwners(currentTroveId);
 
-        while (currentTroveuser != address(0) && troveManager.getCurrentICR(currentTroveId, _price) < MCR) {
+        while (currentTroveuser != address(0) && cdpManager.getCurrentICR(currentTroveId, _price) < MCR) {
             currentTroveId = sortedTrovesCached.getPrev(currentTroveId);
             currentTroveuser = sortedTrovesCached.existTroveOwners(currentTroveId);
         }
@@ -89,13 +89,13 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         }
 
         while (currentTroveuser != address(0) && remainingEBTC > 0 && _maxIterations-- > 0) {
-            uint netEBTCDebt = _getNetDebt(troveManager.getTroveDebt(currentTroveId)).add(troveManager.getPendingEBTCDebtReward(currentTroveId));
+            uint netEBTCDebt = _getNetDebt(cdpManager.getTroveDebt(currentTroveId)).add(cdpManager.getPendingEBTCDebtReward(currentTroveId));
 
             if (netEBTCDebt > remainingEBTC) {
                 if (netEBTCDebt > MIN_NET_DEBT) {
                     uint maxRedeemableEBTC = LiquityMath._min(remainingEBTC, netEBTCDebt.sub(MIN_NET_DEBT));
 
-                    uint ETH = troveManager.getTroveColl(currentTroveId).add(troveManager.getPendingETHReward(currentTroveId));
+                    uint ETH = cdpManager.getTroveColl(currentTroveId).add(cdpManager.getPendingETHReward(currentTroveId));
 
                     uint newColl = ETH.sub(maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price));
                     uint newDebt = netEBTCDebt.sub(maxRedeemableEBTC);
@@ -131,14 +131,14 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         view
         returns (bytes32 hint, uint diff, uint latestRandomSeed)
     {
-        uint arrayLength = troveManager.getTroveIdsCount();
+        uint arrayLength = cdpManager.getTroveIdsCount();
 
         if (arrayLength == 0) {
             return (sortedTroves.nonExistId(), 0, _inputRandomSeed);
         }
 
         hint = sortedTroves.getLast();
-        diff = LiquityMath._getAbsoluteDifference(_CR, troveManager.getNominalICR(hint));
+        diff = LiquityMath._getAbsoluteDifference(_CR, cdpManager.getNominalICR(hint));
         latestRandomSeed = _inputRandomSeed;
 
         uint i = 1;
@@ -147,8 +147,8 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
             latestRandomSeed = uint(keccak256(abi.encodePacked(latestRandomSeed)));
 
             uint arrayIndex = latestRandomSeed % arrayLength;
-            bytes32 _cId = troveManager.getIdFromTroveIdsArray(arrayIndex);
-            uint currentNICR = troveManager.getNominalICR(_cId);
+            bytes32 _cId = cdpManager.getIdFromTroveIdsArray(arrayIndex);
+            uint currentNICR = cdpManager.getNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
             uint currentDiff = LiquityMath._getAbsoluteDifference(currentNICR, _CR);

@@ -10,9 +10,9 @@ import "./Dependencies/console.sol";
 
 /*
  * The Default Pool holds the ETH and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
- * to active troves but not yet "applied", i.e. not yet recorded on a recipient active trove's struct.
+ * to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  *
- * When a trove makes an operation that applies its pending ETH and EBTC debt, its pending ETH and EBTC debt is moved
+ * When a cdp makes an operation that applies its pending ETH and EBTC debt, its pending ETH and EBTC debt is moved
  * from the Default Pool to the Active Pool.
  */
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
@@ -20,7 +20,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     string constant public NAME = "DefaultPool";
 
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public activePoolAddress;
     uint256 internal ETH;  // deposited ETH tracker
     uint256 internal EBTCDebt;  // debt
@@ -32,19 +32,19 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Dependency setters ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress
     )
         external
         onlyOwner
     {
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
 
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
 
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -97,7 +97,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     }
 
     function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == troveManagerAddress, "DefaultPool: Caller is not the TroveManager");
+        require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the TroveManager");
     }
 
     // --- Fallback function ---

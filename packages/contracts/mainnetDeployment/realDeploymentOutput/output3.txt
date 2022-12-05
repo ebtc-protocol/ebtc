@@ -7,7 +7,7 @@ Uniswap Factory number of pairs: 32197
 deployer's ETH balance before deployments: 5088866300000000000
 Using previously deployed priceFeed contract at address 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 Using previously deployed sortedTroves contract at address 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-Using previously deployed troveManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+Using previously deployed cdpManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 Using previously deployed activePool contract at address 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 Using previously deployed stabilityPool contract at address 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 Using previously deployed gasPool contract at address 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -22,7 +22,7 @@ Contract objects addresses:
 priceFeed: 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 ebtcToken: 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
 sortedTroves: 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-troveManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+cdpManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 activePool: 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 stabilityPool: 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 gasPool: 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -81,12 +81,12 @@ Unipool's stored EBTC-ETH Uniswap Pair address: 0xF20EF17b889b437C151eB5bA15A47b
 SYSTEM GLOBAL VARS CHECKS
 system liquidation reserve: 200.000000000000000000
 system min net debt      : 1800.000000000000000000
-Deployer already has an active trove
-deployer is in sorted list after making trove: true
+Deployer already has an active cdp
+deployer is in sorted list after making cdp: true
 deployer debt: 3215.000000000000000000
 deployer coll: 3.000000000000000000
 deployer stake: 3.000000000000000000
-deployer's trove status: 1
+deployer's cdp status: 1
 deployer's EBTC balance: 988.098905929999999990
 EBTC-ETH Pair token 0: 0x5f98...8bA0,
         EBTCToken contract addr: 0x5f98...8bA0

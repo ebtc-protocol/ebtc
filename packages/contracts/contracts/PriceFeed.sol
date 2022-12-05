@@ -30,7 +30,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
 
     // Core Liquity contracts
     address borrowerOperationsAddress;
-    address troveManagerAddress;
+    address cdpManagerAddress;
 
     uint constant public ETHUSD_TELLOR_REQ_ID = 1;
 

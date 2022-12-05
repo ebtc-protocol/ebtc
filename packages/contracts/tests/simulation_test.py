@@ -15,7 +15,7 @@ from simulation_helpers import *
 class Contracts:
     priceFeedTestnet: Optional[Contract] = None
     sortedTroves: Optional[Contract] = None
-    troveManager: Optional[Contract] = None
+    cdpManager: Optional[Contract] = None
     activePool: Optional[Contract] = None
     stabilityPool: Optional[Contract] = None
     gasPool: Optional[Contract] = None
@@ -33,12 +33,12 @@ class Contracts:
 def set_addresses(contracts):
     contracts.sortedTroves.setParams(
         MAX_BYTES_32,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.borrowerOperations.address,
         {'from': accounts[0]}
     )
 
-    contracts.troveManager.setAddresses(
+    contracts.cdpManager.setAddresses(
         contracts.borrowerOperations.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
@@ -54,7 +54,7 @@ def set_addresses(contracts):
     )
 
     contracts.borrowerOperations.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
         contracts.stabilityPool.address,
@@ -69,7 +69,7 @@ def set_addresses(contracts):
 
     contracts.stabilityPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.ebtcToken.address,
         contracts.sortedTroves.address,
@@ -80,28 +80,28 @@ def set_addresses(contracts):
 
     contracts.activePool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.stabilityPool.address,
         contracts.defaultPool.address,
         {'from': accounts[0]}
     )
 
     contracts.defaultPool.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         {'from': accounts[0]}
     )
 
     contracts.collSurplusPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         {'from': accounts[0]}
     )
 
     contracts.hintHelpers.setAddresses(
         contracts.sortedTroves.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         {'from': accounts[0]}
     )
 
@@ -109,7 +109,7 @@ def set_addresses(contracts):
     contracts.lqtyStaking.setAddresses(
         contracts.lqtyToken.address,
         contracts.ebtcToken.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.borrowerOperations.address,
         contracts.activePool.address,
         {'from': accounts[0]}
@@ -135,7 +135,7 @@ def contracts():
 
     contracts.priceFeedTestnet = PriceFeedTestnet.deploy({'from': accounts[0]})  # noqa
     contracts.sortedTroves = SortedTroves.deploy({'from': accounts[0]})  # noqa
-    contracts.troveManager = TroveManager.deploy({'from': accounts[0]})  # noqa
+    contracts.cdpManager = TroveManager.deploy({'from': accounts[0]})  # noqa
     contracts.activePool = ActivePool.deploy({'from': accounts[0]})  # noqa
     contracts.stabilityPool = StabilityPool.deploy({'from': accounts[0]})  # noqa
     contracts.gasPool = GasPool.deploy({'from': accounts[0]})  # noqa
@@ -144,7 +144,7 @@ def contracts():
     contracts.borrowerOperations = BorrowerOperationsTester.deploy({'from': accounts[0]})  # noqa
     contracts.hintHelpers = HintHelpers.deploy({'from': accounts[0]})  # noqa
     contracts.ebtcToken = EBTCToken.deploy(  # noqa
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.stabilityPool.address,
         contracts.borrowerOperations.address,
         {'from': accounts[0]}
@@ -175,7 +175,7 @@ def print_expectations():
     print("Expected LQTY price at the end of first month: $",
           price_LQTY_initial * (1 + drift_LQTY) ** 720)
 
-    print("\n Open troves")
+    print("\n Open cdps")
     print("E(Q_t^e)    = ", collateral_gamma_k * collateral_gamma_theta)
     print("SD(Q_t^e)   = ", collateral_gamma_k ** 0.5 * collateral_gamma_theta)
     print("E(CR^*(i))  = ", (target_cr_a + target_cr_b * target_cr_chi_square_df) * 100, "%")
@@ -194,13 +194,13 @@ def print_expectations():
 
 
 * exogenous ether price input
-* trove liquidation
+* cdp liquidation
 * return of the previous period's stability pool determined (liquidation gain & airdropped LQTY gain
-* trove closure
-* trove adjustment
-* open troves
+* cdp closure
+* cdp adjustment
+* open cdps
 * issuance fee
-* trove pool formed
+* cdp pool formed
 * EBTC supply determined
 * EBTC stability pool demand determined
 * EBTC liquidity pool demand determined
@@ -243,7 +243,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
     ) as csvfile:
         datawriter = csv.writer(csvfile, delimiter=',')
         datawriter.writerow(
-            ['iteration', 'ETH_price', 'price_EBTC', 'price_LQTY', 'num_troves', 'total_coll',
+            ['iteration', 'ETH_price', 'price_EBTC', 'price_LQTY', 'num_cdps', 'total_coll',
              'total_debt', 'TCR', 'recovery_mode', 'last_ICR', 'SP_EBTC', 'SP_ETH',
              'total_coll_added', 'total_coll_liquidated', 'total_ebtc_redempted'])
 
@@ -256,25 +256,25 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
             contracts.priceFeedTestnet.setPrice(floatToWei(price_ether_current),
                                                 {'from': accounts[0]})
 
-            # trove liquidation & return of stability pool
-            result_liquidation = liquidate_troves(accounts, contracts, active_accounts,
+            # cdp liquidation & return of stability pool
+            result_liquidation = liquidate_cdps(accounts, contracts, active_accounts,
                                                   inactive_accounts, price_ether_current,
                                                   price_ebtc, price_lqty_current, data, index)
             total_coll_liquidated = total_coll_liquidated + result_liquidation[0]
             return_stability = result_liquidation[1]
 
-            # close troves
-            result_close = close_troves(accounts, contracts, active_accounts, inactive_accounts,
+            # close cdps
+            result_close = close_cdps(accounts, contracts, active_accounts, inactive_accounts,
                                         price_ether_current, price_ebtc, index)
 
-            # adjust troves
-            [coll_added_adjust, issuance_ebtc_adjust] = adjust_troves(accounts, contracts,
+            # adjust cdps
+            [coll_added_adjust, issuance_ebtc_adjust] = adjust_cdps(accounts, contracts,
                                                                       active_accounts,
                                                                       inactive_accounts,
                                                                       price_ether_current, index)
 
-            # open troves
-            [coll_added_open, issuance_ebtc_open] = open_troves(accounts, contracts,
+            # open cdps
+            [coll_added_open, issuance_ebtc_open] = open_cdps(accounts, contracts,
                                                                 active_accounts, inactive_accounts,
                                                                 price_ether_current, price_ebtc,
                                                                 index)
@@ -304,7 +304,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
             # annualized_earning = result_LQTY[1]
             # MC_LQTY_current = result_LQTY[2]
 
-            [eth_price, num_troves, total_coll, total_debt, tcr, recovery_mode, last_icr, sp_ebtc,
+            [eth_price, num_cdps, total_coll, total_debt, tcr, recovery_mode, last_icr, sp_ebtc,
              sp_eth] = logGlobalState(contracts)
             print('Total redempted ', total_ebtc_redempted)
             print('Total ETH added ', total_coll_added)
@@ -313,7 +313,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
             print(' ----------------------\n')
 
             datawriter.writerow(
-                [index, eth_price, price_ebtc, price_lqty_current, num_troves, total_coll,
+                [index, eth_price, price_ebtc, price_lqty_current, num_cdps, total_coll,
                  total_debt, tcr, recovery_mode, last_icr, sp_ebtc, sp_eth, total_coll_added,
                  total_coll_liquidated, total_ebtc_redempted])
 

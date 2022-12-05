@@ -8,7 +8,7 @@ interface ILQTYStaking {
     
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
     event EBTCTokenAddressSet(address _ebtcTokenAddress);
-    event TroveManagerAddressSet(address _troveManager);
+    event TroveManagerAddressSet(address _cdpManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
 
@@ -26,7 +26,7 @@ interface ILQTYStaking {
     (
         address _lqtyTokenAddress,
         address _ebtcTokenAddress,
-        address _troveManagerAddress, 
+        address _cdpManagerAddress, 
         address _borrowerOperationsAddress,
         address _activePoolAddress
     )  external;

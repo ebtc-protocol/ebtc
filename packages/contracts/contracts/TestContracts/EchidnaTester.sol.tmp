@@ -28,7 +28,7 @@ contract EchidnaTester {
     uint private CCR;
     uint private EBTC_GAS_COMPENSATION;
 
-    TroveManager public troveManager;
+    TroveManager public cdpManager;
     BorrowerOperations public borrowerOperations;
     ActivePool public activePool;
     DefaultPool public defaultPool;
@@ -44,14 +44,14 @@ contract EchidnaTester {
     uint private numberOfTroves;
 
     constructor() public payable {
-        troveManager = new TroveManager();
+        cdpManager = new TroveManager();
         borrowerOperations = new BorrowerOperations();
         activePool = new ActivePool();
         defaultPool = new DefaultPool();
         stabilityPool = new StabilityPool();
         gasPool = new GasPool();
         ebtcToken = new EBTCToken(
-            address(troveManager),
+            address(cdpManager),
             address(stabilityPool),
             address(borrowerOperations)
         );
@@ -61,34 +61,34 @@ contract EchidnaTester {
 
         sortedTroves = new SortedTroves();
 
-        troveManager.setAddresses(address(borrowerOperations), 
+        cdpManager.setAddresses(address(borrowerOperations), 
             address(activePool), address(defaultPool), 
             address(stabilityPool), address(gasPool), address(collSurplusPool),
             address(priceFeedTestnet), address(ebtcToken), 
             address(sortedTroves), address(0), address(0));
        
-        borrowerOperations.setAddresses(address(troveManager), 
+        borrowerOperations.setAddresses(address(cdpManager), 
             address(activePool), address(defaultPool), 
             address(stabilityPool), address(gasPool), address(collSurplusPool),
             address(priceFeedTestnet), address(sortedTroves), 
             address(ebtcToken), address(0));
 
         activePool.setAddresses(address(borrowerOperations), 
-            address(troveManager), address(stabilityPool), address(defaultPool));
+            address(cdpManager), address(stabilityPool), address(defaultPool));
 
-        defaultPool.setAddresses(address(troveManager), address(activePool));
+        defaultPool.setAddresses(address(cdpManager), address(activePool));
         
         stabilityPool.setAddresses(address(borrowerOperations), 
-            address(troveManager), address(activePool), address(ebtcToken), 
+            address(cdpManager), address(activePool), address(ebtcToken), 
             address(sortedTroves), address(priceFeedTestnet), address(0));
 
         collSurplusPool.setAddresses(address(borrowerOperations), 
-             address(troveManager), address(activePool));
+             address(cdpManager), address(activePool));
     
-        sortedTroves.setParams(1e18, address(troveManager), address(borrowerOperations));
+        sortedTroves.setParams(1e18, address(cdpManager), address(borrowerOperations));
 
         for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
-            echidnaProxies[i] = new EchidnaProxy(troveManager, borrowerOperations, stabilityPool, ebtcToken);
+            echidnaProxies[i] = new EchidnaProxy(cdpManager, borrowerOperations, stabilityPool, ebtcToken);
             (bool success, ) = address(echidnaProxies[i]).call{value: INITIAL_BALANCE}("");
             require(success);
         }
@@ -115,9 +115,9 @@ contract EchidnaTester {
         echidnaProxies[actor].liquidateTrovesPrx(_n);
     }
 
-    function batchLiquidateTrovesExt(uint _i, address[] calldata _troveArray) external {
+    function batchLiquidateTrovesExt(uint _i, address[] calldata _cdpArray) external {
         uint actor = _i % NUMBER_OF_ACTORS;
-        echidnaProxies[actor].batchLiquidateTrovesPrx(_troveArray);
+        echidnaProxies[actor].batchLiquidateTrovesPrx(_cdpArray);
     }
 
     function redeemCollateralExt(
@@ -169,7 +169,7 @@ contract EchidnaTester {
 
         echidnaProxy.openTrovePrx(ETH, EBTCAmount, address(0), address(0), 0);
 
-        numberOfTroves = troveManager.getTroveOwnersCount();
+        numberOfTroves = cdpManager.getTroveOwnersCount();
         assert(numberOfTroves > 0);
         // canary
         //assert(numberOfTroves == 0);
@@ -285,7 +285,7 @@ contract EchidnaTester {
     // Invariants and properties
     // --------------------------
 
-    function echidna_canary_number_of_troves() public view returns(bool) {
+    function echidna_canary_number_of_cdps() public view returns(bool) {
         if (numberOfTroves > 20) {
             return false;
         }
@@ -300,12 +300,12 @@ contract EchidnaTester {
         return true;
     }
 
-    function echidna_troves_order() external view returns(bool) {
+    function echidna_cdps_order() external view returns(bool) {
         address currentTrove = sortedTroves.getFirst();
         address nextTrove = sortedTroves.getNext(currentTrove);
 
         while (currentTrove != address(0) && nextTrove != address(0)) {
-            if (troveManager.getNominalICR(nextTrove) > troveManager.getNominalICR(currentTrove)) {
+            if (cdpManager.getNominalICR(nextTrove) > cdpManager.getNominalICR(currentTrove)) {
                 return false;
             }
             // Uncomment to check that the condition is meaningful
@@ -323,25 +323,25 @@ contract EchidnaTester {
      * Minimum debt (gas compensation)
      * Stake > 0
      */
-    function echidna_trove_properties() public view returns(bool) {
+    function echidna_cdp_properties() public view returns(bool) {
         address currentTrove = sortedTroves.getFirst();
         while (currentTrove != address(0)) {
             // Status
-            if (TroveManager.Status(troveManager.getTroveStatus(currentTrove)) != TroveManager.Status.active) {
+            if (TroveManager.Status(cdpManager.getTroveStatus(currentTrove)) != TroveManager.Status.active) {
                 return false;
             }
             // Uncomment to check that the condition is meaningful
             //else return false;
 
             // Minimum debt (gas compensation)
-            if (troveManager.getTroveDebt(currentTrove) < EBTC_GAS_COMPENSATION) {
+            if (cdpManager.getTroveDebt(currentTrove) < EBTC_GAS_COMPENSATION) {
                 return false;
             }
             // Uncomment to check that the condition is meaningful
             //else return false;
 
             // Stake > 0
-            if (troveManager.getTroveStake(currentTrove) == 0) {
+            if (cdpManager.getTroveStake(currentTrove) == 0) {
                 return false;
             }
             // Uncomment to check that the condition is meaningful
@@ -353,7 +353,7 @@ contract EchidnaTester {
     }
 
     function echidna_ETH_balances() public view returns(bool) {
-        if (address(troveManager).balance > 0) {
+        if (address(cdpManager).balance > 0) {
             return false;
         }
 
@@ -414,13 +414,13 @@ contract EchidnaTester {
 
         uint stabilityPoolBalance = stabilityPool.getTotalEBTCDeposits();
         address currentTrove = sortedTroves.getFirst();
-        uint trovesBalance;
+        uint cdpsBalance;
         while (currentTrove != address(0)) {
-            trovesBalance += ebtcToken.balanceOf(address(currentTrove));
+            cdpsBalance += ebtcToken.balanceOf(address(currentTrove));
             currentTrove = sortedTroves.getNext(currentTrove);
         }
         // we cannot state equality because tranfers are made to external addresses too
-        if (totalSupply <= stabilityPoolBalance + trovesBalance + gasPoolBalance) {
+        if (totalSupply <= stabilityPoolBalance + cdpsBalance + gasPoolBalance) {
             return false;
         }
 

@@ -9,7 +9,7 @@
     "txHash": "0x26c842c31c398678816887f63de47c0a9037071385d0e237ed39f0e962dbca86",
     "verification": "https://etherscan.io/address/0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6#code"
   },
-  "troveManager": {
+  "cdpManager": {
     "address": "0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2",
     "txHash": "0x79140d00043308c0ce59ab09a6fe0a9abc719e1399740690bffe82b2555d5690",
     "verification": "https://etherscan.io/address/0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2#code"

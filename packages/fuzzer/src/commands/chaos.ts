@@ -70,15 +70,15 @@ export const chaos = async ({
       const x = Math.random();
 
       if (x < 0.5) {
-        const trove = await liquity.getTrove();
+        const cdp = await liquity.getTrove();
 
-        if (trove.isEmpty) {
+        if (cdp.isEmpty) {
           await fixture.openRandomTrove(user.address, liquity);
         } else {
           if (x < 0.4) {
-            await fixture.randomlyAdjustTrove(user.address, liquity, trove);
+            await fixture.randomlyAdjustTrove(user.address, liquity, cdp);
           } else {
-            await fixture.closeTrove(user.address, liquity, trove);
+            await fixture.closeTrove(user.address, liquity, cdp);
           }
         }
       } else if (x < 0.7) {

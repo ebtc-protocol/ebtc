@@ -8,13 +8,13 @@ def floatToWei(amount):
 
 # Subtracts the borrowing fee
 def get_ebtc_amount_from_net_debt(contracts, net_debt):
-    borrowing_rate = contracts.troveManager.getBorrowingRateWithDecay()
+    borrowing_rate = contracts.cdpManager.getBorrowingRateWithDecay()
     return Wei(net_debt * Wei(1e18) / (Wei(1e18) + borrowing_rate))
 
 def logGlobalState(contracts):
     print('\n ---- Global state ----')
-    num_troves = contracts.sortedTroves.getSize()
-    print('Num troves      ', num_troves)
+    num_cdps = contracts.sortedTroves.getSize()
+    print('Num cdps      ', num_cdps)
     activePoolColl = contracts.activePool.getETH()
     activePoolDebt = contracts.activePool.getEBTCDebt()
     defaultPoolColl = contracts.defaultPool.getETH()
@@ -30,20 +30,20 @@ def logGlobalState(contracts):
     price_ether_current = contracts.priceFeedTestnet.getPrice()
     ETH_price = price_ether_current.to("ether")
     print('ETH price       ', ETH_price)
-    TCR = contracts.troveManager.getTCR(price_ether_current).to("ether")
+    TCR = contracts.cdpManager.getTCR(price_ether_current).to("ether")
     print('TCR             ', TCR)
-    recovery_mode = contracts.troveManager.checkRecoveryMode(price_ether_current)
+    recovery_mode = contracts.cdpManager.checkRecoveryMode(price_ether_current)
     print('Rec. Mode       ', recovery_mode)
-    stakes_snapshot = contracts.troveManager.totalStakesSnapshot()
-    coll_snapshot = contracts.troveManager.totalCollateralSnapshot()
+    stakes_snapshot = contracts.cdpManager.totalStakesSnapshot()
+    coll_snapshot = contracts.cdpManager.totalCollateralSnapshot()
     print('Stake snapshot  ', stakes_snapshot.to("ether"))
     print('Coll snapshot   ', coll_snapshot.to("ether"))
     if stakes_snapshot > 0:
         print('Snapshot ratio  ', coll_snapshot / stakes_snapshot)
-    last_trove = contracts.sortedTroves.getLast()
-    last_ICR = contracts.troveManager.getCurrentICR(last_trove, price_ether_current).to("ether")
-    #print('Last trove      ', last_trove)
-    print('Last trove’s ICR', last_ICR)
+    last_cdp = contracts.sortedTroves.getLast()
+    last_ICR = contracts.cdpManager.getCurrentICR(last_cdp, price_ether_current).to("ether")
+    #print('Last cdp      ', last_cdp)
+    print('Last cdp’s ICR', last_ICR)
     print(' ----------------------\n')
 
-    return [ETH_price, num_troves, total_coll, total_debt, TCR, recovery_mode, last_ICR, SP_EBTC, SP_ETH]
+    return [ETH_price, num_cdps, total_coll, total_debt, TCR, recovery_mode, last_ICR, SP_EBTC, SP_ETH]

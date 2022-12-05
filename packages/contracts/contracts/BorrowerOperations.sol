@@ -18,7 +18,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- Connected contract declarations ---
 
-    ITroveManager public troveManager;
+    ITroveManager public cdpManager;
 
     address stabilityPoolAddress;
 
@@ -67,7 +67,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     struct ContractsCache {
-        ITroveManager troveManager;
+        ITroveManager cdpManager;
         IActivePool activePool;
         IEBTCToken ebtcToken;
     }
@@ -89,14 +89,14 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
-    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint stake, BorrowerOperation operation);
-    event EBTCBorrowingFeePaid(bytes32 indexed _troveId, uint _EBTCFee);
+    event TroveCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event TroveUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint stake, BorrowerOperation operation);
+    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
     
     // --- Dependency setters ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
         address _stabilityPoolAddress,
@@ -111,10 +111,10 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         override
         onlyOwner
     {
-        // This makes impossible to open a trove with zero withdrawn EBTC
+        // This makes impossible to open a cdp with zero withdrawn EBTC
         assert(MIN_NET_DEBT > 0);
 
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
         checkContract(_stabilityPoolAddress);
@@ -125,7 +125,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         checkContract(_ebtcTokenAddress);
         checkContract(_lqtyStakingAddress);
 
-        troveManager = ITroveManager(_troveManagerAddress);
+        cdpManager = ITroveManager(_cdpManagerAddress);
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
         stabilityPoolAddress = _stabilityPoolAddress;
@@ -137,7 +137,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         lqtyStakingAddress = _lqtyStakingAddress;
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
 
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
@@ -154,20 +154,20 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     // --- Borrower Trove Operations ---
 
     function openTrove(uint _maxFeePercentage, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, ebtcToken);
+        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_openTrove memory vars;
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
-//        _requireTroveisNotActive(contractsCache.troveManager, msg.sender);
+//        _requireTroveisNotActive(contractsCache.cdpManager, msg.sender);
 
         vars.EBTCFee;
         vars.netDebt = _EBTCAmount;
 
         if (!isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.ebtcToken, _EBTCAmount, _maxFeePercentage);
+            vars.EBTCFee = _triggerBorrowingFee(contractsCache.cdpManager, contractsCache.ebtcToken, _EBTCAmount, _maxFeePercentage);
             vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
         _requireAtLeastMinNetDebt(vars.netDebt);
@@ -187,18 +187,18 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             _requireNewTCRisAboveCCR(newTCR); 
         }
 
-        // Set the trove struct's properties
-        bytes32 _troveId = sortedTroves.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
+        // Set the cdp struct's properties
+        bytes32 _cdpId = sortedTroves.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
 		
-        contractsCache.troveManager.setTroveStatus(_troveId, 1);
-        contractsCache.troveManager.increaseTroveColl(_troveId, msg.value);
-        contractsCache.troveManager.increaseTroveDebt(_troveId, vars.compositeDebt);
+        contractsCache.cdpManager.setTroveStatus(_cdpId, 1);
+        contractsCache.cdpManager.increaseTroveColl(_cdpId, msg.value);
+        contractsCache.cdpManager.increaseTroveDebt(_cdpId, vars.compositeDebt);
 
-        contractsCache.troveManager.updateTroveRewardSnapshots(_troveId);
-        vars.stake = contractsCache.troveManager.updateStakeAndTotalStakes(_troveId);
+        contractsCache.cdpManager.updateTroveRewardSnapshots(_cdpId);
+        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        vars.arrayIndex = contractsCache.troveManager.addTroveIdToArray(_troveId);
-        emit TroveCreated(_troveId, msg.sender, vars.arrayIndex);
+        vars.arrayIndex = contractsCache.cdpManager.addTroveIdToArray(_cdpId);
+        emit TroveCreated(_cdpId, msg.sender, vars.arrayIndex);
 
         // Move the ether to the Active Pool, and mint the EBTCAmount to the borrower
         _activePoolAddColl(contractsCache.activePool, msg.value);
@@ -206,43 +206,43 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // Move the EBTC gas compensation to the Gas Pool
         _withdrawEBTC(contractsCache.activePool, contractsCache.ebtcToken, gasPoolAddress, EBTC_GAS_COMPENSATION, EBTC_GAS_COMPENSATION);
 
-        emit TroveUpdated(_troveId, msg.sender, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
-        emit EBTCBorrowingFeePaid(_troveId, vars.EBTCFee);
+        emit TroveUpdated(_cdpId, msg.sender, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
+        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
     }
 
-    // Send ETH as collateral to a trove
-    function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
-        _adjustTrove(_troveId, 0, 0, false, _upperHint, _lowerHint, 0);
+    // Send ETH as collateral to a cdp
+    function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
+        _adjustTrove(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Send ETH as collateral to a trove. Called by only the Stability Pool.
-    function moveETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
+    // Send ETH as collateral to a cdp. Called by only the Stability Pool.
+    function moveETHGainToTrove(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
         _requireCallerIsStabilityPool();
-        _adjustTroveInternal(_troveId, 0, 0, false, _upperHint, _lowerHint, 0);
+        _adjustTroveInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Withdraw ETH collateral from a trove
-    function withdrawColl(bytes32 _troveId, uint _collWithdrawal, bytes32 _upperHint, bytes32 _lowerHint) external override {
-        _adjustTrove(_troveId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
+    // Withdraw ETH collateral from a cdp
+    function withdrawColl(bytes32 _cdpId, uint _collWithdrawal, bytes32 _upperHint, bytes32 _lowerHint) external override {
+        _adjustTrove(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Withdraw EBTC tokens from a trove: mint new EBTC tokens to the owner, and increase the trove's debt accordingly
-    function withdrawEBTC(bytes32 _troveId, uint _maxFeePercentage, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external override {
-        _adjustTrove(_troveId, 0, _EBTCAmount, true, _upperHint, _lowerHint, _maxFeePercentage);
+    // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
+    function withdrawEBTC(bytes32 _cdpId, uint _maxFeePercentage, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external override {
+        _adjustTrove(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, _maxFeePercentage);
     }
 
-    // Repay EBTC tokens to a Trove: Burn the repaid EBTC tokens, and reduce the trove's debt accordingly
-    function repayEBTC(bytes32 _troveId, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external override {
-        _adjustTrove(_troveId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
+    // Repay EBTC tokens to a Trove: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
+    function repayEBTC(bytes32 _cdpId, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external override {
+        _adjustTrove(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
     }
 
-    function adjustTrove(bytes32 _troveId, uint _maxFeePercentage, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
-        _adjustTrove(_troveId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
+    function adjustTrove(bytes32 _cdpId, uint _maxFeePercentage, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable override {
+        _adjustTrove(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
     }
 	
-    function _adjustTrove(bytes32 _troveId, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
-        _requireTroveOwner(_troveId);	
-        _adjustTroveInternal(_troveId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
+    function _adjustTrove(bytes32 _cdpId, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
+        _requireTroveOwner(_cdpId);	
+        _adjustTroveInternal(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
     }
 
     /*
@@ -252,12 +252,12 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     *
     * If both are positive, it will revert.
     */
-    function _adjustTroveInternal(bytes32 _troveId, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
+    function _adjustTroveInternal(bytes32 _cdpId, uint _collWithdrawal, uint _EBTCChange, bool _isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint, uint _maxFeePercentage) internal {
 		
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, ebtcToken);
+        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_adjustTrove memory vars;
 
-        _requireTroveisActive(contractsCache.troveManager, _troveId);
+        _requireTroveisActive(contractsCache.cdpManager, _cdpId);
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
@@ -270,11 +270,11 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         _requireNonZeroAdjustment(_collWithdrawal, _EBTCChange);
         
 
-        // Confirm the operation is either a borrower adjusting their own trove, or a pure ETH transfer from the Stability Pool to a trove
-        address _borrower = sortedTroves.existTroveOwners(_troveId);
+        // Confirm the operation is either a borrower adjusting their own cdp, or a pure ETH transfer from the Stability Pool to a cdp
+        address _borrower = sortedTroves.existTroveOwners(_cdpId);
         assert(msg.sender == _borrower || (msg.sender == stabilityPoolAddress && msg.value > 0 && _EBTCChange == 0));
 
-        contractsCache.troveManager.applyPendingRewards(_troveId);
+        contractsCache.cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on whether or not ETH was sent in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(msg.value, _collWithdrawal);
@@ -283,14 +283,14 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         // If the adjustment incorporates a debt increase and system is in Normal Mode, then trigger a borrowing fee
         if (_isDebtIncrease && !isRecoveryMode) { 
-            vars.EBTCFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.ebtcToken, _EBTCChange, _maxFeePercentage);
+            vars.EBTCFee = _triggerBorrowingFee(contractsCache.cdpManager, contractsCache.ebtcToken, _EBTCChange, _maxFeePercentage);
             vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
         }
 
-        vars.debt = contractsCache.troveManager.getTroveDebt(_troveId);
-        vars.coll = contractsCache.troveManager.getTroveColl(_troveId);
+        vars.debt = contractsCache.cdpManager.getTroveDebt(_cdpId);
+        vars.coll = contractsCache.cdpManager.getTroveColl(_cdpId);
         
-        // Get the trove's old ICR before the adjustment, and what its new ICR will be after the adjustment
+        // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         vars.oldICR = LiquityMath._computeCR(vars.coll, vars.debt, vars.price);
         vars.newICR = _getNewICRFromTroveChange(vars.coll, vars.debt, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease, vars.price);
         assert(_collWithdrawal <= vars.coll); 
@@ -305,15 +305,15 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
 
-        (vars.newColl, vars.newDebt) = _updateTroveFromAdjustment(contractsCache.troveManager, _troveId, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
-        vars.stake = contractsCache.troveManager.updateStakeAndTotalStakes(_troveId);
+        (vars.newColl, vars.newDebt) = _updateTroveFromAdjustment(contractsCache.cdpManager, _cdpId, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
+        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        // Re-insert trove in to the sorted list
+        // Re-insert cdp in to the sorted list
         uint newNICR = _getNewNominalICRFromTroveChange(vars.coll, vars.debt, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
-        sortedTroves.reInsert(_troveId, newNICR, _upperHint, _lowerHint);
+        sortedTroves.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
 
-        emit TroveUpdated(_troveId, _borrower, vars.newDebt, vars.newColl, vars.stake, BorrowerOperation.adjustTrove);
-        emit EBTCBorrowingFeePaid(_troveId,  vars.EBTCFee);
+        emit TroveUpdated(_cdpId, _borrower, vars.newDebt, vars.newColl, vars.stake, BorrowerOperation.adjustTrove);
+        emit EBTCBorrowingFeePaid(_cdpId,  vars.EBTCFee);
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         _moveTokensAndETHfromAdjustment(
@@ -328,32 +328,32 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         );
     }
 
-    function closeTrove(bytes32 _troveId) external override {
-        _requireTroveOwner(_troveId);
+    function closeTrove(bytes32 _cdpId) external override {
+        _requireTroveOwner(_cdpId);
 		
-        ITroveManager troveManagerCached = troveManager;
+        ITroveManager cdpManagerCached = cdpManager;
         IActivePool activePoolCached = activePool;
         IEBTCToken ebtcTokenCached = ebtcToken;
 
-        _requireTroveisActive(troveManagerCached, _troveId);
+        _requireTroveisActive(cdpManagerCached, _cdpId);
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(price);
 
-        troveManagerCached.applyPendingRewards(_troveId);
+        cdpManagerCached.applyPendingRewards(_cdpId);
 
-        uint coll = troveManagerCached.getTroveColl(_troveId);
-        uint debt = troveManagerCached.getTroveDebt(_troveId);
+        uint coll = cdpManagerCached.getTroveColl(_cdpId);
+        uint debt = cdpManagerCached.getTroveDebt(_cdpId);
 
         _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
 
         uint newTCR = _getNewTCRFromTroveChange(coll, false, debt, false, price);
         _requireNewTCRisAboveCCR(newTCR);
 
-        troveManagerCached.removeStake(_troveId);
-        troveManagerCached.closeTrove(_troveId);
+        cdpManagerCached.removeStake(_cdpId);
+        cdpManagerCached.closeTrove(_cdpId);
 
         // We already verified msg.sender is the borrower
-        emit TroveUpdated(_troveId, msg.sender, 0, 0, 0, BorrowerOperation.closeTrove);
+        emit TroveUpdated(_cdpId, msg.sender, 0, 0, 0, BorrowerOperation.closeTrove);
 
         // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
         _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
@@ -373,9 +373,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- Helper functions ---
 
-    function _triggerBorrowingFee(ITroveManager _troveManager, IEBTCToken _ebtcToken, uint _EBTCAmount, uint _maxFeePercentage) internal returns (uint) {
-        _troveManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
-        uint EBTCFee = _troveManager.getBorrowingFee(_EBTCAmount);
+    function _triggerBorrowingFee(ITroveManager _cdpManager, IEBTCToken _ebtcToken, uint _EBTCAmount, uint _maxFeePercentage) internal returns (uint) {
+        _cdpManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
+        uint EBTCFee = _cdpManager.getBorrowingFee(_EBTCAmount);
 
         _requireUserAcceptsFee(EBTCFee, _EBTCAmount, _maxFeePercentage);
         
@@ -408,11 +408,11 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         }
     }
 
-    // Update trove's coll and debt based on whether they increase or decrease
+    // Update cdp's coll and debt based on whether they increase or decrease
     function _updateTroveFromAdjustment
     (
-        ITroveManager _troveManager,
-        bytes32 _troveId,
+        ITroveManager _cdpManager,
+        bytes32 _cdpId,
         uint _collChange,
         bool _isCollIncrease,
         uint _debtChange,
@@ -421,10 +421,10 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         internal
         returns (uint, uint)
     {
-        uint newColl = (_isCollIncrease) ? _troveManager.increaseTroveColl(_troveId, _collChange)
-                                        : _troveManager.decreaseTroveColl(_troveId, _collChange);
-        uint newDebt = (_isDebtIncrease) ? _troveManager.increaseTroveDebt(_troveId, _debtChange)
-                                        : _troveManager.decreaseTroveDebt(_troveId, _debtChange);
+        uint newColl = (_isCollIncrease) ? _cdpManager.increaseTroveColl(_cdpId, _collChange)
+                                        : _cdpManager.decreaseTroveColl(_cdpId, _collChange);
+        uint newDebt = (_isDebtIncrease) ? _cdpManager.increaseTroveDebt(_cdpId, _debtChange)
+                                        : _cdpManager.decreaseTroveDebt(_cdpId, _debtChange);
 
         return (newColl, newDebt);
     }
@@ -475,9 +475,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- 'Require' wrapper functions ---
 
-    function _requireTroveOwner(bytes32 _troveId) internal view {
-        address _owner = sortedTroves.existTroveOwners(_troveId);
-        require(msg.sender == _owner, "BorrowerOps: Caller must be trove owner");
+    function _requireTroveOwner(bytes32 _cdpId) internal view {
+        address _owner = sortedTroves.existTroveOwners(_cdpId);
+        require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
     }
 
     function _requireSingularCollChange(uint _collWithdrawal) internal view {
@@ -492,13 +492,13 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         require(msg.value != 0 || _collWithdrawal != 0 || _EBTCChange != 0, "BorrowerOps: There must be either a collateral change or a debt change");
     }
 
-    function _requireTroveisActive(ITroveManager _troveManager, bytes32 _troveId) internal view {
-        uint status = _troveManager.getTroveStatus(_troveId);
+    function _requireTroveisActive(ITroveManager _cdpManager, bytes32 _cdpId) internal view {
+        uint status = _cdpManager.getTroveStatus(_cdpId);
         require(status == 1, "BorrowerOps: Trove does not exist or is closed");
     }
 
-//    function _requireTroveisNotActive(ITroveManager _troveManager, address _borrower) internal view {
-//        uint status = _troveManager.getTroveStatus(_borrower);
+//    function _requireTroveisNotActive(ITroveManager _cdpManager, address _borrower) internal view {
+//        uint status = _cdpManager.getTroveStatus(_borrower);
 //        require(status != 1, "BorrowerOps: Trove is active");
 //    }
 
@@ -555,7 +555,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     function _requireICRisAboveCCR(uint _newICR) internal pure {
-        require(_newICR >= CCR, "BorrowerOps: Operation must leave trove with ICR >= CCR");
+        require(_newICR >= CCR, "BorrowerOps: Operation must leave cdp with ICR >= CCR");
     }
 
     function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {

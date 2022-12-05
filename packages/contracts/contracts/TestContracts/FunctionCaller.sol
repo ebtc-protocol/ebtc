@@ -11,8 +11,8 @@ import '../Dependencies/LiquityMath.sol';
 Not part of the Liquity application. */
 contract FunctionCaller {
 
-    ITroveManager troveManager;
-    address public troveManagerAddress;
+    ITroveManager cdpManager;
+    address public cdpManagerAddress;
 
     ISortedTroves sortedTroves;
     address public sortedTrovesAddress;
@@ -22,13 +22,13 @@ contract FunctionCaller {
 
     // --- Dependency setters ---
 
-    function setTroveManagerAddress(address _troveManagerAddress) external {
-        troveManagerAddress = _troveManagerAddress;
-        troveManager = ITroveManager(_troveManagerAddress);
+    function setTroveManagerAddress(address _cdpManagerAddress) external {
+        cdpManagerAddress = _cdpManagerAddress;
+        cdpManager = ITroveManager(_cdpManagerAddress);
     }
     
     function setSortedTrovesAddress(address _sortedTrovesAddress) external {
-        troveManagerAddress = _sortedTrovesAddress;
+        cdpManagerAddress = _sortedTrovesAddress;
         sortedTroves = ISortedTroves(_sortedTrovesAddress);
     }
 
@@ -39,8 +39,8 @@ contract FunctionCaller {
 
     // --- Non-view wrapper functions used for calculating gas ---
     
-    function troveManager_getCurrentICR(bytes32 _troveId, uint _price) external returns (uint) {
-        return troveManager.getCurrentICR(_troveId, _price);  
+    function cdpManager_getCurrentICR(bytes32 _cdpId, uint _price) external returns (uint) {
+        return cdpManager.getCurrentICR(_cdpId, _price);  
     }
 
     function sortedTroves_findInsertPosition(uint _NICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32, bytes32) {

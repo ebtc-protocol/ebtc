@@ -15,7 +15,7 @@ contract('TroveManager', async accounts => {
 
   let contracts 
   let priceFeed
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let defaultPool
@@ -28,7 +28,7 @@ contract('TroveManager', async accounts => {
     ebtcToken = contracts.ebtcToken
     priceFeed = contracts.priceFeedTestnet
     sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
@@ -54,7 +54,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 10)) {
       borrowerOperations.addColl(account, account, { from: account, value: 1 })
@@ -90,7 +90,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 100)) {
       borrowerOperations.addColl(account, account, { from: account, value: 1 })
@@ -123,7 +123,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 10)) {
       borrowerOperations.addColl(account, account, { from: account, value: 1 })
@@ -156,7 +156,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 99)) {
       borrowerOperations.addColl(account, account, { from: account, value: 1 })
@@ -189,7 +189,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 999)) {
       borrowerOperations.addColl(account, account, { from: account, value: 1 })
@@ -230,7 +230,7 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     // Grab total active coll and debt before liquidations
     let totalETHPoolDifference = web3.utils.toBN(0)
@@ -240,7 +240,7 @@ contract('TroveManager', async accounts => {
       const activePoolETH = await activePool.getETH()
       const activePoolEBTCDebt = await activePool.getEBTC()
 
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
 
       const defaultPoolETH = await defaultPool.getETH()
       const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
@@ -273,14 +273,14 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 11)) {
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
     }
 
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 
@@ -322,14 +322,14 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 101)) {
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
     }
 
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 
@@ -371,14 +371,14 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 11)) {
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
 
     }
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 
@@ -420,15 +420,15 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     for (account of accounts.slice(1, 101)) {
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
     }
 
     // check (DefaultPool  - totalRewards)
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 
@@ -466,23 +466,23 @@ contract('TroveManager', async accounts => {
   // --- Error accumulation from repeated Liquidations - SP Pool, partial offsets  ---
 
   it("11 accounts. 10 liquidations, partial offsets. Check (DefaultPool - totalRewards) differences", async () => {
-   // Acct 99 opens trove with 100 EBTC
+   // Acct 99 opens cdp with 100 EBTC
     await borrowerOperations.openTrove(0, 0,  accounts[99], { from: accounts[99], value: dec(100, 'ether') })
     await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[99], {from: accounts[99]})
     
     await th.openTrove_allAccounts(accounts.slice(0, 11), contracts, dec(1, 'ether'), dec(170, 18))
 
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
-    // On loop: Account[99] adds 10 EBTC to pool -> a trove gets liquidated and partially offset against SP, emptying the SP
+    // On loop: Account[99] adds 10 EBTC to pool -> a cdp gets liquidated and partially offset against SP, emptying the SP
     for (account of accounts.slice(1, 11)) {
       await stabilityPool.provideToSP(dec(10, 18), ZERO_ADDRESS, {from: account[99]})
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
     }
     // check (DefaultPool - totalRewards from distribution)
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 
@@ -514,23 +514,23 @@ contract('TroveManager', async accounts => {
   */
 
   it("101 accounts. 100 liquidations, partial offsets. Check (DefaultPool - totalRewards) differences", async () => {
-    // Acct 99 opens trove with 100 EBTC
+    // Acct 99 opens cdp with 100 EBTC
      await borrowerOperations.openTrove(0, 0,  accounts[999], { from: accounts[999], value: dec(100, 'ether') })
      await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
      
      await th.openTrove_allAccounts(accounts.slice(0, 101), contracts, dec(1, 'ether'), dec(170, 18))
  
      await priceFeed.setPrice(dec(100, 18))
-     await troveManager.liquidate(accounts[0])
+     await cdpManager.liquidate(accounts[0])
  
-     // On loop: Account[99] adds 10 EBTC to pool -> a trove gets liquidated and partially offset against SP, emptying the SP
+     // On loop: Account[99] adds 10 EBTC to pool -> a cdp gets liquidated and partially offset against SP, emptying the SP
      for (account of accounts.slice(1, 101)) {
        await stabilityPool.provideToSP(dec(10, 18),ZERO_ADDRESS, {from: account[99]})
-       await troveManager.liquidate(account)
+       await cdpManager.liquidate(account)
      }
      // check (DefaultPool - totalRewards from distribution)
-     const L_ETH = await troveManager.L_ETH()
-     const L_EBTCDebt = await troveManager.L_EBTCDebt()
+     const L_ETH = await cdpManager.L_ETH()
+     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
  
      const totalColl = await activePool.getETH()
  
@@ -564,19 +564,19 @@ contract('TroveManager', async accounts => {
   // --- Error accumulation from SP withdrawals ---
 
   it("11 accounts. 10 Borrowers add to SP. 1 liquidation, 10 Borrowers withdraw all their SP funds", async () => {
-    // Acct 99 opens trove with 100 EBTC
+    // Acct 99 opens cdp with 100 EBTC
      await borrowerOperations.openTrove(0, 0,  accounts[999], { from: accounts[999], value: dec(100, 'ether') })
      await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
      
-     // Account 0 (to be liquidated) opens a trove
+     // Account 0 (to be liquidated) opens a cdp
      await borrowerOperations.openTrove(0, dec(100, 18), accounts[0],{from: accounts[0], value: dec(1, 'ether')})
 
-     // 9 Accounts open troves and provide to SP
+     // 9 Accounts open cdps and provide to SP
      await th.openTrove_allAccounts(accounts.slice(1, 11), contracts, dec(1, 'ether'), dec(100, 18))
      await th.provideToSP_allAccounts(accounts.slice(1,11), stabilityPool, dec(50, 18))
      
      await priceFeed.setPrice(dec(100, 18))
-     await troveManager.liquidate(accounts[0])
+     await cdpManager.liquidate(accounts[0])
  
      // All but one depositors withdraw their deposit
      for (account of accounts.slice(2, 11)) {
@@ -617,19 +617,19 @@ contract('TroveManager', async accounts => {
     */
 
    it("101 accounts. 100 Borrowers add to SP. 1 liquidation, 100 Borrowers withdraw all their SP funds", async () => {
-    // Acct 99 opens trove with 100 EBTC
+    // Acct 99 opens cdp with 100 EBTC
      await borrowerOperations.openTrove(0, 0,  accounts[999], { from: accounts[999], value: dec(100, 'ether') })
      await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
      
-     // Account 0 (to be liquidated) opens a trove
+     // Account 0 (to be liquidated) opens a cdp
      await borrowerOperations.openTrove(0, dec(100, 18), accounts[0],{from: accounts[0], value: dec(1, 'ether')})
 
-     // 10 Accounts open troves and provide to SP
+     // 10 Accounts open cdps and provide to SP
      await th.openTrove_allAccounts(accounts.slice(1, 101), contracts, dec(1, 'ether'), dec(100, 18))
      await th.provideToSP_allAccounts(accounts.slice(1,101), stabilityPool, dec(50, 18))
      
      await priceFeed.setPrice(dec(100, 18))
-     await troveManager.liquidate(accounts[0])
+     await cdpManager.liquidate(accounts[0])
  
      // All but one depositors withdraw their deposit
      for (account of accounts.slice(2, 101)) {
@@ -666,14 +666,14 @@ contract('TroveManager', async accounts => {
    */
 
    it("11 accounts. 10 Borrowers add to SP, random EBTC amounts. 1 liquidation, 10 Borrowers withdraw all their SP funds", async () => {
-    // Acct 99 opens trove with 100 EBTC
+    // Acct 99 opens cdp with 100 EBTC
      await borrowerOperations.openTrove(0, 0,  accounts[999], { from: accounts[999], value: dec(100, 'ether') })
      await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
      
-     // Account 0 (to be liquidated) opens a trove
+     // Account 0 (to be liquidated) opens a cdp
      await borrowerOperations.openTrove(0, dec(100, 18), accounts[0],{from: accounts[0], value: dec(1, 'ether')})
 
-     // 10 Accounts open troves and provide to SP
+     // 10 Accounts open cdps and provide to SP
      await th.openTrove_allAccounts(accounts.slice(1, 11), contracts, dec(1, 'ether'), dec(100, 18))
      await th.th.provideToSP_allAccounts_randomAmount(10, 90, accounts.slice(2,11), stabilityPool)
 
@@ -681,7 +681,7 @@ contract('TroveManager', async accounts => {
      await stabilityPool.provideToSP(account1SPDeposit, ZERO_ADDRESS, {from: accounts[1]} )
      
      await priceFeed.setPrice(dec(100, 18))
-     await troveManager.liquidate(accounts[0])
+     await cdpManager.liquidate(accounts[0])
  
      // All but one depositors withdraw their deposit
      
@@ -726,14 +726,14 @@ contract('TroveManager', async accounts => {
     */
 
    it("101 accounts. 100 Borrowers add to SP, random EBTC amounts. 1 liquidation, 100 Borrowers withdraw all their SP funds", async () => {
-    // Acct 99 opens trove with 100 EBTC
+    // Acct 99 opens cdp with 100 EBTC
      await borrowerOperations.openTrove(0, 0,  accounts[999], { from: accounts[999], value: dec(100, 'ether') })
      await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
      
-     // Account 0 (to be liquidated) opens a trove
+     // Account 0 (to be liquidated) opens a cdp
      await borrowerOperations.openTrove(0, dec(100, 18), accounts[0],{from: accounts[0], value: dec(1, 'ether')})
 
-     // 100 Accounts open troves and provide to SP
+     // 100 Accounts open cdps and provide to SP
      await th.openTrove_allAccounts(accounts.slice(1, 101), contracts, dec(1, 'ether'), dec(100, 18))
      await th.th.provideToSP_allAccounts_randomAmount(10, 90, accounts.slice(2,101), stabilityPool)
 
@@ -741,7 +741,7 @@ contract('TroveManager', async accounts => {
      await stabilityPool.provideToSP(account1SPDeposit,ZERO_ADDRESS, {from: accounts[1]} )
      
      await priceFeed.setPrice(dec(100, 18))
-     await troveManager.liquidate(accounts[0])
+     await cdpManager.liquidate(accounts[0])
  
      // All but one depositors withdraw their deposit
      for (account of accounts.slice(2, 101)) {
@@ -783,14 +783,14 @@ contract('TroveManager', async accounts => {
   */ 
 
  it("501 accounts. 500 Borrowers add to SP, random EBTC amounts. 1 liquidation, 500 Borrowers withdraw all their SP funds", async () => {
-  // Acct 99 opens trove with 100 EBTC
+  // Acct 99 opens cdp with 100 EBTC
    await borrowerOperations.openTrove(0, 0, accounts[999], { from: accounts[999], value: dec(100, 'ether') })
    await borrowerOperations.withdrawEBTC(0, dec(100, 18), accounts[999], {from: accounts[999]})
    
-   // Account 0 (to be liquidated) opens a trove
+   // Account 0 (to be liquidated) opens a cdp
    await borrowerOperations.openTrove(0, dec(100, 18), accounts[0],{from: accounts[0], value: dec(1, 'ether')})
 
-   // 500 Accounts open troves and provide to SP
+   // 500 Accounts open cdps and provide to SP
    await th.openTrove_allAccounts(accounts.slice(1, 501), contracts, dec(1, 'ether'), dec(100, 18))
    await th.th.provideToSP_allAccounts_randomAmount(10, 90, accounts.slice(2,501), stabilityPool)
 
@@ -798,7 +798,7 @@ contract('TroveManager', async accounts => {
    await stabilityPool.provideToSP(account1SPDeposit, ZERO_ADDRESS, {from: accounts[1]} )
    
    await priceFeed.setPrice(dec(100, 18))
-   await troveManager.liquidate(accounts[0])
+   await cdpManager.liquidate(accounts[0])
 
    // All but one depositors withdraw their deposit
    for (account of accounts.slice(2, 501)) {
@@ -843,15 +843,15 @@ contract('TroveManager', async accounts => {
   await priceFeed.setPrice(dec(100, 18))
  
   // Starting values for parallel off-chain computation
-  let offchainTotalStakes = await troveManager.totalStakes()
+  let offchainTotalStakes = await cdpManager.totalStakes()
   let offchainTotalColl = await activePool.getETH()
   let offchainStake = web3.utils.toBN(0)
   let stakeDifference = web3.utils.toBN(0)
   let totalStakesDifference = web3.utils.toBN(0)
 
-  // Loop over account range, alternately liquidating a Trove and opening a new trove
+  // Loop over account range, alternately liquidating a Trove and opening a new cdp
   for (i = 1; i < 10; i++) {
-    const stakeOfTroveToLiquidate = (await troveManager.Troves(accounts[i]))[2]
+    const stakeOfTroveToLiquidate = (await cdpManager.Troves(accounts[i]))[2]
     
     const newEntrantColl = web3.utils.toBN(dec(2, 18))
     
@@ -859,18 +859,18 @@ contract('TroveManager', async accounts => {
     Remove the old stake from total, calculate the new stake, add new stake to total. */
     offchainTotalStakes = offchainTotalStakes.sub(stakeOfTroveToLiquidate)
     offchainTotalColl = offchainTotalColl
-    // New trove opening creates a new stake, then adds 
+    // New cdp opening creates a new stake, then adds 
     offchainStake = (newEntrantColl.mul(offchainTotalStakes)).div(offchainTotalColl)
     offchainTotalStakes = offchainTotalStakes.add(offchainStake)
     offchainTotalColl = offchainTotalColl.add(newEntrantColl)
    
-    // Liquidate Trove 'i', and open trove from account '999 - i'
-    await troveManager.liquidate(accounts[i], {from: accounts[0]})
+    // Liquidate Trove 'i', and open cdp from account '999 - i'
+    await cdpManager.liquidate(accounts[i], {from: accounts[0]})
     await borrowerOperations.addColl(accounts[999 - i], accounts[999 - i], {from: accounts[999 - i], value: newEntrantColl })
   
     // Grab new stake and totalStakes on-chain
-    const newStake = (await troveManager.Troves(accounts[999 - i]))[2] 
-    const totalStakes = await troveManager.totalStakes()
+    const newStake = (await cdpManager.Troves(accounts[999 - i]))[2] 
+    const totalStakes = await cdpManager.totalStakes()
     
     stakeDifference = offchainStake.sub(newStake)
     totalStakesDifference = offchainTotalStakes.sub(totalStakes)
@@ -899,15 +899,15 @@ contract('TroveManager', async accounts => {
   await priceFeed.setPrice(dec(100, 18))
  
   // Starting values for parallel off-chain computation
-  let offchainTotalStakes = await troveManager.totalStakes()
+  let offchainTotalStakes = await cdpManager.totalStakes()
   let offchainTotalColl = await activePool.getETH()
   let offchainStake = web3.utils.toBN(0)
   let stakeDifference = web3.utils.toBN(0)
   let totalStakesDifference = web3.utils.toBN(0)
 
-  // Loop over account range, alternately liquidating a Trove and opening a new trove
+  // Loop over account range, alternately liquidating a Trove and opening a new cdp
   for (i = 1; i < 10; i++) {
-    const stakeOfTroveToLiquidate = (await troveManager.Troves(accounts[i]))[2]
+    const stakeOfTroveToLiquidate = (await cdpManager.Troves(accounts[i]))[2]
     
     const newEntrantColl = web3.utils.toBN(randAmountInWei(1, 100))
     
@@ -915,18 +915,18 @@ contract('TroveManager', async accounts => {
     Remove the old stake from total, calculate the new stake, add new stake to total. */
     offchainTotalStakes = offchainTotalStakes.sub(stakeOfTroveToLiquidate)
     offchainTotalColl = offchainTotalColl
-    // New trove opening creates a new stake, then adds 
+    // New cdp opening creates a new stake, then adds 
     offchainStake = (newEntrantColl.mul(offchainTotalStakes)).div(offchainTotalColl)
     offchainTotalStakes = offchainTotalStakes.add(offchainStake)
     offchainTotalColl = offchainTotalColl.add(newEntrantColl)
    
-    // Liquidate Trove 'i', and open trove from account '999 - i'
-    await troveManager.liquidate(accounts[i], {from: accounts[0]})
+    // Liquidate Trove 'i', and open cdp from account '999 - i'
+    await cdpManager.liquidate(accounts[i], {from: accounts[0]})
     await borrowerOperations.addColl(accounts[999 - i], accounts[999 - i], {from: accounts[999 - i], value: newEntrantColl })
   
     // Grab new stake and totalStakes on-chain
-    const newStake = (await troveManager.Troves(accounts[999 - i]))[2] 
-    const totalStakes = await troveManager.totalStakes()
+    const newStake = (await cdpManager.Troves(accounts[999 - i]))[2] 
+    const totalStakes = await cdpManager.totalStakes()
     
     stakeDifference = offchainStake.sub(newStake)
     totalStakesDifference = offchainTotalStakes.sub(totalStakes)
@@ -956,15 +956,15 @@ it("100 accounts. 100x liquidate -> addColl. Random coll. Check stake and totalS
   await priceFeed.setPrice(dec(100, 18))
  
   // Starting values for parallel off-chain computation
-  let offchainTotalStakes = await troveManager.totalStakes()
+  let offchainTotalStakes = await cdpManager.totalStakes()
   let offchainTotalColl = await activePool.getETH()
   let offchainStake = web3.utils.toBN(0)
   let stakeDifference = web3.utils.toBN(0)
   let totalStakesDifference = web3.utils.toBN(0)
 
-  // Loop over account range, alternately liquidating a Trove and opening a new trove
+  // Loop over account range, alternately liquidating a Trove and opening a new cdp
   for (i = 1; i < 100; i++) {
-    const stakeOfTroveToLiquidate = (await troveManager.Troves(accounts[i]))[2]
+    const stakeOfTroveToLiquidate = (await cdpManager.Troves(accounts[i]))[2]
     
     const newEntrantColl = web3.utils.toBN(randAmountInWei(12, 73422))
     
@@ -972,18 +972,18 @@ it("100 accounts. 100x liquidate -> addColl. Random coll. Check stake and totalS
     Remove the old stake from total, calculate the new stake, add new stake to total. */
     offchainTotalStakes = offchainTotalStakes.sub(stakeOfTroveToLiquidate)
     offchainTotalColl = offchainTotalColl
-    // New trove opening creates a new stake, then adds 
+    // New cdp opening creates a new stake, then adds 
     offchainStake = (newEntrantColl.mul(offchainTotalStakes)).div(offchainTotalColl)
     offchainTotalStakes = offchainTotalStakes.add(offchainStake)
     offchainTotalColl = offchainTotalColl.add(newEntrantColl)
    
-    // Liquidate Trove 'i', and open trove from account '999 - i'
-    await troveManager.liquidate(accounts[i], {from: accounts[0]})
+    // Liquidate Trove 'i', and open cdp from account '999 - i'
+    await cdpManager.liquidate(accounts[i], {from: accounts[0]})
     await borrowerOperations.addColl(accounts[999 - i], accounts[999 - i], {from: accounts[999 - i], value: newEntrantColl })
   
     // Grab new stake and totalStakes on-chain
-    const newStake = (await troveManager.Troves(accounts[999 - i]))[2] 
-    const totalStakes = await troveManager.totalStakes()
+    const newStake = (await cdpManager.Troves(accounts[999 - i]))[2] 
+    const totalStakes = await cdpManager.totalStakes()
     
     stakeDifference = offchainStake.sub(newStake)
     totalStakesDifference = offchainTotalStakes.sub(totalStakes)
@@ -1017,7 +1017,7 @@ it("11 accounts with random large coll, magnitude ~1e8 ether. 1 liquidation. 10 
 
   await priceFeed.setPrice(dec(100, 18))
 
-  await troveManager.liquidate(accounts[0])
+  await cdpManager.liquidate(accounts[0])
 
   for (account of accounts.slice(1, 10)) {
     // apply rewards
@@ -1054,7 +1054,7 @@ it("101 accounts with random large coll, magnitude ~1e8 ether. 1 liquidation. 50
 
   await priceFeed.setPrice(dec(100, 18))
 
-  await troveManager.liquidate(accounts[0])
+  await cdpManager.liquidate(accounts[0])
 
   for (account of accounts.slice(1, 100)) {
     // apply rewards
@@ -1089,14 +1089,14 @@ it("11 accounts with random ETH and proportional EBTC (180:1). 10 liquidations. 
 
   await priceFeed.setPrice(dec(100, 18))
 
-  await troveManager.liquidate(accounts[0])
+  await cdpManager.liquidate(accounts[0])
 
   for (account of accounts.slice(1, 11)) {
-    await troveManager.liquidate(account)
+    await cdpManager.liquidate(account)
   }
 
-  const L_ETH = await troveManager.L_ETH()
-  const L_EBTCDebt = await troveManager.L_EBTCDebt()
+  const L_ETH = await cdpManager.L_ETH()
+  const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
   const totalColl = await activePool.getETH()
 
@@ -1132,16 +1132,16 @@ it("11 accounts with random ETH and proportional EBTC (180:1). 10 liquidations. 
 
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(accounts[0])
+    await cdpManager.liquidate(accounts[0])
 
     // Grab total active coll and debt before liquidations
     for (account of accounts.slice(1, 101)) {
-      await troveManager.liquidate(account)
+      await cdpManager.liquidate(account)
     }
 
     // check (DefaultPool  - totalRewards)
-    const L_ETH = await troveManager.L_ETH()
-    const L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const L_ETH = await cdpManager.L_ETH()
+    const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getETH()
 

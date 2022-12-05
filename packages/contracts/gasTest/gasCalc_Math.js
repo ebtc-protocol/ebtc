@@ -15,12 +15,12 @@ contract('Gas costs for math functions', async accounts => {
   const lpRewardsAddress = accounts[999]
 
   let contracts
-  let troveManagerTester
+  let cdpManagerTester
   let mathTester
 
   before(async () => {
-    troveManagerTester = await TroveManagerTester.new()
-    TroveManagerTester.setAsDeployed(troveManagerTester)
+    cdpManagerTester = await TroveManagerTester.new()
+    TroveManagerTester.setAsDeployed(cdpManagerTester)
 
     mathTester = await LiquityMathTester.new()
     LiquityMathTester.setAsDeployed(mathTester)
@@ -33,7 +33,7 @@ contract('Gas costs for math functions', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool

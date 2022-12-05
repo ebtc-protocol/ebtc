@@ -16,7 +16,7 @@ async function main() {
       ARBITRARY_ADDRESS
     )
 
- const { troveManager, borrowerOperations, hintHelpers, sortedTroves, priceFeedTestnet } = coreContracts
+ const { cdpManager, borrowerOperations, hintHelpers, sortedTroves, priceFeedTestnet } = coreContracts
 
   await dh.connectCoreContracts(coreContracts, LQTYContracts)
   await dh.connectLQTYContracts(LQTYContracts)
@@ -34,17 +34,17 @@ async function main() {
   const ETHColl = toBN(toWei('5')) // borrower wants to lock 5 ETH collateral
 
   // Call deployed TroveManager contract to read the liquidation reserve and latest borrowing fee
-  const liquidationReserve = await troveManager.EBTC_GAS_COMPENSATION()
-  const expectedFee = await troveManager.getBorrowingFeeWithDecay(EBTCAmount)
+  const liquidationReserve = await cdpManager.EBTC_GAS_COMPENSATION()
+  const expectedFee = await cdpManager.getBorrowingFeeWithDecay(EBTCAmount)
   
-  // Total debt of the new trove = EBTC amount drawn, plus fee, plus the liquidation reserve
+  // Total debt of the new cdp = EBTC amount drawn, plus fee, plus the liquidation reserve
   const expectedDebt = EBTCAmount.add(expectedFee).add(liquidationReserve)
 
-  // Get the nominal NICR of the new trove
+  // Get the nominal NICR of the new cdp
   const _1e20 = toBN(toWei('100'))
   let NICR = ETHColl.mul(_1e20).div(expectedDebt)
 
-  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of troves) trials 
+  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
   let numTroves = await sortedTroves.getSize()
   let numTrials = numTroves.mul(toBN('15'))
@@ -57,20 +57,20 @@ async function main() {
   const maxFee = '5'.concat('0'.repeat(16)) // Slippage protection: 5%
   await borrowerOperations.openTrove(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
 
-  // --- adjust trove --- 
+  // --- adjust cdp --- 
 
   const collIncrease = toBN(toWei('1'))  // borrower wants to add 1 ETH
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 EBTC
 
-  // Get trove's current debt and coll
-  const {0: debt, 1: coll} = await troveManager.getEntireDebtAndColl(borrower)
+  // Get cdp's current debt and coll
+  const {0: debt, 1: coll} = await cdpManager.getEntireDebtAndColl(borrower)
   
   const newDebt = debt.sub(EBTCRepayment)
   const newColl = coll.add(collIncrease)
 
   NICR = newColl.mul(_1e20).div(newDebt)
 
-  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of troves) trials 
+  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
   // to get an approx. hint that is close to the right position.
   numTroves = await sortedTroves.getSize()
   numTrials = numTroves.mul(toBN('15'))
@@ -104,9 +104,9 @@ async function main() {
     approxPartialRedemptionHint))
 
   /* Finally, perform the on-chain redemption, passing the truncated EBTC amount, the correct hints, and the expected
-  * ICR of the final partially redeemed trove in the sequence. 
+  * ICR of the final partially redeemed cdp in the sequence. 
   */
-  await troveManager.redeemCollateral(truncatedEBTCAmount,
+  await cdpManager.redeemCollateral(truncatedEBTCAmount,
     firstRedemptionHint,
     exactPartialRedemptionHint[0],
     exactPartialRedemptionHint[1],

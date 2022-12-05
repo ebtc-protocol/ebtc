@@ -39,7 +39,7 @@ contract('TroveManager', async accounts => {
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let collSurplusPool
@@ -68,9 +68,9 @@ contract('TroveManager', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.troveManager = await TroveManagerTester.new()
+    contracts.cdpManager = await TroveManagerTester.new()
     contracts.ebtcToken = await EBTCTokenTester.new(
-      contracts.troveManager.address,
+      contracts.cdpManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
@@ -79,7 +79,7 @@ contract('TroveManager', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
@@ -110,22 +110,22 @@ contract('TroveManager', async accounts => {
   it("liquidate(): closes a Trove that has ICR < MCR", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
 
     const price = await priceFeed.getPrice()
-    const ICR_Before = await troveManager.getCurrentICR(_aliceTroveId, price)
+    const ICR_Before = await cdpManager.getCurrentICR(_aliceTroveId, price)
     assert.equal(ICR_Before, dec(4, 18))
 
-    const MCR = (await troveManager.MCR()).toString()
+    const MCR = (await cdpManager.MCR()).toString()
     assert.equal(MCR.toString(), '1100000000000000000')
 
     // Alice increases debt to 180 EBTC, lowering her ICR to 1.11
     const A_EBTCWithdrawal = await getNetBorrowingAmount(dec(130, 18))
 
     const targetICR = toBN('1111111111111111111')
-    await withdrawEBTC({_troveId: _aliceTroveId, ICR: targetICR, extraParams: { from: alice } })
+    await withdrawEBTC({_cdpId: _aliceTroveId, ICR: targetICR, extraParams: { from: alice } })
 
-    const ICR_AfterWithdrawal = await troveManager.getCurrentICR(_aliceTroveId, price)
+    const ICR_AfterWithdrawal = await cdpManager.getCurrentICR(_aliceTroveId, price)
     assert.isAtMost(th.getDifference(ICR_AfterWithdrawal, targetICR), 100)
 
     // price drops to 1ETH:100EBTC, reducing Alice's ICR below MCR
@@ -135,10 +135,10 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // close Trove
-    await troveManager.liquidate(_aliceTroveId, { from: owner });
+    await cdpManager.liquidate(_aliceTroveId, { from: owner });
 
     // check the Trove is successfully closed, and removed from sortedList
-    const status = (await troveManager.Troves(_aliceTroveId))[3]
+    const status = (await cdpManager.Troves(_aliceTroveId))[3]
     assert.equal(status, 3)  // status enum 3 corresponds to "Closed by liquidation"
     const alice_Trove_isInSortedList = await sortedTroves.contains(_aliceTroveId)
     assert.isFalse(alice_Trove_isInSortedList)
@@ -148,7 +148,7 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(21, 17)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
 
@@ -169,7 +169,7 @@ contract('TroveManager', async accounts => {
 
     /* close Bob's Trove. Should liquidate his ether and EBTC, 
     leaving Alice’s ether and EBTC debt in the ActivePool. */
-    await troveManager.liquidate(_bobTroveId, { from: owner });
+    await cdpManager.liquidate(_bobTroveId, { from: owner });
 
     // check ActivePool ETH and EBTC debt 
     const activePool_ETH_After = (await activePool.getETH()).toString()
@@ -185,7 +185,7 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(21, 17)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
 
@@ -205,7 +205,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // close Bob's Trove
-    await troveManager.liquidate(_bobTroveId, { from: owner });
+    await cdpManager.liquidate(_bobTroveId, { from: owner });
 
     // check after
     const defaultPool_ETH_After = (await defaultPool.getETH()).toString()
@@ -222,12 +222,12 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(21, 17)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
 
     // check totalStakes before
-    const totalStakes_Before = (await troveManager.totalStakes()).toString()
+    const totalStakes_Before = (await cdpManager.totalStakes()).toString()
     assert.equal(totalStakes_Before, A_collateral.add(B_collateral))
 
     // price drops to 1ETH:100EBTC, reducing Bob's ICR below MCR
@@ -237,49 +237,49 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Close Bob's Trove
-    await troveManager.liquidate(_bobTroveId, { from: owner });
+    await cdpManager.liquidate(_bobTroveId, { from: owner });
 
     // check totalStakes after
-    const totalStakes_After = (await troveManager.totalStakes()).toString()
+    const totalStakes_After = (await cdpManager.totalStakes()).toString()
     assert.equal(totalStakes_After, A_collateral)
   })
 
-  it("liquidate(): Removes the correct trove from the TroveOwners array, and moves the last array element to the new empty slot", async () => {
+  it("liquidate(): Removes the correct cdp from the TroveOwners array, and moves the last array element to the new empty slot", async () => {
     // --- SETUP --- 
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
 
-    // Alice, Bob, Carol, Dennis, Erin open troves with consecutively decreasing collateral ratio
+    // Alice, Bob, Carol, Dennis, Erin open cdps with consecutively decreasing collateral ratio
     await openTrove({ ICR: toBN(dec(218, 16)), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(216, 16)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(214, 16)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
     await openTrove({ ICR: toBN(dec(212, 16)), extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
     await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // At this stage, TroveOwners array should be: [W, A, B, C, D, E] 
 
     // Drop price
     await priceFeed.setPrice(dec(100, 18))
 
-    const arrayLength_Before = await troveManager.getTroveIdsCount()
+    const arrayLength_Before = await cdpManager.getTroveIdsCount()
     assert.equal(arrayLength_Before, 6)
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidate carol
-    await troveManager.liquidate(_carolTroveId)
+    await cdpManager.liquidate(_carolTroveId)
 
-    // Check Carol no longer has an active trove
+    // Check Carol no longer has an active cdp
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
     // Check length of array has decreased by 1
-    const arrayLength_After = await troveManager.getTroveIdsCount()
+    const arrayLength_After = await cdpManager.getTroveIdsCount()
     assert.equal(arrayLength_After, 5)
 
     /* After Carol is removed from array, the last element (Erin's address) should have been moved to fill 
@@ -287,25 +287,25 @@ contract('TroveManager', async accounts => {
   
     [W, A, B, E, D] 
 
-    Check all remaining troves in the array are in the correct order */
-    const trove_0 = await troveManager.TroveIds(0)
-    const trove_1 = await troveManager.TroveIds(1)
-    const trove_2 = await troveManager.TroveIds(2)
-    const trove_3 = await troveManager.TroveIds(3)
-    const trove_4 = await troveManager.TroveIds(4)
+    Check all remaining cdps in the array are in the correct order */
+    const cdp_0 = await cdpManager.TroveIds(0)
+    const cdp_1 = await cdpManager.TroveIds(1)
+    const cdp_2 = await cdpManager.TroveIds(2)
+    const cdp_3 = await cdpManager.TroveIds(3)
+    const cdp_4 = await cdpManager.TroveIds(4)
 
-    assert.equal(trove_0, _whaleTroveId)
-    assert.equal(trove_1, _aliceTroveId)
-    assert.equal(trove_2, _bobTroveId)
-    assert.equal(trove_3, _erinTroveId)
-    assert.equal(trove_4, _dennisTroveId)
+    assert.equal(cdp_0, _whaleTroveId)
+    assert.equal(cdp_1, _aliceTroveId)
+    assert.equal(cdp_2, _bobTroveId)
+    assert.equal(cdp_3, _erinTroveId)
+    assert.equal(cdp_4, _dennisTroveId)
 
-    // Check correct indices recorded on the active trove structs
-    const whale_arrayIndex = (await troveManager.Troves(_whaleTroveId))[4]
-    const alice_arrayIndex = (await troveManager.Troves(_aliceTroveId))[4]
-    const bob_arrayIndex = (await troveManager.Troves(_bobTroveId))[4]
-    const dennis_arrayIndex = (await troveManager.Troves(_dennisTroveId))[4]
-    const erin_arrayIndex = (await troveManager.Troves(_erinTroveId))[4]
+    // Check correct indices recorded on the active cdp structs
+    const whale_arrayIndex = (await cdpManager.Troves(_whaleTroveId))[4]
+    const alice_arrayIndex = (await cdpManager.Troves(_aliceTroveId))[4]
+    const bob_arrayIndex = (await cdpManager.Troves(_bobTroveId))[4]
+    const dennis_arrayIndex = (await cdpManager.Troves(_dennisTroveId))[4]
+    const erin_arrayIndex = (await cdpManager.Troves(_erinTroveId))[4]
 
     // [W, A, B, E, D] 
     assert.equal(whale_arrayIndex, 0)
@@ -319,13 +319,13 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(21, 17)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
 
     // check snapshots before 
-    const totalStakesSnapshot_Before = (await troveManager.totalStakesSnapshot()).toString()
-    const totalCollateralSnapshot_Before = (await troveManager.totalCollateralSnapshot()).toString()
+    const totalStakesSnapshot_Before = (await cdpManager.totalStakesSnapshot()).toString()
+    const totalCollateralSnapshot_Before = (await cdpManager.totalCollateralSnapshot()).toString()
     assert.equal(totalStakesSnapshot_Before, '0')
     assert.equal(totalCollateralSnapshot_Before, '0')
 
@@ -336,15 +336,15 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // close Bob's Trove.  His ether*0.995 and EBTC should be added to the DefaultPool.
-    await troveManager.liquidate(_bobTroveId, { from: owner });
+    await cdpManager.liquidate(_bobTroveId, { from: owner });
 
     /* check snapshots after. Total stakes should be equal to the  remaining stake then the system: 
     10 ether, Alice's stake.
      
     Total collateral should be equal to Alice's collateral plus her pending ETH reward (Bob’s collaterale*0.995 ether), earned
     from the liquidation of Bob's Trove */
-    const totalStakesSnapshot_After = (await troveManager.totalStakesSnapshot()).toString()
-    const totalCollateralSnapshot_After = (await troveManager.totalCollateralSnapshot()).toString()
+    const totalStakesSnapshot_After = (await cdpManager.totalStakesSnapshot()).toString()
+    const totalCollateralSnapshot_After = (await cdpManager.totalCollateralSnapshot()).toString()
 
     assert.equal(totalStakesSnapshot_After, A_collateral)
     assert.equal(totalCollateralSnapshot_After, A_collateral.add(th.applyLiquidationFee(B_collateral)))
@@ -354,9 +354,9 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(8, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
     const { collateral: C_collateral, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(111, 16)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     // --- TEST ---
 
@@ -368,12 +368,12 @@ contract('TroveManager', async accounts => {
 
     // close Carol's Trove.  
     assert.isTrue(await sortedTroves.contains(_carolTroveId))
-    await troveManager.liquidate(_carolTroveId, { from: owner });
+    await cdpManager.liquidate(_carolTroveId, { from: owner });
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
     // Carol's ether*0.995 and EBTC should be added to the DefaultPool.
-    const L_ETH_AfterCarolLiquidated = await troveManager.L_ETH()
-    const L_EBTCDebt_AfterCarolLiquidated = await troveManager.L_EBTCDebt()
+    const L_ETH_AfterCarolLiquidated = await cdpManager.L_ETH()
+    const L_EBTCDebt_AfterCarolLiquidated = await cdpManager.L_EBTCDebt()
 
     const L_ETH_expected_1 = th.applyLiquidationFee(C_collateral).mul(mv._1e18BN).div(A_collateral.add(B_collateral))
     const L_EBTCDebt_expected_1 = C_totalDebt.mul(mv._1e18BN).div(A_collateral.add(B_collateral))
@@ -381,7 +381,7 @@ contract('TroveManager', async accounts => {
     assert.isAtMost(th.getDifference(L_EBTCDebt_AfterCarolLiquidated, L_EBTCDebt_expected_1), 100)
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
-    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_troveId: _bobTroveId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
+    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_cdpId: _bobTroveId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
@@ -392,7 +392,7 @@ contract('TroveManager', async accounts => {
 
     // close Bob's Trove 
     assert.isTrue(await sortedTroves.contains(_bobTroveId))
-    await troveManager.liquidate(_bobTroveId, { from: owner });
+    await cdpManager.liquidate(_bobTroveId, { from: owner });
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
 
     /* Alice now has all the active stake. totalStakes in the system is now 10 ether.
@@ -405,8 +405,8 @@ contract('TroveManager', async accounts => {
    
    L_ETH = (0.995 / 20) + (10.4975*0.995  / 10) = 1.09425125 ETH
    L_EBTCDebt = (180 / 20) + (890 / 10) = 98 EBTC */
-    const L_ETH_AfterBobLiquidated = await troveManager.L_ETH()
-    const L_EBTCDebt_AfterBobLiquidated = await troveManager.L_EBTCDebt()
+    const L_ETH_AfterBobLiquidated = await cdpManager.L_ETH()
+    const L_EBTCDebt_AfterBobLiquidated = await cdpManager.L_EBTCDebt()
 
     const L_ETH_expected_2 = L_ETH_expected_1.add(th.applyLiquidationFee(B_collateral.add(B_collateral.mul(L_ETH_expected_1).div(mv._1e18BN))).mul(mv._1e18BN).div(A_collateral))
     const L_EBTCDebt_expected_2 = L_EBTCDebt_expected_1.add(B_totalDebt.add(B_increasedTotalDebt).add(B_collateral.mul(L_EBTCDebt_expected_1).div(mv._1e18BN)).mul(mv._1e18BN).div(A_collateral))
@@ -414,13 +414,13 @@ contract('TroveManager', async accounts => {
     assert.isAtMost(th.getDifference(L_EBTCDebt_AfterBobLiquidated, L_EBTCDebt_expected_2), 100)
   })
 
-  it("liquidate(): Liquidates undercollateralized trove if there are two troves in the system", async () => {
+  it("liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system", async () => {
     await openTrove({ ICR: toBN(dec(200, 18)), extraParams: { from: bob, value: dec(100, 'ether') } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
-    // Alice creates a single trove with 0.7 ETH and a debt of 70 EBTC, and provides 10 EBTC to SP
+    // Alice creates a single cdp with 0.7 ETH and a debt of 70 EBTC, and provides 10 EBTC to SP
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
 
     // Alice proves 10 EBTC to SP
     await stabilityPool.provideToSP(dec(10, 18), ZERO_ADDRESS, { from: alice })
@@ -431,21 +431,21 @@ contract('TroveManager', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const alice_ICR = (await troveManager.getCurrentICR(_aliceTroveId, price)).toString()
+    const alice_ICR = (await cdpManager.getCurrentICR(_aliceTroveId, price)).toString()
     assert.equal(alice_ICR, '1050000000000000000')
 
-    const activeTrovesCount_Before = await troveManager.getTroveIdsCount()
+    const activeTrovesCount_Before = await cdpManager.getTroveIdsCount()
 
     assert.equal(activeTrovesCount_Before, 2)
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Liquidate the trove
-    await troveManager.liquidate(_aliceTroveId, { from: owner })
+    // Liquidate the cdp
+    await cdpManager.liquidate(_aliceTroveId, { from: owner })
 
-    // Check Alice's trove is removed, and bob remains
-    const activeTrovesCount_After = await troveManager.getTroveIdsCount()
+    // Check Alice's cdp is removed, and bob remains
+    const activeTrovesCount_After = await cdpManager.getTroveIdsCount()
     assert.equal(activeTrovesCount_After, 1)
 
     const alice_isInSortedList = await sortedTroves.contains(_aliceTroveId)
@@ -455,11 +455,11 @@ contract('TroveManager', async accounts => {
     assert.isTrue(bob_isInSortedList)
   })
 
-  it("liquidate(): reverts if trove is non-existent", async () => {
+  it("liquidate(): reverts if cdp is non-existent", async () => {
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(21, 17)), extraParams: { from: bob } })
 
-    assert.equal(await troveManager.getTroveStatus(carol), 0) // check trove non-existent
+    assert.equal(await cdpManager.getTroveStatus(carol), 0) // check cdp non-existent
 
     assert.isFalse(await sortedTroves.contains(carol))
 
@@ -467,7 +467,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     try {
-      const txCarol = await troveManager.liquidate(carol)
+      const txCarol = await cdpManager.liquidate(carol)
 
       assert.isFalse(txCarol.receipt.status)
     } catch (err) {
@@ -476,30 +476,30 @@ contract('TroveManager', async accounts => {
     }
   })
 
-  it("liquidate(): reverts if trove has been closed", async () => {
+  it("liquidate(): reverts if cdp has been closed", async () => {
     await openTrove({ ICR: toBN(dec(8, 18)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     assert.isTrue(await sortedTroves.contains(_carolTroveId))
 
     // price drops, Carol ICR falls below MCR
     await priceFeed.setPrice(dec(100, 18))
 
-    // Carol liquidated, and her trove is closed
-    const txCarol_L1 = await troveManager.liquidate(_carolTroveId)
+    // Carol liquidated, and her cdp is closed
+    const txCarol_L1 = await cdpManager.liquidate(_carolTroveId)
     assert.isTrue(txCarol_L1.receipt.status)
 
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    assert.equal(await troveManager.getTroveStatus(_carolTroveId), 3)  // check trove closed by liquidation
+    assert.equal(await cdpManager.getTroveStatus(_carolTroveId), 3)  // check cdp closed by liquidation
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     try {
-      const txCarol_L2 = await troveManager.liquidate(_carolTroveId)
+      const txCarol_L2 = await cdpManager.liquidate(_carolTroveId)
 
       assert.isFalse(txCarol_L2.receipt.status)
     } catch (err) {
@@ -508,11 +508,11 @@ contract('TroveManager', async accounts => {
     }
   })
 
-  it("liquidate(): does nothing if trove has >= 110% ICR", async () => {
+  it("liquidate(): does nothing if cdp has >= 110% ICR", async () => {
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: whale } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     const TCR_Before = (await th.getTCR(contracts)).toString()
     const listSize_Before = (await sortedTroves.getSize()).toString()
@@ -520,14 +520,14 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
 
     // Check Bob's ICR > 110%
-    const bob_ICR = await troveManager.getCurrentICR(_bobTroveId, price)
+    const bob_ICR = await cdpManager.getCurrentICR(_bobTroveId, price)
     assert.isTrue(bob_ICR.gte(mv._MCR))
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Attempt to liquidate bob
-    await assertRevert(troveManager.liquidate(_bobTroveId), "TroveManager: nothing to liquidate")
+    await assertRevert(cdpManager.liquidate(_bobTroveId), "TroveManager: nothing to liquidate")
 
     // Check bob active, check whale active
     assert.isTrue((await sortedTroves.contains(_bobTroveId)))
@@ -540,7 +540,7 @@ contract('TroveManager', async accounts => {
     assert.equal(listSize_Before, listSize_After)
   })
 
-  it("liquidate(): Given the same price and no other trove changes, complete Pool offsets restore the TCR to its value prior to the defaulters opening troves", async () => {
+  it("liquidate(): Given the same price and no other cdp changes, complete Pool offsets restore the TCR to its value prior to the defaulters opening cdps", async () => {
     // Whale provides EBTC to SP
     const spDeposit = toBN(dec(100, 20))
     await openTrove({ ICR: toBN(dec(4, 18)), extraEBTCAmount: spDeposit, extraParams: { from: whale } })
@@ -557,10 +557,10 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(190, 16)), extraParams: { from: defaulter_2 } })
     await openTrove({ ICR: toBN(dec(196, 16)), extraParams: { from: defaulter_3 } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_4 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-    let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-    let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+    let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
     assert.isTrue((await sortedTroves.contains(_defaulter1TroveId)))
     assert.isTrue((await sortedTroves.contains(_defaulter2TroveId)))
@@ -574,16 +574,16 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // All defaulters liquidated
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter1TroveId)))
 
-    await troveManager.liquidate(_defaulter2TroveId)
+    await cdpManager.liquidate(_defaulter2TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter2TroveId)))
 
-    await troveManager.liquidate(_defaulter3TroveId)
+    await cdpManager.liquidate(_defaulter3TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter3TroveId)))
 
-    await troveManager.liquidate(_defaulter4TroveId)
+    await cdpManager.liquidate(_defaulter4TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter4TroveId)))
 
     // Price bounces back
@@ -609,10 +609,10 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(190, 16)), extraParams: { from: defaulter_2 } })
     await openTrove({ ICR: toBN(dec(196, 16)), extraParams: { from: defaulter_3 } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_4 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-    let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-    let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+    let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
     assert.isTrue((await sortedTroves.contains(_defaulter1TroveId)))
     assert.isTrue((await sortedTroves.contains(_defaulter2TroveId)))
@@ -627,22 +627,22 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Check TCR improves with each liquidation that is offset with Pool
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter1TroveId)))
     const TCR_2 = await th.getTCR(contracts)
     assert.isTrue(TCR_2.gte(TCR_1))
 
-    await troveManager.liquidate(_defaulter2TroveId)
+    await cdpManager.liquidate(_defaulter2TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter2TroveId)))
     const TCR_3 = await th.getTCR(contracts)
     assert.isTrue(TCR_3.gte(TCR_2))
 
-    await troveManager.liquidate(_defaulter3TroveId)
+    await cdpManager.liquidate(_defaulter3TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter3TroveId)))
     const TCR_4 = await th.getTCR(contracts)
     assert.isTrue(TCR_4.gte(TCR_3))
 
-    await troveManager.liquidate(_defaulter4TroveId)
+    await cdpManager.liquidate(_defaulter4TroveId)
     assert.isFalse((await sortedTroves.contains(_defaulter4TroveId)))
     const TCR_5 = await th.getTCR(contracts)
     assert.isTrue(TCR_5.gte(TCR_4))
@@ -660,10 +660,10 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(190, 16)), extraParams: { from: defaulter_2 } })
     await openTrove({ ICR: toBN(dec(196, 16)), extraParams: { from: defaulter_3 } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_4 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-    let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-    let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+    let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
     assert.isTrue((await sortedTroves.contains(_defaulter1TroveId)))
     assert.isTrue((await sortedTroves.contains(_defaulter2TroveId)))
@@ -675,8 +675,8 @@ contract('TroveManager', async accounts => {
 
     const TCR_0 = await th.getTCR(contracts)
 
-    const entireSystemCollBefore = await troveManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await troveManager.getEntireSystemDebt()
+    const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
+    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
 
     const expectedTCR_0 = entireSystemCollBefore.mul(price).div(entireSystemDebtBefore)
 
@@ -686,7 +686,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Check TCR does not decrease with each liquidation 
-    const liquidationTx_1 = await troveManager.liquidate(_defaulter1TroveId)
+    const liquidationTx_1 = await cdpManager.liquidate(_defaulter1TroveId)
     const [liquidatedDebt_1, liquidatedColl_1, gasComp_1] = th.getEmittedLiquidationValues(liquidationTx_1)
     assert.isFalse((await sortedTroves.contains(_defaulter1TroveId)))
     const TCR_1 = await th.getTCR(contracts)
@@ -699,7 +699,7 @@ contract('TroveManager', async accounts => {
 
     assert.isTrue(expectedTCR_1.eq(TCR_1))
 
-    const liquidationTx_2 = await troveManager.liquidate(_defaulter2TroveId)
+    const liquidationTx_2 = await cdpManager.liquidate(_defaulter2TroveId)
     const [liquidatedDebt_2, liquidatedColl_2, gasComp_2] = th.getEmittedLiquidationValues(liquidationTx_2)
     assert.isFalse((await sortedTroves.contains(_defaulter2TroveId)))
 
@@ -713,7 +713,7 @@ contract('TroveManager', async accounts => {
 
     assert.isTrue(expectedTCR_2.eq(TCR_2))
 
-    const liquidationTx_3 = await troveManager.liquidate(_defaulter3TroveId)
+    const liquidationTx_3 = await cdpManager.liquidate(_defaulter3TroveId)
     const [liquidatedDebt_3, liquidatedColl_3, gasComp_3] = th.getEmittedLiquidationValues(liquidationTx_3)
     assert.isFalse((await sortedTroves.contains(_defaulter3TroveId)))
 
@@ -729,7 +729,7 @@ contract('TroveManager', async accounts => {
     assert.isTrue(expectedTCR_3.eq(TCR_3))
 
 
-    const liquidationTx_4 = await troveManager.liquidate(_defaulter4TroveId)
+    const liquidationTx_4 = await cdpManager.liquidate(_defaulter4TroveId)
     const [liquidatedDebt_4, liquidatedColl_4, gasComp_4] = th.getEmittedLiquidationValues(liquidationTx_4)
     assert.isFalse((await sortedTroves.contains(_defaulter4TroveId)))
 
@@ -746,16 +746,16 @@ contract('TroveManager', async accounts => {
     assert.isTrue(expectedTCR_4.eq(TCR_4))
   })
 
-  it("liquidate(): does not affect the SP deposit or ETH gain when called on an SP depositor's address that has no trove", async () => {
+  it("liquidate(): does not affect the SP deposit or ETH gain when called on an SP depositor's address that has no cdp", async () => {
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     const spDeposit = toBN(dec(1, 24))	
 	
     await beadpSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("9999")});
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: spDeposit, extraParams: { from: bob } })
     const { C_totalDebt, C_collateral } = await openTrove({ ICR: toBN(dec(218, 16)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
-    // Bob sends tokens to Dennis, who has no trove
+    // Bob sends tokens to Dennis, who has no cdp
     await ebtcToken.transfer(dennis, spDeposit, { from: bob })
 
     //Dennis provides EBTC to SP
@@ -763,7 +763,7 @@ contract('TroveManager', async accounts => {
 
     // Carol gets liquidated
     await priceFeed.setPrice(dec(100, 18))
-    const liquidationTX_C = await troveManager.liquidate(_carolTroveId)
+    const liquidationTX_C = await cdpManager.liquidate(_carolTroveId)
     const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTX_C)
 
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
@@ -778,7 +778,7 @@ contract('TroveManager', async accounts => {
 
     // Attempt to liquidate Dennis
     try {
-      const txDennis = await troveManager.liquidate(dennis)
+      const txDennis = await cdpManager.liquidate(dennis)
       assert.isFalse(txDennis.receipt.status)
     } catch (err) {
       assert.include(err.message, "revert")
@@ -792,29 +792,29 @@ contract('TroveManager', async accounts => {
     assert.equal(dennis_ETHGain_Before, dennis_ETHGain_After)
   })
 
-  it("liquidate(): does not liquidate a SP depositor's trove with ICR > 110%, and does not affect their SP deposit or ETH gain", async () => {
+  it("liquidate(): does not liquidate a SP depositor's cdp with ICR > 110%, and does not affect their SP deposit or ETH gain", async () => {
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     const spDeposit = toBN(dec(1, 24))
 	
     await beadpSigner.sendTransaction({ to: bob, value: ethers.utils.parseEther("15200")});
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: spDeposit, extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
     await openTrove({ ICR: toBN(dec(218, 16)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     //Bob provides EBTC to SP
     await stabilityPool.provideToSP(spDeposit, ZERO_ADDRESS, { from: bob })
 
     // Carol gets liquidated
     await priceFeed.setPrice(dec(100, 18))
-    const liquidationTX_C = await troveManager.liquidate(_carolTroveId)
+    const liquidationTX_C = await cdpManager.liquidate(_carolTroveId)
     const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTX_C)
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    // price bounces back - Bob's trove is >110% ICR again
+    // price bounces back - Bob's cdp is >110% ICR again
     await priceFeed.setPrice(dec(200, 18))
     const price = await priceFeed.getPrice()
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).gt(mv._MCR))
 
     // Check Bob' SP deposit has absorbed Carol's debt, and he has received her liquidated ETH
     const bob_Deposit_Before = (await stabilityPool.getCompoundedEBTCDeposit(bob)).toString()
@@ -826,9 +826,9 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Attempt to liquidate Bob
-    await assertRevert(troveManager.liquidate(_bobTroveId), "TroveManager: nothing to liquidate")
+    await assertRevert(cdpManager.liquidate(_bobTroveId), "TroveManager: nothing to liquidate")
 
-    // Confirm Bob's trove is still active
+    // Confirm Bob's cdp is still active
     assert.isTrue(await sortedTroves.contains(_bobTroveId))
 
     // Check Bob' SP deposit does not change after liquidation attempt
@@ -838,23 +838,23 @@ contract('TroveManager', async accounts => {
     assert.equal(bob_ETHGain_Before, bob_ETHGain_After)
   })
 
-  it("liquidate(): liquidates a SP depositor's trove with ICR < 110%, and the liquidation correctly impacts their SP deposit and ETH gain", async () => {
+  it("liquidate(): liquidates a SP depositor's cdp with ICR < 110%, and the liquidation correctly impacts their SP deposit and ETH gain", async () => {
     const A_spDeposit = toBN(dec(3, 24))
     const B_spDeposit = toBN(dec(1, 24))
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
     await beadpSigner.sendTransaction({ to: alice, value: ethers.utils.parseEther("120681")});
     await openTrove({ ICR: toBN(dec(8, 18)), extraEBTCAmount: A_spDeposit, extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_debt } = await openTrove({ ICR: toBN(dec(218, 16)), extraEBTCAmount: B_spDeposit, extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
     const { collateral: C_collateral, totalDebt: C_debt } = await openTrove({ ICR: toBN(dec(210, 16)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     //Bob provides EBTC to SP
     await stabilityPool.provideToSP(B_spDeposit, ZERO_ADDRESS, { from: bob })
 
     // Carol gets liquidated
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(_carolTroveId)
+    await cdpManager.liquidate(_carolTroveId)
 
     // Check Bob' SP deposit has absorbed Carol's debt, and he has received her liquidated ETH
     const bob_Deposit_Before = await stabilityPool.getCompoundedEBTCDeposit(bob)
@@ -869,11 +869,11 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidate Bob
-    await troveManager.liquidate(_bobTroveId)
+    await cdpManager.liquidate(_bobTroveId)
 
-    // Confirm Bob's trove has been closed
+    // Confirm Bob's cdp has been closed
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
-    const bob_Trove_Status = ((await troveManager.Troves(_bobTroveId))[3]).toString()
+    const bob_Trove_Status = ((await cdpManager.Troves(_bobTroveId))[3]).toString()
     assert.equal(bob_Trove_Status, 3) // check closed by liquidation
 
     /* Alice's EBTC Loss = (300 / 400) * 200 = 150 EBTC
@@ -903,9 +903,9 @@ contract('TroveManager', async accounts => {
     const { ebtcAmount: A_ebtcAmount } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: toBN(dec(300, 18)), extraParams: { from: alice } })
     const { ebtcAmount: B_ebtcAmount } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: toBN(dec(200, 18)), extraParams: { from: bob } })
     const { ebtcAmount: C_ebtcAmount } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     await priceFeed.setPrice(dec(100, 18))
 
@@ -919,15 +919,15 @@ contract('TroveManager', async accounts => {
     const activeEBTCDebt_0 = await activePool.getEBTCDebt()
     const defaultEBTCDebt_0 = await defaultPool.getEBTCDebt()
 
-    await troveManager.liquidate(_aliceTroveId)
+    await cdpManager.liquidate(_aliceTroveId)
     const activeEBTCDebt_A = await activePool.getEBTCDebt()
     const defaultEBTCDebt_A = await defaultPool.getEBTCDebt()
 
-    await troveManager.liquidate(_bobTroveId)
+    await cdpManager.liquidate(_bobTroveId)
     const activeEBTCDebt_B = await activePool.getEBTCDebt()
     const defaultEBTCDebt_B = await defaultPool.getEBTCDebt()
 
-    await troveManager.liquidate(_carolTroveId)
+    await cdpManager.liquidate(_carolTroveId)
 
     // Confirm A, B, C closed
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -947,21 +947,21 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(8, 18)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(221, 16)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     // Defaulter opens with 60 EBTC, 0.6 ETH
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
     const price = await priceFeed.getPrice()
 
-    const alice_ICR_Before = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR_Before = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_Before = await troveManager.getCurrentICR(_carolTroveId, price)
+    const alice_ICR_Before = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR_Before = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_Before = await cdpManager.getCurrentICR(_carolTroveId, price)
 
     /* Before liquidation: 
     Alice ICR: = (2 * 100 / 50) = 400%
@@ -982,11 +982,11 @@ contract('TroveManager', async accounts => {
     B receives (30 * 1/4) = 7.5 EBTC, and (0.3*1/4) = 0.075 ETH
     C receives (30 * 1/4) = 7.5 EBTC, and (0.3*1/4) = 0.075 ETH
     */
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
 
-    const alice_ICR_After = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR_After = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_After = await troveManager.getCurrentICR(_carolTroveId, price)
+    const alice_ICR_After = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR_After = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_After = await cdpManager.getCurrentICR(_carolTroveId, price)
 
     /* After liquidation: 
 
@@ -1003,8 +1003,8 @@ contract('TroveManager', async accounts => {
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, 
     check that Bob's raw coll and debt has not changed, and that his "raw" ICR is above the MCR */
-    const bob_Coll = (await troveManager.Troves(_bobTroveId))[1]
-    const bob_Debt = (await troveManager.Troves(_bobTroveId))[0]
+    const bob_Coll = (await cdpManager.Troves(_bobTroveId))[1]
+    const bob_Debt = (await cdpManager.Troves(_bobTroveId))[0]
 
     const bob_rawICR = bob_Coll.mul(toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -1014,9 +1014,9 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate Alice, Bob, Carol
-    await assertRevert(troveManager.liquidate(_aliceTroveId), "TroveManager: nothing to liquidate")
-    await troveManager.liquidate(_bobTroveId)
-    await troveManager.liquidate(_carolTroveId)
+    await assertRevert(cdpManager.liquidate(_aliceTroveId), "TroveManager: nothing to liquidate")
+    await cdpManager.liquidate(_bobTroveId)
+    await cdpManager.liquidate(_carolTroveId)
 
     /* Check Alice stays active, Carol gets liquidated, and Bob gets liquidated 
    (because his pending rewards bring his ICR < MCR) */
@@ -1024,22 +1024,22 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await sortedTroves.contains(bob))
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    // Check trove statuses - A active (1),  B and C liquidated (3)
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '1')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '3')
+    // Check cdp statuses - A active (1),  B and C liquidated (3)
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '1')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '3')
   })
 
   it("liquidate(): when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves 
+    // A, B, C open cdps 
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -1054,8 +1054,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // Liquidate trove
-    await troveManager.liquidate(_defaulter1TroveId)
+    // Liquidate cdp
+    await cdpManager.liquidate(_defaulter1TroveId)
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
     const G_After = await stabilityPool.epochToScaleToG(0, 0)
@@ -1067,13 +1067,13 @@ contract('TroveManager', async accounts => {
   it("liquidate(): when SP is empty, doesn't update G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves 
+    // A, B, C open cdps 
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter_1 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -1097,8 +1097,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // liquidate trove
-    await troveManager.liquidate(_defaulter1TroveId)
+    // liquidate cdp
+    await cdpManager.liquidate(_defaulter1TroveId)
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
     const G_After = await stabilityPool.epochToScaleToG(0, 0)
@@ -1110,17 +1110,17 @@ contract('TroveManager', async accounts => {
   // --- liquidateTroves() ---
 
   it('liquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards', async () => {
-    // A, B, C, D, E open troves
+    // A, B, C, D, E open cdps
     await openTrove({ ICR: toBN(dec(333, 16)), extraParams: { from: D } })
     await openTrove({ ICR: toBN(dec(333, 16)), extraParams: { from: E } })
     await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: C } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
-    let _eTroveId = await sortedTroves.troveOfOwnerByIndex(E, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
 
     // Price drops
     await priceFeed.setPrice(dec(175, 18))
@@ -1130,7 +1130,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // A gets liquidated, creates pending rewards for all
-    const liqTxA = await troveManager.liquidate(_aTroveId)
+    const liqTxA = await cdpManager.liquidate(_aTroveId)
     assert.isTrue(liqTxA.receipt.status)
     assert.isFalse(await sortedTroves.contains(_aTroveId))
 
@@ -1144,32 +1144,32 @@ contract('TroveManager', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Confirm C has ICR > TCR
-    const TCR = await troveManager.getTCR(price)
-    const ICR_C = await troveManager.getCurrentICR(_cTroveId, price)
+    const TCR = await cdpManager.getTCR(price)
+    const ICR_C = await cdpManager.getCurrentICR(_cTroveId, price)
   
     assert.isTrue(ICR_C.gt(TCR))
 
     // Attempt to liquidate B and C, which skips C in the liquidation since it is immune
-    const liqTxBC = await troveManager.liquidateTroves(2)
+    const liqTxBC = await cdpManager.liquidateTroves(2)
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedTroves.contains(_bTroveId))
     assert.isTrue(await sortedTroves.contains(_cTroveId))
     assert.isTrue(await sortedTroves.contains(_dTroveId))
     assert.isTrue(await sortedTroves.contains(_eTroveId))
 
-    // // All remaining troves D and E repay a little debt, applying their pending rewards
+    // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedTroves.getSize()).eq(toBN('3')))
     await borrowerOperations.repayEBTC(_dTroveId, dec(1, 18), _dTroveId, _dTroveId, {from: D})
     await borrowerOperations.repayEBTC(_eTroveId, dec(1, 18), _eTroveId, _eTroveId, {from: E})
 
-    // Check C is the only trove that has pending rewards
-    assert.isTrue(await troveManager.hasPendingRewards(_cTroveId))
-    assert.isFalse(await troveManager.hasPendingRewards(_dTroveId))
-    assert.isFalse(await troveManager.hasPendingRewards(_eTroveId))
+    // Check C is the only cdp that has pending rewards
+    assert.isTrue(await cdpManager.hasPendingRewards(_cTroveId))
+    assert.isFalse(await cdpManager.hasPendingRewards(_dTroveId))
+    assert.isFalse(await cdpManager.hasPendingRewards(_eTroveId))
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
-    const pendingETH_C = await troveManager.getPendingETHReward(_cTroveId)
-    const pendingEBTCDebt_C = await troveManager.getPendingEBTCDebtReward(_cTroveId)
+    const pendingETH_C = await cdpManager.getPendingETHReward(_cTroveId)
+    const pendingEBTCDebt_C = await cdpManager.getPendingEBTCDebtReward(_cTroveId)
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -1187,8 +1187,8 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(50, 18))
 
-    // Try to liquidate C again. Check it succeeds and closes C's trove
-    const liqTx2 = await troveManager.liquidateTroves(2)
+    // Try to liquidate C again. Check it succeeds and closes C's cdp
+    const liqTx2 = await cdpManager.liquidateTroves(2)
     assert.isTrue(liqTx2.receipt.status)
     assert.isFalse(await sortedTroves.contains(_cTroveId))
     assert.isFalse(await sortedTroves.contains(_dTroveId))
@@ -1196,10 +1196,10 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await sortedTroves.getSize()).eq(toBN('1')))
   })
 
-  it('liquidateTroves(): closes every Trove with ICR < MCR, when n > number of undercollateralized troves', async () => {
+  it('liquidateTroves(): closes every Trove with ICR < MCR, when n > number of undercollateralized cdps', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
 
     // create 5 Troves with varying ICRs
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
@@ -1208,18 +1208,18 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(195, 16)), extraParams: { from: erin } })
     await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: flyn } })
 
-    // G,H, I open high-ICR troves
+    // G,H, I open high-ICR cdps
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: graham } })
     await openTrove({ ICR: toBN(dec(90, 18)), extraParams: { from: harriet } })
     await openTrove({ ICR: toBN(dec(80, 18)), extraParams: { from: ida } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
-    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
-    let _grahamTroveId = await sortedTroves.troveOfOwnerByIndex(graham, 0);
-    let _harrietTroveId = await sortedTroves.troveOfOwnerByIndex(harriet, 0);
-    let _idaTroveId = await sortedTroves.troveOfOwnerByIndex(ida, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
+    let _grahamTroveId = await sortedTroves.cdpOfOwnerByIndex(graham, 0);
+    let _harrietTroveId = await sortedTroves.cdpOfOwnerByIndex(harriet, 0);
+    let _idaTroveId = await sortedTroves.cdpOfOwnerByIndex(ida, 0);
 
     // Whale puts some tokens in Stability Pool
     await stabilityPool.provideToSP(dec(300, 18), ZERO_ADDRESS, { from: whale })
@@ -1233,57 +1233,57 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-E are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).lte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_flynTroveId, price)).lte(mv._MCR))
+    // Confirm cdps A-E are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).lte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_flynTroveId, price)).lte(mv._MCR))
 
-    // Confirm troves G, H, I are ICR > 110%
-    assert.isTrue((await troveManager.getCurrentICR(graham, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(harriet, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(ida, price)).gte(mv._MCR))
+    // Confirm cdps G, H, I are ICR > 110%
+    assert.isTrue((await cdpManager.getCurrentICR(graham, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(harriet, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(ida, price)).gte(mv._MCR))
 
     // Confirm Whale is ICR > 110% 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
-    // Liquidate 5 troves
-    await troveManager.liquidateTroves(5);
+    // Liquidate 5 cdps
+    await cdpManager.liquidateTroves(5);
 
-    // Confirm troves A-E have been removed from the system
+    // Confirm cdps A-E have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
     assert.isFalse(await sortedTroves.contains(_erinTroveId))
     assert.isFalse(await sortedTroves.contains(_flynTroveId))
 
-    // Check all troves A-E are now closed by liquidation
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_erinTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_flynTroveId))[3].toString(), '3')
+    // Check all cdps A-E are now closed by liquidation
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_erinTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_flynTroveId))[3].toString(), '3')
 
     // Check sorted list has been reduced to length 4 
     assert.equal((await sortedTroves.getSize()).toString(), '4')
   })
 
-  it('liquidateTroves(): liquidates  up to the requested number of undercollateralized troves', async () => {
+  it('liquidateTroves(): liquidates  up to the requested number of undercollateralized cdps', async () => {
     // --- SETUP --- 
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
-    // Alice, Bob, Carol, Dennis, Erin open troves with consecutively decreasing collateral ratio
+    // Alice, Bob, Carol, Dennis, Erin open cdps with consecutively decreasing collateral ratio
     await openTrove({ ICR: toBN(dec(202, 16)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(204, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(206, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(208, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: erin } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // --- TEST --- 
 
@@ -1293,21 +1293,21 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    await troveManager.liquidateTroves(3)
+    await cdpManager.liquidateTroves(3)
 
-    const TroveOwnersArrayLength = await troveManager.getTroveIdsCount()
+    const TroveOwnersArrayLength = await cdpManager.getTroveIdsCount()
     assert.equal(TroveOwnersArrayLength, '3')
 
-    // Check Alice, Bob, Carol troves have been closed
-    const aliceTroveStatus = (await troveManager.getTroveStatus(_aliceTroveId)).toString()
-    const bobTroveStatus = (await troveManager.getTroveStatus(_bobTroveId)).toString()
-    const carolTroveStatus = (await troveManager.getTroveStatus(_carolTroveId)).toString()
+    // Check Alice, Bob, Carol cdps have been closed
+    const aliceTroveStatus = (await cdpManager.getTroveStatus(_aliceTroveId)).toString()
+    const bobTroveStatus = (await cdpManager.getTroveStatus(_bobTroveId)).toString()
+    const carolTroveStatus = (await cdpManager.getTroveStatus(_carolTroveId)).toString()
 
     assert.equal(aliceTroveStatus, '3')
     assert.equal(bobTroveStatus, '3')
     assert.equal(carolTroveStatus, '3')
 
-    //  Check Alice, Bob, and Carol's trove are no longer in the sorted list
+    //  Check Alice, Bob, and Carol's cdp are no longer in the sorted list
     const alice_isInSortedList = await sortedTroves.contains(_aliceTroveId)
     const bob_isInSortedList = await sortedTroves.contains(_bobTroveId)
     const carol_isInSortedList = await sortedTroves.contains(_carolTroveId)
@@ -1316,9 +1316,9 @@ contract('TroveManager', async accounts => {
     assert.isFalse(bob_isInSortedList)
     assert.isFalse(carol_isInSortedList)
 
-    // Check Dennis, Erin still have active troves
-    const dennisTroveStatus = (await troveManager.getTroveStatus(_dennisTroveId)).toString()
-    const erinTroveStatus = (await troveManager.getTroveStatus(_erinTroveId)).toString()
+    // Check Dennis, Erin still have active cdps
+    const dennisTroveStatus = (await cdpManager.getTroveStatus(_dennisTroveId)).toString()
+    const erinTroveStatus = (await cdpManager.getTroveStatus(_erinTroveId)).toString()
 
     assert.equal(dennisTroveStatus, '1')
     assert.equal(erinTroveStatus, '1')
@@ -1331,17 +1331,17 @@ contract('TroveManager', async accounts => {
     assert.isTrue(erin_isInSortedList)
   })
 
-  it('liquidateTroves(): does nothing if all troves have ICR > 110%', async () => {
+  it('liquidateTroves(): does nothing if all cdps have ICR > 110%', async () => {
     await openTrove({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ ICR: toBN(dec(222, 16)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(222, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(222, 16)), extraParams: { from: carol } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
-    // Price drops, but all troves remain active at 111% ICR
+    // Price drops, but all cdps remain active at 111% ICR
     await priceFeed.setPrice(dec(100, 18))
     const price = await priceFeed.getPrice()
 
@@ -1353,18 +1353,18 @@ contract('TroveManager', async accounts => {
     const TCR_Before = (await th.getTCR(contracts)).toString()
     const listSize_Before = (await sortedTroves.getSize()).toString()
 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).gte(mv._MCR))
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Attempt liqudation sequence
-    await assertRevert(troveManager.liquidateTroves(10), "TroveManager: nothing to liquidate")
+    await assertRevert(cdpManager.liquidateTroves(10), "TroveManager: nothing to liquidate")
 
-    // Check all troves remain active
+    // Check all cdps remain active
     assert.isTrue((await sortedTroves.contains(_whaleTroveId)))
     assert.isTrue((await sortedTroves.contains(_aliceTroveId)))
     assert.isTrue((await sortedTroves.contains(_bobTroveId)))
@@ -1383,18 +1383,18 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(221, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_1 } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
     const price = await priceFeed.getPrice()
 
-    const alice_ICR_Before = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR_Before = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_Before = await troveManager.getCurrentICR(_carolTroveId, price)
+    const alice_ICR_Before = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR_Before = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_Before = await cdpManager.getCurrentICR(_carolTroveId, price)
 
     /* Before liquidation: 
     Alice ICR: = (2 * 100 / 100) = 200%
@@ -1407,11 +1407,11 @@ contract('TroveManager', async accounts => {
     assert.isTrue(carol_ICR_Before.lte(mv._MCR))
 
     // Liquidate defaulter. 30 EBTC and 0.3 ETH is distributed uniformly between A, B and C. Each receive 10 EBTC, 0.1 ETH
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
 
-    const alice_ICR_After = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR_After = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_After = await troveManager.getCurrentICR(_carolTroveId, price)
+    const alice_ICR_After = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR_After = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_After = await cdpManager.getCurrentICR(_carolTroveId, price)
 
     /* After liquidation: 
 
@@ -1425,8 +1425,8 @@ contract('TroveManager', async accounts => {
     assert.isTrue(carol_ICR_After.lte(mv._MCR))
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, check that Bob's raw coll and debt has not changed */
-    const bob_Coll = (await troveManager.Troves(_bobTroveId))[1]
-    const bob_Debt = (await troveManager.Troves(_bobTroveId))[0]
+    const bob_Coll = (await cdpManager.Troves(_bobTroveId))[1]
+    const bob_Debt = (await cdpManager.Troves(_bobTroveId))[0]
 
     const bob_rawICR = bob_Coll.mul(toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -1439,17 +1439,17 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     //liquidate A, B, C
-    await troveManager.liquidateTroves(10)
+    await cdpManager.liquidateTroves(10)
 
     // Check A stays active, B and C get liquidated
     assert.isTrue(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    // check trove statuses - A active (1),  B and C closed by liquidation (3)
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '1')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '3')
+    // check cdp statuses - A active (1),  B and C closed by liquidation (3)
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '1')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '3')
   })
 
   it("liquidateTroves(): reverts if n = 0", async () => {
@@ -1457,10 +1457,10 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(218, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(206, 16)), extraParams: { from: carol } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     await priceFeed.setPrice(dec(100, 18))
     const price = await priceFeed.getPrice()
@@ -1468,9 +1468,9 @@ contract('TroveManager', async accounts => {
     const TCR_Before = (await th.getTCR(contracts)).toString()
 
     // Confirm A, B, C ICRs are below 110%
-    const alice_ICR = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR = await troveManager.getCurrentICR(_carolTroveId, price)
+    const alice_ICR = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR = await cdpManager.getCurrentICR(_carolTroveId, price)
     assert.isTrue(alice_ICR.lte(mv._MCR))
     assert.isTrue(bob_ICR.lte(mv._MCR))
     assert.isTrue(carol_ICR.lte(mv._MCR))
@@ -1479,9 +1479,9 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidation with n = 0
-    await assertRevert(troveManager.liquidateTroves(0), "TroveManager: nothing to liquidate")
+    await assertRevert(cdpManager.liquidateTroves(0), "TroveManager: nothing to liquidate")
 
-    // Check all troves are still in the system
+    // Check all cdps are still in the system
     assert.isTrue(await sortedTroves.contains(_whaleTroveId))
     assert.isTrue(await sortedTroves.contains(_aliceTroveId))
     assert.isTrue(await sortedTroves.contains(_bobTroveId))
@@ -1493,25 +1493,25 @@ contract('TroveManager', async accounts => {
     assert.equal(TCR_Before, TCR_After)
   })
 
-  it("liquidateTroves():  liquidates troves with ICR < MCR", async () => {
+  it("liquidateTroves():  liquidates cdps with ICR < MCR", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves that will remain active when price drops to 100
+    // A, B, C open cdps that will remain active when price drops to 100
     await openTrove({ ICR: toBN(dec(220, 16)), extraParams: { from: alice } })
     await openTrove({ ICR: toBN(dec(230, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(240, 16)), extraParams: { from: carol } })
 
-    // D, E, F open troves that will fall below MCR when price drops to 100
+    // D, E, F open cdps that will fall below MCR when price drops to 100
     await openTrove({ ICR: toBN(dec(218, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(216, 16)), extraParams: { from: erin } })
     await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: flyn } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
-    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
 
     // Check list size is 7
     assert.equal((await sortedTroves.getSize()).toString(), '7')
@@ -1520,12 +1520,12 @@ contract('TroveManager', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
     const price = await priceFeed.getPrice()
 
-    const alice_ICR = await troveManager.getCurrentICR(_aliceTroveId, price)
-    const bob_ICR = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR = await troveManager.getCurrentICR(_carolTroveId, price)
-    const dennis_ICR = await troveManager.getCurrentICR(_dennisTroveId, price)
-    const erin_ICR = await troveManager.getCurrentICR(_erinTroveId, price)
-    const flyn_ICR = await troveManager.getCurrentICR(_flynTroveId, price)
+    const alice_ICR = await cdpManager.getCurrentICR(_aliceTroveId, price)
+    const bob_ICR = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR = await cdpManager.getCurrentICR(_carolTroveId, price)
+    const dennis_ICR = await cdpManager.getCurrentICR(_dennisTroveId, price)
+    const erin_ICR = await cdpManager.getCurrentICR(_erinTroveId, price)
+    const flyn_ICR = await cdpManager.getCurrentICR(_flynTroveId, price)
 
     // Check A, B, C have ICR above MCR
     assert.isTrue(alice_ICR.gte(mv._MCR))
@@ -1541,7 +1541,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     //Liquidate sequence
-    await troveManager.liquidateTroves(10)
+    await cdpManager.liquidateTroves(10)
 
     // check list size reduced to 4
     assert.equal((await sortedTroves.getSize()).toString(), '4')
@@ -1561,14 +1561,14 @@ contract('TroveManager', async accounts => {
   it("liquidateTroves(): does not affect the liquidated user's token balances", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // D, E, F open troves that will fall below MCR when price drops to 100
+    // D, E, F open cdps that will fall below MCR when price drops to 100
     await openTrove({ ICR: toBN(dec(218, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(216, 16)), extraParams: { from: erin } })
     await openTrove({ ICR: toBN(dec(210, 16)), extraParams: { from: flyn } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
-    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
+    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
 
     const D_balanceBefore = await ebtcToken.balanceOf(dennis)
     const E_balanceBefore = await ebtcToken.balanceOf(erin)
@@ -1585,7 +1585,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     //Liquidate sequence
-    await troveManager.liquidateTroves(10)
+    await cdpManager.liquidateTroves(10)
 
     // check list size reduced to 1
     assert.equal((await sortedTroves.getSize()).toString(), '1')
@@ -1598,7 +1598,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await sortedTroves.contains(_erinTroveId))
     assert.isFalse(await sortedTroves.contains(_flynTroveId))
 
-    // Check token balances of users whose troves were liquidated, have not changed
+    // Check token balances of users whose cdps were liquidated, have not changed
     assert.equal((await ebtcToken.balanceOf(dennis)).toString(), D_balanceBefore)
     assert.equal((await ebtcToken.balanceOf(erin)).toString(), E_balanceBefore)
     assert.equal((await ebtcToken.balanceOf(flyn)).toString(), F_balanceBefore)
@@ -1618,10 +1618,10 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(156, 16)), extraParams: { from: defaulter_2 } })
     await openTrove({ ICR: toBN(dec(183, 16)), extraParams: { from: defaulter_3 } })
     await openTrove({ ICR: toBN(dec(166, 16)), extraParams: { from: defaulter_4 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-    let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-    let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+    let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
     assert.isTrue((await sortedTroves.contains(_defaulter1TroveId)))
     assert.isTrue((await sortedTroves.contains(_defaulter2TroveId)))
@@ -1641,8 +1641,8 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Liquidate troves
-    await troveManager.liquidateTroves(10)
+    // Liquidate cdps
+    await cdpManager.liquidateTroves(10)
 
     // Check pool has been emptied by the liquidations
     assert.equal((await stabilityPool.getTotalEBTCDeposits()).toString(), '0')
@@ -1653,7 +1653,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse((await sortedTroves.contains(_defaulter3TroveId)))
     assert.isFalse((await sortedTroves.contains(_defaulter4TroveId)))
 
-    // check system sized reduced to 5 troves
+    // check system sized reduced to 5 cdps
     assert.equal((await sortedTroves.getSize()).toString(), '5')
 
     // Check that the liquidation sequence has improved the TCR
@@ -1672,10 +1672,10 @@ contract('TroveManager', async accounts => {
     const { collateral: d2_coll, totalDebt: d2_debt } = await openTrove({ ICR: toBN(dec(156, 16)), extraParams: { from: defaulter_2 } })
     const { collateral: d3_coll, totalDebt: d3_debt } = await openTrove({ ICR: toBN(dec(183, 16)), extraParams: { from: defaulter_3 } })
     const { collateral: d4_coll, totalDebt: d4_debt } = await openTrove({ ICR: toBN(dec(166, 16)), extraParams: { from: defaulter_4 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-    let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-    let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+    let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
     const totalCollNonDefaulters = W_coll.add(A_coll).add(B_coll).add(C_coll).add(D_coll)
     const totalCollDefaulters = d1_coll.add(d2_coll).add(d3_coll).add(d4_coll)
@@ -1703,7 +1703,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidate
-    await troveManager.liquidateTroves(10)
+    await cdpManager.liquidateTroves(10)
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedTroves.contains(_defaulter1TroveId)))
@@ -1711,7 +1711,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse((await sortedTroves.contains(_defaulter3TroveId)))
     assert.isFalse((await sortedTroves.contains(_defaulter4TroveId)))
 
-    // check system sized reduced to 5 troves
+    // check system sized reduced to 5 cdps
     assert.equal((await sortedTroves.getSize()).toString(), '5')
 
     // Check that the liquidation sequence has reduced the TCR
@@ -1722,7 +1722,7 @@ contract('TroveManager', async accounts => {
     assert.isTrue(TCR_After.gte(TCR_Before.mul(toBN(995)).div(toBN(1000))))
   })
 
-  it("liquidateTroves(): Liquidating troves with SP deposits correctly impacts their SP deposit and ETH gain", async () => {
+  it("liquidateTroves(): Liquidating cdps with SP deposits correctly impacts their SP deposit and ETH gain", async () => {
     // Whale provides 400 EBTC to the SP
     const whaleDeposit = toBN(dec(40000, 18))
     await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("21101")});
@@ -1734,9 +1734,9 @@ contract('TroveManager', async accounts => {
     const { collateral: A_coll, totalDebt: A_debt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_deposit, extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_debt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_deposit, extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_debt } = await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     const liquidatedColl = A_coll.add(B_coll).add(C_coll)
     const liquidatedDebt = A_debt.add(B_debt).add(C_debt)
@@ -1758,14 +1758,14 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidate
-    await troveManager.liquidateTroves(10)
+    await cdpManager.liquidateTroves(10)
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedTroves.contains(_aliceTroveId)))
     assert.isFalse((await sortedTroves.contains(_bobTroveId)))
     assert.isFalse((await sortedTroves.contains(_carolTroveId)))
 
-    // check system sized reduced to 1 troves
+    // check system sized reduced to 1 cdps
     assert.equal((await sortedTroves.getSize()).toString(), '1')
 
     /* Prior to liquidation, SP deposits were:
@@ -1796,7 +1796,7 @@ contract('TroveManager', async accounts => {
     Total remaining deposits: 150 EBTC
     Total ETH gain: 4.975 ETH */
 
-    // Check remaining EBTC Deposits and ETH gain, for whale and depositors whose troves were liquidated
+    // Check remaining EBTC Deposits and ETH gain, for whale and depositors whose cdps were liquidated
     const whale_Deposit_After = await stabilityPool.getCompoundedEBTCDeposit(whale)
     const alice_Deposit_After = await stabilityPool.getCompoundedEBTCDeposit(alice)
     const bob_Deposit_After = await stabilityPool.getCompoundedEBTCDeposit(bob)
@@ -1824,15 +1824,15 @@ contract('TroveManager', async accounts => {
   it("liquidateTroves(): when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves
+    // A, B, C open cdps
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(219, 16)), extraParams: { from: defaulter_1 } })
     await openTrove({ ICR: toBN(dec(213, 16)), extraParams: { from: defaulter_2 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -1847,8 +1847,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // Liquidate troves
-    await troveManager.liquidateTroves(2)
+    // Liquidate cdps
+    await cdpManager.liquidateTroves(2)
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
@@ -1861,15 +1861,15 @@ contract('TroveManager', async accounts => {
   it("liquidateTroves(): when SP is empty, doesn't update G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves
+    // A, B, C open cdps
     await openTrove({ ICR: toBN(dec(4, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: toBN(dec(100, 18)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(219, 16)), extraParams: { from: defaulter_1 } })
     await openTrove({ ICR: toBN(dec(213, 16)), extraParams: { from: defaulter_2 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -1893,8 +1893,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // liquidate troves
-    await troveManager.liquidateTroves(2)
+    // liquidate cdps
+    await cdpManager.liquidateTroves(2)
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
@@ -1908,17 +1908,17 @@ contract('TroveManager', async accounts => {
   // --- batchLiquidateTroves() ---
 
   it('batchLiquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards', async () => {
-    // A, B, C, D, E open troves 
+    // A, B, C, D, E open cdps 
     await openTrove({ ICR: toBN(dec(300, 16)), extraParams: { from: C } })
     await openTrove({ ICR: toBN(dec(364, 16)), extraParams: { from: D } })
     await openTrove({ ICR: toBN(dec(364, 16)), extraParams: { from: E } })
     await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: B } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
-    let _eTroveId = await sortedTroves.troveOfOwnerByIndex(E, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
+    let _eTroveId = await sortedTroves.cdpOfOwnerByIndex(E, 0);
 
     // Price drops
     await priceFeed.setPrice(dec(175, 18))
@@ -1928,7 +1928,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // A gets liquidated, creates pending rewards for all
-    const liqTxA = await troveManager.liquidate(_aTroveId)
+    const liqTxA = await cdpManager.liquidate(_aTroveId)
     assert.isTrue(liqTxA.receipt.status)
     assert.isFalse(await sortedTroves.contains(_aTroveId))
 
@@ -1942,32 +1942,32 @@ contract('TroveManager', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Confirm C has ICR > TCR
-    const TCR = await troveManager.getTCR(price)
-    const ICR_C = await troveManager.getCurrentICR(_cTroveId, price)
+    const TCR = await cdpManager.getTCR(price)
+    const ICR_C = await cdpManager.getCurrentICR(_cTroveId, price)
   
     assert.isTrue(ICR_C.gt(TCR))
 
     // Attempt to liquidate B and C, which skips C in the liquidation since it is immune
-    const liqTxBC = await troveManager.liquidateTroves(2)
+    const liqTxBC = await cdpManager.liquidateTroves(2)
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedTroves.contains(_bTroveId))
     assert.isTrue(await sortedTroves.contains(_cTroveId))
     assert.isTrue(await sortedTroves.contains(_dTroveId))
     assert.isTrue(await sortedTroves.contains(_eTroveId))
 
-    // // All remaining troves D and E repay a little debt, applying their pending rewards
+    // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedTroves.getSize()).eq(toBN('3')))
     await borrowerOperations.repayEBTC(_dTroveId, dec(1, 18), _dTroveId, _dTroveId, {from: D})
     await borrowerOperations.repayEBTC(_eTroveId, dec(1, 18), _eTroveId, _eTroveId, {from: E})
 
-    // Check C is the only trove that has pending rewards
-    assert.isTrue(await troveManager.hasPendingRewards(_cTroveId))
-    assert.isFalse(await troveManager.hasPendingRewards(_dTroveId))
-    assert.isFalse(await troveManager.hasPendingRewards(_eTroveId))
+    // Check C is the only cdp that has pending rewards
+    assert.isTrue(await cdpManager.hasPendingRewards(_cTroveId))
+    assert.isFalse(await cdpManager.hasPendingRewards(_dTroveId))
+    assert.isFalse(await cdpManager.hasPendingRewards(_eTroveId))
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
-    const pendingETH_C = await troveManager.getPendingETHReward(_cTroveId)
-    const pendingEBTCDebt_C = await troveManager.getPendingEBTCDebtReward(_cTroveId)
+    const pendingETH_C = await cdpManager.getPendingETHReward(_cTroveId)
+    const pendingEBTCDebt_C = await cdpManager.getPendingEBTCDebtReward(_cTroveId)
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -1985,8 +1985,8 @@ contract('TroveManager', async accounts => {
 
     await priceFeed.setPrice(dec(50, 18))
 
-    // Try to liquidate C again. Check it succeeds and closes C's trove
-    const liqTx2 = await troveManager.batchLiquidateTroves([_cTroveId,_dTroveId])
+    // Try to liquidate C again. Check it succeeds and closes C's cdp
+    const liqTx2 = await cdpManager.batchLiquidateTroves([_cTroveId,_dTroveId])
     assert.isTrue(liqTx2.receipt.status)
     assert.isFalse(await sortedTroves.contains(_cTroveId))
     assert.isFalse(await sortedTroves.contains(_dTroveId))
@@ -1994,7 +1994,7 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await sortedTroves.getSize()).eq(toBN('1')))
   })
 
-  it('batchLiquidateTroves(): closes every trove with ICR < MCR in the given array', async () => {
+  it('batchLiquidateTroves(): closes every cdp with ICR < MCR in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2003,12 +2003,12 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(2000, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(1800, 16)), extraParams: { from: erin } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // Check full sorted list size is 6
     assert.equal((await sortedTroves.getSize()).toString(), '6')
@@ -2025,36 +2025,36 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-C are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    // Confirm cdps A-C are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
 
     // Confirm D-E are ICR > 110%
-    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
 
     // Confirm Whale is ICR >= 110% 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId, _carolTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await cdpManager.batchLiquidateTroves(liquidationArray);
 
-    // Confirm troves A-C have been removed from the system
+    // Confirm cdps A-C have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    // Check all troves A-C are now closed by liquidation
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '3')
+    // Check all cdps A-C are now closed by liquidation
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '3')
 
     // Check sorted list has been reduced to length 3
     assert.equal((await sortedTroves.getSize()).toString(), '3')
   })
 
-  it('batchLiquidateTroves(): does not liquidate troves that are not in the given array', async () => {
+  it('batchLiquidateTroves(): does not liquidate cdps that are not in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2063,11 +2063,11 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: toBN(dec(500, 18)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: toBN(dec(500, 18)), extraParams: { from: erin } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // Check full sorted list size is 6
     assert.equal((await sortedTroves.getSize()).toString(), '6')
@@ -2084,39 +2084,39 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-E are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).lt(mv._MCR))
+    // Confirm cdps A-E are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).lt(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId]  // C-E not included
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await cdpManager.batchLiquidateTroves(liquidationArray);
 
-    // Confirm troves A-B have been removed from the system
+    // Confirm cdps A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
 
-    // Check all troves A-B are now closed by liquidation
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
+    // Check all cdps A-B are now closed by liquidation
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
 
-    // Confirm troves C-E remain in the system
+    // Confirm cdps C-E remain in the system
     assert.isTrue(await sortedTroves.contains(_carolTroveId))
     assert.isTrue(await sortedTroves.contains(_dennisTroveId))
     assert.isTrue(await sortedTroves.contains(_erinTroveId))
 
-    // Check all troves C-E are still active
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '1')
-    assert.equal((await troveManager.Troves(_dennisTroveId))[3].toString(), '1')
-    assert.equal((await troveManager.Troves(_erinTroveId))[3].toString(), '1')
+    // Check all cdps C-E are still active
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '1')
+    assert.equal((await cdpManager.Troves(_dennisTroveId))[3].toString(), '1')
+    assert.equal((await cdpManager.Troves(_erinTroveId))[3].toString(), '1')
 
     // Check sorted list has been reduced to length 4
     assert.equal((await sortedTroves.getSize()).toString(), '4')
   })
 
-  it('batchLiquidateTroves(): does not close troves with ICR >= MCR in the given array', async () => {
+  it('batchLiquidateTroves(): does not close cdps with ICR >= MCR in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2125,12 +2125,12 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(195, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(2000, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(1800, 16)), extraParams: { from: erin } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // Check full sorted list size is 6
     assert.equal((await sortedTroves.getSize()).toString(), '6')
@@ -2147,29 +2147,29 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-C are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
+    // Confirm cdps A-C are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_carolTroveId, price)).lt(mv._MCR))
 
     // Confirm D-E are ICR >= 110%
-    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
 
     // Confirm Whale is ICR > 110% 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId, _carolTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await cdpManager.batchLiquidateTroves(liquidationArray);
 
-    // Confirm troves D-E and whale remain in the system
+    // Confirm cdps D-E and whale remain in the system
     assert.isTrue(await sortedTroves.contains(_dennisTroveId))
     assert.isTrue(await sortedTroves.contains(_erinTroveId))
     assert.isTrue(await sortedTroves.contains(_whaleTroveId))
 
-    // Check all troves D-E and whale remain active
-    assert.equal((await troveManager.Troves(_dennisTroveId))[3].toString(), '1')
-    assert.equal((await troveManager.Troves(_erinTroveId))[3].toString(), '1')
+    // Check all cdps D-E and whale remain active
+    assert.equal((await cdpManager.Troves(_dennisTroveId))[3].toString(), '1')
+    assert.equal((await cdpManager.Troves(_erinTroveId))[3].toString(), '1')
     assert.isTrue(await sortedTroves.contains(_whaleTroveId))
 
     // Check sorted list has been reduced to length 3
@@ -2203,14 +2203,14 @@ contract('TroveManager', async accounts => {
 
     liquidationArray = []
     try {
-      const tx = await troveManager.batchLiquidateTroves(liquidationArray);
+      const tx = await cdpManager.batchLiquidateTroves(liquidationArray);
       assert.isFalse(tx.receipt.status)
     } catch (error) {
       assert.include(error.message, "TroveManager: Calldata address array must not be empty")
     }
   })
 
-  it("batchLiquidateTroves(): skips if trove is non-existent", async () => {
+  it("batchLiquidateTroves(): skips if cdp is non-existent", async () => {
     // --- SETUP ---
     const spDeposit = toBN(dec(500000, 18))
     await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("252251")});
@@ -2220,13 +2220,13 @@ contract('TroveManager', async accounts => {
     const { totalDebt: B_debt } = await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(2000, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(1800, 16)), extraParams: { from: erin } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
-    assert.equal(await troveManager.getTroveStatus(carol), 0) // check trove non-existent
+    assert.equal(await cdpManager.getTroveStatus(carol), 0) // check cdp non-existent
 
     // Check full sorted list size is 6
     assert.equal((await sortedTroves.getSize()).toString(), '5')
@@ -2243,35 +2243,35 @@ contract('TroveManager', async accounts => {
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-B are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    // Confirm cdps A-B are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
 
     // Confirm D-E are ICR > 110%
-    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
 
     // Confirm Whale is ICR >= 110% 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
-    // Liquidate - trove C in between the ones to be liquidated!
+    // Liquidate - cdp C in between the ones to be liquidated!
     const liquidationArray = [_aliceTroveId, carol, _bobTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await cdpManager.batchLiquidateTroves(liquidationArray);
 
-    // Confirm troves A-B have been removed from the system
+    // Confirm cdps A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
 
-    // Check all troves A-B are now closed by liquidation
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
+    // Check all cdps A-B are now closed by liquidation
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
 
     // Check sorted list has been reduced to length 3
     assert.equal((await sortedTroves.getSize()).toString(), '3')
 
-    // Confirm trove C non-existent
+    // Confirm cdp C non-existent
     assert.isFalse(await sortedTroves.contains(carol))
-    assert.equal((await troveManager.Troves(carol))[3].toString(), '0')
+    assert.equal((await cdpManager.Troves(carol))[3].toString(), '0')
 
     // Check Stability pool has only been reduced by A-B
     th.assertIsApproximatelyEqual((await stabilityPool.getTotalEBTCDeposits()).toString(), spDeposit.sub(A_debt).sub(B_debt))
@@ -2280,7 +2280,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
   })
 
-  it("batchLiquidateTroves(): skips if a trove has been closed", async () => {
+  it("batchLiquidateTroves(): skips if a cdp has been closed", async () => {
     // --- SETUP ---
     const spDeposit = toBN(dec(500000, 18))
     await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("252251")});
@@ -2291,12 +2291,12 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(195, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(2000, 16)), extraParams: { from: dennis } })
     await openTrove({ ICR: toBN(dec(1800, 16)), extraParams: { from: erin } })
-    let _whaleTroveId = await sortedTroves.troveOfOwnerByIndex(whale, 0);
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _whaleTroveId = await sortedTroves.cdpOfOwnerByIndex(whale, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     assert.isTrue(await sortedTroves.contains(_carolTroveId))
 
@@ -2306,7 +2306,7 @@ contract('TroveManager', async accounts => {
     // Whale puts some tokens in Stability Pool
     await stabilityPool.provideToSP(spDeposit, ZERO_ADDRESS, { from: whale })
 
-    // Whale transfers to Carol so she can close her trove
+    // Whale transfers to Carol so she can close her cdp
     await ebtcToken.transfer(carol, dec(100, 18), { from: whale })
 
     // --- TEST ---
@@ -2315,41 +2315,41 @@ contract('TroveManager', async accounts => {
     await priceFeed.setPrice(dec(100, 18));
     const price = await priceFeed.getPrice()
 
-    // Carol liquidated, and her trove is closed
+    // Carol liquidated, and her cdp is closed
     const txCarolClose = await borrowerOperations.closeTrove(_carolTroveId, { from: carol })
     assert.isTrue(txCarolClose.receipt.status)
 
     assert.isFalse(await sortedTroves.contains(_carolTroveId))
 
-    assert.equal(await troveManager.getTroveStatus(_carolTroveId), 2)  // check trove closed
+    assert.equal(await cdpManager.getTroveStatus(_carolTroveId), 2)  // check cdp closed
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
-    // Confirm troves A-B are ICR < 110%
-    assert.isTrue((await troveManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
+    // Confirm cdps A-B are ICR < 110%
+    assert.isTrue((await cdpManager.getCurrentICR(_aliceTroveId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_bobTroveId, price)).lt(mv._MCR))
 
     // Confirm D-E are ICR > 110%
-    assert.isTrue((await troveManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
-    assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_dennisTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_erinTroveId, price)).gte(mv._MCR))
 
     // Confirm Whale is ICR >= 110% 
-    assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
+    assert.isTrue((await cdpManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
-    // Liquidate - trove C in between the ones to be liquidated!
+    // Liquidate - cdp C in between the ones to be liquidated!
     const liquidationArray = [_aliceTroveId, _carolTroveId, _bobTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await cdpManager.batchLiquidateTroves(liquidationArray);
 
-    // Confirm troves A-B have been removed from the system
+    // Confirm cdps A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
     assert.isFalse(await sortedTroves.contains(_bobTroveId))
 
-    // Check all troves A-B are now closed by liquidation
-    assert.equal((await troveManager.Troves(_aliceTroveId))[3].toString(), '3')
-    assert.equal((await troveManager.Troves(_bobTroveId))[3].toString(), '3')
+    // Check all cdps A-B are now closed by liquidation
+    assert.equal((await cdpManager.Troves(_aliceTroveId))[3].toString(), '3')
+    assert.equal((await cdpManager.Troves(_bobTroveId))[3].toString(), '3')
     // Trove C still closed by user
-    assert.equal((await troveManager.Troves(_carolTroveId))[3].toString(), '2')
+    assert.equal((await cdpManager.Troves(_carolTroveId))[3].toString(), '2')
 
     // Check sorted list has been reduced to length 3
     assert.equal((await sortedTroves.getSize()).toString(), '3')
@@ -2364,15 +2364,15 @@ contract('TroveManager', async accounts => {
   it("batchLiquidateTroves: when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves
+    // A, B, C open cdps
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(167, 16)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_1 } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_2 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -2387,8 +2387,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // Liquidate troves
-    await troveManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
+    // Liquidate cdps
+    await cdpManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
@@ -2401,15 +2401,15 @@ contract('TroveManager', async accounts => {
   it("batchLiquidateTroves(): when SP is empty, doesn't update G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // A, B, C open troves
+    // A, B, C open cdps
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(167, 16)), extraParams: { from: C } })
 
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_1 } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_2 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-    let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
 
     // B provides to SP
     await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: B })
@@ -2433,8 +2433,8 @@ contract('TroveManager', async accounts => {
     const price = await priceFeed.getPrice()
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // liquidate troves
-    await troveManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
+    // liquidate cdps
+    await cdpManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
@@ -2453,7 +2453,7 @@ contract('TroveManager', async accounts => {
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(310, 16)), extraEBTCAmount: partialRedemptionAmount, extraParams: { from: alice } })
     const { netDebt: B_debt } = await openTrove({ ICR: toBN(dec(290, 16)), extraParams: { from: bob } })
     const { netDebt: C_debt } = await openTrove({ ICR: toBN(dec(250, 16)), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
     // Dennis' Trove should be untouched by redemption, because its ICR will be < 110% after the price drop
     await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: dennis } })
 
@@ -2503,10 +2503,10 @@ contract('TroveManager', async accounts => {
     // start Dennis with a high ICR
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("2500")});
     await openTrove({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
 
@@ -2536,7 +2536,7 @@ contract('TroveManager', async accounts => {
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       redemptionAmount,
       firstRedemptionHint,
       upperPartialRedemptionHint,
@@ -2551,9 +2551,9 @@ contract('TroveManager', async accounts => {
 
     const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
-    const alice_Trove_After = await troveManager.Troves(_aliceTroveId)
-    const bob_Trove_After = await troveManager.Troves(_bobTroveId)
-    const carol_Trove_After = await troveManager.Troves(_carolTroveId)
+    const alice_Trove_After = await cdpManager.Troves(_aliceTroveId)
+    const bob_Trove_After = await cdpManager.Troves(_bobTroveId)
+    const carol_Trove_After = await cdpManager.Troves(_carolTroveId)
 
     const alice_debt_After = alice_Trove_After[0].toString()
     const bob_debt_After = bob_Trove_After[0].toString()
@@ -2570,7 +2570,7 @@ contract('TroveManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.div(toBN(200)) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for troveManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
     
     // console.log("*********************************************************************************")
     // console.log("ETHFee: " + ETHFee)
@@ -2598,10 +2598,10 @@ contract('TroveManager', async accounts => {
     // start Dennis with a high ICR
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("2820")});
     await openTrove({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
 
@@ -2631,7 +2631,7 @@ contract('TroveManager', async accounts => {
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       redemptionAmount,
       th.DUMMY_BYTES32, // invalid first hint
       upperPartialRedemptionHint,
@@ -2646,9 +2646,9 @@ contract('TroveManager', async accounts => {
 
     const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
-    const alice_Trove_After = await troveManager.Troves(_aliceTroveId)
-    const bob_Trove_After = await troveManager.Troves(_bobTroveId)
-    const carol_Trove_After = await troveManager.Troves(_carolTroveId)
+    const alice_Trove_After = await cdpManager.Troves(_aliceTroveId)
+    const bob_Trove_After = await cdpManager.Troves(_bobTroveId)
+    const carol_Trove_After = await cdpManager.Troves(_carolTroveId)
 
     const alice_debt_After = alice_Trove_After[0].toString()
     const bob_debt_After = bob_Trove_After[0].toString()
@@ -2665,7 +2665,7 @@ contract('TroveManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.div(toBN(200)) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for troveManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2673,7 +2673,7 @@ contract('TroveManager', async accounts => {
     assert.equal(dennis_EBTCBalance_After, dennis_EBTCBalance_Before.sub(redemptionAmount))
   })
 
-  it('redeemCollateral(): with invalid first hint, non-existent trove', async () => {
+  it('redeemCollateral(): with invalid first hint, non-existent cdp', async () => {
     // --- SETUP ---
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(310, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: alice } })
     const { netDebt: B_netDebt } = await openTrove({ ICR: toBN(dec(290, 16)), extraEBTCAmount: dec(8, 18), extraParams: { from: bob } })
@@ -2683,10 +2683,10 @@ contract('TroveManager', async accounts => {
     // start Dennis with a high ICR
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     await openTrove({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
 
@@ -2716,9 +2716,9 @@ contract('TroveManager', async accounts => {
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       redemptionAmount,
-      th.DUMMY_BYTES32, // invalid first hint, it doesn’t have a trove
+      th.DUMMY_BYTES32, // invalid first hint, it doesn’t have a cdp
       upperPartialRedemptionHint,
       lowerPartialRedemptionHint,
       partialRedemptionHintNICR,
@@ -2731,9 +2731,9 @@ contract('TroveManager', async accounts => {
 
     const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
-    const alice_Trove_After = await troveManager.Troves(_aliceTroveId)
-    const bob_Trove_After = await troveManager.Troves(_bobTroveId)
-    const carol_Trove_After = await troveManager.Troves(_carolTroveId)
+    const alice_Trove_After = await cdpManager.Troves(_aliceTroveId)
+    const bob_Trove_After = await cdpManager.Troves(_bobTroveId)
+    const carol_Trove_After = await cdpManager.Troves(_carolTroveId)
 
     const alice_debt_After = alice_Trove_After[0].toString()
     const bob_debt_After = bob_Trove_After[0].toString()
@@ -2750,7 +2750,7 @@ contract('TroveManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.div(toBN(200)) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for troveManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2758,7 +2758,7 @@ contract('TroveManager', async accounts => {
     assert.equal(dennis_EBTCBalance_After, dennis_EBTCBalance_Before.sub(redemptionAmount))
   })
 
-  it('redeemCollateral(): with invalid first hint, trove below MCR', async () => {
+  it('redeemCollateral(): with invalid first hint, cdp below MCR', async () => {
     // --- SETUP ---
     const { totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(310, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: alice } })
     const { netDebt: B_netDebt } = await openTrove({ ICR: toBN(dec(290, 16)), extraEBTCAmount: dec(8, 18), extraParams: { from: bob } })
@@ -2768,10 +2768,10 @@ contract('TroveManager', async accounts => {
     // start Dennis with a high ICR
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     await openTrove({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
 
@@ -2783,7 +2783,7 @@ contract('TroveManager', async accounts => {
     // Increase price to start Erin, and decrease it again so its ICR is under MCR
     await priceFeed.setPrice(price.mul(toBN(2)))
     await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: erin } })
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
     await priceFeed.setPrice(price)
 
 
@@ -2808,9 +2808,9 @@ contract('TroveManager', async accounts => {
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       redemptionAmount,
-      _erinTroveId, // invalid trove, below MCR
+      _erinTroveId, // invalid cdp, below MCR
       upperPartialRedemptionHint,
       lowerPartialRedemptionHint,
       partialRedemptionHintNICR,
@@ -2823,9 +2823,9 @@ contract('TroveManager', async accounts => {
 
     const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
-    const alice_Trove_After = await troveManager.Troves(_aliceTroveId)
-    const bob_Trove_After = await troveManager.Troves(_bobTroveId)
-    const carol_Trove_After = await troveManager.Troves(_carolTroveId)
+    const alice_Trove_After = await cdpManager.Troves(_aliceTroveId)
+    const bob_Trove_After = await cdpManager.Troves(_bobTroveId)
+    const carol_Trove_After = await cdpManager.Troves(_carolTroveId)
 
     const alice_debt_After = alice_Trove_After[0].toString()
     const bob_debt_After = bob_Trove_After[0].toString()
@@ -2842,7 +2842,7 @@ contract('TroveManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.div(toBN(200)) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for troveManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2854,62 +2854,62 @@ contract('TroveManager', async accounts => {
     // --- SETUP --- 
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // Alice, Bob, Carol, Dennis, Erin open troves
+    // Alice, Bob, Carol, Dennis, Erin open cdps
     const { netDebt: A_debt } = await openTrove({ ICR: toBN(dec(290, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: alice } })
     const { netDebt: B_debt } = await openTrove({ ICR: toBN(dec(290, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: bob } })
     const { netDebt: C_debt } = await openTrove({ ICR: toBN(dec(290, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: carol } })
     const redemptionAmount = A_debt.add(B_debt).add(C_debt)
     const { totalDebt: D_totalDebt, collateral: D_coll } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: dennis } })
     const { totalDebt: E_totalDebt, collateral: E_coll } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: erin } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _erinTroveId = await sortedTroves.troveOfOwnerByIndex(erin, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _erinTroveId = await sortedTroves.cdpOfOwnerByIndex(erin, 0);
 
     // --- TEST --- 
 
-    // open trove from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
+    // open cdp from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
     await beadpSigner.sendTransaction({ to: flyn, value: ethers.utils.parseEther("6000")});
     const { ebtcAmount: F_ebtcAmount } = await openTrove({ ICR: toBN(dec(200, 18)), extraEBTCAmount: redemptionAmount.mul(toBN(2)), extraParams: { from: flyn } })
-    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
+    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // Flyn redeems collateral
-    await troveManager.redeemCollateral(redemptionAmount, _aliceTroveId, _aliceTroveId, _aliceTroveId, 0, 0, th._100pct, { from: flyn })
+    await cdpManager.redeemCollateral(redemptionAmount, _aliceTroveId, _aliceTroveId, _aliceTroveId, 0, 0, th._100pct, { from: flyn })
 
     // Check Flyn's redemption has reduced his balance from 100 to (100-60) = 40 EBTC
     const flynBalance = await ebtcToken.balanceOf(flyn)
     th.assertIsApproximatelyEqual(flynBalance, F_ebtcAmount.sub(redemptionAmount))
 
     // Check debt of Alice, Bob, Carol
-    const alice_Debt = await troveManager.getTroveDebt(_aliceTroveId)
-    const bob_Debt = await troveManager.getTroveDebt(_bobTroveId)
-    const carol_Debt = await troveManager.getTroveDebt(_carolTroveId)
+    const alice_Debt = await cdpManager.getTroveDebt(_aliceTroveId)
+    const bob_Debt = await cdpManager.getTroveDebt(_bobTroveId)
+    const carol_Debt = await cdpManager.getTroveDebt(_carolTroveId)
 
     assert.equal(alice_Debt, 0)
     assert.equal(bob_Debt, 0)
     assert.equal(carol_Debt, 0)
 
-    // check Alice, Bob and Carol troves are closed by redemption
-    const alice_Status = await troveManager.getTroveStatus(_aliceTroveId)
-    const bob_Status = await troveManager.getTroveStatus(_bobTroveId)
-    const carol_Status = await troveManager.getTroveStatus(_carolTroveId)
+    // check Alice, Bob and Carol cdps are closed by redemption
+    const alice_Status = await cdpManager.getTroveStatus(_aliceTroveId)
+    const bob_Status = await cdpManager.getTroveStatus(_bobTroveId)
+    const carol_Status = await cdpManager.getTroveStatus(_carolTroveId)
     assert.equal(alice_Status, 4)
     assert.equal(bob_Status, 4)
     assert.equal(carol_Status, 4)
 
     // check debt and coll of Dennis, Erin has not been impacted by redemption
-    const dennis_Debt = await troveManager.getTroveDebt(_dennisTroveId)
-    const erin_Debt = await troveManager.getTroveDebt(_erinTroveId)
+    const dennis_Debt = await cdpManager.getTroveDebt(_dennisTroveId)
+    const erin_Debt = await cdpManager.getTroveDebt(_erinTroveId)
 
     th.assertIsApproximatelyEqual(dennis_Debt, D_totalDebt)
     th.assertIsApproximatelyEqual(erin_Debt, E_totalDebt)
 
-    const dennis_Coll = await troveManager.getTroveColl(_dennisTroveId)
-    const erin_Coll = await troveManager.getTroveColl(_erinTroveId)
+    const dennis_Coll = await cdpManager.getTroveColl(_dennisTroveId)
+    const erin_Coll = await cdpManager.getTroveColl(_erinTroveId)
 
     assert.equal(dennis_Coll.toString(), D_coll.toString())
     assert.equal(erin_Coll.toString(), E_coll.toString())
@@ -2919,7 +2919,7 @@ contract('TroveManager', async accounts => {
     // --- SETUP --- 
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
-    // Alice, Bob, Carol open troves with equal collateral ratio
+    // Alice, Bob, Carol open cdps with equal collateral ratio
     const { netDebt: A_debt } = await openTrove({ ICR: toBN(dec(286, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: alice } })
     const { netDebt: B_debt } = await openTrove({ ICR: toBN(dec(286, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: bob } })
     const { netDebt: C_debt, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(286, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: carol } })
@@ -2928,36 +2928,36 @@ contract('TroveManager', async accounts => {
 
     // --- TEST --- 
 
-    // open trove from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
+    // open cdp from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
     await beadpSigner.sendTransaction({ to: flyn, value: ethers.utils.parseEther("7000")});
     const { ebtcAmount: F_ebtcAmount } = await openTrove({ ICR: toBN(dec(200, 18)), extraEBTCAmount: redemptionAmount.mul(toBN(2)), extraParams: { from: flyn } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // Flyn redeems collateral with only two iterations
-    await troveManager.redeemCollateral(attemptedRedemptionAmount, _aliceTroveId, _aliceTroveId, _aliceTroveId, 0, 2, th._100pct, { from: flyn })
+    await cdpManager.redeemCollateral(attemptedRedemptionAmount, _aliceTroveId, _aliceTroveId, _aliceTroveId, 0, 2, th._100pct, { from: flyn })
 
     // Check Flyn's redemption has reduced his balance from 100 to (100-40) = 60 EBTC
     const flynBalance = (await ebtcToken.balanceOf(flyn)).toString()
     th.assertIsApproximatelyEqual(flynBalance, F_ebtcAmount.sub(redemptionAmount))
 
     // Check debt of Alice, Bob, Carol
-    const alice_Debt = await troveManager.getTroveDebt(_aliceTroveId)
-    const bob_Debt = await troveManager.getTroveDebt(_bobTroveId)
-    const carol_Debt = await troveManager.getTroveDebt(_carolTroveId)
+    const alice_Debt = await cdpManager.getTroveDebt(_aliceTroveId)
+    const bob_Debt = await cdpManager.getTroveDebt(_bobTroveId)
+    const carol_Debt = await cdpManager.getTroveDebt(_carolTroveId)
 
     assert.equal(alice_Debt, 0)
     assert.equal(bob_Debt, 0)
     th.assertIsApproximatelyEqual(carol_Debt, C_totalDebt)
 
-    // check Alice and Bob troves are closed, but Carol is not
-    const alice_Status = await troveManager.getTroveStatus(_aliceTroveId)
-    const bob_Status = await troveManager.getTroveStatus(_bobTroveId)
-    const carol_Status = await troveManager.getTroveStatus(_carolTroveId)
+    // check Alice and Bob cdps are closed, but Carol is not
+    const alice_Status = await cdpManager.getTroveStatus(_aliceTroveId)
+    const bob_Status = await cdpManager.getTroveStatus(_bobTroveId)
+    const carol_Status = await cdpManager.getTroveStatus(_carolTroveId)
     assert.equal(alice_Status, 4)
     assert.equal(bob_Status, 4)
     assert.equal(carol_Status, 1)
@@ -2967,15 +2967,15 @@ contract('TroveManager', async accounts => {
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), A, A, { from: A, value: dec(1000, 'ether') })
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), B, B, { from: B, value: dec(1000, 'ether') })
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(30000, 18)), C, C, { from: C, value: dec(1000, 'ether') })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
 
     // A and C send all their tokens to B
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(A), {from: A})
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(C), {from: C})
     
-    await troveManager.setBaseRate(0) 
+    await cdpManager.setBaseRate(0) 
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -2990,7 +2990,7 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await sortedTroves.contains(_cTroveId))
 
     // A's remaining debt = 29800 + 19800 + 9800 + 200 - 55000 = 4600
-    const A_debt = await troveManager.getTroveDebt(_aTroveId)
+    const A_debt = await cdpManager.getTroveDebt(_aTroveId)
     await th.assertIsApproximatelyEqual(A_debt, dec(4600, 18), 1000) 
   })
 
@@ -2998,15 +2998,15 @@ contract('TroveManager', async accounts => {
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(6000, 18)), A, A, { from: A, value: dec(1000, 'ether') })
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), B, B, { from: B, value: dec(1000, 'ether') })
     await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(30000, 18)), C, C, { from: C, value: dec(1000, 'ether') })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
 
     // A and C send all their tokens to B
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(A), {from: A})
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(C), {from: C})
 
-    await troveManager.setBaseRate(0) 
+    await cdpManager.setBaseRate(0) 
 
     // Skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -3022,7 +3022,7 @@ contract('TroveManager', async accounts => {
 
     // A's remaining debt would be 29950 + 19950 + 5950 + 50 - 55000 = 900.
     // Since this is below the min net debt of 100, A should be skipped and untouched by the redemption
-    const A_debt = await troveManager.getTroveDebt(_aTroveId)
+    const A_debt = await cdpManager.getTroveDebt(_aTroveId)
     await th.assertIsApproximatelyEqual(A_debt, dec(6000, 18))
   })
 
@@ -3038,7 +3038,7 @@ contract('TroveManager', async accounts => {
 
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     await openTrove({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
 
@@ -3078,7 +3078,7 @@ contract('TroveManager', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
       // Alice redeems 1 EBTC from Carol's Trove
-      await troveManager.redeemCollateral(
+      await cdpManager.redeemCollateral(
         frontRunRedepmtion,
         firstRedemptionHint,
         upperPartialRedemptionHint,
@@ -3090,7 +3090,7 @@ contract('TroveManager', async accounts => {
     }
 
     // Dennis tries to redeem 20 EBTC
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       redemptionAmount,
       firstRedemptionHint,
       upperPartialRedemptionHint,
@@ -3119,7 +3119,7 @@ contract('TroveManager', async accounts => {
 
     // Expect only 17 worth of ETH drawn
     const expectedTotalETHDrawn = fullfilledRedemptionAmount.sub(frontRunRedepmtion).div(toBN(200)) // redempted EBTC converted to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for troveManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -3127,13 +3127,13 @@ contract('TroveManager', async accounts => {
     th.assertIsApproximatelyEqual(dennis_EBTCBalance_After, dennis_EBTCBalance_Before.sub(fullfilledRedemptionAmount.sub(frontRunRedepmtion)))
   })
 
-  // active debt cannot be zero, as there’s a positive min debt enforced, and at least a trove must exist
+  // active debt cannot be zero, as there’s a positive min debt enforced, and at least a cdp must exist
   it.skip("redeemCollateral(): can redeem if there is zero active debt but non-zero debt in DefaultPool", async () => {
     // --- SETUP ---
 
     const amount = await getOpenTroveEBTCAmount(dec(110, 18))
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
-    let _alicTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _alicTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(133, 16)), extraEBTCAmount: amount, extraParams: { from: bob } })
 
     await ebtcToken.transfer(carol, amount, { from: bob })
@@ -3142,7 +3142,7 @@ contract('TroveManager', async accounts => {
     await priceFeed.setPrice(price)
 
     // Liquidate Bob's Trove
-    await troveManager.liquidateTroves(1)
+    await cdpManager.liquidateTroves(1)
 
     // --- TEST --- 
 
@@ -3151,7 +3151,7 @@ contract('TroveManager', async accounts => {
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-    const redemptionTx = await troveManager.redeemCollateral(
+    const redemptionTx = await cdpManager.redeemCollateral(
       amount,
       _alicTroveId,
       th.DUMMY_BYTES32,
@@ -3183,9 +3183,9 @@ contract('TroveManager', async accounts => {
     // --- SETUP ---
 
     const { netDebt: A_debt } = await openTrove({ ICR: toBN(dec(13, 18)), extraParams: { from: alice } })
-    let _alicTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _alicTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
     const { ebtcAmount: B_ebtcAmount, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(133, 16)), extraEBTCAmount: A_debt, extraParams: { from: bob } })
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
 
     await ebtcToken.transfer(carol, B_ebtcAmount, { from: bob })
 
@@ -3198,7 +3198,7 @@ contract('TroveManager', async accounts => {
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-    await troveManager.redeemCollateral(
+    await cdpManager.redeemCollateral(
       A_debt,
       _alicTroveId,
       th.DUMMY_BYTES32,
@@ -3210,11 +3210,11 @@ contract('TroveManager', async accounts => {
     );
 
     // Alice's Trove was cleared of debt
-    const { debt: alice_Debt_After } = await troveManager.Troves(_alicTroveId)
+    const { debt: alice_Debt_After } = await cdpManager.Troves(_alicTroveId)
     assert.equal(alice_Debt_After, '0')
 
     // Bob's Trove was left untouched
-    const { debt: bob_Debt_After } = await troveManager.Troves(_bobTroveId)
+    const { debt: bob_Debt_After } = await cdpManager.Troves(_bobTroveId)
     th.assertIsApproximatelyEqual(bob_Debt_After, B_totalDebt)
   });
 
@@ -3227,10 +3227,10 @@ contract('TroveManager', async accounts => {
     const redemptionAmount = C_totalDebt.add(B_totalDebt).add(A_totalDebt);
     await beadpSigner.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(195, 16)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
 
     // This will put Dennis slightly below 110%, and everyone else exactly at 110%
     const price = '110' + _18_zeros
@@ -3251,7 +3251,7 @@ contract('TroveManager', async accounts => {
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-    const tx = await troveManager.redeemCollateral(
+    const tx = await cdpManager.redeemCollateral(
       redemptionAmount,
       _carolTroveId, // try to trick redeemCollateral by passing a hint that doesn't exactly point to the last Trove with ICR == 110% (which would be Alice's)
       th.DUMMY_BYTES32,
@@ -3262,16 +3262,16 @@ contract('TroveManager', async accounts => {
       { from: dennis }
     )
     
-    const { debt: alice_Debt_After } = await troveManager.Troves(_aliceTroveId)
+    const { debt: alice_Debt_After } = await cdpManager.Troves(_aliceTroveId)
     assert.equal(alice_Debt_After, '0')
 
-    const { debt: bob_Debt_After } = await troveManager.Troves(_bobTroveId)
+    const { debt: bob_Debt_After } = await cdpManager.Troves(_bobTroveId)
     assert.equal(bob_Debt_After, '0')
 
-    const { debt: carol_Debt_After } = await troveManager.Troves(_carolTroveId)
+    const { debt: carol_Debt_After } = await cdpManager.Troves(_carolTroveId)
     assert.equal(carol_Debt_After, '0')
 
-    const { debt: dennis_Debt_After } = await troveManager.Troves(_dennisTroveId)
+    const { debt: dennis_Debt_After } = await cdpManager.Troves(_dennisTroveId)
     th.assertIsApproximatelyEqual(dennis_Debt_After, D_totalDebt)
   });
 
@@ -3298,11 +3298,11 @@ contract('TroveManager', async accounts => {
   it("redeemCollateral(): reverts when argument _amount is 0", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // Alice opens trove and transfers 500EBTC to Erin, the would-be redeemer
+    // Alice opens cdp and transfers 500EBTC to Erin, the would-be redeemer
     await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(500, 18), extraParams: { from: alice } })
     await ebtcToken.transfer(erin, dec(500, 18), { from: alice })
 
-    // B, C and D open troves
+    // B, C and D open cdps
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: bob } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: dennis } })
@@ -3311,7 +3311,7 @@ contract('TroveManager', async accounts => {
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // Erin attempts to redeem with _amount = 0
-    const redemptionTxPromise = troveManager.redeemCollateral(0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, 0, th._100pct, { from: erin })
+    const redemptionTxPromise = cdpManager.redeemCollateral(0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, 0, th._100pct, { from: erin })
     await assertRevert(redemptionTxPromise, "TroveManager: Amount must be greater than zero")
   })
 
@@ -3352,7 +3352,7 @@ contract('TroveManager', async accounts => {
     const totalSupply = await ebtcToken.totalSupply()
     th.assertIsApproximatelyEqual(totalSupply, expectedTotalSupply)
 
-    await troveManager.setBaseRate(0) 
+    await cdpManager.setBaseRate(0) 
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -3364,17 +3364,17 @@ contract('TroveManager', async accounts => {
     const lessThan5pct = '49999999999999999'
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, lessThan5pct), "Fee exceeded provided maximum")
   
-    await troveManager.setBaseRate(0)  // artificially zero the baseRate
+    await cdpManager.setBaseRate(0)  // artificially zero the baseRate
     
     // Max fee is 1%
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(1, 16)), "Fee exceeded provided maximum")
   
-    await troveManager.setBaseRate(0)
+    await cdpManager.setBaseRate(0)
 
      // Max fee is 3.754%
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(3754, 13)), "Fee exceeded provided maximum")
   
-    await troveManager.setBaseRate(0)
+    await cdpManager.setBaseRate(0)
 
     // Max fee is 0.5%
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(5, 15)), "Fee exceeded provided maximum")
@@ -3390,7 +3390,7 @@ contract('TroveManager', async accounts => {
     const totalSupply = await ebtcToken.totalSupply()
     th.assertIsApproximatelyEqual(totalSupply, expectedTotalSupply)
 
-    await troveManager.setBaseRate(0) 
+    await cdpManager.setBaseRate(0) 
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -3401,55 +3401,55 @@ contract('TroveManager', async accounts => {
     // Attempt with maxFee > 5.5%
     const price = await priceFeed.getPrice()
     const ETHDrawn = attemptedEBTCRedemption.mul(mv._1e18BN).div(price)
-    const slightlyMoreThanFee = (await troveManager.getRedemptionFeeWithDecay(ETHDrawn))
+    const slightlyMoreThanFee = (await cdpManager.getRedemptionFeeWithDecay(ETHDrawn))
     const tx1 = await th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, slightlyMoreThanFee)
     assert.isTrue(tx1.receipt.status)
 
-    await troveManager.setBaseRate(0)  // Artificially zero the baseRate
+    await cdpManager.setBaseRate(0)  // Artificially zero the baseRate
     
     // Attempt with maxFee = 5.5%
-    const exactSameFee = (await troveManager.getRedemptionFeeWithDecay(ETHDrawn))
+    const exactSameFee = (await cdpManager.getRedemptionFeeWithDecay(ETHDrawn))
     const tx2 = await th.redeemCollateralAndGetTxObject(C, contracts, attemptedEBTCRedemption, GAS_PRICE, exactSameFee)
     assert.isTrue(tx2.receipt.status)
 
-    await troveManager.setBaseRate(0)
+    await cdpManager.setBaseRate(0)
 
      // Max fee is 10%
     const tx3 = await th.redeemCollateralAndGetTxObject(B, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(1, 17))
     assert.isTrue(tx3.receipt.status)
 
-    await troveManager.setBaseRate(0)
+    await cdpManager.setBaseRate(0)
 
     // Max fee is 37.659%
     const tx4 = await th.redeemCollateralAndGetTxObject(A, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(37659, 13))
     assert.isTrue(tx4.receipt.status)
 
-    await troveManager.setBaseRate(0)
+    await cdpManager.setBaseRate(0)
 
     // Max fee is 100%
     const tx5 = await th.redeemCollateralAndGetTxObject(C, contracts, attemptedEBTCRedemption, GAS_PRICE, dec(1, 18))
     assert.isTrue(tx5.receipt.status)
   })
 
-  it("redeemCollateral(): doesn't affect the Stability Pool deposits or ETH gain of redeemed-from troves", async () => {
+  it("redeemCollateral(): doesn't affect the Stability Pool deposits or ETH gain of redeemed-from cdps", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // B, C, D, F open trove
+    // B, C, D, F open cdp
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: bob } })
     const { totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(195, 16)), extraEBTCAmount: dec(200, 18), extraParams: { from: carol } })
     const { totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(400, 18), extraParams: { from: dennis } })
     const { totalDebt: F_totalDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: flyn } })
 
     const redemptionAmount = B_totalDebt.add(C_totalDebt).add(D_totalDebt).add(F_totalDebt)
-    // Alice opens trove and transfers EBTC to Erin, the would-be redeemer
+    // Alice opens cdp and transfers EBTC to Erin, the would-be redeemer
     await beadpSigner.sendTransaction({ to: alice, value: ethers.utils.parseEther("9000")});
     await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: redemptionAmount, extraParams: { from: alice } })
     await ebtcToken.transfer(erin, redemptionAmount, { from: alice })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-    let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-    let _dennisTroveId = await sortedTroves.troveOfOwnerByIndex(dennis, 0);
-    let _flynTroveId = await sortedTroves.troveOfOwnerByIndex(flyn, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
+    let _bobTroveId = await sortedTroves.cdpOfOwnerByIndex(bob, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
+    let _dennisTroveId = await sortedTroves.cdpOfOwnerByIndex(dennis, 0);
+    let _flynTroveId = await sortedTroves.cdpOfOwnerByIndex(flyn, 0);
 
     // B, C, D deposit some of their tokens to the Stability Pool
     await stabilityPool.provideToSP(dec(50, 18), ZERO_ADDRESS, { from: bob })
@@ -3457,9 +3457,9 @@ contract('TroveManager', async accounts => {
     await stabilityPool.provideToSP(dec(200, 18), ZERO_ADDRESS, { from: dennis })
 
     let price = await priceFeed.getPrice()
-    const bob_ICR_before = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_before = await troveManager.getCurrentICR(_carolTroveId, price)
-    const dennis_ICR_before = await troveManager.getCurrentICR(_dennisTroveId, price)
+    const bob_ICR_before = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_before = await cdpManager.getCurrentICR(_carolTroveId, price)
+    const dennis_ICR_before = await cdpManager.getCurrentICR(_dennisTroveId, price)
 
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
@@ -3467,7 +3467,7 @@ contract('TroveManager', async accounts => {
     assert.isTrue(await sortedTroves.contains(_flynTroveId))
 
     // Liquidate Flyn
-    await troveManager.liquidate(_flynTroveId)
+    await cdpManager.liquidate(_flynTroveId)
     assert.isFalse(await sortedTroves.contains(_flynTroveId))
 
     // Price bounces back, bringing B, C, D back above MCR
@@ -3494,11 +3494,11 @@ contract('TroveManager', async accounts => {
     await th.redeemCollateral(erin, contracts, redemptionAmount, GAS_PRICE, th._100pct)
 
     price = await priceFeed.getPrice()
-    const bob_ICR_after = await troveManager.getCurrentICR(_bobTroveId, price)
-    const carol_ICR_after = await troveManager.getCurrentICR(_carolTroveId, price)
-    const dennis_ICR_after = await troveManager.getCurrentICR(_dennisTroveId, price)
+    const bob_ICR_after = await cdpManager.getCurrentICR(_bobTroveId, price)
+    const carol_ICR_after = await cdpManager.getCurrentICR(_carolTroveId, price)
+    const dennis_ICR_after = await cdpManager.getCurrentICR(_dennisTroveId, price)
 
-    // Check ICR of B, C and D troves has increased,i.e. they have been hit by redemptions
+    // Check ICR of B, C and D cdps has increased,i.e. they have been hit by redemptions
     assert.isTrue(bob_ICR_after.gte(bob_ICR_before))
     assert.isTrue(carol_ICR_after.gte(carol_ICR_before))
     assert.isTrue(dennis_ICR_after.gte(dennis_ICR_before))
@@ -3511,7 +3511,7 @@ contract('TroveManager', async accounts => {
     const carol_ETHGain_after = (await stabilityPool.getDepositorETHGain(carol)).toString()
     const dennis_ETHGain_after = (await stabilityPool.getDepositorETHGain(dennis)).toString()
 
-    // Check B, C, D Stability Pool deposits and ETH gain have not been affected by redemptions from their troves
+    // Check B, C, D Stability Pool deposits and ETH gain have not been affected by redemptions from their cdps
     assert.equal(bob_SPDeposit_before, bob_SPDeposit_after)
     assert.equal(carol_SPDeposit_before, carol_SPDeposit_after)
     assert.equal(dennis_SPDeposit_before, dennis_SPDeposit_after)
@@ -3524,7 +3524,7 @@ contract('TroveManager', async accounts => {
   it("redeemCollateral(): caller can redeem their entire EBTCToken balance", async () => {
     const { collateral: W_coll, totalDebt: W_totalDebt } = await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // Alice opens trove and transfers 400 EBTC to Erin, the would-be redeemer
+    // Alice opens cdp and transfers 400 EBTC to Erin, the would-be redeemer
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(400, 18), extraParams: { from: alice } })
     await ebtcToken.transfer(erin, dec(400, 18), { from: alice })
 
@@ -3532,7 +3532,7 @@ contract('TroveManager', async accounts => {
     const erin_balance_before = await ebtcToken.balanceOf(erin)
     assert.equal(erin_balance_before, dec(400, 18))
 
-    // B, C, D open trove
+    // B, C, D open cdp
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(590, 18), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(1990, 18), extraParams: { from: carol } })
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(500, 16)), extraEBTCAmount: dec(1990, 18), extraParams: { from: dennis } })
@@ -3564,7 +3564,7 @@ contract('TroveManager', async accounts => {
       th.DUMMY_BYTES32
     )
 
-    await troveManager.redeemCollateral(
+    await cdpManager.redeemCollateral(
       dec(400, 18),
       firstRedemptionHint,
       upperPartialRedemptionHint,
@@ -3592,7 +3592,7 @@ contract('TroveManager', async accounts => {
   it("redeemCollateral(): reverts when requested redemption amount exceeds caller's EBTC token balance", async () => {
     const { collateral: W_coll, totalDebt: W_totalDebt } = await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // Alice opens trove and transfers 400 EBTC to Erin, the would-be redeemer
+    // Alice opens cdp and transfers 400 EBTC to Erin, the would-be redeemer
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(400, 18), extraParams: { from: alice } })
     await ebtcToken.transfer(erin, dec(400, 18), { from: alice })
 
@@ -3600,7 +3600,7 @@ contract('TroveManager', async accounts => {
     const erin_balance_before = await ebtcToken.balanceOf(erin)
     assert.equal(erin_balance_before, dec(400, 18))
 
-    // B, C, D open trove
+    // B, C, D open cdp
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(590, 18), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(1990, 18), extraParams: { from: carol } })
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openTrove({ ICR: toBN(dec(500, 16)), extraEBTCAmount: dec(1990, 18), extraParams: { from: dennis } })
@@ -3636,7 +3636,7 @@ contract('TroveManager', async accounts => {
         th.DUMMY_BYTES32
       )
 
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         dec(1000, 18),
         firstRedemptionHint,
         upperPartialRedemptionHint_1,
@@ -3664,7 +3664,7 @@ contract('TroveManager', async accounts => {
         th.DUMMY_BYTES32
       )
 
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         '401000000000000000000', firstRedemptionHint,
         upperPartialRedemptionHint_2,
         lowerPartialRedemptionHint_2,
@@ -3690,7 +3690,7 @@ contract('TroveManager', async accounts => {
         th.DUMMY_BYTES32
       )
 
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         '239482309000000000000000000', firstRedemptionHint,
         upperPartialRedemptionHint_3,
         lowerPartialRedemptionHint_3,
@@ -3718,7 +3718,7 @@ contract('TroveManager', async accounts => {
         th.DUMMY_BYTES32
       )
 
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         maxBytes32, firstRedemptionHint,
         upperPartialRedemptionHint_4,
         lowerPartialRedemptionHint_4,
@@ -3735,13 +3735,13 @@ contract('TroveManager', async accounts => {
   it("redeemCollateral(): value of issued ETH == face value of redeemed EBTC (assuming 1 EBTC has value of $1)", async () => {
     const { collateral: W_coll } = await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
-    // Alice opens trove and transfers 1000 EBTC each to Erin, Flyn, Graham
+    // Alice opens cdp and transfers 1000 EBTC each to Erin, Flyn, Graham
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openTrove({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(4990, 18), extraParams: { from: alice } })
     await ebtcToken.transfer(erin, dec(1000, 18), { from: alice })
     await ebtcToken.transfer(flyn, dec(1000, 18), { from: alice })
     await ebtcToken.transfer(graham, dec(1000, 18), { from: alice })
 
-    // B, C, D open trove
+    // B, C, D open cdp
     const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(1590, 18), extraParams: { from: bob } })
     const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(600, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: carol } })
     const { collateral: D_coll } = await openTrove({ ICR: toBN(dec(800, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: dennis } })
@@ -3777,7 +3777,7 @@ contract('TroveManager', async accounts => {
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-    const redemption_1 = await troveManager.redeemCollateral(
+    const redemption_1 = await cdpManager.redeemCollateral(
       _120_EBTC,
       firstRedemptionHint,
       upperPartialRedemptionHint_1,
@@ -3807,7 +3807,7 @@ contract('TroveManager', async accounts => {
       th.DUMMY_BYTES32
     )
 
-    const redemption_2 = await troveManager.redeemCollateral(
+    const redemption_2 = await cdpManager.redeemCollateral(
       _373_EBTC,
       firstRedemptionHint,
       upperPartialRedemptionHint_2,
@@ -3836,7 +3836,7 @@ contract('TroveManager', async accounts => {
       th.DUMMY_BYTES32
     )
 
-    const redemption_3 = await troveManager.redeemCollateral(
+    const redemption_3 = await cdpManager.redeemCollateral(
       _950_EBTC,
       firstRedemptionHint,
       upperPartialRedemptionHint_3,
@@ -3854,8 +3854,8 @@ contract('TroveManager', async accounts => {
     assert.equal(activeETH_3.toString(), activeETH_2.sub(toBN(_950_EBTC).mul(mv._1e18BN).div(price)));
   })
 
-  // it doesn’t make much sense as there’s now min debt enforced and at least one trove must remain active
-  // the only way to test it is before any trove is opened
+  // it doesn’t make much sense as there’s now min debt enforced and at least one cdp must remain active
+  // the only way to test it is before any cdp is opened
   it("redeemCollateral(): reverts if there is zero outstanding system debt", async () => {
     // --- SETUP --- illegally mint EBTC to Bob
     await ebtcToken.unprotectedMint(bob, dec(100, 18))
@@ -3877,7 +3877,7 @@ contract('TroveManager', async accounts => {
 
     // Bob tries to redeem his illegally obtained EBTC
     try {
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         dec(100, 18),
         firstRedemptionHint,
         upperPartialRedemptionHint,
@@ -3921,7 +3921,7 @@ contract('TroveManager', async accounts => {
 
     // Bob attempts to redeem his ill-gotten 101 EBTC, from a system that has 100 EBTC outstanding debt
     try {
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         totalDebt.add(toBN(dec(100, 18))),
         firstRedemptionHint,
         upperPartialRedemptionHint,
@@ -3943,7 +3943,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -3956,7 +3956,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    assert.isTrue((await troveManager.baseRate()).gt(toBN('0')))
+    assert.isTrue((await cdpManager.baseRate()).gt(toBN('0')))
   })
 
   it("redeemCollateral(): a redemption made when base rate is non-zero increases the base rate, for negligible time passed", async () => {
@@ -3972,7 +3972,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -3985,7 +3985,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // B redeems 10 EBTC
@@ -3998,7 +3998,7 @@ contract('TroveManager', async accounts => {
     // Check negligible time difference (< 1 minute) between txs
     assert.isTrue(Number(timeStamp_B) - Number(timeStamp_A) < 60)
 
-    const baseRate_2 = await troveManager.baseRate()
+    const baseRate_2 = await cdpManager.baseRate()
 
     // Check baseRate has again increased
     assert.isTrue(baseRate_2.gt(baseRate_1))
@@ -4023,10 +4023,10 @@ contract('TroveManager', async accounts => {
     assert.equal(A_balanceBefore.sub(await ebtcToken.balanceOf(A)), dec(10, 18))
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    const lastFeeOpTime_1 = await troveManager.lastFeeOperationTime()
+    const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
 
     // 45 seconds pass
     th.fastForwardTime(45, web3.currentProvider)
@@ -4034,7 +4034,7 @@ contract('TroveManager', async accounts => {
     // Borrower A triggers a fee
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_2 = await troveManager.lastFeeOperationTime()
+    const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
 
     // Check that the last fee operation time did not update, as borrower A's 2nd redemption occured
     // since before minimum interval had passed 
@@ -4050,7 +4050,7 @@ contract('TroveManager', async accounts => {
     // Borrower A triggers a fee
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_3 = await troveManager.lastFeeOperationTime()
+    const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
 
     // Check that the last fee operation time DID update, as A's 2rd redemption occured
     // after minimum interval had passed 
@@ -4070,7 +4070,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     // Check LQTY Staking contract balance before is zero
     const lqtyStakingBalance_Before = await web3.eth.getBalance(lqtyStaking.address)
@@ -4085,7 +4085,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking contract balance after is non-zero
@@ -4106,7 +4106,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     // Check LQTY Staking ETH-fees-per-LQTY-staked before is zero
     const F_ETH_Before = await lqtyStaking.F_ETH()
@@ -4121,7 +4121,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking ETH-fees-per-LQTY-staked after is non-zero
@@ -4142,7 +4142,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -4154,7 +4154,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     const lqtyStakingBalance_Before = toBN(await web3.eth.getBalance(lqtyStaking.address))
@@ -4184,7 +4184,7 @@ contract('TroveManager', async accounts => {
     await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
     // Check baseRate == 0
-    assert.equal(await troveManager.baseRate(), '0')
+    assert.equal(await cdpManager.baseRate(), '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -4196,7 +4196,7 @@ contract('TroveManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(A), A_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
     // Check baseRate is now non-zero
-    const baseRate_1 = await troveManager.baseRate()
+    const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking ETH-fees-per-LQTY-staked before is zero
@@ -4230,7 +4230,7 @@ contract('TroveManager', async accounts => {
     const A_balanceBefore = toBN(await web3.eth.getBalance(A))
 
     // Confirm baseRate before redemption is 0
-    const baseRate = await troveManager.baseRate()
+    const baseRate = await cdpManager.baseRate()
     assert.equal(baseRate, '0')
 
     // Check total EBTC supply
@@ -4261,12 +4261,12 @@ contract('TroveManager', async accounts => {
       ETHDrawn.sub(
         toBN(dec(5, 15)).add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
           .mul(ETHDrawn).div(mv._1e18BN)
-      ).sub(toBN(gasUsed * GAS_PRICE)), // substract gas used for troveManager.redeemCollateral from expected received ETH
+      ).sub(toBN(gasUsed * GAS_PRICE)), // substract gas used for cdpManager.redeemCollateral from expected received ETH
       100000
     )
   })
 
-  it("redeemCollateral(): a full redemption (leaving trove with 0 debt), closes the trove", async () => {
+  it("redeemCollateral(): a full redemption (leaving cdp with 0 debt), closes the cdp", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
     await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -4278,10 +4278,10 @@ contract('TroveManager', async accounts => {
     const { netDebt: B_netDebt } = await openTrove({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: B } })
     const { netDebt: C_netDebt } = await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
     const { netDebt: D_netDebt } = await openTrove({ ICR: toBN(dec(280, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: D } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
     const redemptionAmount = A_netDebt.add(B_netDebt).add(C_netDebt).add(toBN(dec(10, 18)))
 
     const A_balanceBefore = toBN(await web3.eth.getBalance(A))
@@ -4312,10 +4312,10 @@ contract('TroveManager', async accounts => {
     const { netDebt: B_netDebt, collateral: B_coll } = await openTrove({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: B } })
     const { netDebt: C_netDebt, collateral: C_coll } = await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
     const { netDebt: D_netDebt } = await openTrove({ ICR: toBN(dec(280, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: D } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
     const redemptionAmount = A_netDebt.add(B_netDebt).add(C_netDebt).add(toBN(dec(10, 18)))
 
     const A_balanceBefore = toBN(await web3.eth.getBalance(A))
@@ -4323,13 +4323,13 @@ contract('TroveManager', async accounts => {
     const C_balanceBefore = toBN(await web3.eth.getBalance(C))
     const D_balanceBefore = toBN(await web3.eth.getBalance(D))
 
-    const A_collBefore = await troveManager.getTroveColl(_aTroveId)
-    const B_collBefore = await troveManager.getTroveColl(_bTroveId)
-    const C_collBefore = await troveManager.getTroveColl(_cTroveId)
-    const D_collBefore = await troveManager.getTroveColl(_dTroveId)
+    const A_collBefore = await cdpManager.getTroveColl(_aTroveId)
+    const B_collBefore = await cdpManager.getTroveColl(_bTroveId)
+    const C_collBefore = await cdpManager.getTroveColl(_cTroveId)
+    const D_collBefore = await cdpManager.getTroveColl(_dTroveId)
 
     // Confirm baseRate before redemption is 0
-    const baseRate = await troveManager.baseRate()
+    const baseRate = await cdpManager.baseRate()
     assert.equal(baseRate, '0')
 
     // whale redeems EBTC.  Expect this to fully redeem A, B, C, and partially redeem D.
@@ -4356,25 +4356,25 @@ contract('TroveManager', async accounts => {
     const C_balanceAfter = toBN(await web3.eth.getBalance(C))
     const D_balanceAfter = toBN(await web3.eth.getBalance(D))
 
-    // Check A, B, C’s trove collateral balance is zero (fully redeemed-from troves)
-    const A_collAfter = await troveManager.getTroveColl(_aTroveId)
-    const B_collAfter = await troveManager.getTroveColl(_bTroveId)
-    const C_collAfter = await troveManager.getTroveColl(_cTroveId)
+    // Check A, B, C’s cdp collateral balance is zero (fully redeemed-from cdps)
+    const A_collAfter = await cdpManager.getTroveColl(_aTroveId)
+    const B_collAfter = await cdpManager.getTroveColl(_bTroveId)
+    const C_collAfter = await cdpManager.getTroveColl(_cTroveId)
     assert.isTrue(A_collAfter.eq(toBN(0)))
     assert.isTrue(B_collAfter.eq(toBN(0)))
     assert.isTrue(C_collAfter.eq(toBN(0)))
 
-    // check D's trove collateral balances have decreased (the partially redeemed-from trove)
-    const D_collAfter = await troveManager.getTroveColl(_dTroveId)
+    // check D's cdp collateral balances have decreased (the partially redeemed-from cdp)
+    const D_collAfter = await cdpManager.getTroveColl(_dTroveId)
     assert.isTrue(D_collAfter.lt(D_collBefore))
 
-    // Check A, B, C (fully redeemed-from troves), and D's (the partially redeemed-from trove) balance has not changed
+    // Check A, B, C (fully redeemed-from cdps), and D's (the partially redeemed-from cdp) balance has not changed
     assert.isTrue(A_balanceAfter.eq(A_balanceBefore))
     assert.isTrue(B_balanceAfter.eq(B_balanceBefore))
     assert.isTrue(C_balanceAfter.eq(C_balanceBefore))
     assert.isTrue(D_balanceAfter.eq(D_balanceBefore))
 
-    // Deprecated D is not closed, so cannot open trove
+    // Deprecated D is not closed, so cannot open cdp
     // await assertRevert(borrowerOperations.openTrove(th._100pct, 0, th.DUMMY_BYTES32, ZERO_ADDRESS, { from: D, value: dec(10, 18) }), 'BorrowerOps: Trove is active')
 
     return {
@@ -4384,17 +4384,17 @@ contract('TroveManager', async accounts => {
     }
   }
 
-  it("redeemCollateral(): emits correct debt and coll values in each redeemed trove's TroveUpdated event", async () => {
+  it("redeemCollateral(): emits correct debt and coll values in each redeemed cdp's TroveUpdated event", async () => {
     const { netDebt: W_netDebt } = await openTrove({ ICR: toBN(dec(20, 18)), extraEBTCAmount: dec(10000, 18), extraParams: { from: whale } })
 
     const { netDebt: A_netDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: A } })
     const { netDebt: B_netDebt } = await openTrove({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: B } })
     const { netDebt: C_netDebt } = await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
     const { totalDebt: D_totalDebt, collateral: D_coll } = await openTrove({ ICR: toBN(dec(280, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: D } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
     const partialAmount = toBN(dec(15, 18))
     const redemptionAmount = A_netDebt.add(B_netDebt).add(C_netDebt).add(partialAmount)
 
@@ -4412,13 +4412,13 @@ contract('TroveManager', async accounts => {
     // Check D stays active
     assert.isTrue(await sortedTroves.contains(_dTroveId))
 
-    const troveUpdatedEvents = th.getAllEventsByName(redemptionTx, "TroveUpdated")
+    const cdpUpdatedEvents = th.getAllEventsByName(redemptionTx, "TroveUpdated")
 
-    // Get each trove's emitted debt and coll 
-    const [A_emittedDebt, A_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, _aTroveId)
-    const [B_emittedDebt, B_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, _bTroveId)
-    const [C_emittedDebt, C_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, _cTroveId)
-    const [D_emittedDebt, D_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(troveUpdatedEvents, _dTroveId)
+    // Get each cdp's emitted debt and coll 
+    const [A_emittedDebt, A_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, _aTroveId)
+    const [B_emittedDebt, B_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, _bTroveId)
+    const [C_emittedDebt, C_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, _cTroveId)
+    const [D_emittedDebt, D_emittedColl] = th.getDebtAndCollFromTroveUpdatedEvents(cdpUpdatedEvents, _dTroveId)
 
     // Expect A, B, C to have 0 emitted debt and coll, since they were closed
     assert.equal(A_emittedDebt, '0')
@@ -4435,7 +4435,7 @@ contract('TroveManager', async accounts => {
     th.assertIsApproximatelyEqual(D_emittedColl, D_coll.sub(partialAmount.mul(mv._1e18BN).div(price)))
   })
 
-  it("redeemCollateral(): a redemption that closes a trove leaves the trove's ETH surplus (collateral - ETH drawn) available for the trove owner to claim", async () => {
+  it("redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner to claim", async () => {
     const {
       A_netDebt, A_coll,
       B_netDebt, B_coll,
@@ -4468,7 +4468,7 @@ contract('TroveManager', async accounts => {
     th.assertIsApproximatelyEqual(C_balanceAfter, C_expectedBalance.add(C_coll.sub(C_netDebt.mul(mv._1e18BN).div(price))))
   })
 
-  it("redeemCollateral(): a redemption that closes a trove leaves the trove's ETH surplus (collateral - ETH drawn) available for the trove owner after re-opening trove", async () => {
+  it("redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner after re-opening cdp", async () => {
     const {
       A_netDebt, A_coll: A_collBefore,
       B_netDebt, B_coll: B_collBefore,
@@ -4483,13 +4483,13 @@ contract('TroveManager', async accounts => {
     const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: A } })
     const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: B } })
     const { collateral: C_coll } = await openTrove({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
-    let _cTroveId = await sortedTroves.troveOfOwnerByIndex(C, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
+    let _cTroveId = await sortedTroves.cdpOfOwnerByIndex(C, 0);
 
-    const A_collAfter = await troveManager.getTroveColl(_aTroveId)
-    const B_collAfter = await troveManager.getTroveColl(_bTroveId)
-    const C_collAfter = await troveManager.getTroveColl(_cTroveId)
+    const A_collAfter = await cdpManager.getTroveColl(_aTroveId)
+    const B_collAfter = await cdpManager.getTroveColl(_bTroveId)
+    const C_collAfter = await cdpManager.getTroveColl(_cTroveId)
 
     assert.isTrue(A_collAfter.eq(A_coll))
     assert.isTrue(B_collAfter.eq(B_coll))
@@ -4519,7 +4519,7 @@ contract('TroveManager', async accounts => {
   it('redeemCollateral(): reverts if fee eats up all returned collateral', async () => {
     // --- SETUP ---
     const { ebtcAmount } = await openTrove({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(1, 24), extraParams: { from: alice } })
-    let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+    let _aliceTroveId = await sortedTroves.cdpOfOwnerByIndex(alice, 0);
     await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const price = await priceFeed.getPrice()
@@ -4539,7 +4539,7 @@ contract('TroveManager', async accounts => {
       } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
 
       // Don't pay for gas, as it makes it easier to calculate the received Ether
-      const redemptionTx = await troveManager.redeemCollateral(
+      const redemptionTx = await cdpManager.redeemCollateral(
         ebtcAmount,
         firstRedemptionHint,
         th.DUMMY_BYTES32,
@@ -4562,7 +4562,7 @@ contract('TroveManager', async accounts => {
     } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
 
     await assertRevert(
-      troveManager.redeemCollateral(
+      cdpManager.redeemCollateral(
         ebtcAmount,
         firstRedemptionHint,
         th.DUMMY_BYTES32,
@@ -4579,12 +4579,12 @@ contract('TroveManager', async accounts => {
   })
 
   it("getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward", async () => {
-    // Make some troves
+    // Make some cdps
     const { totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: defaulter_1 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: dec(20, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     await openTrove({ ICR: toBN(dec(20, 18)), extraEBTCAmount: totalDebt, extraParams: { from: whale } })
     await stabilityPool.provideToSP(totalDebt, ZERO_ADDRESS, { from: whale })
@@ -4592,29 +4592,29 @@ contract('TroveManager', async accounts => {
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
 
     // Confirm defaulter_1 liquidated
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
     // Confirm there are no pending rewards from liquidation
-    const current_L_EBTCDebt = await troveManager.L_EBTCDebt()
+    const current_L_EBTCDebt = await cdpManager.L_EBTCDebt()
     assert.equal(current_L_EBTCDebt, 0)
 
-    const carolSnapshot_L_EBTCDebt = (await troveManager.rewardSnapshots(_carolTroveId))[1]
+    const carolSnapshot_L_EBTCDebt = (await cdpManager.rewardSnapshots(_carolTroveId))[1]
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
-    const carol_PendingEBTCDebtReward = await troveManager.getPendingEBTCDebtReward(_carolTroveId)
+    const carol_PendingEBTCDebtReward = await cdpManager.getPendingEBTCDebtReward(_carolTroveId)
     assert.equal(carol_PendingEBTCDebtReward, 0)
   })
 
   it("getPendingETHReward(): Returns 0 if there is no pending ETH reward", async () => {
-    // make some troves
+    // make some cdps
     const { totalDebt } = await openTrove({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: defaulter_1 } })
-    let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+    let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
     await openTrove({ ICR: toBN(dec(3, 18)), extraEBTCAmount: dec(20, 18), extraParams: { from: carol } })
-    let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
+    let _carolTroveId = await sortedTroves.cdpOfOwnerByIndex(carol, 0);
 
     await openTrove({ ICR: toBN(dec(20, 18)), extraEBTCAmount: totalDebt, extraParams: { from: whale } })
     await stabilityPool.provideToSP(totalDebt, ZERO_ADDRESS, { from: whale })
@@ -4622,30 +4622,30 @@ contract('TroveManager', async accounts => {
     // Price drops
     await priceFeed.setPrice(dec(100, 18))
 
-    await troveManager.liquidate(_defaulter1TroveId)
+    await cdpManager.liquidate(_defaulter1TroveId)
 
     // Confirm defaulter_1 liquidated
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
     // Confirm there are no pending rewards from liquidation
-    const current_L_ETH = await troveManager.L_ETH()
+    const current_L_ETH = await cdpManager.L_ETH()
     assert.equal(current_L_ETH, 0)
 
-    const carolSnapshot_L_ETH = (await troveManager.rewardSnapshots(_carolTroveId))[0]
+    const carolSnapshot_L_ETH = (await cdpManager.rewardSnapshots(_carolTroveId))[0]
     assert.equal(carolSnapshot_L_ETH, 0)
 
-    const carol_PendingETHReward = await troveManager.getPendingETHReward(_carolTroveId)
+    const carol_PendingETHReward = await cdpManager.getPendingETHReward(_carolTroveId)
     assert.equal(carol_PendingETHReward, 0)
   })
 
   // --- computeICR ---
 
-  it("computeICR(): Returns 0 if trove's coll is worth 0", async () => {
+  it("computeICR(): Returns 0 if cdp's coll is worth 0", async () => {
     const price = 0
     const coll = dec(1, 'ether')
     const debt = dec(100, 18)
 
-    const ICR = (await troveManager.computeICR(coll, debt, price)).toString()
+    const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
 
     assert.equal(ICR, 0)
   })
@@ -4655,7 +4655,7 @@ contract('TroveManager', async accounts => {
     const coll = dec(1, 'ether')
     const debt = dec(100, 18)
 
-    const ICR = (await troveManager.computeICR(coll, debt, price)).toString()
+    const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
 
     assert.equal(ICR, dec(1, 18))
   })
@@ -4665,7 +4665,7 @@ contract('TroveManager', async accounts => {
     const coll = dec(200, 'ether')
     const debt = dec(30, 18)
 
-    const ICR = (await troveManager.computeICR(coll, debt, price)).toString()
+    const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
 
     assert.isAtMost(th.getDifference(ICR, '666666666666666666666'), 1000)
   })
@@ -4675,7 +4675,7 @@ contract('TroveManager', async accounts => {
     const coll = '1350000000000000000000'
     const debt = '127000000000000000000'
 
-    const ICR = (await troveManager.computeICR(coll, debt, price))
+    const ICR = (await cdpManager.computeICR(coll, debt, price))
 
     assert.isAtMost(th.getDifference(ICR, '2657480314960630000000'), 1000000)
   })
@@ -4685,18 +4685,18 @@ contract('TroveManager', async accounts => {
     const coll = dec(1, 'ether')
     const debt = '54321000000000000000000'
 
-    const ICR = (await troveManager.computeICR(coll, debt, price)).toString()
+    const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
 
     assert.isAtMost(th.getDifference(ICR, '1840908672520756'), 1000)
   })
 
 
-  it("computeICR(): Returns 2^256-1 if trove has non-zero coll and zero debt", async () => {
+  it("computeICR(): Returns 2^256-1 if cdp has non-zero coll and zero debt", async () => {
     const price = dec(100, 18)
     const coll = dec(1, 'ether')
     const debt = 0
 
-    const ICR = web3.utils.toHex(await troveManager.computeICR(coll, debt, price))
+    const ICR = web3.utils.toHex(await cdpManager.computeICR(coll, debt, price))
     const maxBytes32 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
     assert.equal(ICR, maxBytes32)
@@ -4771,11 +4771,11 @@ contract('TroveManager', async accounts => {
   it("getTroveStake(): Returns stake", async () => {
     const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
     const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
 
-    const A_Stake = await troveManager.getTroveStake(_aTroveId)
-    const B_Stake = await troveManager.getTroveStake(_bTroveId)
+    const A_Stake = await cdpManager.getTroveStake(_aTroveId)
+    const B_Stake = await cdpManager.getTroveStake(_bTroveId)
 
     assert.equal(A_Stake, A_coll.toString())
     assert.equal(B_Stake, B_coll.toString())
@@ -4784,21 +4784,21 @@ contract('TroveManager', async accounts => {
   it("getTroveColl(): Returns coll", async () => {
     const { collateral: A_coll } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
     const { collateral: B_coll } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
 
-    assert.equal(await troveManager.getTroveColl(_aTroveId), A_coll.toString())
-    assert.equal(await troveManager.getTroveColl(_bTroveId), B_coll.toString())
+    assert.equal(await cdpManager.getTroveColl(_aTroveId), A_coll.toString())
+    assert.equal(await cdpManager.getTroveColl(_bTroveId), B_coll.toString())
   })
 
   it("getTroveDebt(): Returns debt", async () => {
     const { totalDebt: totalDebtA } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
     const { totalDebt: totalDebtB } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
 
-    const A_Debt = await troveManager.getTroveDebt(_aTroveId)
-    const B_Debt = await troveManager.getTroveDebt(_bTroveId)
+    const A_Debt = await cdpManager.getTroveDebt(_aTroveId)
+    const B_Debt = await cdpManager.getTroveDebt(_bTroveId)
 
     // Expect debt = requested + 0.5% fee + 50 (due to gas comp)
 
@@ -4809,24 +4809,24 @@ contract('TroveManager', async accounts => {
   it("getTroveStatus(): Returns status", async () => {
     const { totalDebt: B_totalDebt } = await openTrove({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
     await openTrove({ ICR: toBN(dec(150, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: A } })
-    let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _aTroveId = await sortedTroves.cdpOfOwnerByIndex(A, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
 
     // to be able to repay:
     await ebtcToken.transfer(B, B_totalDebt, { from: A })
     await borrowerOperations.closeTrove(_bTroveId, {from: B})
 
-    const A_Status = await troveManager.getTroveStatus(_aTroveId)
-    const B_Status = await troveManager.getTroveStatus(_bTroveId)
-    const C_Status = await troveManager.getTroveStatus(C)
+    const A_Status = await cdpManager.getTroveStatus(_aTroveId)
+    const B_Status = await cdpManager.getTroveStatus(_bTroveId)
+    const C_Status = await cdpManager.getTroveStatus(C)
 
     assert.equal(A_Status, '1')  // active
     assert.equal(B_Status, '2')  // closed by user
     assert.equal(C_Status, '0')  // non-existent
   })
 
-  it("hasPendingRewards(): Returns false it trove is not active", async () => {
-    assert.isFalse(await troveManager.hasPendingRewards(alice))
+  it("hasPendingRewards(): Returns false it cdp is not active", async () => {
+    assert.isFalse(await cdpManager.hasPendingRewards(alice))
   })
 })
 

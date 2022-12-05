@@ -5,11 +5,11 @@ pragma solidity 0.6.11;
 /*
  * The Stability Pool holds EBTC tokens deposited by Stability Pool depositors.
  *
- * When a trove is liquidated, then depending on system conditions, some of its EBTC debt gets offset with
+ * When a cdp is liquidated, then depending on system conditions, some of its EBTC debt gets offset with
  * EBTC in the Stability Pool:  that is, the offset debt evaporates, and an equal amount of EBTC tokens in the Stability Pool is burned.
  *
  * Thus, a liquidation causes each depositor to receive a EBTC loss, in proportion to their deposit as a share of total deposits.
- * They also receive an ETH gain, as the ETH collateral of the liquidated trove is distributed among Stability depositors,
+ * They also receive an ETH gain, as the ETH collateral of the liquidated cdp is distributed among Stability depositors,
  * in the same proportion.
  *
  * When a liquidation occurs, it depletes every deposit by the same fraction: for example, a liquidation that depletes 40%
@@ -76,7 +76,7 @@ interface IStabilityPool {
      */
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
         address _ebtcTokenAddress,
         address _sortedTrovesAddress,
@@ -100,7 +100,7 @@ interface IStabilityPool {
 
     /*
      * Initial checks:
-     * - _amount is zero or there are no under collateralized troves left in the system
+     * - _amount is zero or there are no under collateralized cdps left in the system
      * - User has a non zero deposit
      * ---
      * - Triggers a LQTY issuance, based on time passed since the last issuance. The LQTY issuance is shared between *all* depositors and front ends
@@ -116,17 +116,17 @@ interface IStabilityPool {
     /*
      * Initial checks:
      * - User has a non zero deposit
-     * - User has an open trove
+     * - User has an open cdp
      * - User has some ETH gain
      * ---
      * - Triggers a LQTY issuance, based on time passed since the last issuance. The LQTY issuance is shared between *all* depositors and front ends
      * - Sends all depositor's LQTY gain to  depositor
      * - Sends all tagged front end's LQTY gain to the tagged front end
-     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's trove
+     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's cdp
      * - Leaves their compounded deposit in the Stability Pool
      * - Updates snapshots for deposit and tagged front end stake
      */
-    function withdrawETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawETHGainToTrove(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external;
 
     /*
      * Initial checks:

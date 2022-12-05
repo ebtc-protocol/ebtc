@@ -6,10 +6,10 @@ import { EthersLiquity } from "@liquity/lib-ethers";
 import { deployer, funder, provider } from "../globals";
 
 export interface WarzoneParams {
-  troves: number;
+  cdps: number;
 }
 
-export const warzone = async ({ troves: numberOfTroves }: WarzoneParams) => {
+export const warzone = async ({ cdps: numberOfTroves }: WarzoneParams) => {
   const deployerLiquity = await EthersLiquity.connect(deployer);
 
   const price = await deployerLiquity.getPrice();

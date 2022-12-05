@@ -7,7 +7,7 @@ Uniswap Factory number of pairs: 32198
 deployer's ETH balance before deployments: 2935396650000000000
 Using previously deployed priceFeed contract at address 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 Using previously deployed sortedTroves contract at address 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-Using previously deployed troveManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+Using previously deployed cdpManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 Using previously deployed activePool contract at address 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 Using previously deployed stabilityPool contract at address 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 Using previously deployed gasPool contract at address 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -22,7 +22,7 @@ Contract objects addresses:
 priceFeed: 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 ebtcToken: 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
 sortedTroves: 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-troveManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+cdpManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 activePool: 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 stabilityPool: 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 gasPool: 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -55,7 +55,7 @@ current Tellor price: 2024690000
 current Tellor timestamp: 1617614538
 EBTC-ETH Pair's current EBTC reserves: 2001.941734972325910671
 EBTC-ETH Pair's current ETH reserves: 1.010000000000000000
-number of troves: 2 
+number of cdps: 2 
 Trove list size: 2 
 Entire system debt: 4625.000000000000000000
 Entire system coll: 6.500000000000000000
@@ -66,9 +66,9 @@ Total EBTC SP deposits: 34.959359097674089329
 Total LQTY staked: 26.000000000000000000
 Total LP (EBTC-ETH) tokens staked in unipool: .000000000000000001
 TroveManager state variables:
-Total trove stakes: 6.500000000000000000
-Snapshot of total trove stakes before last liq. : .000000000000000000
-Snapshot of total trove collateral before last liq. : .000000000000000000
+Total cdp stakes: 6.500000000000000000
+Snapshot of total cdp stakes before last liq. : .000000000000000000
+Snapshot of total cdp collateral before last liq. : .000000000000000000
 L_ETH: .000000000000000000
 L_EBTCDebt: .000000000000000000
 StabilityPool state variables:

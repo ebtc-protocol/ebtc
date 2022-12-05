@@ -7,7 +7,7 @@ Uniswap Factory number of pairs: 32197
 deployer's ETH balance before deployments: 5010833150000000000
 Using previously deployed priceFeed contract at address 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 Using previously deployed sortedTroves contract at address 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-Using previously deployed troveManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+Using previously deployed cdpManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 Using previously deployed activePool contract at address 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 Using previously deployed stabilityPool contract at address 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 Using previously deployed gasPool contract at address 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -22,7 +22,7 @@ Contract objects addresses:
 priceFeed: 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
 ebtcToken: 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
 sortedTroves: 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-troveManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+cdpManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 activePool: 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 stabilityPool: 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 gasPool: 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -50,5 +50,5 @@ time now: 1617615353
 time oneYearFromNow: 1649151353
 Using previously deployed ACCOUNT_2 lockup contract at address 0xb69e194239169767494c432dD0826ca5c3b1d310
 Using previously deployed ACCOUNT_3 lockup contract at address 0x015f2eB03910dFE31a013f3Bd074daea1DA5Cabf
-deployer trove debt before repaying: 3215000000000000000000
-deployer trove debt after repaying: 3215000000000000000000
+deployer cdp debt before repaying: 3215000000000000000000
+deployer cdp debt after repaying: 3215000000000000000000

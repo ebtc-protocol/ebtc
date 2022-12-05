@@ -69,7 +69,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         closedByRedemption
     }
 
-    // Store the necessary data for a trove
+    // Store the necessary data for a cdp
     struct Trove {
         uint debt;
         uint coll;
@@ -99,16 +99,16 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     uint public L_ETH;
     uint public L_EBTCDebt;
 
-    // Map active troves to their RewardSnapshot
+    // Map active cdps to their RewardSnapshot
     mapping (bytes32 => RewardSnapshot) public rewardSnapshots;
 
-    // Object containing the ETH and EBTC snapshots for a given active trove
+    // Object containing the ETH and EBTC snapshots for a given active cdp
     struct RewardSnapshot { uint ETH; uint EBTCDebt;}
 
-    // Array of all active trove Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
+    // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public TroveIds;
 
-    // Error trackers for the trove redistribution calculation
+    // Error trackers for the cdp redistribution calculation
     uint public lastETHError_Redistribution;
     uint public lastEBTCDebtError_Redistribution;
 
@@ -211,15 +211,15 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint _stake, TroveManagerOperation _operation);
-    event TroveLiquidated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, TroveManagerOperation operation);
+    event TroveUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, TroveManagerOperation _operation);
+    event TroveLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, TroveManagerOperation operation);
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
     event TroveSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event TroveIndexUpdated(bytes32 _troveId, uint _newIndex);
+    event TroveIndexUpdated(bytes32 _cdpId, uint _newIndex);
 
      enum TroveManagerOperation {
         applyPendingRewards,
@@ -299,22 +299,22 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     // --- Trove Liquidation functions ---
 
-    // Single liquidation function. Closes the trove if its ICR is lower than the minimum collateral ratio.
-    function liquidate(bytes32 _troveId) external override {
-        _requireTroveIsActive(_troveId);
+    // Single liquidation function. Closes the cdp if its ICR is lower than the minimum collateral ratio.
+    function liquidate(bytes32 _cdpId) external override {
+        _requireTroveIsActive(_cdpId);
 
-        bytes32[] memory troveIds = new bytes32[](1);
-        troveIds[0] = _troveId;
-        batchLiquidateTroves(troveIds);
+        bytes32[] memory cdpIds = new bytes32[](1);
+        cdpIds[0] = _cdpId;
+        batchLiquidateTroves(cdpIds);
     }
 
     // --- Inner single liquidation functions ---
 
-    // Liquidate one trove, in Normal Mode.
+    // Liquidate one cdp, in Normal Mode.
     function _liquidateNormalMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
-        bytes32 _troveId,
+        bytes32 _cdpId,
         uint _EBTCInStabPool
     )
         internal
@@ -325,10 +325,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         (singleLiquidation.entireTroveDebt,
         singleLiquidation.entireTroveColl,
         vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
+        vars.pendingCollReward) = getEntireDebtAndColl(_cdpId);
 
         _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-        _removeStake(_troveId);
+        _removeStake(_cdpId);
 
         singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
         singleLiquidation.EBTCGasCompensation = EBTC_GAS_COMPENSATION;
@@ -339,19 +339,19 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         singleLiquidation.debtToRedistribute,
         singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, collToLiquidate, _EBTCInStabPool);
 
-        _closeTrove(_troveId, Status.closedByLiquidation);
+        _closeTrove(_cdpId, Status.closedByLiquidation);
 
-        address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-        emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
-        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
+        address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_cdpId);
+        emit TroveLiquidated(_cdpId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
+        emit TroveUpdated(_cdpId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);
         return singleLiquidation;
     }
 
-    // Liquidate one trove, in Recovery Mode.
+    // Liquidate one cdp, in Recovery Mode.
     function _liquidateRecoveryMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
-        bytes32 _troveId,
+        bytes32 _cdpId,
         uint _ICR,
         uint _EBTCInStabPool,
         uint _TCR,
@@ -361,11 +361,11 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         returns (LiquidationValues memory singleLiquidation)
     {
         LocalVariables_InnerSingleLiquidateFunction memory vars;
-        if (TroveIds.length <= 1) {return singleLiquidation;} // don't liquidate if last trove
+        if (TroveIds.length <= 1) {return singleLiquidation;} // don't liquidate if last cdp
         (singleLiquidation.entireTroveDebt,
         singleLiquidation.entireTroveColl,
         vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_troveId);
+        vars.pendingCollReward) = getEntireDebtAndColl(_cdpId);
 
         singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireTroveColl);
         singleLiquidation.EBTCGasCompensation = EBTC_GAS_COMPENSATION;
@@ -374,34 +374,34 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         // If ICR <= 100%, purely redistribute the Trove across all active Troves
         if (_ICR <= _100pct) {
             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _removeStake(_troveId);
+            _removeStake(_cdpId);
            
             singleLiquidation.debtToOffset = 0;
             singleLiquidation.collToSendToSP = 0;
             singleLiquidation.debtToRedistribute = singleLiquidation.entireTroveDebt;
             singleLiquidation.collToRedistribute = vars.collToLiquidate;
 
-            _closeTrove(_troveId, Status.closedByLiquidation);
+            _closeTrove(_cdpId, Status.closedByLiquidation);
 
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_cdpId);
+            emit TroveLiquidated(_cdpId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_cdpId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
             
         // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
         } else if ((_ICR > _100pct) && (_ICR < MCR)) {
              _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
-            _removeStake(_troveId);
+            _removeStake(_cdpId);
 
             (singleLiquidation.debtToOffset,
             singleLiquidation.collToSendToSP,
             singleLiquidation.debtToRedistribute,
             singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireTroveDebt, vars.collToLiquidate, _EBTCInStabPool);
 
-            _closeTrove(_troveId, Status.closedByLiquidation);
+            _closeTrove(_cdpId, Status.closedByLiquidation);
 
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_cdpId);
+            emit TroveLiquidated(_cdpId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_cdpId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
         /*
         * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
         * and there is EBTC in the Stability Pool, only offset, with no redistribution,
@@ -412,17 +412,17 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
             assert(_EBTCInStabPool != 0);
 
-            _removeStake(_troveId);
+            _removeStake(_cdpId);
             singleLiquidation = _getCappedOffsetVals(singleLiquidation.entireTroveDebt, singleLiquidation.entireTroveColl, _price);
 
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
-            _closeTrove(_troveId, Status.closedByLiquidation);
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_cdpId);
+            _closeTrove(_cdpId, Status.closedByLiquidation);
             if (singleLiquidation.collSurplus > 0) {
                 collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
             }
 
-            emit TroveLiquidated(_troveId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveLiquidated(_cdpId, _borrower, singleLiquidation.entireTroveDebt, singleLiquidation.collToSendToSP, TroveManagerOperation.liquidateInRecoveryMode);
+            emit TroveUpdated(_cdpId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
 
         } else { // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireTroveDebt > _EBTCInStabPool))
             LiquidationValues memory zeroVals;
@@ -432,8 +432,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         return singleLiquidation;
     }
 
-    /* In a full liquidation, returns the values for a trove's coll and debt to be offset, and coll and debt to be
-    * redistributed to active troves.
+    /* In a full liquidation, returns the values for a cdp's coll and debt to be offset, and coll and debt to be
+    * redistributed to active cdps.
     */
     function _getOffsetAndRedistributionVals
     (
@@ -448,12 +448,12 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         if (_EBTCInStabPool > 0) {
         /*
         * Offset as much debt & collateral as possible against the Stability Pool, and redistribute the remainder
-        * between all active troves.
+        * between all active cdps.
         *
-        *  If the trove's debt is larger than the deposited EBTC in the Stability Pool:
+        *  If the cdp's debt is larger than the deposited EBTC in the Stability Pool:
         *
-        *  - Offset an amount of the trove's debt equal to the EBTC in the Stability Pool
-        *  - Send a fraction of the trove's collateral to the Stability Pool, equal to the fraction of its offset debt
+        *  - Offset an amount of the cdp's debt equal to the EBTC in the Stability Pool
+        *  - Send a fraction of the cdp's collateral to the Stability Pool, equal to the fraction of its offset debt
         *
         */
             debtToOffset = LiquityMath._min(_debt, _EBTCInStabPool);
@@ -469,7 +469,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     /*
-    *  Get its offset coll/debt and ETH gas comp, and close the trove.
+    *  Get its offset coll/debt and ETH gas comp, and close the cdp.
     */
     function _getCappedOffsetVals
     (
@@ -496,7 +496,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     /*
-    * Liquidate a sequence of troves. Closes a maximum number of n under-collateralized Troves,
+    * Liquidate a sequence of cdps. Closes a maximum number of n under-collateralized Troves,
     * starting from the one with the lowest collateral ratio in the system, and moving upwards
     */
     function liquidateTroves(uint _n) external override {
@@ -645,10 +645,10 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     /*
-    * Attempt to liquidate a custom list of troves provided by the caller.
+    * Attempt to liquidate a custom list of cdps provided by the caller.
     */
-    function batchLiquidateTroves(bytes32[] memory _troveArray) public override {
-        require(_troveArray.length != 0, "TroveManager: Calldata address array must not be empty");
+    function batchLiquidateTroves(bytes32[] memory _cdpArray) public override {
+        require(_cdpArray.length != 0, "TroveManager: Calldata address array must not be empty");
 
         IActivePool activePoolCached = activePool;
         IDefaultPool defaultPoolCached = defaultPool;
@@ -663,9 +663,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.
         if (vars.recoveryModeAtStart) {
-            totals = _getTotalFromBatchLiquidate_RecoveryMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _troveArray);
+            totals = _getTotalFromBatchLiquidate_RecoveryMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _cdpArray);
         } else {  //  if !vars.recoveryModeAtStart
-            totals = _getTotalsFromBatchLiquidate_NormalMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _troveArray);
+            totals = _getTotalsFromBatchLiquidate_NormalMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _cdpArray);
         }
 
         require(totals.totalDebtInSequence > 0, "TroveManager: nothing to liquidate");
@@ -698,7 +698,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         IDefaultPool _defaultPool,
         uint _price,
         uint _EBTCInStabPool,
-        bytes32[] memory _troveArray
+        bytes32[] memory _cdpArray
     )
         internal
         returns(LiquidationTotals memory totals)
@@ -711,15 +711,15 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         vars.entireSystemDebt = getEntireSystemDebt();
         vars.entireSystemColl = getEntireSystemColl();
 
-        for (vars.i = 0; vars.i < _troveArray.length; vars.i++) {
-            vars.user = _troveArray[vars.i];
-            // Skip non-active troves
+        for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
+            vars.user = _cdpArray[vars.i];
+            // Skip non-active cdps
             if (Troves[vars.user].status != Status.active) { continue; }
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (!vars.backToNormalMode) {
 
-                // Skip this trove if ICR is greater than MCR and Stability Pool is empty
+                // Skip this cdp if ICR is greater than MCR and Stability Pool is empty
                 if (vars.ICR >= MCR && vars.remainingEBTCInStabPool == 0) { continue; }
 
                 uint TCR = LiquityMath._computeCR(vars.entireSystemColl, vars.entireSystemDebt, _price);
@@ -747,7 +747,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
 
-            } else continue; // In Normal Mode skip troves with ICR >= MCR
+            } else continue; // In Normal Mode skip cdps with ICR >= MCR
         }
     }
 
@@ -757,7 +757,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         IDefaultPool _defaultPool,
         uint _price,
         uint _EBTCInStabPool,
-        bytes32[] memory _troveArray
+        bytes32[] memory _cdpArray
     )
         internal
         returns(LiquidationTotals memory totals)
@@ -767,8 +767,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
         vars.remainingEBTCInStabPool = _EBTCInStabPool;
 
-        for (vars.i = 0; vars.i < _troveArray.length; vars.i++) {
-            vars.user = _troveArray[vars.i];
+        for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
+            vars.user = _cdpArray[vars.i];
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
@@ -820,7 +820,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     // --- Redemption functions ---
 	
     struct LocalVariables_RedeemCollateralFromTrove {
-        bytes32 _troveId;
+        bytes32 _cdpId;
         uint _maxEBTCamount;
         uint _price;
         bytes32 _upperPartialRedemptionHint;
@@ -836,22 +836,22 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         internal returns (SingleRedemptionValues memory singleRedemption)
     {
         // Determine the remaining amount (lot) to be redeemed, capped by the entire debt of the Trove minus the liquidation reserve
-        singleRedemption.EBTCLot = LiquityMath._min(_redeemColFromTrove._maxEBTCamount, Troves[_redeemColFromTrove._troveId].debt.sub(EBTC_GAS_COMPENSATION));
+        singleRedemption.EBTCLot = LiquityMath._min(_redeemColFromTrove._maxEBTCamount, Troves[_redeemColFromTrove._cdpId].debt.sub(EBTC_GAS_COMPENSATION));
 
         // Get the ETHLot of equivalent value in USD
         singleRedemption.ETHLot = singleRedemption.EBTCLot.mul(DECIMAL_PRECISION).div(_redeemColFromTrove._price);
 
         // Decrease the debt and collateral of the current Trove according to the EBTC lot and corresponding ETH to send
-        uint newDebt = (Troves[_redeemColFromTrove._troveId].debt).sub(singleRedemption.EBTCLot);
-        uint newColl = (Troves[_redeemColFromTrove._troveId].coll).sub(singleRedemption.ETHLot);
+        uint newDebt = (Troves[_redeemColFromTrove._cdpId].debt).sub(singleRedemption.EBTCLot);
+        uint newColl = (Troves[_redeemColFromTrove._cdpId].coll).sub(singleRedemption.ETHLot);
 
         if (newDebt == EBTC_GAS_COMPENSATION) {
-            // No debt left in the Trove (except for the liquidation reserve), therefore the trove gets closed
-            _removeStake(_redeemColFromTrove._troveId);
-            address _borrower = _contractsCache.sortedTroves.existTroveOwners(_redeemColFromTrove._troveId);
-            _closeTrove(_redeemColFromTrove._troveId, Status.closedByRedemption);
-            _redeemCloseTrove(_contractsCache, _redeemColFromTrove._troveId, EBTC_GAS_COMPENSATION, newColl, _borrower);
-            emit TroveUpdated(_redeemColFromTrove._troveId, _borrower, 0, 0, 0, TroveManagerOperation.redeemCollateral);
+            // No debt left in the Trove (except for the liquidation reserve), therefore the cdp gets closed
+            _removeStake(_redeemColFromTrove._cdpId);
+            address _borrower = _contractsCache.sortedTroves.existTroveOwners(_redeemColFromTrove._cdpId);
+            _closeTrove(_redeemColFromTrove._cdpId, Status.closedByRedemption);
+            _redeemCloseTrove(_contractsCache, _redeemColFromTrove._cdpId, EBTC_GAS_COMPENSATION, newColl, _borrower);
+            emit TroveUpdated(_redeemColFromTrove._cdpId, _borrower, 0, 0, 0, TroveManagerOperation.redeemCollateral);
 
         } else {
             uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
@@ -867,18 +867,18 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
                 return singleRedemption;
             }
 
-            _contractsCache.sortedTroves.reInsert(_redeemColFromTrove._troveId, newNICR, _redeemColFromTrove._upperPartialRedemptionHint, _redeemColFromTrove._lowerPartialRedemptionHint);
+            _contractsCache.sortedTroves.reInsert(_redeemColFromTrove._cdpId, newNICR, _redeemColFromTrove._upperPartialRedemptionHint, _redeemColFromTrove._lowerPartialRedemptionHint);
 
-            Troves[_redeemColFromTrove._troveId].debt = newDebt;
-            Troves[_redeemColFromTrove._troveId].coll = newColl;
-            _updateStakeAndTotalStakes(_redeemColFromTrove._troveId);
+            Troves[_redeemColFromTrove._cdpId].debt = newDebt;
+            Troves[_redeemColFromTrove._cdpId].coll = newColl;
+            _updateStakeAndTotalStakes(_redeemColFromTrove._cdpId);
 
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_redeemColFromTrove._troveId);
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_redeemColFromTrove._cdpId);
             emit TroveUpdated(
-                _redeemColFromTrove._troveId,
+                _redeemColFromTrove._cdpId,
                 _borrower,
                 newDebt, newColl,
-                Troves[_redeemColFromTrove._troveId].stake,
+                Troves[_redeemColFromTrove._cdpId].stake,
                 TroveManagerOperation.redeemCollateral
             );
         }
@@ -887,13 +887,13 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     /*
-    * Called when a full redemption occurs, and closes the trove.
+    * Called when a full redemption occurs, and closes the cdp.
     * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve) worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
-    * In order to close the trove, the EBTC liquidation reserve is burned, and the corresponding debt is removed from the active pool.
-    * The debt recorded on the trove's struct is zero'd elswhere, in _closeTrove.
-    * Any surplus ETH left in the trove, is sent to the Coll surplus pool, and can be later claimed by the borrower.
+    * In order to close the cdp, the EBTC liquidation reserve is burned, and the corresponding debt is removed from the active pool.
+    * The debt recorded on the cdp's struct is zero'd elswhere, in _closeTrove.
+    * Any surplus ETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
     */
-    function _redeemCloseTrove(ContractsCache memory _contractsCache, bytes32 _troveId, uint _EBTC, uint _ETH, address _b) internal {
+    function _redeemCloseTrove(ContractsCache memory _contractsCache, bytes32 _cdpId, uint _EBTC, uint _ETH, address _b) internal {
         _contractsCache.ebtcToken.burn(gasPoolAddress, _EBTC);
         // Update Active Pool EBTC, and send ETH to account
         _contractsCache.activePool.decreaseEBTCDebt(_EBTC);
@@ -915,12 +915,12 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral from as many Troves as are needed to fill the redemption
     * request.  Applies pending rewards to a Trove before reducing its debt and coll.
     *
-    * Note that if _amount is very large, this function can run out of gas, specially if traversed troves are small. This can be easily avoided by
+    * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small. This can be easily avoided by
     * splitting the total _amount in appropriate chunks and calling the function multiple times.
     *
     * Param `_maxIterations` can also be provided, so the loop through Troves is capped (if it’s zero, it will be ignored).This makes it easier to
     * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough, without needing to know the “topology”
-    * of the trove list. It also avoids the need to set the cap in stone in the contract, nor doing gas calculations, as both gas price and opcode
+    * of the cdp list. It also avoids the need to set the cap in stone in the contract, nor doing gas calculations, as both gas price and opcode
     * costs can vary.
     *
     * All Troves that are redeemed from -- with the likely exception of the last one -- will end up with no debt left, therefore they will be closed.
@@ -976,7 +976,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         } else {
             _cId = contractsCache.sortedTroves.getLast();
             currentBorrower = contractsCache.sortedTroves.existTroveOwners(_cId);
-            // Find the first trove with ICR >= MCR
+            // Find the first cdp with ICR >= MCR
             while (currentBorrower != address(0) && getCurrentICR(_cId, totals.price) < MCR) {
                 _cId = contractsCache.sortedTroves.getPrev(_cId);
                 currentBorrower = contractsCache.sortedTroves.existTroveOwners(_cId);
@@ -1035,87 +1035,87 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     // --- Helper functions ---
 
-    // Return the nominal collateral ratio (ICR) of a given Trove, without the price. Takes a trove's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _troveId) public view override returns (uint) {
-        (uint currentETH, uint currentEBTCDebt) = _getCurrentTroveAmounts(_troveId);
+    // Return the nominal collateral ratio (ICR) of a given Trove, without the price. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
+        (uint currentETH, uint currentEBTCDebt) = _getCurrentTroveAmounts(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
     }
 
-    // Return the current collateral ratio (ICR) of a given Trove. Takes a trove's pending coll and debt rewards from redistributions into account.
-    function getCurrentICR(bytes32 _troveId, uint _price) public view override returns (uint) {
-        (uint currentETH, uint currentEBTCDebt) = _getCurrentTroveAmounts(_troveId);
+    // Return the current collateral ratio (ICR) of a given Trove. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    function getCurrentICR(bytes32 _cdpId, uint _price) public view override returns (uint) {
+        (uint currentETH, uint currentEBTCDebt) = _getCurrentTroveAmounts(_cdpId);
 
         uint ICR = LiquityMath._computeCR(currentETH, currentEBTCDebt, _price);
         return ICR;
     }
 
-    function _getCurrentTroveAmounts(bytes32 _troveId) internal view returns (uint, uint) {
-        uint pendingETHReward = getPendingETHReward(_troveId);
-        uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_troveId);
+    function _getCurrentTroveAmounts(bytes32 _cdpId) internal view returns (uint, uint) {
+        uint pendingETHReward = getPendingETHReward(_cdpId);
+        uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
 
-        uint currentETH = Troves[_troveId].coll.add(pendingETHReward);
-        uint currentEBTCDebt = Troves[_troveId].debt.add(pendingEBTCDebtReward);
+        uint currentETH = Troves[_cdpId].coll.add(pendingETHReward);
+        uint currentEBTCDebt = Troves[_cdpId].debt.add(pendingEBTCDebtReward);
 
         return (currentETH, currentEBTCDebt);
     }
 
-    function applyPendingRewards(bytes32 _troveId) external override {
+    function applyPendingRewards(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
-        return _applyPendingRewards(activePool, defaultPool, _troveId);
+        return _applyPendingRewards(activePool, defaultPool, _cdpId);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Trove
-    function _applyPendingRewards(IActivePool _activePool, IDefaultPool _defaultPool, bytes32 _troveId) internal {
-        if (hasPendingRewards(_troveId)) {
-            _requireTroveIsActive(_troveId);
+    function _applyPendingRewards(IActivePool _activePool, IDefaultPool _defaultPool, bytes32 _cdpId) internal {
+        if (hasPendingRewards(_cdpId)) {
+            _requireTroveIsActive(_cdpId);
 
             // Compute pending rewards
-            uint pendingETHReward = getPendingETHReward(_troveId);
-            uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_troveId);
+            uint pendingETHReward = getPendingETHReward(_cdpId);
+            uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
 
-            // Apply pending rewards to trove's state
-            Troves[_troveId].coll = Troves[_troveId].coll.add(pendingETHReward);
-            Troves[_troveId].debt = Troves[_troveId].debt.add(pendingEBTCDebtReward);
+            // Apply pending rewards to cdp's state
+            Troves[_cdpId].coll = Troves[_cdpId].coll.add(pendingETHReward);
+            Troves[_cdpId].debt = Troves[_cdpId].debt.add(pendingEBTCDebtReward);
 
-            _updateTroveRewardSnapshots(_troveId);
+            _updateTroveRewardSnapshots(_cdpId);
 
             // Transfer from DefaultPool to ActivePool
             _movePendingTroveRewardsToActivePool(_activePool, _defaultPool, pendingEBTCDebtReward, pendingETHReward);
 
-            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_troveId);
+            address _borrower = ISortedTroves(sortedTroves).existTroveOwners(_cdpId);
             emit TroveUpdated(
-                _troveId,
+                _cdpId,
                 _borrower,
-                Troves[_troveId].debt,
-                Troves[_troveId].coll,
-                Troves[_troveId].stake,
+                Troves[_cdpId].debt,
+                Troves[_cdpId].coll,
+                Troves[_cdpId].stake,
                 TroveManagerOperation.applyPendingRewards
             );
         }
     }
 
     // Update borrower's snapshots of L_ETH and L_EBTCDebt to reflect the current values
-    function updateTroveRewardSnapshots(bytes32 _troveId) external override {
+    function updateTroveRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
-       return _updateTroveRewardSnapshots(_troveId);
+       return _updateTroveRewardSnapshots(_cdpId);
     }
 
-    function _updateTroveRewardSnapshots(bytes32 _troveId) internal {
-        rewardSnapshots[_troveId].ETH = L_ETH;
-        rewardSnapshots[_troveId].EBTCDebt = L_EBTCDebt;
+    function _updateTroveRewardSnapshots(bytes32 _cdpId) internal {
+        rewardSnapshots[_cdpId].ETH = L_ETH;
+        rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
         emit TroveSnapshotsUpdated(L_ETH, L_EBTCDebt);
     }
 
     // Get the borrower's pending accumulated ETH reward, earned by their stake
-    function getPendingETHReward(bytes32 _troveId) public view override returns (uint) {
-        uint snapshotETH = rewardSnapshots[_troveId].ETH;
+    function getPendingETHReward(bytes32 _cdpId) public view override returns (uint) {
+        uint snapshotETH = rewardSnapshots[_cdpId].ETH;
         uint rewardPerUnitStaked = L_ETH.sub(snapshotETH);
 
-        if ( rewardPerUnitStaked == 0 || Troves[_troveId].status != Status.active) { return 0; }
+        if ( rewardPerUnitStaked == 0 || Troves[_cdpId].status != Status.active) { return 0; }
 
-        uint stake = Troves[_troveId].stake;
+        uint stake = Troves[_cdpId].stake;
 
         uint pendingETHReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
 
@@ -1123,69 +1123,69 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
     
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
-    function getPendingEBTCDebtReward(bytes32 _troveId) public view override returns (uint) {
-        uint snapshotEBTCDebt = rewardSnapshots[_troveId].EBTCDebt;
+    function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint) {
+        uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
         uint rewardPerUnitStaked = L_EBTCDebt.sub(snapshotEBTCDebt);
 
-        if ( rewardPerUnitStaked == 0 || Troves[_troveId].status != Status.active) { return 0; }
+        if ( rewardPerUnitStaked == 0 || Troves[_cdpId].status != Status.active) { return 0; }
 
-        uint stake =  Troves[_troveId].stake;
+        uint stake =  Troves[_cdpId].stake;
 
         uint pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
 
         return pendingEBTCDebtReward;
     }
 
-    function hasPendingRewards(bytes32 _troveId) public view override returns (bool) {
+    function hasPendingRewards(bytes32 _cdpId) public view override returns (bool) {
         /*
         * A Trove has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
         * pending rewards
         */
-        if (Troves[_troveId].status != Status.active) {return false;}
+        if (Troves[_cdpId].status != Status.active) {return false;}
        
-        return (rewardSnapshots[_troveId].ETH < L_ETH);
+        return (rewardSnapshots[_cdpId].ETH < L_ETH);
     }
 
     // Return the Troves entire debt and coll, including pending rewards from redistributions.
-    function getEntireDebtAndColl(bytes32 _troveId)
+    function getEntireDebtAndColl(bytes32 _cdpId)
         public
         view
         override
         returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward)
     {
-        debt = Troves[_troveId].debt;
-        coll = Troves[_troveId].coll;
+        debt = Troves[_cdpId].debt;
+        coll = Troves[_cdpId].coll;
 
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_troveId);
-        pendingETHReward = getPendingETHReward(_troveId);
+        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        pendingETHReward = getPendingETHReward(_cdpId);
 
         debt = debt.add(pendingEBTCDebtReward);
         coll = coll.add(pendingETHReward);
     }
 
-    function removeStake(bytes32 _troveId) external override {
+    function removeStake(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
-        return _removeStake(_troveId);
+        return _removeStake(_cdpId);
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
-    function _removeStake(bytes32 _troveId) internal {
-        uint stake = Troves[_troveId].stake;
+    function _removeStake(bytes32 _cdpId) internal {
+        uint stake = Troves[_cdpId].stake;
         totalStakes = totalStakes.sub(stake);
-        Troves[_troveId].stake = 0;
+        Troves[_cdpId].stake = 0;
     }
 
-    function updateStakeAndTotalStakes(bytes32 _troveId) external override returns (uint) {
+    function updateStakeAndTotalStakes(bytes32 _cdpId) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
-        return _updateStakeAndTotalStakes(_troveId);
+        return _updateStakeAndTotalStakes(_cdpId);
     }
 
     // Update borrower's stake based on their latest collateral value
-    function _updateStakeAndTotalStakes(bytes32 _troveId) internal returns (uint) {
-        uint newStake = _computeNewStake(Troves[_troveId].coll);
-        uint oldStake = Troves[_troveId].stake;
-        Troves[_troveId].stake = newStake;
+    function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
+        uint newStake = _computeNewStake(Troves[_cdpId].coll);
+        uint oldStake = Troves[_cdpId].stake;
+        Troves[_cdpId].stake = newStake;
 
         totalStakes = totalStakes.sub(oldStake).add(newStake);
         emit TotalStakesUpdated(totalStakes);
@@ -1201,8 +1201,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         } else {
             /*
             * The following assert() holds true because:
-            * - The system always contains >= 1 trove
-            * - When we close or liquidate a trove, we redistribute the pending rewards, so if all troves were closed/liquidated,
+            * - The system always contains >= 1 cdp
+            * - When we close or liquidate a cdp, we redistribute the pending rewards, so if all cdps were closed/liquidated,
             * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
             */
             assert(totalStakesSnapshot > 0);
@@ -1247,26 +1247,26 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         _activePool.sendETH(address(_defaultPool), _coll);
     }
 
-    function closeTrove(bytes32 _troveId) external override {
+    function closeTrove(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
-        return _closeTrove(_troveId, Status.closedByOwner);
+        return _closeTrove(_cdpId, Status.closedByOwner);
     }
 
-    function _closeTrove(bytes32 _troveId, Status closedStatus) internal {
+    function _closeTrove(bytes32 _cdpId, Status closedStatus) internal {
         assert(closedStatus != Status.nonExistent && closedStatus != Status.active);
 
         uint TroveIdsArrayLength = TroveIds.length;
         _requireMoreThanOneTroveInSystem(TroveIdsArrayLength);
 
-        Troves[_troveId].status = closedStatus;
-        Troves[_troveId].coll = 0;
-        Troves[_troveId].debt = 0;
+        Troves[_cdpId].status = closedStatus;
+        Troves[_cdpId].coll = 0;
+        Troves[_cdpId].debt = 0;
 
-        rewardSnapshots[_troveId].ETH = 0;
-        rewardSnapshots[_troveId].EBTCDebt = 0;
+        rewardSnapshots[_cdpId].ETH = 0;
+        rewardSnapshots[_cdpId].EBTCDebt = 0;
 
-        _removeTrove(_troveId, TroveIdsArrayLength);
-        sortedTroves.remove(_troveId);
+        _removeTrove(_cdpId, TroveIdsArrayLength);
+        sortedTroves.remove(_cdpId);
     }
 
     /*
@@ -1290,21 +1290,21 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     // Push the owner's address to the Trove owners list, and record the corresponding array index on the Trove struct
-    function addTroveIdToArray(bytes32 _troveId) external override returns (uint index) {
+    function addTroveIdToArray(bytes32 _cdpId) external override returns (uint index) {
         _requireCallerIsBorrowerOperations();
-        return _addTroveIdToArray(_troveId);
+        return _addTroveIdToArray(_cdpId);
     }
 
-    function _addTroveIdToArray(bytes32 _troveId) internal returns (uint128 index) {
-        /* Max array size is 2**128 - 1, i.e. ~3e30 troves. No risk of overflow, since troves have minimum EBTC
+    function _addTroveIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
+        /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
         debt of liquidation reserve plus MIN_NET_DEBT. 3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
 
         // Push the Troveowner to the array
-        TroveIds.push(_troveId);
+        TroveIds.push(_cdpId);
 
         // Record the index of the new Troveowner on their Trove struct
         index = uint128(TroveIds.length.sub(1));
-        Troves[_troveId].arrayIndex = index;
+        Troves[_cdpId].arrayIndex = index;
 
         return index;
     }
@@ -1313,12 +1313,12 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     * Remove a Trove owner from the TroveOwners array, not preserving array order. Removing owner 'B' does the following:
     * [A B C D E] => [A E C D], and updates E's Trove struct to point to its new array index.
     */
-    function _removeTrove(bytes32 _troveId, uint TroveIdsArrayLength) internal {
-        Status troveStatus = Troves[_troveId].status;
+    function _removeTrove(bytes32 _cdpId, uint TroveIdsArrayLength) internal {
+        Status cdpStatus = Troves[_cdpId].status;
         // It’s set in caller function `_closeTrove`
-        assert(troveStatus != Status.nonExistent && troveStatus != Status.active);
+        assert(cdpStatus != Status.nonExistent && cdpStatus != Status.active);
 
-        uint128 index = Troves[_troveId].arrayIndex;
+        uint128 index = Troves[_cdpId].arrayIndex;
         uint length = TroveIdsArrayLength;
         uint idxLast = length.sub(1);
 
@@ -1488,8 +1488,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
         require(msg.sender == borrowerOperationsAddress, "TroveManager: Caller is not the BorrowerOperations contract");
     }
 
-    function _requireTroveIsActive(bytes32 _troveId) internal view {
-        require(Troves[_troveId].status == Status.active, "TroveManager: Trove does not exist or is closed");
+    function _requireTroveIsActive(bytes32 _cdpId) internal view {
+        require(Troves[_cdpId].status == Status.active, "TroveManager: Trove does not exist or is closed");
     }
 
     function _requireEBTCBalanceCoversRedemption(IEBTCToken _ebtcToken, address _redeemer, uint _amount) internal view {
@@ -1497,7 +1497,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     }
 
     function _requireMoreThanOneTroveInSystem(uint TroveOwnersArrayLength) internal view {
-        require (TroveOwnersArrayLength > 1 && sortedTroves.getSize() > 1, "TroveManager: Only one trove in the system");
+        require (TroveOwnersArrayLength > 1 && sortedTroves.getSize() > 1, "TroveManager: Only one cdp in the system");
     }
 
     function _requireAmountGreaterThanZero(uint _amount) internal pure {
@@ -1520,54 +1520,54 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
     // --- Trove property getters ---
 
-    function getTroveStatus(bytes32 _troveId) external view override returns (uint) {
-        return uint(Troves[_troveId].status);
+    function getTroveStatus(bytes32 _cdpId) external view override returns (uint) {
+        return uint(Troves[_cdpId].status);
     }
 
-    function getTroveStake(bytes32 _troveId) external view override returns (uint) {
-        return Troves[_troveId].stake;
+    function getTroveStake(bytes32 _cdpId) external view override returns (uint) {
+        return Troves[_cdpId].stake;
     }
 
-    function getTroveDebt(bytes32 _troveId) external view override returns (uint) {
-        return Troves[_troveId].debt;
+    function getTroveDebt(bytes32 _cdpId) external view override returns (uint) {
+        return Troves[_cdpId].debt;
     }
 
-    function getTroveColl(bytes32 _troveId) external view override returns (uint) {
-        return Troves[_troveId].coll;
+    function getTroveColl(bytes32 _cdpId) external view override returns (uint) {
+        return Troves[_cdpId].coll;
     }
 
     // --- Trove property setters, called by BorrowerOperations ---
 
-    function setTroveStatus(bytes32 _troveId, uint _num) external override {
+    function setTroveStatus(bytes32 _cdpId, uint _num) external override {
         _requireCallerIsBorrowerOperations();
-        Troves[_troveId].status = Status(_num);
+        Troves[_cdpId].status = Status(_num);
     }
 
-    function increaseTroveColl(bytes32 _troveId, uint _collIncrease) external override returns (uint) {
+    function increaseTroveColl(bytes32 _cdpId, uint _collIncrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
-        uint newColl = Troves[_troveId].coll.add(_collIncrease);
-        Troves[_troveId].coll = newColl;
+        uint newColl = Troves[_cdpId].coll.add(_collIncrease);
+        Troves[_cdpId].coll = newColl;
         return newColl;
     }
 
-    function decreaseTroveColl(bytes32 _troveId, uint _collDecrease) external override returns (uint) {
+    function decreaseTroveColl(bytes32 _cdpId, uint _collDecrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
-        uint newColl = Troves[_troveId].coll.sub(_collDecrease);
-        Troves[_troveId].coll = newColl;
+        uint newColl = Troves[_cdpId].coll.sub(_collDecrease);
+        Troves[_cdpId].coll = newColl;
         return newColl;
     }
 
-    function increaseTroveDebt(bytes32 _troveId, uint _debtIncrease) external override returns (uint) {
+    function increaseTroveDebt(bytes32 _cdpId, uint _debtIncrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
-        uint newDebt = Troves[_troveId].debt.add(_debtIncrease);
-        Troves[_troveId].debt = newDebt;
+        uint newDebt = Troves[_cdpId].debt.add(_debtIncrease);
+        Troves[_cdpId].debt = newDebt;
         return newDebt;
     }
 
-    function decreaseTroveDebt(bytes32 _troveId, uint _debtDecrease) external override returns (uint) {
+    function decreaseTroveDebt(bytes32 _cdpId, uint _debtDecrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
-        uint newDebt = Troves[_troveId].debt.sub(_debtDecrease);
-        Troves[_troveId].debt = newDebt;
+        uint newDebt = Troves[_cdpId].debt.sub(_debtDecrease);
+        Troves[_cdpId].debt = newDebt;
         return newDebt;
     }
 }

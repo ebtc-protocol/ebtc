@@ -50,19 +50,19 @@ interface ISortedTroves {
 
     function nonExistId() external view returns (bytes32);
 
-    function troveCountOf(address owner) external view returns (uint256);
+    function cdpCountOf(address owner) external view returns (uint256);
 
-    function troveOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
+    function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
 
-    // Mapping from trove owner to list of owned trove IDs
+    // Mapping from cdp owner to list of owned cdp IDs
     // mapping(address => mapping(uint256 => bytes32)) public _ownedTroves;
     function _ownedTroves(address, uint256) external view returns (bytes32);
 
-    // Mapping from trove ID to index within owner trove list
+    // Mapping from cdp ID to index within owner cdp list
     // mapping(bytes32 => uint256) public _ownedTroveIndex;
     function _ownedTroveIndex(bytes32) external view returns (uint256);
 
-    // Mapping from trove owner to its owned troves count
+    // Mapping from cdp owner to its owned cdps count
     // mapping(address => uint256) public _ownedCount;
     function _ownedCount(address) external view returns (uint256);
 }

@@ -15,12 +15,12 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     string constant public NAME = "CollSurplusPool";
 
     address public borrowerOperationsAddress;
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public activePoolAddress;
 
     // deposited ether tracker
     uint256 internal ETH;
-    // Collateral surplus claimable by trove owners
+    // Collateral surplus claimable by cdp owners
     mapping (address => uint) internal balances;
 
     // --- Events ---
@@ -36,7 +36,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
 
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress
     )
         external
@@ -44,15 +44,15 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         onlyOwner
     {
         checkContract(_borrowerOperationsAddress);
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit TroveManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -104,7 +104,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
 
     function _requireCallerIsTroveManager() internal view {
         require(
-            msg.sender == troveManagerAddress,
+            msg.sender == cdpManagerAddress,
             "CollSurplusPool: Caller is not TroveManager");
     }
 

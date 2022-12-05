@@ -24,7 +24,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
 
   let priceFeed
   let ebtcToken
-  let troveManager
+  let cdpManager
   let stabilityPool
   let sortedTroves
   let borrowerOperations
@@ -32,7 +32,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   const skyrocketPriceAndCheckAllTrovesSafe = async () => {
         // price skyrockets, therefore no undercollateralized troes
         await priceFeed.setPrice(dec(1000, 18));
-        const lowestICR = await troveManager.getCurrentICR(await sortedTroves.getLast(), dec(1000, 18))
+        const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), dec(1000, 18))
         assert.isTrue(lowestICR.gt(toBN(dec(110, 16))))
   }
 
@@ -42,16 +42,16 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     const randomDefaulterIndex = Math.floor(Math.random() * (remainingDefaulters.length))
     const randomDefaulter = remainingDefaulters[randomDefaulterIndex]
 
-    const liquidatedEBTC = (await troveManager.Troves(randomDefaulter))[0]
-    const liquidatedETH = (await troveManager.Troves(randomDefaulter))[1]
+    const liquidatedEBTC = (await cdpManager.Troves(randomDefaulter))[0]
+    const liquidatedETH = (await cdpManager.Troves(randomDefaulter))[1]
 
     const price = await priceFeed.getPrice()
-    const ICR = (await troveManager.getCurrentICR(randomDefaulter, price)).toString()
+    const ICR = (await cdpManager.getCurrentICR(randomDefaulter, price)).toString()
     const ICRPercent = ICR.slice(0, ICR.length - 16)
 
     console.log(`SP address: ${stabilityPool.address}`)
     const EBTCinPoolBefore = await stabilityPool.getTotalEBTCDeposits()
-    const liquidatedTx = await troveManager.liquidate(randomDefaulter, { from: accounts[0] })
+    const liquidatedTx = await cdpManager.liquidate(randomDefaulter, { from: accounts[0] })
     const EBTCinPoolAfter = await stabilityPool.getTotalEBTCDeposits()
 
     assert.isTrue(liquidatedTx.receipt.status)
@@ -60,7 +60,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       liquidatedAccountsDict[randomDefaulter] = true
       remainingDefaulters.splice(randomDefaulterIndex, 1)
     }
-    if (await troveManager.checkRecoveryMode(price)) { console.log("recovery mode: TRUE") }
+    if (await cdpManager.checkRecoveryMode(price)) { console.log("recovery mode: TRUE") }
 
     console.log(`Liquidation. addr: ${th.squeezeAddr(randomDefaulter)} ICR: ${ICRPercent}% coll: ${liquidatedETH} debt: ${liquidatedEBTC} SP EBTC before: ${EBTCinPoolBefore} SP EBTC after: ${EBTCinPoolAfter} tx success: ${liquidatedTx.receipt.status}`)
   }
@@ -103,50 +103,50 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   }
 
   const systemContainsTroveUnder110 = async (price) => {
-    const lowestICR = await troveManager.getCurrentICR(await sortedTroves.getLast(), price)
+    const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(110, 16)): ${lowestICR.lt(toBN(dec(110, 16)))}`)
     return lowestICR.lt(dec(110, 16))
   }
 
   const systemContainsTroveUnder100 = async (price) => {
-    const lowestICR = await troveManager.getCurrentICR(await sortedTroves.getLast(), price)
+    const lowestICR = await cdpManager.getCurrentICR(await sortedTroves.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(100, 16)): ${lowestICR.lt(toBN(dec(100, 16)))}`)
     return lowestICR.lt(dec(100, 16))
   }
 
   const getTotalDebtFromUndercollateralizedTroves = async (n, price) => {
     let totalDebt = ZERO
-    let trove = await sortedTroves.getLast()
+    let cdp = await sortedTroves.getLast()
 
     for (let i = 0; i < n; i++) {
-      const ICR = await troveManager.getCurrentICR(trove, price)
-      const debt = ICR.lt(toBN(dec(110, 16))) ? (await troveManager.getEntireDebtAndColl(trove))[0] : ZERO
+      const ICR = await cdpManager.getCurrentICR(cdp, price)
+      const debt = ICR.lt(toBN(dec(110, 16))) ? (await cdpManager.getEntireDebtAndColl(cdp))[0] : ZERO
 
       totalDebt = totalDebt.add(debt)
-      trove = await sortedTroves.getPrev(trove)
+      cdp = await sortedTroves.getPrev(cdp)
     }
 
     return totalDebt
   }
 
   const clearAllUndercollateralizedTroves = async (price) => {
-    /* Somewhat arbitrary way to clear under-collateralized troves: 
+    /* Somewhat arbitrary way to clear under-collateralized cdps: 
     *
-    * - If system is in Recovery Mode and contains troves with ICR < 100, whale draws the lowest trove's debt amount 
-    * and sends to lowest trove owner, who then closes their trove.
+    * - If system is in Recovery Mode and contains cdps with ICR < 100, whale draws the lowest cdp's debt amount 
+    * and sends to lowest cdp owner, who then closes their cdp.
     *
-    * - If system contains troves with ICR < 110, whale simply draws and makes an SP deposit 
-    * equal to the debt of the last 50 troves, before a liquidateTroves tx hits the last 50 troves.
+    * - If system contains cdps with ICR < 110, whale simply draws and makes an SP deposit 
+    * equal to the debt of the last 50 cdps, before a liquidateTroves tx hits the last 50 cdps.
     *
     * The intent is to avoid the system entering an endless loop where the SP is empty and debt is being forever liquidated/recycled 
-    * between active troves, and the existence of some under-collateralized troves blocks all SP depositors from withdrawing.
+    * between active cdps, and the existence of some under-collateralized cdps blocks all SP depositors from withdrawing.
     * 
     * Since the purpose of the fuzz test is to see if SP depositors can indeed withdraw *when they should be able to*,
-    * we first need to put the system in a state with no under-collateralized troves (which are supposed to block SP withdrawals).
+    * we first need to put the system in a state with no under-collateralized cdps (which are supposed to block SP withdrawals).
     */
-    while(await systemContainsTroveUnder100(price) && await troveManager.checkRecoveryMode()) {
+    while(await systemContainsTroveUnder100(price) && await cdpManager.checkRecoveryMode()) {
       const lowestTrove = await sortedTroves.getLast()
-      const lastTroveDebt = (await troveManager.getEntireDebtAndColl(trove))[0]
+      const lastTroveDebt = (await cdpManager.getEntireDebtAndColl(cdp))[0]
       await borrowerOperations.adjustTrove(0, 0 , lastTroveDebt, true, whale, {from: whale})
       await ebtcToken.transfer(lowestTrove, lowestTroveDebt, {from: whale})
       await borrowerOperations.closeTrove({from: lowestTrove})
@@ -160,12 +160,12 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
         await stabilityPool.provideToSP(debtLowest50Troves, {from: whale})
       }
       
-      await troveManager.liquidateTroves(50)
+      await cdpManager.liquidateTroves(50)
     }
   }
 
   const attemptWithdrawAllDeposits = async (currentDepositors) => {
-    // First, liquidate all remaining undercollateralized troves, so that SP depositors may withdraw
+    // First, liquidate all remaining undercollateralized cdps, so that SP depositors may withdraw
 
     console.log("\n")
     console.log("--- Attempt to withdraw all deposits ---")
@@ -221,7 +221,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       priceFeed = contracts.priceFeedTestnet
       ebtcToken = contracts.ebtcToken
       stabilityPool = contracts.stabilityPool
-      troveManager = contracts.troveManager
+      cdpManager = contracts.cdpManager
       borrowerOperations = contracts.borrowerOperations
       sortedTroves = contracts.sortedTroves
 

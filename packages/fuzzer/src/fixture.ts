@@ -110,16 +110,16 @@ export class Fixture {
     const ebtcBalance = await this.funderLiquity.getEBTCBalance();
 
     if (ebtcBalance.lt(amount)) {
-      const trove = await this.funderLiquity.getTrove();
+      const cdp = await this.funderLiquity.getTrove();
       const total = await this.funderLiquity.getTotal();
       const fees = await this.funderLiquity.getFees();
 
       const targetCollateralRatio =
-        trove.isEmpty || !total.collateralRatioIsBelowCritical(this.price)
+        cdp.isEmpty || !total.collateralRatioIsBelowCritical(this.price)
           ? 1.51
-          : Decimal.max(trove.collateralRatio(this.price).add(0.00001), 1.11);
+          : Decimal.max(cdp.collateralRatio(this.price).add(0.00001), 1.11);
 
-      let newTrove = trove.isEmpty ? Trove.create({ depositCollateral: 1, borrowEBTC: 0 }) : trove;
+      let newTrove = cdp.isEmpty ? Trove.create({ depositCollateral: 1, borrowEBTC: 0 }) : cdp;
       newTrove = newTrove.adjust({ borrowEBTC: amount.sub(ebtcBalance).mul(2) });
 
       if (newTrove.debt.lt(EBTC_MINIMUM_DEBT)) {
@@ -128,22 +128,22 @@ export class Fixture {
 
       newTrove = newTrove.setCollateral(newTrove.debt.mulDiv(targetCollateralRatio, this.price));
 
-      if (trove.isEmpty) {
+      if (cdp.isEmpty) {
         const params = Trove.recreate(newTrove, fees.borrowingRate());
         console.log(`[funder] openTrove(${objToString(params)})`);
         await this.funderLiquity.openTrove(params);
       } else {
-        let newTotal = total.add(newTrove).subtract(trove);
+        let newTotal = total.add(newTrove).subtract(cdp);
 
         if (
           !total.collateralRatioIsBelowCritical(this.price) &&
           newTotal.collateralRatioIsBelowCritical(this.price)
         ) {
           newTotal = newTotal.setCollateral(newTotal.debt.mulDiv(1.51, this.price));
-          newTrove = trove.add(newTotal).subtract(total);
+          newTrove = cdp.add(newTotal).subtract(total);
         }
 
-        const params = trove.adjustTo(newTrove, fees.borrowingRate());
+        const params = cdp.adjustTo(newTrove, fees.borrowingRate());
         console.log(`[funder] adjustTrove(${objToString(params)})`);
         await this.funderLiquity.adjustTrove(params);
       }
@@ -164,15 +164,15 @@ export class Fixture {
     const ebtcInStabilityPoolBefore = await this.deployerLiquity.getEBTCInStabilityPool();
     console.log(`// Stability Pool balance: ${ebtcInStabilityPoolBefore}`);
 
-    const trovesBefore = await getListOfTroves(this.deployerLiquity);
+    const cdpsBefore = await getListOfTroves(this.deployerLiquity);
 
-    if (trovesBefore.length === 0) {
+    if (cdpsBefore.length === 0) {
       console.log("// No Troves to liquidate");
       return;
     }
 
-    const troveOwnersBefore = trovesBefore.map(trove => trove.ownerAddress);
-    const lastTrove = trovesBefore[trovesBefore.length - 1];
+    const cdpOwnersBefore = cdpsBefore.map(cdp => cdp.ownerAddress);
+    const lastTrove = cdpsBefore[cdpsBefore.length - 1];
 
     if (!lastTrove.collateralRatioIsBelowMinimum(price)) {
       console.log("// No Troves to liquidate");
@@ -183,8 +183,8 @@ export class Fixture {
     console.log(`[deployer] liquidateUpTo(${maximumNumberOfTrovesToLiquidate})`);
     await this.deployerLiquity.liquidateUpTo(maximumNumberOfTrovesToLiquidate);
 
-    const troveOwnersAfter = await getListOfTroveOwners(this.deployerLiquity);
-    const liquidatedTroves = listDifference(troveOwnersBefore, troveOwnersAfter);
+    const cdpOwnersAfter = await getListOfTroveOwners(this.deployerLiquity);
+    const liquidatedTroves = listDifference(cdpOwnersBefore, cdpOwnersAfter);
 
     if (liquidatedTroves.length > 0) {
       for (const liquidatedTrove of liquidatedTroves) {
@@ -239,34 +239,34 @@ export class Fixture {
     }
   }
 
-  async randomlyAdjustTrove(userAddress: string, liquity: Liquity, trove: Trove) {
+  async randomlyAdjustTrove(userAddress: string, liquity: Liquity, cdp: Trove) {
     const total = await liquity.getTotal();
     const fees = await liquity.getFees();
     const x = Math.random();
 
     const params: TroveAdjustmentParams<Decimal> =
       x < 0.333
-        ? randomCollateralChange(trove)
+        ? randomCollateralChange(cdp)
         : x < 0.666
-        ? randomDebtChange(trove)
-        : { ...randomCollateralChange(trove), ...randomDebtChange(trove) };
+        ? randomDebtChange(cdp)
+        : { ...randomCollateralChange(cdp), ...randomDebtChange(cdp) };
 
-    const cannotAdjust = (trove: Trove, params: TroveAdjustmentParams<Decimal>) => {
+    const cannotAdjust = (cdp: Trove, params: TroveAdjustmentParams<Decimal>) => {
       if (
-        params.withdrawCollateral?.gte(trove.collateral) ||
-        params.repayEBTC?.gt(trove.debt.sub(EBTC_MINIMUM_DEBT))
+        params.withdrawCollateral?.gte(cdp.collateral) ||
+        params.repayEBTC?.gt(cdp.debt.sub(EBTC_MINIMUM_DEBT))
       ) {
         return true;
       }
 
-      const adjusted = trove.adjust(params, fees.borrowingRate());
+      const adjusted = cdp.adjust(params, fees.borrowingRate());
 
       return (
         (params.withdrawCollateral?.nonZero || params.borrowEBTC?.nonZero) &&
         (adjusted.collateralRatioIsBelowMinimum(this.price) ||
           (total.collateralRatioIsBelowCritical(this.price)
-            ? adjusted._nominalCollateralRatio.lt(trove._nominalCollateralRatio)
-            : total.add(adjusted).subtract(trove).collateralRatioIsBelowCritical(this.price)))
+            ? adjusted._nominalCollateralRatio.lt(cdp._nominalCollateralRatio)
+            : total.add(adjusted).subtract(cdp).collateralRatioIsBelowCritical(this.price)))
       );
     };
 
@@ -281,7 +281,7 @@ export class Fixture {
       await this.sendEBTCFromFunder(userAddress, params.repayEBTC);
     }
 
-    if (cannotAdjust(trove, params)) {
+    if (cannotAdjust(cdp, params)) {
       console.log(
         `// [${shortenAddress(userAddress)}] adjustTrove(${objToString(params)}) expected to fail`
       );
@@ -298,7 +298,7 @@ export class Fixture {
     }
   }
 
-  async closeTrove(userAddress: string, liquity: Liquity, trove: Trove) {
+  async closeTrove(userAddress: string, liquity: Liquity, cdp: Trove) {
     const total = await liquity.getTotal();
 
     if (total.collateralRatioIsBelowCritical(this.price)) {
@@ -307,7 +307,7 @@ export class Fixture {
       return;
     }
 
-    await this.sendEBTCFromFunder(userAddress, trove.netDebt);
+    await this.sendEBTCFromFunder(userAddress, cdp.netDebt);
 
     console.log(`[${shortenAddress(userAddress)}] closeTrove()`);
 

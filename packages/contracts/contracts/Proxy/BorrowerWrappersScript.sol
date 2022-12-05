@@ -21,7 +21,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     string constant public NAME = "BorrowerWrappersScript";
 
-    ITroveManager immutable troveManager;
+    ITroveManager immutable cdpManager;
     IStabilityPool immutable stabilityPool;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
@@ -30,34 +30,34 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     constructor(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _lqtyStakingAddress
     )
         BorrowerOperationsScript(IBorrowerOperations(_borrowerOperationsAddress))
         LQTYStakingScript(_lqtyStakingAddress)
         public
     {
-        checkContract(_troveManagerAddress);
-        ITroveManager troveManagerCached = ITroveManager(_troveManagerAddress);
-        troveManager = troveManagerCached;
+        checkContract(_cdpManagerAddress);
+        ITroveManager cdpManagerCached = ITroveManager(_cdpManagerAddress);
+        cdpManager = cdpManagerCached;
 
-        IStabilityPool stabilityPoolCached = troveManagerCached.stabilityPool();
+        IStabilityPool stabilityPoolCached = cdpManagerCached.stabilityPool();
         checkContract(address(stabilityPoolCached));
         stabilityPool = stabilityPoolCached;
 
-        IPriceFeed priceFeedCached = troveManagerCached.priceFeed();
+        IPriceFeed priceFeedCached = cdpManagerCached.priceFeed();
         checkContract(address(priceFeedCached));
         priceFeed = priceFeedCached;
 
-        address ebtcTokenCached = address(troveManagerCached.ebtcToken());
+        address ebtcTokenCached = address(cdpManagerCached.ebtcToken());
         checkContract(ebtcTokenCached);
         ebtcToken = IERC20(ebtcTokenCached);
 
-        address lqtyTokenCached = address(troveManagerCached.lqtyToken());
+        address lqtyTokenCached = address(cdpManagerCached.lqtyToken());
         checkContract(lqtyTokenCached);
         lqtyToken = IERC20(lqtyTokenCached);
 
-        ILQTYStaking lqtyStakingCached = troveManagerCached.lqtyStaking();
+        ILQTYStaking lqtyStakingCached = cdpManagerCached.lqtyStaking();
         require(_lqtyStakingAddress == address(lqtyStakingCached), "BorrowerWrappersScript: Wrong LQTYStaking address");
         lqtyStaking = lqtyStakingCached;
     }
@@ -75,11 +75,11 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         uint totalCollateral = balanceAfter.sub(balanceBefore).add(msg.value);
 
-        // Open trove with obtained collateral, plus collateral sent by user
+        // Open cdp with obtained collateral, plus collateral sent by user
         borrowerOperations.openTrove{ value: totalCollateral }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
     }
 
-    function claimSPRewardsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
+    function claimSPRewardsAndRecycle(bytes32 _cdpId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
         uint collBalanceBefore = address(this).balance;
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
 
@@ -90,11 +90,11 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
         uint claimedCollateral = collBalanceAfter.sub(collBalanceBefore);
 
-        // Add claimed ETH to trove, get more EBTC and stake it into the Stability Pool
+        // Add claimed ETH to cdp, get more EBTC and stake it into the Stability Pool
         if (claimedCollateral > 0) {
-            _requireUserHasTrove(_troveId);
-            uint EBTCAmount = _getNetEBTCAmount(_troveId, claimedCollateral);
-            borrowerOperations.adjustTrove{ value: claimedCollateral }(_troveId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
+            _requireUserHasTrove(_cdpId);
+            uint EBTCAmount = _getNetEBTCAmount(_cdpId, claimedCollateral);
+            borrowerOperations.adjustTrove{ value: claimedCollateral }(_cdpId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
             // Provide withdrawn EBTC to Stability Pool
             if (EBTCAmount > 0) {
                 stabilityPool.provideToSP(EBTCAmount, address(0));
@@ -108,7 +108,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         }
     }
 
-    function claimStakingGainsAndRecycle(bytes32 _troveId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
+    function claimStakingGainsAndRecycle(bytes32 _cdpId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
         uint collBalanceBefore = address(this).balance;
         uint ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
@@ -120,11 +120,11 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint gainedEBTC = ebtcToken.balanceOf(address(this)).sub(ebtcBalanceBefore);
 
         uint netEBTCAmount;
-        // Top up trove and get more EBTC, keeping ICR constant
+        // Top up cdp and get more EBTC, keeping ICR constant
         if (gainedCollateral > 0) {
-            _requireUserHasTrove(_troveId);
-            netEBTCAmount = _getNetEBTCAmount(_troveId, gainedCollateral);
-            borrowerOperations.adjustTrove{ value: gainedCollateral }(_troveId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
+            _requireUserHasTrove(_cdpId);
+            netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
+            borrowerOperations.adjustTrove{ value: gainedCollateral }(_cdpId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
         }
 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
@@ -141,18 +141,18 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     }
 
-    function _getNetEBTCAmount(bytes32 _troveId, uint _collateral) internal returns (uint) {
+    function _getNetEBTCAmount(bytes32 _cdpId, uint _collateral) internal returns (uint) {
         uint price = priceFeed.fetchPrice();
-        uint ICR = troveManager.getCurrentICR(_troveId, price);
+        uint ICR = cdpManager.getCurrentICR(_cdpId, price);
 
         uint EBTCAmount = _collateral.mul(price).div(ICR);
-        uint borrowingRate = troveManager.getBorrowingRateWithDecay();
+        uint borrowingRate = cdpManager.getBorrowingRateWithDecay();
         uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(LiquityMath.DECIMAL_PRECISION.add(borrowingRate));
 
         return netDebt;
     }
 
-    function _requireUserHasTrove(bytes32 _troveId) internal view {
-        require(troveManager.getTroveStatus(_troveId) == 1, "BorrowerWrappersScript: caller must have an active trove");
+    function _requireUserHasTrove(bytes32 _cdpId) internal view {
+        require(cdpManager.getTroveStatus(_cdpId) == 1, "BorrowerWrappersScript: caller must have an active cdp");
     }
 }

@@ -9,10 +9,10 @@ contract EBTCTokenTester is EBTCToken {
     bytes32 private immutable _PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     
     constructor( 
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _stabilityPoolAddress,
         address _borrowerOperationsAddress
-    ) public EBTCToken(_troveManagerAddress,
+    ) public EBTCToken(_cdpManagerAddress,
                       _stabilityPoolAddress,
                       _borrowerOperationsAddress) {}
     

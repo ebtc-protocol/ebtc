@@ -12,7 +12,7 @@ const StabilityPool = artifacts.require('StabilityPool')
 
 contract('Echidna debugger', async accounts => {
   let echidnaTester
-  let troveManager
+  let cdpManager
   let ebtcToken
   let activePool
   let defaultPool
@@ -21,12 +21,12 @@ contract('Echidna debugger', async accounts => {
 
   before(async () => {
     echidnaTester = await EchidnaTester.new({ value: dec(11, 25) })
-    troveManager = await TroveManager.at(await echidnaTester.troveManager())
+    cdpManager = await TroveManager.at(await echidnaTester.cdpManager())
     ebtcToken = await EBTCToken.at(await echidnaTester.ebtcToken())
     activePool = await ActivePool.at(await echidnaTester.activePool())
     defaultPool = await DefaultPool.at(await echidnaTester.defaultPool())
     stabilityPool = await StabilityPool.at(await echidnaTester.stabilityPool())
-    GAS_POOL_ADDRESS = await troveManager.GAS_POOL_ADDRESS();
+    GAS_POOL_ADDRESS = await cdpManager.GAS_POOL_ADDRESS();
   })
 
   it('openTrove', async () => {
@@ -41,26 +41,26 @@ contract('Echidna debugger', async accounts => {
     await echidnaTester.openTroveExt('0', '0', '0')
   })
 
-  it.skip('trove order', async () => {
-    const trove1 = await echidnaTester.echidnaProxies(0)
-    console.log(trove1)
-    const trove2 = await echidnaTester.echidnaProxies(1)
+  it.skip('cdp order', async () => {
+    const cdp1 = await echidnaTester.echidnaProxies(0)
+    console.log(cdp1)
+    const cdp2 = await echidnaTester.echidnaProxies(1)
 
-    const icr1_before = await troveManager.getCurrentICR(trove1, '1000000000000000000')
-    const icr2_before = await troveManager.getCurrentICR(trove2, '1000000000000000000')
+    const icr1_before = await cdpManager.getCurrentICR(cdp1, '1000000000000000000')
+    const icr2_before = await cdpManager.getCurrentICR(cdp2, '1000000000000000000')
     console.log('Trove 1', icr1_before, icr1_before.toString())
     console.log('Trove 2', icr2_before, icr2_before.toString())
 
     await echidnaTester.openTroveExt('0', '0', '30540440604590048251848424')
     await echidnaTester.openTroveExt('1', '0', '0')
     await echidnaTester.setPriceExt('78051143795343077331468494330613608802436946862454908477491916')
-    const icr1_after = await troveManager.getCurrentICR(trove1, '1000000000000000000')
-    const icr2_after = await troveManager.getCurrentICR(trove2, '1000000000000000000')
+    const icr1_after = await cdpManager.getCurrentICR(cdp1, '1000000000000000000')
+    const icr2_after = await cdpManager.getCurrentICR(cdp2, '1000000000000000000')
     console.log('Trove 1', icr1_after, icr1_after.toString())
     console.log('Trove 2', icr2_after, icr2_after.toString())
 
-    const icr1_after_price = await troveManager.getCurrentICR(trove1, '78051143795343077331468494330613608802436946862454908477491916')
-    const icr2_after_price = await troveManager.getCurrentICR(trove2, '78051143795343077331468494330613608802436946862454908477491916')
+    const icr1_after_price = await cdpManager.getCurrentICR(cdp1, '78051143795343077331468494330613608802436946862454908477491916')
+    const icr2_after_price = await cdpManager.getCurrentICR(cdp2, '78051143795343077331468494330613608802436946862454908477491916')
     console.log('Trove 1', icr1_after_price, icr1_after_price.toString())
     console.log('Trove 2', icr2_after_price, icr2_after_price.toString())
   })
@@ -74,13 +74,13 @@ contract('Echidna debugger', async accounts => {
     const defaultPoolBalance = await defaultPool.getEBTCDebt();
     const stabilityPoolBalance = await stabilityPool.getTotalEBTCDeposits();
     const currentTrove = await echidnaTester.echidnaProxies(0);
-    const troveBalance = ebtcToken.balanceOf(currentTrove);
+    const cdpBalance = ebtcToken.balanceOf(currentTrove);
 
     console.log('totalSupply', totalSupply.toString());
     console.log('gasPoolBalance', gasPoolBalance.toString());
     console.log('activePoolBalance', activePoolBalance.toString());
     console.log('defaultPoolBalance', defaultPoolBalance.toString());
     console.log('stabilityPoolBalance', stabilityPoolBalance.toString());
-    console.log('troveBalance', troveBalance.toString());
+    console.log('cdpBalance', cdpBalance.toString());
   })
 })

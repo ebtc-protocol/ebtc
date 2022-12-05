@@ -34,7 +34,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
   let ebtcToken
   let stabilityPool
   let sortedTroves
-  let troveManager
+  let cdpManager
   let borrowerOperations
   let lqtyToken
   let communityIssuanceTester
@@ -61,9 +61,9 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
 
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
-      contracts.troveManager = await TroveManagerTester.new()
+      contracts.cdpManager = await TroveManagerTester.new()
       contracts.ebtcToken = await EBTCToken.new(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.stabilityPool.address,
         contracts.borrowerOperations.address
       )
@@ -73,7 +73,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       ebtcToken = contracts.ebtcToken
       stabilityPool = contracts.stabilityPool
       sortedTroves = contracts.sortedTroves
-      troveManager = contracts.troveManager
+      cdpManager = contracts.cdpManager
       stabilityPool = contracts.stabilityPool
       borrowerOperations = contracts.borrowerOperations
 
@@ -138,7 +138,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: {from: A } })
       await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: {from: B } })
-      let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+      let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
 
       // A, B provide to SP
       await stabilityPool.provideToSP(dec(10000, 18), ZERO_ADDRESS, { from: A })
@@ -156,7 +156,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       const totalLQTYIssued_1 = await communityIssuanceTester.totalLQTYIssued()
       assert.isTrue(totalLQTYIssued_1.gt(toBN('0')))
       
-      await troveManager.liquidate(_bTroveId)
+      await cdpManager.liquidate(_bTroveId)
       const blockTimestamp_2 = th.toBN(await th.getLatestBlockTimestamp(web3))
 
       assert.isFalse(await sortedTroves.contains(_bTroveId))
@@ -190,9 +190,9 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       const A_initialDeposit = ((await stabilityPool.deposits(A))[0]).toString()
       assert.equal(A_initialDeposit, dec(10000, 18))
 
-      // defaulter opens trove
+      // defaulter opens cdp
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(100, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // ETH drops
       await priceFeed.setPrice(dec(100, 18))
@@ -200,7 +200,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.MINUTES_IN_ONE_WEEK, web3.currentProvider)
 
       // Liquidate d1. Triggers issuance.
-      await troveManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1TroveId)
       assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
       // Get G and communityIssuance before
@@ -412,7 +412,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await borrowerOperations.openTrove(th._100pct, dec(40000, 18), E, E, { from: E, value: dec(600, 'ether') })
 
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(30000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(300, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
 
       // Check all LQTY balances are initially 0
       assert.equal(await lqtyToken.balanceOf(A), 0)
@@ -433,7 +433,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       // Price Drops, defaulter1 liquidated. Stability Pool size drops by 50%
       await priceFeed.setPrice(dec(100, 18))
       assert.isFalse(await th.checkRecoveryMode(contracts))
-      await troveManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1TroveId)
       assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
       // Confirm SP dropped from 60k to 30k
@@ -539,15 +539,15 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), whale, whale, { from: whale, value: dec(10000, 'ether') })
 
       const allDepositors = [A, B, C, D, E, F, G, H]
-      // 4 Defaulters open trove with 200EBTC debt, and 200% ICR
+      // 4 Defaulters open cdp with 200EBTC debt, and 200% ICR
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(200, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), defaulter_2, defaulter_2, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), defaulter_3, defaulter_3, { from: defaulter_3, value: dec(200, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), defaulter_4, defaulter_4, { from: defaulter_4, value: dec(200, 'ether') })
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // price drops by 50%: defaulter ICR falls to 100%
       await priceFeed.setPrice(dec(100, 18));
@@ -567,7 +567,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(await getDuration(timeValues.SECONDS_IN_ONE_MONTH), web3.currentProvider)
 
       // Defaulter 1 liquidated. 20k EBTC fully offset with pool.
-      await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
 
       // C, D each deposit 10k EBTC
       const depositors_2 = [C, D]
@@ -580,7 +580,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 2 liquidated. 10k EBTC offset
-      await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
 
       // Erin, Flyn each deposit 100 EBTC
       const depositors_3 = [E, F]
@@ -593,7 +593,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 3 liquidated. 100 EBTC offset
-      await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
 
       // Graham, Harriet each deposit 10k EBTC
       const depositors_4 = [G, H]
@@ -606,7 +606,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 4 liquidated. 100 EBTC offset
-      await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
 
       // All depositors withdraw from SP
       for (depositor of allDepositors) {
@@ -774,15 +774,15 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
         // Defaulters 1-5 each withdraw to 9999.9 debt (including gas comp)
         await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount('9999900000000000000000'), defaulter, defaulter, { from: defaulter, value: dec(100, 'ether') })
       }
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
-      let _defaulter5TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_5, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter5TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_5, 0);
 
       // Defaulter 6 withdraws to 10k debt (inc. gas comp)
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), defaulter_6, defaulter_6, { from: defaulter_6, value: dec(100, 'ether') })
-      let _defaulter6TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_6, 0);
+      let _defaulter6TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_6, 0);
 
       // Confirm all depositors have 0 LQTY
       for (const depositor of [A, B, C, D, E, F]) {
@@ -801,7 +801,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(await getDuration(timeValues.SECONDS_IN_ONE_MONTH), web3.currentProvider)
 
       // Defaulter 1 liquidated.  Value of P updated to  to 1e-5
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
       assert.isTrue(txL1.receipt.status)
 
@@ -816,7 +816,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
       assert.isTrue(txL2.receipt.status)
 
@@ -831,7 +831,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 3 liquidated
-      const txL3 = await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter3TroveId))
       assert.isTrue(txL3.receipt.status)
 
@@ -846,7 +846,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 4 liquidated
-      const txL4 = await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      const txL4 = await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter4TroveId))
       assert.isTrue(txL4.receipt.status)
 
@@ -861,7 +861,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 5 liquidated
-      const txL5 = await troveManager.liquidate(_defaulter5TroveId, { from: owner });
+      const txL5 = await cdpManager.liquidate(_defaulter5TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter5TroveId))
       assert.isTrue(txL5.receipt.status)
 
@@ -878,7 +878,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       assert.equal(await stabilityPool.currentEpoch(), '0')
 
       // Defaulter 6 liquidated
-      const txL6 = await troveManager.liquidate(_defaulter6TroveId, { from: owner });
+      const txL6 = await cdpManager.liquidate(_defaulter6TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter6TroveId))
       assert.isTrue(txL6.receipt.status)
 
@@ -1088,13 +1088,13 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
 
       await borrowerOperations.openTrove(th._100pct, dec(30000, 18), E, E, { from: E, value: dec(400, 'ether') })
 
-      // D1, D2, D3 open troves with total debt 50k, 30k, 10k respectively (inc. gas comp)
+      // D1, D2, D3 open cdps with total debt 50k, 30k, 10k respectively (inc. gas comp)
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(50000, 18)), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(500, 'ether') })
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(20000, 18)), defaulter_2, defaulter_2, { from: defaulter_2, value: dec(200, 'ether') })
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
       await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(10000, 18)), defaulter_3, defaulter_3, { from: defaulter_3, value: dec(100, 'ether') })
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
 
       // Check all LQTY balances are initially 0
       assert.equal(await lqtyToken.balanceOf(A), 0)
@@ -1127,7 +1127,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       assert.equal(await stabilityPool.getTotalEBTCDeposits(), dec(100000, 18)) // total 100k
 
       // LIQUIDATION 1
-      await troveManager.liquidate(_defaulter1TroveId)
+      await cdpManager.liquidate(_defaulter1TroveId)
       assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
 
       th.assertIsApproximatelyEqual(await stabilityPool.getTotalEBTCDeposits(), dec(50000, 18))  // 50k
@@ -1185,7 +1185,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // LIQUIDATION 2
-      await troveManager.liquidate(_defaulter2TroveId)
+      await cdpManager.liquidate(_defaulter2TroveId)
       assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
       th.assertIsApproximatelyEqual(await stabilityPool.getTotalEBTCDeposits(), dec(60000, 18))
@@ -1261,7 +1261,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // LIQUIDATION 3
-      await troveManager.liquidate(_defaulter3TroveId)
+      await cdpManager.liquidate(_defaulter3TroveId)
       assert.isFalse(await sortedTroves.contains(_defaulter3TroveId))
 
       th.assertIsApproximatelyEqual(await stabilityPool.getTotalEBTCDeposits(), dec(90000, 18))
@@ -1470,10 +1470,10 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
         // Defaulters 1-4 each withdraw to 9999.9 debt (including gas comp)
         await borrowerOperations.openTrove(th._100pct, await getOpenTroveEBTCAmount(dec(99999, 17)), defaulter, defaulter, { from: defaulter, value: dec(100, 'ether') })
       }
-      let _defaulter1TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_1, 0);
-      let _defaulter2TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_2, 0);
-      let _defaulter3TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_3, 0);
-      let _defaulter4TroveId = await sortedTroves.troveOfOwnerByIndex(defaulter_4, 0);
+      let _defaulter1TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_1, 0);
+      let _defaulter2TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_2, 0);
+      let _defaulter3TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_3, 0);
+      let _defaulter4TroveId = await sortedTroves.cdpOfOwnerByIndex(defaulter_4, 0);
 
       // Confirm all would-be depositors have 0 LQTY
       for (const depositor of [A, B, C, D, E]) {
@@ -1497,7 +1497,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(await getDuration(timeValues.SECONDS_IN_ONE_MONTH), web3.currentProvider)
 
       // Defaulter 1 liquidated.  Value of P updated to  to 9999999, i.e. in decimal, ~1e-10
-      const txL1 = await troveManager.liquidate(_defaulter1TroveId, { from: owner });
+      const txL1 = await cdpManager.liquidate(_defaulter1TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
       assert.isTrue(txL1.receipt.status)
 
@@ -1512,7 +1512,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 2 liquidated
-      const txL2 = await troveManager.liquidate(_defaulter2TroveId, { from: owner });
+      const txL2 = await cdpManager.liquidate(_defaulter2TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
       assert.isTrue(txL2.receipt.status)
 
@@ -1527,7 +1527,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 3 liquidated
-      const txL3 = await troveManager.liquidate(_defaulter3TroveId, { from: owner });
+      const txL3 = await cdpManager.liquidate(_defaulter3TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter3TroveId))
       assert.isTrue(txL3.receipt.status)
 
@@ -1542,7 +1542,7 @@ contract('StabilityPool - LQTY Rewards', async accounts => {
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 
       // Defaulter 4 liquidated
-      const txL4 = await troveManager.liquidate(_defaulter4TroveId, { from: owner });
+      const txL4 = await cdpManager.liquidate(_defaulter4TroveId, { from: owner });
       assert.isFalse(await sortedTroves.contains(_defaulter4TroveId))
       assert.isTrue(txL4.receipt.status)
 

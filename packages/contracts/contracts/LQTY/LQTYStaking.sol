@@ -35,7 +35,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     ILQTYToken public lqtyToken;
     IEBTCToken public ebtcToken;
 
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public borrowerOperationsAddress;
     address public activePoolAddress;
 
@@ -43,7 +43,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
     event EBTCTokenAddressSet(address _ebtcTokenAddress);
-    event TroveManagerAddressSet(address _troveManager);
+    event TroveManagerAddressSet(address _cdpManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
 
@@ -61,7 +61,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     (
         address _lqtyTokenAddress,
         address _ebtcTokenAddress,
-        address _troveManagerAddress, 
+        address _cdpManagerAddress, 
         address _borrowerOperationsAddress,
         address _activePoolAddress
     ) 
@@ -71,19 +71,19 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     {
         checkContract(_lqtyTokenAddress);
         checkContract(_ebtcTokenAddress);
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
 
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePoolAddress = _activePoolAddress;
 
         emit LQTYTokenAddressSet(_lqtyTokenAddress);
         emit LQTYTokenAddressSet(_ebtcTokenAddress);
-        emit TroveManagerAddressSet(_troveManagerAddress);
+        emit TroveManagerAddressSet(_cdpManagerAddress);
         emit BorrowerOperationsAddressSet(_borrowerOperationsAddress);
         emit ActivePoolAddressSet(_activePoolAddress);
 
@@ -222,7 +222,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     // --- 'require' functions ---
 
     function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == troveManagerAddress, "LQTYStaking: caller is not TroveM");
+        require(msg.sender == cdpManagerAddress, "LQTYStaking: caller is not TroveM");
     }
 
     function _requireCallerIsBorrowerOperations() internal view {

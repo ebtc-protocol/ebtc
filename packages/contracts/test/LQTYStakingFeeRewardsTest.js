@@ -35,7 +35,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let defaultPool
@@ -49,7 +49,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.troveManager = await TroveManagerTester.new()
+    contracts.cdpManager = await TroveManagerTester.new()
     contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     
@@ -61,7 +61,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
@@ -167,7 +167,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -191,7 +191,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(B_BalAfterRedemption.lt(B_BalBeforeREdemption))
 
     // Check base rate is now non-zero
-    const baseRate = await troveManager.baseRate()
+    const baseRate = await cdpManager.baseRate()
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
@@ -216,7 +216,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -236,7 +236,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(B_BalAfterRedemption.lt(B_BalBeforeREdemption))
 
     // Check base rate is now non-zero
-    const baseRate = await troveManager.baseRate()
+    const baseRate = await cdpManager.baseRate()
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
@@ -255,10 +255,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -330,10 +330,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -450,10 +450,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
     await openTrove({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
     await openTrove({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
-    let _bTroveId = await sortedTroves.troveOfOwnerByIndex(B, 0);
+    let _bTroveId = await sortedTroves.cdpOfOwnerByIndex(B, 0);
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
-    let _dTroveId = await sortedTroves.troveOfOwnerByIndex(D, 0);
+    let _dTroveId = await sortedTroves.cdpOfOwnerByIndex(D, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
@@ -516,9 +516,9 @@ contract('LQTYStaking revenue share tests', async accounts => {
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
     await openTrove({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: F } })
-    let _fTroveId = await sortedTroves.troveOfOwnerByIndex(F, 0);
+    let _fTroveId = await sortedTroves.cdpOfOwnerByIndex(F, 0);
     await openTrove({ extraEBTCAmount: toBN(dec(50000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: G } })
-    let _gTroveId = await sortedTroves.troveOfOwnerByIndex(G, 0);
+    let _gTroveId = await sortedTroves.cdpOfOwnerByIndex(G, 0);
 
     // FF time one year so owner can transfer LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)

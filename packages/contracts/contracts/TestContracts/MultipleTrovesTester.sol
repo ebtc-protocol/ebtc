@@ -4,7 +4,7 @@ interface IBorrowerOperations{
     function openTrove(uint _maxFeePercentage, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 }
 interface ISortedTroves{
-    function troveOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
+    function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
     function dummyId() external returns (bytes32);
 }
 
@@ -14,7 +14,7 @@ contract MultipleTrovesTester {
     ISortedTroves public sortedTroves;	
     bytes32 _dummyId;
 	
-    event TroveOpened(bytes32 _troveId);
+    event TroveOpened(bytes32 _cdpId);
 
     function initiate(address _bo, address _st) external{
         borrowerOperations = IBorrowerOperations(_bo);
@@ -28,9 +28,9 @@ contract MultipleTrovesTester {
              uint256 _singleCol = msg.value / _count;
              require(_singleCol > 0, '!msgVal');
              borrowerOperations.openTrove{value: _singleCol}(_maxFeePercentage, _EBTCAmount, _upperHint, _lowerHint);
-             bytes32 _troveId = sortedTroves.troveOfOwnerByIndex(address(this), _idx);
-             require(_troveId != _dummyId, '!troveId');
-             emit TroveOpened(_troveId);
+             bytes32 _cdpId = sortedTroves.cdpOfOwnerByIndex(address(this), _idx);
+             require(_cdpId != _dummyId, '!cdpId');
+             emit TroveOpened(_cdpId);
              _idx++;
         }		
     }

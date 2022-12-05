@@ -207,7 +207,7 @@ A Stability Provider receives shares of the liquidations that occur during the l
 An individual’s share of the surplus gains depends on the ratio of its remaining EBTC deposit (as reduced by past liquidations) to the total amount of EBTC contained in the pool. If no new deposits are made, all individual shares will stay the same throughout liquidations. As new deposits are made, earlier depositors are incentivized to top up their deposit, to maintain their share of future rewards.
 
 \subsection{Redistribute undercollateralized Troves to other borrowers}
-It is possible that the EBTC tokens contained in the Stability Pool are not sufficient to offset all undercollateralized Troves, or that a trove’s debt can only be partially absorbed as the Stability Pool runs out of EBTC during a liquidation. In such a case, the system redistributes the remaining debt and collateral from the partially liquidated Trove as well as the remaining undercollateralized Troves to all existing positions.
+It is possible that the EBTC tokens contained in the Stability Pool are not sufficient to offset all undercollateralized Troves, or that a cdp’s debt can only be partially absorbed as the Stability Pool runs out of EBTC during a liquidation. In such a case, the system redistributes the remaining debt and collateral from the partially liquidated Trove as well as the remaining undercollateralized Troves to all existing positions.
 
 The redistribution of the collateral and debt is done in proportion to the recipient Trove’s collateral amount. This means that Troves which are heavily collateralized will receive more debt and collateral from liquidated positions than those with low collateralization, ensuring that the system does not create cascading liquidations.\\
 

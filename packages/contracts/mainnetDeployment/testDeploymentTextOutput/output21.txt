@@ -7,7 +7,7 @@ Uniswap Factory number of pairs: 32166
 deployer's ETH balance before deployments: 7055282981391335371
 Using previously deployed priceFeed contract at address 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
 Using previously deployed sortedTroves contract at address 0xb8493cD0E7135462502DF048deeFc9b650fa789F
-Using previously deployed troveManager contract at address 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
+Using previously deployed cdpManager contract at address 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 Using previously deployed activePool contract at address 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 Using previously deployed stabilityPool contract at address 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
 Using previously deployed gasPool contract at address 0x069529499472d2b7bF3525f548F51F8F807e33A9
@@ -22,7 +22,7 @@ Contract objects addresses:
 priceFeed: 0x891d882fDACd2cB8DAeA5289f6019676E797EE5F
 ebtcToken: 0xaa052d8b915c9311e5EA234dd24105d6208087A5
 sortedTroves: 0xb8493cD0E7135462502DF048deeFc9b650fa789F
-troveManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
+cdpManager: 0x111Bf64dA957C55601C6D0f9DB2Eb1aef4dDEE23
 activePool: 0x741d21A9dd5dcc14cc5cd84cD91fd74638AFA313
 stabilityPool: 0xC6b46448d4Bf1A2ce0ED841dacFC196532E09d6e
 gasPool: 0x069529499472d2b7bF3525f548F51F8F807e33A9
@@ -78,12 +78,12 @@ Unipool's stored EBTC-ETH Uniswap Pair address: 0x01365a50da15e38e9Fcc5Ee193E67D
 SYSTEM GLOBAL VARS CHECKS
 system liquidation reserve: 200.000000000000000000
 system min net debt      : 1800.000000000000000000
-Deployer already has an active trove
-deployer is in sorted list after making trove: true
+Deployer already has an active cdp
+deployer is in sorted list after making cdp: true
 deployer debt: 3215.000000000000000000
 deployer coll: 3.000000000000000000
 deployer stake: 3.000000000000000000
-deployer's trove status: 1
+deployer's cdp status: 1
 deployer's EBTC balance: 2311.224204161781052791
 EBTC-ETH Pair token 0: 0xaa05...87A5,
         EBTCToken contract addr: 0xaa05...87A5
@@ -120,18 +120,18 @@ deployer stake before staking: 52.000000000000000000
 deployer LQTY bal after staking: 1398.375771175734140867
 deployer stake after staking: 65.000000000000000000
 deployer pending EBTC revenue share: .000000000000000000
-Acct 2 already has an active trove
+Acct 2 already has an active cdp
 acct2 debt: 2210.000000000000000000
 acct2 coll: 1.500000000000000000
 acct2 stake: 1.500000000000000000
-acct2 trove status: 1
-deployer pending EBTC revenue share from staking, after acct 2 opened trove: .000000000000000000
+acct2 cdp status: 1
+deployer pending EBTC revenue share from staking, after acct 2 opened cdp: .000000000000000000
 CHECK DEPLOYER WITHDRAWING STAKING GAINS
 deployer EBTC bal before withdrawing staking gains: 2311.224204161781052791
 deployer EBTC bal after withdrawing staking gains: 2311.224204161781052791
 EBTC-ETH Pair's current EBTC reserves: 40.036378355965833891
 EBTC-ETH Pair's current ETH reserves: .188993756164807541
-number of troves: 3 
+number of cdps: 3 
 Trove list size: 3 
 Entire system debt: 7425.000000000000000000
 Entire system coll: 6.000000000000000000
@@ -141,9 +141,9 @@ Total EBTC SP deposits: 34.160000000000000000
 Total LQTY staked: 65.000000000000000000
 Total LP (EBTC-ETH) tokens staked in unipool: .552691887045032822
 TroveManager state variables:
-Total trove stakes: 6.000000000000000000
-Snapshot of total trove stakes before last liq. : .000000000000000000
-Snapshot of total trove collateral before last liq. : .000000000000000000
+Total cdp stakes: 6.000000000000000000
+Snapshot of total cdp stakes before last liq. : .000000000000000000
+Snapshot of total cdp collateral before last liq. : .000000000000000000
 L_ETH: .000000000000000000
 L_EBTCDebt: .000000000000000000
 StabilityPool state variables:

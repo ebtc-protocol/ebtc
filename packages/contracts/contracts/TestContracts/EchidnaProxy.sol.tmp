@@ -8,18 +8,18 @@ import "../StabilityPool.sol";
 import "../EBTCToken.sol";
 
 contract EchidnaProxy {
-    TroveManager troveManager;
+    TroveManager cdpManager;
     BorrowerOperations borrowerOperations;
     StabilityPool stabilityPool;
     EBTCToken ebtcToken;
 
     constructor(
-        TroveManager _troveManager,
+        TroveManager _cdpManager,
         BorrowerOperations _borrowerOperations,
         StabilityPool _stabilityPool,
         EBTCToken _ebtcToken
     ) public {
-        troveManager = _troveManager;
+        cdpManager = _cdpManager;
         borrowerOperations = _borrowerOperations;
         stabilityPool = _stabilityPool;
         ebtcToken = _ebtcToken;
@@ -32,15 +32,15 @@ contract EchidnaProxy {
     // TroveManager
 
     function liquidatePrx(address _user) external {
-        troveManager.liquidate(_user);
+        cdpManager.liquidate(_user);
     }
 
     function liquidateTrovesPrx(uint _n) external {
-        troveManager.liquidateTroves(_n);
+        cdpManager.liquidateTroves(_n);
     }
 
-    function batchLiquidateTrovesPrx(address[] calldata _troveArray) external {
-        troveManager.batchLiquidateTroves(_troveArray);
+    function batchLiquidateTrovesPrx(address[] calldata _cdpArray) external {
+        cdpManager.batchLiquidateTroves(_cdpArray);
     }
 
     function redeemCollateralPrx(
@@ -52,7 +52,7 @@ contract EchidnaProxy {
         uint _maxIterations,
         uint _maxFee
     ) external {
-        troveManager.redeemCollateral(_EBTCAmount, _firstRedemptionHint, _upperPartialRedemptionHint, _lowerPartialRedemptionHint, _partialRedemptionHintNICR, _maxIterations, _maxFee);
+        cdpManager.redeemCollateral(_EBTCAmount, _firstRedemptionHint, _upperPartialRedemptionHint, _lowerPartialRedemptionHint, _partialRedemptionHintNICR, _maxIterations, _maxFee);
     }
 
     // Borrower Operations

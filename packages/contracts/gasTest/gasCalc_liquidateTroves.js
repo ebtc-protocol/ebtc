@@ -25,7 +25,7 @@ contract('Gas cost tests', async accounts => {
   let priceFeed
   let ebtcToken
   let sortedTroves
-  let troveManager
+  let cdpManager
   let activePool
   let stabilityPool
   let defaultPool
@@ -41,7 +41,7 @@ contract('Gas cost tests', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
@@ -65,7 +65,7 @@ contract('Gas cost tests', async accounts => {
 
   // --- liquidateTroves() -  pure redistributions ---
 
-  // 1 trove
+  // 1 cdp
   it("", async () => {
     const message = 'liquidateTroves(). n = 1. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -82,23 +82,23 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(110, 18), accounts[500], ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidateTroves(1, { from: accounts[0] })
+    await cdpManager.liquidateTroves(1, { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(1, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(1, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _1_Defaulter) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -107,7 +107,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 2 troves
+  // 2 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 2. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -124,20 +124,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(110, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidateTroves(1, { from: accounts[0] })
+    await cdpManager.liquidateTroves(1, { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(2, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(2, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _2_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -146,7 +146,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 3 troves
+  // 3 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 3. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -163,20 +163,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(3, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(3, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _3_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -185,7 +185,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 5 troves
+  // 5 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 5. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -202,20 +202,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(5, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(5, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _5_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -224,7 +224,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 10 troves
+  // 10 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 10. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -241,20 +241,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(10, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(10, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _10_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -263,7 +263,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  //20 troves
+  //20 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 20. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -280,20 +280,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(20, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(20, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _20_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -302,7 +302,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 30 troves
+  // 30 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 30. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -319,20 +319,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(30, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(30, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _30_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -341,7 +341,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 40 troves
+  // 40 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 40. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -358,20 +358,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(40, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(40, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _40_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -380,7 +380,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 45 troves
+  // 45 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 45. Pure redistribution'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -397,20 +397,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(45, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(45, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _45_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -419,7 +419,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 50 troves
+  // 50 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 50. Pure redistribution'
     // 10 accts each open Trove
@@ -436,23 +436,23 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(10000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
-    const TCR = await troveManager.getTCR(await priceFeed.getPrice())
+    const TCR = await cdpManager.getTCR(await priceFeed.getPrice())
     console.log(`TCR: ${TCR}`)
     
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(50, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(50, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _50_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -477,23 +477,23 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
-    const TCR = await troveManager.getTCR(await priceFeed.getPrice())
+    const TCR = await cdpManager.getTCR(await priceFeed.getPrice())
     console.log(`TCR: ${TCR}`)
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(60, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(60, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _60_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -502,7 +502,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 65 troves
+  // 65 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 65. Pure redistribution'
     // 10 accts each open Trove with 15 ether, withdraw 100 EBTC
@@ -519,23 +519,23 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(100, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
-    const TCR = await troveManager.getTCR(await priceFeed.getPrice())
+    const TCR = await cdpManager.getTCR(await priceFeed.getPrice())
     console.log(`TCR: ${TCR}`)
     // 1451258961356880573
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.liquidateTroves(65, { from: accounts[0] })
+    const tx = await cdpManager.liquidateTroves(65, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _65_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -546,15 +546,15 @@ contract('Gas cost tests', async accounts => {
 
 
 
-  // --- liquidate Troves - all troves offset by Stability Pool - no pending distribution rewards ---
+  // --- liquidate Troves - all cdps offset by Stability Pool - no pending distribution rewards ---
 
-  // 1 trove
+  // 1 cdp
   it("", async () => {
     const message = 'liquidateTroves(). n = 1. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -569,12 +569,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(1, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(1, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -586,13 +586,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 2 troves
+  // 2 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 2. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -607,12 +607,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(2, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(2, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -624,13 +624,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 3 troves
+  // 3 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 3. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -645,12 +645,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(3, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(3, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -662,13 +662,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 5 troves
+  // 5 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 5. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999], ZERO_ADDRESS,{ from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -683,12 +683,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(5, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(5, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -700,13 +700,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 10 troves
+  // 10 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 10. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999], ZERO_ADDRESS,{ from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -721,12 +721,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(10, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(10, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -738,13 +738,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 20 troves
+  // 20 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 20. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -759,12 +759,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(20, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(20, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -777,13 +777,13 @@ contract('Gas cost tests', async accounts => {
   })
 
 
-  // 30 troves
+  // 30 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 30. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -798,12 +798,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(30, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(30, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -815,13 +815,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 40 troves
+  // 40 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 40. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -836,12 +836,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(40, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(40, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -853,13 +853,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 50 troves
+  // 50 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 50. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(1000, 'ether'), dec(10000, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -874,12 +874,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(50, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(50, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -891,13 +891,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 55 troves
+  // 55 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 55. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(10, 'ether'), dec(100, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -912,12 +912,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(55, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(55, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -930,9 +930,9 @@ contract('Gas cost tests', async accounts => {
   })
 
 
-  // --- liquidate Troves - all troves offset by Stability Pool - Has pending distribution rewards ---
+  // --- liquidate Troves - all cdps offset by Stability Pool - Has pending distribution rewards ---
 
-  // 1 trove
+  // 1 cdp
   it("", async () => {
     const message = 'liquidateTroves(). n = 1. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -951,11 +951,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -964,12 +964,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(1, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(1, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -981,7 +981,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 2 troves
+  // 2 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 2. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1000,11 +1000,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999], ZERO_ADDRESS,{ from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1013,12 +1013,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(2, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(2, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1030,7 +1030,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 3 troves
+  // 3 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 3. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1049,11 +1049,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1062,12 +1062,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(3, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(3, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1079,7 +1079,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 5 troves
+  // 5 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 5. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1098,11 +1098,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1111,12 +1111,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(5, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(5, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1128,7 +1128,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 10 troves
+  // 10 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 10. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1147,11 +1147,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1160,12 +1160,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(10, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(10, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1177,7 +1177,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 20 troves
+  // 20 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 20. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1196,11 +1196,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1209,12 +1209,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(20, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(20, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1226,7 +1226,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 30 troves
+  // 30 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 30. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1245,11 +1245,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1258,12 +1258,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(30, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(30, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1275,7 +1275,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 40 troves
+  // 40 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 40. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1294,11 +1294,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1307,12 +1307,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(40, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(40, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1325,7 +1325,7 @@ contract('Gas cost tests', async accounts => {
   })
 
 
-  // 45 troves
+  // 45 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 45. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1344,11 +1344,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1357,12 +1357,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(45, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(45, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1374,7 +1374,7 @@ contract('Gas cost tests', async accounts => {
     th.appendData({ gas: gas }, message, data)
   })
 
-  // 50 troves
+  // 50 cdps
   it("", async () => {
     const message = 'liquidateTroves(). n = 50. All fully offset with Stability Pool. Has pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
@@ -1393,11 +1393,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1406,12 +1406,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.liquidateTroves(50, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.liquidateTroves(50, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1442,20 +1442,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(2000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(20, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
+    const tx = await cdpManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _10_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -1480,20 +1480,20 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.openTrove(_100pct, dec(2000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(20, 'ether') })
     assert.isTrue(await sortedTroves.contains(accounts[500]))
 
-    // Price drops, defaulters' troves fall below MCR
+    // Price drops, defaulters' cdps fall below MCR
     await priceFeed.setPrice(dec(100, 18))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
-    const tx = await troveManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
+    const tx = await cdpManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
-    // Check defaulters' troves have been closed
+    // Check defaulters' cdps have been closed
     for (account of _50_Defaulters) { assert.isFalse(await sortedTroves.contains(account)) }
 
     const gas = th.gasUsed(tx)
@@ -1504,13 +1504,13 @@ contract('Gas cost tests', async accounts => {
 
   // ---batchLiquidateTroves(): Full SP offset, no pending rewards ---
 
-  // 10 troves
+  // 10 cdps
   it("", async () => {
     const message = 'batchLiquidateTroves(). batch size = 10. All fully offset with Stability Pool. No pending distribution rewards.'
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(200, 'ether'), dec(2000, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -1525,12 +1525,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -1547,7 +1547,7 @@ contract('Gas cost tests', async accounts => {
     // 10 accts each open Trove with 10 ether, withdraw 100 EBTC
     await th.openTrove_allAccounts(accounts.slice(101, 111), contracts, dec(200, 'ether'), dec(2000, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999], ZERO_ADDRESS,{ from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
@@ -1562,12 +1562,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check Troves are closed
@@ -1600,11 +1600,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1613,12 +1613,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Liquidate troves
-    const tx = await troveManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.batchLiquidateTroves(_10_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated
@@ -1648,11 +1648,11 @@ contract('Gas cost tests', async accounts => {
 
     // Account 500 is liquidated, creates pending distribution rewards for all
     await priceFeed.setPrice(dec(100, 18))
-    await troveManager.liquidate(accounts[500], { from: accounts[0] })
+    await cdpManager.liquidate(accounts[500], { from: accounts[0] })
     assert.isFalse(await sortedTroves.contains(accounts[500]))
     await priceFeed.setPrice(dec(200, 18))
 
-    // Whale opens trove and fills SP with 1 billion EBTC
+    // Whale opens cdp and fills SP with 1 billion EBTC
     await borrowerOperations.openTrove(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
     assert.equal((await stabilityPool.getTotalEBTCDeposits()), dec(1, 27))
@@ -1661,12 +1661,12 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(100, 18))
 
     // Check Recovery Mode is false
-    assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
+    assert.isFalse(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
     
-    // Liquidate troves
-    const tx = await troveManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
+    // Liquidate cdps
+    const tx = await cdpManager.batchLiquidateTroves(_50_Defaulters, { from: accounts[0] })
     assert.isTrue(tx.receipt.status)
 
     // Check all defaulters liquidated

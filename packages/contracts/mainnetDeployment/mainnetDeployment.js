@@ -79,7 +79,7 @@ async function mainnetDeploy(configParams) {
   await mdh.connectLQTYContractsMainnet(LQTYContracts)
   await mdh.connectLQTYContractsToCoreMainnet(LQTYContracts, liquityCore)
 
-  // Deploy a read-only multi-trove getter
+  // Deploy a read-only multi-cdp getter
   const multiTroveGetter = await mdh.deployMultiTroveGetterMainnet(liquityCore, deploymentState)
 
   // Connect Unipool to LQTYToken and the EBTC-WETH pair address, with a 6 week duration
@@ -137,14 +137,14 @@ async function mainnetDeploy(configParams) {
   // // --- TESTS AND CHECKS  ---
 
   // Deployer repay EBTC
-  // console.log(`deployer trove debt before repaying: ${await liquityCore.troveManager.getTroveDebt(deployerWallet.address)}`)
+  // console.log(`deployer cdp debt before repaying: ${await liquityCore.cdpManager.getTroveDebt(deployerWallet.address)}`)
  // await mdh.sendAndWaitForTransaction(liquityCore.borrowerOperations.repayEBTC(dec(800, 18), th.ZERO_ADDRESS, th.ZERO_ADDRESS, {gasPrice, gasLimit: 1000000}))
-  // console.log(`deployer trove debt after repaying: ${await liquityCore.troveManager.getTroveDebt(deployerWallet.address)}`)
+  // console.log(`deployer cdp debt after repaying: ${await liquityCore.cdpManager.getTroveDebt(deployerWallet.address)}`)
   
   // Deployer add coll
-  // console.log(`deployer trove coll before adding coll: ${await liquityCore.troveManager.getTroveColl(deployerWallet.address)}`)
+  // console.log(`deployer cdp coll before adding coll: ${await liquityCore.cdpManager.getTroveColl(deployerWallet.address)}`)
   // await mdh.sendAndWaitForTransaction(liquityCore.borrowerOperations.addColl(th.ZERO_ADDRESS, th.ZERO_ADDRESS, {value: dec(2, 'ether'), gasPrice, gasLimit: 1000000}))
-  // console.log(`deployer trove coll after addingColl: ${await liquityCore.troveManager.getTroveColl(deployerWallet.address)}`)
+  // console.log(`deployer cdp coll after addingColl: ${await liquityCore.cdpManager.getTroveColl(deployerWallet.address)}`)
   
   // Check chainlink proxy price ---
 
@@ -251,20 +251,20 @@ async function mainnetDeploy(configParams) {
 
   // // --- TroveManager ---
 
-  // const liqReserve = await liquityCore.troveManager.EBTC_GAS_COMPENSATION()
-  // const minNetDebt = await liquityCore.troveManager.MIN_NET_DEBT()
+  // const liqReserve = await liquityCore.cdpManager.EBTC_GAS_COMPENSATION()
+  // const minNetDebt = await liquityCore.cdpManager.MIN_NET_DEBT()
 
   // th.logBN('system liquidation reserve', liqReserve)
   // th.logBN('system min net debt      ', minNetDebt)
 
   // // --- Make first EBTC-ETH liquidity provision ---
 
-  // // Open trove if not yet opened
-  // const troveStatus = await liquityCore.troveManager.getTroveStatus(deployerWallet.address)
-  // if (troveStatus.toString() != '1') {
+  // // Open cdp if not yet opened
+  // const cdpStatus = await liquityCore.cdpManager.getTroveStatus(deployerWallet.address)
+  // if (cdpStatus.toString() != '1') {
   //   let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
   //   let _3ETHcoll = th.dec(3, 'ether') // 3 ETH
-  //   console.log('Opening trove...')
+  //   console.log('Opening cdp...')
   //   await mdh.sendAndWaitForTransaction(
   //     liquityCore.borrowerOperations.openTrove(
   //       th._100pct,
@@ -275,17 +275,17 @@ async function mainnetDeploy(configParams) {
   //     )
   //   )
   // } else {
-  //   console.log('Deployer already has an active trove')
+  //   console.log('Deployer already has an active cdp')
   // }
 
-  // // Check deployer now has an open trove
-  // console.log(`deployer is in sorted list after making trove: ${await liquityCore.sortedTroves.contains(deployerWallet.address)}`)
+  // // Check deployer now has an open cdp
+  // console.log(`deployer is in sorted list after making cdp: ${await liquityCore.sortedTroves.contains(deployerWallet.address)}`)
 
-  // const deployerTrove = await liquityCore.troveManager.Troves(deployerWallet.address)
+  // const deployerTrove = await liquityCore.cdpManager.Troves(deployerWallet.address)
   // th.logBN('deployer debt', deployerTrove[0])
   // th.logBN('deployer coll', deployerTrove[1])
   // th.logBN('deployer stake', deployerTrove[2])
-  // console.log(`deployer's trove status: ${deployerTrove[3]}`)
+  // console.log(`deployer's cdp status: ${deployerTrove[3]}`)
 
   // // Check deployer has EBTC
   // let deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
@@ -487,10 +487,10 @@ async function mainnetDeploy(configParams) {
 
 
 
-  // // --- 2nd Account opens trove ---
-  // const trove2Status = await liquityCore.troveManager.getTroveStatus(account2Wallet.address)
-  // if (trove2Status.toString() != '1') {
-  //   console.log("Acct 2 opens a trove ...")
+  // // --- 2nd Account opens cdp ---
+  // const cdp2Status = await liquityCore.cdpManager.getTroveStatus(account2Wallet.address)
+  // if (cdp2Status.toString() != '1') {
+  //   console.log("Acct 2 opens a cdp ...")
   //   let _2kEBTCWithdrawal = th.dec(2000, 18) // 2000 EBTC
   //   let _1pt5_ETHcoll = th.dec(15, 17) // 1.5 ETH
   //   const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
@@ -498,18 +498,18 @@ async function mainnetDeploy(configParams) {
 
   //   await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openTrove(th._100pct, _2kEBTCWithdrawal, th.ZERO_ADDRESS, th.ZERO_ADDRESS, { value: _1pt5_ETHcoll, gasPrice, gasLimit: 1000000 }))
   // } else {
-  //   console.log('Acct 2 already has an active trove')
+  //   console.log('Acct 2 already has an active cdp')
   // }
 
-  // const acct2Trove = await liquityCore.troveManager.Troves(account2Wallet.address)
+  // const acct2Trove = await liquityCore.cdpManager.Troves(account2Wallet.address)
   // th.logBN('acct2 debt', acct2Trove[0])
   // th.logBN('acct2 coll', acct2Trove[1])
   // th.logBN('acct2 stake', acct2Trove[2])
-  // console.log(`acct2 trove status: ${acct2Trove[3]}`)
+  // console.log(`acct2 cdp status: ${acct2Trove[3]}`)
 
   // // Log deployer's pending EBTC gain - check fees went to staker (deloyer)
   // deployerEBTCRevShare = await LQTYContracts.lqtyStaking.getPendingEBTCGain(deployerWallet.address)
-  // th.logBN("deployer pending EBTC revenue share from staking, after acct 2 opened trove", deployerEBTCRevShare)
+  // th.logBN("deployer pending EBTC revenue share from staking, after acct 2 opened cdp", deployerEBTCRevShare)
 
   // //  --- deployer withdraws staking gains ---
   // console.log("CHECK DEPLOYER WITHDRAWING STAKING GAINS")
@@ -533,27 +533,27 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current EBTC reserves", reserves[0])
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
-  // Number of troves
-  const numTroves = await liquityCore.troveManager.getTroveOwnersCount()
-  console.log(`number of troves: ${numTroves} `)
+  // Number of cdps
+  const numTroves = await liquityCore.cdpManager.getTroveOwnersCount()
+  console.log(`number of cdps: ${numTroves} `)
 
   // Sorted list size
   const listSize = await liquityCore.sortedTroves.getSize()
   console.log(`Trove list size: ${listSize} `)
 
   // Total system debt and coll
-  const entireSystemDebt = await liquityCore.troveManager.getEntireSystemDebt()
-  const entireSystemColl = await liquityCore.troveManager.getEntireSystemColl()
+  const entireSystemDebt = await liquityCore.cdpManager.getEntireSystemDebt()
+  const entireSystemColl = await liquityCore.cdpManager.getEntireSystemColl()
   th.logBN("Entire system debt", entireSystemDebt)
   th.logBN("Entire system coll", entireSystemColl)
   
   // TCR
-  const TCR = await liquityCore.troveManager.getTCR(chainlinkPrice)
+  const TCR = await liquityCore.cdpManager.getTCR(chainlinkPrice)
   console.log(`TCR: ${TCR}`)
 
   // current borrowing rate
-  const baseRate = await liquityCore.troveManager.baseRate()
-  const currentBorrowingRate = await liquityCore.troveManager.getBorrowingRateWithDecay()
+  const baseRate = await liquityCore.cdpManager.baseRate()
+  const currentBorrowingRate = await liquityCore.cdpManager.getBorrowingRateWithDecay()
   th.logBN("Base rate", baseRate)
   th.logBN("Current borrowing rate", currentBorrowingRate)
 
@@ -573,15 +573,15 @@ async function mainnetDeploy(configParams) {
 
   // TroveManager 
   console.log("TroveManager state variables:")
-  const totalStakes = await liquityCore.troveManager.totalStakes()
-  const totalStakesSnapshot = await liquityCore.troveManager.totalStakesSnapshot()
-  const totalCollateralSnapshot = await liquityCore.troveManager.totalCollateralSnapshot()
-  th.logBN("Total trove stakes", totalStakes)
-  th.logBN("Snapshot of total trove stakes before last liq. ", totalStakesSnapshot)
-  th.logBN("Snapshot of total trove collateral before last liq. ", totalCollateralSnapshot)
+  const totalStakes = await liquityCore.cdpManager.totalStakes()
+  const totalStakesSnapshot = await liquityCore.cdpManager.totalStakesSnapshot()
+  const totalCollateralSnapshot = await liquityCore.cdpManager.totalCollateralSnapshot()
+  th.logBN("Total cdp stakes", totalStakes)
+  th.logBN("Snapshot of total cdp stakes before last liq. ", totalStakesSnapshot)
+  th.logBN("Snapshot of total cdp collateral before last liq. ", totalCollateralSnapshot)
 
-  const L_ETH = await liquityCore.troveManager.L_ETH()
-  const L_EBTCDebt = await liquityCore.troveManager.L_EBTCDebt()
+  const L_ETH = await liquityCore.cdpManager.L_ETH()
+  const L_EBTCDebt = await liquityCore.cdpManager.L_EBTCDebt()
   th.logBN("L_ETH", L_ETH)
   th.logBN("L_EBTCDebt", L_EBTCDebt)
 

@@ -81,8 +81,8 @@ export const getListOfTrovesBeforeRedistribution = async (liquity: ReadableLiqui
   });
 
 export const getListOfTroveOwners = async (liquity: ReadableLiquity) =>
-  getListOfTrovesBeforeRedistribution(liquity).then(troves =>
-    troves.map(trove => trove.ownerAddress)
+  getListOfTrovesBeforeRedistribution(liquity).then(cdps =>
+    cdps.map(cdp => cdp.ownerAddress)
   );
 
 const tinyDifference = Decimal.from("0.000000001");
@@ -123,20 +123,20 @@ export const listOfTrovesShouldBeEqual = (
   listB: TroveWithPendingRedistribution[]
 ) => {
   if (listA.length !== listB.length) {
-    throw new Error("length of trove lists is different");
+    throw new Error("length of cdp lists is different");
   }
 
-  const mapB = new Map(listB.map(trove => [trove.ownerAddress, trove]));
+  const mapB = new Map(listB.map(cdp => [cdp.ownerAddress, cdp]));
 
-  listA.forEach(troveA => {
-    const troveB = mapB.get(troveA.ownerAddress);
+  listA.forEach(cdpA => {
+    const cdpB = mapB.get(cdpA.ownerAddress);
 
-    if (!troveB) {
-      throw new Error(`${troveA.ownerAddress} has no trove in listB`);
+    if (!cdpB) {
+      throw new Error(`${cdpA.ownerAddress} has no cdp in listB`);
     }
 
-    if (!troveA.equals(troveB)) {
-      throw new Error(`${troveA.ownerAddress} has different troves in listA & listB`);
+    if (!cdpA.equals(cdpB)) {
+      throw new Error(`${cdpA.ownerAddress} has different cdps in listA & listB`);
     }
   });
 };
@@ -171,11 +171,11 @@ export const checkPoolBalances = async (
   const defaultPool = await liquity._getDefaultPool();
 
   const [activeTotal, defaultTotal] = listOfTroves.reduce(
-    ([activeTotal, defaultTotal], troveActive) => {
-      const troveTotal = troveActive.applyRedistribution(totalRedistributed);
-      const troveDefault = troveTotal.subtract(troveActive);
+    ([activeTotal, defaultTotal], cdpActive) => {
+      const cdpTotal = cdpActive.applyRedistribution(totalRedistributed);
+      const cdpDefault = cdpTotal.subtract(cdpActive);
 
-      return [activeTotal.add(troveActive), defaultTotal.add(troveDefault)];
+      return [activeTotal.add(cdpActive), defaultTotal.add(cdpDefault)];
     },
     [new Trove(), new Trove()]
   );
@@ -202,12 +202,12 @@ export const checkPoolBalances = async (
 
 const numbersEqual = (a: number, b: number) => a === b;
 const decimalsEqual = (a: Decimal, b: Decimal) => a.eq(b);
-const trovesEqual = (a: Trove, b: Trove) => a.equals(b);
+const cdpsEqual = (a: Trove, b: Trove) => a.equals(b);
 
-const trovesRoughlyEqual = (troveA: Trove, troveB: Trove) =>
+const cdpsRoughlyEqual = (cdpA: Trove, cdpB: Trove) =>
   [
-    [troveA.collateral, troveB.collateral],
-    [troveA.debt, troveB.debt]
+    [cdpA.collateral, cdpB.collateral],
+    [cdpA.debt, cdpB.debt]
   ].every(([a, b]) => Difference.between(a, b).absoluteValue?.lt(tinyDifference));
 
 class EqualityCheck<T> {
@@ -237,8 +237,8 @@ class EqualityCheck<T> {
 const checks = [
   new EqualityCheck("numberOfTroves", l => l.getNumberOfTroves(), numbersEqual),
   new EqualityCheck("price", l => l.getPrice(), decimalsEqual),
-  new EqualityCheck("total", l => l.getTotal(), trovesRoughlyEqual),
-  new EqualityCheck("totalRedistributed", l => l.getTotalRedistributed(), trovesEqual),
+  new EqualityCheck("total", l => l.getTotal(), cdpsRoughlyEqual),
+  new EqualityCheck("totalRedistributed", l => l.getTotalRedistributed(), cdpsEqual),
   new EqualityCheck("tokensInStabilityPool", l => l.getEBTCInStabilityPool(), decimalsEqual)
 ];
 
@@ -262,20 +262,20 @@ export const checkSubgraph = async (subgraph: SubgraphLiquity, l1Liquity: Readab
 
 export const shortenAddress = (address: string) => address.substr(0, 6) + "..." + address.substr(-4);
 
-const troveToString = (
-  troveWithPendingRewards: TroveWithPendingRedistribution,
+const cdpToString = (
+  cdpWithPendingRewards: TroveWithPendingRedistribution,
   totalRedistributed: Trove,
   price: Decimalish
 ) => {
-  const trove = troveWithPendingRewards.applyRedistribution(totalRedistributed);
-  const rewards = trove.subtract(troveWithPendingRewards);
+  const cdp = cdpWithPendingRewards.applyRedistribution(totalRedistributed);
+  const rewards = cdp.subtract(cdpWithPendingRewards);
 
   return (
-    `[${shortenAddress(troveWithPendingRewards.ownerAddress)}]: ` +
-    `ICR = ${new Percent(trove.collateralRatio(price)).toString(2)}, ` +
-    `ICR w/o reward = ${new Percent(troveWithPendingRewards.collateralRatio(price)).toString(2)}, ` +
-    `coll = ${trove.collateral.toString(2)}, ` +
-    `debt = ${trove.debt.toString(2)}, ` +
+    `[${shortenAddress(cdpWithPendingRewards.ownerAddress)}]: ` +
+    `ICR = ${new Percent(cdp.collateralRatio(price)).toString(2)}, ` +
+    `ICR w/o reward = ${new Percent(cdpWithPendingRewards.collateralRatio(price)).toString(2)}, ` +
+    `coll = ${cdp.collateral.toString(2)}, ` +
+    `debt = ${cdp.debt.toString(2)}, ` +
     `coll reward = ${rewards.collateral.toString(2)}, ` +
     `debt reward = ${rewards.debt.toString(2)}`
   );
@@ -291,7 +291,7 @@ export const dumpTroves = (
   }
 
   let currentTrove = listOfTroves[0];
-  console.log(`   ${troveToString(currentTrove, totalRedistributed, price)}`);
+  console.log(`   ${cdpToString(currentTrove, totalRedistributed, price)}`);
 
   for (let i = 1; i < listOfTroves.length; ++i) {
     const nextTrove = listOfTroves[i];
@@ -303,9 +303,9 @@ export const dumpTroves = (
         .sub(tinyDifference)
         .gt(currentTrove.applyRedistribution(totalRedistributed).collateralRatio(price))
     ) {
-      console.log(`!! ${troveToString(nextTrove, totalRedistributed, price)}`.red);
+      console.log(`!! ${cdpToString(nextTrove, totalRedistributed, price)}`.red);
     } else {
-      console.log(`   ${troveToString(nextTrove, totalRedistributed, price)}`);
+      console.log(`   ${cdpToString(nextTrove, totalRedistributed, price)}`);
     }
 
     currentTrove = nextTrove;

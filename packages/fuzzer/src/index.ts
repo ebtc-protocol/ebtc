@@ -20,10 +20,10 @@ yargs
     "warzone",
     "Create lots of Troves.",
     {
-      troves: {
+      cdps: {
         alias: "n",
         default: 1000,
-        description: "Number of troves to create"
+        description: "Number of cdps to create"
       }
     },
     wrapCmd(warzone)
@@ -68,7 +68,7 @@ yargs
     wrapCmd(checkSubgraphCmd)
   )
 
-  .command("dump-troves", "Dump list of Troves.", {}, wrapCmd(dumpTrovesCmd))
+  .command("dump-cdps", "Dump list of Troves.", {}, wrapCmd(dumpTrovesCmd))
 
   .strict()
   .demandCommand()

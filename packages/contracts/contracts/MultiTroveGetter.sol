@@ -19,16 +19,16 @@ contract MultiTroveGetter {
         uint snapshotEBTCDebt;
     }
 
-    TroveManager public troveManager; // XXX Troves missing from ITroveManager?
+    TroveManager public cdpManager; // XXX Troves missing from ITroveManager?
     ISortedTroves public sortedTroves;
 
-    constructor(TroveManager _troveManager, ISortedTroves _sortedTroves) public {
-        troveManager = _troveManager;
+    constructor(TroveManager _cdpManager, ISortedTroves _sortedTroves) public {
+        cdpManager = _cdpManager;
         sortedTroves = _sortedTroves;
     }
 
     function getMultipleSortedTroves(int _startIdx, uint _count)
-        external view returns (CombinedTroveData[] memory _troves)
+        external view returns (CombinedTroveData[] memory _cdps)
     {
         uint startIdx;
         bool descend;
@@ -44,7 +44,7 @@ contract MultiTroveGetter {
         uint sortedTrovesSize = sortedTroves.getSize();
 
         if (startIdx >= sortedTrovesSize) {
-            _troves = new CombinedTroveData[](0);
+            _cdps = new CombinedTroveData[](0);
         } else {
             uint maxCount = sortedTrovesSize - startIdx;
 
@@ -53,15 +53,15 @@ contract MultiTroveGetter {
             }
 
             if (descend) {
-                _troves = _getMultipleSortedTrovesFromHead(startIdx, _count);
+                _cdps = _getMultipleSortedTrovesFromHead(startIdx, _count);
             } else {
-                _troves = _getMultipleSortedTrovesFromTail(startIdx, _count);
+                _cdps = _getMultipleSortedTrovesFromTail(startIdx, _count);
             }
         }
     }
 
     function _getMultipleSortedTrovesFromHead(uint _startIdx, uint _count)
-        internal view returns (CombinedTroveData[] memory _troves)
+        internal view returns (CombinedTroveData[] memory _cdps)
     {
         bytes32 currentTroveId = sortedTroves.getFirst();
 
@@ -69,28 +69,28 @@ contract MultiTroveGetter {
             currentTroveId = sortedTroves.getNext(currentTroveId);
         }
 
-        _troves = new CombinedTroveData[](_count);
+        _cdps = new CombinedTroveData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _troves[idx].id = currentTroveId;
+            _cdps[idx].id = currentTroveId;
             (
-                _troves[idx].debt,
-                _troves[idx].coll,
-                _troves[idx].stake,
+                _cdps[idx].debt,
+                _cdps[idx].coll,
+                _cdps[idx].stake,
                 /* status */,
                 /* arrayIndex */
-            ) = troveManager.Troves(currentTroveId);
+            ) = cdpManager.Troves(currentTroveId);
             (
-                _troves[idx].snapshotETH,
-                _troves[idx].snapshotEBTCDebt
-            ) = troveManager.rewardSnapshots(currentTroveId);
+                _cdps[idx].snapshotETH,
+                _cdps[idx].snapshotEBTCDebt
+            ) = cdpManager.rewardSnapshots(currentTroveId);
 
             currentTroveId = sortedTroves.getNext(currentTroveId);
         }
     }
 
     function _getMultipleSortedTrovesFromTail(uint _startIdx, uint _count)
-        internal view returns (CombinedTroveData[] memory _troves)
+        internal view returns (CombinedTroveData[] memory _cdps)
     {
         bytes32 currentTroveId = sortedTroves.getLast();
 
@@ -98,21 +98,21 @@ contract MultiTroveGetter {
             currentTroveId = sortedTroves.getPrev(currentTroveId);
         }
 
-        _troves = new CombinedTroveData[](_count);
+        _cdps = new CombinedTroveData[](_count);
 
         for (uint idx = 0; idx < _count; ++idx) {
-            _troves[idx].id = currentTroveId;
+            _cdps[idx].id = currentTroveId;
             (
-                _troves[idx].debt,
-                _troves[idx].coll,
-                _troves[idx].stake,
+                _cdps[idx].debt,
+                _cdps[idx].coll,
+                _cdps[idx].stake,
                 /* status */,
                 /* arrayIndex */
-            ) = troveManager.Troves(currentTroveId);
+            ) = cdpManager.Troves(currentTroveId);
             (
-                _troves[idx].snapshotETH,
-                _troves[idx].snapshotEBTCDebt
-            ) = troveManager.rewardSnapshots(currentTroveId);
+                _cdps[idx].snapshotETH,
+                _cdps[idx].snapshotEBTCDebt
+            ) = cdpManager.rewardSnapshots(currentTroveId);
 
             currentTroveId = sortedTroves.getPrev(currentTroveId);
         }

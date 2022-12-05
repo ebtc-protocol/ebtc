@@ -9,7 +9,7 @@ interface IEBTCToken is IERC20, IERC2612 {
     
     // --- Events ---
 
-    event TroveManagerAddressChanged(address _troveManagerAddress);
+    event TroveManagerAddressChanged(address _cdpManagerAddress);
     event StabilityPoolAddressChanged(address _newStabilityPoolAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
