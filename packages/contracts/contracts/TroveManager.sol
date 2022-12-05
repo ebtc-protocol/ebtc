@@ -1145,22 +1145,27 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
     // Get the borrower's pending accumulated LUSD reward, earned by their stake
     function getPendingLUSDDebtReward(address _borrower) public view override returns (uint, uint) {
         uint snapshotLUSDDebt = rewardSnapshots[_borrower].LUSDDebt;
-        uint rewardPerUnitStaked = L_LUSDDebt.sub(snapshotLUSDDebt);
 
         if ( Troves[_borrower].status != Status.active) { return (0, 0); }
 
         uint stake =  Troves[_borrower].stake;
         uint initialDebt = Troves[_borrower].debt.sub(LUSD_GAS_COMPENSATION); // TODO: Check
 
+        uint L_LUSDDebt_new = L_LUSDDebt;
         uint L_LUSDInterest_new = L_LUSDInterest;
         uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
-                L_LUSDInterest_new = L_LUSDInterest_new.mul(DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed))).div(DECIMAL_PRECISION);
+                uint unitInterestPlusOne = DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed));
+
+                L_LUSDDebt_new = L_LUSDDebt_new.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
+                L_LUSDInterest_new = L_LUSDInterest_new.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
             }
         }
+
+        uint rewardPerUnitStaked = L_LUSDDebt_new.sub(snapshotLUSDDebt);
 
         uint pendingLUSDDebtReward;
         if (rewardPerUnitStaked > 0) {
@@ -1299,18 +1304,21 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
-                uint LUSDInterest = interestRatePerSecond.mul(timeElapsed);
+                uint unitInterest = interestRatePerSecond.mul(timeElapsed);
+                uint unitInterestPlusOne = DECIMAL_PRECISION.add(unitInterest);
 
-                L_LUSDInterest = L_LUSDInterest.mul(DECIMAL_PRECISION.add(LUSDInterest)).div(DECIMAL_PRECISION);
+                L_LUSDInterest = L_LUSDInterest.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
+                L_LUSDDebt = L_LUSDDebt.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
+
                 lastInterestRateUpdateTime = block.timestamp;
 
                 emit L_LUSDInterestUpdated(L_LUSDInterest);
 
                 uint activeDebt = activePool.getLUSDDebt();
-                uint activeDebtInterest = activeDebt.mul(LUSDInterest).div(DECIMAL_PRECISION);
+                uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
                 uint defaultDebt = defaultPool.getLUSDDebt();
-                uint defaultDebtInterest = defaultDebt.mul(LUSDInterest).div(DECIMAL_PRECISION);
+                uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
                 defaultPool.increaseLUSDDebt(defaultDebtInterest);
 
