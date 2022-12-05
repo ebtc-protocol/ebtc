@@ -1308,7 +1308,13 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
 
                 uint activeDebt = activePool.getLUSDDebt();
                 uint activeDebtInterest = activeDebt.mul(LUSDInterest).div(DECIMAL_PRECISION);
-                _mintPendingLUSDInterest(lqtyStaking, lusdToken, activeDebtInterest);
+
+                uint defaultDebt = defaultPool.getLUSDDebt();
+                uint defaultDebtInterest = defaultDebt.mul(LUSDInterest).div(DECIMAL_PRECISION);
+
+                defaultPool.increaseLUSDDebt(defaultDebtInterest);
+
+                _mintPendingLUSDInterest(lqtyStaking, lusdToken, activeDebtInterest.add(defaultDebtInterest));
             }
         }
     }
