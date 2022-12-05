@@ -1320,6 +1320,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager {
                 uint defaultDebt = defaultPool.getLUSDDebt();
                 uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
+                // TODO: Do I need to do this?
+                activePool.increaseLUSDDebt(activeDebtInterest);
                 defaultPool.increaseLUSDDebt(defaultDebtInterest);
 
                 _mintPendingLUSDInterest(lqtyStaking, lusdToken, activeDebtInterest.add(defaultDebtInterest));
