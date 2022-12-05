@@ -1,9 +1,10 @@
-pragma solidity 0.8.10;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.6.11;
 
 import "forge-std/Test.sol";
 
 contract DummyTest is Test {
-    uint256 testNumber;
+    uint256 private testNumber;
 
     function setUp() public {
         testNumber = 42;
@@ -13,7 +14,7 @@ contract DummyTest is Test {
         assertEq(testNumber, 42);
     }
 
-    function testFailSubtract43() public {
-        testNumber -= 43;
+    function testFailLessthanNumber() private {
+        require(testNumber < 40);
     }
 }
