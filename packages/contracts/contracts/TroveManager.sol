@@ -388,6 +388,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
 		
         uint _partialDebt = _partialRatio.mul(entireTroveDebt).div(PARTIAL_DEBT_RATIO_MAX);
+        require(entireTroveDebt.sub(_partialDebt) >= MIN_NET_DEBT, "!minDebtLeftByPartiallyLiq");
+		
         uint _partialColl = _partialDebt.mul(_ICR).div(_price);
 			
         if (_partialDebt >= entireTroveDebt || _partialColl >= entireTroveColl){

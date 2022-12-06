@@ -41,6 +41,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
     sortedTroves = contracts.sortedTroves
     debtToken = contracts.lusdToken;
     activePool = contracts.activePool;
+    minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -61,6 +62,12 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
       await assertRevert(troveManager.partiallyLiquidate(_aliceTroveId, 1000001, {from: bob}), "!partialLiqMax");
+  })
+  
+  it("Partially Liquidation needs to leave Trove with big enough debt if not closed completely", async () => {
+      await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
+      await assertRevert(troveManager.partiallyLiquidate(_aliceTroveId, 987654, {from: bob}), "!minDebtLeftByPartiallyLiq");
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {
@@ -140,7 +147,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
   })
   
   it("Troves below MCR could be partially liquidated", async () => {
-      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       assert.isTrue(await sortedTroves.contains(_aliceTroveId));
@@ -151,7 +158,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       let _newPrice = dec(60, 18);
       await priceFeed.setPrice(_newPrice);
 	  
-      // only partially liquidate alice 
+      // only partially (1/4 = 250000 / 1000000) liquidate alice 
       let _partialRatio = toBN("250000");// max(full) is million  
       let _icr = await troveManager.getCurrentICR(_aliceTroveId, _newPrice);
       let _debtLiquidated = _partialRatio.mul(_debtBorrowed).div(toBN("1000000"));
@@ -221,7 +228,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
   })
   
   it("Troves below MCR could be fully liquidated via partiallyLiquidate()", async () => {
-      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       assert.isTrue(await sortedTroves.contains(_aliceTroveId));
