@@ -85,6 +85,33 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       assert.isTrue(await sortedTroves.contains(_aliceTroveId));
   })
   
+  it("Liquidator should prepare enough asset for repayment even partially", async () => {
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openTrove({ ICR: toBN(dec(199, 16)), extraParams: { from: bob } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId));
+	  
+      // price slump by 70%
+      let _newPrice = dec(60, 18);
+      await priceFeed.setPrice(_newPrice);
+	  
+      // liquidator bob coming in firstly partially liquidate some portion
+      let _debtFirstPre = await troveManager.getTroveDebt(_aliceTroveId);
+      let _debtInLiquidatorPre = await debtToken.balanceOf(bob);
+      await troveManager.partiallyLiquidate(_aliceTroveId, toBN("150000"), {from: bob});
+      let _debtFirstPost = await troveManager.getTroveDebt(_aliceTroveId);
+      let _debtInLiquidatorPost = await debtToken.balanceOf(bob);
+      let _debtDecreased = toBN(_debtFirstPre.toString()).sub(toBN(_debtFirstPost.toString()));
+      let _debtInLiquidatorDecreased = toBN(_debtInLiquidatorPre.toString()).sub(toBN(_debtInLiquidatorPost.toString()));
+      assert.equal(_debtDecreased.toString(), _debtInLiquidatorDecreased.toString(), '!partially liquidation debt change');	  
+	  
+      // then continue liquidation partially but failed due to not enough debt asset in hand
+      let _debtPre = await troveManager.getTroveDebt(_aliceTroveId);
+      await assertRevert(troveManager.partiallyLiquidate(_aliceTroveId, toBN("500000"), {from: bob}), 'ERC20: burn amount exceeds balance');
+      let _debtPost = await troveManager.getTroveDebt(_aliceTroveId);
+      assert.equal(_debtPre.toString(), _debtPost.toString(), '!partially liquidation revert');
+  })
+  
   it("Troves below MCR will be liquidated", async () => {
       let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
@@ -227,7 +254,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       assert.equal((await troveManager.Troves(_aliceTroveId))[3], '1')
   })
   
-  it("Troves below MCR could be fully liquidated via partiallyLiquidate()", async () => {
+  it("Troves below MCR could be fully liquidated step by step via partiallyLiquidate()", async () => {
       let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
@@ -352,7 +379,30 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
       assert.equal((await troveManager.Troves(_aliceTroveId))[3], '3')
-  }) 
+  })  
+  
+  it("Should NOT allow non-EOA liquidator to reenter liquidate(bytes32) during partiallyLiquidate(bytes32, uint)", async () => {
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId));
+	  
+      // price slump by 70%
+      let _newPrice = dec(60, 18);
+      await priceFeed.setPrice(_newPrice);
+	  
+      // non-EOA liquidator coming in	
+      const simpleLiquidationTester = await SimpleLiquidationTester.new();
+      await simpleLiquidationTester.setTroveManager(troveManager.address);
+      await simpleLiquidationTester.setReceiveType(1);//tell liquidator to try reentering liquidation
+	
+      await debtToken.transfer(simpleLiquidationTester.address, (await debtToken.balanceOf(alice)), {from: alice});	  
+      await debtToken.transfer(simpleLiquidationTester.address, (await debtToken.balanceOf(bob)), {from: bob});	
+      let _debtPre = await troveManager.getTroveDebt(_aliceTroveId);
+      await assertRevert(simpleLiquidationTester.partiallyLiquidateTrove(_aliceTroveId, toBN("333333"), {from: bob}), 'ReentrancyGuard: reentrant call');
+      let _debtPost = await troveManager.getTroveDebt(_aliceTroveId);
+      assert.equal(_debtPre.toString(), _debtPost.toString(), '!partially liquidation revert');
+  })
   
   it("Should NOT allow non-EOA liquidator to reenter liquidate(bytes32)", async () => {
       let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
@@ -371,8 +421,11 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
 	
       await debtToken.transfer(simpleLiquidationTester.address, (await debtToken.balanceOf(alice)), {from: alice});	  
       await debtToken.transfer(simpleLiquidationTester.address, (await debtToken.balanceOf(bob)), {from: bob});	
+      let _debtPre = await troveManager.getTroveDebt(_aliceTroveId);
       await assertRevert(simpleLiquidationTester.liquidateTrove(_aliceTroveId, {from: bob}), 'ReentrancyGuard: reentrant call');
       assert.isTrue(await sortedTroves.contains(_aliceTroveId));
+      let _debtPost = await troveManager.getTroveDebt(_aliceTroveId);
+      assert.equal(_debtPre.toString(), _debtPost.toString(), '!partially liquidation revert');
   })
   
   it("non-EOA liquidator might revert on Ether receive() to fail liquidation", async () => {

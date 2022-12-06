@@ -2,6 +2,7 @@ pragma solidity 0.6.11;
 
 interface ITroveManager{
     function liquidate(bytes32 _troveId) external;
+    function partiallyLiquidate(bytes32 _troveId, uint256 _partialRatio) external;
 }
 
 contract SimpleLiquidationTester {
@@ -21,6 +22,10 @@ contract SimpleLiquidationTester {
 
     function liquidateTrove(bytes32 _troveId) external {
        _troveManager.liquidate(_troveId);
+    }
+
+    function partiallyLiquidateTrove(bytes32 _troveId, uint256 _partialRatio) external {
+       _troveManager.partiallyLiquidate(_troveId, _partialRatio);
     }
 	
     receive() external payable {
