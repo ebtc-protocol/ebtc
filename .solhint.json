@@ -3,7 +3,23 @@
   "plugins": [],
   "rules": {
     "avoid-suicide": "error",
-    "avoid-sha3": "warn",
-    "no-unused-vars": "warn"
+    "avoid-sha3": "error",
+    "no-unused-vars": "warn",
+    "max-line-length": "off",
+    "payable-fallback": "warn",
+    "quotes": "error",
+    "use-forbidden-name": "error",
+    "imports-on-top": "error",
+    "visibility-modifier-order": "error",
+    "avoid-call-value": "error",
+    "avoid-low-level-calls": "warn",
+    "avoid-throw": "error",
+    "avoid-tx-origin": "error",
+    "check-send-result": "error",
+    "func-visibility": "error",
+    "multiple-sends": "error",
+    "not-rely-on-block-hash": "error",
+    "reentrancy": "error",
+    "state-visibility": "warn"
   }
 }

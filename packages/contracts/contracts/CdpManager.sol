@@ -51,7 +51,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public constant BOOTSTRAP_PERIOD = 14 days;
 
     /*
-     * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction, in order to calc the new base rate from a redemption.
+     * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
+     * in order to calc the new base rate from a redemption.
      * Corresponds to (1 / ALPHA) in the white paper.
      */
     uint public constant BETA = 2;
@@ -89,12 +90,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public totalCollateralSnapshot;
 
     /*
-     * L_ETH and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked. During its lifetime, each stake earns:
+     * L_ETH and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * During its lifetime, each stake earns:
      *
      * An ETH gain of ( stake * [L_ETH - L_ETH(0)] )
      * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
      *
-     * Where L_ETH(0) and L_EBTCDebt(0) are snapshots of L_ETH and L_EBTCDebt for the active Cdp taken at the instant the stake was made
+     * Where L_ETH(0) and L_EBTCDebt(0) are snapshots of L_ETH and L_EBTCDebt
+     * for the active Cdp taken at the instant the stake was made
      */
     uint public L_ETH;
     uint public L_EBTCDebt;
@@ -543,7 +546,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
              *  If the cdp's debt is larger than the deposited EBTC in the Stability Pool:
              *
              *  - Offset an amount of the cdp's debt equal to the EBTC in the Stability Pool
-             *  - Send a fraction of the cdp's collateral to the Stability Pool, equal to the fraction of its offset debt
+             *  - Send a fraction of the cdp's collateral to the Stability Pool,
+             *  equal to the fraction of its offset debt
              *
              */
             debtToOffset = LiquityMath._min(_debt, _EBTCInStabPool);
@@ -1061,7 +1065,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         ContractsCache memory _contractsCache,
         LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp
     ) internal returns (SingleRedemptionValues memory singleRedemption) {
-        // Determine the remaining amount (lot) to be redeemed, capped by the entire debt of the Cdp minus the liquidation reserve
+        // Determine the remaining amount (lot) to be redeemed,
+        // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.EBTCLot = LiquityMath._min(
             _redeemColFromCdp._maxEBTCamount,
             Cdps[_redeemColFromCdp._cdpId].debt.sub(EBTC_GAS_COMPENSATION)
@@ -1140,8 +1145,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     /*
      * Called when a full redemption occurs, and closes the cdp.
-     * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve) worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
-     * In order to close the cdp, the EBTC liquidation reserve is burned, and the corresponding debt is removed from the active pool.
+     * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve)
+     * worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
+     * In order to close the cdp, the EBTC liquidation reserve is burned,
+     * and the corresponding debt is removed from the active pool.
      * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
      * Any surplus ETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
@@ -1178,26 +1185,34 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return nextCdp == _sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
     }
 
-    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral from as many Cdps as are needed to fill the redemption
+    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral
+     * from as many Cdps as are needed to fill the redemption
      * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
      *
-     * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small. This can be easily avoided by
+     * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small.
+     * This can be easily avoided by
      * splitting the total _amount in appropriate chunks and calling the function multiple times.
      *
-     * Param `_maxIterations` can also be provided, so the loop through Cdps is capped (if it’s zero, it will be ignored).This makes it easier to
-     * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough, without needing to know the “topology”
-     * of the cdp list. It also avoids the need to set the cap in stone in the contract, nor doing gas calculations, as both gas price and opcode
-     * costs can vary.
+     * Param `_maxIterations` can also be provided, so the loop through Cdps is capped
+     * (if it’s zero, it will be ignored).This makes it easier to
+     * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough,
+     * without needing to know the “topology”
+     * of the cdp list. It also avoids the need to set the cap in stone in the contract,
+     * nor doing gas calculations, as both gas price and opcode costs can vary.
      *
-     * All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left, therefore they will be closed.
-     * If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion could be anywhere in the list, therefore it requires a hint.
-     * A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption, and pass a hint for its position
+     * All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left,
+     * therefore they will be closed.
+     * If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion
+     * could be anywhere in the list, therefore it requires a hint.
+     * A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption,
+     * and pass a hint for its position
      * in the sortedCdps list along with the ICR value that the hint was found for.
      *
-     * If another transaction modifies the list between calling getRedemptionHints() and passing the hints to redeemCollateral(), it
-     * is very likely that the last (partially) redeemed Cdp would end up with a different ICR than what the hint is for. In this case the
-     * redemption will stop after the last completely redeemed Cdp and the sender will keep the remaining EBTC amount, which they can attempt
-     * to redeem later.
+     * If another transaction modifies the list between calling getRedemptionHints()
+     * and passing the hints to redeemCollateral(), it is very likely that the last (partially)
+     * redeemed Cdp would end up with a different ICR than what the hint is for. In this case the
+     * redemption will stop after the last completely redeemed Cdp and the sender will keep the
+     * remaining EBTC amount, which they can attempt to redeem later.
      */
     function redeemCollateral(
         uint _EBTCamount,
@@ -1252,7 +1267,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             }
         }
 
-        // Loop through the Cdps starting from the one with lowest collateral ratio until _amount of EBTC is exchanged for collateral
+        // Loop through the Cdps starting from the one with lowest collateral
+        // ratio until _amount of EBTC is exchanged for collateral
         if (_maxIterations == 0) {
             _maxIterations = uint(-1);
         }
@@ -1278,8 +1294,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                     contractsCache,
                     _redeemColFromCdp
                 );
-
-                if (singleRedemption.cancelledPartial) break; // Partial redemption was cancelled (out-of-date hint, or new net debt < minimum), therefore we could not redeem from the last Cdp
+                // Partial redemption was cancelled (out-of-date hint, or new net debt < minimum),
+                // therefore we could not redeem from the last Cdp
+                if (singleRedemption.cancelledPartial) break;
 
                 totals.totalEBTCToRedeem = totals.totalEBTCToRedeem.add(singleRedemption.EBTCLot);
                 totals.totalETHDrawn = totals.totalETHDrawn.add(singleRedemption.ETHLot);
@@ -1321,7 +1338,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Helper functions ---
 
-    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
         (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
 
@@ -1329,7 +1347,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return NICR;
     }
 
-    // Return the current collateral ratio (ICR) of a given Cdp. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    // Return the current collateral ratio (ICR) of a given Cdp.
+    //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getCurrentICR(bytes32 _cdpId, uint _price) public view override returns (uint) {
         (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
 
@@ -1505,7 +1524,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             /*
              * The following assert() holds true because:
              * - The system always contains >= 1 cdp
-             * - When we close or liquidate a cdp, we redistribute the pending rewards, so if all cdps were closed/liquidated,
+             * - When we close or liquidate a cdp, we redistribute the pending rewards,
+             * so if all cdps were closed/liquidated,
              * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
              */
             assert(totalStakesSnapshot > 0);
@@ -1582,7 +1602,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /*
-     * Updates snapshots of system total stakes and total collateral, excluding a given collateral remainder from the calculation.
+     * Updates snapshots of system total stakes and total collateral,
+     * excluding a given collateral remainder from the calculation.
      * Used in a liquidation sequence.
      *
      * The calculation excludes a portion of collateral that is in the ActivePool:
@@ -1612,7 +1633,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     function _addCdpIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
         /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
-        debt of liquidation reserve plus MIN_NET_DEBT. 3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
+        debt of liquidation reserve plus MIN_NET_DEBT.
+        3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
 
         // Push the Cdpowner to the array
         CdpIds.push(_cdpId);
@@ -1658,7 +1680,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return _checkRecoveryMode(_price);
     }
 
-    // Check whether or not the system *would be* in Recovery Mode, given an ETH:USD price, and the entire system coll and debt.
+    // Check whether or not the system *would be* in Recovery Mode,
+    // given an ETH:USD price, and the entire system coll and debt.
     function _checkPotentialRecoveryMode(
         uint _entireSystemColl,
         uint _entireSystemDebt,
