@@ -2,13 +2,11 @@
 
 pragma solidity 0.6.11;
 
-
 interface ICollSurplusPool {
-
     // --- Events ---
-    
+
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
@@ -18,7 +16,7 @@ interface ICollSurplusPool {
 
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress
     ) external;
 

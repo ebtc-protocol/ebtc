@@ -91,8 +91,8 @@ class BorrowerOperationsProxy extends Proxy {
     super(owner, proxies, borrowerOperationsScriptAddress, borrowerOperations)
   }
 
-  async openTrove(...params) {
-    return this.forwardFunction(params, 'openTrove(uint256,uint256,bytes32,bytes32)')
+  async openCdp(...params) {
+    return this.forwardFunction(params, 'openCdp(uint256,uint256,bytes32,bytes32)')
   }
 
   async addColl(...params) {
@@ -103,40 +103,40 @@ class BorrowerOperationsProxy extends Proxy {
     return this.forwardFunction(params, 'withdrawColl(uint256,address,address)')
   }
 
-  async withdrawLUSD(...params) {
-    return this.forwardFunction(params, 'withdrawLUSD(uint256,uint256,address,address)')
+  async withdrawEBTC(...params) {
+    return this.forwardFunction(params, 'withdrawEBTC(uint256,uint256,address,address)')
   }
 
-  async repayLUSD(...params) {
-    return this.forwardFunction(params, 'repayLUSD(uint256,address,address)')
+  async repayEBTC(...params) {
+    return this.forwardFunction(params, 'repayEBTC(uint256,address,address)')
   }
 
-  async closeTrove(...params) {
-    return this.forwardFunction(params, 'closeTrove()')
+  async closeCdp(...params) {
+    return this.forwardFunction(params, 'closeCdp()')
   }
 
-  async adjustTrove(...params) {
-    return this.forwardFunction(params, 'adjustTrove(uint256,uint256,uint256,bool,address,address)')
+  async adjustCdp(...params) {
+    return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,address,address)')
   }
 
   async claimRedeemedCollateral(...params) {
     return this.forwardFunction(params, 'claimRedeemedCollateral(address)')
   }
 
-  async getNewTCRFromTroveChange(...params) {
-    return this.proxyFunction('getNewTCRFromTroveChange', params)
+  async getNewTCRFromCdpChange(...params) {
+    return this.proxyFunction('getNewTCRFromCdpChange', params)
   }
 
-  async getNewICRFromTroveChange(...params) {
-    return this.proxyFunction('getNewICRFromTroveChange', params)
+  async getNewICRFromCdpChange(...params) {
+    return this.proxyFunction('getNewICRFromCdpChange', params)
   }
 
   async getCompositeDebt(...params) {
     return this.proxyFunction('getCompositeDebt', params)
   }
 
-  async LUSD_GAS_COMPENSATION(...params) {
-    return this.proxyFunction('LUSD_GAS_COMPENSATION', params)
+  async EBTC_GAS_COMPENSATION(...params) {
+    return this.proxyFunction('EBTC_GAS_COMPENSATION', params)
   }
 
   async MIN_NET_DEBT(...params) {
@@ -153,8 +153,8 @@ class BorrowerWrappersProxy extends Proxy {
     super(owner, proxies, borrowerWrappersScriptAddress, null)
   }
 
-  async claimCollateralAndOpenTrove(...params) {
-    return this.forwardFunction(params, 'claimCollateralAndOpenTrove(uint256,uint256,bytes32,bytes32)')
+  async claimCollateralAndOpenCdp(...params) {
+    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,uint256,bytes32,bytes32)')
   }
 
   async claimSPRewardsAndRecycle(...params) {
@@ -170,25 +170,25 @@ class BorrowerWrappersProxy extends Proxy {
   }
 }
 
-class TroveManagerProxy extends Proxy {
-  constructor(owner, proxies, troveManagerScriptAddress, troveManager) {
-    super(owner, proxies, troveManagerScriptAddress, troveManager)
+class CdpManagerProxy extends Proxy {
+  constructor(owner, proxies, cdpManagerScriptAddress, cdpManager) {
+    super(owner, proxies, cdpManagerScriptAddress, cdpManager)
   }
 
-  async Troves(user) {
-    return this.proxyFunctionWithUser('Troves', user)
+  async Cdps(user) {
+    return this.proxyFunctionWithUser('Cdps', user)
   }
 
-  async getTroveStatus(user) {
-    return this.proxyFunctionWithUser('getTroveStatus', user)
+  async getCdpStatus(user) {
+    return this.proxyFunctionWithUser('getCdpStatus', user)
   }
 
-  async getTroveDebt(user) {
-    return this.proxyFunctionWithUser('getTroveDebt', user)
+  async getCdpDebt(user) {
+    return this.proxyFunctionWithUser('getCdpDebt', user)
   }
 
-  async getTroveColl(user) {
-    return this.proxyFunctionWithUser('getTroveColl', user)
+  async getCdpColl(user) {
+    return this.proxyFunctionWithUser('getCdpColl', user)
   }
 
   async totalStakes() {
@@ -199,8 +199,8 @@ class TroveManagerProxy extends Proxy {
     return this.proxyFunction('getPendingETHReward', params)
   }
 
-  async getPendingLUSDDebtReward(...params) {
-    return this.proxyFunction('getPendingLUSDDebtReward', params)
+  async getPendingEBTCDebtReward(...params) {
+    return this.proxyFunction('getPendingEBTCDebtReward', params)
   }
 
   async liquidate(user) {
@@ -219,8 +219,8 @@ class TroveManagerProxy extends Proxy {
     return this.proxyFunction('checkRecoveryMode', params)
   }
 
-  async getTroveOwnersCount() {
-    return this.proxyFunction('getTroveOwnersCount', [])
+  async getCdpOwnersCount() {
+    return this.proxyFunction('getCdpOwnersCount', [])
   }
 
   async baseRate() {
@@ -231,8 +231,8 @@ class TroveManagerProxy extends Proxy {
     return this.proxyFunction('L_ETH', [])
   }
 
-  async L_LUSDDebt() {
-    return this.proxyFunction('L_LUSDDebt', [])
+  async L_EBTCDebt() {
+    return this.proxyFunction('L_EBTCDebt', [])
   }
 
   async rewardSnapshots(user) {
@@ -285,8 +285,8 @@ class StabilityPoolProxy extends Proxy {
     return this.forwardFunction(params, 'provideToSP(uint256,address)')
   }
 
-  async getCompoundedLUSDDeposit(user) {
-    return this.proxyFunctionWithUser('getCompoundedLUSDDeposit', user)
+  async getCompoundedEBTCDeposit(user) {
+    return this.proxyFunctionWithUser('getCompoundedEBTCDeposit', user)
   }
 
   async deposits(user) {
@@ -298,9 +298,9 @@ class StabilityPoolProxy extends Proxy {
   }
 }
 
-class SortedTrovesProxy extends Proxy {
-  constructor(owner, proxies, sortedTroves) {
-    super(owner, proxies, null, sortedTroves)
+class SortedCdpsProxy extends Proxy {
+  constructor(owner, proxies, sortedCdps) {
+    super(owner, proxies, null, sortedCdps)
   }
 
   async contains(user) {
@@ -315,12 +315,12 @@ class SortedTrovesProxy extends Proxy {
     return this.proxyFunction('findInsertPosition', params)
   }
 
-  async troveOfOwnerByIndex(...params) {
-    return this.forwardFunction(params, 'troveOfOwnerByIndex(address,uint)')
+  async cdpOfOwnerByIndex(...params) {
+    return this.forwardFunction(params, 'cdpOfOwnerByIndex(address,uint)')
   }
 
-  async existTroveOwners(...params) {
-    return this.forwardFunction(params, 'existTroveOwners(bytes32)')
+  async existCdpOwners(...params) {
+    return this.forwardFunction(params, 'existCdpOwners(bytes32)')
   }
 }
 
@@ -402,8 +402,8 @@ class LQTYStakingProxy extends Proxy {
     return this.proxyFunctionWithUser('stakes', user)
   }
 
-  async F_LUSD(user) {
-    return this.proxyFunctionWithUser('F_LUSD', user)
+  async F_EBTC(user) {
+    return this.proxyFunctionWithUser('F_EBTC', user)
   }
 }
 
@@ -411,9 +411,9 @@ module.exports = {
   buildUserProxies,
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
-  TroveManagerProxy,
+  CdpManagerProxy,
   StabilityPoolProxy,
-  SortedTrovesProxy,
+  SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
 }

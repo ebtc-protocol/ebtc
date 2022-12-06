@@ -2,56 +2,95 @@
 
 pragma solidity 0.6.11;
 
-// Common interface for the Trove Manager.
+// Common interface for the Cdp Manager.
 interface IBorrowerOperations {
-
     // --- Events ---
 
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
     event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event PriceFeedAddressChanged(address  _newPriceFeedAddress);
-    event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event LUSDTokenAddressChanged(address _lusdTokenAddress);
+    event PriceFeedAddressChanged(address _newPriceFeedAddress);
+    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
+    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(bytes32 indexed _troveId, address indexed _borrower, uint arrayIndex);
-    event TroveUpdated(bytes32 indexed _troveId, address indexed _borrower, uint _debt, uint _coll, uint stake, uint8 operation);
-    event LUSDBorrowingFeePaid(bytes32 indexed _troveId, uint _LUSDFee);
+    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event CdpUpdated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        uint stake,
+        uint8 operation
+    );
+    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
 
     // --- Functions ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
         address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
-        address _sortedTrovesAddress,
-        address _lusdTokenAddress,
+        address _sortedCdpsAddress,
+        address _ebtcTokenAddress,
         address _lqtyStakingAddress
     ) external;
 
-    function openTrove(uint _maxFee, uint _LUSDAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function openCdp(
+        uint _maxFee,
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable;
 
-    function addColl(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
-    function moveETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function moveETHGainToCdp(
+        bytes32 _cdpId,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable;
 
-    function withdrawColl(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawColl(
+        bytes32 _cdpId,
+        uint _amount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external;
 
-    function withdrawLUSD(bytes32 _troveId, uint _maxFee, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawEBTC(
+        bytes32 _cdpId,
+        uint _maxFee,
+        uint _amount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external;
 
-    function repayLUSD(bytes32 _troveId, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function repayEBTC(
+        bytes32 _cdpId,
+        uint _amount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external;
 
-    function closeTrove(bytes32 _troveId) external;
+    function closeCdp(bytes32 _cdpId) external;
 
-    function adjustTrove(bytes32 _troveId, uint _maxFee, uint _collWithdrawal, uint _debtChange, bool isDebtIncrease, bytes32 _upperHint, bytes32 _lowerHint) external payable;
+    function adjustCdp(
+        bytes32 _cdpId,
+        uint _maxFee,
+        uint _collWithdrawal,
+        uint _debtChange,
+        bool isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable;
 
     function claimCollateral() external;
 

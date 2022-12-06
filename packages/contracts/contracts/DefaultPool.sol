@@ -2,49 +2,46 @@
 
 pragma solidity 0.6.11;
 
-import './Interfaces/IDefaultPool.sol';
+import "./Interfaces/IDefaultPool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
 /*
- * The Default Pool holds the ETH and LUSD debt (but not LUSD tokens) from liquidations that have been redistributed
- * to active troves but not yet "applied", i.e. not yet recorded on a recipient active trove's struct.
+ * The Default Pool holds the ETH and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
+ * to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  *
- * When a trove makes an operation that applies its pending ETH and LUSD debt, its pending ETH and LUSD debt is moved
+ * When a cdp makes an operation that applies its pending ETH and EBTC debt, its pending ETH and EBTC debt is moved
  * from the Default Pool to the Active Pool.
  */
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     using SafeMath for uint256;
 
-    string constant public NAME = "DefaultPool";
+    string public constant NAME = "DefaultPool";
 
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public activePoolAddress;
-    uint256 internal ETH;  // deposited ETH tracker
-    uint256 internal LUSDDebt;  // debt
+    uint256 internal ETH; // deposited ETH tracker
+    uint256 internal EBTCDebt; // debt
 
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
-    event DefaultPoolLUSDDebtUpdated(uint _LUSDDebt);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
+    event DefaultPoolEBTCDebtUpdated(uint _EBTCDebt);
     event DefaultPoolETHBalanceUpdated(uint _ETH);
 
     // --- Dependency setters ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress
-    )
-        external
-        onlyOwner
-    {
-        checkContract(_troveManagerAddress);
+    ) external onlyOwner {
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
 
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
 
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -53,41 +50,41 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-    * Returns the ETH state variable.
-    *
-    * Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
-    */
+     * Returns the ETH state variable.
+     *
+     * Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     */
     function getETH() external view override returns (uint) {
         return ETH;
     }
 
-    function getLUSDDebt() external view override returns (uint) {
-        return LUSDDebt;
+    function getEBTCDebt() external view override returns (uint) {
+        return EBTCDebt;
     }
 
     // --- Pool functionality ---
 
     function sendETHToActivePool(uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit EtherSent(activePool, _amount);
 
-        (bool success, ) = activePool.call{ value: _amount }("");
+        (bool success, ) = activePool.call{value: _amount}("");
         require(success, "DefaultPool: sending ETH failed");
     }
 
-    function increaseLUSDDebt(uint _amount) external override {
-        _requireCallerIsTroveManager();
-        LUSDDebt = LUSDDebt.add(_amount);
-        emit DefaultPoolLUSDDebtUpdated(LUSDDebt);
+    function increaseEBTCDebt(uint _amount) external override {
+        _requireCallerIsCdpManager();
+        EBTCDebt = EBTCDebt.add(_amount);
+        emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
-    function decreaseLUSDDebt(uint _amount) external override {
-        _requireCallerIsTroveManager();
-        LUSDDebt = LUSDDebt.sub(_amount);
-        emit DefaultPoolLUSDDebtUpdated(LUSDDebt);
+    function decreaseEBTCDebt(uint _amount) external override {
+        _requireCallerIsCdpManager();
+        EBTCDebt = EBTCDebt.sub(_amount);
+        emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
     // --- 'require' functions ---
@@ -96,8 +93,8 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         require(msg.sender == activePoolAddress, "DefaultPool: Caller is not the ActivePool");
     }
 
-    function _requireCallerIsTroveManager() internal view {
-        require(msg.sender == troveManagerAddress, "DefaultPool: Caller is not the TroveManager");
+    function _requireCallerIsCdpManager() internal view {
+        require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the CdpManager");
     }
 
     // --- Fallback function ---

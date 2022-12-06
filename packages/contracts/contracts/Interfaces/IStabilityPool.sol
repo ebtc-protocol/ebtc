@@ -3,17 +3,17 @@
 pragma solidity 0.6.11;
 
 /*
- * The Stability Pool holds LUSD tokens deposited by Stability Pool depositors.
+ * The Stability Pool holds EBTC tokens deposited by Stability Pool depositors.
  *
- * When a trove is liquidated, then depending on system conditions, some of its LUSD debt gets offset with
- * LUSD in the Stability Pool:  that is, the offset debt evaporates, and an equal amount of LUSD tokens in the Stability Pool is burned.
+ * When a cdp is liquidated, then depending on system conditions, some of its EBTC debt gets offset with
+ * EBTC in the Stability Pool:  that is, the offset debt evaporates, and an equal amount of EBTC tokens in the Stability Pool is burned.
  *
- * Thus, a liquidation causes each depositor to receive a LUSD loss, in proportion to their deposit as a share of total deposits.
- * They also receive an ETH gain, as the ETH collateral of the liquidated trove is distributed among Stability depositors,
+ * Thus, a liquidation causes each depositor to receive a EBTC loss, in proportion to their deposit as a share of total deposits.
+ * They also receive an ETH gain, as the ETH collateral of the liquidated cdp is distributed among Stability depositors,
  * in the same proportion.
  *
  * When a liquidation occurs, it depletes every deposit by the same fraction: for example, a liquidation that depletes 40%
- * of the total LUSD in the Stability Pool, depletes 40% of each deposit.
+ * of the total EBTC in the Stability Pool, depletes 40% of each deposit.
  *
  * A deposit that has experienced a series of liquidations is termed a "compounded deposit": each liquidation depletes the deposit,
  * multiplying it by some factor in range ]0,1[
@@ -34,18 +34,17 @@ pragma solidity 0.6.11;
  * https://github.com/liquity/dev/blob/main/README.md#lqty-issuance-to-stability-providers
  */
 interface IStabilityPool {
-
     // --- Events ---
-    
+
     event StabilityPoolETHBalanceUpdated(uint _newBalance);
-    event StabilityPoolLUSDBalanceUpdated(uint _newBalance);
+    event StabilityPoolEBTCBalanceUpdated(uint _newBalance);
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
     event DefaultPoolAddressChanged(address _newDefaultPoolAddress);
-    event LUSDTokenAddressChanged(address _newLUSDTokenAddress);
-    event SortedTrovesAddressChanged(address _newSortedTrovesAddress);
+    event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
+    event SortedCdpsAddressChanged(address _newSortedCdpsAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event CommunityIssuanceAddressChanged(address _newCommunityIssuanceAddress);
 
@@ -61,9 +60,13 @@ interface IStabilityPool {
     event DepositSnapshotUpdated(address indexed _depositor, uint _P, uint _S, uint _G);
     event FrontEndSnapshotUpdated(address indexed _frontEnd, uint _P, uint _G);
     event UserDepositChanged(address indexed _depositor, uint _newDeposit);
-    event FrontEndStakeChanged(address indexed _frontEnd, uint _newFrontEndStake, address _depositor);
+    event FrontEndStakeChanged(
+        address indexed _frontEnd,
+        uint _newFrontEndStake,
+        address _depositor
+    );
 
-    event ETHGainWithdrawn(address indexed _depositor, uint _ETH, uint _LUSDLoss);
+    event ETHGainWithdrawn(address indexed _depositor, uint _ETH, uint _EBTCLoss);
     event LQTYPaidToDepositor(address indexed _depositor, uint _LQTY);
     event LQTYPaidToFrontEnd(address indexed _frontEnd, uint _LQTY);
     event EtherSent(address _to, uint _amount);
@@ -76,10 +79,10 @@ interface IStabilityPool {
      */
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
-        address _lusdTokenAddress,
-        address _sortedTrovesAddress,
+        address _ebtcTokenAddress,
+        address _sortedCdpsAddress,
         address _priceFeedAddress,
         address _communityIssuanceAddress
     ) external;
@@ -100,7 +103,7 @@ interface IStabilityPool {
 
     /*
      * Initial checks:
-     * - _amount is zero or there are no under collateralized troves left in the system
+     * - _amount is zero or there are no under collateralized cdps left in the system
      * - User has a non zero deposit
      * ---
      * - Triggers a LQTY issuance, based on time passed since the last issuance. The LQTY issuance is shared between *all* depositors and front ends
@@ -116,17 +119,17 @@ interface IStabilityPool {
     /*
      * Initial checks:
      * - User has a non zero deposit
-     * - User has an open trove
+     * - User has an open cdp
      * - User has some ETH gain
      * ---
      * - Triggers a LQTY issuance, based on time passed since the last issuance. The LQTY issuance is shared between *all* depositors and front ends
      * - Sends all depositor's LQTY gain to  depositor
      * - Sends all tagged front end's LQTY gain to the tagged front end
-     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's trove
+     * - Transfers the depositor's entire ETH gain from the Stability Pool to the caller's cdp
      * - Leaves their compounded deposit in the Stability Pool
      * - Updates snapshots for deposit and tagged front end stake
      */
-    function withdrawETHGainToTrove(bytes32 _troveId, bytes32 _upperHint, bytes32 _lowerHint) external;
+    function withdrawETHGainToCdp(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external;
 
     /*
      * Initial checks:
@@ -140,11 +143,11 @@ interface IStabilityPool {
 
     /*
      * Initial checks:
-     * - Caller is TroveManager
+     * - Caller is CdpManager
      * ---
-     * Cancels out the specified debt against the LUSD contained in the Stability Pool (as far as possible)
-     * and transfers the Trove's ETH collateral from ActivePool to StabilityPool.
-     * Only called by liquidation functions in the TroveManager.
+     * Cancels out the specified debt against the EBTC contained in the Stability Pool (as far as possible)
+     * and transfers the Cdp's ETH collateral from ActivePool to StabilityPool.
+     * Only called by liquidation functions in the CdpManager.
      */
     function offset(uint _debt, uint _coll) external;
 
@@ -155,9 +158,9 @@ interface IStabilityPool {
     function getETH() external view returns (uint);
 
     /*
-     * Returns LUSD held in the pool. Changes when users deposit/withdraw, and when Trove debt is offset.
+     * Returns EBTC held in the pool. Changes when users deposit/withdraw, and when Cdp debt is offset.
      */
-    function getTotalLUSDDeposits() external view returns (uint);
+    function getTotalEBTCDeposits() external view returns (uint);
 
     /*
      * Calculates the ETH gain earned by the deposit since its last snapshots were taken.
@@ -180,7 +183,7 @@ interface IStabilityPool {
     /*
      * Return the user's compounded deposit.
      */
-    function getCompoundedLUSDDeposit(address _depositor) external view returns (uint);
+    function getCompoundedEBTCDeposit(address _depositor) external view returns (uint);
 
     /*
      * Return the front end's compounded stake.

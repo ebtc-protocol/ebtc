@@ -29,7 +29,7 @@ propMaxGas: 1000000000
 testMaxGas: 1000000000
 
 # list of methods to filter
-#filterFunctions: ["openTroveExt"]
+#filterFunctions: ["openCdpExt"]
 # by default, blacklist methods in filterFunctions
 #filterBlacklist: false
 
