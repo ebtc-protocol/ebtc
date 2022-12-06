@@ -15,7 +15,7 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
 contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
-    string constant public NAME = "CdpManager";
+    string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
 
@@ -38,23 +38,24 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Data structures ---
 
-    uint constant public SECONDS_IN_ONE_MINUTE = 60;
+    uint public constant SECONDS_IN_ONE_MINUTE = 60;
     /*
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
-    uint constant public MINUTE_DECAY_FACTOR = 999037758833783000;
-    uint constant public REDEMPTION_FEE_FLOOR = DECIMAL_PRECISION / 1000 * 5; // 0.5%
-    uint constant public MAX_BORROWING_FEE = DECIMAL_PRECISION / 100 * 5; // 5%
+    uint public constant MINUTE_DECAY_FACTOR = 999037758833783000;
+    uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
+    uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
     // During bootsrap period redemptions are not allowed
-    uint constant public BOOTSTRAP_PERIOD = 14 days;
+    uint public constant BOOTSTRAP_PERIOD = 14 days;
 
     /*
-    * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction, in order to calc the new base rate from a redemption.
-    * Corresponds to (1 / ALPHA) in the white paper.
-    */
-    uint constant public BETA = 2;
+     * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
+     * in order to calc the new base rate from a redemption.
+     * Corresponds to (1 / ALPHA) in the white paper.
+     */
+    uint public constant BETA = 2;
 
     uint public baseRate;
 
@@ -89,21 +90,26 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public totalCollateralSnapshot;
 
     /*
-    * L_ETH and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked. During its lifetime, each stake earns:
-    *
-    * An ETH gain of ( stake * [L_ETH - L_ETH(0)] )
-    * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
-    *
-    * Where L_ETH(0) and L_EBTCDebt(0) are snapshots of L_ETH and L_EBTCDebt for the active Cdp taken at the instant the stake was made
-    */
+     * L_ETH and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * During its lifetime, each stake earns:
+     *
+     * An ETH gain of ( stake * [L_ETH - L_ETH(0)] )
+     * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
+     *
+     * Where L_ETH(0) and L_EBTCDebt(0) are snapshots of L_ETH and L_EBTCDebt
+     * for the active Cdp taken at the instant the stake was made
+     */
     uint public L_ETH;
     uint public L_EBTCDebt;
 
     // Map active cdps to their RewardSnapshot
-    mapping (bytes32 => RewardSnapshot) public rewardSnapshots;
+    mapping(bytes32 => RewardSnapshot) public rewardSnapshots;
 
     // Object containing the ETH and EBTC snapshots for a given active cdp
-    struct RewardSnapshot { uint ETH; uint EBTCDebt;}
+    struct RewardSnapshot {
+        uint ETH;
+        uint EBTCDebt;
+    }
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
@@ -113,11 +119,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public lastEBTCDebtError_Redistribution;
 
     /*
-    * --- Variable container structs for liquidations ---
-    *
-    * These structs are used to hold, return and assign variables inside the liquidation functions,
-    * in order to avoid the error: "CompilerError: Stack too deep".
-    **/
+     * --- Variable container structs for liquidations ---
+     *
+     * These structs are used to hold, return and assign variables inside the liquidation functions,
+     * in order to avoid the error: "CompilerError: Stack too deep".
+     **/
 
     struct LocalVariables_OuterLiquidationFunction {
         uint price;
@@ -209,10 +215,28 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
+    event Liquidation(
+        uint _liquidatedDebt,
+        uint _liquidatedColl,
+        uint _collGasCompensation,
+        uint _EBTCGasCompensation
+    );
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event CdpUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, CdpManagerOperation _operation);
-    event CdpLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, CdpManagerOperation operation);
+    event CdpUpdated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        uint _stake,
+        CdpManagerOperation _operation
+    );
+    event CdpLiquidated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        CdpManagerOperation operation
+    );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
@@ -221,13 +245,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
 
-     enum CdpManagerOperation {
+    enum CdpManagerOperation {
         applyPendingRewards,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral
     }
-
 
     // --- Dependency setter ---
 
@@ -243,11 +266,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress
-    )
-        external
-        override
-        onlyOwner
-    {
+    ) external override onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
@@ -316,33 +335,53 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         IDefaultPool _defaultPool,
         bytes32 _cdpId,
         uint _EBTCInStabPool
-    )
-        internal
-        returns (LiquidationValues memory singleLiquidation)
-    {
+    ) internal returns (LiquidationValues memory singleLiquidation) {
         LocalVariables_InnerSingleLiquidateFunction memory vars;
 
-        (singleLiquidation.entireCdpDebt,
-        singleLiquidation.entireCdpColl,
-        vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_cdpId);
+        (
+            singleLiquidation.entireCdpDebt,
+            singleLiquidation.entireCdpColl,
+            vars.pendingDebtReward,
+            vars.pendingCollReward
+        ) = getEntireDebtAndColl(_cdpId);
 
-        _movePendingCdpRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+        _movePendingCdpRewardsToActivePool(
+            _activePool,
+            _defaultPool,
+            vars.pendingDebtReward,
+            vars.pendingCollReward
+        );
         _removeStake(_cdpId);
 
-        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireCdpColl);
+        singleLiquidation.collGasCompensation = _getCollGasCompensation(
+            singleLiquidation.entireCdpColl
+        );
         singleLiquidation.EBTCGasCompensation = EBTC_GAS_COMPENSATION;
-        uint collToLiquidate = singleLiquidation.entireCdpColl.sub(singleLiquidation.collGasCompensation);
+        uint collToLiquidate = singleLiquidation.entireCdpColl.sub(
+            singleLiquidation.collGasCompensation
+        );
 
-        (singleLiquidation.debtToOffset,
-        singleLiquidation.collToSendToSP,
-        singleLiquidation.debtToRedistribute,
-        singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireCdpDebt, collToLiquidate, _EBTCInStabPool);
+        (
+            singleLiquidation.debtToOffset,
+            singleLiquidation.collToSendToSP,
+            singleLiquidation.debtToRedistribute,
+            singleLiquidation.collToRedistribute
+        ) = _getOffsetAndRedistributionVals(
+            singleLiquidation.entireCdpDebt,
+            collToLiquidate,
+            _EBTCInStabPool
+        );
 
         _closeCdp(_cdpId, Status.closedByLiquidation);
 
         address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
-        emit CdpLiquidated(_cdpId, _borrower, singleLiquidation.entireCdpDebt, singleLiquidation.entireCdpColl, CdpManagerOperation.liquidateInNormalMode);
+        emit CdpLiquidated(
+            _cdpId,
+            _borrower,
+            singleLiquidation.entireCdpDebt,
+            singleLiquidation.entireCdpColl,
+            CdpManagerOperation.liquidateInNormalMode
+        );
         emit CdpUpdated(_cdpId, _borrower, 0, 0, 0, CdpManagerOperation.liquidateInNormalMode);
         return singleLiquidation;
     }
@@ -356,26 +395,36 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _EBTCInStabPool,
         uint _TCR,
         uint _price
-    )
-        internal
-        returns (LiquidationValues memory singleLiquidation)
-    {
+    ) internal returns (LiquidationValues memory singleLiquidation) {
         LocalVariables_InnerSingleLiquidateFunction memory vars;
-        if (CdpIds.length <= 1) {return singleLiquidation;} // don't liquidate if last cdp
-        (singleLiquidation.entireCdpDebt,
-        singleLiquidation.entireCdpColl,
-        vars.pendingDebtReward,
-        vars.pendingCollReward) = getEntireDebtAndColl(_cdpId);
+        if (CdpIds.length <= 1) {
+            return singleLiquidation;
+        } // don't liquidate if last cdp
+        (
+            singleLiquidation.entireCdpDebt,
+            singleLiquidation.entireCdpColl,
+            vars.pendingDebtReward,
+            vars.pendingCollReward
+        ) = getEntireDebtAndColl(_cdpId);
 
-        singleLiquidation.collGasCompensation = _getCollGasCompensation(singleLiquidation.entireCdpColl);
+        singleLiquidation.collGasCompensation = _getCollGasCompensation(
+            singleLiquidation.entireCdpColl
+        );
         singleLiquidation.EBTCGasCompensation = EBTC_GAS_COMPENSATION;
-        vars.collToLiquidate = singleLiquidation.entireCdpColl.sub(singleLiquidation.collGasCompensation);
+        vars.collToLiquidate = singleLiquidation.entireCdpColl.sub(
+            singleLiquidation.collGasCompensation
+        );
 
         // If ICR <= 100%, purely redistribute the Cdp across all active Cdps
         if (_ICR <= _100pct) {
-            _movePendingCdpRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+            _movePendingCdpRewardsToActivePool(
+                _activePool,
+                _defaultPool,
+                vars.pendingDebtReward,
+                vars.pendingCollReward
+            );
             _removeStake(_cdpId);
-           
+
             singleLiquidation.debtToOffset = 0;
             singleLiquidation.collToSendToSP = 0;
             singleLiquidation.debtToRedistribute = singleLiquidation.entireCdpDebt;
@@ -384,36 +433,70 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _closeCdp(_cdpId, Status.closedByLiquidation);
 
             address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
-            emit CdpLiquidated(_cdpId, _borrower, singleLiquidation.entireCdpDebt, singleLiquidation.entireCdpColl, CdpManagerOperation.liquidateInRecoveryMode);
+            emit CdpLiquidated(
+                _cdpId,
+                _borrower,
+                singleLiquidation.entireCdpDebt,
+                singleLiquidation.entireCdpColl,
+                CdpManagerOperation.liquidateInRecoveryMode
+            );
             emit CdpUpdated(_cdpId, _borrower, 0, 0, 0, CdpManagerOperation.liquidateInRecoveryMode);
-            
-        // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
+
+            // If 100% < ICR < MCR, offset as much as possible, and redistribute the remainder
         } else if ((_ICR > _100pct) && (_ICR < MCR)) {
-             _movePendingCdpRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+            _movePendingCdpRewardsToActivePool(
+                _activePool,
+                _defaultPool,
+                vars.pendingDebtReward,
+                vars.pendingCollReward
+            );
             _removeStake(_cdpId);
 
-            (singleLiquidation.debtToOffset,
-            singleLiquidation.collToSendToSP,
-            singleLiquidation.debtToRedistribute,
-            singleLiquidation.collToRedistribute) = _getOffsetAndRedistributionVals(singleLiquidation.entireCdpDebt, vars.collToLiquidate, _EBTCInStabPool);
+            (
+                singleLiquidation.debtToOffset,
+                singleLiquidation.collToSendToSP,
+                singleLiquidation.debtToRedistribute,
+                singleLiquidation.collToRedistribute
+            ) = _getOffsetAndRedistributionVals(
+                singleLiquidation.entireCdpDebt,
+                vars.collToLiquidate,
+                _EBTCInStabPool
+            );
 
             _closeCdp(_cdpId, Status.closedByLiquidation);
 
             address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
-            emit CdpLiquidated(_cdpId, _borrower, singleLiquidation.entireCdpDebt, singleLiquidation.entireCdpColl, CdpManagerOperation.liquidateInRecoveryMode);
+            emit CdpLiquidated(
+                _cdpId,
+                _borrower,
+                singleLiquidation.entireCdpDebt,
+                singleLiquidation.entireCdpColl,
+                CdpManagerOperation.liquidateInRecoveryMode
+            );
             emit CdpUpdated(_cdpId, _borrower, 0, 0, 0, CdpManagerOperation.liquidateInRecoveryMode);
-        /*
-        * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
-        * and there is EBTC in the Stability Pool, only offset, with no redistribution,
-        * but at a capped rate of 1.1 and only if the whole debt can be liquidated.
-        * The remainder due to the capped rate will be claimable as collateral surplus.
-        */
-        } else if ((_ICR >= MCR) && (_ICR < _TCR) && (singleLiquidation.entireCdpDebt <= _EBTCInStabPool)) {
-            _movePendingCdpRewardsToActivePool(_activePool, _defaultPool, vars.pendingDebtReward, vars.pendingCollReward);
+            /*
+             * If 110% <= ICR < current TCR (accounting for the preceding liquidations in the current sequence)
+             * and there is EBTC in the Stability Pool, only offset, with no redistribution,
+             * but at a capped rate of 1.1 and only if the whole debt can be liquidated.
+             * The remainder due to the capped rate will be claimable as collateral surplus.
+             */
+        } else if (
+            (_ICR >= MCR) && (_ICR < _TCR) && (singleLiquidation.entireCdpDebt <= _EBTCInStabPool)
+        ) {
+            _movePendingCdpRewardsToActivePool(
+                _activePool,
+                _defaultPool,
+                vars.pendingDebtReward,
+                vars.pendingCollReward
+            );
             assert(_EBTCInStabPool != 0);
 
             _removeStake(_cdpId);
-            singleLiquidation = _getCappedOffsetVals(singleLiquidation.entireCdpDebt, singleLiquidation.entireCdpColl, _price);
+            singleLiquidation = _getCappedOffsetVals(
+                singleLiquidation.entireCdpDebt,
+                singleLiquidation.entireCdpColl,
+                _price
+            );
 
             address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
             _closeCdp(_cdpId, Status.closedByLiquidation);
@@ -421,10 +504,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
             }
 
-            emit CdpLiquidated(_cdpId, _borrower, singleLiquidation.entireCdpDebt, singleLiquidation.collToSendToSP, CdpManagerOperation.liquidateInRecoveryMode);
+            emit CdpLiquidated(
+                _cdpId,
+                _borrower,
+                singleLiquidation.entireCdpDebt,
+                singleLiquidation.collToSendToSP,
+                CdpManagerOperation.liquidateInRecoveryMode
+            );
             emit CdpUpdated(_cdpId, _borrower, 0, 0, 0, CdpManagerOperation.liquidateInRecoveryMode);
-
-        } else { // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireCdpDebt > _EBTCInStabPool))
+        } else {
+            // if (_ICR >= MCR && ( _ICR >= _TCR || singleLiquidation.entireCdpDebt > _EBTCInStabPool))
             LiquidationValues memory zeroVals;
             return zeroVals;
         }
@@ -433,29 +522,34 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /* In a full liquidation, returns the values for a cdp's coll and debt to be offset, and coll and debt to be
-    * redistributed to active cdps.
-    */
-    function _getOffsetAndRedistributionVals
-    (
+     * redistributed to active cdps.
+     */
+    function _getOffsetAndRedistributionVals(
         uint _debt,
         uint _coll,
         uint _EBTCInStabPool
     )
         internal
         pure
-        returns (uint debtToOffset, uint collToSendToSP, uint debtToRedistribute, uint collToRedistribute)
+        returns (
+            uint debtToOffset,
+            uint collToSendToSP,
+            uint debtToRedistribute,
+            uint collToRedistribute
+        )
     {
         if (_EBTCInStabPool > 0) {
-        /*
-        * Offset as much debt & collateral as possible against the Stability Pool, and redistribute the remainder
-        * between all active cdps.
-        *
-        *  If the cdp's debt is larger than the deposited EBTC in the Stability Pool:
-        *
-        *  - Offset an amount of the cdp's debt equal to the EBTC in the Stability Pool
-        *  - Send a fraction of the cdp's collateral to the Stability Pool, equal to the fraction of its offset debt
-        *
-        */
+            /*
+             * Offset as much debt & collateral as possible against the Stability Pool, and redistribute the remainder
+             * between all active cdps.
+             *
+             *  If the cdp's debt is larger than the deposited EBTC in the Stability Pool:
+             *
+             *  - Offset an amount of the cdp's debt equal to the EBTC in the Stability Pool
+             *  - Send a fraction of the cdp's collateral to the Stability Pool,
+             *  equal to the fraction of its offset debt
+             *
+             */
             debtToOffset = LiquityMath._min(_debt, _EBTCInStabPool);
             collToSendToSP = _coll.mul(debtToOffset).div(_debt);
             debtToRedistribute = _debt.sub(debtToOffset);
@@ -469,18 +563,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /*
-    *  Get its offset coll/debt and ETH gas comp, and close the cdp.
-    */
-    function _getCappedOffsetVals
-    (
+     *  Get its offset coll/debt and ETH gas comp, and close the cdp.
+     */
+    function _getCappedOffsetVals(
         uint _entireCdpDebt,
         uint _entireCdpColl,
         uint _price
-    )
-        internal
-        pure
-        returns (LiquidationValues memory singleLiquidation)
-    {
+    ) internal pure returns (LiquidationValues memory singleLiquidation) {
         singleLiquidation.entireCdpDebt = _entireCdpDebt;
         singleLiquidation.entireCdpColl = _entireCdpColl;
         uint cappedCollPortion = _entireCdpDebt.mul(MCR).div(_price);
@@ -489,16 +578,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         singleLiquidation.EBTCGasCompensation = EBTC_GAS_COMPENSATION;
 
         singleLiquidation.debtToOffset = _entireCdpDebt;
-        singleLiquidation.collToSendToSP = cappedCollPortion.sub(singleLiquidation.collGasCompensation);
+        singleLiquidation.collToSendToSP = cappedCollPortion.sub(
+            singleLiquidation.collGasCompensation
+        );
         singleLiquidation.collSurplus = _entireCdpColl.sub(cappedCollPortion);
         singleLiquidation.debtToRedistribute = 0;
         singleLiquidation.collToRedistribute = 0;
     }
 
     /*
-    * Liquidate a sequence of cdps. Closes a maximum number of n under-collateralized Cdps,
-    * starting from the one with the lowest collateral ratio in the system, and moving upwards
-    */
+     * Liquidate a sequence of cdps. Closes a maximum number of n under-collateralized Cdps,
+     * starting from the one with the lowest collateral ratio in the system, and moving upwards
+     */
     function liquidateCdps(uint _n) external override {
         ContractsCache memory contractsCache = ContractsCache(
             activePool,
@@ -521,45 +612,73 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
         if (vars.recoveryModeAtStart) {
-            totals = _getTotalsFromLiquidateCdpsSequence_RecoveryMode(contractsCache, vars.price, vars.EBTCInStabPool, _n);
-        } else { // if !vars.recoveryModeAtStart
-            totals = _getTotalsFromLiquidateCdpsSequence_NormalMode(contractsCache.activePool, contractsCache.defaultPool, vars.price, vars.EBTCInStabPool, _n);
+            totals = _getTotalsFromLiquidateCdpsSequence_RecoveryMode(
+                contractsCache,
+                vars.price,
+                vars.EBTCInStabPool,
+                _n
+            );
+        } else {
+            // if !vars.recoveryModeAtStart
+            totals = _getTotalsFromLiquidateCdpsSequence_NormalMode(
+                contractsCache.activePool,
+                contractsCache.defaultPool,
+                vars.price,
+                vars.EBTCInStabPool,
+                _n
+            );
         }
 
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
         stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
-        _redistributeDebtAndColl(contractsCache.activePool, contractsCache.defaultPool, totals.totalDebtToRedistribute, totals.totalCollToRedistribute);
+        _redistributeDebtAndColl(
+            contractsCache.activePool,
+            contractsCache.defaultPool,
+            totals.totalDebtToRedistribute,
+            totals.totalCollToRedistribute
+        );
         if (totals.totalCollSurplus > 0) {
             contractsCache.activePool.sendETH(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         // Update system snapshots
-        _updateSystemSnapshots_excludeCollRemainder(contractsCache.activePool, totals.totalCollGasCompensation);
+        _updateSystemSnapshots_excludeCollRemainder(
+            contractsCache.activePool,
+            totals.totalCollGasCompensation
+        );
 
         vars.liquidatedDebt = totals.totalDebtInSequence;
-        vars.liquidatedColl = totals.totalCollInSequence.sub(totals.totalCollGasCompensation).sub(totals.totalCollSurplus);
-        emit Liquidation(vars.liquidatedDebt, vars.liquidatedColl, totals.totalCollGasCompensation, totals.totalEBTCGasCompensation);
+        vars.liquidatedColl = totals.totalCollInSequence.sub(totals.totalCollGasCompensation).sub(
+            totals.totalCollSurplus
+        );
+        emit Liquidation(
+            vars.liquidatedDebt,
+            vars.liquidatedColl,
+            totals.totalCollGasCompensation,
+            totals.totalEBTCGasCompensation
+        );
 
         // Send gas compensation to caller
-        _sendGasCompensation(contractsCache.activePool, msg.sender, totals.totalEBTCGasCompensation, totals.totalCollGasCompensation);
+        _sendGasCompensation(
+            contractsCache.activePool,
+            msg.sender,
+            totals.totalEBTCGasCompensation,
+            totals.totalCollGasCompensation
+        );
     }
 
     /*
-    * This function is used when the liquidateCdps sequence starts during Recovery Mode. However, it
-    * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
-    */
-    function _getTotalsFromLiquidateCdpsSequence_RecoveryMode
-    (
+     * This function is used when the liquidateCdps sequence starts during Recovery Mode. However, it
+     * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
+     */
+    function _getTotalsFromLiquidateCdpsSequence_RecoveryMode(
         ContractsCache memory _contractsCache,
         uint _price,
         uint _EBTCInStabPool,
         uint _n
-    )
-        internal
-        returns(LiquidationTotals memory totals)
-    {
+    ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
 
@@ -578,50 +697,72 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             if (!vars.backToNormalMode) {
                 // Break the loop if ICR is greater than MCR and Stability Pool is empty
-                if (vars.ICR >= MCR && vars.remainingEBTCInStabPool == 0) { break; }
+                if (vars.ICR >= MCR && vars.remainingEBTCInStabPool == 0) {
+                    break;
+                }
 
-                uint TCR = LiquityMath._computeCR(vars.entireSystemColl, vars.entireSystemDebt, _price);
+                uint TCR = LiquityMath._computeCR(
+                    vars.entireSystemColl,
+                    vars.entireSystemDebt,
+                    _price
+                );
 
-                singleLiquidation = _liquidateRecoveryMode(_contractsCache.activePool, _contractsCache.defaultPool, vars.user, vars.ICR, vars.remainingEBTCInStabPool, TCR, _price);
+                singleLiquidation = _liquidateRecoveryMode(
+                    _contractsCache.activePool,
+                    _contractsCache.defaultPool,
+                    vars.user,
+                    vars.ICR,
+                    vars.remainingEBTCInStabPool,
+                    TCR,
+                    _price
+                );
 
                 // Update aggregate trackers
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
                 vars.entireSystemDebt = vars.entireSystemDebt.sub(singleLiquidation.debtToOffset);
-                vars.entireSystemColl = vars.entireSystemColl.
-                    sub(singleLiquidation.collToSendToSP).
-                    sub(singleLiquidation.collGasCompensation).
-                    sub(singleLiquidation.collSurplus);
+                vars.entireSystemColl = vars
+                    .entireSystemColl
+                    .sub(singleLiquidation.collToSendToSP)
+                    .sub(singleLiquidation.collGasCompensation)
+                    .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
 
-                vars.backToNormalMode = !_checkPotentialRecoveryMode(vars.entireSystemColl, vars.entireSystemDebt, _price);
-            }
-            else if (vars.backToNormalMode && vars.ICR < MCR) {
-                singleLiquidation = _liquidateNormalMode(_contractsCache.activePool, _contractsCache.defaultPool, vars.user, vars.remainingEBTCInStabPool);
+                vars.backToNormalMode = !_checkPotentialRecoveryMode(
+                    vars.entireSystemColl,
+                    vars.entireSystemDebt,
+                    _price
+                );
+            } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                singleLiquidation = _liquidateNormalMode(
+                    _contractsCache.activePool,
+                    _contractsCache.defaultPool,
+                    vars.user,
+                    vars.remainingEBTCInStabPool
+                );
 
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
-            }  else break;  // break if the loop reaches a Cdp with ICR >= MCR
+            } else break; // break if the loop reaches a Cdp with ICR >= MCR
 
             vars.user = nextUser;
         }
     }
 
-    function _getTotalsFromLiquidateCdpsSequence_NormalMode
-    (
+    function _getTotalsFromLiquidateCdpsSequence_NormalMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
         uint _price,
         uint _EBTCInStabPool,
         uint _n
-    )
-        internal
-        returns(LiquidationTotals memory totals)
-    {
+    ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
         ISortedCdps sortedCdpsCached = sortedCdps;
@@ -633,20 +774,26 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
-                singleLiquidation = _liquidateNormalMode(_activePool, _defaultPool, vars.user, vars.remainingEBTCInStabPool);
+                singleLiquidation = _liquidateNormalMode(
+                    _activePool,
+                    _defaultPool,
+                    vars.user,
+                    vars.remainingEBTCInStabPool
+                );
 
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
-            } else break;  // break if the loop reaches a Cdp with ICR >= MCR
+            } else break; // break if the loop reaches a Cdp with ICR >= MCR
         }
     }
 
     /*
-    * Attempt to liquidate a custom list of cdps provided by the caller.
-    */
+     * Attempt to liquidate a custom list of cdps provided by the caller.
+     */
     function batchLiquidateCdps(bytes32[] memory _cdpArray) public override {
         require(_cdpArray.length != 0, "CdpManager: Calldata address array must not be empty");
 
@@ -663,46 +810,75 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.
         if (vars.recoveryModeAtStart) {
-            totals = _getTotalFromBatchLiquidate_RecoveryMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _cdpArray);
-        } else {  //  if !vars.recoveryModeAtStart
-            totals = _getTotalsFromBatchLiquidate_NormalMode(activePoolCached, defaultPoolCached, vars.price, vars.EBTCInStabPool, _cdpArray);
+            totals = _getTotalFromBatchLiquidate_RecoveryMode(
+                activePoolCached,
+                defaultPoolCached,
+                vars.price,
+                vars.EBTCInStabPool,
+                _cdpArray
+            );
+        } else {
+            //  if !vars.recoveryModeAtStart
+            totals = _getTotalsFromBatchLiquidate_NormalMode(
+                activePoolCached,
+                defaultPoolCached,
+                vars.price,
+                vars.EBTCInStabPool,
+                _cdpArray
+            );
         }
 
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
         stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
-        _redistributeDebtAndColl(activePoolCached, defaultPoolCached, totals.totalDebtToRedistribute, totals.totalCollToRedistribute);
+        _redistributeDebtAndColl(
+            activePoolCached,
+            defaultPoolCached,
+            totals.totalDebtToRedistribute,
+            totals.totalCollToRedistribute
+        );
         if (totals.totalCollSurplus > 0) {
             activePoolCached.sendETH(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         // Update system snapshots
-        _updateSystemSnapshots_excludeCollRemainder(activePoolCached, totals.totalCollGasCompensation);
+        _updateSystemSnapshots_excludeCollRemainder(
+            activePoolCached,
+            totals.totalCollGasCompensation
+        );
 
         vars.liquidatedDebt = totals.totalDebtInSequence;
-        vars.liquidatedColl = totals.totalCollInSequence.sub(totals.totalCollGasCompensation).sub(totals.totalCollSurplus);
-        emit Liquidation(vars.liquidatedDebt, vars.liquidatedColl, totals.totalCollGasCompensation, totals.totalEBTCGasCompensation);
+        vars.liquidatedColl = totals.totalCollInSequence.sub(totals.totalCollGasCompensation).sub(
+            totals.totalCollSurplus
+        );
+        emit Liquidation(
+            vars.liquidatedDebt,
+            vars.liquidatedColl,
+            totals.totalCollGasCompensation,
+            totals.totalEBTCGasCompensation
+        );
 
         // Send gas compensation to caller
-        _sendGasCompensation(activePoolCached, msg.sender, totals.totalEBTCGasCompensation, totals.totalCollGasCompensation);
+        _sendGasCompensation(
+            activePoolCached,
+            msg.sender,
+            totals.totalEBTCGasCompensation,
+            totals.totalCollGasCompensation
+        );
     }
 
     /*
-    * This function is used when the batch liquidation sequence starts during Recovery Mode. However, it
-    * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
-    */
-    function _getTotalFromBatchLiquidate_RecoveryMode
-    (
+     * This function is used when the batch liquidation sequence starts during Recovery Mode. However, it
+     * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
+     */
+    function _getTotalFromBatchLiquidate_RecoveryMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
         uint _price,
         uint _EBTCInStabPool,
         bytes32[] memory _cdpArray
-    )
-        internal
-        returns(LiquidationTotals memory totals)
-    {
+    ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
 
@@ -714,54 +890,76 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
             vars.user = _cdpArray[vars.i];
             // Skip non-active cdps
-            if (Cdps[vars.user].status != Status.active) { continue; }
+            if (Cdps[vars.user].status != Status.active) {
+                continue;
+            }
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (!vars.backToNormalMode) {
-
                 // Skip this cdp if ICR is greater than MCR and Stability Pool is empty
-                if (vars.ICR >= MCR && vars.remainingEBTCInStabPool == 0) { continue; }
+                if (vars.ICR >= MCR && vars.remainingEBTCInStabPool == 0) {
+                    continue;
+                }
 
-                uint TCR = LiquityMath._computeCR(vars.entireSystemColl, vars.entireSystemDebt, _price);
+                uint TCR = LiquityMath._computeCR(
+                    vars.entireSystemColl,
+                    vars.entireSystemDebt,
+                    _price
+                );
 
-                singleLiquidation = _liquidateRecoveryMode(_activePool, _defaultPool, vars.user, vars.ICR, vars.remainingEBTCInStabPool, TCR, _price);
+                singleLiquidation = _liquidateRecoveryMode(
+                    _activePool,
+                    _defaultPool,
+                    vars.user,
+                    vars.ICR,
+                    vars.remainingEBTCInStabPool,
+                    TCR,
+                    _price
+                );
 
                 // Update aggregate trackers
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
                 vars.entireSystemDebt = vars.entireSystemDebt.sub(singleLiquidation.debtToOffset);
-                vars.entireSystemColl = vars.entireSystemColl.
-                    sub(singleLiquidation.collToSendToSP).
-                    sub(singleLiquidation.collGasCompensation).
-                    sub(singleLiquidation.collSurplus);
+                vars.entireSystemColl = vars
+                    .entireSystemColl
+                    .sub(singleLiquidation.collToSendToSP)
+                    .sub(singleLiquidation.collGasCompensation)
+                    .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
 
-                vars.backToNormalMode = !_checkPotentialRecoveryMode(vars.entireSystemColl, vars.entireSystemDebt, _price);
-            }
-
-            else if (vars.backToNormalMode && vars.ICR < MCR) {
-                singleLiquidation = _liquidateNormalMode(_activePool, _defaultPool, vars.user, vars.remainingEBTCInStabPool);
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                vars.backToNormalMode = !_checkPotentialRecoveryMode(
+                    vars.entireSystemColl,
+                    vars.entireSystemDebt,
+                    _price
+                );
+            } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                singleLiquidation = _liquidateNormalMode(
+                    _activePool,
+                    _defaultPool,
+                    vars.user,
+                    vars.remainingEBTCInStabPool
+                );
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
             } else continue; // In Normal Mode skip cdps with ICR >= MCR
         }
     }
 
-    function _getTotalsFromBatchLiquidate_NormalMode
-    (
+    function _getTotalsFromBatchLiquidate_NormalMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
         uint _price,
         uint _EBTCInStabPool,
         bytes32[] memory _cdpArray
-    )
-        internal
-        returns(LiquidationTotals memory totals)
-    {
+    ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
 
@@ -772,8 +970,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
-                singleLiquidation = _liquidateNormalMode(_activePool, _defaultPool, vars.user, vars.remainingEBTCInStabPool);
-                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(singleLiquidation.debtToOffset);
+                singleLiquidation = _liquidateNormalMode(
+                    _activePool,
+                    _defaultPool,
+                    vars.user,
+                    vars.remainingEBTCInStabPool
+                );
+                vars.remainingEBTCInStabPool = vars.remainingEBTCInStabPool.sub(
+                    singleLiquidation.debtToOffset
+                );
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
@@ -783,24 +988,46 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Liquidation helper functions ---
 
-    function _addLiquidationValuesToTotals(LiquidationTotals memory oldTotals, LiquidationValues memory singleLiquidation)
-    internal pure returns(LiquidationTotals memory newTotals) {
-
+    function _addLiquidationValuesToTotals(
+        LiquidationTotals memory oldTotals,
+        LiquidationValues memory singleLiquidation
+    ) internal pure returns (LiquidationTotals memory newTotals) {
         // Tally all the values with their respective running totals
-        newTotals.totalCollGasCompensation = oldTotals.totalCollGasCompensation.add(singleLiquidation.collGasCompensation);
-        newTotals.totalEBTCGasCompensation = oldTotals.totalEBTCGasCompensation.add(singleLiquidation.EBTCGasCompensation);
-        newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence.add(singleLiquidation.entireCdpDebt);
-        newTotals.totalCollInSequence = oldTotals.totalCollInSequence.add(singleLiquidation.entireCdpColl);
-        newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset.add(singleLiquidation.debtToOffset);
-        newTotals.totalCollToSendToSP = oldTotals.totalCollToSendToSP.add(singleLiquidation.collToSendToSP);
-        newTotals.totalDebtToRedistribute = oldTotals.totalDebtToRedistribute.add(singleLiquidation.debtToRedistribute);
-        newTotals.totalCollToRedistribute = oldTotals.totalCollToRedistribute.add(singleLiquidation.collToRedistribute);
+        newTotals.totalCollGasCompensation = oldTotals.totalCollGasCompensation.add(
+            singleLiquidation.collGasCompensation
+        );
+        newTotals.totalEBTCGasCompensation = oldTotals.totalEBTCGasCompensation.add(
+            singleLiquidation.EBTCGasCompensation
+        );
+        newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence.add(
+            singleLiquidation.entireCdpDebt
+        );
+        newTotals.totalCollInSequence = oldTotals.totalCollInSequence.add(
+            singleLiquidation.entireCdpColl
+        );
+        newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset.add(
+            singleLiquidation.debtToOffset
+        );
+        newTotals.totalCollToSendToSP = oldTotals.totalCollToSendToSP.add(
+            singleLiquidation.collToSendToSP
+        );
+        newTotals.totalDebtToRedistribute = oldTotals.totalDebtToRedistribute.add(
+            singleLiquidation.debtToRedistribute
+        );
+        newTotals.totalCollToRedistribute = oldTotals.totalCollToRedistribute.add(
+            singleLiquidation.collToRedistribute
+        );
         newTotals.totalCollSurplus = oldTotals.totalCollSurplus.add(singleLiquidation.collSurplus);
 
         return newTotals;
     }
 
-    function _sendGasCompensation(IActivePool _activePool, address _liquidator, uint _EBTC, uint _ETH) internal {
+    function _sendGasCompensation(
+        IActivePool _activePool,
+        address _liquidator,
+        uint _EBTC,
+        uint _ETH
+    ) internal {
         if (_EBTC > 0) {
             ebtcToken.returnFromPool(gasPoolAddress, _liquidator, _EBTC);
         }
@@ -811,14 +1038,19 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // Move a Cdp's pending debt and collateral rewards from distributions, from the Default Pool to the Active Pool
-    function _movePendingCdpRewardsToActivePool(IActivePool _activePool, IDefaultPool _defaultPool, uint _EBTC, uint _ETH) internal {
+    function _movePendingCdpRewardsToActivePool(
+        IActivePool _activePool,
+        IDefaultPool _defaultPool,
+        uint _EBTC,
+        uint _ETH
+    ) internal {
         _defaultPool.decreaseEBTCDebt(_EBTC);
         _activePool.increaseEBTCDebt(_EBTC);
         _defaultPool.sendETHToActivePool(_ETH);
     }
 
     // --- Redemption functions ---
-	
+
     struct LocalVariables_RedeemCollateralFromCdp {
         bytes32 _cdpId;
         uint _maxEBTCamount;
@@ -832,14 +1064,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function _redeemCollateralFromCdp(
         ContractsCache memory _contractsCache,
         LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp
-    )
-        internal returns (SingleRedemptionValues memory singleRedemption)
-    {
-        // Determine the remaining amount (lot) to be redeemed, capped by the entire debt of the Cdp minus the liquidation reserve
-        singleRedemption.EBTCLot = LiquityMath._min(_redeemColFromCdp._maxEBTCamount, Cdps[_redeemColFromCdp._cdpId].debt.sub(EBTC_GAS_COMPENSATION));
+    ) internal returns (SingleRedemptionValues memory singleRedemption) {
+        // Determine the remaining amount (lot) to be redeemed,
+        // capped by the entire debt of the Cdp minus the liquidation reserve
+        singleRedemption.EBTCLot = LiquityMath._min(
+            _redeemColFromCdp._maxEBTCamount,
+            Cdps[_redeemColFromCdp._cdpId].debt.sub(EBTC_GAS_COMPENSATION)
+        );
 
         // Get the ETHLot of equivalent value in USD
-        singleRedemption.ETHLot = singleRedemption.EBTCLot.mul(DECIMAL_PRECISION).div(_redeemColFromCdp._price);
+        singleRedemption.ETHLot = singleRedemption.EBTCLot.mul(DECIMAL_PRECISION).div(
+            _redeemColFromCdp._price
+        );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
         uint newDebt = (Cdps[_redeemColFromCdp._cdpId].debt).sub(singleRedemption.EBTCLot);
@@ -850,24 +1086,44 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _removeStake(_redeemColFromCdp._cdpId);
             address _borrower = _contractsCache.sortedCdps.existCdpOwners(_redeemColFromCdp._cdpId);
             _closeCdp(_redeemColFromCdp._cdpId, Status.closedByRedemption);
-            _redeemCloseCdp(_contractsCache, _redeemColFromCdp._cdpId, EBTC_GAS_COMPENSATION, newColl, _borrower);
-            emit CdpUpdated(_redeemColFromCdp._cdpId, _borrower, 0, 0, 0, CdpManagerOperation.redeemCollateral);
-
+            _redeemCloseCdp(
+                _contractsCache,
+                _redeemColFromCdp._cdpId,
+                EBTC_GAS_COMPENSATION,
+                newColl,
+                _borrower
+            );
+            emit CdpUpdated(
+                _redeemColFromCdp._cdpId,
+                _borrower,
+                0,
+                0,
+                0,
+                CdpManagerOperation.redeemCollateral
+            );
         } else {
             uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
 
             /*
-            * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost
-            * certainly result in running out of gas. 
-            *
-            * If the resultant net debt of the partial is less than the minimum, net debt we bail.
-            */
-            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || _getNetDebt(newDebt) < MIN_NET_DEBT) {
+             * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost
+             * certainly result in running out of gas.
+             *
+             * If the resultant net debt of the partial is less than the minimum, net debt we bail.
+             */
+            if (
+                newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
+                _getNetDebt(newDebt) < MIN_NET_DEBT
+            ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
 
-            _contractsCache.sortedCdps.reInsert(_redeemColFromCdp._cdpId, newNICR, _redeemColFromCdp._upperPartialRedemptionHint, _redeemColFromCdp._lowerPartialRedemptionHint);
+            _contractsCache.sortedCdps.reInsert(
+                _redeemColFromCdp._cdpId,
+                newNICR,
+                _redeemColFromCdp._upperPartialRedemptionHint,
+                _redeemColFromCdp._lowerPartialRedemptionHint
+            );
 
             Cdps[_redeemColFromCdp._cdpId].debt = newDebt;
             Cdps[_redeemColFromCdp._cdpId].coll = newColl;
@@ -877,7 +1133,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
                 _borrower,
-                newDebt, newColl,
+                newDebt,
+                newColl,
                 Cdps[_redeemColFromCdp._cdpId].stake,
                 CdpManagerOperation.redeemCollateral
             );
@@ -887,13 +1144,21 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /*
-    * Called when a full redemption occurs, and closes the cdp.
-    * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve) worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
-    * In order to close the cdp, the EBTC liquidation reserve is burned, and the corresponding debt is removed from the active pool.
-    * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
-    * Any surplus ETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
-    */
-    function _redeemCloseCdp(ContractsCache memory _contractsCache, bytes32 _cdpId, uint _EBTC, uint _ETH, address _b) internal {
+     * Called when a full redemption occurs, and closes the cdp.
+     * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve)
+     * worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
+     * In order to close the cdp, the EBTC liquidation reserve is burned,
+     * and the corresponding debt is removed from the active pool.
+     * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
+     * Any surplus ETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
+     */
+    function _redeemCloseCdp(
+        ContractsCache memory _contractsCache,
+        bytes32 _cdpId,
+        uint _EBTC,
+        uint _ETH,
+        address _b
+    ) internal {
         _contractsCache.ebtcToken.burn(gasPoolAddress, _EBTC);
         // Update Active Pool EBTC, and send ETH to account
         _contractsCache.activePool.decreaseEBTCDebt(_EBTC);
@@ -903,8 +1168,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _contractsCache.activePool.sendETH(address(_contractsCache.collSurplusPool), _ETH);
     }
 
-    function _isValidFirstRedemptionHint(ISortedCdps _sortedCdps, bytes32 _firstRedemptionHint, uint _price) internal view returns (bool) {
-        if (_firstRedemptionHint == _sortedCdps.nonExistId() || !_sortedCdps.contains(_firstRedemptionHint) || getCurrentICR(_firstRedemptionHint, _price) < MCR) {
+    function _isValidFirstRedemptionHint(
+        ISortedCdps _sortedCdps,
+        bytes32 _firstRedemptionHint,
+        uint _price
+    ) internal view returns (bool) {
+        if (
+            _firstRedemptionHint == _sortedCdps.nonExistId() ||
+            !_sortedCdps.contains(_firstRedemptionHint) ||
+            getCurrentICR(_firstRedemptionHint, _price) < MCR
+        ) {
             return false;
         }
 
@@ -912,27 +1185,35 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return nextCdp == _sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
     }
 
-    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral from as many Cdps as are needed to fill the redemption
-    * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
-    *
-    * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small. This can be easily avoided by
-    * splitting the total _amount in appropriate chunks and calling the function multiple times.
-    *
-    * Param `_maxIterations` can also be provided, so the loop through Cdps is capped (if it’s zero, it will be ignored).This makes it easier to
-    * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough, without needing to know the “topology”
-    * of the cdp list. It also avoids the need to set the cap in stone in the contract, nor doing gas calculations, as both gas price and opcode
-    * costs can vary.
-    *
-    * All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left, therefore they will be closed.
-    * If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion could be anywhere in the list, therefore it requires a hint.
-    * A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption, and pass a hint for its position
-    * in the sortedCdps list along with the ICR value that the hint was found for.
-    *
-    * If another transaction modifies the list between calling getRedemptionHints() and passing the hints to redeemCollateral(), it
-    * is very likely that the last (partially) redeemed Cdp would end up with a different ICR than what the hint is for. In this case the
-    * redemption will stop after the last completely redeemed Cdp and the sender will keep the remaining EBTC amount, which they can attempt
-    * to redeem later.
-    */
+    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral
+     * from as many Cdps as are needed to fill the redemption
+     * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
+     *
+     * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small.
+     * This can be easily avoided by
+     * splitting the total _amount in appropriate chunks and calling the function multiple times.
+     *
+     * Param `_maxIterations` can also be provided, so the loop through Cdps is capped
+     * (if it’s zero, it will be ignored).This makes it easier to
+     * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough,
+     * without needing to know the “topology”
+     * of the cdp list. It also avoids the need to set the cap in stone in the contract,
+     * nor doing gas calculations, as both gas price and opcode costs can vary.
+     *
+     * All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left,
+     * therefore they will be closed.
+     * If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion
+     * could be anywhere in the list, therefore it requires a hint.
+     * A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption,
+     * and pass a hint for its position
+     * in the sortedCdps list along with the ICR value that the hint was found for.
+     *
+     * If another transaction modifies the list between calling getRedemptionHints()
+     * and passing the hints to redeemCollateral(), it is very likely that the last (partially)
+     * redeemed Cdp would end up with a different ICR than what the hint is for. In this case the
+     * redemption will stop after the last completely redeemed Cdp and the sender will keep the
+     * remaining EBTC amount, which they can attempt to redeem later.
+     */
     function redeemCollateral(
         uint _EBTCamount,
         bytes32 _firstRedemptionHint,
@@ -941,10 +1222,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _partialRedemptionHintNICR,
         uint _maxIterations,
         uint _maxFeePercentage
-    )
-        external
-        override
-    {
+    ) external override {
         ContractsCache memory contractsCache = ContractsCache(
             activePool,
             defaultPool,
@@ -970,8 +1248,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         totals.remainingEBTC = _EBTCamount;
         address currentBorrower;
         bytes32 _cId = _firstRedemptionHint;
-		
-        if (_isValidFirstRedemptionHint(contractsCache.sortedCdps, _firstRedemptionHint, totals.price)) {
+
+        if (
+            _isValidFirstRedemptionHint(
+                contractsCache.sortedCdps,
+                _firstRedemptionHint,
+                totals.price
+            )
+        ) {
             currentBorrower = contractsCache.sortedCdps.existCdpOwners(_firstRedemptionHint);
         } else {
             _cId = contractsCache.sortedCdps.getLast();
@@ -983,35 +1267,54 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             }
         }
 
-        // Loop through the Cdps starting from the one with lowest collateral ratio until _amount of EBTC is exchanged for collateral
-        if (_maxIterations == 0) { _maxIterations = uint(-1); }
+        // Loop through the Cdps starting from the one with lowest collateral
+        // ratio until _amount of EBTC is exchanged for collateral
+        if (_maxIterations == 0) {
+            _maxIterations = uint(-1);
+        }
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
             _maxIterations--;
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-            bytes32 _nextId = contractsCache.sortedCdps.getPrev(_cId);
-            address nextUserToCheck = contractsCache.sortedCdps.existCdpOwners(_nextId);
+                bytes32 _nextId = contractsCache.sortedCdps.getPrev(_cId);
+                address nextUserToCheck = contractsCache.sortedCdps.existCdpOwners(_nextId);
 
-            _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, _cId);
+                _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, _cId);
 
-            LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(_cId, totals.remainingEBTC, totals.price, _upperPartialRedemptionHint, _lowerPartialRedemptionHint, _partialRedemptionHintNICR);
-            SingleRedemptionValues memory singleRedemption = _redeemCollateralFromCdp(contractsCache, _redeemColFromCdp);
+                LocalVariables_RedeemCollateralFromCdp
+                    memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
+                        _cId,
+                        totals.remainingEBTC,
+                        totals.price,
+                        _upperPartialRedemptionHint,
+                        _lowerPartialRedemptionHint,
+                        _partialRedemptionHintNICR
+                    );
+                SingleRedemptionValues memory singleRedemption = _redeemCollateralFromCdp(
+                    contractsCache,
+                    _redeemColFromCdp
+                );
+                // Partial redemption was cancelled (out-of-date hint, or new net debt < minimum),
+                // therefore we could not redeem from the last Cdp
+                if (singleRedemption.cancelledPartial) break;
 
-            if (singleRedemption.cancelledPartial) break; // Partial redemption was cancelled (out-of-date hint, or new net debt < minimum), therefore we could not redeem from the last Cdp
+                totals.totalEBTCToRedeem = totals.totalEBTCToRedeem.add(singleRedemption.EBTCLot);
+                totals.totalETHDrawn = totals.totalETHDrawn.add(singleRedemption.ETHLot);
 
-            totals.totalEBTCToRedeem  = totals.totalEBTCToRedeem.add(singleRedemption.EBTCLot);
-            totals.totalETHDrawn = totals.totalETHDrawn.add(singleRedemption.ETHLot);
-
-            totals.remainingEBTC = totals.remainingEBTC.sub(singleRedemption.EBTCLot);
-            currentBorrower = nextUserToCheck;
-            _cId = _nextId;
+                totals.remainingEBTC = totals.remainingEBTC.sub(singleRedemption.EBTCLot);
+                currentBorrower = nextUserToCheck;
+                _cId = _nextId;
             }
         }
         require(totals.totalETHDrawn > 0, "CdpManager: Unable to redeem any amount");
 
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
         // Use the saved total EBTC supply value, from before it was reduced by the redemption.
-        _updateBaseRateFromRedemption(totals.totalETHDrawn, totals.price, totals.totalEBTCSupplyAtStart);
+        _updateBaseRateFromRedemption(
+            totals.totalETHDrawn,
+            totals.price,
+            totals.totalEBTCSupplyAtStart
+        );
 
         // Calculate the ETH fee
         totals.ETHFee = _getRedemptionFee(totals.totalETHDrawn);
@@ -1035,7 +1338,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Helper functions ---
 
-    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
         (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
 
@@ -1043,7 +1347,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return NICR;
     }
 
-    // Return the current collateral ratio (ICR) of a given Cdp. Takes a cdp's pending coll and debt rewards from redistributions into account.
+    // Return the current collateral ratio (ICR) of a given Cdp.
+    //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getCurrentICR(bytes32 _cdpId, uint _price) public view override returns (uint) {
         (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
 
@@ -1067,7 +1372,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
-    function _applyPendingRewards(IActivePool _activePool, IDefaultPool _defaultPool, bytes32 _cdpId) internal {
+    function _applyPendingRewards(
+        IActivePool _activePool,
+        IDefaultPool _defaultPool,
+        bytes32 _cdpId
+    ) internal {
         if (hasPendingRewards(_cdpId)) {
             _requireCdpIsActive(_cdpId);
 
@@ -1082,7 +1391,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _updateCdpRewardSnapshots(_cdpId);
 
             // Transfer from DefaultPool to ActivePool
-            _movePendingCdpRewardsToActivePool(_activePool, _defaultPool, pendingEBTCDebtReward, pendingETHReward);
+            _movePendingCdpRewardsToActivePool(
+                _activePool,
+                _defaultPool,
+                pendingEBTCDebtReward,
+                pendingETHReward
+            );
 
             address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
             emit CdpUpdated(
@@ -1099,7 +1413,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Update borrower's snapshots of L_ETH and L_EBTCDebt to reflect the current values
     function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
-       return _updateCdpRewardSnapshots(_cdpId);
+        return _updateCdpRewardSnapshots(_cdpId);
     }
 
     function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
@@ -1113,7 +1427,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint snapshotETH = rewardSnapshots[_cdpId].ETH;
         uint rewardPerUnitStaked = L_ETH.sub(snapshotETH);
 
-        if ( rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) { return 0; }
+        if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
+            return 0;
+        }
 
         uint stake = Cdps[_cdpId].stake;
 
@@ -1121,15 +1437,17 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         return pendingETHReward;
     }
-    
+
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
         uint rewardPerUnitStaked = L_EBTCDebt.sub(snapshotEBTCDebt);
 
-        if ( rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) { return 0; }
+        if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
+            return 0;
+        }
 
-        uint stake =  Cdps[_cdpId].stake;
+        uint stake = Cdps[_cdpId].stake;
 
         uint pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
 
@@ -1138,17 +1456,21 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     function hasPendingRewards(bytes32 _cdpId) public view override returns (bool) {
         /*
-        * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
-        * this indicates that rewards have occured since the snapshot was made, and the user therefore has
-        * pending rewards
-        */
-        if (Cdps[_cdpId].status != Status.active) {return false;}
-       
+         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
+         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
+         * pending rewards
+         */
+        if (Cdps[_cdpId].status != Status.active) {
+            return false;
+        }
+
         return (rewardSnapshots[_cdpId].ETH < L_ETH);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions.
-    function getEntireDebtAndColl(bytes32 _cdpId)
+    function getEntireDebtAndColl(
+        bytes32 _cdpId
+    )
         public
         view
         override
@@ -1200,31 +1522,39 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             stake = _coll;
         } else {
             /*
-            * The following assert() holds true because:
-            * - The system always contains >= 1 cdp
-            * - When we close or liquidate a cdp, we redistribute the pending rewards, so if all cdps were closed/liquidated,
-            * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
-            */
+             * The following assert() holds true because:
+             * - The system always contains >= 1 cdp
+             * - When we close or liquidate a cdp, we redistribute the pending rewards,
+             * so if all cdps were closed/liquidated,
+             * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
+             */
             assert(totalStakesSnapshot > 0);
             stake = _coll.mul(totalStakesSnapshot).div(totalCollateralSnapshot);
         }
         return stake;
     }
 
-    function _redistributeDebtAndColl(IActivePool _activePool, IDefaultPool _defaultPool, uint _debt, uint _coll) internal {
-        if (_debt == 0) { return; }
+    function _redistributeDebtAndColl(
+        IActivePool _activePool,
+        IDefaultPool _defaultPool,
+        uint _debt,
+        uint _coll
+    ) internal {
+        if (_debt == 0) {
+            return;
+        }
 
         /*
-        * Add distributed coll and debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-        * error correction, to keep the cumulative error low in the running totals L_ETH and L_EBTCDebt:
-        *
-        * 1) Form numerators which compensate for the floor division errors that occurred the last time this
-        * function was called.
-        * 2) Calculate "per-unit-staked" ratios.
-        * 3) Multiply each ratio back by its denominator, to reveal the current floor division error.
-        * 4) Store these errors for use in the next correction when this function is called.
-        * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
-        */
+         * Add distributed coll and debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
+         * error correction, to keep the cumulative error low in the running totals L_ETH and L_EBTCDebt:
+         *
+         * 1) Form numerators which compensate for the floor division errors that occurred the last time this
+         * function was called.
+         * 2) Calculate "per-unit-staked" ratios.
+         * 3) Multiply each ratio back by its denominator, to reveal the current floor division error.
+         * 4) Store these errors for use in the next correction when this function is called.
+         * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
+         */
         uint ETHNumerator = _coll.mul(DECIMAL_PRECISION).add(lastETHError_Redistribution);
         uint EBTCDebtNumerator = _debt.mul(DECIMAL_PRECISION).add(lastEBTCDebtError_Redistribution);
 
@@ -1233,7 +1563,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator.div(totalStakes);
 
         lastETHError_Redistribution = ETHNumerator.sub(ETHRewardPerUnitStaked.mul(totalStakes));
-        lastEBTCDebtError_Redistribution = EBTCDebtNumerator.sub(EBTCDebtRewardPerUnitStaked.mul(totalStakes));
+        lastEBTCDebtError_Redistribution = EBTCDebtNumerator.sub(
+            EBTCDebtRewardPerUnitStaked.mul(totalStakes)
+        );
 
         // Add per-unit-staked terms to the running totals
         L_ETH = L_ETH.add(ETHRewardPerUnitStaked);
@@ -1270,16 +1602,20 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /*
-    * Updates snapshots of system total stakes and total collateral, excluding a given collateral remainder from the calculation.
-    * Used in a liquidation sequence.
-    *
-    * The calculation excludes a portion of collateral that is in the ActivePool:
-    *
-    * the total ETH gas compensation from the liquidation sequence
-    *
-    * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
-    */
-    function _updateSystemSnapshots_excludeCollRemainder(IActivePool _activePool, uint _collRemainder) internal {
+     * Updates snapshots of system total stakes and total collateral,
+     * excluding a given collateral remainder from the calculation.
+     * Used in a liquidation sequence.
+     *
+     * The calculation excludes a portion of collateral that is in the ActivePool:
+     *
+     * the total ETH gas compensation from the liquidation sequence
+     *
+     * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
+     */
+    function _updateSystemSnapshots_excludeCollRemainder(
+        IActivePool _activePool,
+        uint _collRemainder
+    ) internal {
         totalStakesSnapshot = totalStakes;
 
         uint activeColl = _activePool.getETH();
@@ -1297,7 +1633,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     function _addCdpIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
         /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
-        debt of liquidation reserve plus MIN_NET_DEBT. 3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
+        debt of liquidation reserve plus MIN_NET_DEBT.
+        3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
 
         // Push the Cdpowner to the array
         CdpIds.push(_cdpId);
@@ -1310,9 +1647,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     /*
-    * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
-    * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
-    */
+     * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
+     * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
+     */
     function _removeCdp(bytes32 _cdpId, uint CdpIdsArrayLength) internal {
         Status cdpStatus = Cdps[_cdpId].status;
         // It’s set in caller function `_closeCdp`
@@ -1343,16 +1680,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return _checkRecoveryMode(_price);
     }
 
-    // Check whether or not the system *would be* in Recovery Mode, given an ETH:USD price, and the entire system coll and debt.
+    // Check whether or not the system *would be* in Recovery Mode,
+    // given an ETH:USD price, and the entire system coll and debt.
     function _checkPotentialRecoveryMode(
         uint _entireSystemColl,
         uint _entireSystemDebt,
         uint _price
-    )
-        internal
-        pure
-    returns (bool)
-    {
+    ) internal pure returns (bool) {
         uint TCR = LiquityMath._computeCR(_entireSystemColl, _entireSystemDebt, _price);
 
         return TCR < CCR;
@@ -1361,16 +1695,20 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Redemption fee functions ---
 
     /*
-    * This function has two impacts on the baseRate state variable:
-    * 1) decays the baseRate based on time passed since last redemption or EBTC borrowing operation.
-    * then,
-    * 2) increases the baseRate based on the amount redeemed, as a proportion of total supply
-    */
-    function _updateBaseRateFromRedemption(uint _ETHDrawn,  uint _price, uint _totalEBTCSupply) internal returns (uint) {
+     * This function has two impacts on the baseRate state variable:
+     * 1) decays the baseRate based on time passed since last redemption or EBTC borrowing operation.
+     * then,
+     * 2) increases the baseRate based on the amount redeemed, as a proportion of total supply
+     */
+    function _updateBaseRateFromRedemption(
+        uint _ETHDrawn,
+        uint _price,
+        uint _totalEBTCSupply
+    ) internal returns (uint) {
         uint decayedBaseRate = _calcDecayedBaseRate();
 
         /* Convert the drawn ETH back to EBTC at face value rate (1 EBTC:1 USD), in order to get
-        * the fraction of total supply that was redeemed at face value. */
+         * the fraction of total supply that was redeemed at face value. */
         uint redeemedEBTCFraction = _ETHDrawn.mul(_price).div(_totalEBTCSupply);
 
         uint newBaseRate = decayedBaseRate.add(redeemedEBTCFraction.div(BETA));
@@ -1381,7 +1719,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // Update the baseRate state variable
         baseRate = newBaseRate;
         emit BaseRateUpdated(newBaseRate);
-        
+
         _updateLastFeeOpTime();
 
         return newBaseRate;
@@ -1396,10 +1734,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _calcRedemptionRate(uint _baseRate) internal pure returns (uint) {
-        return LiquityMath._min(
-            REDEMPTION_FEE_FLOOR.add(_baseRate),
-            DECIMAL_PRECISION // cap at a maximum of 100%
-        );
+        return
+            LiquityMath._min(
+                REDEMPTION_FEE_FLOOR.add(_baseRate),
+                DECIMAL_PRECISION // cap at a maximum of 100%
+            );
     }
 
     function _getRedemptionFee(uint _ETHDrawn) internal view returns (uint) {
@@ -1427,10 +1766,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return LiquityMath._min(
-            BORROWING_FEE_FLOOR.add(_baseRate),
-            MAX_BORROWING_FEE
-        );
+        return LiquityMath._min(BORROWING_FEE_FLOOR.add(_baseRate), MAX_BORROWING_FEE);
     }
 
     function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
@@ -1445,13 +1781,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return _borrowingRate.mul(_EBTCDebt).div(DECIMAL_PRECISION);
     }
 
-
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
     function decayBaseRateFromBorrowing() external override {
         _requireCallerIsBorrowerOperations();
 
         uint decayedBaseRate = _calcDecayedBaseRate();
-        assert(decayedBaseRate <= DECIMAL_PRECISION);  // The baseRate can decay to 0
+        assert(decayedBaseRate <= DECIMAL_PRECISION); // The baseRate can decay to 0
 
         baseRate = decayedBaseRate;
         emit BaseRateUpdated(decayedBaseRate);
@@ -1485,19 +1820,32 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- 'require' wrapper functions ---
 
     function _requireCallerIsBorrowerOperations() internal view {
-        require(msg.sender == borrowerOperationsAddress, "CdpManager: Caller is not the BorrowerOperations contract");
+        require(
+            msg.sender == borrowerOperationsAddress,
+            "CdpManager: Caller is not the BorrowerOperations contract"
+        );
     }
 
     function _requireCdpIsActive(bytes32 _cdpId) internal view {
         require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
     }
 
-    function _requireEBTCBalanceCoversRedemption(IEBTCToken _ebtcToken, address _redeemer, uint _amount) internal view {
-        require(_ebtcToken.balanceOf(_redeemer) >= _amount, "CdpManager: Requested redemption amount must be <= user's EBTC token balance");
+    function _requireEBTCBalanceCoversRedemption(
+        IEBTCToken _ebtcToken,
+        address _redeemer,
+        uint _amount
+    ) internal view {
+        require(
+            _ebtcToken.balanceOf(_redeemer) >= _amount,
+            "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
+        );
     }
 
     function _requireMoreThanOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
-        require (CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1, "CdpManager: Only one cdp in the system");
+        require(
+            CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
+            "CdpManager: Only one cdp in the system"
+        );
     }
 
     function _requireAmountGreaterThanZero(uint _amount) internal pure {
@@ -1510,12 +1858,17 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     function _requireAfterBootstrapPeriod() internal view {
         uint systemDeploymentTime = lqtyToken.getDeploymentStartTime();
-        require(block.timestamp >= systemDeploymentTime.add(BOOTSTRAP_PERIOD), "CdpManager: Redemptions are not allowed during bootstrap phase");
+        require(
+            block.timestamp >= systemDeploymentTime.add(BOOTSTRAP_PERIOD),
+            "CdpManager: Redemptions are not allowed during bootstrap phase"
+        );
     }
 
     function _requireValidMaxFeePercentage(uint _maxFeePercentage) internal pure {
-        require(_maxFeePercentage >= REDEMPTION_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
-            "Max fee percentage must be between 0.5% and 100%");
+        require(
+            _maxFeePercentage >= REDEMPTION_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
+            "Max fee percentage must be between 0.5% and 100%"
+        );
     }
 
     // --- Cdp property getters ---

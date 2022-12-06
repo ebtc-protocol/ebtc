@@ -8,10 +8,8 @@ import "./IEBTCToken.sol";
 import "./ILQTYToken.sol";
 import "./ILQTYStaking.sol";
 
-
 // Common interface for the Cdp Manager.
 interface ICdpManager is ILiquityBase {
-    
     // --- Events ---
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
@@ -26,10 +24,28 @@ interface ICdpManager is ILiquityBase {
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation, uint _EBTCGasCompensation);
+    event Liquidation(
+        uint _liquidatedDebt,
+        uint _liquidatedColl,
+        uint _collGasCompensation,
+        uint _EBTCGasCompensation
+    );
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event CdpUpdated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint _stake, uint8 _operation);
-    event CdpLiquidated(bytes32 indexed _cdpId, address indexed _borrower, uint _debt, uint _coll, uint8 operation);
+    event CdpUpdated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        uint _stake,
+        uint8 _operation
+    );
+    event CdpLiquidated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        uint8 operation
+    );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
@@ -55,8 +71,11 @@ interface ICdpManager is ILiquityBase {
     ) external;
 
     function stabilityPool() external view returns (IStabilityPool);
+
     function ebtcToken() external view returns (IEBTCToken);
+
     function lqtyToken() external view returns (ILQTYToken);
+
     function lqtyStaking() external view returns (ILQTYStaking);
 
     function getCdpIdsCount() external view returns (uint);
@@ -64,6 +83,7 @@ interface ICdpManager is ILiquityBase {
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);
+
     function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
     function liquidate(bytes32 _cdpId) external;
@@ -80,7 +100,7 @@ interface ICdpManager is ILiquityBase {
         uint _partialRedemptionHintNICR,
         uint _maxIterations,
         uint _maxFee
-    ) external; 
+    ) external;
 
     function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint);
 
@@ -96,32 +116,35 @@ interface ICdpManager is ILiquityBase {
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
-    function getEntireDebtAndColl(bytes32 _cdpId) external view returns (
-        uint debt, 
-        uint coll, 
-        uint pendingEBTCDebtReward, 
-        uint pendingETHReward
-    );
+    function getEntireDebtAndColl(
+        bytes32 _cdpId
+    )
+        external
+        view
+        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward);
 
     function closeCdp(bytes32 _cdpId) external;
 
     function removeStake(bytes32 _cdpId) external;
 
     function getRedemptionRate() external view returns (uint);
+
     function getRedemptionRateWithDecay() external view returns (uint);
 
     function getRedemptionFeeWithDecay(uint _ETHDrawn) external view returns (uint);
 
     function getBorrowingRate() external view returns (uint);
+
     function getBorrowingRateWithDecay() external view returns (uint);
 
     function getBorrowingFee(uint EBTCDebt) external view returns (uint);
+
     function getBorrowingFeeWithDecay(uint _EBTCDebt) external view returns (uint);
 
     function decayBaseRateFromBorrowing() external;
 
     function getCdpStatus(bytes32 _cdpId) external view returns (uint);
-    
+
     function getCdpStake(bytes32 _cdpId) external view returns (uint);
 
     function getCdpDebt(bytes32 _cdpId) external view returns (uint);
@@ -132,11 +155,11 @@ interface ICdpManager is ILiquityBase {
 
     function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
 
-    function decreaseCdpColl(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
+    function decreaseCdpColl(bytes32 _cdpId, uint _collDecrease) external returns (uint);
 
-    function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint); 
+    function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint);
 
-    function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint); 
+    function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint);
 
     function getTCR(uint _price) external view returns (uint);
 

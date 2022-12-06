@@ -11,7 +11,7 @@ library LiquitySafeMath128 {
 
         return c;
     }
-   
+
     function sub(uint128 a, uint128 b) internal pure returns (uint128) {
         require(b <= a, "LiquitySafeMath128: subtraction overflow");
         uint128 c = a - b;

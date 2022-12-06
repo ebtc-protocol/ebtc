@@ -10,11 +10,9 @@ import "./SortedCdps.sol";
 contract MultiCdpGetter {
     struct CombinedCdpData {
         bytes32 id;
-
         uint debt;
         uint coll;
         uint stake;
-
         uint snapshotETH;
         uint snapshotEBTCDebt;
     }
@@ -27,9 +25,10 @@ contract MultiCdpGetter {
         sortedCdps = _sortedCdps;
     }
 
-    function getMultipleSortedCdps(int _startIdx, uint _count)
-        external view returns (CombinedCdpData[] memory _cdps)
-    {
+    function getMultipleSortedCdps(
+        int _startIdx,
+        uint _count
+    ) external view returns (CombinedCdpData[] memory _cdps) {
         uint startIdx;
         bool descend;
 
@@ -60,9 +59,10 @@ contract MultiCdpGetter {
         }
     }
 
-    function _getMultipleSortedCdpsFromHead(uint _startIdx, uint _count)
-        internal view returns (CombinedCdpData[] memory _cdps)
-    {
+    function _getMultipleSortedCdpsFromHead(
+        uint _startIdx,
+        uint _count
+    ) internal view returns (CombinedCdpData[] memory _cdps) {
         bytes32 currentCdpId = sortedCdps.getFirst();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
@@ -77,21 +77,23 @@ contract MultiCdpGetter {
                 _cdps[idx].debt,
                 _cdps[idx].coll,
                 _cdps[idx].stake,
-                /* status */,
+                /* status */
                 /* arrayIndex */
+                ,
+
             ) = cdpManager.Cdps(currentCdpId);
-            (
-                _cdps[idx].snapshotETH,
-                _cdps[idx].snapshotEBTCDebt
-            ) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+                currentCdpId
+            );
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
     }
 
-    function _getMultipleSortedCdpsFromTail(uint _startIdx, uint _count)
-        internal view returns (CombinedCdpData[] memory _cdps)
-    {
+    function _getMultipleSortedCdpsFromTail(
+        uint _startIdx,
+        uint _count
+    ) internal view returns (CombinedCdpData[] memory _cdps) {
         bytes32 currentCdpId = sortedCdps.getLast();
 
         for (uint idx = 0; idx < _startIdx; ++idx) {
@@ -106,13 +108,14 @@ contract MultiCdpGetter {
                 _cdps[idx].debt,
                 _cdps[idx].coll,
                 _cdps[idx].stake,
-                /* status */,
+                /* status */
                 /* arrayIndex */
+                ,
+
             ) = cdpManager.Cdps(currentCdpId);
-            (
-                _cdps[idx].snapshotETH,
-                _cdps[idx].snapshotEBTCDebt
-            ) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+                currentCdpId
+            );
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }

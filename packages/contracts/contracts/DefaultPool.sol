@@ -2,7 +2,7 @@
 
 pragma solidity 0.6.11;
 
-import './Interfaces/IDefaultPool.sol';
+import "./Interfaces/IDefaultPool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -18,12 +18,12 @@ import "./Dependencies/console.sol";
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     using SafeMath for uint256;
 
-    string constant public NAME = "DefaultPool";
+    string public constant NAME = "DefaultPool";
 
     address public cdpManagerAddress;
     address public activePoolAddress;
-    uint256 internal ETH;  // deposited ETH tracker
-    uint256 internal EBTCDebt;  // debt
+    uint256 internal ETH; // deposited ETH tracker
+    uint256 internal EBTCDebt; // debt
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event DefaultPoolEBTCDebtUpdated(uint _EBTCDebt);
@@ -34,10 +34,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     function setAddresses(
         address _cdpManagerAddress,
         address _activePoolAddress
-    )
-        external
-        onlyOwner
-    {
+    ) external onlyOwner {
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
 
@@ -53,10 +50,10 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-    * Returns the ETH state variable.
-    *
-    * Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
-    */
+     * Returns the ETH state variable.
+     *
+     * Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     */
     function getETH() external view override returns (uint) {
         return ETH;
     }
@@ -74,7 +71,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit EtherSent(activePool, _amount);
 
-        (bool success, ) = activePool.call{ value: _amount }("");
+        (bool success, ) = activePool.call{value: _amount}("");
         require(success, "DefaultPool: sending ETH failed");
     }
 

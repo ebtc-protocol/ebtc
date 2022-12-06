@@ -11,42 +11,42 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
 /*
-* A sorted doubly linked list with nodes sorted in descending order.
-*
-* Nodes map to active Cdps in the system - the ID property is the address of a Cdp owner.
-* Nodes are ordered according to their current nominal individual collateral ratio (NICR),
-* which is like the ICR but without the price, i.e., just collateral / debt.
-*
-* The list optionally accepts insert position hints.
-*
-* NICRs are computed dynamically at runtime, and not stored on the Node. This is because NICRs of active Cdps
-* change dynamically as liquidation events occur.
-*
-* The list relies on the fact that liquidation events preserve ordering: a liquidation decreases the NICRs of all active Cdps,
-* but maintains their order. A node inserted based on current NICR will maintain the correct position,
-* relative to it's peers, as rewards accumulate, as long as it's raw collateral and debt have not changed.
-* Thus, Nodes remain sorted by current NICR.
-*
-* Nodes need only be re-inserted upon a Cdp operation - when the owner adds or removes collateral or debt
-* to their position.
-*
-* The list is a modification of the following audited SortedDoublyLinkedList:
-* https://github.com/livepeer/protocol/blob/master/contracts/libraries/SortedDoublyLL.sol
-*
-*
-* Changes made in the Liquity implementation:
-*
-* - Keys have been removed from nodes
-*
-* - Ordering checks for insertion are performed by comparing an NICR argument to the current NICR, calculated at runtime.
-*   The list relies on the property that ordering by ICR is maintained as the ETH:USD price varies.
-*
-* - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
-*/
+ * A sorted doubly linked list with nodes sorted in descending order.
+ *
+ * Nodes map to active Cdps in the system - the ID property is the address of a Cdp owner.
+ * Nodes are ordered according to their current nominal individual collateral ratio (NICR),
+ * which is like the ICR but without the price, i.e., just collateral / debt.
+ *
+ * The list optionally accepts insert position hints.
+ *
+ * NICRs are computed dynamically at runtime, and not stored on the Node. This is because NICRs of active Cdps
+ * change dynamically as liquidation events occur.
+ *
+ * The list relies on the fact that liquidation events preserve ordering: a liquidation decreases the NICRs of all active Cdps,
+ * but maintains their order. A node inserted based on current NICR will maintain the correct position,
+ * relative to it's peers, as rewards accumulate, as long as it's raw collateral and debt have not changed.
+ * Thus, Nodes remain sorted by current NICR.
+ *
+ * Nodes need only be re-inserted upon a Cdp operation - when the owner adds or removes collateral or debt
+ * to their position.
+ *
+ * The list is a modification of the following audited SortedDoublyLinkedList:
+ * https://github.com/livepeer/protocol/blob/master/contracts/libraries/SortedDoublyLL.sol
+ *
+ *
+ * Changes made in the Liquity implementation:
+ *
+ * - Keys have been removed from nodes
+ *
+ * - Ordering checks for insertion are performed by comparing an NICR argument to the current NICR, calculated at runtime.
+ *   The list relies on the property that ordering by ICR is maintained as the ETH:USD price varies.
+ *
+ * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
+ */
 contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     using SafeMath for uint256;
 
-    string constant public NAME = "SortedCdps";
+    string public constant NAME = "SortedCdps";
 
     event CdpManagerAddressChanged(address _cdpManagerAddress);
     event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
@@ -60,25 +60,25 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     // Information for a node in the list
     struct Node {
         bool exists;
-        bytes32 nextId;                  // Id of next node (smaller NICR) in the list
-        bytes32 prevId;                  // Id of previous node (larger NICR) in the list
+        bytes32 nextId; // Id of next node (smaller NICR) in the list
+        bytes32 prevId; // Id of previous node (larger NICR) in the list
     }
 
     // Information for the list
     struct Data {
-        bytes32 head;                        // Head of the list. Also the node in the list with the largest NICR
-        bytes32 tail;                        // Tail of the list. Also the node in the list with the smallest NICR
-        uint256 maxSize;                     // Maximum size of the list
-        uint256 size;                        // Current size of the list
-        mapping (bytes32 => Node) nodes;     // Track the corresponding ids for each node in the list
+        bytes32 head; // Head of the list. Also the node in the list with the largest NICR
+        bytes32 tail; // Tail of the list. Also the node in the list with the smallest NICR
+        uint256 maxSize; // Maximum size of the list
+        uint256 size; // Current size of the list
+        mapping(bytes32 => Node) nodes; // Track the corresponding ids for each node in the list
     }
 
     Data public data;
-	
+
     mapping(bytes32 => address) public cdpOwners;
     uint256 public nextCdpNonce;
     bytes32 public dummyId;
-	
+
     // Mapping from cdp owner to list of owned cdp IDs
     mapping(address => mapping(uint256 => bytes32)) public override _ownedCdps;
 
@@ -90,7 +90,11 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     // --- Dependency setters ---
 
-    function setParams(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) external override onlyOwner {
+    function setParams(
+        uint256 _size,
+        address _cdpManagerAddress,
+        address _borrowerOperationsAddress
+    ) external override onlyOwner {
         require(_size > 0, "SortedCdps: Size can’t be zero");
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
@@ -104,12 +108,16 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
         _renounceOwnership();
-		
+
         dummyId = toCdpId(address(0), 0, 0);
     }
-	
+
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
-    function toCdpId(address owner, uint256 blockHeight, uint256 nonce) public pure returns (bytes32) {
+    function toCdpId(
+        address owner,
+        uint256 blockHeight,
+        uint256 nonce
+    ) public pure returns (bytes32) {
         bytes32 serialized;
 
         serialized |= bytes32(nonce);
@@ -118,19 +126,19 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         return serialized;
     }
-	
+
     function getOwnerAddress(bytes32 cdpId) public pure returns (address) {
         return address(uint256(cdpId) >> (12 * 8));
     }
-	
+
     function existCdpOwners(bytes32 cdpId) public view override returns (address) {
         return cdpOwners[cdpId];
     }
 
-    function nonExistId() public view override returns (bytes32){
+    function nonExistId() public view override returns (bytes32) {
         return dummyId;
     }
-	
+
     function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
         require(index < _ownedCount[owner], "!index");
         return _ownedCdps[owner][index];
@@ -139,10 +147,15 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     function cdpCountOf(address owner) public view override returns (uint256) {
         return _ownedCount[owner];
     }
-	
-    function insert(address owner, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external override returns (bytes32){
+
+    function insert(
+        address owner,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external override returns (bytes32) {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
-        insert(owner, _id, _NICR, _prevId, _nextId);	
+        insert(owner, _id, _NICR, _prevId, _nextId);
         return _id;
     }
 
@@ -154,18 +167,30 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _nextId Id of next node for the insert position
      */
 
-    function insert(address owner, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) public override {
+    function insert(
+        address owner,
+        bytes32 _id,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) public override {
         ICdpManager cdpManagerCached = cdpManager;
 
         _requireCallerIsBOorCdpM(cdpManagerCached);
         _insert(cdpManagerCached, _id, _NICR, _prevId, _nextId);
-		
+
         nextCdpNonce += 1;
         cdpOwners[_id] = owner;
         _addCdpToOwnerEnumeration(owner, _id);
     }
 
-    function _insert(ICdpManager _cdpManager, bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
+    function _insert(
+        ICdpManager _cdpManager,
+        bytes32 _id,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) internal {
         // List must not be full
         require(!isFull(), "SortedCdps: List is full");
         // List must not already contain node
@@ -184,7 +209,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
             (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
         }
 
-         data.nodes[_id].exists = true;
+        data.nodes[_id].exists = true;
 
         if (prevId == dummyId && nextId == dummyId) {
             // Insert as head and tail
@@ -269,7 +294,12 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _prevId Id of previous node for the new insert position
      * @param _nextId Id of next node for the new insert position
      */
-    function reInsert(bytes32 _id, uint256 _newNICR, bytes32 _prevId, bytes32 _nextId) external override {
+    function reInsert(
+        bytes32 _id,
+        uint256 _newNICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external override {
         ICdpManager cdpManagerCached = cdpManager;
 
         _requireCallerIsBOorCdpM(cdpManagerCached);
@@ -283,7 +313,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         _insert(cdpManagerCached, _id, _newNICR, _prevId, _nextId);
     }
-	
+
     /**
      * @dev Private function to add a cdp to ownership-tracking data structures.
      * @param to address representing the owner of the given cdp ID
@@ -388,11 +418,20 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
-    function validInsertPosition(uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external view override returns (bool) {
+    function validInsertPosition(
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external view override returns (bool) {
         return _validInsertPosition(cdpManager, _NICR, _prevId, _nextId);
     }
 
-    function _validInsertPosition(ICdpManager _cdpManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bool) {
+    function _validInsertPosition(
+        ICdpManager _cdpManager,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) internal view returns (bool) {
         if (_prevId == dummyId && _nextId == dummyId) {
             // `(null, null)` is a valid insert position if the list is empty
             return isEmpty();
@@ -404,9 +443,10 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
             return data.tail == _prevId && _NICR <= _cdpManager.getNominalICR(_prevId);
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_NICR` falls between the two nodes' NICRs
-            return data.nodes[_prevId].nextId == _nextId &&
-                   _cdpManager.getNominalICR(_prevId) >= _NICR &&
-                   _NICR >= _cdpManager.getNominalICR(_nextId);
+            return
+                data.nodes[_prevId].nextId == _nextId &&
+                _cdpManager.getNominalICR(_prevId) >= _NICR &&
+                _NICR >= _cdpManager.getNominalICR(_nextId);
         }
     }
 
@@ -416,7 +456,11 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _NICR Node's NICR
      * @param _startId Id of node to start descending the list from
      */
-    function _descendList(ICdpManager _cdpManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
+    function _descendList(
+        ICdpManager _cdpManager,
+        uint256 _NICR,
+        bytes32 _startId
+    ) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
         if (data.head == _startId && _NICR >= _cdpManager.getNominalICR(_startId)) {
             return (dummyId, _startId);
@@ -440,7 +484,11 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _NICR Node's NICR
      * @param _startId Id of node to start ascending the list from
      */
-    function _ascendList(ICdpManager _cdpManager, uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
+    function _ascendList(
+        ICdpManager _cdpManager,
+        uint256 _NICR,
+        bytes32 _startId
+    ) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
         if (data.tail == _startId && _NICR <= _cdpManager.getNominalICR(_startId)) {
             return (_startId, dummyId);
@@ -464,11 +512,20 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
-    function findInsertPosition(uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external view override returns (bytes32, bytes32) {
+    function findInsertPosition(
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external view override returns (bytes32, bytes32) {
         return _findInsertPosition(cdpManager, _NICR, _prevId, _nextId);
     }
 
-    function _findInsertPosition(ICdpManager _cdpManager, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal view returns (bytes32, bytes32) {
+    function _findInsertPosition(
+        ICdpManager _cdpManager,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) internal view returns (bytes32, bytes32) {
         bytes32 prevId = _prevId;
         bytes32 nextId = _nextId;
 
@@ -508,7 +565,9 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     }
 
     function _requireCallerIsBOorCdpM(ICdpManager _cdpManager) internal view {
-        require(msg.sender == borrowerOperationsAddress || msg.sender == address(_cdpManager),
-                "SortedCdps: Caller is neither BO nor CdpM");
+        require(
+            msg.sender == borrowerOperationsAddress || msg.sender == address(_cdpManager),
+            "SortedCdps: Caller is neither BO nor CdpM"
+        );
     }
 }

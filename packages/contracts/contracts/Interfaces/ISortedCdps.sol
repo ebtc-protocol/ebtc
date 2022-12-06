@@ -4,19 +4,28 @@ pragma solidity 0.6.11;
 
 // Common interface for the SortedCdps Doubly Linked List.
 interface ISortedCdps {
-
     // --- Events ---
-    
+
     event SortedCdpsAddressChanged(address _sortedDoublyLLAddress);
     event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
     event NodeAdded(bytes32 _id, uint _NICR);
     event NodeRemoved(bytes32 _id);
 
     // --- Functions ---
-    
-    function setParams(uint256 _size, address _CdpManagerAddress, address _borrowerOperationsAddress) external;
 
-    function insert(address owner, bytes32 _id, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external;
+    function setParams(
+        uint256 _size,
+        address _CdpManagerAddress,
+        address _borrowerOperationsAddress
+    ) external;
+
+    function insert(
+        address owner,
+        bytes32 _id,
+        uint256 _ICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external;
 
     function remove(bytes32 _id) external;
 
@@ -40,11 +49,24 @@ interface ISortedCdps {
 
     function getPrev(bytes32 _id) external view returns (bytes32);
 
-    function validInsertPosition(uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external view returns (bool);
+    function validInsertPosition(
+        uint256 _ICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external view returns (bool);
 
-    function findInsertPosition(uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external view returns (bytes32, bytes32);
+    function findInsertPosition(
+        uint256 _ICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external view returns (bytes32, bytes32);
 
-    function insert(address owner, uint256 _ICR, bytes32 _prevId, bytes32 _nextId) external returns (bytes32);
+    function insert(
+        address owner,
+        uint256 _ICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external returns (bytes32);
 
     function existCdpOwners(bytes32 _id) external view returns (address);
 

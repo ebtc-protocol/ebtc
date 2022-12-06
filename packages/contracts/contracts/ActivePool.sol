@@ -2,7 +2,7 @@
 
 pragma solidity 0.6.11;
 
-import './Interfaces/IActivePool.sol';
+import "./Interfaces/IActivePool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -18,13 +18,13 @@ import "./Dependencies/console.sol";
 contract ActivePool is Ownable, CheckContract, IActivePool {
     using SafeMath for uint256;
 
-    string constant public NAME = "ActivePool";
+    string public constant NAME = "ActivePool";
 
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
     address public stabilityPoolAddress;
     address public defaultPoolAddress;
-    uint256 internal ETH;  // deposited ether tracker
+    uint256 internal ETH; // deposited ether tracker
     uint256 internal EBTCDebt;
 
     // --- Events ---
@@ -41,10 +41,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         address _cdpManagerAddress,
         address _stabilityPoolAddress,
         address _defaultPoolAddress
-    )
-        external
-        onlyOwner
-    {
+    ) external onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_stabilityPoolAddress);
@@ -66,10 +63,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-    * Returns the ETH state variable.
-    *
-    *Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
-    */
+     * Returns the ETH state variable.
+     *
+     *Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     */
     function getETH() external view override returns (uint) {
         return ETH;
     }
@@ -86,13 +83,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
 
-        (bool success, ) = _account.call{ value: _amount }("");
+        (bool success, ) = _account.call{value: _amount}("");
         require(success, "ActivePool: sending ETH failed");
     }
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt  = EBTCDebt.add(_amount);
+        EBTCDebt = EBTCDebt.add(_amount);
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
@@ -106,24 +103,25 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
 
     function _requireCallerIsBorrowerOperationsOrDefaultPool() internal view {
         require(
-            msg.sender == borrowerOperationsAddress ||
-            msg.sender == defaultPoolAddress,
-            "ActivePool: Caller is neither BO nor Default Pool");
+            msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
+            "ActivePool: Caller is neither BO nor Default Pool"
+        );
     }
 
     function _requireCallerIsBOorCdpMorSP() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
-            msg.sender == cdpManagerAddress ||
-            msg.sender == stabilityPoolAddress,
-            "ActivePool: Caller is neither BorrowerOperations nor CdpManager nor StabilityPool");
+                msg.sender == cdpManagerAddress ||
+                msg.sender == stabilityPoolAddress,
+            "ActivePool: Caller is neither BorrowerOperations nor CdpManager nor StabilityPool"
+        );
     }
 
     function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress ||
-            msg.sender == cdpManagerAddress,
-            "ActivePool: Caller is neither BorrowerOperations nor CdpManager");
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
+            "ActivePool: Caller is neither BorrowerOperations nor CdpManager"
+        );
     }
 
     // --- Fallback function ---
