@@ -3,9 +3,8 @@
 pragma solidity 0.6.11;
 
 interface ILQTYStaking {
-
     // --- Events --
-    
+
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
     event EBTCTokenAddressSet(address _ebtcTokenAddress);
     event CdpManagerAddressSet(address _cdpManager);
@@ -22,22 +21,21 @@ interface ILQTYStaking {
 
     // --- Functions ---
 
-    function setAddresses
-    (
+    function setAddresses(
         address _lqtyTokenAddress,
         address _ebtcTokenAddress,
-        address _cdpManagerAddress, 
+        address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress
-    )  external;
+    ) external;
 
     function stake(uint _LQTYamount) external;
 
     function unstake(uint _LQTYamount) external;
 
-    function increaseF_ETH(uint _ETHFee) external; 
+    function increaseF_ETH(uint _ETHFee) external;
 
-    function increaseF_EBTC(uint _LQTYFee) external;  
+    function increaseF_EBTC(uint _LQTYFee) external;
 
     function getPendingETHGain(address _user) external view returns (uint);
 

@@ -8,7 +8,6 @@ import "../CdpManager.sol";
 for testing the parent's internal functions. */
 
 contract CdpManagerTester is CdpManager {
-
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
@@ -28,7 +27,7 @@ contract CdpManagerTester is CdpManager {
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {
         baseRate = _calcDecayedBaseRate();
         assert(baseRate >= 0 && baseRate <= DECIMAL_PRECISION);
-        
+
         _updateLastFeeOpTime();
         return baseRate;
     }
@@ -47,14 +46,14 @@ contract CdpManagerTester is CdpManager {
 
     function callGetRedemptionFee(uint _ETHDrawn) external view returns (uint) {
         _getRedemptionFee(_ETHDrawn);
-    }  
+    }
 
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
         return _getNetDebt(_debtVal);
     }
 
-//    function callInternalRemoveCdpOwner(address _cdpOwner) external {
-//        uint cdpOwnersArrayLength = CdpOwners.length;
-//        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
-//    }
+    //    function callInternalRemoveCdpOwner(address _cdpOwner) external {
+    //        uint cdpOwnersArrayLength = CdpOwners.length;
+    //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
+    //    }
 }

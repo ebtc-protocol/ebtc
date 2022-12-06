@@ -16,22 +16,22 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     using SafeMath for uint;
 
     // --- Data ---
-    string constant public NAME = "LQTYStaking";
+    string public constant NAME = "LQTYStaking";
 
-    mapping( address => uint) public stakes;
+    mapping(address => uint) public stakes;
     uint public totalLQTYStaked;
 
-    uint public F_ETH;  // Running sum of ETH fees per-LQTY-staked
+    uint public F_ETH; // Running sum of ETH fees per-LQTY-staked
     uint public F_EBTC; // Running sum of LQTY fees per-LQTY-staked
 
     // User snapshots of F_ETH and F_EBTC, taken at the point at which their latest deposit was made
-    mapping (address => Snapshot) public snapshots; 
+    mapping(address => Snapshot) public snapshots;
 
     struct Snapshot {
         uint F_ETH_Snapshot;
         uint F_EBTC_Snapshot;
     }
-    
+
     ILQTYToken public lqtyToken;
     IEBTCToken public ebtcToken;
 
@@ -57,18 +57,13 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
     // --- Functions ---
 
-    function setAddresses
-    (
+    function setAddresses(
         address _lqtyTokenAddress,
         address _ebtcTokenAddress,
-        address _cdpManagerAddress, 
+        address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress
-    ) 
-        external 
-        onlyOwner 
-        override 
-    {
+    ) external override onlyOwner {
         checkContract(_lqtyTokenAddress);
         checkContract(_ebtcTokenAddress);
         checkContract(_cdpManagerAddress);
@@ -90,7 +85,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         _renounceOwnership();
     }
 
-    // If caller has a pre-existing stake, send any accumulated ETH and EBTC gains to them. 
+    // If caller has a pre-existing stake, send any accumulated ETH and EBTC gains to them.
     function stake(uint _LQTYamount) external override {
         _requireNonZeroAmount(_LQTYamount);
 
@@ -103,8 +98,8 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
             ETHGain = _getPendingETHGain(msg.sender);
             EBTCGain = _getPendingEBTCGain(msg.sender);
         }
-    
-       _updateUserSnapshots(msg.sender);
+
+        _updateUserSnapshots(msg.sender);
 
         uint newStake = currentStake.add(_LQTYamount);
 
@@ -119,14 +114,14 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         emit StakeChanged(msg.sender, newStake);
         emit StakingGainsWithdrawn(msg.sender, EBTCGain, ETHGain);
 
-         // Send accumulated EBTC and ETH gains to the caller
+        // Send accumulated EBTC and ETH gains to the caller
         if (currentStake != 0) {
             ebtcToken.transfer(msg.sender, EBTCGain);
             _sendETHGainToUser(ETHGain);
         }
     }
 
-    // Unstake the LQTY and send the it back to the caller, along with their accumulated EBTC & ETH gains. 
+    // Unstake the LQTY and send the it back to the caller, along with their accumulated EBTC & ETH gains.
     // If requested amount > stake, send their entire stake.
     function unstake(uint _LQTYamount) external override {
         uint currentStake = stakes[msg.sender];
@@ -135,7 +130,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         // Grab any accumulated ETH and EBTC gains from the current stake
         uint ETHGain = _getPendingETHGain(msg.sender);
         uint EBTCGain = _getPendingEBTCGain(msg.sender);
-        
+
         _updateUserSnapshots(msg.sender);
 
         if (_LQTYamount > 0) {
@@ -166,19 +161,23 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     function increaseF_ETH(uint _ETHFee) external override {
         _requireCallerIsCdpManager();
         uint ETHFeePerLQTYStaked;
-     
-        if (totalLQTYStaked > 0) {ETHFeePerLQTYStaked = _ETHFee.mul(DECIMAL_PRECISION).div(totalLQTYStaked);}
 
-        F_ETH = F_ETH.add(ETHFeePerLQTYStaked); 
+        if (totalLQTYStaked > 0) {
+            ETHFeePerLQTYStaked = _ETHFee.mul(DECIMAL_PRECISION).div(totalLQTYStaked);
+        }
+
+        F_ETH = F_ETH.add(ETHFeePerLQTYStaked);
         emit F_ETHUpdated(F_ETH);
     }
 
     function increaseF_EBTC(uint _EBTCFee) external override {
         _requireCallerIsBorrowerOperations();
         uint EBTCFeePerLQTYStaked;
-        
-        if (totalLQTYStaked > 0) {EBTCFeePerLQTYStaked = _EBTCFee.mul(DECIMAL_PRECISION).div(totalLQTYStaked);}
-        
+
+        if (totalLQTYStaked > 0) {
+            EBTCFeePerLQTYStaked = _EBTCFee.mul(DECIMAL_PRECISION).div(totalLQTYStaked);
+        }
+
         F_EBTC = F_EBTC.add(EBTCFeePerLQTYStaked);
         emit F_EBTCUpdated(F_EBTC);
     }
@@ -229,16 +228,16 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         require(msg.sender == borrowerOperationsAddress, "LQTYStaking: caller is not BorrowerOps");
     }
 
-     function _requireCallerIsActivePool() internal view {
+    function _requireCallerIsActivePool() internal view {
         require(msg.sender == activePoolAddress, "LQTYStaking: caller is not ActivePool");
     }
 
-    function _requireUserHasStake(uint currentStake) internal pure {  
-        require(currentStake > 0, 'LQTYStaking: User must have a non-zero stake');  
+    function _requireUserHasStake(uint currentStake) internal pure {
+        require(currentStake > 0, "LQTYStaking: User must have a non-zero stake");
     }
 
     function _requireNonZeroAmount(uint _amount) internal pure {
-        require(_amount > 0, 'LQTYStaking: Amount must be non-zero');
+        require(_amount > 0, "LQTYStaking: Amount must be non-zero");
     }
 
     receive() external payable {

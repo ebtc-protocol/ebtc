@@ -5,9 +5,8 @@ pragma solidity 0.6.11;
 import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IStabilityPool.sol";
 
-
 contract StabilityPoolScript is CheckContract {
-    string constant public NAME = "StabilityPoolScript";
+    string public constant NAME = "StabilityPoolScript";
 
     IStabilityPool immutable stabilityPool;
 

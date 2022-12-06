@@ -9,7 +9,7 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 
 contract HintHelpers is LiquityBase, Ownable, CheckContract {
-    string constant public NAME = "HintHelpers";
+    string public constant NAME = "HintHelpers";
 
     ISortedCdps public sortedCdps;
     ICdpManager public cdpManager;
@@ -24,10 +24,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     function setAddresses(
         address _sortedCdpsAddress,
         address _cdpManagerAddress
-    )
-        external
-        onlyOwner
-    {
+    ) external onlyOwner {
         checkContract(_sortedCdpsAddress);
         checkContract(_cdpManagerAddress);
 
@@ -59,7 +56,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
      * will leave it uncapped.
      */
     function getRedemptionHints(
-        uint _EBTCamount, 
+        uint _EBTCamount,
         uint _price,
         uint _maxIterations
     )
@@ -77,7 +74,9 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         bytes32 currentCdpId = sortedCdpsCached.getLast();
         address currentCdpuser = sortedCdps.existCdpOwners(currentCdpId);
 
-        while (currentCdpuser != address(0) && cdpManager.getCurrentICR(currentCdpId, _price) < MCR) {
+        while (
+            currentCdpuser != address(0) && cdpManager.getCurrentICR(currentCdpId, _price) < MCR
+        ) {
             currentCdpId = sortedCdpsCached.getPrev(currentCdpId);
             currentCdpuser = sortedCdpsCached.existCdpOwners(currentCdpId);
         }
@@ -89,19 +88,29 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         }
 
         while (currentCdpuser != address(0) && remainingEBTC > 0 && _maxIterations-- > 0) {
-            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(cdpManager.getPendingEBTCDebtReward(currentCdpId));
+            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(
+                cdpManager.getPendingEBTCDebtReward(currentCdpId)
+            );
 
             if (netEBTCDebt > remainingEBTC) {
                 if (netEBTCDebt > MIN_NET_DEBT) {
-                    uint maxRedeemableEBTC = LiquityMath._min(remainingEBTC, netEBTCDebt.sub(MIN_NET_DEBT));
+                    uint maxRedeemableEBTC = LiquityMath._min(
+                        remainingEBTC,
+                        netEBTCDebt.sub(MIN_NET_DEBT)
+                    );
 
-                    uint ETH = cdpManager.getCdpColl(currentCdpId).add(cdpManager.getPendingETHReward(currentCdpId));
+                    uint ETH = cdpManager.getCdpColl(currentCdpId).add(
+                        cdpManager.getPendingETHReward(currentCdpId)
+                    );
 
                     uint newColl = ETH.sub(maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price));
                     uint newDebt = netEBTCDebt.sub(maxRedeemableEBTC);
 
                     uint compositeDebt = _getCompositeDebt(newDebt);
-                    partialRedemptionHintNICR = LiquityMath._computeNominalCR(newColl, compositeDebt);
+                    partialRedemptionHintNICR = LiquityMath._computeNominalCR(
+                        newColl,
+                        compositeDebt
+                    );
 
                     remainingEBTC = remainingEBTC.sub(maxRedeemableEBTC);
                 }
@@ -126,11 +135,11 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     Submitting numTrials = k * sqrt(length), with k = 15 makes it very, very likely that the ouput address will 
     be <= sqrt(length) positions away from the correct insert position.
     */
-    function getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)
-        external
-        view
-        returns (bytes32 hint, uint diff, uint latestRandomSeed)
-    {
+    function getApproxHint(
+        uint _CR,
+        uint _numTrials,
+        uint _inputRandomSeed
+    ) external view returns (bytes32 hint, uint diff, uint latestRandomSeed) {
         uint arrayLength = cdpManager.getCdpIdsCount();
 
         if (arrayLength == 0) {

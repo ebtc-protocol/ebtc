@@ -15,11 +15,10 @@ import "./ETHTransferScript.sol";
 import "./LQTYStakingScript.sol";
 import "../Dependencies/console.sol";
 
-
 contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, LQTYStakingScript {
     using SafeMath for uint;
 
-    string constant public NAME = "BorrowerWrappersScript";
+    string public constant NAME = "BorrowerWrappersScript";
 
     ICdpManager immutable cdpManager;
     IStabilityPool immutable stabilityPool;
@@ -33,9 +32,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         address _cdpManagerAddress,
         address _lqtyStakingAddress
     )
+        public
         BorrowerOperationsScript(IBorrowerOperations(_borrowerOperationsAddress))
         LQTYStakingScript(_lqtyStakingAddress)
-        public
     {
         checkContract(_cdpManagerAddress);
         ICdpManager cdpManagerCached = ICdpManager(_cdpManagerAddress);
@@ -58,11 +57,19 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         lqtyToken = IERC20(lqtyTokenCached);
 
         ILQTYStaking lqtyStakingCached = cdpManagerCached.lqtyStaking();
-        require(_lqtyStakingAddress == address(lqtyStakingCached), "BorrowerWrappersScript: Wrong LQTYStaking address");
+        require(
+            _lqtyStakingAddress == address(lqtyStakingCached),
+            "BorrowerWrappersScript: Wrong LQTYStaking address"
+        );
         lqtyStaking = lqtyStakingCached;
     }
 
-    function claimCollateralAndOpenCdp(uint _maxFee, uint _EBTCAmount, bytes32 _upperHint, bytes32 _lowerHint) external payable {
+    function claimCollateralAndOpenCdp(
+        uint _maxFee,
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable {
         uint balanceBefore = address(this).balance;
 
         // Claim collateral
@@ -76,10 +83,20 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint totalCollateral = balanceAfter.sub(balanceBefore).add(msg.value);
 
         // Open cdp with obtained collateral, plus collateral sent by user
-        borrowerOperations.openCdp{ value: totalCollateral }(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
+        borrowerOperations.openCdp{value: totalCollateral}(
+            _maxFee,
+            _EBTCAmount,
+            _upperHint,
+            _lowerHint
+        );
     }
 
-    function claimSPRewardsAndRecycle(bytes32 _cdpId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
+    function claimSPRewardsAndRecycle(
+        bytes32 _cdpId,
+        uint _maxFee,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external {
         uint collBalanceBefore = address(this).balance;
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
 
@@ -94,7 +111,15 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         if (claimedCollateral > 0) {
             _requireUserHasCdp(_cdpId);
             uint EBTCAmount = _getNetEBTCAmount(_cdpId, claimedCollateral);
-            borrowerOperations.adjustCdp{ value: claimedCollateral }(_cdpId, _maxFee, 0, EBTCAmount, true, _upperHint, _lowerHint);
+            borrowerOperations.adjustCdp{value: claimedCollateral}(
+                _cdpId,
+                _maxFee,
+                0,
+                EBTCAmount,
+                true,
+                _upperHint,
+                _lowerHint
+            );
             // Provide withdrawn EBTC to Stability Pool
             if (EBTCAmount > 0) {
                 stabilityPool.provideToSP(EBTCAmount, address(0));
@@ -108,7 +133,12 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         }
     }
 
-    function claimStakingGainsAndRecycle(bytes32 _cdpId, uint _maxFee, bytes32 _upperHint, bytes32 _lowerHint) external {
+    function claimStakingGainsAndRecycle(
+        bytes32 _cdpId,
+        uint _maxFee,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external {
         uint collBalanceBefore = address(this).balance;
         uint ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
         uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
@@ -124,7 +154,15 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         if (gainedCollateral > 0) {
             _requireUserHasCdp(_cdpId);
             netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
-            borrowerOperations.adjustCdp{ value: gainedCollateral }(_cdpId, _maxFee, 0, netEBTCAmount, true, _upperHint, _lowerHint);
+            borrowerOperations.adjustCdp{value: gainedCollateral}(
+                _cdpId,
+                _maxFee,
+                0,
+                netEBTCAmount,
+                true,
+                _upperHint,
+                _lowerHint
+            );
         }
 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
@@ -138,7 +176,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
                 lqtyStaking.stake(claimedLQTY);
             }
         }
-
     }
 
     function _getNetEBTCAmount(bytes32 _cdpId, uint _collateral) internal returns (uint) {
@@ -147,12 +184,17 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         uint EBTCAmount = _collateral.mul(price).div(ICR);
         uint borrowingRate = cdpManager.getBorrowingRateWithDecay();
-        uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(LiquityMath.DECIMAL_PRECISION.add(borrowingRate));
+        uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(
+            LiquityMath.DECIMAL_PRECISION.add(borrowingRate)
+        );
 
         return netDebt;
     }
 
     function _requireUserHasCdp(bytes32 _cdpId) internal view {
-        require(cdpManager.getCdpStatus(_cdpId) == 1, "BorrowerWrappersScript: caller must have an active cdp");
+        require(
+            cdpManager.getCdpStatus(_cdpId) == 1,
+            "BorrowerWrappersScript: caller must have an active cdp"
+        );
     }
 }

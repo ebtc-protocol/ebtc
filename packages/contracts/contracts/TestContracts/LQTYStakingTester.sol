@@ -4,7 +4,6 @@ pragma solidity 0.6.11;
 
 import "../LQTY/LQTYStaking.sol";
 
-
 contract LQTYStakingTester is LQTYStaking {
     function requireCallerIsCdpManager() external view {
         _requireCallerIsCdpManager();

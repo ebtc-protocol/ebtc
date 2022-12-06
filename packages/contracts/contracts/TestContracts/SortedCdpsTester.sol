@@ -4,7 +4,6 @@ pragma solidity 0.6.11;
 
 import "../Interfaces/ISortedCdps.sol";
 
-
 contract SortedCdpsTester {
     ISortedCdps sortedCdps;
 
@@ -12,7 +11,13 @@ contract SortedCdpsTester {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }
 
-    function insert(address _owner, bytes32 _cdpId, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
+    function insert(
+        address _owner,
+        bytes32 _cdpId,
+        uint256 _NICR,
+        bytes32 _prevId,
+        bytes32 _nextId
+    ) external {
         sortedCdps.insert(_owner, _cdpId, _NICR, _prevId, _nextId);
     }
 

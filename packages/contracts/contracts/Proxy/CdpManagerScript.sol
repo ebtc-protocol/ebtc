@@ -5,9 +5,8 @@ pragma solidity 0.6.11;
 import "../Dependencies/CheckContract.sol";
 import "../Interfaces/ICdpManager.sol";
 
-
 contract CdpManagerScript is CheckContract {
-    string constant public NAME = "CdpManagerScript";
+    string public constant NAME = "CdpManagerScript";
 
     ICdpManager immutable cdpManager;
 

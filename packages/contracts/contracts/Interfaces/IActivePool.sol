@@ -4,7 +4,6 @@ pragma solidity 0.6.11;
 
 import "./IPool.sol";
 
-
 interface IActivePool is IPool {
     // --- Events ---
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);

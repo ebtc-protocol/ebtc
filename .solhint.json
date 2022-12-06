@@ -1,5 +1,5 @@
 {
-  "extends": "solhint:recommended",
+  "extends": "solhint:default",
   "plugins": [],
   "rules": {
     "avoid-suicide": "error",
