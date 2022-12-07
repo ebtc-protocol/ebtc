@@ -13,7 +13,6 @@ const alchemyUrl = () => {
         const { secrets } = require(SECRETS_FILE);
         alchemyAPIKey = secrets.alchemyAPIKey
     }
-
     return `https://eth-mainnet.alchemyapi.io/v2/${alchemyAPIKey}`
 }
 
