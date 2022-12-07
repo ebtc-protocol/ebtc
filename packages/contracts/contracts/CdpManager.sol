@@ -1435,7 +1435,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _movePendingCdpRewardsToActivePool(
                 _activePool,
                 _defaultPool,
-                pendingEBTCDebtReward,
+                pendingEBTCDebtReward, // TODO: Check if interest is accounted for
                 pendingETHReward
             );
 
@@ -1563,7 +1563,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         (pendingEBTCDebtReward, pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
         pendingETHReward = getPendingETHReward(_cdpId);
 
-        debt = debt.add(pendingEBTCDebtReward);
+        debt = debt.add(pendingEBTCDebtReward).add(pendingEBTCInterest);
         coll = coll.add(pendingETHReward);
     }
 
