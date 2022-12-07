@@ -73,6 +73,7 @@ contract eBTCBaseFixture is Test {
             address(communityIssuance),
             address(lqtyStaking),
             address(lockupContractFactory),
+            // Set misc addresses to self
             address(address(this)),
             address(address(this)),
             address(address(this))
@@ -164,5 +165,4 @@ contract eBTCBaseFixture is Test {
             address(activePool)
         );
     }
-
 }
