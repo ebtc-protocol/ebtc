@@ -91,7 +91,41 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
+            // Liquity Staking Address
             address(0)
         );
+
+        // set contracts in stabilityPool
+        stabilityPool.setAddresses(
+            address(borrowerOperations),
+            address(cdpManager),
+            address(activePool),
+            address(eBTCToken),
+            address(sortedCdps),
+            address(priceFeedMock),
+            // Liquity Community Issuance Address
+            address(0)
+        );
+
+        // set contracts in activePool
+        activePool.setAddresses(
+            address(borrowerOperations),
+            address(cdpManager),
+            address(stabilityPool),
+            address(defaultPool)
+        );
+
+        // set contracts in defaultPool
+        defaultPool.setAddresses(address(cdpManager), address(activePool));
+
+        // set contracts in collSurplusPool
+        collSurplusPool.setAddresses(
+            address(borrowerOperations),
+            address(cdpManager),
+            address(activePool)
+        );
+
+        // set contracts in HintHelpers
+        hintHelpers.setAddresses(address(sortedCdps), address(cdpManager));
     }
 }
