@@ -8,51 +8,46 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
-
 contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     using SafeMath for uint256;
 
-    string constant public NAME = "CollSurplusPool";
+    string public constant NAME = "CollSurplusPool";
 
     address public borrowerOperationsAddress;
-    address public troveManagerAddress;
+    address public cdpManagerAddress;
     address public activePoolAddress;
 
     // deposited ether tracker
     uint256 internal ETH;
-    // Collateral surplus claimable by trove owners
-    mapping (address => uint) internal balances;
+    // Collateral surplus claimable by cdp owners
+    mapping(address => uint) internal balances;
 
     // --- Events ---
 
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
     event EtherSent(address _to, uint _amount);
-    
+
     // --- Contract setters ---
 
     function setAddresses(
         address _borrowerOperationsAddress,
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress
-    )
-        external
-        override
-        onlyOwner
-    {
+    ) external override onlyOwner {
         checkContract(_borrowerOperationsAddress);
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
-        troveManagerAddress = _troveManagerAddress;
+        cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
 
         _renounceOwnership();
@@ -71,7 +66,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     // --- Pool functionality ---
 
     function accountSurplus(address _account, uint _amount) external override {
-        _requireCallerIsTroveManager();
+        _requireCallerIsCdpManager();
 
         uint newAmount = balances[_account].add(_amount);
         balances[_account] = newAmount;
@@ -90,7 +85,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         ETH = ETH.sub(claimableColl);
         emit EtherSent(_account, claimableColl);
 
-        (bool success, ) = _account.call{ value: claimableColl }("");
+        (bool success, ) = _account.call{value: claimableColl}("");
         require(success, "CollSurplusPool: sending ETH failed");
     }
 
@@ -99,19 +94,16 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     function _requireCallerIsBorrowerOperations() internal view {
         require(
             msg.sender == borrowerOperationsAddress,
-            "CollSurplusPool: Caller is not Borrower Operations");
+            "CollSurplusPool: Caller is not Borrower Operations"
+        );
     }
 
-    function _requireCallerIsTroveManager() internal view {
-        require(
-            msg.sender == troveManagerAddress,
-            "CollSurplusPool: Caller is not TroveManager");
+    function _requireCallerIsCdpManager() internal view {
+        require(msg.sender == cdpManagerAddress, "CollSurplusPool: Caller is not CdpManager");
     }
 
     function _requireCallerIsActivePool() internal view {
-        require(
-            msg.sender == activePoolAddress,
-            "CollSurplusPool: Caller is not Active Pool");
+        require(msg.sender == activePoolAddress, "CollSurplusPool: Caller is not Active Pool");
     }
 
     // --- Fallback function ---

@@ -43,3 +43,5 @@ __pycache__
 build/
 reports/
 tests/simulation.csv
+out/
+forge-cache

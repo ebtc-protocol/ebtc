@@ -8,15 +8,15 @@ const toBN = th.toBN
 const mv = testHelpers.MoneyValues
 const timeValues = testHelpers.TimeValues
 
-const TroveManagerTester = artifacts.require("TroveManagerTester")
-const LUSDToken = artifacts.require("LUSDToken")
+const CdpManagerTester = artifacts.require("CdpManagerTester")
+const EBTCToken = artifacts.require("EBTCToken")
 
 contract('CollSurplusPool', async accounts => {
   const [
     owner,
     A, B, C, D, E] = accounts;
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   let borrowerOperations
   let priceFeed
@@ -24,14 +24,14 @@ contract('CollSurplusPool', async accounts => {
 
   let contracts
 
-  const getOpenTroveLUSDAmount = async (totalDebt) => th.getOpenTroveLUSDAmount(contracts, totalDebt)
-  const openTrove = async (params) => th.openTrove(contracts, params)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
+  const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await LUSDToken.new(
-      contracts.troveManager.address,
+    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.ebtcToken = await EBTCToken.new(
+      contracts.cdpManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
@@ -53,8 +53,8 @@ contract('CollSurplusPool', async accounts => {
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price)
 
-    const { collateral: B_coll, netDebt: B_netDebt } = await openTrove({ ICR: toBN(dec(200, 16)), extraParams: { from: B } })
-    await openTrove({ extraLUSDAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
+    const { collateral: B_coll, netDebt: B_netDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: B } })
+    await openCdp({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -80,13 +80,13 @@ contract('CollSurplusPool', async accounts => {
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price)
 
-    // open trove from NonPayable proxy contract
+    // open cdp from NonPayable proxy contract
     const B_coll = toBN(dec(60, 18))
-    const B_lusdAmount = toBN(dec(3000, 18))
-    const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_lusdAmount)
-    const openTroveData = th.getTransactionData('openTrove(uint256,uint256,address,address)', ['0xde0b6b3a7640000', web3.utils.toHex(B_lusdAmount), B, B])
-    await nonPayable.forward(borrowerOperations.address, openTroveData, { value: B_coll })
-    await openTrove({ extraLUSDAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
+    const B_ebtcAmount = toBN(dec(3000, 18))
+    const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)
+    const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32])
+    await nonPayable.forward(borrowerOperations.address, openCdpData, { value: B_coll })
+    await openCdp({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -105,8 +105,8 @@ contract('CollSurplusPool', async accounts => {
     await th.assertRevert(web3.eth.sendTransaction({ from: A, to: collSurplusPool.address, value: 1 }), 'CollSurplusPool: Caller is not Active Pool')
   })
 
-  it('CollSurplusPool: accountSurplus: reverts if caller is not Trove Manager', async () => {
-    await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not TroveManager')
+  it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
+    await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
   })
 })
 

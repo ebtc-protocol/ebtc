@@ -16,18 +16,18 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
   let contracts
 
   let priceFeed
-  let lusdToken
+  let ebtcToken
   let stabilityPool
-  let troveManager
+  let cdpManager
   let borrowerOperations
 
   beforeEach(async () => {
     contracts = await deployLiquity()
     
     priceFeed = contracts.priceFeedTestnet
-    lusdToken = contracts.lusdToken
+    ebtcToken = contracts.ebtcToken
     stabilityPool = contracts.stabilityPool
-    troveManager = contracts.troveManager
+    cdpManager = contracts.cdpManager
     borrowerOperations = contracts.borrowerOperations
 
     const contractAddresses = getAddresses(contracts)
@@ -35,19 +35,19 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
   })
 
   // skipped to not slow down CI
-  it.skip("Rounding errors: 100 deposits of 100LUSD into SP, then 200 liquidations of 49LUSD", async () => {
+  it.skip("Rounding errors: 100 deposits of 100EBTC into SP, then 200 liquidations of 49EBTC", async () => {
     const owner = accounts[0]
     const depositors = accounts.slice(1, 101)
     const defaulters = accounts.slice(101, 301)
 
     for (let account of depositors) {
-      await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
+      await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
       await stabilityPool.provideToSP(dec(100, 18), { from: account })
     }
 
-    // Defaulter opens trove with 200% ICR
+    // Defaulter opens cdp with 200% ICR
     for (let defaulter of defaulters) {
-      await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter } })
+      await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: defaulter } })
       }
     const price = await priceFeed.getPrice()
 
@@ -56,12 +56,12 @@ contract('Pool Manager: Sum-Product rounding errors', async accounts => {
 
     // Defaulters liquidated
     for (let defaulter of defaulters) {
-      await troveManager.liquidate(defaulter, { from: owner });
+      await cdpManager.liquidate(defaulter, { from: owner });
     }
 
-    const SP_TotalDeposits = await stabilityPool.getTotalLUSDDeposits()
+    const SP_TotalDeposits = await stabilityPool.getTotalEBTCDeposits()
     const SP_ETH = await stabilityPool.getETH()
-    const compoundedDeposit = await stabilityPool.getCompoundedLUSDDeposit(depositors[0])
+    const compoundedDeposit = await stabilityPool.getCompoundedEBTCDeposit(depositors[0])
     const ETH_Gain = await stabilityPool.getCurrentETHGain(depositors[0])
 
     // Check depostiors receive their share without too much error

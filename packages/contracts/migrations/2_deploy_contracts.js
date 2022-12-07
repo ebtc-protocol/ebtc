@@ -1,12 +1,12 @@
 // Truffle migration script for deployment to Ganache
 
-const SortedTroves = artifacts.require("./SortedTroves.sol")
+const SortedCdps = artifacts.require("./SortedCdps.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const DefaultPool = artifacts.require("./DefaultPool.sol")
 const StabilityPool = artifacts.require("./StabilityPool.sol")
-const TroveManager = artifacts.require("./TroveManager.sol")
+const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
-const LUSDToken = artifacts.require("./LUSDToken.sol")
+const EBTCToken = artifacts.require("./EBTCToken.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
@@ -18,31 +18,31 @@ const connectContracts = deploymentHelpers.connectContracts
 module.exports = function(deployer) {
   deployer.deploy(BorrowerOperations)
   deployer.deploy(PriceFeed)
-  deployer.deploy(SortedTroves)
-  deployer.deploy(TroveManager)
+  deployer.deploy(SortedCdps)
+  deployer.deploy(CdpManager)
   deployer.deploy(ActivePool)
   deployer.deploy(StabilityPool)
   deployer.deploy(DefaultPool)
-  deployer.deploy(LUSDToken)
+  deployer.deploy(EBTCToken)
   deployer.deploy(FunctionCaller)
 
   deployer.then(async () => {
     const borrowerOperations = await BorrowerOperations.deployed()
     const priceFeed = await PriceFeed.deployed()
-    const sortedTroves = await SortedTroves.deployed()
-    const troveManager = await TroveManager.deployed()
+    const sortedCdps = await SortedCdps.deployed()
+    const cdpManager = await CdpManager.deployed()
     const activePool = await ActivePool.deployed()
     const stabilityPool = await StabilityPool.deployed()
     const defaultPool = await DefaultPool.deployed()
-    const lusdToken = await LUSDToken.deployed()
+    const ebtcToken = await EBTCToken.deployed()
     const functionCaller = await FunctionCaller.deployed()
 
     const liquityContracts = {
       borrowerOperations,
       priceFeed,
-      lusdToken,
-      sortedTroves,
-      troveManager,
+      ebtcToken,
+      sortedCdps,
+      cdpManager,
       activePool,
       stabilityPool,
       defaultPool,

@@ -4,20 +4,20 @@ import { deployer, subgraph } from "../globals";
 
 import {
   checkSubgraph,
-  checkTroveOrdering,
-  dumpTroves,
-  getListOfTrovesBeforeRedistribution
+  checkCdpOrdering,
+  dumpCdps,
+  getListOfCdpsBeforeRedistribution
 } from "../utils";
 
 export const checkSorting = async () => {
   const deployerLiquity = await EthersLiquity.connect(deployer);
-  const listOfTroves = await getListOfTrovesBeforeRedistribution(deployerLiquity);
+  const listOfCdps = await getListOfCdpsBeforeRedistribution(deployerLiquity);
   const totalRedistributed = await deployerLiquity.getTotalRedistributed();
   const price = await deployerLiquity.getPrice();
 
-  checkTroveOrdering(listOfTroves, totalRedistributed, price);
+  checkCdpOrdering(listOfCdps, totalRedistributed, price);
 
-  console.log("All Troves are sorted.");
+  console.log("All Cdps are sorted.");
 };
 
 export const checkSubgraphCmd = async () => {
@@ -28,11 +28,11 @@ export const checkSubgraphCmd = async () => {
   console.log("Subgraph looks fine.");
 };
 
-export const dumpTrovesCmd = async () => {
+export const dumpCdpsCmd = async () => {
   const deployerLiquity = await EthersLiquity.connect(deployer);
-  const listOfTroves = await getListOfTrovesBeforeRedistribution(deployerLiquity);
+  const listOfCdps = await getListOfCdpsBeforeRedistribution(deployerLiquity);
   const totalRedistributed = await deployerLiquity.getTotalRedistributed();
   const price = await deployerLiquity.getPrice();
 
-  dumpTroves(listOfTroves, totalRedistributed, price);
+  dumpCdps(listOfCdps, totalRedistributed, price);
 };

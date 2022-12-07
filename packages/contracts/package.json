@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
+  "workspaces": {
+    "nohoist": [
+      "**/@openzeppelin", "**/@openzeppelin/**"
+    ]
+  },
   "directories": {
     "test": "test"
   },

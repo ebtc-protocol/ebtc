@@ -1,7 +1,7 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
-const TroveManagerTester = artifacts.require("./TroveManagerTester.sol")
-const LUSDTokenTester = artifacts.require("./LUSDTokenTester.sol")
+const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
+const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -15,20 +15,20 @@ const timeValues = testHelpers.TimeValues
  * Some only test that the fees are non-zero when they should occur.
  *
  * Specific ETH gain values will depend on the final fee schedule used, and the final choices for
- * the parameter BETA in the TroveManager, which is still TBD based on economic modelling.
+ * the parameter BETA in the CdpManager, which is still TBD based on economic modelling.
  * 
  */
-contract('TroveManager', async accounts => {
+contract('CdpManager', async accounts => {
 
   const ZERO_ADDRESS = th.ZERO_ADDRESS
   const [owner, A, B, C, D, E, F] = accounts.slice(0, 7);
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   let priceFeed
-  let lusdToken
-  let sortedTroves
-  let troveManager
+  let ebtcToken
+  let sortedCdps
+  let cdpManager
   let activePool
   let stabilityPool
   let collSurplusPool
@@ -38,30 +38,37 @@ contract('TroveManager', async accounts => {
 
   let contracts
 
-  const getOpenTroveLUSDAmount = async (totalDebt) => th.getOpenTroveLUSDAmount(contracts, totalDebt)
+  const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
  
   const getSnapshotsRatio = async () => {
-    const ratio = (await troveManager.totalStakesSnapshot())
+    const ratio = (await cdpManager.totalStakesSnapshot())
       .mul(toBN(dec(1, 18)))
-      .div((await troveManager.totalCollateralSnapshot()))
+      .div((await cdpManager.totalCollateralSnapshot()))
 
     return ratio
   }
 
+  before(async () => {	  
+    // let _forkBlock = hre.network.config['forking']['blockNumber'];
+    // let _forkUrl = hre.network.config['forking']['url'];
+    // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
+    // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
+  })
+
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.troveManager = await TroveManagerTester.new()
-    contracts.lusdToken = await LUSDTokenTester.new(
-      contracts.troveManager.address,
+    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.ebtcToken = await EBTCTokenTester.new(
+      contracts.cdpManager.address,
       contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     priceFeed = contracts.priceFeedTestnet
-    lusdToken = contracts.lusdToken
-    sortedTroves = contracts.sortedTroves
-    troveManager = contracts.troveManager
+    ebtcToken = contracts.ebtcToken
+    sortedCdps = contracts.sortedCdps
+    cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
@@ -79,50 +86,58 @@ contract('TroveManager', async accounts => {
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
-  it("A given trove's stake decline is negligible with adjustments and tiny liquidations", async () => {
-    await priceFeed.setPrice(dec(100, 18))
+  it("A given cdp's stake decline is negligible with adjustments and tiny liquidations", async () => {
+    await priceFeed.setPrice(dec(400, 18))
   
-    // Make 1 mega troves A at ~50% total collateral
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 31)), ZERO_ADDRESS, ZERO_ADDRESS, { from: A, value: dec(2, 29) })
+    // Make 1 mega cdps A at ~50% total collateral
+    let _aColAmt = dec(8, 19);
+    let _aDebtAmt = dec(1, 22);
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _aColAmt })
+    let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     
-    // Make 5 large troves B, C, D, E, F at ~10% total collateral
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: B, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: C, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: D, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: E, value: dec(4, 28) })
-    await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(2, 30)), ZERO_ADDRESS, ZERO_ADDRESS, { from: F, value: dec(4, 28) })
+    // Make 5 large cdps B, C, D, E, F at ~10% total collateral
+    let _colAmt = dec(4, 19);
+    let _debtAmt = dec(1, 22);
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
+    let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: _colAmt })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: _colAmt })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: _colAmt })
   
-    // Make 10 tiny troves at relatively negligible collateral (~1e-9 of total)
-    const tinyTroves = accounts.slice(10, 20)
-    for (account of tinyTroves) {
-      await borrowerOperations.openTrove(th._100pct, await getOpenTroveLUSDAmount(dec(1, 22)), ZERO_ADDRESS, ZERO_ADDRESS, { from: account, value: dec(2, 20) })
+    // Make 10 tiny cdps at relatively negligible collateral (~1e-9 of total)
+    const tinyCdps = accounts.slice(10, 20)
+    let _tinyCdpIds = {}
+    for (account of tinyCdps) {
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: dec(2, 20) })
+      _tinyCdpIds[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
     }
 
-    // liquidate 1 trove at ~50% total system collateral
+    // liquidate 1 cdp at ~50% total system collateral
     await priceFeed.setPrice(dec(50, 18))
-    assert.isTrue(await troveManager.checkRecoveryMode(await priceFeed.getPrice()))
-    await troveManager.liquidate(A)
+    assert.isTrue(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
+    await cdpManager.liquidate(_aCdpId)
 
-    console.log(`totalStakesSnapshot after L1: ${await troveManager.totalStakesSnapshot()}`)
-    console.log(`totalCollateralSnapshot after L1: ${await troveManager.totalCollateralSnapshot()}`)
+    console.log(`totalStakesSnapshot after L1: ${await cdpManager.totalStakesSnapshot()}`)
+    console.log(`totalCollateralSnapshot after L1: ${await cdpManager.totalCollateralSnapshot()}`)
     console.log(`Snapshots ratio after L1: ${await getSnapshotsRatio()}`)
-    console.log(`B pending ETH reward after L1: ${await troveManager.getPendingETHReward(B)}`)
-    console.log(`B stake after L1: ${(await troveManager.Troves(B))[2]}`)
+    console.log(`B pending ETH reward after L1: ${await cdpManager.getPendingETHReward(B)}`)
+    console.log(`B stake after L1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
 
-    // adjust trove B 1 wei: apply rewards
-    await borrowerOperations.adjustTrove(th._100pct, 0, 1, false, ZERO_ADDRESS, ZERO_ADDRESS, {from: B})  // B repays 1 wei
-    console.log(`B stake after A1: ${(await troveManager.Troves(B))[2]}`)
+    // adjust cdp B 1 wei: apply rewards
+    await borrowerOperations.adjustCdp(_bCdpId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // B repays 1 wei
+    console.log(`B stake after A1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     console.log(`Snapshots ratio after A1: ${await getSnapshotsRatio()}`)
 
-    // Loop over tiny troves, and alternately:
-    // - Liquidate a tiny trove
+    // Loop over tiny cdps, and alternately:
+    // - Liquidate a tiny cdp
     // - Adjust B's collateral by 1 wei
-    for (let [idx, trove] of tinyTroves.entries()) {
-      await troveManager.liquidate(trove)
-      console.log(`B stake after L${idx + 2}: ${(await troveManager.Troves(B))[2]}`)
+    for (let [idx, cdp] of tinyCdps.entries()) {
+      await cdpManager.liquidate(_tinyCdpIds[cdp])
+      console.log(`B stake after L${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
       console.log(`Snapshots ratio after L${idx + 2}: ${await getSnapshotsRatio()}`)
-      await borrowerOperations.adjustTrove(th._100pct, 0, 1, false, ZERO_ADDRESS, ZERO_ADDRESS, {from: B})  // A repays 1 wei
-      console.log(`B stake after A${idx + 2}: ${(await troveManager.Troves(B))[2]}`)
+      await borrowerOperations.adjustCdp(_bCdpId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei
+      console.log(`B stake after A${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     }
   })
 

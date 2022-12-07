@@ -42,7 +42,7 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
 
   const [owner, alice, frontEnd_1] = accounts;
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   before(async () => {
 
@@ -52,7 +52,7 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     contracts = await deploymentHelper.deployLiquityCore()
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     contracts.stabilityPool = await StabilityPool.new()
-    contracts = await deploymentHelper.deployLUSDToken(contracts)
+    contracts = await deploymentHelper.deployEBTCToken(contracts)
 
     stabilityPool = contracts.stabilityPool
     borrowerOperations = contracts.borrowerOperations
@@ -774,8 +774,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     // Register front end with kickback rate = 100%
     await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
 
-    // Alice opens trove and deposits to SP
-    await borrowerOperations.openTrove(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
+    // Alice opens cdp and deposits to SP
+    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
     await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
 
     assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
@@ -809,8 +809,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     // Register front end with kickback rate = 100%
     await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
 
-    // Alice opens trove and deposits to SP
-    await borrowerOperations.openTrove(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
+    // Alice opens cdp and deposits to SP
+    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
     await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
 
     assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
@@ -843,8 +843,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     // Register front end with kickback rate = 100%
     await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
 
-    // Alice opens trove and deposits to SP
-    await borrowerOperations.openTrove(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
+    // Alice opens cdp and deposits to SP
+    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
     await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
 
     assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
@@ -878,8 +878,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     // Register front end with kickback rate = 100%
     await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
 
-    // Alice opens trove and deposits to SP
-    await borrowerOperations.openTrove(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
+    // Alice opens cdp and deposits to SP
+    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
     await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
 
     assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))

@@ -9,16 +9,16 @@ contract('DefaultPool', async accounts => {
   let defaultPool
   let nonPayable
   let mockActivePool
-  let mockTroveManager
+  let mockCdpManager
 
   let [owner] = accounts
 
   beforeEach('Deploy contracts', async () => {
     defaultPool = await DefaultPool.new()
     nonPayable = await NonPayable.new()
-    mockTroveManager = await NonPayable.new()
+    mockCdpManager = await NonPayable.new()
     mockActivePool = await NonPayable.new()
-    await defaultPool.setAddresses(mockTroveManager.address, mockActivePool.address)
+    await defaultPool.setAddresses(mockCdpManager.address, mockActivePool.address)
   })
 
   it('sendETHToActivePool(): fails if receiver cannot receive ETH', async () => {
@@ -32,7 +32,7 @@ contract('DefaultPool', async accounts => {
     // try to send ether from pool to non-payable
     //await th.assertRevert(defaultPool.sendETHToActivePool(amount, { from: owner }), 'DefaultPool: sending ETH failed')
     const sendETHData = th.getTransactionData('sendETHToActivePool(uint256)', [web3.utils.toHex(amount)])
-    await th.assertRevert(mockTroveManager.forward(defaultPool.address, sendETHData, { from: owner }), 'DefaultPool: sending ETH failed')
+    await th.assertRevert(mockCdpManager.forward(defaultPool.address, sendETHData, { from: owner }), 'DefaultPool: sending ETH failed')
   })
 })
 

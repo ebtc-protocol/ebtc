@@ -6,8 +6,8 @@ Uniswp addr: 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 Uniswap Factory number of pairs: 48905
 deployer's ETH balance before deployments: 550155877159586410
 Using previously deployed priceFeed contract at address 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
-Using previously deployed sortedTroves contract at address 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-Using previously deployed troveManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+Using previously deployed sortedCdps contract at address 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
+Using previously deployed cdpManager contract at address 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 Using previously deployed activePool contract at address 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 Using previously deployed stabilityPool contract at address 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 Using previously deployed gasPool contract at address 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -16,10 +16,10 @@ Using previously deployed collSurplusPool contract at address 0x3D32e8b97Ed58813
 Using previously deployed borrowerOperations contract at address 0x24179CD81c9e782A4096035f7eC97fB8B783e007
 Using previously deployed hintHelpers contract at address 0xE84251b93D9524E0d2e621Ba7dc7cb3579F997C0
 Using previously deployed tellorCaller contract at address 0xAd430500ECDa11E38C9bCB08a702274b94641112
-Using previously deployed lusdToken contract at address 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
+Using previously deployed ebtcToken contract at address 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
 Contract priceFeed already verified
-Contract sortedTroves already verified
-Contract troveManager already verified
+Contract sortedCdps already verified
+Contract cdpManager already verified
 Contract activePool already verified
 Contract stabilityPool already verified
 Contract gasPool already verified
@@ -28,12 +28,12 @@ Contract collSurplusPool already verified
 Contract borrowerOperations already verified
 Contract hintHelpers already verified
 Contract tellorCaller already verified
-Contract lusdToken already verified
+Contract ebtcToken already verified
 Contract objects addresses:
 priceFeed: 0x4c517D4e2C851CA76d7eC94B805269Df0f2201De
-lusdToken: 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
-sortedTroves: 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
-troveManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
+ebtcToken: 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0
+sortedCdps: 0x8FdD3fbFEb32b28fb73555518f8b361bCeA741A6
+cdpManager: 0xA39739EF8b0231DbFA0DcdA07d7e29faAbCf4bb2
 activePool: 0xDf9Eb223bAFBE5c5271415C75aeCD68C21fE3D7F
 stabilityPool: 0x66017D22b0f8556afDd19FC67041899Eb65a21bb
 gasPool: 0x9555b042F969E561855e5F28cB1230819149A8d9
@@ -52,8 +52,8 @@ Contract lqtyStaking already verified
 Contract lockupContractFactory already verified
 Contract communityIssuance already verified
 Contract lqtyToken already verified
-Using previously deployed multiTroveGetter contract at address 0xFc92d0E9Fa35df17E3A6d9F40716ca2cE749922B
-Contract multiTroveGetter already verified
+Using previously deployed multiCdpGetter contract at address 0xFc92d0E9Fa35df17E3A6d9F40716ca2cE749922B
+Contract multiCdpGetter already verified
 Contract objects addresses:
 lqtyStaking: 0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d
 lockupContractFactory: 0x2eBeF24dA09489218Ba2BECb01867F6DaAeDcD4B
@@ -81,24 +81,24 @@ lockupContract addr: 0x5eced47f98e1357E5184FC876335549794FDA513,
             on-chain beneficiary addr: 0x895870D281E4761237f4465AFb51D16c3e124EFC,
             unlockTime: 1649147590
             
-LUSD-ETH Pair's current LUSD reserves: 31826.482999633367186802
-LUSD-ETH Pair's current ETH reserves: 18.863437297094816373
-number of troves: 927 
-Trove list size: 927 
+EBTC-ETH Pair's current EBTC reserves: 31826.482999633367186802
+EBTC-ETH Pair's current ETH reserves: 18.863437297094816373
+number of cdps: 927 
+Cdp list size: 927 
 Entire system debt: 443751316.696782287401628399
 Entire system coll: 589150.996207411458639736
 TCR: 230649547
 Base rate: 0.000053226566903886
 Current borrowing rate: 0.005049901769029583
-Total LUSD SP deposits: 349211423.464829416118634311
+Total EBTC SP deposits: 349211423.464829416118634311
 Total LQTY staked: 6043493.321171291187323274
-Total LP (LUSD-ETH) tokens staked in unipool: 238.899851352510993038
-TroveManager state variables:
-Total trove stakes: 589150.996207411458639736
-Snapshot of total trove stakes before last liq. : 994948.792873839137726074
-Snapshot of total trove collateral before last liq. : 994948.792873839137726074
+Total LP (EBTC-ETH) tokens staked in unipool: 238.899851352510993038
+CdpManager state variables:
+Total cdp stakes: 589150.996207411458639736
+Snapshot of total cdp stakes before last liq. : 994948.792873839137726074
+Snapshot of total cdp collateral before last liq. : 994948.792873839137726074
 L_ETH: 0.000000000000000000
-L_LUSDDebt: 0.000000000000000000
+L_EBTCDebt: 0.000000000000000000
 StabilityPool state variables:
 Product P: 0.909066927285701083
 Current epoch: 0.000000000000000000
@@ -106,7 +106,7 @@ Current scale: 0.000000000000000000
 Sum S, at current epoch and scale: 47558266245298.249172286984828035
 Sum G, at current epoch and scale: 350449993167251463504.649854625191362244
 LQTYStaking state variables:
-F_LUSD: 599.989643222857105441
+F_EBTC: 599.989643222857105441
 F_ETH: 0.000063658734980881
 CommunityIssuance state variables:
 Total LQTY issued to depositors / front ends: 5837417.895164617824000000
