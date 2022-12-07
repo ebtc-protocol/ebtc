@@ -73,7 +73,7 @@
     "solhint": "^3.3.7",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.1.2",
-    "semantic-release": "^17.4.2",
+    "semantic-release": "^19.0.5",
     "semantic-release-monorepo": "^7.0.4",
     "prettier-plugin-solidity": "^1.0.0"
   }
