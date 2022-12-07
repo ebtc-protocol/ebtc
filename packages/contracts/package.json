@@ -24,7 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "decimal.js": "^10.2.0",
+    "decimal.js": "^10.4.3",
     "eth-mutants": "^0.1.1",
     "ethereumjs-util": "^7.0.9",
     "ethers": "^5.4.3",
