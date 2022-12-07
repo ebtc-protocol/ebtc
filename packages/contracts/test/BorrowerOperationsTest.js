@@ -330,7 +330,11 @@ contract('BorrowerOperations', async accounts => {
       const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
 
       await openTrove({ extraLUSDAmount: toBN(dec(5000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
-      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+      const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0);
+      let _colDefaulted = await troveManager.getTroveColl(carolIndex);
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(6000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } })
 
       // --- TEST ---
 
@@ -338,7 +342,12 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice('100000000000000000000');
 
       // Liquidate Carol's Trove,
-      const tx = await troveManager.liquidate(carolIndex, { from: owner });
+      let _ethLiquidatorPre = await web3.eth.getBalance(owner);	  
+      const tx = await troveManager.liquidate(carolIndex, { from: owner });	
+      let _ethLiquidatorPost = await web3.eth.getBalance(owner);	
+      const gasUsedETH = toBN(tx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(tx)).toString()));
+      let _ethSeizedByLiquidator = toBN(_ethLiquidatorPost.toString()).sub(toBN(_ethLiquidatorPre.toString())).add(gasUsedETH);
+      assert.equal(_ethSeizedByLiquidator.toString(), _colDefaulted.toString(), '!liquidator collateral balance');	 
 
       assert.isFalse(await sortedTroves.contains(carolIndex))
 
@@ -364,7 +373,7 @@ contract('BorrowerOperations', async accounts => {
       const alicePendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(aliceIndex)
       const bobPendingLUSDDebtReward = await troveManager.getPendingLUSDDebtReward(bobIndex)
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingLUSDDebtReward, bobPendingLUSDDebtReward]) {
-        assert.isTrue(reward.gt(toBN('0')))
+        assert.isTrue(reward.eq(toBN('0'))) // no redistribution over liquidation
       }
 
       // Alice and Bob top up their Troves
@@ -469,13 +478,16 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)	
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(6000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
 
       // Bob gets liquidated
-      await troveManager.liquidate(bobIndex)
+      await troveManager.liquidate(bobIndex, {from: owner})
 
       assert.isFalse(await sortedTroves.contains(bobIndex))
 
@@ -757,12 +769,12 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
 
       const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
-
+      let _withdrawTx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 10000000000 })
+      let _gasEtherUsed = toBN(_withdrawTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_withdrawTx)).toString()));
       const alice_ETHBalance_After = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before)
-
-      assert.isTrue(balanceDiff.eq(toBN(dec(1, 'ether'))))
+      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before).add(_gasEtherUsed);
+      console.log('_gasEtherUsed=' + _gasEtherUsed + ',alice_ETHBalance_After=' + alice_ETHBalance_After + ',alice_ETHBalance_Before=' + alice_ETHBalance_Before);
+      assert.equal(balanceDiff.toString(), toBN(dec(1, 'ether')).toString());
     })
 
     it("withdrawColl(): applies pending rewards and updates user's L_ETH, L_LUSDDebt snapshots", async () => {
@@ -781,7 +793,10 @@ contract('BorrowerOperations', async accounts => {
       const aliceCollBefore = await getTroveEntireColl(aliceIndex)
       const aliceDebtBefore = await getTroveEntireDebt(aliceIndex)
       const bobCollBefore = await getTroveEntireColl(bobIndex)
-      const bobDebtBefore = await getTroveEntireDebt(bobIndex)
+      const bobDebtBefore = await getTroveEntireDebt(bobIndex)	
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(6000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
       // --- TEST ---
 
@@ -814,7 +829,7 @@ contract('BorrowerOperations', async accounts => {
       const pendingCollReward_B = await troveManager.getPendingETHReward(bobIndex)
       const pendingDebtReward_B = await troveManager.getPendingLUSDDebtReward(bobIndex)
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
-        assert.isTrue(reward.gt(toBN('0')))
+        assert.isTrue(reward.eq(toBN('0'))) // no redistribution over liquidation
       }
 
       // Alice and Bob withdraw from their Troves
@@ -1580,22 +1595,26 @@ contract('BorrowerOperations', async accounts => {
 
     it("repayLUSD(): Succeeds when it would leave trove with net debt >= minimum net debt", async () => {
       // Make the LUSD request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
+      let _colAmt = dec(1000, 18);
+      await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: _colAmt })
       const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
 
       const repayTxA = await borrowerOperations.repayLUSD(AIndex, 1, AIndex, AIndex, { from: A })
       assert.isTrue(repayTxA.receipt.status)
 
-      await borrowerOperations.openTrove(th._100pct, dec(20, 25), B, B, { from: B, value: dec(100, 30) })
+      let _debtAmt = dec(20, 21);
+      let _repayAmt = dec(10, 21);
+      await borrowerOperations.openTrove(th._100pct, _debtAmt, B, B, { from: B, value: _colAmt })
       const BIndex = await sortedTroves.troveOfOwnerByIndex(B,0)
 
-      const repayTxB = await borrowerOperations.repayLUSD(BIndex, dec(19, 25), BIndex, BIndex, { from: B })
+      const repayTxB = await borrowerOperations.repayLUSD(BIndex, _repayAmt, BIndex, BIndex, { from: B })
       assert.isTrue(repayTxB.receipt.status)
     })
 
     it("repayLUSD(): reverts when it would leave trove with net debt < minimum net debt", async () => {
       // Make the LUSD request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
+      let _colAmt = dec(1000, 18);
+      await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: _colAmt })
       const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayLUSD(AIndex, 2, AIndex, AIndex, { from: A })
@@ -3116,13 +3135,16 @@ contract('BorrowerOperations', async accounts => {
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+      const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)	
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
       
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
 
       // Liquidate Bob
-      await troveManager.liquidate(bobIndex)
+      await troveManager.liquidate(bobIndex, {from: owner})
       assert.isFalse(await sortedTroves.contains(bobIndex))
 
       // Price bounces back
@@ -3141,19 +3163,19 @@ contract('BorrowerOperations', async accounts => {
       // Get Alice's pending reward snapshots 
       const L_ETH_A_Snapshot = (await troveManager.rewardSnapshots(aliceIndex))[0]
       const L_LUSDDebt_A_Snapshot = (await troveManager.rewardSnapshots(aliceIndex))[1]
-      assert.isTrue(L_ETH_A_Snapshot.gt(toBN('0')))
-      assert.isTrue(L_LUSDDebt_A_Snapshot.gt(toBN('0')))
+      assert.isTrue(L_ETH_A_Snapshot.eq(toBN('0')))
+      assert.isTrue(L_LUSDDebt_A_Snapshot.eq(toBN('0')))// no redistribution over liquidation
 
       // Liquidate Carol
-      await troveManager.liquidate(carolIndex)
+      await troveManager.liquidate(carolIndex, {from: owner})
       assert.isFalse(await sortedTroves.contains(carolIndex))
 
       // Get Alice's pending reward snapshots after Carol's liquidation. Check above 0
       const L_ETH_Snapshot_A_AfterLiquidation = (await troveManager.rewardSnapshots(aliceIndex))[0]
       const L_LUSDDebt_Snapshot_A_AfterLiquidation = (await troveManager.rewardSnapshots(aliceIndex))[1]
 
-      assert.isTrue(L_ETH_Snapshot_A_AfterLiquidation.gt(toBN('0')))
-      assert.isTrue(L_LUSDDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
+      assert.isTrue(L_ETH_Snapshot_A_AfterLiquidation.eq(toBN('0')))
+      assert.isTrue(L_LUSDDebt_Snapshot_A_AfterLiquidation.eq(toBN('0')))
 
       // to compensate borrowing fees
       await lusdToken.transfer(alice, await lusdToken.balanceOf(dennis), { from: dennis })
@@ -3339,6 +3361,7 @@ contract('BorrowerOperations', async accounts => {
 
     it("closeTrove(): applies pending rewards", async () => {
       // --- SETUP ---
+      await bn8Signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("40000")});
       await openTrove({ extraLUSDAmount: toBN(dec(1000000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       const whaleIndex = await sortedTroves.troveOfOwnerByIndex(whale,0)
@@ -3359,7 +3382,10 @@ contract('BorrowerOperations', async accounts => {
 
       // Whale transfers to A and B to cover their fees
       await lusdToken.transfer(alice, dec(10000, 18), { from: whale })
-      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })
+      await lusdToken.transfer(bob, dec(10000, 18), { from: whale })	
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
       // --- TEST ---
 
@@ -3367,8 +3393,15 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(100, 18));
       const price = await priceFeed.getPrice()
 
-      // liquidate Carol's Trove, Alice and Bob earn rewards.
-      const liquidationTx = await troveManager.liquidate(carolIndex, { from: owner });
+      // liquidate Carol's Trove, Alice and Bob earn rewards. 
+      let _ethLiquidatorPre = await web3.eth.getBalance(owner);	  
+      let _debtLiquidatorPre = await lusdToken.balanceOf(owner);  
+      const liquidationTx = await troveManager.liquidate(carolIndex, { from: owner }); 
+      let _ethLiquidatorPost = await web3.eth.getBalance(owner);	  
+      let _debtLiquidatorPost = await lusdToken.balanceOf(owner);
+      let _debtDecreased = toBN(_debtLiquidatorPre.toString()).sub(toBN(_debtLiquidatorPost.toString()));
+      const gasUsedETH = toBN(liquidationTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(liquidationTx)).toString()));
+      let _ethSeizedByLiquidator = toBN(_ethLiquidatorPost.toString()).sub(toBN(_ethLiquidatorPre.toString())).add(gasUsedETH);
       const [liquidatedDebt_C, liquidatedColl_C, gasComp_C] = th.getEmittedLiquidationValues(liquidationTx)
 
       // Dennis opens a new Trove (Carol?)
@@ -3396,14 +3429,14 @@ contract('BorrowerOperations', async accounts => {
       const defaultPool_ETH = await defaultPool.getETH()
       const defaultPool_LUSDDebt = await defaultPool.getLUSDDebt()
 
-      // Carol's liquidated coll (1 ETH) and drawn debt should have entered the Default Pool
-      assert.isAtMost(th.getDifference(defaultPool_ETH, liquidatedColl_C), 100)
-      assert.isAtMost(th.getDifference(defaultPool_LUSDDebt, liquidatedDebt_C), 100)
+      // Carol's liquidated coll (1 ETH) and drawn debt should have sent to and burnt from liquidator
+      assert.isAtMost(th.getDifference(_ethSeizedByLiquidator, liquidatedColl_C), 100)
+      assert.isAtMost(th.getDifference(_debtDecreased, liquidatedDebt_C), 100)
 
       const pendingCollReward_A = await troveManager.getPendingETHReward(aliceIndex)
       const pendingDebtReward_A = await troveManager.getPendingLUSDDebtReward(aliceIndex)
-      assert.isTrue(pendingCollReward_A.gt('0'))
-      assert.isTrue(pendingDebtReward_A.gt('0'))
+      assert.equal(pendingCollReward_A.toString(), '0')
+      assert.equal(pendingDebtReward_A.toString(), '0') // no redistribution over liquidation
 
       // Close Alice's trove. Alice's pending rewards should be removed from the DefaultPool when she close.
       await borrowerOperations.closeTrove(aliceIndex, { from: alice })
@@ -3521,12 +3554,14 @@ contract('BorrowerOperations', async accounts => {
 
     it("openTrove(): Opens a trove with net debt >= minimum net debt", async () => {
       // Add 1 wei to correct for rounding error in helper function
-      const txA = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
+      let _colAmt = dec(1000, 18);
+      const txA = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _colAmt })
       assert.isTrue(txA.receipt.status)
       const AIndex = await sortedTroves.troveOfOwnerByIndex(A,0)
       assert.isTrue(await sortedTroves.contains(AIndex))
 
-      const txC = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(dec(47789898, 22)))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      let _debtAmt = toBN(dec(47789898,14));
+      const txC = await borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_debtAmt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
       assert.isTrue(txC.receipt.status)
 
       const CIndex = await sortedTroves.troveOfOwnerByIndex(C,0)
@@ -3534,13 +3569,14 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openTrove(): reverts if net debt < minimum net debt", async () => {
-      const txAPromise = borrowerOperations.openTrove(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
+      let _colAmt = dec(1000, 18);
+      const txAPromise = borrowerOperations.openTrove(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _colAmt })
       await assertRevert(txAPromise, "revert")
 
-      const txBPromise = borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 30) })
+      const txBPromise = borrowerOperations.openTrove(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openTrove(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      const txCPromise = borrowerOperations.openTrove(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
       await assertRevert(txCPromise, "revert")
     })
 
@@ -4181,6 +4217,9 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
       const carolIndex = await sortedTroves.troveOfOwnerByIndex(carol,0)
+	  
+      // liquidator get some debt asset to repay
+      await openTrove({ extraLUSDAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
       // --- TEST ---
 
@@ -4197,8 +4236,8 @@ contract('BorrowerOperations', async accounts => {
       const L_ETH = await troveManager.L_ETH()
       const L_LUSD = await troveManager.L_LUSDDebt()
 
-      assert.isTrue(L_ETH.gt(toBN('0')))
-      assert.isTrue(L_LUSD.gt(toBN('0')))
+      assert.isTrue(L_ETH.eq(toBN('0')))
+      assert.isTrue(L_LUSD.eq(toBN('0')))// no redistribution over liquidation
 
       // Bob opens trove
       await openTrove({ extraLUSDAmount: toBN(dec(10000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
@@ -4436,13 +4475,17 @@ contract('BorrowerOperations', async accounts => {
         const troveLUSDAmount = await getOpenTroveLUSDAmount(troveTotalDebt)
         await borrowerOperations.openTrove(th._100pct, troveLUSDAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: troveColl })
         await borrowerOperations.openTrove(th._100pct, troveLUSDAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4455,8 +4498,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price)
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (troveColl.add(toBN('0'))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4472,10 +4515,14 @@ contract('BorrowerOperations', async accounts => {
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4488,8 +4535,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(200, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
+        const expectedTCR = (troveColl.add(toBN('0'))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')).add(toBN(debtChange)))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4505,10 +4552,14 @@ contract('BorrowerOperations', async accounts => {
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4520,8 +4571,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, false, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl)).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
+        const expectedTCR = (troveColl.add(toBN('0'))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')).sub(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4537,10 +4588,14 @@ contract('BorrowerOperations', async accounts => {
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4552,8 +4607,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).add(toBN(collChange))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (troveColl.add(toBN('0')).add(toBN(collChange))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4569,10 +4624,14 @@ contract('BorrowerOperations', async accounts => {
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4585,8 +4644,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, false, debtChange, true, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).sub(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt))
+        const expectedTCR = (troveColl.add(toBN('0')).sub(toBN(dec(1, 'ether')))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
@@ -4602,10 +4661,13 @@ contract('BorrowerOperations', async accounts => {
 
         const aliceIndex = await sortedTroves.troveOfOwnerByIndex(alice,0)
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await openTrove({ extraLUSDAmount: toBN(dec(200000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4634,10 +4696,13 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openTrove(th._100pct, troveLUSDAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: troveColl })
 
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await openTrove({ extraLUSDAmount: toBN(dec(200000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: owner } });
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4666,10 +4731,14 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openTrove(th._100pct, troveLUSDAmount, bob, bob, { from: bob, value: troveColl })
 
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4682,14 +4751,14 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, true, debtChange, false, price))
 
-        const expectedTCR = (troveColl.add(liquidatedColl).add(toBN(dec(1, 'ether')))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).sub(toBN(dec(100, 18))))
+        const expectedTCR = (troveColl.add(toBN('0')).add(toBN(dec(1, 'ether')))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')).sub(toBN(dec(100, 18))))
 
         assert.isTrue(newTCR.eq(expectedTCR))
       })
 
       // -ve, +ve
-      xit("collChange is negative, debtChange is positive", async () => {
+      it("collChange is negative, debtChange is positive", async () => {
         // --- SETUP --- Create a Liquity instance with an Active Pool and pending rewards (Default Pool)
         const troveColl = toBN(dec(1000, 'ether'))
         const troveTotalDebt = toBN(dec(100000, 18))
@@ -4698,10 +4767,14 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openTrove(th._100pct, troveLUSDAmount, bob, bob, { from: bob, value: troveColl })
 
         const bobIndex = await sortedTroves.troveOfOwnerByIndex(bob,0)
+	  
+        // liquidator get some debt asset to repay
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(alice)), { from: alice});
+        await lusdToken.transfer(owner, (await lusdToken.balanceOf(bob)), { from: bob});
 
         await priceFeed.setPrice(dec(100, 18))
 
-        const liquidationTx = await troveManager.liquidate(bobIndex)
+        const liquidationTx = await troveManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedTroves.contains(bobIndex))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
@@ -4713,10 +4786,12 @@ contract('BorrowerOperations', async accounts => {
         const collChange = dec(1, 18)
         const debtChange = await getNetBorrowingAmount(dec(200, 18))
         const newTCR = (await borrowerOperations.getNewTCRFromTroveChange(collChange, false, debtChange, true, price))
+        let _debtSystem = await troveManager.getEntireSystemDebt();
+        let _colSystem = await troveManager.getEntireSystemColl();
 
-        const expectedTCR = (troveColl.add(liquidatedColl).sub(toBN(collChange))).mul(price)
-          .div(troveTotalDebt.add(liquidatedDebt).add(toBN(debtChange)))
-
+        const expectedTCR = (troveColl.add(toBN('0')).sub(toBN(collChange))).mul(price)
+          .div(troveTotalDebt.add(toBN('0')).add(toBN(debtChange)))
+		  
         assert.isTrue(newTCR.eq(expectedTCR))
       })
     })
@@ -4737,7 +4812,8 @@ contract('BorrowerOperations', async accounts => {
         const _100pctHex = '0xde0b6b3a7640000'
         const _1e25Hex = '0xd3c21bcecceda1000000'
         const openTroveData = th.getTransactionData('openTrove(uint256,uint256,bytes32,bytes32)', [_100pctHex, _1e25Hex, th.DUMMY_BYTES32, th.DUMMY_BYTES32])
-        await nonPayable.forward(borrowerOperations.address, openTroveData, { value: dec(10000, 'ether') })
+        await bn8Signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("1000")});
+        await nonPayable.forward(borrowerOperations.address, openTroveData, { from: owner, value: dec(10000, 'ether') })
 
         const nonPayableIndex = await sortedTroves.troveOfOwnerByIndex(nonPayable.address,0)
 

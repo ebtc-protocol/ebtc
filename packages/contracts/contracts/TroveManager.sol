@@ -353,6 +353,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         totalStakesSnapshot = totalStakes;
         totalCollateralSnapshot = _contractsCache.activePool.getETH().sub(totalColToSend);
 		
+        emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
+		
         // burn the debt from liquidator
         _contractsCache.lusdToken.burn(msg.sender, totalDebtToBurn);
 		
