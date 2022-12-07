@@ -59,7 +59,7 @@
   "deprecated": false,
   "description": "A mutation testing tool for Solidity contracts",
   "devDependencies": {
-    "prettier": "1.14.2"
+    "prettier": "2.8.1"
   },
   "homepage": "https://github.com/federicobond/eth-mutants#readme",
   "keywords": [
