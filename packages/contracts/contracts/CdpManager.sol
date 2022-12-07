@@ -47,7 +47,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
     uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
-    uint public constant INTEREST_RATE_PER_SECOND = 1000000000630000000; // 2% per year
+    uint public constant INTEREST_RATE_PER_SECOND = 630000000; // 2% per year
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
