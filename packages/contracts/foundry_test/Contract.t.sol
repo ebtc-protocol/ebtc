@@ -2,19 +2,16 @@
 pragma solidity 0.6.11;
 
 import "forge-std/Test.sol";
+import {eBTCBaseFixture} from "./BaseFixture.sol";
 
-contract DummyTest is Test {
+contract DummyTest is eBTCBaseFixture {
     uint256 private testNumber;
 
-    function setUp() public {
-        testNumber = 42;
+    function setUp() public override {
+        eBTCBaseFixture.setUp();
     }
 
-    function testNumberIs42() public {
-        assertEq(testNumber, 42);
-    }
-
-    function testFailLessthanNumber() public {
-        require(testNumber < 40);
+    function testCdpsCountEqToZero() public {
+        assertEq(cdpManager.getCdpIdsCount(), 0);
     }
 }
