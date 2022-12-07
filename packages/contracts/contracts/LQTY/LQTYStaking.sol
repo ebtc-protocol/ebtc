@@ -230,8 +230,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
     function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress ||
-            msg.sender == cdpManagerAddress,
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
             "LQTYStaking: Caller is neither BorrowerOperations nor CdpManager"
         );
     }

@@ -90,9 +90,9 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         while (currentCdpuser != address(0) && remainingEBTC > 0 && _maxIterations-- > 0) {
             uint pendingEBTC;
             {
-                (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager.getPendingEBTCDebtReward(currentCdpId);
+                (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager
+                    .getPendingEBTCDebtReward(currentCdpId);
                 pendingEBTC = pendingEBTCDebtReward.add(pendingEBTCInterest);
-
             }
 
             uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(pendingEBTC);

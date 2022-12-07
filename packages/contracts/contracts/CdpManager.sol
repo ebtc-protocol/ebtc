@@ -47,7 +47,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
     uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
-    uint constant public INTEREST_RATE_PER_SECOND = 1000000000630000000; // 2% per year
+    uint public constant INTEREST_RATE_PER_SECOND = 1000000000630000000; // 2% per year
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
@@ -109,12 +109,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // TODO: Update for compound interest
     /*
-    * L_EBTCInterest tracks the interest accumulated on a unit debt position. During its lifetime, each cdp earns:
-    *
-    * A EBTCDebt increase of ( debt * [L_EBTCInterest - L_EBTCInterest(0)] / L_EBTCInterest(0) )
-    *
-    * Where L_EBTCInterest(0) is the snapshot of L_EBTCInterest for the active cdp taken at the instant the cdp was opened
-    */
+     * L_EBTCInterest tracks the interest accumulated on a unit debt position. During its lifetime, each cdp earns:
+     *
+     * A EBTCDebt increase of ( debt * [L_EBTCInterest - L_EBTCInterest(0)] / L_EBTCInterest(0) )
+     *
+     * Where L_EBTCInterest(0) is the snapshot of L_EBTCInterest for the active cdp taken at the instant the cdp was opened
+     */
     uint public L_EBTCInterest;
 
     // Map active cdps to their RewardSnapshot
@@ -1074,7 +1074,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _defaultPool.sendETHToActivePool(_ETH);
     }
 
-    function _mintPendingEBTCInterest(ILQTYStaking _lqtyStaking, IEBTCToken _ebtcToken, uint _EBTCInterest) internal {
+    function _mintPendingEBTCInterest(
+        ILQTYStaking _lqtyStaking,
+        IEBTCToken _ebtcToken,
+        uint _EBTCInterest
+    ) internal {
         // Send interest to LQTY staking contract
         _lqtyStaking.increaseF_EBTC(_EBTCInterest);
         _ebtcToken.mint(address(_lqtyStaking), _EBTCInterest);
@@ -1415,11 +1419,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             // Compute pending rewards
             uint pendingETHReward = getPendingETHReward(_cdpId);
-            (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
+            (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = getPendingEBTCDebtReward(
+                _cdpId
+            );
 
             // Apply pending rewards to cdp's state
             Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(pendingETHReward);
-            Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward).add(pendingEBTCInterest);
+            Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward).add(
+                pendingEBTCInterest
+            );
 
             _updateCdpRewardSnapshots(_cdpId);
 
@@ -1472,14 +1480,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         return pendingETHReward;
     }
-    
+
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
 
-        if ( Cdps[_cdpId].status != Status.active) { return (0, 0); }
+        if (Cdps[_cdpId].status != Status.active) {
+            return (0, 0);
+        }
 
-        uint stake =  Cdps[_cdpId].stake;
+        uint stake = Cdps[_cdpId].stake;
         uint initialDebt = Cdps[_cdpId].debt.sub(EBTC_GAS_COMPENSATION); // TODO: Check
 
         uint L_EBTCDebt_new = L_EBTCDebt;
@@ -1489,10 +1499,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
-                uint unitInterestPlusOne = DECIMAL_PRECISION.add(interestRatePerSecond.mul(timeElapsed));
+                uint unitInterestPlusOne = DECIMAL_PRECISION.add(
+                    interestRatePerSecond.mul(timeElapsed)
+                );
 
                 L_EBTCDebt_new = L_EBTCDebt_new.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
-                L_EBTCInterest_new = L_EBTCInterest_new.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
+                L_EBTCInterest_new = L_EBTCInterest_new.mul(unitInterestPlusOne).div(
+                    DECIMAL_PRECISION
+                );
             }
         }
 
@@ -1524,7 +1538,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             return false;
         }
 
-        return (rewardSnapshots[_cdpId].ETH < L_ETH || rewardSnapshots[_cdpId].EBTCInterest < L_EBTCInterest);
+        return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+            rewardSnapshots[_cdpId].EBTCInterest < L_EBTCInterest);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions.
@@ -1534,7 +1549,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         public
         view
         override
-        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingEBTCInterest, uint pendingETHReward)
+        returns (
+            uint debt,
+            uint coll,
+            uint pendingEBTCDebtReward,
+            uint pendingEBTCInterest,
+            uint pendingETHReward
+        )
     {
         debt = Cdps[_cdpId].debt;
         coll = Cdps[_cdpId].coll;
@@ -1643,7 +1664,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // New pending reward functions for interest rates
     function _tickInterest() internal {
         uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
-        if (timeElapsed > 0) { // timeElapsed >= interestTimeWindow 
+        if (timeElapsed > 0) {
+            // timeElapsed >= interestTimeWindow
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
@@ -1667,7 +1689,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 activePool.increaseEBTCDebt(activeDebtInterest);
                 defaultPool.increaseEBTCDebt(defaultDebtInterest);
 
-                _mintPendingEBTCInterest(lqtyStaking, ebtcToken, activeDebtInterest.add(defaultDebtInterest));
+                _mintPendingEBTCInterest(
+                    lqtyStaking,
+                    ebtcToken,
+                    activeDebtInterest.add(defaultDebtInterest)
+                );
             }
         }
     }

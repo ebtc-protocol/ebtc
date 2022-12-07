@@ -318,8 +318,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
 
     function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress ||
-            msg.sender == cdpManagerAddress,
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
             "LUSD: Caller is neither BorrowerOperations nor CdpManager"
         );
     }

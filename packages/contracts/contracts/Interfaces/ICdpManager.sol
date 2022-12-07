@@ -121,7 +121,13 @@ interface ICdpManager is ILiquityBase {
     )
         external
         view
-        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingEBTCInterest, uint pendingETHReward);
+        returns (
+            uint debt,
+            uint coll,
+            uint pendingEBTCDebtReward,
+            uint pendingEBTCInterest,
+            uint pendingETHReward
+        );
 
     function closeCdp(bytes32 _cdpId) external;
 
