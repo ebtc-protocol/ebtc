@@ -12,6 +12,10 @@ import {StabilityPool} from "../contracts/StabilityPool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
+import {LQTYStaking} from "../contracts/LQTY/LQTYStaking.sol";
+import {LQTYToken} from "../contracts/LQTY/LQTYToken.sol";
+import {LockupContractFactory} from "../contracts/LQTY/LockupContractFactory.sol";
+import {CommunityIssuance} from "../contracts/LQTY/CommunityIssuance.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
@@ -19,7 +23,7 @@ import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
 contract eBTCBaseFixture is Test {
     using SafeMath for uint256;
-    uint256 constant maxBytes32 = 0;
+    uint256 constant maxBytes32 = 100;
 
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
@@ -33,6 +37,12 @@ contract eBTCBaseFixture is Test {
     BorrowerOperations borrowerOperations;
     HintHelpers hintHelpers;
     EBTCToken eBTCToken;
+
+    // LQTY Stuff
+    LQTYToken lqtyToken;
+    LQTYStaking lqtyStaking;
+    LockupContractFactory lockupContractFactory;
+    CommunityIssuance communityIssuance;
 
     /* setUp() - basic function to call when setting up new Foundry test suite
     Use in pair with connectCoreContracts to wire up infrastructure
@@ -54,6 +64,19 @@ contract eBTCBaseFixture is Test {
         eBTCToken = new EBTCToken(
             address(cdpManager), address(stabilityPool), address(borrowerOperations)
         );
+
+        // Liquity Stuff
+        lqtyStaking = new LQTYStaking();
+        lockupContractFactory = new LockupContractFactory();
+        communityIssuance = new CommunityIssuance();
+        lqtyToken = new LQTYToken(
+            address(communityIssuance),
+            address(lqtyStaking),
+            address(lockupContractFactory),
+            address(address(this)),
+            address(address(this)),
+            address(address(this))
+        );
     }
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
     */
@@ -74,10 +97,8 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(eBTCToken),
             address(sortedCdps),
-            // Liquity Token Address
-            address(0),
-            // Liquity Staking Address
-            address(0)
+            address(lqtyToken),
+            address(lqtyStaking)
         );
 
         // set contracts in BorrowerOperations
@@ -91,8 +112,7 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
-            // Liquity Staking Address
-            address(0)
+            address(lqtyStaking)
         );
 
         // set contracts in stabilityPool
@@ -103,8 +123,7 @@ contract eBTCBaseFixture is Test {
             address(eBTCToken),
             address(sortedCdps),
             address(priceFeedMock),
-            // Liquity Community Issuance Address
-            address(0)
+            address(communityIssuance)
         );
 
         // set contracts in activePool
@@ -128,4 +147,22 @@ contract eBTCBaseFixture is Test {
         // set contracts in HintHelpers
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager));
     }
+    /* connectLQTYContracts() - wire up necessary liquity contracts
+    */
+    function connectLQTYContracts() public virtual {
+        lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
+    }
+
+    /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
+    */
+    function connectLQTYContractsToCore() public virtual {
+        lqtyStaking.setAddresses(
+            address(lqtyToken),
+            address(eBTCToken),
+            address(cdpManager),
+            address(borrowerOperations),
+            address(activePool)
+        );
+    }
+
 }
