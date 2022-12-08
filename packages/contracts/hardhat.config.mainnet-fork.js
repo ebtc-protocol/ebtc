@@ -17,11 +17,9 @@ const alchemyUrl = () => {
         } else {
             console.error("Add a an alchemyAPIKey to ./secrets.js!")
         }
-        
     } else {
         console.error("Add a ./secrets.js file!")
     }
-    
 }
 
 module.exports = {

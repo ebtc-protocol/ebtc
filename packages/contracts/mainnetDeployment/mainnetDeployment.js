@@ -5,8 +5,9 @@ const { ChainlinkAggregatorV3Interface } = require("./ABIs/ChainlinkAggregatorV3
 const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js")
 const { dec } = th
 const MainnetDeploymentHelper = require("../utils/mainnetDeploymentHelpers.js")
-const toBigNum = ethers.BigNumber.from
 const fs = require("fs");
+
+const toBigNum = ethers.BigNumber.from
 
 async function mainnetDeploy(configParams) {
   const date = new Date()

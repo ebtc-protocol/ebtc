@@ -1485,26 +1485,38 @@ yarn save-live-version
 
 This copies the contract artifacts to a version controlled area (`packages/lib/live`) then checks that you really did deploy to all the networks. Next you need to commit and push all changed files. The repo's GitHub workflow will then build a new Docker image of the frontend interfacing with the new addresses.
 
-#### Start a local blockchain and deploy the contracts
 
+#### Start a local fork blockchain and deploy the contracts
+1. Create a `secrets.js` file within the @ebtc/contracts workspace (You can use this [template](packages/contracts/secrets.js.template))
+2. Add an `alchemyAPIKey` to the file
+3. Open a separate command line window, navigate to the ebtc project's root and call the following to launch the local fork nework:
 ```
-yarn start-dev-chain
+yarn start-fork
+```
+4. On the main command line window, navigate to the ebtc project's root and call the following to run the local deployment script:
+```
+yarn fork-deployment
 ```
 
-Starts an openethereum node in a Docker container, running the [private development chain](https://openethereum.github.io/Private-development-chain), then deploys the contracts to this chain.
+The script will do the following:
+- Deploy all contracts locally and connect and configure them
+- Open a CDP position from the first local account
+- Create a Uniswap trading pair for eBTC/wETH and seed it
+- Open a CDP position from the second local account
+- Output all local deployment addresses to a new file called `localForkDeploymentOutput.json` under `packages/contracts/mainnetDeployment/`
 
-You may want to use this before starting the dev-frontend in development mode. To use the newly deployed contracts, switch MetaMask to the built-in "Localhost 8545" network.
+**NOTES:**
+- Should the script be runned again under the same active local network, the deployed addresses will be reused
+- Terminating the local fork network will flush the deployment state. Starting a new environment will require a new deployment, the script will automatically delete your latest deployment record and create a new one if it detects that the addresses doesn't match any instance of the contracts on the new network
+- Bear in mind that redeploying sometimes lead to new addresses being generated
+
 
 > Q: How can I get Ether on the local blockchain?  
-> A: Import this private key into MetaMask:  
-> `0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7`  
-> This account has all the Ether you'll ever need.
+> A: Import this private key into MetaMask (deployer) or any of the 2000 private keys from the following [file](packages/contracts/hardhatAccountsList2k.js):  
+> `0x60ddFE7f579aB6867cbE7A2Dc03853dC141d7A4aB6DBEFc0Dae2d2B1Bd4e487F` 
+> These accounts have all the Ether you'll ever need.
 
-Once you no longer need the local node, stop it with:
 
-```
-yarn stop-dev-chain
-```
 
 #### Start dev-frontend in development mode
 
