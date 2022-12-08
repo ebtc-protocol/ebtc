@@ -512,6 +512,32 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         return _recoveryState;
     }
 	
+    // liquidate _n most risky CDPs COMPLETELY by repaying debts in FULL, only callable in normal mode at the specific moment of invocation
+    function liquidateSequentially(uint256 _n) external override nonReentrant {
+        ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);
+        uint256 _price = priceFeed.fetchPrice();
+
+        // check precondition (avoid stack too deep)
+        {		
+            bool _recoveryModeAtStart = _checkRecoveryMode(_price);
+            require(!_recoveryModeAtStart, '!normalMode');
+        }
+
+        // loop over sorted CDPs to liquidate one by one, starting from most risky Trove
+        bytes32 _troveId = _contractsCache.sortedTroves.getLast();
+        bytes32 firstId = _contractsCache.sortedTroves.getFirst();
+        for (uint i = 0; i < _n && _troveId != firstId; i++) {
+             uint256 _ICR = getCurrentICR(_troveId, _price);
+             if (_ICR >= MCR){
+                 break;
+             }
+             bytes32 _nextId = _contractsCache.sortedTroves.getPrev(_troveId);
+             LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(_troveId, 0, _price, _ICR, _troveId, _troveId, false, 0);
+             _liquidateTroveInternally(_contractsCache, _liqState);	
+             _troveId = _nextId;
+        }
+    }
+	
     // liquidate _n most risky CDPs COMPLETELY by repaying debts in FULL, only callable in recovery mode at the specific moment of invocation
     function liquidateSequentiallyInRecovery(uint256 _n) external override nonReentrant {
         ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);

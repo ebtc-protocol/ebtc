@@ -611,6 +611,56 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       assert.equal(toBN(_sysDebt.toString()).toString(), toBN(_aliceDebt.toString()).toString());	 	  
       assert.equal(toBN(_sysDebt.toString()).toString(), toBN(_activeDebt.toString()).toString());	  	  
       assert.isFalse(await troveManager.checkRecoveryMode(_newPrice));
-  })
+  })    
+  
+  it("liquidateSequentially(): liquidate _n most risky CDPs in normal mode", async () => {
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).mul(toBN('5')), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
+      await openTrove({ ICR: toBN(dec(179, 16)), extraLUSDAmount: toBN(dec(700, 18)), extraParams: { from: bob } })
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId));
+	  
+      await openTrove({ ICR: toBN(dec(169, 16)), extraParams: { from: carol } })
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);	  
+      await openTrove({ ICR: toBN(dec(159, 16)), extraParams: { from: owner } })
+      let _ownerTroveId = await sortedTroves.troveOfOwnerByIndex(owner, 0);
+	  	  
+      let _newPrice = dec(120, 18);
+      await priceFeed.setPrice(_newPrice);	  
+	  
+      let _MCR = toBN(dec(110,16));
+      let _bobICR = await troveManager.getCurrentICR(_bobTroveId, _newPrice);
+      let _carolICR = await troveManager.getCurrentICR(_carolTroveId, _newPrice);
+      let _ownerICR = await troveManager.getCurrentICR(_ownerTroveId, _newPrice);
+      assert.isTrue(toBN(_bobICR.toString()).lt(_MCR));
+      assert.isTrue(toBN(_carolICR.toString()).lt(_MCR));
+      assert.isTrue(toBN(_ownerICR.toString()).lt(_MCR));
+	  
+      let _bobDebt = await troveManager.getTroveDebt(_bobTroveId);
+      let _carolDebt = await troveManager.getTroveDebt(_carolTroveId);
+      let _ownerDebt = await troveManager.getTroveDebt(_ownerTroveId);
+      let _liquidatedDebt = toBN(_bobDebt.toString()).add(toBN(_carolDebt.toString())).add(toBN(_ownerDebt.toString()));
+	  
+      let _bobColl = await troveManager.getTroveColl(_bobTroveId);
+      let _carolColl = await troveManager.getTroveColl(_carolTroveId);
+      let _ownerColl = await troveManager.getTroveColl(_ownerTroveId);
+      let _liquidatedColl = toBN(_bobColl.toString()).add(toBN(_carolColl.toString())).add(toBN(_ownerColl.toString()));
+	  	  
+      let _debtInLiquidatorPre = await debtToken.balanceOf(alice);
+      let _ethLiquidatorPre = await web3.eth.getBalance(alice);	  
+      let _liqTx = await troveManager.liquidateSequentially(3, {from: alice});
+      let _debtInLiquidatorPost = await debtToken.balanceOf(alice);  
+      let _ethLiquidatorPost = await web3.eth.getBalance(alice);  	  	  
+      const gasUsedETH = toBN(_liqTx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_liqTx).toString()));
+      let _ethSeizedByLiquidator = toBN(_ethLiquidatorPost.toString()).sub(toBN(_ethLiquidatorPre.toString())).add(gasUsedETH); 	  
+      let _debtInLiquidatorDecreased = toBN(_debtInLiquidatorPre.toString()).sub(toBN(_debtInLiquidatorPost.toString()));
+	  
+      assert.equal(_debtInLiquidatorDecreased.toString(), _liquidatedDebt.toString());
+      assert.equal(_ethSeizedByLiquidator.toString(), _liquidatedColl.toString());
+      assert.isFalse((await sortedTroves.contains(_bobTroveId)));
+      assert.isFalse((await sortedTroves.contains(_carolTroveId)));
+      assert.isFalse((await sortedTroves.contains(_ownerTroveId)));
+	  
+  });
   
 })
