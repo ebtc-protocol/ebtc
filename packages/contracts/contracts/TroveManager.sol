@@ -347,8 +347,6 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
             emit TroveUpdated(_troveId, _borrower, Troves[_troveId].debt, Troves[_troveId].coll, Troves[_troveId].stake, TroveManagerOperation.partiallyLiquidateInNormalMode);		
         }
 		
-        // TODO accrue and deduct interest fee accordingly
-		
         // update the staking and collateral snapshots
         totalStakesSnapshot = totalStakes;
         totalCollateralSnapshot = _contractsCache.activePool.getETH().sub(totalColToSend);
@@ -365,6 +363,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     // liquidate (and close) the Trove from an external liquidator
     // this function would return the liquidated debt and collateral of the given Trove
     function _liquidateATroveByExternalLiquidator(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
+		
+        // TODO accrue and deduct interest fee accordingly
+		
         // calculate entire debt to repay
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
 		
@@ -386,6 +387,9 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     // liquidate partially the Trove from an external liquidator
     // this function would return the liquidated debt and collateral of the given Trove
     function _liquidateATrovePartially(ContractsCache memory _contractsCache, bytes32 _troveId, uint256 _partialRatio, uint256 _price, uint256 _ICR) private returns (uint256, uint256) {
+		
+        // TODO accrue and deduct interest fee accordingly
+		
         // calculate entire debt to repay
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
 		
@@ -412,6 +416,123 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         _partiallyReduceTroveDebt(_troveId, _partialDebt, _partialColl);
 
         return (_partialDebt, _partialColl);
+    }	
+
+    struct LocalVar_RecoveryLiquidate {
+        bool backToNormalMode;
+        uint256 entireSystemDebt;
+        uint256 entireSystemColl;	
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+        uint256 totalColSurplus;
+        bytes32 _troveId;
+        uint256 _price;
+        uint256 _ICR;
+    }
+	
+    function _recoveryLiquidateATrove(ContractsCache memory _contractsCache, LocalVar_RecoveryLiquidate memory _recoveryState) private returns(LocalVar_RecoveryLiquidate memory){
+        // liquidate entire debt
+        (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _recoveryState._troveId);
+
+        // cap the liquidated collateral if required
+        uint256 _cappedColPortion;
+        address _borrower = _contractsCache.sortedTroves.getOwnerAddress(_recoveryState._troveId);
+
+        // avoid stack too deep
+        {
+            _cappedColPortion = _recoveryState._ICR > MCR? _totalDebtToBurn.mul(MCR).div(_recoveryState._price) : _totalColToSend;
+            _cappedColPortion = _cappedColPortion < _totalColToSend? _cappedColPortion : _totalColToSend;
+            uint256 _collSurplus = (_cappedColPortion == _totalColToSend)? 0 : _totalColToSend.sub(_cappedColPortion); 
+            if (_collSurplus > 0) {
+                _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
+                _recoveryState.totalColSurplus = _recoveryState.totalColSurplus.add(_collSurplus);
+            }
+        }
+        _recoveryState.totalDebtToBurn = _recoveryState.totalDebtToBurn.add(_totalDebtToBurn);
+        _recoveryState.totalColToSend = _recoveryState.totalColToSend.add(_cappedColPortion);
+
+        // check if system back to normal mode
+        _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt.sub(_totalDebtToBurn);
+        _recoveryState.entireSystemColl = _recoveryState.entireSystemColl.sub(_totalColToSend);
+        _recoveryState.backToNormalMode = !_checkPotentialRecoveryMode(_recoveryState.entireSystemColl, _recoveryState.entireSystemDebt, _recoveryState._price);
+
+        emit TroveLiquidated(_recoveryState._troveId, _borrower, _totalDebtToBurn, _cappedColPortion, TroveManagerOperation.liquidateInRecoveryMode);
+        emit TroveUpdated(_recoveryState._troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInRecoveryMode);
+
+        return _recoveryState;
+    }
+	
+    // liquidate _n most risky CDPs COMPLETELY by repaying debts in FULL, only callable in recovery mode at the specific moment of invocation
+    function liquidateSequentiallyInRecovery(uint256 _n) external override nonReentrant {
+        ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);
+
+        uint256 _price = priceFeed.fetchPrice();
+
+        // check precondition (avoid stack too deep)
+        {		
+             bool _recoveryModeAtStart = _checkRecoveryMode(_price);
+             require(_recoveryModeAtStart, '!recoveryMode');
+        }
+
+        bool backToNormal = false;
+        uint256 systemDebt = getEntireSystemDebt();
+        uint256 systemColl = getEntireSystemColl();
+
+        // loop over sorted troves to liquidate one by one, starting from most risky Trove
+        bytes32 _troveId = _contractsCache.sortedTroves.getLast();
+        bytes32 firstId = _contractsCache.sortedTroves.getFirst();
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+        uint256 totalColSurplus;
+        for (uint i = 0; i < _n && _troveId != firstId; i++) {
+             bytes32 nextTroveId = _contractsCache.sortedTroves.getPrev(_troveId);
+
+             // check system Total Collateralization Ratio 
+             uint256 _ICR = getCurrentICR(_troveId, _price);
+
+             // avoid stack too deep
+             {			 
+               if (!backToNormal) {		
+                   if (_ICR >= LiquityMath._computeCR(systemColl, systemDebt, _price)){
+                       break; // all Trove is above Total Collateral Ratio now
+                   }
+
+                   LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(backToNormal, systemDebt, systemColl, totalDebtToBurn, totalColToSend, totalColSurplus, _troveId, _price, _ICR);
+                   _rs = _recoveryLiquidateATrove(_contractsCache, _rs);
+
+                   totalDebtToBurn = _rs.totalDebtToBurn;
+                   totalColToSend = _rs.totalColToSend;
+                   totalColSurplus = _rs.totalColSurplus;
+                   systemDebt = _rs.entireSystemDebt;
+                   systemColl = _rs.entireSystemColl;
+                   backToNormal = _rs.backToNormalMode;
+               } else if (backToNormal && _ICR < MCR) {
+                   (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
+                   totalDebtToBurn = totalDebtToBurn.add(_totalDebtToBurn);
+                   totalColToSend = totalColToSend.add(_totalColToSend);
+               } else {
+                   break; // all Trove is above Minimum Collateral Ratio now and system in normal mode
+               }
+             }
+             _troveId = nextTroveId;
+        }
+
+        // update the staking and collateral snapshots
+        totalStakesSnapshot = totalStakes;
+        totalCollateralSnapshot = _contractsCache.activePool.getETH().sub(totalColToSend);
+		
+        emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
+
+        // housekeeping leftover collateral for CDP owner
+        if (totalColSurplus > 0){
+            _contractsCache.activePool.sendETH(address(_contractsCache.collSurplusPool), totalColSurplus);
+        }
+
+        // burn the debt from liquidator
+        _contractsCache.lusdToken.burn(msg.sender, totalDebtToBurn);
+		
+        // ensure sending back collateral to liquidator is last thing to do
+        _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
     }
 
     // Liquidate one trove, in Normal Mode.

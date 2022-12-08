@@ -119,7 +119,7 @@ contract SortedTroves is Ownable, CheckContract, ISortedTroves {
         return serialized;
     }
 	
-    function getOwnerAddress(bytes32 troveId) public pure returns (address) {
+    function getOwnerAddress(bytes32 troveId) public pure override returns (address) {
         return address(uint256(troveId) >> (12 * 8));
     }
 	
