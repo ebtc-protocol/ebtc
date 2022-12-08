@@ -121,7 +121,7 @@ Visit [liquity.org](https://www.liquity.org) to find out more and join the discu
   - [Top-level scripts](#top-level-scripts)
     - [Run all tests](#run-all-tests)
     - [Deploy contracts to a testnet](#deploy-contracts-to-a-testnet)
-    - [Start a local blockchain and deploy the contracts](#start-a-local-blockchain-and-deploy-the-contracts)
+    - [Start a local fork blockchain and deploy the contracts](#start-a-local-fork-blockchain-and-deploy-the-contracts)
     - [Start dev-frontend in development mode](#start-dev-frontend-in-development-mode)
     - [Start dev-frontend in demo mode](#start-dev-frontend-in-demo-mode)
     - [Start dev-frontend against a mainnet fork RPC node](#start-dev-frontend-against-a-mainnet-fork-rpc-node)
