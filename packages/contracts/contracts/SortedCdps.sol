@@ -77,7 +77,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     mapping(bytes32 => address) public cdpOwners;
     uint256 public nextCdpNonce;
-    bytes32 public dummyId;
+    bytes32 public constant dummyId = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // Mapping from cdp owner to list of owned cdp IDs
     mapping(address => mapping(uint256 => bytes32)) public override _ownedCdps;
@@ -108,8 +108,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
         _renounceOwnership();
-
-        dummyId = toCdpId(address(0), 0, 0);
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
@@ -127,7 +125,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         return serialized;
     }
 
-    function getOwnerAddress(bytes32 cdpId) public pure returns (address) {
+    function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
         return address(uint256(cdpId) >> (12 * 8));
     }
 

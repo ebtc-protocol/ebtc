@@ -373,7 +373,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         // Confirm the operation is either a borrower adjusting their own cdp,
         // or a pure ETH transfer from the Stability Pool to a cdp
-        address _borrower = sortedCdps.existCdpOwners(_cdpId);
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         assert(
             msg.sender == _borrower ||
                 (msg.sender == stabilityPoolAddress && msg.value > 0 && _EBTCChange == 0)
