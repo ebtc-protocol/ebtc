@@ -72,7 +72,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
         uint remainingEBTC = _EBTCamount;
         bytes32 currentCdpId = sortedCdpsCached.getLast();
-        address currentCdpuser = sortedCdps.getOwnerAddress(currentCdpId);
+        address currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
 
         while (
             currentCdpuser != address(0) && cdpManager.getCurrentICR(currentCdpId, _price) < MCR
