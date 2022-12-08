@@ -1169,7 +1169,7 @@ contract('CdpManager', async accounts => {
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
-    const pendingEBTCDebt_C = await cdpManager.getPendingEBTCDebtReward(_cCdpId)
+    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))[0]
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -1967,7 +1967,7 @@ contract('CdpManager', async accounts => {
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
-    const pendingEBTCDebt_C = await cdpManager.getPendingEBTCDebtReward(_cCdpId)
+    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))[0]
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -4604,7 +4604,7 @@ contract('CdpManager', async accounts => {
     const carolSnapshot_L_EBTCDebt = (await cdpManager.rewardSnapshots(_carolCdpId))[1]
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
-    const carol_PendingEBTCDebtReward = await cdpManager.getPendingEBTCDebtReward(_carolCdpId)
+    const carol_PendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(_carolCdpId))[0]
     assert.equal(carol_PendingEBTCDebtReward, 0)
   })
 
