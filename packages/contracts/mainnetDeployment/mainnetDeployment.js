@@ -48,8 +48,8 @@ async function mainnetDeploy(configParams) {
 
   console.log(`deployer address: ${deployerWallet.address}`)
   console.log(`Account2 address: ${account2Wallet.address}`)
-  assert.equal(deployerWallet.address, configParams.liquityAddrs.DEPLOYER)
-  assert.equal(account2Wallet.address, configParams.liquityAddrs.ACCOUNT_2)
+  assert.equal(deployerWallet.address, configParams.ebtcAddrs.DEPLOYER)
+  assert.equal(account2Wallet.address, configParams.ebtcAddrs.ACCOUNT_2)
   let deployerETHBalance = await ethers.provider.getBalance(deployerWallet.address)
   let account2ETHBalance = await ethers.provider.getBalance(deployerWallet.address)
   console.log(`deployerETHBalance before: ${deployerETHBalance}`)
@@ -100,9 +100,9 @@ async function mainnetDeploy(configParams) {
 
   // Deploy LQTY Contracts
   const LQTYContracts = await mdh.deployLQTYContractsMainnet(
-    configParams.liquityAddrs.GENERAL_SAFE, // bounty address
+    configParams.ebtcAddrs.GENERAL_SAFE, // bounty address
     unipool.address,  // lp rewards address
-    configParams.liquityAddrs.LQTY_SAFE, // multisig LQTY endowment address
+    configParams.ebtcAddrs.LQTY_SAFE, // multisig LQTY endowment address
     deploymentState,
   )
 
