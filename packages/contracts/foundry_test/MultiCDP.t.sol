@@ -15,7 +15,7 @@ contract CDPTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
         user = msg.sender;
-        hoax(user, 300 ether);
+        vm.deal(user, 300 ether);
     }
 
     function testCdpsCountEqToZero() public {
@@ -25,6 +25,7 @@ contract CDPTest is eBTCBaseFixture {
     function testOpenCDPsHappy() public {
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
+        vm.prank(user);
         borrowerOperations.openCdp{value : address(user).balance}(
             5e17,
             // TODO: Random number still based on fixed LUSD price. Change once peg to BTC

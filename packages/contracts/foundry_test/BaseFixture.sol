@@ -23,7 +23,7 @@ import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
 contract eBTCBaseFixture is Test {
     using SafeMath for uint256;
-    uint256 constant maxBytes32 = 100;
+    uint256 constant maxBytes32 = type(uint256).max;
 
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
@@ -74,9 +74,9 @@ contract eBTCBaseFixture is Test {
             address(lqtyStaking),
             address(lockupContractFactory),
             // Set misc addresses to self
-            address(address(this)),
-            address(address(this)),
-            address(address(this))
+            address(this),
+            address(this),
+            address(this)
         );
     }
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
