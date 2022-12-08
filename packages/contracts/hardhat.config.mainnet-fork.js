@@ -15,7 +15,7 @@ const alchemyUrl = () => {
         if (alchemyAPIKey != undefined){
             return `https://eth-mainnet.alchemyapi.io/v2/${alchemyAPIKey}`
         } else {
-            console.error("Add a an alchemyAPIKey to ./secrets.js!")
+            console.error("Add an alchemyAPIKey to ./secrets.js!")
         }
     } else {
         console.error("Add a ./secrets.js file!")
