@@ -10,10 +10,18 @@ const alchemyUrl = () => {
     const SECRETS_FILE = "./secrets.js"
     let alchemyAPIKey = ""
     if (fs.existsSync(SECRETS_FILE)) {
-        const { secrets } = require(SECRETS_FILE);
+        const { secrets } = require(SECRETS_FILE)
         alchemyAPIKey = secrets.alchemyAPIKey
+        if (alchemyAPIKey != undefined){
+            return `https://eth-mainnet.alchemyapi.io/v2/${alchemyAPIKey}`
+        } else {
+            console.error("Add a an alchemyAPIKey to ./secrets.js!")
+        }
+        
+    } else {
+        console.error("Add a ./secrets.js file!")
     }
-    return `https://eth-mainnet.alchemyapi.io/v2/${alchemyAPIKey}`
+    
 }
 
 module.exports = {
@@ -55,12 +63,13 @@ module.exports = {
     networks: {
         hardhat: {
             accounts: accountsList,
-            gas: 10000000,  // tx gas limit
-            blockGasLimit: 12500000, 
-            gasPrice: process.env.GAS_PRICE ? parseInt(process.env.GAS_PRICE) : 20000000000,
+            gas: 50000000,  // tx gas limit
+            blockGasLimit: 15000000,
+            initialBaseFeePerGas: 0,
+            gasPrice: typeof (process.env.GAS_PRICE) == 'NaN'  ? parseInt(process.env.GAS_PRICE) : 0,
             forking: {
                 url: alchemyUrl(),
-                blockNumber: process.env.BLOCK_NUMBER ? parseInt(process.env.BLOCK_NUMBER) : 12152522
+                blockNumber: typeof (process.env.BLOCK_NUMBER) == 'NaN' ? parseInt(process.env.BLOCK_NUMBER) : 16141281
             }
         }
     },
