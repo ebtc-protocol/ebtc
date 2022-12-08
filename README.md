@@ -1513,8 +1513,9 @@ The script will do the following:
 
 > Q: How can I get Ether on the local blockchain?  
 > A: Import this private key into MetaMask (deployer) or any of the 2000 private keys from the following [file](packages/contracts/hardhatAccountsList2k.js):  
-> `0x60ddFE7f579aB6867cbE7A2Dc03853dC141d7A4aB6DBEFc0Dae2d2B1Bd4e487F` 
+> `0x60ddFE7f579aB6867cbE7A2Dc03853dC141d7A4aB6DBEFc0Dae2d2B1Bd4e487F`.
 > These accounts have all the Ether you'll ever need.
+> You should be able to import the eBTC token to Metamask by using the address generated from deployment script for it.
 
 
 
