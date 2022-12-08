@@ -231,7 +231,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,
-        partiallyLiquidateInNormalMode
+        partiallyLiquidate
     }
 
 
@@ -312,23 +312,33 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);
         uint256 _price = priceFeed.fetchPrice();
 		
-        _liquidateTroveBelowMCR(_troveId, _contractsCache, _price, 0);	
+        _liquidateTroveBelowMCR(_troveId, _contractsCache, _price, 0, _troveId, _troveId);	
     }
 	
-    function partiallyLiquidate(bytes32 _troveId, uint256 _partialRatio) external override nonReentrant {
+    function partiallyLiquidate(bytes32 _troveId, uint256 _partialRatio, bytes32 _upperPartialHint, bytes32 _lowerPartialHint) external override nonReentrant {
         require(_partialRatio < PARTIAL_DEBT_RATIO_MAX, '!partialLiqMax');
         _requireTroveIsActive(_troveId);
 		
         ContractsCache memory _contractsCache = ContractsCache(activePool, defaultPool, lusdToken, lqtyStaking, sortedTroves, collSurplusPool, gasPoolAddress);
         uint256 _price = priceFeed.fetchPrice();
 		
-        _liquidateTroveBelowMCR(_troveId, _contractsCache, _price, _partialRatio);	
+        _liquidateTroveBelowMCR(_troveId, _contractsCache, _price, _partialRatio, _upperPartialHint, _lowerPartialHint);	
     }
 
-    // --- Inner single liquidation functions ---	
+    // --- Inner single liquidation functions ---
+
+    struct LocalVar_PartiallyLiquidate {
+        bytes32 _troveId;
+        uint256 _partialRatio;
+        uint256 _price;
+        uint256 _ICR;
+        bytes32 _upperPartialHint;
+        bytes32 _lowerPartialHint;
+    }	
 	
     // liquidate given Trove by repaying debt in full or partially if its ICR is below MCR
-    function _liquidateTroveBelowMCR(bytes32 _troveId, ContractsCache memory _contractsCache, uint256 _price, uint256 _partialRatio) internal {
+    // caller should use hintHelper smart contract to get correct hints for the CDP after it get partially liquidated to reinsert into sorted list
+    function _liquidateTroveBelowMCR(bytes32 _troveId, ContractsCache memory _contractsCache, uint256 _price, uint256 _partialRatio, bytes32 _upperPartialHint, bytes32 _lowerPartialHint) internal {
         // check precondition
         uint256 _ICR = getCurrentICR(_troveId, _price);        
         require(_ICR < MCR, 'ICR>MCR');
@@ -336,18 +346,20 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         // do liquidation job with respect to internal accounting
         uint256 totalDebtToBurn;
         uint256 totalColToSend;
-        address _borrower = _contractsCache.sortedTroves.existTroveOwners(_troveId);
+        
         if (_partialRatio == 0){
-            (totalDebtToBurn, totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);			
-            emit TroveLiquidated(_troveId, _borrower, totalDebtToBurn, totalColToSend, TroveManagerOperation.liquidateInNormalMode);
-            emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);		
+            (totalDebtToBurn, totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
         } else {	
-            (totalDebtToBurn, totalColToSend) = _liquidateATrovePartially(_contractsCache, _troveId, _partialRatio, _price, _ICR);			
-            emit TrovePartiallyLiquidated(_troveId, _borrower, totalDebtToBurn, totalColToSend, TroveManagerOperation.partiallyLiquidateInNormalMode);
-            emit TroveUpdated(_troveId, _borrower, Troves[_troveId].debt, Troves[_troveId].coll, Troves[_troveId].stake, TroveManagerOperation.partiallyLiquidateInNormalMode);		
-        }
+            LocalVar_PartiallyLiquidate memory _partiallyState = LocalVar_PartiallyLiquidate(_troveId, _partialRatio, _price, _ICR, _upperPartialHint, _lowerPartialHint);
+            (totalDebtToBurn, totalColToSend) = _liquidateATrovePartially(_contractsCache, _partiallyState);	
+        }        
 		
-        // update the staking and collateral snapshots
+        _liquidationHouseKeeping(_contractsCache, totalDebtToBurn, totalColToSend);
+    }
+	
+    function _liquidationHouseKeeping(ContractsCache memory _contractsCache, uint256 totalDebtToBurn, uint256 totalColToSend) internal {	
+		
+        // update the staking and collateral snapshots        
         totalStakesSnapshot = totalStakes;
         totalCollateralSnapshot = _contractsCache.activePool.getETH().sub(totalColToSend);
 		
@@ -379,24 +391,30 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
 		
         // housekeeping after liquidation by closing the Trove
         _removeStake(_troveId);
-        _closeTrove(_troveId, Status.closedByLiquidation);
+        _closeTrove(_troveId, Status.closedByLiquidation);	
+		
+        address _borrower = _contractsCache.sortedTroves.getOwnerAddress(_troveId);
+        emit TroveLiquidated(_troveId, _borrower, entireTroveDebt, entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
+        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);		
 
         return (entireTroveDebt, entireTroveColl);
     }
 	
     // liquidate partially the Trove from an external liquidator
     // this function would return the liquidated debt and collateral of the given Trove
-    function _liquidateATrovePartially(ContractsCache memory _contractsCache, bytes32 _troveId, uint256 _partialRatio, uint256 _price, uint256 _ICR) private returns (uint256, uint256) {
-		
+    function _liquidateATrovePartially(ContractsCache memory _contractsCache, LocalVar_PartiallyLiquidate memory _partiallyState) private returns (uint256, uint256) {
+        bytes32 _troveId = _partiallyState._troveId;
         // TODO accrue and deduct interest fee accordingly
 		
         // calculate entire debt to repay
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
 		
-        uint _partialDebt = _partialRatio.mul(entireTroveDebt).div(PARTIAL_DEBT_RATIO_MAX);
-        require(entireTroveDebt.sub(_partialDebt) >= MIN_NET_DEBT, "!minDebtLeftByPartiallyLiq");
+        uint _partialDebt = _partiallyState._partialRatio.mul(entireTroveDebt).div(PARTIAL_DEBT_RATIO_MAX);
+        uint newDebt = entireTroveDebt.sub(_partialDebt);
+        require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartiallyLiq");
 		
-        uint _partialColl = _partialDebt.mul(_ICR).div(_price);
+        uint _partialColl = _partialDebt.mul(_partiallyState._ICR).div(_partiallyState._price);
+        uint newColl = entireTroveColl.sub(_partialColl);
 			
         if (_partialDebt >= entireTroveDebt || _partialColl >= entireTroveColl){
             return _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
@@ -412,11 +430,29 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         // offset debt from Active Pool
         _contractsCache.activePool.decreaseLUSDDebt(_partialDebt);
 		
-        // housekeeping after liquidation by updating the Trove accounting
+        // updating the CDP accounting for partially liquidation
         _partiallyReduceTroveDebt(_troveId, _partialDebt, _partialColl);
-
+		
+        // ensure partially liquidation NOT deteriorate ICR to lower level
+        {
+            uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
+            _checkPartiallyLiquidation(_contractsCache, _partiallyState, newNICR);		
+            emit TrovePartiallyLiquidated(_troveId, _contractsCache.sortedTroves.getOwnerAddress(_troveId), _partialDebt, _partialColl, TroveManagerOperation.partiallyLiquidate);
+        }
         return (_partialDebt, _partialColl);
     }	
+	
+    function _checkPartiallyLiquidation(ContractsCache memory _contractsCache, LocalVar_PartiallyLiquidate memory _partiallyState, uint _newNICR) internal {		
+        bytes32 _troveId = _partiallyState._troveId;
+		
+        // reInsert into sorted CDP list
+        _contractsCache.sortedTroves.reInsert(_troveId, _newNICR, _partiallyState._upperPartialHint, _partiallyState._lowerPartialHint);
+		
+        // ensure the ICR NOT decrease due to partially liquidation
+        require(getCurrentICR(_troveId, _partiallyState._price) >= _partiallyState._ICR, '!_newICR>=_ICR');
+					
+        emit TroveUpdated(_troveId, _contractsCache.sortedTroves.getOwnerAddress(_troveId), Troves[_troveId].debt, Troves[_troveId].coll, Troves[_troveId].stake, TroveManagerOperation.partiallyLiquidate);
+    }
 
     struct LocalVar_RecoveryLiquidate {
         bool backToNormalMode;
