@@ -59,6 +59,18 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       await assertRevert(troveManager.liquidate(_aliceTroveId, {from: bob}), "ICR>MCR");
   })
   
+  it("Partially Liquidation ICR needs to be below MCR or TCR in recovery mode", async () => {
+      await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
+      await assertRevert(troveManager.partiallyLiquidate(_aliceTroveId, 101, _aliceTroveId, _aliceTroveId, {from: bob}), "!partiallyICR");
+      assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()));
+	  	  
+      let _newPrice = dec(95, 18);
+      await priceFeed.setPrice(_newPrice);
+      assert.isTrue(await troveManager.checkRecoveryMode(_newPrice)); 
+      await assertRevert(troveManager.partiallyLiquidate(_aliceTroveId, 101, _aliceTroveId, _aliceTroveId, {from: bob}), "!partiallyICR");	  
+  })
+  
   it("Partially Liquidation Ratio needs to be below max(million)", async () => {
       await openTrove({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
@@ -96,7 +108,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       let _newPrice = dec(60, 18);
       await priceFeed.setPrice(_newPrice);
 	  
-      // liquidator bob coming in firstly partially liquidate some portion
+      // liquidator bob coming in firstly partially liquidate some portion of alice
       let _debtFirstPre = await troveManager.getTroveDebt(_aliceTroveId);
       let _debtInLiquidatorPre = await debtToken.balanceOf(bob);
       await troveManager.partiallyLiquidate(_aliceTroveId, toBN("150000"), _aliceTroveId, _aliceTroveId, {from: bob});
@@ -172,6 +184,62 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
 
       // Confirm troves have status 'closed by liquidation' (Status enum element idx 3)
       assert.equal((await troveManager.Troves(_aliceTroveId))[3], '3')
+  })
+  
+  it("Liquidator partially liquidate in recovery mode", async () => {
+      let {tx: opAliceTx} = await openTrove({ ICR: toBN(dec(299, 16)), extraLUSDAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);	  
+      await openTrove({ ICR: toBN(dec(179, 16)), extraLUSDAmount: toBN(dec(700, 18)), extraParams: { from: bob } })
+      let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
+      assert.isTrue(await sortedTroves.contains(_aliceTroveId));
+	  
+      await openTrove({ ICR: toBN(dec(169, 16)), extraParams: { from: carol } })
+      let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);	  
+      await openTrove({ ICR: toBN(dec(159, 16)), extraParams: { from: owner } })
+      let _ownerTroveId = await sortedTroves.troveOfOwnerByIndex(owner, 0);
+      assert.isFalse(await troveManager.checkRecoveryMode(await priceFeed.getPrice()));
+	  
+      // bob now sit second in sorted CDP list according to NICR
+      let _firstId = await sortedTroves.getFirst();
+      let _secondId = await sortedTroves.getNext(_firstId);
+      assert.equal(_secondId, _bobTroveId);
+      let _thirdId = await sortedTroves.getNext(_secondId);
+      assert.equal(_thirdId, _carolTroveId);
+      let _lastId = await sortedTroves.getLast();
+      assert.equal(_lastId, _ownerTroveId);
+	  
+      // price slump to make system enter recovery mode
+      let _newPrice = dec(130, 18);
+      await priceFeed.setPrice(_newPrice);
+      assert.isTrue(await troveManager.checkRecoveryMode(_newPrice));
+      let _bobICR = await troveManager.getCurrentICR(_bobTroveId, _newPrice);
+      let _MCR = toBN(dec(110,16));
+      assert.isTrue(toBN(_bobICR.toString()).gt(_MCR));
+	  
+      // liquidator alice coming in firstly partially liquidate some portion of bob
+      let _partialRatio = toBN("250000");
+      let _debtFirstPre = await troveManager.getTroveDebt(_bobTroveId);
+      let _collFirstPre = await troveManager.getTroveColl(_bobTroveId);
+      let _debtInLiquidatorPre = await debtToken.balanceOf(alice);
+      let _ethLiquidatorPre = await web3.eth.getBalance(alice);	  
+      let _liqTx = await troveManager.partiallyLiquidate(_bobTroveId, _partialRatio, _bobTroveId, _bobTroveId, {from: alice});
+      let _ethLiquidatorPost = await web3.eth.getBalance(alice);	
+      let _collFirstPost = await troveManager.getTroveColl(_bobTroveId);  	  	  
+      const gasUsedETH = toBN(_liqTx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_liqTx).toString()));
+      let _ethSeizedByLiquidator = toBN(_ethLiquidatorPost.toString()).sub(toBN(_ethLiquidatorPre.toString())).add(gasUsedETH);
+      let _debtFirstPost = await troveManager.getTroveDebt(_bobTroveId);
+      let _debtInLiquidatorPost = await debtToken.balanceOf(alice);
+      let _debtDecreased = toBN(_debtFirstPre.toString()).sub(toBN(_debtFirstPost.toString()));
+      let _debtInLiquidatorDecreased = toBN(_debtInLiquidatorPre.toString()).sub(toBN(_debtInLiquidatorPost.toString()));
+      let _collDecreased = toBN(_collFirstPre.toString()).sub(toBN(_collFirstPost.toString()));
+      
+      // check debt change & calculation in receovery mode
+      assert.equal(_debtDecreased.toString(), _debtInLiquidatorDecreased.toString(), '!partially liquidation debt change in liquidator');
+      assert.equal(_debtDecreased.toString(), toBN(_debtFirstPre.toString()).mul(_partialRatio).div(toBN("1000000")).toString(), '!partially liquidation debt calculation');	
+	  
+      // check collateral change & calculation in receovery mode when ICR > MCR
+      assert.equal(_collDecreased.toString(), _ethSeizedByLiquidator.toString(), '!partially liquidation collateral change in liquidator');
+      assert.equal(_collDecreased.toString(), _debtDecreased.mul(_MCR).div(toBN(dec(100,16))).mul(toBN(dec(1, 18))).div(toBN(_newPrice)).toString());	 
   })
   
   it("Troves below MCR could be partially liquidated", async () => {
@@ -288,7 +356,7 @@ contract('TroveManager - Simple Liquidation without Stability Pool', async accou
       let _icrPost = await troveManager.getCurrentICR(_aliceTroveId, _newPrice);
       assert.isTrue(toBN(_icrPost.toString()).gte(toBN(_icr.toString())));
 
-      // alice still on top of sorted CDP list since partially liquidation should keep its ICR(NICR) NOT decreased
+      // alice still on top of sorted CDP list since partially liquidation should keep its ICR NOT decreased
       let _firstIdPost = await sortedTroves.getFirst();
       assert.equal(_firstId, _firstIdPost);
       let _lastIdPost = await sortedTroves.getLast();
