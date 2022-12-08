@@ -6,6 +6,7 @@ const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.j
 const { dec } = th
 const MainnetDeploymentHelper = require("../utils/mainnetDeploymentHelpers.js")
 const toBigNum = ethers.BigNumber.from
+const fs = require("fs");
 
 async function mainnetDeploy(configParams) {
   const date = new Date()
@@ -17,8 +18,32 @@ async function mainnetDeploy(configParams) {
 
   let latestBlock = await ethers.provider.getBlockNumber()
   console.log('block number:', latestBlock)
+  const chainId = await ethers.provider.getNetwork()
+  console.log('ChainId:', chainId.chainId)
 
-  const deploymentState = mdh.loadPreviousDeployment()
+  let deploymentState = mdh.loadPreviousDeployment()
+
+  // If local deployment record present, check if it exists in current environment
+  if (Object.entries(deploymentState).length != 0 && chainId.chainId == 31337) {
+    const priceFeedFactory = await ethers.getContractFactory("PriceFeed", deployerWallet)
+    let priceFeed = new ethers.Contract(
+      deploymentState["priceFeed"].address,
+      priceFeedFactory.interface,
+      deployerWallet
+    );
+    try {
+      await priceFeed.status()
+    } catch {
+      console.log('New local environment: Deleting previous deployment record...')
+      try {
+        fs.unlinkSync(configParams.OUTPUT_FILE);
+        console.log("File removed:", configParams.OUTPUT_FILE);
+        deploymentState = {}
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
 
   console.log(`deployer address: ${deployerWallet.address}`)
   console.log(`Account2 address: ${account2Wallet.address}`)

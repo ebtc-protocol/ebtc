@@ -62,6 +62,7 @@ module.exports = {
     },
     networks: {
         hardhat: {
+            chainId: 31337,
             accounts: accountsList,
             gas: 50000000,  // tx gas limit
             blockGasLimit: 15000000,
