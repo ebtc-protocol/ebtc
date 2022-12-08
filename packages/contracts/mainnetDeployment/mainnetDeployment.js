@@ -15,13 +15,19 @@ async function mainnetDeploy(configParams) {
   const mdh = new MainnetDeploymentHelper(configParams, deployerWallet)
   const gasPrice = configParams.GAS_PRICE
 
+  let latestBlock = await ethers.provider.getBlockNumber()
+  console.log('block number:', latestBlock)
+
   const deploymentState = mdh.loadPreviousDeployment()
 
   console.log(`deployer address: ${deployerWallet.address}`)
+  console.log(`Account2 address: ${account2Wallet.address}`)
   assert.equal(deployerWallet.address, configParams.liquityAddrs.DEPLOYER)
   assert.equal(account2Wallet.address, configParams.liquityAddrs.ACCOUNT_2)
   let deployerETHBalance = await ethers.provider.getBalance(deployerWallet.address)
+  let account2ETHBalance = await ethers.provider.getBalance(deployerWallet.address)
   console.log(`deployerETHBalance before: ${deployerETHBalance}`)
+  console.log(`account2ETHBalance before: ${account2ETHBalance}`)
 
   // Get UniswapV2Factory instance at its deployed address
   const uniswapV2Factory = new ethers.Contract(
@@ -89,8 +95,7 @@ async function mainnetDeploy(configParams) {
   // Log LQTY and Unipool addresses
   await mdh.logContractObjects(LQTYContracts)
   console.log(`Unipool address: ${unipool.address}`)
-  
-  // let latestBlock = await ethers.provider.getBlockNumber()
+
   let deploymentStartTime = await LQTYContracts.lqtyToken.getDeploymentStartTime()
 
   console.log(`deployment start time: ${deploymentStartTime}`)
@@ -223,7 +228,7 @@ async function mainnetDeploy(configParams) {
   if (cdpCount.toString() == '0') {
     let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
     let _3ETHcoll = th.dec(30, 'ether') // 3 ETH
-    console.log('Opening cdp...')
+    console.log("Deployer opens a cdp ...")
     await mdh.sendAndWaitForTransaction(
       liquityCore.borrowerOperations.openCdp(
         th._100pct,
@@ -351,7 +356,7 @@ async function mainnetDeploy(configParams) {
   cdpCount = await liquityCore.sortedCdps.cdpCountOf(account2Wallet.address)
   assert.equal(cdpCount, 1)
   const cdpId2 = await liquityCore.sortedCdps._ownedCdps(account2Wallet.address, 0)
-  console.log(`deployer is in sorted list after making cdp: ${await liquityCore.sortedCdps.contains(cdpId2)}`)
+  console.log(`Acct 2 is in sorted list after making cdp: ${await liquityCore.sortedCdps.contains(cdpId2)}`)
 
   const acct2Cdp = await liquityCore.cdpManager.Cdps(cdpId2)
   th.logBN('acct2 debt', acct2Cdp[0])
@@ -395,18 +400,6 @@ async function mainnetDeploy(configParams) {
   th.logBN("Base rate", baseRate)
   th.logBN("Current borrowing rate", currentBorrowingRate)
 
-  // total SP deposits
-  const totalSPDeposits = await liquityCore.stabilityPool.getTotalEBTCDeposits()
-  th.logBN("Total EBTC SP deposits", totalSPDeposits)
-
-  // total LQTY Staked in LQTYStaking
-  const totalLQTYStaked = await LQTYContracts.lqtyStaking.totalLQTYStaked()
-  th.logBN("Total LQTY staked", totalLQTYStaked)
-
-  // total LP tokens staked in Unipool
-  const totalLPTokensStaked = await unipool.totalSupply()
-  th.logBN("Total LP (EBTC-ETH) tokens staked in unipool", totalLPTokensStaked)
-
   // --- State variables ---
 
   // CdpManager 
@@ -423,48 +416,8 @@ async function mainnetDeploy(configParams) {
   th.logBN("L_ETH", L_ETH)
   th.logBN("L_EBTCDebt", L_EBTCDebt)
 
-  // StabilityPool
-  console.log("StabilityPool state variables:")
-  const P = await liquityCore.stabilityPool.P()
-  const currentScale = await liquityCore.stabilityPool.currentScale()
-  const currentEpoch = await liquityCore.stabilityPool.currentEpoch()
-  const S = await liquityCore.stabilityPool.epochToScaleToSum(currentEpoch, currentScale)
-  const G = await liquityCore.stabilityPool.epochToScaleToG(currentEpoch, currentScale)
-  th.logBN("Product P", P)
-  th.logBN("Current epoch", currentEpoch)
-  th.logBN("Current scale", currentScale)
-  th.logBN("Sum S, at current epoch and scale", S)
-  th.logBN("Sum G, at current epoch and scale", G)
-
-  // LQTYStaking
-  console.log("LQTYStaking state variables:")
-  const F_EBTC = await LQTYContracts.lqtyStaking.F_EBTC()
-  const F_ETH = await LQTYContracts.lqtyStaking.F_ETH()
-  th.logBN("F_EBTC", F_EBTC)
-  th.logBN("F_ETH", F_ETH)
-
-
-  // CommunityIssuance
-  console.log("CommunityIssuance state variables:")
-  const totalLQTYIssued = await LQTYContracts.communityIssuance.totalLQTYIssued()
-  th.logBN("Total LQTY issued to depositors / front ends", totalLQTYIssued)
-
 
   // TODO: Uniswap *LQTY-ETH* pool size (check it's deployed?)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // ************************
   // --- NOT FOR APRIL 5: Deploy a LQTYToken2 with General Safe as beneficiary to test minting LQTY showing up in Gnosis App  ---
