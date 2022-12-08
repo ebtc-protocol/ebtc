@@ -119,7 +119,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         bytes32 serialized;
 
         serialized |= bytes32(nonce);
-        serialized |= bytes32(blockHeight) << (10 * 8);
+        serialized |= bytes32(blockHeight) << (8 * 8);// to accommendate more than 4.2 billion blocks
         serialized |= bytes32(uint256(owner)) << (12 * 8);
 
         return serialized;
