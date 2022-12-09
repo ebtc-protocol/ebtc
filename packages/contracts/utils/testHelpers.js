@@ -1117,6 +1117,53 @@ class TestHelper {
       (err) => { if (err) console.log(err) })
   }
 
+  static async mine(currentWeb3Provider, sleepBefore=1) {
+    await new Promise(res => setTimeout(res, sleepBefore))
+
+    await currentWeb3Provider.send({
+      id: 0,
+      jsonrpc: '2.0',
+      method: 'evm_mine'
+    },
+      (err) => { if (err) console.log(err) })
+  }
+
+  static async pauseAutomine(currentWeb3Provider) {
+    await currentWeb3Provider.send({
+      id: 0,
+      jsonrpc: '2.0',
+      method: 'evm_setAutomine',
+      params: [false]
+    },
+      (err) => { if (err) console.log(err) })
+
+    await currentWeb3Provider.send({
+      id: 0,
+      jsonrpc: '2.0',
+      method: 'evm_setIntervalMining',
+      params: [0]
+    },
+      (err) => { if (err) console.log(err) })
+  }
+
+  static async resumeAutomine(currentWeb3Provider) {
+    await currentWeb3Provider.send({
+      id: 0,
+      jsonrpc: '2.0',
+      method: 'evm_setIntervalMining',
+      params: [5000]
+    },
+      (err) => { if (err) console.log(err) })
+
+    await currentWeb3Provider.send({
+      id: 0,
+      jsonrpc: '2.0',
+      method: 'evm_setAutomine',
+      params: [true]
+    },
+      (err) => { if (err) console.log(err) })
+  }
+
   static async getLatestBlockTimestamp(web3Instance) {
     const blockNumber = await web3Instance.eth.getBlockNumber()
     const block = await web3Instance.eth.getBlock(blockNumber)

@@ -1483,6 +1483,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
+        return _getPendingEBTCDebtRewardAtTimestamp(_cdpId, block.timestamp);
+    }
+
+    function _getPendingEBTCDebtRewardAtTimestamp(
+        bytes32 _cdpId,
+        uint _timestamp
+    ) internal view returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
 
         if (Cdps[_cdpId].status != Status.active) {
@@ -1494,7 +1501,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = _timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
@@ -1666,16 +1673,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
             // timeElapsed >= interestTimeWindow
+            lastInterestRateUpdateTime = block.timestamp;
+
             uint interestRatePerSecond = _calcInterestRatePerSecond();
             if (interestRatePerSecond > 0) {
                 // TODO: This is an approximation. Use exact compound interest formula
                 uint unitInterest = interestRatePerSecond.mul(timeElapsed);
                 uint unitInterestPlusOne = DECIMAL_PRECISION.add(unitInterest);
 
-                L_EBTCInterest = L_EBTCInterest.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
                 L_EBTCDebt = L_EBTCDebt.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
-
-                lastInterestRateUpdateTime = block.timestamp;
+                L_EBTCInterest = L_EBTCInterest.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
 
                 emit L_EBTCInterestUpdated(L_EBTCInterest);
 

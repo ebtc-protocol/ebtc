@@ -359,20 +359,35 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_ETHrewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
+      const nextTime = (await th.getLatestBlockTimestamp(web3)) + 1;
+
       const alicePendingETHReward = await cdpManager.getPendingETHReward(aliceIndex)
       const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(aliceIndex, nextTime))[0]
+      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(bobIndex, nextTime))[0]
+      const alicePendingEBTCDebtInterest = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(aliceIndex, nextTime))[1]
+      const bobPendingEBTCDebtInterest = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(bobIndex, nextTime))[1]
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.gt(toBN('0')))
+      }
+
+      const interestRatePerSec = await cdpManager.INTEREST_RATE_PER_SECOND();
+      if (interestRatePerSec > 0) {
+        for (reward of [alicePendingEBTCDebtInterest, bobPendingEBTCDebtInterest]) {
+          assert.isTrue(reward.gt(toBN('0')))
+        }
       }
 
       // Alice and Bob top up their Cdps
       const aliceTopUp = toBN(dec(5, 'ether'))
       const bobTopUp = toBN(dec(1, 'ether'))
 
-      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: aliceTopUp })
-      await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: bobTopUp })
+      await th.pauseAutomine(web3.currentProvider);
+      borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: aliceTopUp })
+      borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: bobTopUp })
+
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       // Check that both alice and Bob have had pending rewards applied in addition to their top-ups. 
       const aliceNewColl = await getCdpEntireColl(aliceIndex)
@@ -381,9 +396,9 @@ contract('BorrowerOperations', async accounts => {
       const bobNewDebt = await getCdpEntireDebt(bobIndex)
 
       assert.isTrue(aliceNewColl.eq(aliceCollBefore.add(alicePendingETHReward).add(aliceTopUp)))
-      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingEBTCDebtReward)))
+      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingEBTCDebtReward).add(alicePendingEBTCDebtInterest)))
       assert.isTrue(bobNewColl.eq(bobCollBefore.add(bobPendingETHReward).add(bobTopUp)))
-      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward)))
+      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward).add(bobPendingEBTCDebtInterest)))
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_ETH and L_EBTCDebt */
@@ -396,9 +411,9 @@ contract('BorrowerOperations', async accounts => {
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
       assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_ETH), 100)
-      assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
+      assert.isAtMost(Number(((alice_EBTCDebtRewardSnapshot_After.mul(mv._1e18BN).div(L_EBTCDebt)).sub(mv._1e18BN)).div(interestRatePerSec)), 3)
       assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_ETH), 100)
-      assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
+      assert.isAtMost(Number(((bob_EBTCDebtRewardSnapshot_After.mul(mv._1e18BN).div(L_EBTCDebt)).sub(mv._1e18BN)).div(interestRatePerSec)), 3)
     })
 
     // xit("addColl(), active Cdp: adds the right corrected stake after liquidations have occured", async () => {

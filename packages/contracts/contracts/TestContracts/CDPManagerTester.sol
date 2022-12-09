@@ -56,4 +56,12 @@ contract CdpManagerTester is CdpManager {
     //        uint cdpOwnersArrayLength = CdpOwners.length;
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
     //    }
+
+    // Get the borrower's pending accumulated EBTC reward, earned by their stake
+    function getPendingEBTCDebtRewardAtTimestamp(
+        bytes32 _cdpId,
+        uint _timestamp
+    ) public view returns (uint, uint) {
+        return _getPendingEBTCDebtRewardAtTimestamp(_cdpId, _timestamp);
+    }
 }
