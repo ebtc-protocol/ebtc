@@ -136,7 +136,7 @@ class MainnetDeploymentHelper {
     return coreContracts
   }
 
-  async deployLQTYContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
+  async deployEBTCContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
     const lqtyStakingFactory = await this.getFactory("LQTYStaking")
     const lockupContractFactory_Factory = await this.getFactory("LockupContractFactory")
     const communityIssuanceFactory = await this.getFactory("CommunityIssuance")
@@ -171,13 +171,13 @@ class MainnetDeploymentHelper {
       await this.verifyContract('lqtyToken', deploymentState, lqtyTokenParams)
     }
 
-    const LQTYContracts = {
+    const EBTCContracts = {
       lqtyStaking,
       lockupContractFactory,
       communityIssuance,
       lqtyToken
     }
-    return LQTYContracts
+    return EBTCContracts
   }
 
   async deployUnipoolMainnet(deploymentState) {
@@ -193,11 +193,11 @@ class MainnetDeploymentHelper {
     return unipool
   }
 
-  async deployMultiCdpGetterMainnet(liquityCore, deploymentState) {
+  async deployMultiCdpGetterMainnet(ebtcCore, deploymentState) {
     const multiCdpGetterFactory = await this.getFactory("MultiCdpGetter")
     const multiCdpGetterParams = [
-      liquityCore.cdpManager.address,
-      liquityCore.sortedCdps.address
+      ebtcCore.cdpManager.address,
+      ebtcCore.sortedCdps.address
     ]
     const multiCdpGetter = await this.loadOrDeploy(
       multiCdpGetterFactory,
@@ -221,7 +221,7 @@ class MainnetDeploymentHelper {
     return owner == ZERO_ADDRESS
   }
   // Connect contracts to their dependencies
-  async connectCoreContractsMainnet(contracts, LQTYContracts, chainlinkProxyAddress) {
+  async connectCoreContractsMainnet(contracts, EBTCContracts, chainlinkProxyAddress) {
     const gasPrice = this.configParams.GAS_PRICE
     // Set ChainlinkAggregatorProxy and TellorCaller in the PriceFeed
     await this.isOwnershipRenounced(contracts.priceFeed) ||
@@ -248,8 +248,8 @@ class MainnetDeploymentHelper {
         contracts.priceFeed.address,
         contracts.ebtcToken.address,
         contracts.sortedCdps.address,
-        LQTYContracts.lqtyToken.address,
-        LQTYContracts.lqtyStaking.address,
+        EBTCContracts.lqtyToken.address,
+        EBTCContracts.lqtyStaking.address,
 	{gasPrice}
       ))
 
@@ -265,7 +265,7 @@ class MainnetDeploymentHelper {
         contracts.priceFeed.address,
         contracts.sortedCdps.address,
         contracts.ebtcToken.address,
-        LQTYContracts.lqtyStaking.address,
+        EBTCContracts.lqtyStaking.address,
 	{gasPrice}
       ))
 
@@ -278,7 +278,7 @@ class MainnetDeploymentHelper {
         contracts.ebtcToken.address,
         contracts.sortedCdps.address,
         contracts.priceFeed.address,
-        LQTYContracts.communityIssuance.address,
+        EBTCContracts.communityIssuance.address,
 	{gasPrice}
       ))
 
@@ -315,18 +315,18 @@ class MainnetDeploymentHelper {
       ))
   }
 
-  async connectLQTYContractsMainnet(LQTYContracts) {
+  async connectEBTCContractsMainnet(EBTCContracts) {
     const gasPrice = this.configParams.GAS_PRICE
     // Set LQTYToken address in LCF
-    await this.isOwnershipRenounced(LQTYContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.lockupContractFactory.setLQTYTokenAddress(LQTYContracts.lqtyToken.address, {gasPrice}))
+    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.setLQTYTokenAddress(EBTCContracts.lqtyToken.address, {gasPrice}))
   }
 
-  async connectLQTYContractsToCoreMainnet(LQTYContracts, coreContracts) {
+  async connectEBTCContractsToCoreMainnet(EBTCContracts, coreContracts) {
     const gasPrice = this.configParams.GAS_PRICE
-    await this.isOwnershipRenounced(LQTYContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.lqtyStaking.setAddresses(
-        LQTYContracts.lqtyToken.address,
+    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.lqtyStaking.setAddresses(
+        EBTCContracts.lqtyToken.address,
         coreContracts.ebtcToken.address,
         coreContracts.cdpManager.address, 
         coreContracts.borrowerOperations.address,
@@ -334,18 +334,18 @@ class MainnetDeploymentHelper {
 	{gasPrice}
       ))
 
-    await this.isOwnershipRenounced(LQTYContracts.communityIssuance) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.communityIssuance.setAddresses(
-        LQTYContracts.lqtyToken.address,
+    await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
+        EBTCContracts.lqtyToken.address,
         coreContracts.stabilityPool.address,
 	{gasPrice}
       ))
   }
 
-  async connectUnipoolMainnet(uniPool, LQTYContracts, EBTCWETHPairAddr, duration) {
+  async connectUnipoolMainnet(uniPool, EBTCContracts, EBTCWETHPairAddr, duration) {
     const gasPrice = this.configParams.GAS_PRICE
     await this.isOwnershipRenounced(uniPool) ||
-      await this.sendAndWaitForTransaction(uniPool.setParams(LQTYContracts.lqtyToken.address, EBTCWETHPairAddr, duration, {gasPrice}))
+      await this.sendAndWaitForTransaction(uniPool.setParams(EBTCContracts.lqtyToken.address, EBTCWETHPairAddr, duration, {gasPrice}))
   }
 
   // --- Verify on Ethrescan ---

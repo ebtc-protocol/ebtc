@@ -70,12 +70,12 @@ async function mainnetDeploy(configParams) {
   console.log(`deployer's ETH balance before deployments: ${deployerETHBalance}`)
 
   // Deploy core logic contracts
-  const liquityCore = await mdh.deployLiquityCoreMainnet(configParams.externalAddrs.TELLOR_MASTER, deploymentState)
-  await mdh.logContractObjects(liquityCore)
+  const ebtcCore = await mdh.deployLiquityCoreMainnet(configParams.externalAddrs.TELLOR_MASTER, deploymentState)
+  await mdh.logContractObjects(ebtcCore)
 
   // Check Uniswap Pair EBTC-ETH pair before pair creation
-  let EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
-  let WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.ebtcToken.address)
+  let EBTCWETHPairAddr = await uniswapV2Factory.getPair(ebtcCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
+  let WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, ebtcCore.ebtcToken.address)
   assert.equal(EBTCWETHPairAddr, WETHEBTCPairAddr)
 
 
@@ -83,14 +83,14 @@ async function mainnetDeploy(configParams) {
     // Deploy Unipool for EBTC-WETH
     await mdh.sendAndWaitForTransaction(uniswapV2Factory.createPair(
       configParams.externalAddrs.WETH_ERC20,
-      liquityCore.ebtcToken.address,
+      ebtcCore.ebtcToken.address,
       { gasPrice }
     ))
 
     // Check Uniswap Pair EBTC-WETH pair after pair creation (forwards and backwards should have same address)
-    EBTCWETHPairAddr = await uniswapV2Factory.getPair(liquityCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
+    EBTCWETHPairAddr = await uniswapV2Factory.getPair(ebtcCore.ebtcToken.address, configParams.externalAddrs.WETH_ERC20)
     assert.notEqual(EBTCWETHPairAddr, th.ZERO_ADDRESS)
-    WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, liquityCore.ebtcToken.address)
+    WETHEBTCPairAddr = await uniswapV2Factory.getPair(configParams.externalAddrs.WETH_ERC20, ebtcCore.ebtcToken.address)
     console.log(`EBTC-WETH pair contract address after Uniswap pair creation: ${EBTCWETHPairAddr}`)
     assert.equal(WETHEBTCPairAddr, EBTCWETHPairAddr)
   }
@@ -98,31 +98,31 @@ async function mainnetDeploy(configParams) {
   // Deploy Unipool
   const unipool = await mdh.deployUnipoolMainnet(deploymentState)
 
-  // Deploy LQTY Contracts
-  const LQTYContracts = await mdh.deployLQTYContractsMainnet(
+  // Deploy EBTC Contracts
+  const EBTCContracts = await mdh.deployEBTCContractsMainnet(
     configParams.ebtcAddrs.GENERAL_SAFE, // bounty address
     unipool.address,  // lp rewards address
-    configParams.ebtcAddrs.LQTY_SAFE, // multisig LQTY endowment address
+    configParams.ebtcAddrs.EBTC_SAFE, // multisig EBTC endowment address
     deploymentState,
   )
 
   // Connect all core contracts up
-  await mdh.connectCoreContractsMainnet(liquityCore, LQTYContracts, configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY)
-  await mdh.connectLQTYContractsMainnet(LQTYContracts)
-  await mdh.connectLQTYContractsToCoreMainnet(LQTYContracts, liquityCore)
+  await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY)
+  await mdh.connectEBTCContractsMainnet(EBTCContracts)
+  await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore)
 
   // Deploy a read-only multi-cdp getter
-  const multiCdpGetter = await mdh.deployMultiCdpGetterMainnet(liquityCore, deploymentState)
+  const multiCdpGetter = await mdh.deployMultiCdpGetterMainnet(ebtcCore, deploymentState)
 
   // Connect Unipool to LQTYToken and the EBTC-WETH pair address, with a 6 week duration
   const LPRewardsDuration = timeVals.SECONDS_IN_SIX_WEEKS
-  await mdh.connectUnipoolMainnet(unipool, LQTYContracts, EBTCWETHPairAddr, LPRewardsDuration)
+  await mdh.connectUnipoolMainnet(unipool, EBTCContracts, EBTCWETHPairAddr, LPRewardsDuration)
 
   // Log LQTY and Unipool addresses
-  await mdh.logContractObjects(LQTYContracts)
+  await mdh.logContractObjects(EBTCContracts)
   console.log(`Unipool address: ${unipool.address}`)
 
-  let deploymentStartTime = await LQTYContracts.lqtyToken.getDeploymentStartTime()
+  let deploymentStartTime = await EBTCContracts.lqtyToken.getDeploymentStartTime()
 
   console.log(`deployment start time: ${deploymentStartTime}`)
   const oneYearFromDeployment = (Number(deploymentStartTime) + timeVals.SECONDS_IN_ONE_YEAR).toString()
@@ -141,7 +141,7 @@ async function mainnetDeploy(configParams) {
         deployerWallet
       )
     } else {
-      const txReceipt = await mdh.sendAndWaitForTransaction(LQTYContracts.lockupContractFactory.deployLockupContract(investorAddr, oneYearFromDeployment, { gasPrice }))
+      const txReceipt = await mdh.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.deployLockupContract(investorAddr, oneYearFromDeployment, { gasPrice }))
 
       const address = await txReceipt.logs[0].address // The deployment event emitted from the LC itself is is the first of two events, so this is its address 
       lockupContracts[investor] = new ethers.Contract(
@@ -158,7 +158,7 @@ async function mainnetDeploy(configParams) {
       mdh.saveDeployment(deploymentState)
     }
 
-    const lqtyTokenAddr = LQTYContracts.lqtyToken.address
+    const lqtyTokenAddr = EBTCContracts.lqtyToken.address
     // verify
     if (configParams.ETHERSCAN_BASE_URL) {
       await mdh.verifyContract(investor, deploymentState, [lqtyTokenAddr, investorAddr, oneYearFromDeployment])
@@ -178,7 +178,7 @@ async function mainnetDeploy(configParams) {
   console.log(`current Chainlink price: ${chainlinkPrice}`)
 
   // Check Tellor price directly (through our TellorCaller)
-  let tellorPriceResponse = await liquityCore.tellorCaller.getTellorCurrentValue(1) // id == 1: the ETH-USD request ID
+  let tellorPriceResponse = await ebtcCore.tellorCaller.getTellorCurrentValue(1) // id == 1: the ETH-USD request ID
   console.log(`current Tellor price: ${tellorPriceResponse[1]}`)
   console.log(`current Tellor timestamp: ${tellorPriceResponse[2]}`)
 
@@ -189,7 +189,7 @@ async function mainnetDeploy(configParams) {
     const lockupContract = lockupContracts[investor]
     // check LC references correct LQTYToken 
     const storedLQTYTokenAddr = await lockupContract.lqtyToken()
-    assert.equal(LQTYContracts.lqtyToken.address, storedLQTYTokenAddr)
+    assert.equal(EBTCContracts.lqtyToken.address, storedLQTYTokenAddr)
     // Check contract has stored correct beneficary
     const onChainBeneficiary = await lockupContract.beneficiary()
     assert.equal(configParams.beneficiaries[investor].toLowerCase(), onChainBeneficiary.toLowerCase())
@@ -211,19 +211,19 @@ async function mainnetDeploy(configParams) {
   // --- PriceFeed ---
   console.log("PRICEFEED CHECKS")
   // Check Pricefeed's status and last good price
-  const lastGoodPrice = await liquityCore.priceFeed.lastGoodPrice()
-  const priceFeedInitialStatus = await liquityCore.priceFeed.status()
+  const lastGoodPrice = await ebtcCore.priceFeed.lastGoodPrice()
+  const priceFeedInitialStatus = await ebtcCore.priceFeed.status()
   th.logBN('PriceFeed first stored price', lastGoodPrice)
   console.log(`PriceFeed initial status: ${priceFeedInitialStatus}`)
 
   // Check PriceFeed's & TellorCaller's stored addresses
-  const priceFeedCLAddress = await liquityCore.priceFeed.priceAggregator()
-  const priceFeedTellorCallerAddress = await liquityCore.priceFeed.tellorCaller()
+  const priceFeedCLAddress = await ebtcCore.priceFeed.priceAggregator()
+  const priceFeedTellorCallerAddress = await ebtcCore.priceFeed.tellorCaller()
   assert.equal(priceFeedCLAddress, configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY)
-  assert.equal(priceFeedTellorCallerAddress, liquityCore.tellorCaller.address)
+  assert.equal(priceFeedTellorCallerAddress, ebtcCore.tellorCaller.address)
 
   // Check Tellor address
-  const tellorCallerTellorMasterAddress = await liquityCore.tellorCaller.tellor()
+  const tellorCallerTellorMasterAddress = await ebtcCore.tellorCaller.tellor()
   assert.equal(tellorCallerTellorMasterAddress, configParams.externalAddrs.TELLOR_MASTER)
 
   // --- Unipool ---
@@ -236,13 +236,13 @@ async function mainnetDeploy(configParams) {
   // --- Sorted Cdps ---
 
   // Check max size
-  const sortedCdpsMaxSize = (await liquityCore.sortedCdps.data())[2]
+  const sortedCdpsMaxSize = (await ebtcCore.sortedCdps.data())[2]
   assert.equal(sortedCdpsMaxSize, '115792089237316195423570985008687907853269984665640564039457584007913129639935')
 
   // --- CdpManager ---
 
-  const liqReserve = await liquityCore.cdpManager.EBTC_GAS_COMPENSATION()
-  const minNetDebt = await liquityCore.cdpManager.MIN_NET_DEBT()
+  const liqReserve = await ebtcCore.cdpManager.EBTC_GAS_COMPENSATION()
+  const minNetDebt = await ebtcCore.cdpManager.MIN_NET_DEBT()
 
   th.logBN('system liquidation reserve', liqReserve)
   th.logBN('system min net debt      ', minNetDebt)
@@ -250,13 +250,13 @@ async function mainnetDeploy(configParams) {
   // --- Make first EBTC-ETH liquidity provision ---
 
   // Open cdp if not yet opened
-  let cdpCount = await liquityCore.sortedCdps.cdpCountOf(deployerWallet.address)
+  let cdpCount = await ebtcCore.sortedCdps.cdpCountOf(deployerWallet.address)
   if (cdpCount.toString() == '0') {
     let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
     let _3ETHcoll = th.dec(30, 'ether') // 3 ETH
     console.log("Deployer opens a cdp ...")
     await mdh.sendAndWaitForTransaction(
-      liquityCore.borrowerOperations.openCdp(
+      ebtcCore.borrowerOperations.openCdp(
         th._100pct,
         _3kEBTCWithdrawal,
         th.DUMMY_BYTES32,
@@ -269,19 +269,19 @@ async function mainnetDeploy(configParams) {
   }
 
   // Check deployer now has an open cdp
-  cdpCount = await liquityCore.sortedCdps.cdpCountOf(deployerWallet.address)
+  cdpCount = await ebtcCore.sortedCdps.cdpCountOf(deployerWallet.address)
   assert.equal(cdpCount, 1)
-  const cdpId = await liquityCore.sortedCdps._ownedCdps(deployerWallet.address, 0)
-  console.log(`deployer is in sorted list after making cdp: ${await liquityCore.sortedCdps.contains(cdpId)}`)
+  const cdpId = await ebtcCore.sortedCdps._ownedCdps(deployerWallet.address, 0)
+  console.log(`deployer is in sorted list after making cdp: ${await ebtcCore.sortedCdps.contains(cdpId)}`)
 
-  const deployerCdp = await liquityCore.cdpManager.Cdps(cdpId)
+  const deployerCdp = await ebtcCore.cdpManager.Cdps(cdpId)
   th.logBN('deployer debt', deployerCdp[0])
   th.logBN('deployer coll', deployerCdp[1])
   th.logBN('deployer stake', deployerCdp[2])
   console.log(`deployer's cdp status: ${deployerCdp[3]}`)
 
   // Check deployer has EBTC
-  let deployerEBTCBal = await liquityCore.ebtcToken.balanceOf(deployerWallet.address)
+  let deployerEBTCBal = await ebtcCore.ebtcToken.balanceOf(deployerWallet.address)
   th.logBN("deployer's EBTC balance", deployerEBTCBal)
 
 
@@ -296,7 +296,7 @@ async function mainnetDeploy(configParams) {
   const token0Addr = await EBTCETHPair.token0()
   const token1Addr = await EBTCETHPair.token1()
   console.log(`EBTC-ETH Pair token 0: ${th.squeezeAddr(token0Addr)},
-        EBTCToken contract addr: ${th.squeezeAddr(liquityCore.ebtcToken.address)}`)
+        EBTCToken contract addr: ${th.squeezeAddr(ebtcCore.ebtcToken.address)}`)
   console.log(`EBTC-ETH Pair token 1: ${th.squeezeAddr(token1Addr)},
         WETH ERC20 contract addr: ${th.squeezeAddr(configParams.externalAddrs.WETH_ERC20)}`)
 
@@ -317,10 +317,10 @@ async function mainnetDeploy(configParams) {
   if (deployerLPTokenBal.toString() == '0') {
     console.log('Providing liquidity to Uniswap...')
     // Give router an allowance for EBTC
-    await liquityCore.ebtcToken.increaseAllowance(uniswapV2Router02.address, dec(10000, 18))
+    await ebtcCore.ebtcToken.increaseAllowance(uniswapV2Router02.address, dec(10000, 18))
 
     // Check Router's spending allowance
-    const routerEBTCAllowanceFromDeployer = await liquityCore.ebtcToken.allowance(deployerWallet.address, uniswapV2Router02.address)
+    const routerEBTCAllowanceFromDeployer = await ebtcCore.ebtcToken.allowance(deployerWallet.address, uniswapV2Router02.address)
     th.logBN("router's spending allowance for deployer's EBTC", routerEBTCAllowanceFromDeployer)
 
     // Get amounts for liquidity provision
@@ -341,7 +341,7 @@ async function mainnetDeploy(configParams) {
     // Provide liquidity to EBTC-ETH pair
     await mdh.sendAndWaitForTransaction(
       uniswapV2Router02.addLiquidityETH(
-        liquityCore.ebtcToken.address, // address of EBTC token
+        ebtcCore.ebtcToken.address, // address of EBTC token
         EBTCAmount, // EBTC provision
         minEBTCAmount, // minimum EBTC provision
         LP_ETH, // minimum ETH provision
@@ -365,13 +365,13 @@ async function mainnetDeploy(configParams) {
 
 
   // --- 2nd Account opens cdp ---
-  cdpCount = await liquityCore.sortedCdps.cdpCountOf(account2Wallet.address)
+  cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
   if (cdpCount.toString() == '0') {
     console.log("Acct 2 opens a cdp ...")
     let _1500EBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
     let _15_ETHcoll = th.dec(30, 18) // 30 ETH
     const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
-    const borrowerOpsAcct2 = await new ethers.Contract(liquityCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
+    const borrowerOpsAcct2 = await new ethers.Contract(ebtcCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
 
     await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openCdp(th._100pct, _1500EBTCWithdrawal, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { value: _15_ETHcoll, gasPrice, gasLimit: 1000000 }))
   } else {
@@ -379,19 +379,19 @@ async function mainnetDeploy(configParams) {
   }
 
   // Check deployer now has an open cdp
-  cdpCount = await liquityCore.sortedCdps.cdpCountOf(account2Wallet.address)
+  cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
   assert.equal(cdpCount, 1)
-  const cdpId2 = await liquityCore.sortedCdps._ownedCdps(account2Wallet.address, 0)
-  console.log(`Acct 2 is in sorted list after making cdp: ${await liquityCore.sortedCdps.contains(cdpId2)}`)
+  const cdpId2 = await ebtcCore.sortedCdps._ownedCdps(account2Wallet.address, 0)
+  console.log(`Acct 2 is in sorted list after making cdp: ${await ebtcCore.sortedCdps.contains(cdpId2)}`)
 
-  const acct2Cdp = await liquityCore.cdpManager.Cdps(cdpId2)
+  const acct2Cdp = await ebtcCore.cdpManager.Cdps(cdpId2)
   th.logBN('acct2 debt', acct2Cdp[0])
   th.logBN('acct2 coll', acct2Cdp[1])
   th.logBN('acct2 stake', acct2Cdp[2])
   console.log(`acct2 cdp status: ${acct2Cdp[3]}`)
 
   // Check deployer has EBTC
-  let account2EBTCBal = await liquityCore.ebtcToken.balanceOf(account2Wallet.address)
+  let account2EBTCBal = await ebtcCore.ebtcToken.balanceOf(account2Wallet.address)
   th.logBN("Account2's EBTC balance", account2EBTCBal)
 
 
@@ -403,26 +403,26 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
   // Number of cdps
-  const numCdps = await liquityCore.cdpManager.getCdpIdsCount()
+  const numCdps = await ebtcCore.cdpManager.getCdpIdsCount()
   console.log(`number of cdps: ${numCdps} `)
 
   // Sorted list size
-  const listSize = await liquityCore.sortedCdps.getSize()
+  const listSize = await ebtcCore.sortedCdps.getSize()
   console.log(`Cdp list size: ${listSize} `)
 
   // Total system debt and coll
-  const entireSystemDebt = await liquityCore.cdpManager.getEntireSystemDebt()
-  const entireSystemColl = await liquityCore.cdpManager.getEntireSystemColl()
+  const entireSystemDebt = await ebtcCore.cdpManager.getEntireSystemDebt()
+  const entireSystemColl = await ebtcCore.cdpManager.getEntireSystemColl()
   th.logBN("Entire system debt", entireSystemDebt)
   th.logBN("Entire system coll", entireSystemColl)
   
   // TCR
-  const TCR = await liquityCore.cdpManager.getTCR(chainlinkPrice)
+  const TCR = await ebtcCore.cdpManager.getTCR(chainlinkPrice)
   console.log(`TCR: ${TCR}`)
 
   // current borrowing rate
-  const baseRate = await liquityCore.cdpManager.baseRate()
-  const currentBorrowingRate = await liquityCore.cdpManager.getBorrowingRateWithDecay()
+  const baseRate = await ebtcCore.cdpManager.baseRate()
+  const currentBorrowingRate = await ebtcCore.cdpManager.getBorrowingRateWithDecay()
   th.logBN("Base rate", baseRate)
   th.logBN("Current borrowing rate", currentBorrowingRate)
 
@@ -430,15 +430,15 @@ async function mainnetDeploy(configParams) {
 
   // CdpManager 
   console.log("CdpManager state variables:")
-  const totalStakes = await liquityCore.cdpManager.totalStakes()
-  const totalStakesSnapshot = await liquityCore.cdpManager.totalStakesSnapshot()
-  const totalCollateralSnapshot = await liquityCore.cdpManager.totalCollateralSnapshot()
+  const totalStakes = await ebtcCore.cdpManager.totalStakes()
+  const totalStakesSnapshot = await ebtcCore.cdpManager.totalStakesSnapshot()
+  const totalCollateralSnapshot = await ebtcCore.cdpManager.totalCollateralSnapshot()
   th.logBN("Total cdp stakes", totalStakes)
   th.logBN("Snapshot of total cdp stakes before last liq. ", totalStakesSnapshot)
   th.logBN("Snapshot of total cdp collateral before last liq. ", totalCollateralSnapshot)
 
-  const L_ETH = await liquityCore.cdpManager.L_ETH()
-  const L_EBTCDebt = await liquityCore.cdpManager.L_EBTCDebt()
+  const L_ETH = await ebtcCore.cdpManager.L_ETH()
+  const L_EBTCDebt = await ebtcCore.cdpManager.L_EBTCDebt()
   th.logBN("L_ETH", L_ETH)
   th.logBN("L_EBTCDebt", L_EBTCDebt)
 
@@ -478,7 +478,7 @@ async function mainnetDeploy(configParams) {
 
   // new deployment
   // const LCshortTerm = await LCShortTermEthersFactory.deploy(
-  //   LQTYContracts.lqtyToken.address,
+  //   EBTCContracts.lqtyToken.address,
   //   deployerWallet.address,
   //   now, 
   //   {gasPrice, gasLimit: 1000000}
@@ -507,11 +507,11 @@ async function mainnetDeploy(configParams) {
   //   console.log(`time now: ${now}`)
 
   //   // check deployer LQTY bal
-  //   let deployerLQTYBal = await LQTYContracts.lqtyToken.balanceOf(deployerWallet.address)
+  //   let deployerLQTYBal = await EBTCContracts.lqtyToken.balanceOf(deployerWallet.address)
   //   console.log(`deployerLQTYBal before he withdraws: ${deployerLQTYBal}`)
 
   //   // check LC LQTY bal
-  //   let LC_LQTYBal = await LQTYContracts.lqtyToken.balanceOf(deployedShortTermLC.address)
+  //   let LC_LQTYBal = await EBTCContracts.lqtyToken.balanceOf(deployedShortTermLC.address)
   //   console.log(`LC LQTY bal before withdrawal: ${LC_LQTYBal}`)
 
   // // withdraw from LC
@@ -519,11 +519,11 @@ async function mainnetDeploy(configParams) {
   // withdrawFromShortTermTx.wait()
 
   // // check deployer bal after LC withdrawal
-  // deployerLQTYBal = await LQTYContracts.lqtyToken.balanceOf(deployerWallet.address)
+  // deployerLQTYBal = await EBTCContracts.lqtyToken.balanceOf(deployerWallet.address)
   // console.log(`deployerLQTYBal after he withdraws: ${deployerLQTYBal}`)
 
   //   // check LC LQTY bal
-  //   LC_LQTYBal = await LQTYContracts.lqtyToken.balanceOf(deployedShortTermLC.address)
+  //   LC_LQTYBal = await EBTCContracts.lqtyToken.balanceOf(deployedShortTermLC.address)
   //   console.log(`LC LQTY bal after withdrawal: ${LC_LQTYBal}`)
 }
 
