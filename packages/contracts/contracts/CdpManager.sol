@@ -235,7 +235,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        CdpManagerOperation operation
+        CdpManagerOperation _operation
     );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
@@ -374,7 +374,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         _closeCdp(_cdpId, Status.closedByLiquidation);
 
-        address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
+        address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
         emit CdpLiquidated(
             _cdpId,
             _borrower,
@@ -432,7 +432,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             _closeCdp(_cdpId, Status.closedByLiquidation);
 
-            address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpLiquidated(
                 _cdpId,
                 _borrower,
@@ -465,7 +465,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             _closeCdp(_cdpId, Status.closedByLiquidation);
 
-            address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpLiquidated(
                 _cdpId,
                 _borrower,
@@ -498,7 +498,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _price
             );
 
-            address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             _closeCdp(_cdpId, Status.closedByLiquidation);
             if (singleLiquidation.collSurplus > 0) {
                 collSurplusPool.accountSurplus(_borrower, singleLiquidation.collSurplus);
@@ -1084,7 +1084,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         if (newDebt == EBTC_GAS_COMPENSATION) {
             // No debt left in the Cdp (except for the liquidation reserve), therefore the cdp gets closed
             _removeStake(_redeemColFromCdp._cdpId);
-            address _borrower = _contractsCache.sortedCdps.existCdpOwners(_redeemColFromCdp._cdpId);
+            address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
             _closeCdp(_redeemColFromCdp._cdpId, Status.closedByRedemption);
             _redeemCloseCdp(
                 _contractsCache,
@@ -1129,7 +1129,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             Cdps[_redeemColFromCdp._cdpId].coll = newColl;
             _updateStakeAndTotalStakes(_redeemColFromCdp._cdpId);
 
-            address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_redeemColFromCdp._cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp._cdpId);
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
                 _borrower,
@@ -1157,14 +1157,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         bytes32 _cdpId,
         uint _EBTC,
         uint _ETH,
-        address _b
+        address _borrower
     ) internal {
         _contractsCache.ebtcToken.burn(gasPoolAddress, _EBTC);
         // Update Active Pool EBTC, and send ETH to account
         _contractsCache.activePool.decreaseEBTCDebt(_EBTC);
 
         // send ETH from Active Pool to CollSurplus Pool
-        _contractsCache.collSurplusPool.accountSurplus(_b, _ETH);
+        _contractsCache.collSurplusPool.accountSurplus(_borrower, _ETH);
         _contractsCache.activePool.sendETH(address(_contractsCache.collSurplusPool), _ETH);
     }
 
@@ -1259,11 +1259,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             currentBorrower = contractsCache.sortedCdps.existCdpOwners(_firstRedemptionHint);
         } else {
             _cId = contractsCache.sortedCdps.getLast();
-            currentBorrower = contractsCache.sortedCdps.existCdpOwners(_cId);
+            currentBorrower = contractsCache.sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
             while (currentBorrower != address(0) && getCurrentICR(_cId, totals.price) < MCR) {
                 _cId = contractsCache.sortedCdps.getPrev(_cId);
-                currentBorrower = contractsCache.sortedCdps.existCdpOwners(_cId);
+                currentBorrower = contractsCache.sortedCdps.getOwnerAddress(_cId);
             }
         }
 
@@ -1277,7 +1277,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
                 bytes32 _nextId = contractsCache.sortedCdps.getPrev(_cId);
-                address nextUserToCheck = contractsCache.sortedCdps.existCdpOwners(_nextId);
+                address nextUserToCheck = contractsCache.sortedCdps.getOwnerAddress(_nextId);
 
                 _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, _cId);
 
@@ -1398,7 +1398,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 pendingETHReward
             );
 
-            address _borrower = ISortedCdps(sortedCdps).existCdpOwners(_cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpUpdated(
                 _cdpId,
                 _borrower,

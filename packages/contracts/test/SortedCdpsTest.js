@@ -60,6 +60,11 @@ contract('SortedCdps', async accounts => {
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const openCdp = async (params) => th.openCdp(contracts, params)
 
+  const checkCdpId = async (_cdpId, _owner) => {
+        assert.equal((await contracts.sortedCdps.existCdpOwners(_cdpId)), (await sortedCdps.getOwnerAddress(_cdpId)));
+        assert.equal((await contracts.sortedCdps.existCdpOwners(_cdpId)), _owner);
+  }
+
   describe('SortedCdps', () => {	
 
     before(async () => {	
@@ -109,10 +114,13 @@ contract('SortedCdps', async accounts => {
     it('contains(): returns true for addresses that have opened cdps', async () => {
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await checkCdpId(_bobCdpId, bob);
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await checkCdpId(_carolCdpId, carol);
 
       // Confirm cdp statuses became active
       assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
@@ -144,10 +152,13 @@ contract('SortedCdps', async accounts => {
 
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await checkCdpId(_bobCdpId, bob);
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await checkCdpId(_carolCdpId, carol);
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -176,10 +187,13 @@ contract('SortedCdps', async accounts => {
 
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await checkCdpId(_bobCdpId, bob);
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await checkCdpId(_carolCdpId, carol);
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, dec(1000, 18), { from: whale })
@@ -198,10 +212,13 @@ contract('SortedCdps', async accounts => {
 
       await openCdp({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
       let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await checkCdpId(_aliceCdpId2, alice);
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: bob } })
       let _bobCdpId2 = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      await checkCdpId(_bobCdpId2, bob);
       await openCdp({ ICR: toBN(dec(3000, 18)), extraParams: { from: carol } })
       let _carolCdpId2 = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await checkCdpId(_carolCdpId2, carol);
 
       // Confirm cdp statuses became open again
       assert.equal((await cdpManager.Cdps(_aliceCdpId2))[3], '1')
@@ -225,6 +242,7 @@ contract('SortedCdps', async accounts => {
     it('contains(): true when list size is 1 and the cdp the only one in system', async () => {
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await checkCdpId(_aliceCdpId, alice);
 
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
     })
@@ -252,13 +270,17 @@ contract('SortedCdps', async accounts => {
       await openCdp({ ICR: toBN(dec(500, 18)), extraParams: { from: whale } })
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: A } })
       let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await checkCdpId(_aCdpId, A);
       await openCdp({ ICR: toBN(dec(5, 18)), extraParams: { from: B } })
       let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await checkCdpId(_bCdpId, B);
       await openCdp({ ICR: toBN(dec(250, 16)), extraParams: { from: C } })
       let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await checkCdpId(_cCdpId, C);
       await openCdp({ ICR: toBN(dec(166, 16)), extraParams: { from: D } })
       await openCdp({ ICR: toBN(dec(125, 16)), extraParams: { from: E } })
       let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
+      await checkCdpId(_eCdpId, E);
 
       // Expect a cdp with NICR 300% to be inserted between B and C
       const targetNICR = dec(3, 18)
