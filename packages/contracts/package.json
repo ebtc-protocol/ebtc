@@ -1,5 +1,5 @@
 {
-  "name": "@liquity/contracts",
+  "name": "@ebtc/contracts",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -18,7 +18,9 @@
     "prepare:set-version": "node scripts/set-version.js",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
-    "coveralls": "cat coverage/lcov.info | coveralls"
+    "coveralls": "cat coverage/lcov.info | coveralls",
+    "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat",
+    "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost"
   },
   "keywords": [],
   "author": "",
