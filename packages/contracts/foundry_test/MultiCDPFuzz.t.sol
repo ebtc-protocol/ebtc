@@ -56,7 +56,7 @@ contract CDPTest is eBTCBaseFixture {
     28 ether and 90 ether boundaries are made so larger borrowers won't drag TTR down too much resulting in errors
     */
     function testCdpsForManyUsersFixedCR(uint8 amountUsers, uint96 collAmount) public {
-        vm.assume(collAmount > 28 ether && collAmount < 95 ether);
+        vm.assume(collAmount > 28 ether && collAmount < 99 ether);
         vm.assume(amountUsers > 1);
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);

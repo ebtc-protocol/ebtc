@@ -42,7 +42,3 @@ jobs:
       - name: Foundry Test
         working-directory: ./packages/contracts/
         run: forge test -vvv
-
-      - name: Run snapshot
-        working-directory: ./packages/contracts/
-        run: forge snapshot
