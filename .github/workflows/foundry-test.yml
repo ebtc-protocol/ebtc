@@ -1,5 +1,6 @@
 env:
   FORCE_COLOR: true
+  FOUNDRY_FUZZ_MAX_TEST_REJECTS: 2147483647
 
 on:
   push:

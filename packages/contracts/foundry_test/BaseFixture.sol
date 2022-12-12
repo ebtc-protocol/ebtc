@@ -23,6 +23,8 @@ import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
 contract eBTCBaseFixture is Test {
     using SafeMath for uint256;
+    using SafeMath for uint96;
+    using SafeMath for uint8;
     uint256 constant maxBytes32 = type(uint256).max;
 
     PriceFeedTestnet priceFeedMock;
