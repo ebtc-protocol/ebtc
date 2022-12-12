@@ -1583,7 +1583,7 @@ contract('TroveManager', async accounts => {
     assert.equal(TCR_Before, TCR_After)
   })
 
-  xit("liquidateTroves():  liquidates troves with ICR < MCR", async () => {
+  it("liquidateTroves():  liquidates troves with ICR < MCR", async () => {
     await openTrove({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
     // A, B, C open troves that will remain active when price drops to 100
@@ -2025,11 +2025,11 @@ contract('TroveManager', async accounts => {
 
   // --- batchLiquidateTroves() ---
 
-  xit('batchLiquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards', async () => {
+  it('batchLiquidateTroves(): liquidates a Trove that a) was skipped in a previous liquidation and b) has pending rewards', async () => {
     // A, B, C, D, E open troves 
     await openTrove({ ICR: toBN(dec(300, 16)), extraParams: { from: C } })
-    await openTrove({ ICR: toBN(dec(364, 16)), extraParams: { from: D } })
-    await openTrove({ ICR: toBN(dec(364, 16)), extraParams: { from: E } })
+    await openTrove({ ICR: toBN(dec(364, 16)), extraLUSDAmount: toBN(dec(100, 18)), extraParams: { from: D } })
+    await openTrove({ ICR: toBN(dec(344, 16)), extraLUSDAmount: toBN(dec(60, 18)), extraParams: { from: E } })
     await openTrove({ ICR: toBN(dec(120, 16)), extraParams: { from: A } })
     await openTrove({ ICR: toBN(dec(133, 16)), extraParams: { from: B } })
     let _aTroveId = await sortedTroves.troveOfOwnerByIndex(A, 0);
@@ -2046,7 +2046,9 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // A gets liquidated, creates pending rewards for all
-    const liqTxA = await troveManager.liquidate(_aTroveId)
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(E)).toString()).sub(toBN(dec(1, 18))), {from: E});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(A)).toString()).sub(toBN(dec(10, 18))), {from: A});
+    const liqTxA = await troveManager.liquidate(_aTroveId, {from: owner})
     assert.isTrue(liqTxA.receipt.status)
     assert.isFalse(await sortedTroves.contains(_aTroveId))
 
@@ -2054,7 +2056,7 @@ contract('TroveManager', async accounts => {
     await stabilityPool.provideToSP(dec(10, 18), ZERO_ADDRESS, {from: A})
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(90, 18))
     price = await priceFeed.getPrice()
     // Confirm system is now in Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -2066,7 +2068,8 @@ contract('TroveManager', async accounts => {
     assert.isTrue(ICR_C.gt(TCR))
 
     // Attempt to liquidate B and C, which skips C in the liquidation since it is immune
-    const liqTxBC = await troveManager.liquidateTroves(2)
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(B)).toString()), {from: B});
+    const liqTxBC = await troveManager.liquidateSequentiallyInRecovery(2, {from: owner})
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedTroves.contains(_bTroveId))
     assert.isTrue(await sortedTroves.contains(_cTroveId))
@@ -2079,7 +2082,7 @@ contract('TroveManager', async accounts => {
     await borrowerOperations.repayLUSD(_eTroveId, dec(1, 18), _eTroveId, _eTroveId, {from: E})
 
     // Check C is the only trove that has pending rewards
-    assert.isTrue(await troveManager.hasPendingRewards(_cTroveId))
+    assert.isFalse(await troveManager.hasPendingRewards(_cTroveId))
     assert.isFalse(await troveManager.hasPendingRewards(_dTroveId))
     assert.isFalse(await troveManager.hasPendingRewards(_eTroveId))
 
@@ -2088,23 +2091,27 @@ contract('TroveManager', async accounts => {
     const pendingLUSDDebt_C = await troveManager.getPendingLUSDDebtReward(_cTroveId)
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolLUSDDebt = await defaultPool.getLUSDDebt()
-    assert.isTrue(pendingETH_C.lte(defaultPoolETH))
-    assert.isTrue(pendingLUSDDebt_C.lte(defaultPoolLUSDDebt))
+    assert.isTrue(pendingETH_C.eq(defaultPoolETH))
+    assert.isTrue(pendingLUSDDebt_C.eq(defaultPoolLUSDDebt))
     //Check only difference is dust
     assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 1000)
     assert.isAtMost(th.getDifference(pendingLUSDDebt_C, defaultPoolLUSDDebt), 1000)
 
     // Confirm system is still in Recovery Mode
+    await priceFeed.setPrice(dec(87, 18))
+    price = await priceFeed.getPrice()
+	console.log('tcr=' + (await troveManager.getTCR(price)) + ',price=' + price);
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // D and E fill the Stability Pool, enough to completely absorb C's debt of 70
     await stabilityPool.provideToSP(dec(50, 18), ZERO_ADDRESS, {from: D})
-    await stabilityPool.provideToSP(dec(50, 18), ZERO_ADDRESS, {from: E})
-
+    //await stabilityPool.provideToSP(dec(50, 18), ZERO_ADDRESS, {from: E})
     await priceFeed.setPrice(dec(50, 18))
 
     // Try to liquidate C again. Check it succeeds and closes C's trove
-    const liqTx2 = await troveManager.batchLiquidateTroves([_cTroveId,_dTroveId])
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(C)).toString()), {from: C});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(D)).toString()), {from: D});
+    const liqTx2 = await troveManager.liquidateInBatchRecovery([_cTroveId,_dTroveId], {from: owner})
     assert.isTrue(liqTx2.receipt.status)
     assert.isFalse(await sortedTroves.contains(_cTroveId))
     assert.isFalse(await sortedTroves.contains(_dTroveId))
@@ -2112,7 +2119,7 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await sortedTroves.getSize()).eq(toBN('1')))
   })
 
-  xit('batchLiquidateTroves(): closes every trove with ICR < MCR in the given array', async () => {
+  it('batchLiquidateTroves(): closes every trove with ICR < MCR in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2156,7 +2163,11 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId, _carolTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch(liquidationArray, {from: owner});
 
     // Confirm troves A-C have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -2172,7 +2183,7 @@ contract('TroveManager', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '3')
   })
 
-  xit('batchLiquidateTroves(): does not liquidate troves that are not in the given array', async () => {
+  it('batchLiquidateTroves(): does not liquidate troves that are not in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2210,7 +2221,10 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await troveManager.getCurrentICR(_erinTroveId, price)).lt(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId]  // C-E not included
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch(liquidationArray, {from: owner});
 
     // Confirm troves A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -2234,7 +2248,7 @@ contract('TroveManager', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '4')
   })
 
-  xit('batchLiquidateTroves(): does not close troves with ICR >= MCR in the given array', async () => {
+  it('batchLiquidateTroves(): does not close troves with ICR >= MCR in the given array', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2278,7 +2292,11 @@ contract('TroveManager', async accounts => {
     assert.isTrue((await troveManager.getCurrentICR(_whaleTroveId, price)).gte(mv._MCR))
 
     liquidationArray = [_aliceTroveId, _bobTroveId, _carolTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch(liquidationArray, {from: owner});
 
     // Confirm troves D-E and whale remain in the system
     assert.isTrue(await sortedTroves.contains(_dennisTroveId))
@@ -2294,7 +2312,7 @@ contract('TroveManager', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '3')
   })
 
-  xit('batchLiquidateTroves(): reverts if array is empty', async () => {
+  it('batchLiquidateTroves(): reverts if array is empty', async () => {
     // --- SETUP ---
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
@@ -2321,14 +2339,14 @@ contract('TroveManager', async accounts => {
 
     liquidationArray = []
     try {
-      const tx = await troveManager.batchLiquidateTroves(liquidationArray);
+      const tx = await troveManager.liquidateInBatch(liquidationArray, {from: owner});
       assert.isFalse(tx.receipt.status)
     } catch (error) {
-      assert.include(error.message, "TroveManager: Calldata address array must not be empty")
+      assert.include(error.message, "!ID array must not be empty")
     }
   })
 
-  xit("batchLiquidateTroves(): skips if trove is non-existent", async () => {
+  it("batchLiquidateTroves(): skips if trove is non-existent", async () => {
     // --- SETUP ---
     const spDeposit = toBN(dec(500000, 18))
     await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("252251")});
@@ -2374,7 +2392,11 @@ contract('TroveManager', async accounts => {
 
     // Liquidate - trove C in between the ones to be liquidated!
     const liquidationArray = [_aliceTroveId, carol, _bobTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch(liquidationArray, {from: owner});
 
     // Confirm troves A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -2392,13 +2414,13 @@ contract('TroveManager', async accounts => {
     assert.equal((await troveManager.Troves(carol))[3].toString(), '0')
 
     // Check Stability pool has only been reduced by A-B
-    th.assertIsApproximatelyEqual((await stabilityPool.getTotalLUSDDeposits()).toString(), spDeposit.sub(A_debt).sub(B_debt))
+    th.assertIsApproximatelyEqual((await stabilityPool.getTotalLUSDDeposits()).toString(), spDeposit.sub(toBN('0')).sub(toBN('0')))
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
   })
 
-  xit("batchLiquidateTroves(): skips if a trove has been closed", async () => {
+  it("batchLiquidateTroves(): skips if a trove has been closed", async () => {
     // --- SETUP ---
     const spDeposit = toBN(dec(500000, 18))
     await beadpSigner.sendTransaction({ to: whale, value: ethers.utils.parseEther("252251")});
@@ -2457,7 +2479,11 @@ contract('TroveManager', async accounts => {
 
     // Liquidate - trove C in between the ones to be liquidated!
     const liquidationArray = [_aliceTroveId, _carolTroveId, _bobTroveId, _dennisTroveId, _erinTroveId]
-    await troveManager.batchLiquidateTroves(liquidationArray);
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch(liquidationArray, {from: owner});
 
     // Confirm troves A-B have been removed from the system
     assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -2473,13 +2499,13 @@ contract('TroveManager', async accounts => {
     assert.equal((await sortedTroves.getSize()).toString(), '3')
 
     // Check Stability pool has only been reduced by A-B
-    th.assertIsApproximatelyEqual((await stabilityPool.getTotalLUSDDeposits()).toString(), spDeposit.sub(A_debt).sub(B_debt))
+    th.assertIsApproximatelyEqual((await stabilityPool.getTotalLUSDDeposits()).toString(), spDeposit.sub(toBN('0')).sub(toBN('0')))
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
   })
 
-  xit("batchLiquidateTroves: when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
+  it("batchLiquidateTroves: when SP > 0, triggers LQTY reward event - increases the sum G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
     // A, B, C open troves
@@ -2506,17 +2532,20 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate troves
-    await troveManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_1)).toString()), {from: defaulter_1});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_2)).toString()), {from: defaulter_2});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch([_defaulter1TroveId, _defaulter2TroveId], {from: owner})
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 
     const G_After = await stabilityPool.epochToScaleToG(0, 0)
 
     // Expect G has increased from the LQTY reward event triggered
-    assert.isTrue(G_After.gt(G_Before))
+    assert.isTrue(G_After.eq(G_Before))
   })
 
-  xit("batchLiquidateTroves(): when SP is empty, doesn't update G", async () => {
+  it("batchLiquidateTroves(): when SP is empty, doesn't update G", async () => {
     await openTrove({ ICR: toBN(dec(100, 18)), extraParams: { from: whale } })
 
     // A, B, C open troves
@@ -2552,7 +2581,10 @@ contract('TroveManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // liquidate troves
-    await troveManager.batchLiquidateTroves([_defaulter1TroveId, _defaulter2TroveId])
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_1)).toString()), {from: defaulter_1});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_2)).toString()), {from: defaulter_2});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+    await troveManager.liquidateInBatch([_defaulter1TroveId, _defaulter2TroveId], {from: owner})
     assert.isFalse(await sortedTroves.contains(_defaulter1TroveId))
     assert.isFalse(await sortedTroves.contains(_defaulter2TroveId))
 

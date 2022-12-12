@@ -68,8 +68,10 @@ interface ITroveManager is ILiquityBase {
 
     function liquidate(bytes32 _troveId) external;
     function liquidateSequentially(uint256 _n) external;
+    function liquidateInBatch(bytes32[] memory _troveIds) external;
     function partiallyLiquidate(bytes32 _troveId, uint256 _partialDebt, bytes32 _upperPartialHint, bytes32 _lowerPartialHint) external;
     function liquidateSequentiallyInRecovery(uint256 _n) external;
+    function liquidateInBatchRecovery(bytes32[] memory _troveIds) external;
 
     function liquidateTroves(uint _n) external;
 
