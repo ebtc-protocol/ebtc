@@ -3,9 +3,11 @@ pragma solidity 0.6.11;
 
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
+import "../../contracts/Dependencies/SafeMath.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
+    using SafeMath for uint256;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
 
     function getNextUserAddress() external returns (address payable) {
@@ -33,5 +35,12 @@ contract Utilities is Test {
     function mineBlocks(uint256 numBlocks) external {
         uint256 targetBlock = block.number + numBlocks;
         vm.roll(targetBlock);
+    }
+
+    /* Calculate some relevant borrowed amount based on collateral, it's price and CR
+    BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
+    */
+    function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio) external returns (uint256) {
+        return coll.mul(price).div(collateralRatio);
     }
 }

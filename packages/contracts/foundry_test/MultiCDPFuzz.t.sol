@@ -6,8 +6,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 contract CDPTest is eBTCBaseFixture {
-    uint256 private testNumber;
-
+    uint256 internal _collateralRatio = 160e16;  // 160% take higher CR as CCR is 150%
     Utilities internal _utils;
     mapping(bytes32 => bool) private _cdpIdsExist;
 
@@ -20,9 +19,9 @@ contract CDPTest is eBTCBaseFixture {
     }
 
     /* Open CDPs for fuzzed amount of users
-    BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
+    Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
-    function testCdpsForManyUsers(uint8 amountUsers) public {
+    function testCdpsForManyUsersFixedCR(uint8 amountUsers) public {
         // Skip case when amount of Users is 0
         vm.assume(amountUsers > 1);
 
@@ -31,9 +30,7 @@ contract CDPTest is eBTCBaseFixture {
         users = _utils.createUsers(amountUsers);
 
         uint collateral = 30 ether;
-        uint collateralRatio = 160e16;  // 160% take higher CR as CCR is 150%
-        // TODO: Move this to helper func
-        uint borrowedAmount = collateral.mul(priceFeedMock.fetchPrice()).div(collateralRatio);
+        uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), _collateralRatio);
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < users.length; userIx++) {
             vm.deal(users[userIx], 300 ether);
