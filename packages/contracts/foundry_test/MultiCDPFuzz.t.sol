@@ -6,9 +6,12 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 contract CDPTest is eBTCBaseFixture {
+    uint private constant FEE = 5e17;
+
     uint256 internal _collateralRatio = 160e16;  // 160% take higher CR as CCR is 150%
-    Utilities internal _utils;
     mapping(bytes32 => bool) private _cdpIdsExist;
+
+    Utilities internal _utils;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -18,7 +21,7 @@ contract CDPTest is eBTCBaseFixture {
         _utils = new Utilities();
     }
 
-    /* Open CDPs for fuzzed amount of users
+    /* Open CDPs for fuzzed amount of users ONLY
     Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
     function testCdpsForManyUsersFixedCR(uint8 amountUsers) public {
@@ -33,14 +36,8 @@ contract CDPTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), _collateralRatio);
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < users.length; userIx++) {
-            vm.deal(users[userIx], 300 ether);
             vm.prank(users[userIx]);
-            borrowerOperations.openCdp{value : collateral}(
-                5e17,
-                borrowedAmount,
-                "some hint",
-                "some hint"
-            );
+            borrowerOperations.openCdp{value : collateral}(FEE, borrowedAmount, "hint", "hint");
             // Get User's CDP and check it for uniqueness
             uint256 currentCdpNonce = sortedCdps.nextCdpNonce() - 1;  // Next nonce is always incremented
             bytes32 cdpId = sortedCdps.toCdpId(users[userIx], block.number,  currentCdpNonce);
@@ -52,7 +49,32 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
-        uint cdpAmount = sortedCdps.getSize();
-        assertEq(cdpAmount, amountUsers);
+        assertEq(sortedCdps.getSize(), amountUsers);
+    }
+
+    /* Open CDPs for fuzzed amount of users. Also fuzz collateral amounts
+    28 ether and 90 ether boundaries are made so larger borrowers won't drag TTR down too much resulting in errors
+    */
+    function testCdpsForManyUsersFixedCR(uint8 amountUsers, uint96 collAmount) public {
+        vm.assume(collAmount > 28 ether && collAmount < 95 ether);
+        vm.assume(amountUsers > 1);
+        address payable[] memory users;
+        users = _utils.createUsers(amountUsers);
+
+        uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), _collateralRatio);
+        // Iterate thru all users and open CDP for each of them
+        for (uint userIx = 0; userIx < users.length; userIx++) {
+            vm.prank(users[userIx]);
+            borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
+            // Get User's CDP and check it for uniqueness
+            uint256 currentCdpNonce = sortedCdps.nextCdpNonce() - 1;  // Next nonce is always incremented
+            bytes32 cdpId = sortedCdps.toCdpId(users[userIx], block.number,  currentCdpNonce);
+            // Make sure that each new CDP id is unique
+            assertEq(_cdpIdsExist[cdpId], false);
+            // Set cdp id to exist == true
+            _cdpIdsExist[cdpId] = true;
+        }
+        // Make sure amount of SortedCDPs equals to `amountUsers`
+        assertEq(sortedCdps.getSize(), amountUsers);
     }
 }

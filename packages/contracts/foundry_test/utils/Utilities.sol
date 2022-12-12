@@ -40,7 +40,8 @@ contract Utilities is Test {
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
     BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
     */
-    function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio) external returns (uint256) {
+    function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio)
+        external pure returns (uint256) {
         return coll.mul(price).div(collateralRatio);
     }
 }
