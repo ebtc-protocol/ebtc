@@ -134,14 +134,14 @@ contract CDPTest is eBTCBaseFixture {
         );
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < users.length; userIx++) {
-            vm.prank(users[userIx]);
             // Create multiple CDPs per user
             for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
-                borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
-//                // Get User's CDP and check it for uniqueness
-//                bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(users[userIx], ix);
-//                assertEq(_cdpIdsExist[cdpId], false);
-//                _cdpIdsExist[cdpId] = true;
+                vm.prank(users[userIx]);
+                borrowerOperations.openCdp{value : collAmountChunk}(FEE,  borrowedAmount,  "hint",  "hint");
+                // Get User's CDP and check it for uniqueness
+                bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(users[userIx], cdpIx);
+                assertEq(_cdpIdsExist[cdpId], false);
+                _cdpIdsExist[cdpId] = true;
             }
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
