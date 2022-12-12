@@ -37,4 +37,16 @@ contract CDPTest is eBTCBaseFixture {
         // Make sure valid cdpId returned
         assert(sortedCdps.getLast() != "");
     }
+
+    function testFailICRTooLow() public {
+        assert(sortedCdps.getLast() == "");
+        vm.prank(user);
+        borrowerOperations.openCdp{value : address(user).balance}(
+            5e17,
+            // Borrowed eBTC amount is too high compared to Collateral
+            20000e20,
+            "some hint",
+            "some hint"
+        );
+    }
 }
