@@ -65,7 +65,7 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users ONLY
     * Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
-    function testCdpsForManyUsersFixedCR(uint8 amountUsers) public {
+    function testCdpsForManyUsers(uint8 amountUsers) public {
         // Skip case when amount of Users is 0
         vm.assume(amountUsers > 1);
 
@@ -95,7 +95,7 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users. Also fuzz collateral amounts
     * 28 ether and 90 ether boundaries are made so larger borrowers won't drag TCR down too much resulting in errors
     */
-    function testCdpsForManyUsersFixedCR(uint8 amountUsers, uint96 collAmount) public {
+    function testCdpsForManyUsersManyColl(uint8 amountUsers, uint96 collAmount) public {
         vm.assume(collAmount > 28 ether && collAmount < 99 ether);
         vm.assume(amountUsers > 1);
         address payable[] memory users;
@@ -120,7 +120,7 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users, fuzzed collateral amounts and fuzzed amount of CDPs per user
     * Testing against large eth numbers because amount of CDPs can be large
     */
-    function testCdpsForManyUsersManyCdps(uint8 amountUsers, uint8 amountCdps, uint96 collAmount) public {
+    function testCdpsForManyUsersManyCollManyCdps(uint8 amountUsers, uint8 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
         vm.assume(amountCdps > 1 && amountCdps < 10);
         vm.assume(amountUsers > 1);
