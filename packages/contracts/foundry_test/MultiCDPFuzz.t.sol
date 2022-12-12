@@ -7,16 +7,18 @@ import {Utilities} from "./utils/Utilities.sol";
 
 contract CDPTest is eBTCBaseFixture {
     uint256 private testNumber;
-    Utilities internal utils;
+
+    Utilities internal _utils;
+    mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        user = msg.sender;
-        utils = new Utilities();
+        _utils = new Utilities();
     }
+
     /* Open CDPs for fuzzed amount of users
     BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
     */
@@ -26,10 +28,11 @@ contract CDPTest is eBTCBaseFixture {
 
         // Populate users
         address payable[] memory users;
-        users = utils.createUsers(amountUsers);
+        users = _utils.createUsers(amountUsers);
 
         uint collateral = 30 ether;
         uint collateralRatio = 160e16;  // 160% take higher CR as CCR is 150%
+        // TODO: Move this to helper func
         uint borrowedAmount = collateral.mul(priceFeedMock.fetchPrice()).div(collateralRatio);
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < users.length; userIx++) {
@@ -41,10 +44,18 @@ contract CDPTest is eBTCBaseFixture {
                 "some hint",
                 "some hint"
             );
+            // Get User's CDP and check it for uniqueness
+            uint256 currentCdpNonce = sortedCdps.nextCdpNonce() - 1;  // Next nonce is always incremented
+            bytes32 cdpId = sortedCdps.toCdpId(users[userIx], block.number,  currentCdpNonce);
+            // Make sure that each new CDP id is unique
+            assertEq(_cdpIdsExist[cdpId], false);
+            // Set cdp id to exist == true
+            _cdpIdsExist[cdpId] = true;
             // Make sure that each user has now CDP opened
             assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
-        assertEq(sortedCdps.getSize(), amountUsers);
+        uint cdpAmount = sortedCdps.getSize();
+        assertEq(cdpAmount, amountUsers);
     }
 }
