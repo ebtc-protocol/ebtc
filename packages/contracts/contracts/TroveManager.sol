@@ -386,6 +386,20 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     // this function would return the liquidated debt and collateral of the given Trove
     function _liquidateATroveByExternalLiquidator(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
 		
+        (uint256 entireTroveDebt, uint256 entireTroveColl) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _troveId);	
+		
+        address _borrower = _contractsCache.sortedTroves.getOwnerAddress(_troveId);
+        emit TroveLiquidated(_troveId, _borrower, entireTroveDebt, entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
+        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);		
+
+        return (entireTroveDebt, entireTroveColl);
+    }
+	
+    // liquidate (and close) the Trove from an external liquidator
+    // this function would return the liquidated debt and collateral of the given Trove
+    // without emmiting events
+    function _liquidateCDPByExternalLiquidatorWithoutEvent(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
+		
         // TODO accrue and deduct interest fee accordingly
 		
         // calculate entire debt to repay
@@ -401,11 +415,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
 		
         // housekeeping after liquidation by closing the Trove
         _removeStake(_troveId);
-        _closeTrove(_troveId, Status.closedByLiquidation);	
-		
-        address _borrower = _contractsCache.sortedTroves.getOwnerAddress(_troveId);
-        emit TroveLiquidated(_troveId, _borrower, entireTroveDebt, entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
-        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);		
+        _closeTrove(_troveId, Status.closedByLiquidation);		
 
         return (entireTroveDebt, entireTroveColl);
     }
@@ -482,7 +492,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
 	
     function _recoveryLiquidateATrove(ContractsCache memory _contractsCache, LocalVar_RecoveryLiquidate memory _recoveryState) private returns(LocalVar_RecoveryLiquidate memory){
         // liquidate entire debt
-        (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _recoveryState._troveId);
+        (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _recoveryState._troveId);
 
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
