@@ -71,24 +71,26 @@ contract CDPTest is eBTCBaseFixture {
     }
 
     // Fail if borrowed eBTC amount is too high
-    function testFailICRTooLow() public {
+    function testICRTooLow() public {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
         assert(sortedCdps.getLast() == "");
         vm.prank(user);
         // Borrowed eBTC amount is too high compared to Collateral
+        vm.expectRevert(bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted"));
         borrowerOperations.openCdp{value : 10 ether}(FEE, 20000e20, "hint", "hint");
     }
 
     // Fail if Net Debt is too low. Check MIN_NET_DEBT constant
-    function testFailMinNetDebtTooLow() public {
+    function testMinNetDebtTooLow() public {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
         assert(sortedCdps.getLast() == "");
         vm.prank(user);
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
+        vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
         borrowerOperations.openCdp{value : address(user).balance}(FEE, 180e18, "hint", "hint");
     }
 
@@ -176,7 +178,7 @@ contract CDPTest is eBTCBaseFixture {
                 assertEq(_cdpIdsExist[cdpId], false);
                 _cdpIdsExist[cdpId] = true;
             }
-            // Check user balancec. Should be Σ of all user's CDPs borrowed eBTC
+            // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
             assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount.mul(amountCdps));
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
