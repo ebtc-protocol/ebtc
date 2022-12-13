@@ -36,6 +36,7 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
     stabilityPool = contracts.stabilityPool
     priceFeed = contracts.priceFeedTestnet
     sortedTroves = contracts.sortedTroves
+    debtToken = contracts.lusdToken;
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -85,7 +86,11 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
     it('First trove only doesn’t get out of Recovery Mode', async () => {
       await setup()
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
-      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId])
+      await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice}); 
+      const tx = await troveManager.liquidateInBatchRecovery([_aliceTroveId], {from : owner})
 
       const TCR = await th.getTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -96,7 +101,11 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
       let _carolTroveId = await sortedTroves.troveOfOwnerByIndex(carol, 0);
-      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId, _bobTroveId, _carolTroveId])
+      await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol}); 
+      const tx = await troveManager.liquidateInBatchRecovery([_aliceTroveId, _bobTroveId, _carolTroveId], {from : owner})
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
@@ -126,7 +135,11 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       const spEthBefore = await stabilityPool.getETH()
       const spLusdBefore = await stabilityPool.getTotalLUSDDeposits()
 
-      const tx = await troveManager.batchLiquidateTroves([_aliceTroveId, _carolTroveId])
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale}); 
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob}); 
+      const tx = await troveManager.liquidateInBatchRecovery([_aliceTroveId, _carolTroveId], {from : owner})
 
       // Confirm all troves removed
       assert.isFalse(await sortedTroves.contains(_aliceTroveId))
@@ -140,14 +153,14 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       const spLusdAfter = await stabilityPool.getTotalLUSDDeposits()
 
       // liquidate collaterals with the gas compensation fee subtracted
-      const expectedCollateralLiquidatedA = th.applyLiquidationFee(A_totalDebt.mul(mv._MCR).div(price))
+      const expectedCollateralLiquidatedA = th.applyLiquidationFee(toBN('0').mul(mv._MCR).div(price))
       const expectedCollateralLiquidatedC = th.applyLiquidationFee(C_coll)
       // Stability Pool gains
-      const expectedGainInLUSD = expectedCollateralLiquidatedA.mul(price).div(mv._1e18BN).sub(A_totalDebt)
+      const expectedGainInLUSD = toBN('0').mul(price).div(mv._1e18BN).sub(toBN('0'))
       const realGainInLUSD = spEthAfter.sub(spEthBefore).mul(price).div(mv._1e18BN).sub(spLusdBefore.sub(spLusdAfter))
 
       assert.equal(spEthAfter.sub(spEthBefore).toString(), expectedCollateralLiquidatedA.toString(), 'Stability Pool ETH doesn’t match')
-      assert.equal(spLusdBefore.sub(spLusdAfter).toString(), A_totalDebt.toString(), 'Stability Pool LUSD doesn’t match')
+      assert.equal(spLusdBefore.sub(spLusdAfter).toString(), toBN('0').toString(), 'Stability Pool LUSD doesn’t match')
       assert.equal(realGainInLUSD.toString(), expectedGainInLUSD.toString(), 'Stability Pool gains don’t match')
     })
 
@@ -181,7 +194,9 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
       assert.isTrue(ICR_C.lt(mv._ICR100))
 
-      const tx = await troveManager.batchLiquidateTroves([_bobTroveId, _aliceTroveId])
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob}); 
+      const tx = await troveManager.liquidateInBatchRecovery([_bobTroveId, _aliceTroveId], {from : owner})
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 1, 'Not enough liquidations')
@@ -225,6 +240,8 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
+	  	  
+      debtToken = contracts.lusdToken;
 
       return {
         A_coll, A_totalDebt,
@@ -236,7 +253,10 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
 
     it('First trove only doesn’t get out of Recovery Mode', async () => {
       await setup()
-      const tx = await troveManager.liquidateTroves(1)
+      await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+      const tx = await troveManager.liquidateSequentiallyInRecovery(1, {from: owner})
 
       const TCR = await th.getTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -246,7 +266,10 @@ contract('TroveManager - in Recovery Mode - back to normal mode in 1 tx', async 
       await setup()
       let _aliceTroveId = await sortedTroves.troveOfOwnerByIndex(alice, 0);
       let _bobTroveId = await sortedTroves.troveOfOwnerByIndex(bob, 0);
-      const tx = await troveManager.liquidateTroves(10)
+      await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+      await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+      const tx = await troveManager.liquidateSequentiallyInRecovery(10, {from: owner})
 
       const liquidationEvents = th.getAllEventsByName(tx, 'TroveLiquidated')
       assert.equal(liquidationEvents.length, 2, 'Not enough liquidations')
