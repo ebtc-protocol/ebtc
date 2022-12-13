@@ -11,7 +11,7 @@ import {Utilities} from "./utils/Utilities.sol";
  */
 contract CDPTest is eBTCBaseFixture {
     uint private constant FEE = 5e17;
-    uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160% take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
 
     mapping(bytes32 => bool) private _cdpIdsExist;
 
@@ -34,10 +34,14 @@ contract CDPTest is eBTCBaseFixture {
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
         vm.prank(user);
-        borrowerOperations.openCdp{value : address(user).balance}(FEE, borrowedAmount, "hint", "hint");
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
         assertEq(cdpManager.getCdpIdsCount(), 1);
-        // Make sure valid cdpId returned
-        assert(sortedCdps.getLast() != "");
+        // Make sure valid cdpId returned and user is it's owner
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        assert(cdpId != "");
+        assertEq(sortedCdps.getOwnerAddress(cdpId), user);
+        // Check user's balance
+        assertEq(eBTCToken.balanceOf(user), borrowedAmount);
     }
 
     // Fail if borrowed eBTC amount is too high
@@ -87,6 +91,8 @@ contract CDPTest is eBTCBaseFixture {
             _cdpIdsExist[cdpId] = true;
             // Make sure that each user has now CDP opened
             assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
+            // Check borrowed amount
+            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), amountUsers);
@@ -112,6 +118,7 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(_cdpIdsExist[cdpId], false);
             // Set cdp id to exist == true
             _cdpIdsExist[cdpId] = true;
+            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), amountUsers);
@@ -124,7 +131,7 @@ contract CDPTest is eBTCBaseFixture {
         // amountCdps cannot be 0 to avoid zero div error
         vm.assume(amountCdps > 1 && amountCdps < 10);
         vm.assume(amountUsers > 1);
-        vm.assume(collAmount > 10000 ether && collAmount < 100000 ether);
+        vm.assume(collAmount > 1000 ether && collAmount < 10000 ether);
 
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
@@ -143,6 +150,8 @@ contract CDPTest is eBTCBaseFixture {
                 assertEq(_cdpIdsExist[cdpId], false);
                 _cdpIdsExist[cdpId] = true;
             }
+            // Check user balancec. Should be Σ of all user's CDPs borrowed eBTC
+            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount.mul(amountCdps));
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
         assertEq(sortedCdps.getSize(), amountUsers.mul(amountCdps));
