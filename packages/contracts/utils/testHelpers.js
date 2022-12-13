@@ -73,6 +73,10 @@ class TestHelper {
     assert.isAtMost(this.getDifference(x, y), error)
   }
 
+  static assertIsApproximatelyEqualRel(x, y, error = 0.001) {
+    assert.isAtMost(this.getDifference(x, y) / x, error)
+  }
+
   static zipToObject(array1, array2) {
     let obj = {}
     array1.forEach((element, idx) => obj[element] = array2[idx])

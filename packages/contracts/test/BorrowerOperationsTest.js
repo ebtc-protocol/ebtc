@@ -641,8 +641,11 @@ contract('BorrowerOperations', async accounts => {
       // --- SETUP ---
 
       // A and B open cdps at 150% ICR
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await th.pauseAutomine(web3.currentProvider);
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -1482,8 +1485,11 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       // Alice and Bob creates cdps with 150% ICR.  System TCR = 150%.
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.pauseAutomine(web3.currentProvider);
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)  
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -2504,8 +2510,11 @@ contract('BorrowerOperations', async accounts => {
     it("adjustCdp(): reverts when change would cause the TCR of the system to fall below the CCR", async () => {
       await priceFeed.setPrice(dec(100, 18))
 
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.pauseAutomine(web3.currentProvider);
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -4036,8 +4045,11 @@ contract('BorrowerOperations', async accounts => {
     it("openCdp(): Can open a cdp with ICR >= CCR when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
-      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.pauseAutomine(web3.currentProvider);
+      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       const TCR = (await th.getTCR(contracts)).toString()
       assert.equal(TCR, '1500000000000000000')
@@ -4064,8 +4076,11 @@ contract('BorrowerOperations', async accounts => {
     it("openCdp(): Reverts opening a cdp with min debt when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
-      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.pauseAutomine(web3.currentProvider);
+      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await th.mine(web3.currentProvider)
+      await th.resumeAutomine(web3.currentProvider);
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)

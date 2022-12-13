@@ -4724,8 +4724,11 @@ contract('CdpManager', async accounts => {
   it("checkRecoveryMode(): Returns false when TCR == 150%", async () => {
     await priceFeed.setPrice(dec(100, 18))
 
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    await th.pauseAutomine(web3.currentProvider);
+    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    await th.mine(web3.currentProvider)
+    await th.resumeAutomine(web3.currentProvider);
 
     const TCR = (await th.getTCR(contracts))
 
