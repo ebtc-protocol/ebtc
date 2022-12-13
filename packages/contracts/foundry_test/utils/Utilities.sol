@@ -10,7 +10,7 @@ contract Utilities is Test {
     using SafeMath for uint256;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
 
-    function getNextUserAddress() external returns (address payable) {
+    function getNextUserAddress() public returns (address payable) {
         //bytes32 to address conversion
         address payable user = payable(address(uint160(uint256(nextUser))));
         nextUser = keccak256(abi.encodePacked(nextUser));
@@ -19,7 +19,7 @@ contract Utilities is Test {
 
     //create users with 100 ether balance
     function createUsers(uint256 userNum)
-        external
+        public
         returns (address payable[] memory)
     {
         address payable[] memory users = new address payable[](userNum);
@@ -32,7 +32,7 @@ contract Utilities is Test {
     }
 
     //move block.number forward by a given number of blocks
-    function mineBlocks(uint256 numBlocks) external {
+    function mineBlocks(uint256 numBlocks) public {
         uint256 targetBlock = block.number + numBlocks;
         vm.roll(targetBlock);
     }
@@ -41,7 +41,7 @@ contract Utilities is Test {
     BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
     */
     function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio)
-        external pure returns (uint256) {
+        public pure returns (uint256) {
         return coll.mul(price).div(collateralRatio);
     }
 }

@@ -97,7 +97,7 @@ contract CDPTest is eBTCBaseFixture {
     */
     function testCdpsForManyUsers(uint8 amountUsers) public {
         // Skip case when amount of Users is 0
-        vm.assume(amountUsers > 1);
+        amountUsers = uint8(bound(amountUsers, 1, 100));
 
         // Populate users
         address payable[] memory users;
@@ -128,8 +128,8 @@ contract CDPTest is eBTCBaseFixture {
     * 28 ether and 90 ether boundaries are made so larger borrowers won't drag TCR down too much resulting in errors
     */
     function testCdpsForManyUsersManyColl(uint8 amountUsers, uint96 collAmount) public {
-        vm.assume(collAmount > 28 ether && collAmount < 99 ether);
-        vm.assume(amountUsers > 1);
+        amountUsers = uint8(bound(amountUsers, 1, 100));
+        collAmount = uint96(bound(collAmount, 28 ether, 99 ether));
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
 
@@ -155,9 +155,9 @@ contract CDPTest is eBTCBaseFixture {
     */
     function testCdpsForManyUsersManyCollManyCdps(uint8 amountUsers, uint8 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
-        vm.assume(amountCdps > 1 && amountCdps < 10);
-        vm.assume(amountUsers > 1);
-        vm.assume(collAmount > 1000 ether && collAmount < 10000 ether);
+        amountCdps = uint8(bound(amountCdps, 1, 20));
+        amountUsers = uint8(bound(amountUsers, 1, 100));
+        collAmount = uint96(bound(collAmount, 1000 ether, 10000 ether));
 
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
