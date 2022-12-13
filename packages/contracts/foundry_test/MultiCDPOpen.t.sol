@@ -44,6 +44,32 @@ contract CDPTest is eBTCBaseFixture {
         assertEq(eBTCToken.balanceOf(user), borrowedAmount);
     }
 
+    // Generic test for happy case when 1 user open CDP and then closes it
+    function testOpenCDPsAndClose() public {
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        address user = users[0];
+        uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        // Make sure there is no CDPs in the system yet
+        vm.startPrank(user);
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        assertEq(cdpManager.getCdpIdsCount(), 1);
+
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        // Borrow for the second time so user has enough eBTC to close their first CDP
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        assertEq(cdpManager.getCdpIdsCount(), 2);
+
+        // Check that user has 2x eBTC balance as they opened 2 CDPs
+        assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(2));
+
+        // Close first CDP
+        borrowerOperations.closeCdp(cdpId);
+        // Make sure CDP is now not active anymore. Enum Status.2 == closedByOwner
+        assertEq(cdpManager.getCdpStatus(cdpId), 2);
+        vm.stopPrank();
+    }
+
     // Fail if borrowed eBTC amount is too high
     function testFailICRTooLow() public {
         address payable[] memory users;
