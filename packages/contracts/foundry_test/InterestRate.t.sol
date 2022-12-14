@@ -44,6 +44,6 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(365 days);
 
         (debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId);
-        assertApproxEqRel(debt, 1.02 * 2210e18, 0.01e18);
+        assertApproxEqRel(debt, 1.02 * 2210e18, 0.01e18); // within 1%
     }
 }
