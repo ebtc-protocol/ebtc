@@ -359,35 +359,20 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_ETHrewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const nextTime = (await th.getLatestBlockTimestamp(web3)) + 1;
-
       const alicePendingETHReward = await cdpManager.getPendingETHReward(aliceIndex)
       const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(aliceIndex, nextTime))[0]
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(bobIndex, nextTime))[0]
-      const alicePendingEBTCDebtInterest = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(aliceIndex, nextTime))[1]
-      const bobPendingEBTCDebtInterest = (await cdpManager.getPendingEBTCDebtRewardAtTimestamp(bobIndex, nextTime))[1]
+      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
+      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.gt(toBN('0')))
-      }
-
-      const interestRatePerSec = await cdpManager.INTEREST_RATE_PER_SECOND();
-      if (interestRatePerSec > 0) {
-        for (reward of [alicePendingEBTCDebtInterest, bobPendingEBTCDebtInterest]) {
-          assert.isTrue(reward.gt(toBN('0')))
-        }
       }
 
       // Alice and Bob top up their Cdps
       const aliceTopUp = toBN(dec(5, 'ether'))
       const bobTopUp = toBN(dec(1, 'ether'))
 
-      await th.pauseAutomine(web3.currentProvider);
-      borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: aliceTopUp })
-      borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: bobTopUp })
-
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: aliceTopUp })
+      await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: bobTopUp })
 
       // Check that both alice and Bob have had pending rewards applied in addition to their top-ups. 
       const aliceNewColl = await getCdpEntireColl(aliceIndex)
@@ -396,9 +381,9 @@ contract('BorrowerOperations', async accounts => {
       const bobNewDebt = await getCdpEntireDebt(bobIndex)
 
       assert.isTrue(aliceNewColl.eq(aliceCollBefore.add(alicePendingETHReward).add(aliceTopUp)))
-      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingEBTCDebtReward).add(alicePendingEBTCDebtInterest)))
+      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingEBTCDebtReward)))
       assert.isTrue(bobNewColl.eq(bobCollBefore.add(bobPendingETHReward).add(bobTopUp)))
-      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward).add(bobPendingEBTCDebtInterest)))
+      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward)))
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_ETH and L_EBTCDebt */
@@ -411,9 +396,9 @@ contract('BorrowerOperations', async accounts => {
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
       assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_ETH), 100)
-      assert.isAtMost(Number(((alice_EBTCDebtRewardSnapshot_After.mul(mv._1e18BN).div(L_EBTCDebt)).sub(mv._1e18BN)).div(interestRatePerSec)), 3)
+      assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
       assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_ETH), 100)
-      assert.isAtMost(Number(((bob_EBTCDebtRewardSnapshot_After.mul(mv._1e18BN).div(L_EBTCDebt)).sub(mv._1e18BN)).div(interestRatePerSec)), 3)
+      assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
     })
 
     // xit("addColl(), active Cdp: adds the right corrected stake after liquidations have occured", async () => {
@@ -641,11 +626,8 @@ contract('BorrowerOperations', async accounts => {
       // --- SETUP ---
 
       // A and B open cdps at 150% ICR
-      await th.pauseAutomine(web3.currentProvider);
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -1485,11 +1467,8 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       // Alice and Bob creates cdps with 150% ICR.  System TCR = 150%.
-      await th.pauseAutomine(web3.currentProvider);
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)  
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -2510,11 +2489,8 @@ contract('BorrowerOperations', async accounts => {
     it("adjustCdp(): reverts when change would cause the TCR of the system to fall below the CCR", async () => {
       await priceFeed.setPrice(dec(100, 18))
 
-      await th.pauseAutomine(web3.currentProvider);
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -4045,11 +4021,8 @@ contract('BorrowerOperations', async accounts => {
     it("openCdp(): Can open a cdp with ICR >= CCR when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
-      await th.pauseAutomine(web3.currentProvider);
-      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
       const TCR = (await th.getTCR(contracts)).toString()
       assert.equal(TCR, '1500000000000000000')
@@ -4076,11 +4049,8 @@ contract('BorrowerOperations', async accounts => {
     it("openCdp(): Reverts opening a cdp with min debt when system is in Recovery Mode", async () => {
       // --- SETUP ---
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
-      await th.pauseAutomine(web3.currentProvider);
-      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
-      openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
-      await th.mine(web3.currentProvider)
-      await th.resumeAutomine(web3.currentProvider);
+      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(15, 17)), extraParams: { from: bob } })
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)

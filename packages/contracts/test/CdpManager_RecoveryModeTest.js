@@ -105,11 +105,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("checkRecoveryMode(): Returns true if TCR falls below CCR", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    await th.pauseAutomine(web3.currentProvider);
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const TCR = (await th.getTCR(contracts)).toString()
     assert.equal(TCR, dec(15, 17))
@@ -131,13 +128,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("checkRecoveryMode(): Returns true if TCR stays less than CCR", async () => {
     // --- SETUP ---
-    await th.pauseAutomine(web3.currentProvider);
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
-
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const TCR = (await th.getTCR(contracts)).toString()
     assert.equal(TCR, '1500000000000000000')
@@ -158,13 +151,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("checkRecoveryMode(): returns false if TCR stays above CCR", async () => {
     // --- SETUP ---
-    await th.pauseAutomine(web3.currentProvider);
-    openCdp({ ICR: toBN(dec(450, 16)), extraParams: { from: alice } })
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
-
+    await openCdp({ ICR: toBN(dec(450, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     // --- TEST ---
     const recoveryMode_Before = await th.checkRecoveryMode(contracts);
@@ -178,14 +167,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("checkRecoveryMode(): returns false if TCR rises above CCR", async () => {
     // --- SETUP ---
-    await th.pauseAutomine(web3.currentProvider);
-    const aliceCdpProps = openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
-
-    const { collateral: A_coll } = await aliceCdpProps;
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const TCR = (await th.getTCR(contracts)).toString()
     assert.equal(TCR, '1500000000000000000')
@@ -208,16 +192,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    await th.pauseAutomine(web3.currentProvider);
-    const aliceCdpProps = openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    const bobCdpProps = openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
-
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-
-    const { collateral: A_coll } = await aliceCdpProps
-    const { collateral: B_coll } = await bobCdpProps
 
     const TCR = (await th.getTCR(contracts)).toString()
     assert.equal(TCR, '1500000000000000000')
@@ -239,7 +216,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob's ICR falls to 75%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    th.assertIsApproximatelyEqualRel(bob_ICR, '750000000000000000', 0.001)
+    assert.equal(bob_ICR, '750000000000000000')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -296,12 +273,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: closes the Cdp and removes it from the Cdp array", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    await th.pauseAutomine(web3.currentProvider);
-    openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
-    await th.mine(web3.currentProvider)
-    await th.resumeAutomine(web3.currentProvider);
-
+    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     const TCR = (await th.getTCR(contracts)).toString()
@@ -323,7 +296,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob's ICR falls to 75%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    th.assertIsApproximatelyEqualRel(bob_ICR, '750000000000000000', 0.0001)
+    assert.equal(bob_ICR, '750000000000000000')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
