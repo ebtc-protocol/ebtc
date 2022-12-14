@@ -99,30 +99,28 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users ONLY
     * Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
-    function testCdpsForManyUsers(uint64 amountUsers) public {
+    function testCdpsForManyUsers(uint32 amountUsers) public {
         // Skip case when amount of Users is 0
-        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 5k users
-
-        // Populate users
-        address payable[] memory users;
-        users = _utils.createUsers(amountUsers);
+        amountUsers = uint32(bound(amountUsers, 1, 50000));
 
         uint collateral = 30 ether;
         uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < users.length; userIx++) {
-            vm.prank(users[userIx]);
+        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
+            vm.prank(user);
             borrowerOperations.openCdp{value : collateral}(FEE, borrowedAmount, "hint", "hint");
             // Get User's CDP and check it for uniqueness
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(users[userIx], 0);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
             // Make sure that each new CDP id is unique
             assertEq(_cdpIdsExist[cdpId], false);
             // Set cdp id to exist == true
             _cdpIdsExist[cdpId] = true;
             // Make sure that each user has now CDP opened
-            assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
+            assertEq(sortedCdps.cdpCountOf(user), 1);
             // Check borrowed amount
-            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount);
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), amountUsers);
@@ -130,26 +128,26 @@ contract CDPTest is eBTCBaseFixture {
 
     // Open CDPs for fuzzed amount of users. Also fuzz collateral amounts up to high numbers
     function testCdpsForManyUsersManyColl(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 5k users
+        amountUsers = uint64(bound(amountUsers, 1, 5000));
         collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
-        address payable[] memory users;
-        users = _utils.createUsers(amountUsers);
 
         uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < users.length; userIx++) {
-            vm.prank(users[userIx]);
+        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
+            vm.prank(user);
             borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
             // Get User's CDP and check it for uniqueness
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(users[userIx], 0);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
             // Make sure that each new CDP id is unique
             assertEq(_cdpIdsExist[cdpId], false);
             // Set cdp id to exist == true
             _cdpIdsExist[cdpId] = true;
             // Make sure that each user has now CDP opened
-            assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
+            assertEq(sortedCdps.cdpCountOf(user), 1);
             // Check borrowed amount
-            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount);
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), amountUsers);
@@ -159,10 +157,8 @@ contract CDPTest is eBTCBaseFixture {
     * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
     */
     function testCdpsForManyUsersManyMinDebtTooLow(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 50k users
+        amountUsers = uint64(bound(amountUsers, 1, 5000));
         collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
-        address payable[] memory users;
-        users = _utils.createUsers(amountUsers);
 
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
@@ -171,11 +167,13 @@ contract CDPTest is eBTCBaseFixture {
         uint feeTaken = borrowedAmount.mul(FEE);
         uint borrowedAmountWithFee = borrowedAmount.add(feeTaken);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < users.length; userIx++) {
-            vm.prank(users[userIx]);
+        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
             if (borrowedAmountWithFee < MIN_NET_DEBT) {
                 vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                vm.prank(user);
                 borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
             }
         }
@@ -187,31 +185,30 @@ contract CDPTest is eBTCBaseFixture {
     function testCdpsForManyUsersManyCollManyCdps(uint64 amountUsers, uint16 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
         amountCdps = uint16(bound(amountCdps, 1, 200));
-        amountUsers = uint64(bound(amountUsers, 1, 5000));
+        amountUsers = uint64(bound(amountUsers, 1, 500));
         collAmount = uint96(bound(collAmount, 100000 ether, 10000000 ether));
 
-        address payable[] memory users;
-        users = _utils.createUsers(amountUsers);
         uint collAmountChunk = collAmount.div(amountCdps);
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmountChunk, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
         );
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < users.length; userIx++) {
+        for (uint userIx = 0; userIx < amountUsers; userIx++) {
             // Create multiple CDPs per user
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
             for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
-                vm.prank(users[userIx]);
+                vm.prank(user);
                 borrowerOperations.openCdp{value : collAmountChunk}(FEE,  borrowedAmount,  "hint",  "hint");
                 // Get User's CDP and check it for uniqueness
-                bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(users[userIx], cdpIx);
+                bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
                 assertEq(_cdpIdsExist[cdpId], false);
                 _cdpIdsExist[cdpId] = true;
             }
             // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
-            assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount.mul(amountCdps));
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(amountCdps));
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
         assertEq(sortedCdps.getSize(), amountUsers.mul(amountCdps));
     }
-
 }
