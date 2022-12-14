@@ -36,7 +36,6 @@ contract InterestRateTest is eBTCBaseFixture {
         assertTrue(cdpId != "");
 
         uint256 debt;
-        uint256 interest;
         (debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId);
         // Borrowed + borrow fee + gas compensation
         assertEq(debt, 2210e18);

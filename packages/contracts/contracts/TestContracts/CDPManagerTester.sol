@@ -57,15 +57,8 @@ contract CdpManagerTester is CdpManager {
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
     //    }
 
-    // Get the borrower's pending accumulated EBTC reward, earned by their stake
-    function getPendingEBTCDebtRewardAtTimestamp(
-        bytes32 _cdpId,
-        uint _timestamp
-    ) public view returns (uint, uint) {
-        return _getPendingEBTCDebtRewardAtTimestamp(_cdpId, _timestamp);
-    }
-
-    function _calcUnitAmountAfterInterest(uint _time) internal pure override returns (uint) {
+    // Set interest rate as 0 for js tests
+    function _calcUnitAmountAfterInterest(uint) internal pure override returns (uint) {
         return DECIMAL_PRECISION;
     }
 }

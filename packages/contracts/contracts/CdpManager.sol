@@ -1484,14 +1484,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
-        return _getPendingEBTCDebtRewardAtTimestamp(_cdpId, block.timestamp);
-    }
-
-    function _getPendingEBTCDebtRewardAtTimestamp(
-        // TODO: Remove this
-        bytes32 _cdpId,
-        uint _timestamp
-    ) internal view returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
 
         if (Cdps[_cdpId].status != Status.active) {
@@ -1503,7 +1495,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
-        uint timeElapsed = _timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
             uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
             console.log(unitAmountAfterInterest);
