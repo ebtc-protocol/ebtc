@@ -26,7 +26,7 @@ contract CDPTest is eBTCBaseFixture {
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
         vm.prank(user);
-        borrowerOperations.openCdp{value : address(user).balance}(
+        borrowerOperations.openCdp{value: address(user).balance}(
             5e17,
             // TODO: Random number still based on fixed LUSD price. Change once peg to BTC
             170e20,

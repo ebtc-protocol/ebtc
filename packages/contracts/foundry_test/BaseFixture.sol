@@ -20,7 +20,6 @@ import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
-
 contract eBTCBaseFixture is Test {
     using SafeMath for uint256;
     uint256 constant maxBytes32 = type(uint256).max;
@@ -62,7 +61,9 @@ contract eBTCBaseFixture is Test {
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
         eBTCToken = new EBTCToken(
-            address(cdpManager), address(stabilityPool), address(borrowerOperations)
+            address(cdpManager),
+            address(stabilityPool),
+            address(borrowerOperations)
         );
 
         // Liquity Stuff
@@ -79,13 +80,12 @@ contract eBTCBaseFixture is Test {
             address(this)
         );
     }
+
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
-    */
+     */
     function connectCoreContracts() public virtual {
         // set CdpManager addr in SortedCdps
-        sortedCdps.setParams(
-            maxBytes32, address(cdpManager), address(borrowerOperations)
-        );
+        sortedCdps.setParams(maxBytes32, address(cdpManager), address(borrowerOperations));
 
         // set contracts in the Cdp Manager
         cdpManager.setAddresses(
@@ -148,14 +148,15 @@ contract eBTCBaseFixture is Test {
         // set contracts in HintHelpers
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager));
     }
+
     /* connectLQTYContracts() - wire up necessary liquity contracts
-    */
+     */
     function connectLQTYContracts() public virtual {
         lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
     }
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
-    */
+     */
     function connectLQTYContractsToCore() public virtual {
         lqtyStaking.setAddresses(
             address(lqtyToken),
