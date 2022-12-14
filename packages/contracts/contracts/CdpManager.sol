@@ -1943,7 +1943,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return (block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE);
     }
 
-    function _calcInterestRatePerSecond() internal view returns (uint) {
+    function _calcInterestRatePerSecond() internal view virtual returns (uint) {
         return INTEREST_RATE_PER_SECOND;
     }
 
