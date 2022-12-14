@@ -72,13 +72,13 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
         uint remainingEBTC = _EBTCamount;
         bytes32 currentCdpId = sortedCdpsCached.getLast();
-        address currentCdpuser = sortedCdps.existCdpOwners(currentCdpId);
+        address currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
 
         while (
             currentCdpuser != address(0) && cdpManager.getCurrentICR(currentCdpId, _price) < MCR
         ) {
             currentCdpId = sortedCdpsCached.getPrev(currentCdpId);
-            currentCdpuser = sortedCdpsCached.existCdpOwners(currentCdpId);
+            currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
         }
 
         firstRedemptionHint = currentCdpId;
@@ -125,7 +125,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
             }
 
             currentCdpId = sortedCdpsCached.getPrev(currentCdpId);
-            currentCdpuser = sortedCdpsCached.existCdpOwners(currentCdpId);
+            currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
         }
 
         truncatedEBTCamount = _EBTCamount.sub(remainingEBTC);
