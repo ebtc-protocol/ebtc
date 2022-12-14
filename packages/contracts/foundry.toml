@@ -7,5 +7,4 @@ cache_path  = 'forge-cache'
 
 # See more config options https://book.getfoundry.sh/reference/config.html
 [fuzz]
-runs = 20
 max_test_rejects=2147483647
