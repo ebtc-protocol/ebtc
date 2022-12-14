@@ -25,7 +25,7 @@ contract Utilities is Test {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
             address payable user = getNextUserAddress();
-            vm.deal(user, 1000000 ether);
+            vm.deal(user, 10000000 ether);
             users[i] = user;
         }
         return users;

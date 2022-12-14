@@ -12,6 +12,8 @@ import {Utilities} from "./utils/Utilities.sol";
 contract CDPTest is eBTCBaseFixture {
     uint private constant FEE = 5e17;
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 180e16;  // 200% - defencive CR
+    uint internal constant MIN_NET_DEBT = 1800e18;  // Subject to changes once CL is changed
 
     mapping(bytes32 => bool) private _cdpIdsExist;
 
@@ -97,9 +99,9 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users ONLY
     * Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
-    function testCdpsForManyUsers(uint8 amountUsers) public {
+    function testCdpsForManyUsers(uint64 amountUsers) public {
         // Skip case when amount of Users is 0
-        amountUsers = uint8(bound(amountUsers, 1, 100));
+        amountUsers = uint64(bound(amountUsers, 1, 500000));  // up to 500k users
 
         // Populate users
         address payable[] memory users;
@@ -126,12 +128,10 @@ contract CDPTest is eBTCBaseFixture {
         assertEq(sortedCdps.getSize(), amountUsers);
     }
 
-    /* Open CDPs for fuzzed amount of users. Also fuzz collateral amounts
-    * 28 ether and 90 ether boundaries are made so larger borrowers won't drag TCR down too much resulting in errors
-    */
-    function testCdpsForManyUsersManyColl(uint8 amountUsers, uint96 collAmount) public {
-        amountUsers = uint8(bound(amountUsers, 1, 100));
-        collAmount = uint96(bound(collAmount, 28 ether, 99 ether));
+    // Open CDPs for fuzzed amount of users. Also fuzz collateral amounts up to high numbers
+    function testCdpsForManyUsersManyColl(uint64 amountUsers, uint96 collAmount) public {
+        amountUsers = uint64(bound(amountUsers, 1, 50000));  // up to 50k users
+        collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
 
@@ -146,20 +146,49 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(_cdpIdsExist[cdpId], false);
             // Set cdp id to exist == true
             _cdpIdsExist[cdpId] = true;
+            // Make sure that each user has now CDP opened
+            assertEq(sortedCdps.cdpCountOf(users[userIx]), 1);
+            // Check borrowed amount
             assertEq(eBTCToken.balanceOf(users[userIx]), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), amountUsers);
     }
 
+    /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount.
+    * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
+    */
+    function testCdpsForManyUsersManyMinDebtTooLow(uint64 amountUsers, uint96 collAmount) public {
+        amountUsers = uint64(bound(amountUsers, 1, 50000));  // up to 50k users
+        collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
+        address payable[] memory users;
+        users = _utils.createUsers(amountUsers);
+
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+        );
+        // Net Debt == initial Debt + Fee taken
+        uint feeTaken = borrowedAmount.mul(FEE);
+        uint borrowedAmountWithFee = borrowedAmount.add(feeTaken);
+        // Iterate thru all users and open CDP for each of them
+        for (uint userIx = 0; userIx < users.length; userIx++) {
+            vm.prank(users[userIx]);
+            // If collAmount was too small, debt will not reach threshold, hence system should revert
+            if (borrowedAmountWithFee < MIN_NET_DEBT) {
+                vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
+            }
+        }
+    }
+
     /* Open CDPs for fuzzed amount of users, fuzzed collateral amounts and fuzzed amount of CDPs per user
     * Testing against large eth numbers because amount of CDPs can be large
     */
-    function testCdpsForManyUsersManyCollManyCdps(uint8 amountUsers, uint8 amountCdps, uint96 collAmount) public {
+    function testCdpsForManyUsersManyCollManyCdps(uint64 amountUsers, uint16 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
-        amountCdps = uint8(bound(amountCdps, 1, 20));
-        amountUsers = uint8(bound(amountUsers, 1, 100));
-        collAmount = uint96(bound(collAmount, 1000 ether, 10000 ether));
+        amountCdps = uint16(bound(amountCdps, 1, 200));
+        amountUsers = uint64(bound(amountUsers, 1, 50000));
+        collAmount = uint96(bound(collAmount, 100000 ether, 10000000 ether));
 
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
