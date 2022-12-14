@@ -65,7 +65,7 @@ contract CdpManagerTester is CdpManager {
         return _getPendingEBTCDebtRewardAtTimestamp(_cdpId, _timestamp);
     }
 
-    function _calcInterestRatePerSecond() internal view override returns (uint) {
-        return 0;
+    function _calcUnitAmountAfterInterest(uint _time) internal pure override returns (uint) {
+        return DECIMAL_PRECISION;
     }
 }

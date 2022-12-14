@@ -12,6 +12,7 @@ import "./Interfaces/ILQTYStaking.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
+import "./Dependencies/WadMath.sol";
 import "./Dependencies/console.sol";
 
 contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
@@ -1487,6 +1488,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _getPendingEBTCDebtRewardAtTimestamp(
+        // TODO: Remove this
         bytes32 _cdpId,
         uint _timestamp
     ) internal view returns (uint, uint) {
@@ -1503,18 +1505,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint L_EBTCInterest_new = L_EBTCInterest;
         uint timeElapsed = _timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
-            uint interestRatePerSecond = _calcInterestRatePerSecond();
-            if (interestRatePerSecond > 0) {
-                // TODO: This is an approximation. Use exact compound interest formula
-                uint unitInterestPlusOne = DECIMAL_PRECISION.add(
-                    interestRatePerSecond.mul(timeElapsed)
-                );
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
 
-                L_EBTCDebt_new = L_EBTCDebt_new.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
-                L_EBTCInterest_new = L_EBTCInterest_new.mul(unitInterestPlusOne).div(
-                    DECIMAL_PRECISION
-                );
-            }
+            L_EBTCDebt_new = L_EBTCDebt_new.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            L_EBTCInterest_new = L_EBTCInterest_new.mul(unitAmountAfterInterest).div(
+                DECIMAL_PRECISION
+            );
         }
 
         uint rewardPerUnitStaked = L_EBTCDebt_new.sub(snapshotEBTCDebt);
@@ -1675,33 +1671,29 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             // timeElapsed >= interestTimeWindow
             lastInterestRateUpdateTime = block.timestamp;
 
-            uint interestRatePerSecond = _calcInterestRatePerSecond();
-            if (interestRatePerSecond > 0) {
-                // TODO: This is an approximation. Use exact compound interest formula
-                uint unitInterest = interestRatePerSecond.mul(timeElapsed);
-                uint unitInterestPlusOne = DECIMAL_PRECISION.add(unitInterest);
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
+            uint unitInterest = unitAmountAfterInterest.sub(DECIMAL_PRECISION);
 
-                L_EBTCDebt = L_EBTCDebt.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
-                L_EBTCInterest = L_EBTCInterest.mul(unitInterestPlusOne).div(DECIMAL_PRECISION);
+            L_EBTCDebt = L_EBTCDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            L_EBTCInterest = L_EBTCInterest.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
 
-                emit L_EBTCInterestUpdated(L_EBTCInterest);
+            emit L_EBTCInterestUpdated(L_EBTCInterest);
 
-                uint activeDebt = activePool.getEBTCDebt();
-                uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
+            uint activeDebt = activePool.getEBTCDebt();
+            uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
-                uint defaultDebt = defaultPool.getEBTCDebt();
-                uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
+            uint defaultDebt = defaultPool.getEBTCDebt();
+            uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
-                // TODO: Do I need to do this?
-                activePool.increaseEBTCDebt(activeDebtInterest);
-                defaultPool.increaseEBTCDebt(defaultDebtInterest);
+            // TODO: Do I need to do this?
+            activePool.increaseEBTCDebt(activeDebtInterest);
+            defaultPool.increaseEBTCDebt(defaultDebtInterest);
 
-                _mintPendingEBTCInterest(
-                    lqtyStaking,
-                    ebtcToken,
-                    activeDebtInterest.add(defaultDebtInterest)
-                );
-            }
+            _mintPendingEBTCInterest(
+                lqtyStaking,
+                ebtcToken,
+                activeDebtInterest.add(defaultDebtInterest)
+            );
         }
     }
 
@@ -1943,8 +1935,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return (block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE);
     }
 
-    function _calcInterestRatePerSecond() internal view virtual returns (uint) {
-        return INTEREST_RATE_PER_SECOND;
+    // TODO: Check if compound interest formula is correct
+    function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
+        // return DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND.mul(_time));
+        return
+            uint256(
+                WadMath.wadPow(
+                    int256(DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND)),
+                    int256(_time * DECIMAL_PRECISION)
+                )
+            );
     }
 
     // --- 'require' wrapper functions ---
