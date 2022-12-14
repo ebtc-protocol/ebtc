@@ -101,7 +101,7 @@ contract CDPTest is eBTCBaseFixture {
     */
     function testCdpsForManyUsers(uint64 amountUsers) public {
         // Skip case when amount of Users is 0
-        amountUsers = uint64(bound(amountUsers, 1, 500000));  // up to 500k users
+        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 5k users
 
         // Populate users
         address payable[] memory users;
@@ -130,7 +130,7 @@ contract CDPTest is eBTCBaseFixture {
 
     // Open CDPs for fuzzed amount of users. Also fuzz collateral amounts up to high numbers
     function testCdpsForManyUsersManyColl(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 50000));  // up to 50k users
+        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 5k users
         collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
@@ -159,7 +159,7 @@ contract CDPTest is eBTCBaseFixture {
     * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
     */
     function testCdpsForManyUsersManyMinDebtTooLow(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 50000));  // up to 50k users
+        amountUsers = uint64(bound(amountUsers, 1, 5000));  // up to 50k users
         collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
         address payable[] memory users;
         users = _utils.createUsers(amountUsers);
@@ -187,7 +187,7 @@ contract CDPTest is eBTCBaseFixture {
     function testCdpsForManyUsersManyCollManyCdps(uint64 amountUsers, uint16 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
         amountCdps = uint16(bound(amountCdps, 1, 200));
-        amountUsers = uint64(bound(amountUsers, 1, 50000));
+        amountUsers = uint64(bound(amountUsers, 1, 5000));
         collAmount = uint96(bound(collAmount, 100000 ether, 10000000 ether));
 
         address payable[] memory users;
