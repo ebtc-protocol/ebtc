@@ -99,9 +99,9 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users ONLY
     * Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
     */
-    function testCdpsForManyUsers(uint32 amountUsers) public {
+    function testCdpsForManyUsers(uint16 amountUsers) public {
         // Skip case when amount of Users is 0
-        amountUsers = uint32(bound(amountUsers, 1, 200));
+        amountUsers = uint16(bound(amountUsers, 1, 300));
 
         uint collateral = 30 ether;
         uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
@@ -127,8 +127,8 @@ contract CDPTest is eBTCBaseFixture {
     }
 
     // Open CDPs for fuzzed amount of users. Also fuzz collateral amounts up to high numbers
-    function testCdpsForManyUsersManyColl(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 200));
+    function testCdpsForManyUsersManyColl(uint16 amountUsers, uint96 collAmount) public {
+        amountUsers = uint16(bound(amountUsers, 1, 300));
         collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
 
         uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
@@ -156,8 +156,8 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount.
     * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
     */
-    function testCdpsForManyUsersManyMinDebtTooLow(uint64 amountUsers, uint96 collAmount) public {
-        amountUsers = uint64(bound(amountUsers, 1, 200));
+    function testCdpsForManyUsersManyMinDebtTooLow(uint16 amountUsers, uint96 collAmount) public {
+        amountUsers = uint16(bound(amountUsers, 1, 300));
         collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
 
         uint borrowedAmount = _utils.calculateBorrowAmount(
@@ -182,10 +182,10 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users, fuzzed collateral amounts and fuzzed amount of CDPs per user
     * Testing against large eth numbers because amount of CDPs can be large
     */
-    function testCdpsForManyUsersManyCollManyCdps(uint64 amountUsers, uint16 amountCdps, uint96 collAmount) public {
+    function testCdpsForManyUsersManyCollManyCdps(uint16 amountUsers, uint16 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
         amountCdps = uint16(bound(amountCdps, 1, 200));
-        amountUsers = uint64(bound(amountUsers, 1, 200));
+        amountUsers = uint16(bound(amountUsers, 1, 300));
         collAmount = uint96(bound(collAmount, 100000 ether, 10000000 ether));
 
         uint collAmountChunk = collAmount.div(amountCdps);
