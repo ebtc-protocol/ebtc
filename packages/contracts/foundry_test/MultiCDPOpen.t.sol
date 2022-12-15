@@ -128,6 +128,34 @@ contract CDPTest is eBTCBaseFixture {
         assertEq(sortedCdps.getSize(), amountUsers);
     }
 
+    /* Open CDPs for random amount of users. Randomize collateral as well for each user separately
+     * By randomizing collateral we make sure that each user open CDP with different collAmnt
+    */
+    function testCdpsForManyUsersManyColl() public {
+        // Iterate thru all users and open CDP for each of them with randomized collateral
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether);
+            uint borrowedAmount = _utils.calculateBorrowAmount(
+                collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
+            );
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
+            vm.prank(user);
+            borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
+            // Get User's CDP and check it for uniqueness
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+            // Make sure that each new CDP id is unique
+            assertEq(_cdpIdsExist[cdpId], false);
+            // Set cdp id to exist == true
+            _cdpIdsExist[cdpId] = true;
+            // Make sure that each user has now CDP opened
+            assertEq(sortedCdps.cdpCountOf(user), 1);
+            // Check borrowed amount
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount);
+        }
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
+    }
+
     // Open CDPs for random amount of users. Also fuzz collateral amounts up to high numbers
     function testCdpsForManyUsersManyColl(uint96 collAmount) public {
         collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
