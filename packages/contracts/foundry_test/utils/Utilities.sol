@@ -51,7 +51,7 @@ contract Utilities is Test {
     */
     function generateRandomNumber(uint min, uint max) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(now, msg.sender)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, msg.sender)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = randomNumber % (max - min + 1) + min;
