@@ -16,7 +16,6 @@ contract CDPTest is eBTCBaseFixture {
     uint internal constant MIN_NET_DEBT = 1800e18;  // Subject to changes once CL is changed
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
-    uint internal constant AMOUNT_OF_USERS_MAX = 100000;
 
     mapping(bytes32 => bool) private _cdpIdsExist;
 
@@ -103,14 +102,10 @@ contract CDPTest is eBTCBaseFixture {
     * Checks that each CDP id is unique and the amount of opened CDPs == amount of users
     */
     function testCdpsForManyUsers() public {
-        // Skip case when amount of Users is 0
-        uint amountUsers = _utils.generateRandomNumber(
-            AMOUNT_OF_USERS, AMOUNT_OF_USERS_MAX, msg.sender
-        );
         uint collateral = 30 ether;
         uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
             vm.prank(user);
@@ -125,9 +120,11 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(sortedCdps.cdpCountOf(user), 1);
             // Check borrowed amount
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
+            // Warp after each user to increase randomness of next collateralAmount
+            vm.warp(block.number + 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
-        assertEq(sortedCdps.getSize(), amountUsers);
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
     }
 
     /* Open CDPs for random amount of users. Randomize collateral as well for each user separately
@@ -156,6 +153,8 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(sortedCdps.cdpCountOf(user), 1);
             // Check borrowed amount
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
+            // Warp after each user to increase randomness of next collateralAmount
+            vm.warp(block.number + 1);
         }
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
     }
@@ -190,7 +189,7 @@ contract CDPTest is eBTCBaseFixture {
     */
     function testCdpsForManyUsersManyCollManyCdps() public {
         // Randomize number of CDPs
-        uint amountCdps = _utils.generateRandomNumber(1, 100, msg.sender);
+        uint amountCdps = _utils.generateRandomNumber(1, 20, msg.sender);
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             // Create multiple CDPs per user
@@ -212,6 +211,8 @@ contract CDPTest is eBTCBaseFixture {
             }
             // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
             assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(amountCdps));
+            // Warp after each user to increase randomness of next collateralAmount
+            vm.warp(block.number + 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(amountCdps));
