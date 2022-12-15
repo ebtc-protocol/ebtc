@@ -14,6 +14,9 @@ contract CDPTest is eBTCBaseFixture {
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
     uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 180e16;  // 200% - defencive CR
     uint internal constant MIN_NET_DEBT = 1800e18;  // Subject to changes once CL is changed
+    // TODO: Modify these constants to increase/decrease amount of users
+    uint internal constant AMOUNT_OF_USERS = 100;
+    uint internal constant AMOUNT_OF_USERS_MAX = 100000;
 
     mapping(bytes32 => bool) private _cdpIdsExist;
 
@@ -96,13 +99,12 @@ contract CDPTest is eBTCBaseFixture {
         borrowerOperations.openCdp{value : address(user).balance}(FEE, 180e18, "hint", "hint");
     }
 
-    /* Open CDPs for fuzzed amount of users ONLY
-    * Checks that each CDP id is unique and the amount of opened CDPs == amount of fuzzed users
+    /* Open CDPs for random amount of users
+    * Checks that each CDP id is unique and the amount of opened CDPs == amount of users
     */
-    function testCdpsForManyUsers(uint16 amountUsers) public {
+    function testCdpsForManyUsers() public {
         // Skip case when amount of Users is 0
-        amountUsers = uint16(bound(amountUsers, 1, 300));
-
+        uint amountUsers = _utils.generateRandomNumber(AMOUNT_OF_USERS, AMOUNT_OF_USERS_MAX);
         uint collateral = 30 ether;
         uint borrowedAmount = _utils.calculateBorrowAmount(collateral, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Iterate thru all users and open CDP for each of them
@@ -126,14 +128,13 @@ contract CDPTest is eBTCBaseFixture {
         assertEq(sortedCdps.getSize(), amountUsers);
     }
 
-    // Open CDPs for fuzzed amount of users. Also fuzz collateral amounts up to high numbers
-    function testCdpsForManyUsersManyColl(uint16 amountUsers, uint96 collAmount) public {
-        amountUsers = uint16(bound(amountUsers, 1, 300));
+    // Open CDPs for random amount of users. Also fuzz collateral amounts up to high numbers
+    function testCdpsForManyUsersManyColl(uint96 collAmount) public {
         collAmount = uint96(bound(collAmount, 28 ether, 10000000 ether));
 
         uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
             vm.prank(user);
@@ -150,14 +151,13 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
-        assertEq(sortedCdps.getSize(), amountUsers);
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
     }
 
     /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount.
     * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
     */
-    function testCdpsForManyUsersManyMinDebtTooLow(uint16 amountUsers, uint96 collAmount) public {
-        amountUsers = uint16(bound(amountUsers, 1, 300));
+    function testCdpsForManyUsersManyMinDebtTooLow(uint96 collAmount) public {
         collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
 
         uint borrowedAmount = _utils.calculateBorrowAmount(
@@ -167,7 +167,7 @@ contract CDPTest is eBTCBaseFixture {
         uint feeTaken = borrowedAmount.mul(FEE);
         uint borrowedAmountWithFee = borrowedAmount.add(feeTaken);
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
@@ -182,10 +182,9 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users, fuzzed collateral amounts and fuzzed amount of CDPs per user
     * Testing against large eth numbers because amount of CDPs can be large
     */
-    function testCdpsForManyUsersManyCollManyCdps(uint16 amountUsers, uint16 amountCdps, uint96 collAmount) public {
+    function testCdpsForManyUsersManyCollManyCdps(uint16 amountCdps, uint96 collAmount) public {
         // amountCdps cannot be 0 to avoid zero div error
         amountCdps = uint16(bound(amountCdps, 1, 200));
-        amountUsers = uint16(bound(amountUsers, 1, 300));
         collAmount = uint96(bound(collAmount, 100000 ether, 10000000 ether));
 
         uint collAmountChunk = collAmount.div(amountCdps);
@@ -193,7 +192,7 @@ contract CDPTest is eBTCBaseFixture {
             collAmountChunk, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
         );
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < amountUsers; userIx++) {
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             // Create multiple CDPs per user
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
@@ -209,6 +208,6 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(amountCdps));
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
-        assertEq(sortedCdps.getSize(), amountUsers.mul(amountCdps));
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(amountCdps));
     }
 }
