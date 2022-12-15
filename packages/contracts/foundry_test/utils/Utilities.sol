@@ -47,11 +47,11 @@ contract Utilities is Test {
 
     /* This is the function that generates the random number.
     * It takes the minimum and maximum values of the range as arguments
-    * and returns the random number.
+    * and returns the random number. Use `seed` attr to randomize more
     */
-    function generateRandomNumber(uint min, uint max) public view returns (uint256) {
+    function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, msg.sender)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = randomNumber % (max - min + 1) + min;
