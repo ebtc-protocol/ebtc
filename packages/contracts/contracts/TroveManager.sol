@@ -223,7 +223,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event LTermsUpdated(uint _L_ETH, uint _L_LUSDDebt);
-    event TroveSnapshotsUpdated(uint _L_ETH, uint _L_LUSDDebt);
+    event TroveSnapshotsUpdated(bytes32 _cdpId, uint _L_ETH, uint _L_LUSDDebt);
     event TroveIndexUpdated(bytes32 _troveId, uint _newIndex);
 
      enum TroveManagerOperation {
@@ -316,7 +316,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         uint256 _ICR = getCurrentICR(_troveId, _price);        
         require(_ICR < MCR, 'ICR>MCR');
 		
-        LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(_troveId, 0, _price, _ICR, _troveId, _troveId, false, 0);
+        bool _recoveryModeAtStart = _checkRecoveryMode(_price);		
+        LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(_troveId, 0, _price, _ICR, _troveId, _troveId, _recoveryModeAtStart, 0);
         _liquidateTroveInternally(_contractsCache, _liqState);	
     }
 	
@@ -359,7 +360,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         uint256 totalColToSend;
         
         if (_liqState._partialRatio == 0){
-            (totalDebtToBurn, totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _liqState._troveId);
+            (totalDebtToBurn, totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _liqState._troveId, _liqState._recoveryModeAtStart);
         } else {	
             (totalDebtToBurn, totalColToSend) = _liquidateATrovePartially(_contractsCache, _liqState);	
         }        
@@ -384,13 +385,14 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
 	
     // liquidate (and close) the Trove from an external liquidator
     // this function would return the liquidated debt and collateral of the given Trove
-    function _liquidateATroveByExternalLiquidator(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
+    function _liquidateATroveByExternalLiquidator(ContractsCache memory _contractsCache, bytes32 _troveId, bool _recovery) private returns (uint256, uint256) {
 		
         (uint256 entireTroveDebt, uint256 entireTroveColl) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _troveId);	
 		
         address _borrower = _contractsCache.sortedTroves.getOwnerAddress(_troveId);
-        emit TroveLiquidated(_troveId, _borrower, entireTroveDebt, entireTroveColl, TroveManagerOperation.liquidateInNormalMode);
-        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, TroveManagerOperation.liquidateInNormalMode);		
+        TroveManagerOperation _mode = _recovery? TroveManagerOperation.liquidateInRecoveryMode : TroveManagerOperation.liquidateInNormalMode;
+        emit TroveLiquidated(_troveId, _borrower, entireTroveDebt, entireTroveColl, _mode);
+        emit TroveUpdated(_troveId, _borrower, 0, 0, 0, _mode);		
 
         return (entireTroveDebt, entireTroveColl);
     }
@@ -400,7 +402,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     // without emmiting events
     function _liquidateCDPByExternalLiquidatorWithoutEvent(ContractsCache memory _contractsCache, bytes32 _troveId) private returns (uint256, uint256) {
 		
-        // TODO accrue and deduct interest fee accordingly
+        // TODO accrue and charge interest fee accordingly
 		
         // calculate entire debt to repay
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
@@ -424,7 +426,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     // this function would return the liquidated debt and collateral of the given Trove
     function _liquidateATrovePartially(ContractsCache memory _contractsCache, LocalVar_InternalLiquidate memory _partiallyState) private returns (uint256, uint256) {
         bytes32 _troveId = _partiallyState._troveId;
-        // TODO accrue and deduct interest fee accordingly
+        // TODO accrue and charge interest fee accordingly
 		
         // calculate entire debt to repay
         (uint256 entireTroveDebt, uint256 entireTroveColl, uint256 pendingDebtReward, uint256 pendingCollReward) = getEntireDebtAndColl(_troveId);
@@ -434,16 +436,16 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartiallyLiq");
 		
         uint _colRatio = _partiallyState._ICR;
-        // In receovery mode, we use MCR to calculate liquidated collateral amout if _ICR > _MCR to make ICR after liquidation higher
+        // In receovery mode, we use MCR (the lesser) to calculate liquidated collateral amout if _ICR > _MCR to help ICR rebounce higher after partial liquidation 
         if (_partiallyState._recoveryModeAtStart && _partiallyState._ICR > MCR){
             _colRatio = MCR;
         }
         uint _partialColl = _partialDebt.mul(_colRatio).div(_partiallyState._price);
-        uint newColl = entireTroveColl.sub(_partialColl);
 			
         if (_partialDebt >= entireTroveDebt || _partialColl >= entireTroveColl){
-            return _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
+            return _liquidateATroveByExternalLiquidator(_contractsCache, _troveId, _partiallyState._recoveryModeAtStart);
         }
+        uint newColl = entireTroveColl.sub(_partialColl);
 		
         // move around distributed debt and collateral if any
         if (pendingDebtReward > 0 || pendingCollReward > 0){
@@ -561,6 +563,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         return (_contractsCache, _price);
     }
 	
+    // only callable in NORMAL mode
     function _liquidateCDPsBelowMCR(ContractsCache memory _contractsCache, bytes32[] memory _troveIds, uint256 _price) internal {
         // loop over given CDPs to liquidate one by one
         uint _n = _troveIds.length;
@@ -648,7 +651,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
                    systemColl = _rs.entireSystemColl;
                    backToNormal = _rs.backToNormalMode;
                } else if (backToNormal && _ICR < MCR) {
-                   (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId);
+                   (uint256 _totalDebtToBurn, uint256 _totalColToSend) = _liquidateATroveByExternalLiquidator(_contractsCache, _troveId, false);
                    totalDebtToBurn = totalDebtToBurn.add(_totalDebtToBurn);
                    totalColToSend = totalColToSend.add(_totalColToSend);
                } else {
@@ -1454,7 +1457,7 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
     function _updateTroveRewardSnapshots(bytes32 _troveId) internal {
         rewardSnapshots[_troveId].ETH = L_ETH;
         rewardSnapshots[_troveId].LUSDDebt = L_LUSDDebt;
-        emit TroveSnapshotsUpdated(L_ETH, L_LUSDDebt);
+        emit TroveSnapshotsUpdated(_troveId, L_ETH, L_LUSDDebt);
     }
 
     // Get the borrower's pending accumulated ETH reward, earned by their stake
@@ -1506,8 +1509,8 @@ contract TroveManager is LiquityBase, Ownable, CheckContract, ITroveManager, Ree
         debt = Troves[_troveId].debt;
         coll = Troves[_troveId].coll;
 
-//        pendingLUSDDebtReward = getPendingLUSDDebtReward(_troveId);
-//        pendingETHReward = getPendingETHReward(_troveId);
+        pendingLUSDDebtReward = 0;//getPendingLUSDDebtReward(_troveId);
+        pendingETHReward = 0;//getPendingETHReward(_troveId);
 
 //        debt = debt.add(pendingLUSDDebtReward);
 //        coll = coll.add(pendingETHReward);
