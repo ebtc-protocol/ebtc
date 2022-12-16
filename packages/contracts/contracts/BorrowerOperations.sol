@@ -161,7 +161,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external payable override {
+    ) external payable override returns (bytes32) {
         ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_openCdp memory vars;
 
@@ -246,6 +246,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             BorrowerOperation.openCdp
         );
         emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
+
+        return _cdpId;
     }
 
     // Send ETH as collateral to a cdp

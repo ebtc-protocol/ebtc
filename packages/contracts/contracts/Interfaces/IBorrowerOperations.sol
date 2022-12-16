@@ -48,7 +48,7 @@ interface IBorrowerOperations {
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external payable;
+    ) external payable returns (bytes32);
 
     function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
 
