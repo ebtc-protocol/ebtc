@@ -38,7 +38,7 @@ contract CDPTest is eBTCBaseFixture {
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
         vm.prank(user);
-        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, HINT, HINT);
         assertEq(cdpManager.getCdpIdsCount(), 1);
         // Make sure valid cdpId returned and user is it's owner
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
@@ -56,12 +56,12 @@ contract CDPTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         // Make sure there is no CDPs in the system yet
         vm.startPrank(user);
-        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, HINT, HINT);
         assertEq(cdpManager.getCdpIdsCount(), 1);
 
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Borrow for the second time so user has enough eBTC to close their first CDP
-        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, HINT, HINT);
         assertEq(cdpManager.getCdpIdsCount(), 2);
 
         // Check that user has 2x eBTC balance as they opened 2 CDPs
@@ -83,7 +83,7 @@ contract CDPTest is eBTCBaseFixture {
         vm.prank(user);
         // Borrowed eBTC amount is too high compared to Collateral
         vm.expectRevert(bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted"));
-        borrowerOperations.openCdp{value : 10 ether}(FEE, 20000e20, "hint", "hint");
+        borrowerOperations.openCdp{value : 10 ether}(FEE, 20000e20, HINT, HINT);
     }
 
     // Fail if Net Debt is too low. Check MIN_NET_DEBT constant
@@ -95,7 +95,7 @@ contract CDPTest is eBTCBaseFixture {
         vm.prank(user);
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
         vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
-        borrowerOperations.openCdp{value : address(user).balance}(FEE, 180e18, "hint", "hint");
+        borrowerOperations.openCdp{value : address(user).balance}(FEE, 180e18, HINT, HINT);
     }
 
     /* Open CDPs for random amount of users
@@ -109,7 +109,7 @@ contract CDPTest is eBTCBaseFixture {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
             vm.prank(user);
-            borrowerOperations.openCdp{value : collateral}(FEE, borrowedAmount, "hint", "hint");
+            borrowerOperations.openCdp{value : collateral}(FEE, borrowedAmount, HINT, HINT);
             // Get User's CDP and check it for uniqueness
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
             // Make sure that each new CDP id is unique

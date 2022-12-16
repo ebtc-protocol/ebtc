@@ -29,7 +29,7 @@ contract eBTCBaseFixture is Test {
     using SafeMath for uint16;
     using SafeMath for uint8;
     uint256 constant maxBytes32 = type(uint256).max;
-
+    bytes32 constant HINT = "hint";
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
     CdpManager cdpManager;
