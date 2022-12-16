@@ -86,6 +86,34 @@ contract CDPTest is eBTCBaseFixture {
         borrowerOperations.openCdp{value : 10 ether}(FEE, 20000e20, HINT, HINT);
     }
 
+    // Fail if fee is invalid. Should be between 0.5% and 100%
+    function testOpenCdpInvalidFeeFuzzFirst(uint256 fee) public {
+        // Fee cannot be > 100%
+        fee = uint256(bound(fee, 100e18, 100e25));
+        uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        address user = users[0];
+        vm.prank(user);
+        // Make sure to revert on invalid fee %
+        vm.expectRevert(bytes("Max fee percentage must be between 0.5% and 100%"));
+        borrowerOperations.openCdp{value : 30 ether}(fee, borrowedAmount, HINT, HINT);
+    }
+
+    // Fail if fee is invalid. Should be between 0.5% and 100%
+    function testOpenCdpInvalidFeeFuzzSecond(uint256 fee) public {
+        // Fee cannot be < 0.5%
+        fee = uint256(bound(fee, 1e7, 5e15));
+        uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        address user = users[0];
+        vm.prank(user);
+        // Make sure to revert on invalid fee %
+        vm.expectRevert(bytes("Max fee percentage must be between 0.5% and 100%"));
+        borrowerOperations.openCdp{value : 30 ether}(fee, borrowedAmount, HINT, HINT);
+    }
+
     // Fail if Net Debt is too low. Check MIN_NET_DEBT constant
     function testMinNetDebtTooLow() public {
         address payable[] memory users;
@@ -162,7 +190,7 @@ contract CDPTest is eBTCBaseFixture {
     /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount by bottom.
     * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
     */
-    function testCdpsForManyUsersManyMinDebtTooLow(uint96 collAmount) public {
+    function testCdpsForManyUsersManyMinDebtTooLowFuzz(uint96 collAmount) public {
         collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
 
         uint borrowedAmount = _utils.calculateBorrowAmount(
