@@ -9,7 +9,7 @@ import {Utilities} from "./utils/Utilities.sol";
 /*
  * Test suite that tests opened CDPs with operations
  */
-contract CDPTestOperations is eBTCBaseFixture {
+contract CDPOpsTest is eBTCBaseFixture {
     Utilities internal _utils;
 
     function setUp() public override {

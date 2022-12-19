@@ -9,7 +9,7 @@ import {Utilities} from "./utils/Utilities.sol";
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract CDPTest is eBTCBaseFixture {
+contract CDPOpenCloseTest is eBTCBaseFixture {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     Utilities internal _utils;
