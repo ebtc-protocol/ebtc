@@ -5,9 +5,8 @@ pragma solidity 0.6.11;
 import "../Dependencies/CheckContract.sol";
 import "../Dependencies/IERC20.sol";
 
-
 contract TokenScript is CheckContract {
-    string constant public NAME = "TokenScript";
+    string public constant NAME = "TokenScript";
 
     IERC20 immutable token;
 
@@ -28,7 +27,11 @@ contract TokenScript is CheckContract {
         token.approve(spender, amount);
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool) {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool) {
         token.transferFrom(sender, recipient, amount);
     }
 

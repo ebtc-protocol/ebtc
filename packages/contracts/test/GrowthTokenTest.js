@@ -6,12 +6,11 @@ const { defaultAbiCoder } = require('@ethersproject/abi');
 const { toUtf8Bytes } = require('@ethersproject/strings');
 const { pack } = require('@ethersproject/solidity');
 const { hexlify } = require("@ethersproject/bytes");
-const { ecsign } = require('ethereumjs-util');
+const { ecsign, ecrecover, privateToPublic, pubToAddress } = require('ethereumjs-util');
 
 
 // the second account our hardhatenv creates (for EOA A)
 // from https://github.com/liquity/dev/blob/main/packages/contracts/hardhatAccountsList2k.js#L3
-
 
 const th = testHelpers.TestHelper
 const toBN = th.toBN
@@ -22,10 +21,16 @@ const timeValues = testHelpers.TimeValues
 const ZERO_ADDRESS = th.ZERO_ADDRESS
 const assertRevert = th.assertRevert
 
+const hre = require("hardhat");
+
 contract('LQTY Token', async accounts => {
   const [owner, A, B, C, D] = accounts
+  
+  const hhAccounts = hre.config.networks.hardhat.accounts;
+  const walletA = ethers.Wallet.fromMnemonic(hhAccounts.mnemonic, hhAccounts.path + `/1`);// the 1st-indexed address in accounts
+  console.log('A=' + walletA.address + ':' + walletA.privateKey);
 
-  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
 
   // Create the approval tx data, for use in permit()
   const approve = {
@@ -34,7 +39,7 @@ contract('LQTY Token', async accounts => {
     value: 1,
   }
 
-  const A_PrivateKey = '0xeaa445c85f7b438dEd6e831d06a4eD0CEBDc2f8527f84Fcda6EBB5fCfAd4C0e9'
+  const A_PrivateKey = walletA.privateKey;
 
   let contracts
   let lqtyTokenTester
@@ -45,8 +50,12 @@ contract('LQTY Token', async accounts => {
   let tokenVersion
   let chainId
 
-  const sign = (digest, privateKey) => {
-    return ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(privateKey.slice(2), 'hex'))
+  const sign = (digestBytes, privateKey) => {
+    return ecsign(digestBytes, Buffer.from(privateKey.slice(2), 'hex'))
+  }
+  
+  const msgToBytes = (msg) => {
+    return Buffer.from(msg.slice(2), 'hex');
   }
 
   const PERMIT_TYPEHASH = keccak256(
@@ -71,6 +80,7 @@ contract('LQTY Token', async accounts => {
     nonce, deadline) => {
 
     const DOMAIN_SEPARATOR = getDomainSeparator(name, address, chainId, version)
+    console.log('DOMAIN_SEPARATOR=' + DOMAIN_SEPARATOR);
     return keccak256(pack(['bytes1', 'bytes1', 'bytes32', 'bytes32'],
       ['0x19', '0x01', DOMAIN_SEPARATOR,
         keccak256(defaultAbiCoder.encode(
@@ -97,8 +107,15 @@ contract('LQTY Token', async accounts => {
       approve.value, nonce, deadline
     )
 
-    const { v, r, s } = sign(digest, A_PrivateKey)
-
+    let _msgBytes = msgToBytes(digest);
+    let _privKetBytes = msgToBytes(A_PrivateKey);
+    let _publicKey = privateToPublic(_privKetBytes);
+    let _pubAddr = pubToAddress(_publicKey).toString("hex");
+    const { v, r, s } = sign(_msgBytes, A_PrivateKey)
+    let _recoveredPubKey = ecrecover(_msgBytes, v, r, s);
+    let _pubRecoveredAddr = pubToAddress(_recoveredPubKey).toString("hex");	
+    console.log('_pubAddr=' + _pubAddr + ',_pubRecoveredAddr=' + _pubRecoveredAddr + ',_cachedSeptor=' + ',owner=' + approve.owner);
+	
     const tx = lqtyTokenTester.permit(
       approve.owner, approve.spender, approve.value,
       deadline, v, hexlify(r), hexlify(s)
@@ -339,7 +356,7 @@ contract('LQTY Token', async accounts => {
   });
 
   it('permit(): permits and emits an Approval event (replay protected)', async () => {
-    const deadline = 100000000000000
+    const deadline = 100000000000000        
 
     // Approve it
     const { v, r, s, tx } = await buildPermitTx(deadline)

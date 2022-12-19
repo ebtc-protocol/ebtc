@@ -3,11 +3,10 @@
 pragma solidity 0.6.11;
 
 import "./Interfaces/IBorrowerOperations.sol";
-import "./Interfaces/ITroveManager.sol";
-import "./Interfaces/ILUSDToken.sol";
+import "./Interfaces/ICdpManager.sol";
+import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/ISortedTroves.sol";
-
+import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ILQTYStaking.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
@@ -22,7 +21,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- Connected contract declarations ---
 
-    ITroveManager public troveManager;
+    ICdpManager public cdpManager;
 
     address stabilityPoolAddress;
 
@@ -33,17 +32,17 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     ILQTYStaking public lqtyStaking;
     address public lqtyStakingAddress;
 
-    ILUSDToken public lusdToken;
+    IEBTCToken public ebtcToken;
 
-    // A doubly linked list of Troves, sorted by their collateral ratios
-    ISortedTroves public sortedTroves;
+    // A doubly linked list of Cdps, sorted by their collateral ratios
+    ISortedCdps public sortedCdps;
 
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
     "CompilerError: Stack too deep". */
 
-     struct LocalVariables_adjustTrove {
+    struct LocalVariables_adjustCdp {
         uint price;
         uint collChange;
         uint netDebtChange;
@@ -53,15 +52,15 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint oldICR;
         uint newICR;
         uint newTCR;
-        uint LUSDFee;
+        uint EBTCFee;
         uint newDebt;
         uint newColl;
         uint stake;
     }
 
-    struct LocalVariables_openTrove {
+    struct LocalVariables_openCdp {
         uint price;
-        uint LUSDFee;
+        uint EBTCFee;
         uint netDebt;
         uint compositeDebt;
         uint ICR;
@@ -71,115 +70,128 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     struct ContractsCache {
-        ITroveManager troveManager;
+        ICdpManager cdpManager;
         IActivePool activePool;
-        ILUSDToken lusdToken;
+        IEBTCToken ebtcToken;
     }
 
     enum BorrowerOperation {
-        openTrove,
-        closeTrove,
-        adjustTrove
+        openCdp,
+        closeCdp,
+        adjustCdp
     }
 
-    event TroveManagerAddressChanged(address _newTroveManagerAddress);
+    event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
     event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event PriceFeedAddressChanged(address  _newPriceFeedAddress);
-    event SortedTrovesAddressChanged(address _sortedTrovesAddress);
-    event LUSDTokenAddressChanged(address _lusdTokenAddress);
+    event PriceFeedAddressChanged(address _newPriceFeedAddress);
+    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
+    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
 
-    event TroveCreated(address indexed _borrower, uint arrayIndex);
-    event TroveUpdated(address indexed _borrower, uint _debt, uint _coll, uint stake, BorrowerOperation operation);
-    event LUSDBorrowingFeePaid(address indexed _borrower, uint _LUSDFee);
-    
+    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event CdpUpdated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        uint stake,
+        BorrowerOperation operation
+    );
+    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
+
     // --- Dependency setters ---
 
     function setAddresses(
-        address _troveManagerAddress,
+        address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
         address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
-        address _sortedTrovesAddress,
-        address _lusdTokenAddress,
+        address _sortedCdpsAddress,
+        address _ebtcTokenAddress,
         address _lqtyStakingAddress
-    )
-        external
-        override
-        onlyOwner
-    {
-        // This makes impossible to open a trove with zero withdrawn LUSD
+    ) external override onlyOwner {
+        // This makes impossible to open a cdp with zero withdrawn EBTC
         assert(MIN_NET_DEBT > 0);
 
-        checkContract(_troveManagerAddress);
+        checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
         checkContract(_stabilityPoolAddress);
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
-        checkContract(_sortedTrovesAddress);
-        checkContract(_lusdTokenAddress);
+        checkContract(_sortedCdpsAddress);
+        checkContract(_ebtcTokenAddress);
         checkContract(_lqtyStakingAddress);
 
-        troveManager = ITroveManager(_troveManagerAddress);
+        cdpManager = ICdpManager(_cdpManagerAddress);
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
         stabilityPoolAddress = _stabilityPoolAddress;
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
-        sortedTroves = ISortedTroves(_sortedTrovesAddress);
-        lusdToken = ILUSDToken(_lusdTokenAddress);
+        sortedCdps = ISortedCdps(_sortedCdpsAddress);
+        ebtcToken = IEBTCToken(_ebtcTokenAddress);
         lqtyStakingAddress = _lqtyStakingAddress;
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
 
-        emit TroveManagerAddressChanged(_troveManagerAddress);
+        emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit SortedTrovesAddressChanged(_sortedTrovesAddress);
-        emit LUSDTokenAddressChanged(_lusdTokenAddress);
+        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
+        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
 
         _renounceOwnership();
     }
 
-    // --- Borrower Trove Operations ---
+    // --- Borrower Cdp Operations ---
 
-    function openTrove(uint _maxFeePercentage, uint _LUSDAmount, address _upperHint, address _lowerHint) external payable override {
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
-        LocalVariables_openTrove memory vars;
+    function openCdp(
+        uint _maxFeePercentage,
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable override {
+        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
+        LocalVariables_openCdp memory vars;
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
-        _requireTroveisNotActive(contractsCache.troveManager, msg.sender);
+        //        _requireCdpisNotActive(contractsCache.cdpManager, msg.sender);
 
-        vars.LUSDFee;
-        vars.netDebt = _LUSDAmount;
+        vars.EBTCFee;
+        vars.netDebt = _EBTCAmount;
 
         if (!isRecoveryMode) {
-            vars.LUSDFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.lusdToken, _LUSDAmount, _maxFeePercentage);
-            vars.netDebt = vars.netDebt.add(vars.LUSDFee);
+            vars.EBTCFee = _triggerBorrowingFee(
+                contractsCache.cdpManager,
+                contractsCache.ebtcToken,
+                _EBTCAmount,
+                _maxFeePercentage
+            );
+            vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
         _requireAtLeastMinNetDebt(vars.netDebt);
 
-        // ICR is based on the composite debt, i.e. the requested LUSD amount + LUSD borrowing fee + LUSD gas comp.
+        // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
         assert(vars.compositeDebt > 0);
-        
+
         vars.ICR = LiquityMath._computeCR(msg.value, vars.compositeDebt, vars.price);
         vars.NICR = LiquityMath._computeNominalCR(msg.value, vars.compositeDebt);
 
@@ -187,168 +199,307 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             _requireICRisAboveCCR(vars.ICR);
         } else {
             _requireICRisAboveMCR(vars.ICR);
-            uint newTCR = _getNewTCRFromTroveChange(msg.value, true, vars.compositeDebt, true, vars.price);  // bools: coll increase, debt increase
-            _requireNewTCRisAboveCCR(newTCR); 
+            uint newTCR = _getNewTCRFromCdpChange(
+                msg.value,
+                true,
+                vars.compositeDebt,
+                true,
+                vars.price
+            ); // bools: coll increase, debt increase
+            _requireNewTCRisAboveCCR(newTCR);
         }
 
-        // Set the trove struct's properties
-        contractsCache.troveManager.setTroveStatus(msg.sender, 1);
-        contractsCache.troveManager.increaseTroveColl(msg.sender, msg.value);
-        contractsCache.troveManager.increaseTroveDebt(msg.sender, vars.compositeDebt);
+        // Set the cdp struct's properties
+        bytes32 _cdpId = sortedCdps.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
 
-        contractsCache.troveManager.updateTroveRewardSnapshots(msg.sender);
-        vars.stake = contractsCache.troveManager.updateStakeAndTotalStakes(msg.sender);
+        contractsCache.cdpManager.setCdpStatus(_cdpId, 1);
+        contractsCache.cdpManager.increaseCdpColl(_cdpId, msg.value);
+        contractsCache.cdpManager.increaseCdpDebt(_cdpId, vars.compositeDebt);
 
-        sortedTroves.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
-        vars.arrayIndex = contractsCache.troveManager.addTroveOwnerToArray(msg.sender);
-        emit TroveCreated(msg.sender, vars.arrayIndex);
+        contractsCache.cdpManager.updateCdpRewardSnapshots(_cdpId);
+        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        // Move the ether to the Active Pool, and mint the LUSDAmount to the borrower
+        vars.arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
+        emit CdpCreated(_cdpId, msg.sender, vars.arrayIndex);
+
+        // Move the ether to the Active Pool, and mint the EBTCAmount to the borrower
         _activePoolAddColl(contractsCache.activePool, msg.value);
-        _withdrawLUSD(contractsCache.activePool, contractsCache.lusdToken, msg.sender, _LUSDAmount, vars.netDebt);
-        // Move the LUSD gas compensation to the Gas Pool
-        _withdrawLUSD(contractsCache.activePool, contractsCache.lusdToken, gasPoolAddress, LUSD_GAS_COMPENSATION, LUSD_GAS_COMPENSATION);
+        _withdrawEBTC(
+            contractsCache.activePool,
+            contractsCache.ebtcToken,
+            msg.sender,
+            _EBTCAmount,
+            vars.netDebt
+        );
+        // Move the EBTC gas compensation to the Gas Pool
+        _withdrawEBTC(
+            contractsCache.activePool,
+            contractsCache.ebtcToken,
+            gasPoolAddress,
+            EBTC_GAS_COMPENSATION,
+            EBTC_GAS_COMPENSATION
+        );
 
-        emit TroveUpdated(msg.sender, vars.compositeDebt, msg.value, vars.stake, BorrowerOperation.openTrove);
-        emit LUSDBorrowingFeePaid(msg.sender, vars.LUSDFee);
+        emit CdpUpdated(
+            _cdpId,
+            msg.sender,
+            vars.compositeDebt,
+            msg.value,
+            vars.stake,
+            BorrowerOperation.openCdp
+        );
+        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
     }
 
-    // Send ETH as collateral to a trove
-    function addColl(address _upperHint, address _lowerHint) external payable override {
-        _adjustTrove(msg.sender, 0, 0, false, _upperHint, _lowerHint, 0);
+    // Send ETH as collateral to a cdp
+    function addColl(
+        bytes32 _cdpId,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable override {
+        _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Send ETH as collateral to a trove. Called by only the Stability Pool.
-    function moveETHGainToTrove(address _borrower, address _upperHint, address _lowerHint) external payable override {
+    // Send ETH as collateral to a cdp. Called by only the Stability Pool.
+    function moveETHGainToCdp(
+        bytes32 _cdpId,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable override {
         _requireCallerIsStabilityPool();
-        _adjustTrove(_borrower, 0, 0, false, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Withdraw ETH collateral from a trove
-    function withdrawColl(uint _collWithdrawal, address _upperHint, address _lowerHint) external override {
-        _adjustTrove(msg.sender, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
+    // Withdraw ETH collateral from a cdp
+    function withdrawColl(
+        bytes32 _cdpId,
+        uint _collWithdrawal,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external override {
+        _adjustCdp(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Withdraw LUSD tokens from a trove: mint new LUSD tokens to the owner, and increase the trove's debt accordingly
-    function withdrawLUSD(uint _maxFeePercentage, uint _LUSDAmount, address _upperHint, address _lowerHint) external override {
-        _adjustTrove(msg.sender, 0, _LUSDAmount, true, _upperHint, _lowerHint, _maxFeePercentage);
+    // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
+    function withdrawEBTC(
+        bytes32 _cdpId,
+        uint _maxFeePercentage,
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external override {
+        _adjustCdp(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, _maxFeePercentage);
     }
 
-    // Repay LUSD tokens to a Trove: Burn the repaid LUSD tokens, and reduce the trove's debt accordingly
-    function repayLUSD(uint _LUSDAmount, address _upperHint, address _lowerHint) external override {
-        _adjustTrove(msg.sender, 0, _LUSDAmount, false, _upperHint, _lowerHint, 0);
+    // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
+    function repayEBTC(
+        bytes32 _cdpId,
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external override {
+        _adjustCdp(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
     }
 
-    function adjustTrove(uint _maxFeePercentage, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, address _upperHint, address _lowerHint) external payable override {
-        _adjustTrove(msg.sender, _collWithdrawal, _LUSDChange, _isDebtIncrease, _upperHint, _lowerHint, _maxFeePercentage);
+    function adjustCdp(
+        bytes32 _cdpId,
+        uint _maxFeePercentage,
+        uint _collWithdrawal,
+        uint _EBTCChange,
+        bool _isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) external payable override {
+        _adjustCdp(
+            _cdpId,
+            _collWithdrawal,
+            _EBTCChange,
+            _isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            _maxFeePercentage
+        );
+    }
+
+    function _adjustCdp(
+        bytes32 _cdpId,
+        uint _collWithdrawal,
+        uint _EBTCChange,
+        bool _isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _maxFeePercentage
+    ) internal {
+        _requireCdpOwner(_cdpId);
+        _adjustCdpInternal(
+            _cdpId,
+            _collWithdrawal,
+            _EBTCChange,
+            _isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            _maxFeePercentage
+        );
     }
 
     /*
-    * _adjustTrove(): Alongside a debt change, this function can perform either a collateral top-up or a collateral withdrawal. 
-    *
-    * It therefore expects either a positive msg.value, or a positive _collWithdrawal argument.
-    *
-    * If both are positive, it will revert.
-    */
-    function _adjustTrove(address _borrower, uint _collWithdrawal, uint _LUSDChange, bool _isDebtIncrease, address _upperHint, address _lowerHint, uint _maxFeePercentage) internal {
-        ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, lusdToken);
-        LocalVariables_adjustTrove memory vars;
+     * _adjustCdp(): Alongside a debt change, this function can perform either
+     * a collateral top-up or a collateral withdrawal.
+     *
+     * It therefore expects either a positive msg.value, or a positive _collWithdrawal argument.
+     *
+     * If both are positive, it will revert.
+     */
+    function _adjustCdpInternal(
+        bytes32 _cdpId,
+        uint _collWithdrawal,
+        uint _EBTCChange,
+        bool _isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _maxFeePercentage
+    ) internal {
+        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
+        LocalVariables_adjustCdp memory vars;
+
+        _requireCdpisActive(contractsCache.cdpManager, _cdpId);
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         if (_isDebtIncrease) {
             _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
-            _requireNonZeroDebtChange(_LUSDChange);
+            _requireNonZeroDebtChange(_EBTCChange);
         }
         _requireSingularCollChange(_collWithdrawal);
-        _requireNonZeroAdjustment(_collWithdrawal, _LUSDChange);
-        _requireTroveisActive(contractsCache.troveManager, _borrower);
+        _requireNonZeroAdjustment(_collWithdrawal, _EBTCChange);
 
-        // Confirm the operation is either a borrower adjusting their own trove, or a pure ETH transfer from the Stability Pool to a trove
-        assert(msg.sender == _borrower || (msg.sender == stabilityPoolAddress && msg.value > 0 && _LUSDChange == 0));
+        // Confirm the operation is either a borrower adjusting their own cdp,
+        // or a pure ETH transfer from the Stability Pool to a cdp
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        assert(
+            msg.sender == _borrower ||
+                (msg.sender == stabilityPoolAddress && msg.value > 0 && _EBTCChange == 0)
+        );
 
-        contractsCache.troveManager.applyPendingRewards(_borrower);
+        contractsCache.cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on whether or not ETH was sent in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(msg.value, _collWithdrawal);
 
-        vars.netDebtChange = _LUSDChange;
+        vars.netDebtChange = _EBTCChange;
 
         // If the adjustment incorporates a debt increase and system is in Normal Mode, then trigger a borrowing fee
-        if (_isDebtIncrease && !isRecoveryMode) { 
-            vars.LUSDFee = _triggerBorrowingFee(contractsCache.troveManager, contractsCache.lusdToken, _LUSDChange, _maxFeePercentage);
-            vars.netDebtChange = vars.netDebtChange.add(vars.LUSDFee); // The raw debt change includes the fee
+        if (_isDebtIncrease && !isRecoveryMode) {
+            vars.EBTCFee = _triggerBorrowingFee(
+                contractsCache.cdpManager,
+                contractsCache.ebtcToken,
+                _EBTCChange,
+                _maxFeePercentage
+            );
+            vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
         }
 
-        vars.debt = contractsCache.troveManager.getTroveDebt(_borrower);
-        vars.coll = contractsCache.troveManager.getTroveColl(_borrower);
-        
-        // Get the trove's old ICR before the adjustment, and what its new ICR will be after the adjustment
+        vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
+        vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
+
+        // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         vars.oldICR = LiquityMath._computeCR(vars.coll, vars.debt, vars.price);
-        vars.newICR = _getNewICRFromTroveChange(vars.coll, vars.debt, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease, vars.price);
-        assert(_collWithdrawal <= vars.coll); 
+        vars.newICR = _getNewICRFromCdpChange(
+            vars.coll,
+            vars.debt,
+            vars.collChange,
+            vars.isCollIncrease,
+            vars.netDebtChange,
+            _isDebtIncrease,
+            vars.price
+        );
+        assert(_collWithdrawal <= vars.coll);
 
         // Check the adjustment satisfies all conditions for the current system mode
         _requireValidAdjustmentInCurrentMode(isRecoveryMode, _collWithdrawal, _isDebtIncrease, vars);
-            
-        // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough LUSD
-        if (!_isDebtIncrease && _LUSDChange > 0) {
+
+        // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
+        if (!_isDebtIncrease && _EBTCChange > 0) {
             _requireAtLeastMinNetDebt(_getNetDebt(vars.debt).sub(vars.netDebtChange));
-            _requireValidLUSDRepayment(vars.debt, vars.netDebtChange);
-            _requireSufficientLUSDBalance(contractsCache.lusdToken, _borrower, vars.netDebtChange);
+            _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
+            _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
 
-        (vars.newColl, vars.newDebt) = _updateTroveFromAdjustment(contractsCache.troveManager, _borrower, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
-        vars.stake = contractsCache.troveManager.updateStakeAndTotalStakes(_borrower);
+        (vars.newColl, vars.newDebt) = _updateCdpFromAdjustment(
+            contractsCache.cdpManager,
+            _cdpId,
+            vars.collChange,
+            vars.isCollIncrease,
+            vars.netDebtChange,
+            _isDebtIncrease
+        );
+        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        // Re-insert trove in to the sorted list
-        uint newNICR = _getNewNominalICRFromTroveChange(vars.coll, vars.debt, vars.collChange, vars.isCollIncrease, vars.netDebtChange, _isDebtIncrease);
-        sortedTroves.reInsert(_borrower, newNICR, _upperHint, _lowerHint);
+        // Re-insert cdp in to the sorted list
+        uint newNICR = _getNewNominalICRFromCdpChange(
+            vars.coll,
+            vars.debt,
+            vars.collChange,
+            vars.isCollIncrease,
+            vars.netDebtChange,
+            _isDebtIncrease
+        );
+        sortedCdps.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
 
-        emit TroveUpdated(_borrower, vars.newDebt, vars.newColl, vars.stake, BorrowerOperation.adjustTrove);
-        emit LUSDBorrowingFeePaid(msg.sender,  vars.LUSDFee);
+        emit CdpUpdated(
+            _cdpId,
+            _borrower,
+            vars.newDebt,
+            vars.newColl,
+            vars.stake,
+            BorrowerOperation.adjustCdp
+        );
+        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
 
-        // Use the unmodified _LUSDChange here, as we don't send the fee to the user
+        // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         _moveTokensAndETHfromAdjustment(
             contractsCache.activePool,
-            contractsCache.lusdToken,
+            contractsCache.ebtcToken,
             msg.sender,
             vars.collChange,
             vars.isCollIncrease,
-            _LUSDChange,
+            _EBTCChange,
             _isDebtIncrease,
             vars.netDebtChange
         );
     }
 
-    function closeTrove() external override {
-        ITroveManager troveManagerCached = troveManager;
-        IActivePool activePoolCached = activePool;
-        ILUSDToken lusdTokenCached = lusdToken;
+    function closeCdp(bytes32 _cdpId) external override {
+        _requireCdpOwner(_cdpId);
 
-        _requireTroveisActive(troveManagerCached, msg.sender);
+        ICdpManager cdpManagerCached = cdpManager;
+        IActivePool activePoolCached = activePool;
+        IEBTCToken ebtcTokenCached = ebtcToken;
+
+        _requireCdpisActive(cdpManagerCached, _cdpId);
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(price);
 
-        troveManagerCached.applyPendingRewards(msg.sender);
+        cdpManagerCached.applyPendingRewards(_cdpId);
 
-        uint coll = troveManagerCached.getTroveColl(msg.sender);
-        uint debt = troveManagerCached.getTroveDebt(msg.sender);
+        uint coll = cdpManagerCached.getCdpColl(_cdpId);
+        uint debt = cdpManagerCached.getCdpDebt(_cdpId);
 
-        _requireSufficientLUSDBalance(lusdTokenCached, msg.sender, debt.sub(LUSD_GAS_COMPENSATION));
+        _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
 
-        uint newTCR = _getNewTCRFromTroveChange(coll, false, debt, false, price);
+        uint newTCR = _getNewTCRFromCdpChange(coll, false, debt, false, price);
         _requireNewTCRisAboveCCR(newTCR);
 
-        troveManagerCached.removeStake(msg.sender);
-        troveManagerCached.closeTrove(msg.sender);
+        cdpManagerCached.removeStake(_cdpId);
+        cdpManagerCached.closeCdp(_cdpId);
 
-        emit TroveUpdated(msg.sender, 0, 0, 0, BorrowerOperation.closeTrove);
+        // We already verified msg.sender is the borrower
+        emit CdpUpdated(_cdpId, msg.sender, 0, 0, 0, BorrowerOperation.closeCdp);
 
-        // Burn the repaid LUSD from the user's balance and the gas compensation from the Gas Pool
-        _repayLUSD(activePoolCached, lusdTokenCached, msg.sender, debt.sub(LUSD_GAS_COMPENSATION));
-        _repayLUSD(activePoolCached, lusdTokenCached, gasPoolAddress, LUSD_GAS_COMPENSATION);
+        // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
+        _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
+        _repayEBTC(activePoolCached, ebtcTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
 
         // Send the collateral back to the user
         activePoolCached.sendETH(msg.sender, coll);
@@ -364,17 +515,22 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // --- Helper functions ---
 
-    function _triggerBorrowingFee(ITroveManager _troveManager, ILUSDToken _lusdToken, uint _LUSDAmount, uint _maxFeePercentage) internal returns (uint) {
-        _troveManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
-        uint LUSDFee = _troveManager.getBorrowingFee(_LUSDAmount);
+    function _triggerBorrowingFee(
+        ICdpManager _cdpManager,
+        IEBTCToken _ebtcToken,
+        uint _EBTCAmount,
+        uint _maxFeePercentage
+    ) internal returns (uint) {
+        _cdpManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
+        uint EBTCFee = _cdpManager.getBorrowingFee(_EBTCAmount);
 
-        _requireUserAcceptsFee(LUSDFee, _LUSDAmount, _maxFeePercentage);
-        
+        _requireUserAcceptsFee(EBTCFee, _EBTCAmount, _maxFeePercentage);
+
         // Send fee to LQTY staking contract
-        lqtyStaking.increaseF_LUSD(LUSDFee);
-        _lusdToken.mint(lqtyStakingAddress, LUSDFee);
+        lqtyStaking.increaseF_EBTC(EBTCFee);
+        _ebtcToken.mint(lqtyStakingAddress, EBTCFee);
 
-        return LUSDFee;
+        return EBTCFee;
     }
 
     function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
@@ -386,11 +542,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function _getCollChange(
         uint _collReceived,
         uint _requestedCollWithdrawal
-    )
-        internal
-        pure
-        returns(uint collChange, bool isCollIncrease)
-    {
+    ) internal pure returns (uint collChange, bool isCollIncrease) {
         if (_collReceived != 0) {
             collChange = _collReceived;
             isCollIncrease = true;
@@ -399,44 +551,39 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         }
     }
 
-    // Update trove's coll and debt based on whether they increase or decrease
-    function _updateTroveFromAdjustment
-    (
-        ITroveManager _troveManager,
-        address _borrower,
+    // Update cdp's coll and debt based on whether they increase or decrease
+    function _updateCdpFromAdjustment(
+        ICdpManager _cdpManager,
+        bytes32 _cdpId,
         uint _collChange,
         bool _isCollIncrease,
         uint _debtChange,
         bool _isDebtIncrease
-    )
-        internal
-        returns (uint, uint)
-    {
-        uint newColl = (_isCollIncrease) ? _troveManager.increaseTroveColl(_borrower, _collChange)
-                                        : _troveManager.decreaseTroveColl(_borrower, _collChange);
-        uint newDebt = (_isDebtIncrease) ? _troveManager.increaseTroveDebt(_borrower, _debtChange)
-                                        : _troveManager.decreaseTroveDebt(_borrower, _debtChange);
+    ) internal returns (uint, uint) {
+        uint newColl = (_isCollIncrease)
+            ? _cdpManager.increaseCdpColl(_cdpId, _collChange)
+            : _cdpManager.decreaseCdpColl(_cdpId, _collChange);
+        uint newDebt = (_isDebtIncrease)
+            ? _cdpManager.increaseCdpDebt(_cdpId, _debtChange)
+            : _cdpManager.decreaseCdpDebt(_cdpId, _debtChange);
 
         return (newColl, newDebt);
     }
 
-    function _moveTokensAndETHfromAdjustment
-    (
+    function _moveTokensAndETHfromAdjustment(
         IActivePool _activePool,
-        ILUSDToken _lusdToken,
+        IEBTCToken _ebtcToken,
         address _borrower,
         uint _collChange,
         bool _isCollIncrease,
-        uint _LUSDChange,
+        uint _EBTCChange,
         bool _isDebtIncrease,
         uint _netDebtChange
-    )
-        internal
-    {
+    ) internal {
         if (_isDebtIncrease) {
-            _withdrawLUSD(_activePool, _lusdToken, _borrower, _LUSDChange, _netDebtChange);
+            _withdrawEBTC(_activePool, _ebtcToken, _borrower, _EBTCChange, _netDebtChange);
         } else {
-            _repayLUSD(_activePool, _lusdToken, _borrower, _LUSDChange);
+            _repayEBTC(_activePool, _ebtcToken, _borrower, _EBTCChange);
         }
 
         if (_isCollIncrease) {
@@ -452,157 +599,220 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         require(success, "BorrowerOps: Sending ETH to ActivePool failed");
     }
 
-    // Issue the specified amount of LUSD to _account and increases the total active debt (_netDebtIncrease potentially includes a LUSDFee)
-    function _withdrawLUSD(IActivePool _activePool, ILUSDToken _lusdToken, address _account, uint _LUSDAmount, uint _netDebtIncrease) internal {
-        _activePool.increaseLUSDDebt(_netDebtIncrease);
-        _lusdToken.mint(_account, _LUSDAmount);
+    // Issue the specified amount of EBTC to _account and increases
+    // the total active debt (_netDebtIncrease potentially includes a EBTCFee)
+    function _withdrawEBTC(
+        IActivePool _activePool,
+        IEBTCToken _ebtcToken,
+        address _account,
+        uint _EBTCAmount,
+        uint _netDebtIncrease
+    ) internal {
+        _activePool.increaseEBTCDebt(_netDebtIncrease);
+        _ebtcToken.mint(_account, _EBTCAmount);
     }
 
-    // Burn the specified amount of LUSD from _account and decreases the total active debt
-    function _repayLUSD(IActivePool _activePool, ILUSDToken _lusdToken, address _account, uint _LUSD) internal {
-        _activePool.decreaseLUSDDebt(_LUSD);
-        _lusdToken.burn(_account, _LUSD);
+    // Burn the specified amount of EBTC from _account and decreases the total active debt
+    function _repayEBTC(
+        IActivePool _activePool,
+        IEBTCToken _ebtcToken,
+        address _account,
+        uint _EBTC
+    ) internal {
+        _activePool.decreaseEBTCDebt(_EBTC);
+        _ebtcToken.burn(_account, _EBTC);
     }
 
     // --- 'Require' wrapper functions ---
 
+    function _requireCdpOwner(bytes32 _cdpId) internal view {
+        address _owner = sortedCdps.existCdpOwners(_cdpId);
+        require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
+    }
+
     function _requireSingularCollChange(uint _collWithdrawal) internal view {
-        require(msg.value == 0 || _collWithdrawal == 0, "BorrowerOperations: Cannot withdraw and add coll");
+        require(
+            msg.value == 0 || _collWithdrawal == 0,
+            "BorrowerOperations: Cannot withdraw and add coll"
+        );
     }
 
     function _requireCallerIsBorrower(address _borrower) internal view {
-        require(msg.sender == _borrower, "BorrowerOps: Caller must be the borrower for a withdrawal");
+        require(
+            msg.sender == _borrower,
+            "BorrowerOps: Caller must be the borrower for a withdrawal"
+        );
     }
 
-    function _requireNonZeroAdjustment(uint _collWithdrawal, uint _LUSDChange) internal view {
-        require(msg.value != 0 || _collWithdrawal != 0 || _LUSDChange != 0, "BorrowerOps: There must be either a collateral change or a debt change");
+    function _requireNonZeroAdjustment(uint _collWithdrawal, uint _EBTCChange) internal view {
+        require(
+            msg.value != 0 || _collWithdrawal != 0 || _EBTCChange != 0,
+            "BorrowerOps: There must be either a collateral change or a debt change"
+        );
     }
 
-    function _requireTroveisActive(ITroveManager _troveManager, address _borrower) internal view {
-        uint status = _troveManager.getTroveStatus(_borrower);
-        require(status == 1, "BorrowerOps: Trove does not exist or is closed");
+    function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
+        uint status = _cdpManager.getCdpStatus(_cdpId);
+        require(status == 1, "BorrowerOps: Cdp does not exist or is closed");
     }
 
-    function _requireTroveisNotActive(ITroveManager _troveManager, address _borrower) internal view {
-        uint status = _troveManager.getTroveStatus(_borrower);
-        require(status != 1, "BorrowerOps: Trove is active");
+    //    function _requireCdpisNotActive(ICdpManager _cdpManager, address _borrower) internal view {
+    //        uint status = _cdpManager.getCdpStatus(_borrower);
+    //        require(status != 1, "BorrowerOps: Cdp is active");
+    //    }
+
+    function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
+        require(_EBTCChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
     }
 
-    function _requireNonZeroDebtChange(uint _LUSDChange) internal pure {
-        require(_LUSDChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
-    }
-   
     function _requireNotInRecoveryMode(uint _price) internal view {
-        require(!_checkRecoveryMode(_price), "BorrowerOps: Operation not permitted during Recovery Mode");
+        require(
+            !_checkRecoveryMode(_price),
+            "BorrowerOps: Operation not permitted during Recovery Mode"
+        );
     }
 
     function _requireNoCollWithdrawal(uint _collWithdrawal) internal pure {
-        require(_collWithdrawal == 0, "BorrowerOps: Collateral withdrawal not permitted Recovery Mode");
+        require(
+            _collWithdrawal == 0,
+            "BorrowerOps: Collateral withdrawal not permitted Recovery Mode"
+        );
     }
 
-    function _requireValidAdjustmentInCurrentMode 
-    (
+    function _requireValidAdjustmentInCurrentMode(
         bool _isRecoveryMode,
         uint _collWithdrawal,
-        bool _isDebtIncrease, 
-        LocalVariables_adjustTrove memory _vars
-    ) 
-        internal 
-        view 
-    {
-        /* 
-        *In Recovery Mode, only allow:
-        *
-        * - Pure collateral top-up
-        * - Pure debt repayment
-        * - Collateral top-up with debt repayment
-        * - A debt increase combined with a collateral top-up which makes the ICR >= 150% and improves the ICR (and by extension improves the TCR).
-        *
-        * In Normal Mode, ensure:
-        *
-        * - The new ICR is above MCR
-        * - The adjustment won't pull the TCR below CCR
-        */
+        bool _isDebtIncrease,
+        LocalVariables_adjustCdp memory _vars
+    ) internal view {
+        /*
+         *In Recovery Mode, only allow:
+         *
+         * - Pure collateral top-up
+         * - Pure debt repayment
+         * - Collateral top-up with debt repayment
+         * - A debt increase combined with a collateral top-up which makes the
+         * ICR >= 150% and improves the ICR (and by extension improves the TCR).
+         *
+         * In Normal Mode, ensure:
+         *
+         * - The new ICR is above MCR
+         * - The adjustment won't pull the TCR below CCR
+         */
         if (_isRecoveryMode) {
             _requireNoCollWithdrawal(_collWithdrawal);
             if (_isDebtIncrease) {
                 _requireICRisAboveCCR(_vars.newICR);
                 _requireNewICRisAboveOldICR(_vars.newICR, _vars.oldICR);
-            }       
-        } else { // if Normal Mode
+            }
+        } else {
+            // if Normal Mode
             _requireICRisAboveMCR(_vars.newICR);
-            _vars.newTCR = _getNewTCRFromTroveChange(_vars.collChange, _vars.isCollIncrease, _vars.netDebtChange, _isDebtIncrease, _vars.price);
-            _requireNewTCRisAboveCCR(_vars.newTCR);  
+            _vars.newTCR = _getNewTCRFromCdpChange(
+                _vars.collChange,
+                _vars.isCollIncrease,
+                _vars.netDebtChange,
+                _isDebtIncrease,
+                _vars.price
+            );
+            _requireNewTCRisAboveCCR(_vars.newTCR);
         }
     }
 
     function _requireICRisAboveMCR(uint _newICR) internal pure {
-        require(_newICR >= MCR, "BorrowerOps: An operation that would result in ICR < MCR is not permitted");
+        require(
+            _newICR >= MCR,
+            "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
+        );
     }
 
     function _requireICRisAboveCCR(uint _newICR) internal pure {
-        require(_newICR >= CCR, "BorrowerOps: Operation must leave trove with ICR >= CCR");
+        require(_newICR >= CCR, "BorrowerOps: Operation must leave cdp with ICR >= CCR");
     }
 
     function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {
-        require(_newICR >= _oldICR, "BorrowerOps: Cannot decrease your Trove's ICR in Recovery Mode");
+        require(_newICR >= _oldICR, "BorrowerOps: Cannot decrease your Cdp's ICR in Recovery Mode");
     }
 
     function _requireNewTCRisAboveCCR(uint _newTCR) internal pure {
-        require(_newTCR >= CCR, "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
+        require(
+            _newTCR >= CCR,
+            "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+        );
     }
 
     function _requireAtLeastMinNetDebt(uint _netDebt) internal pure {
-        require (_netDebt >= MIN_NET_DEBT, "BorrowerOps: Trove's net debt must be greater than minimum");
+        require(
+            _netDebt >= MIN_NET_DEBT,
+            "BorrowerOps: Cdp's net debt must be greater than minimum"
+        );
     }
 
-    function _requireValidLUSDRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
-        require(_debtRepayment <= _currentDebt.sub(LUSD_GAS_COMPENSATION), "BorrowerOps: Amount repaid must not be larger than the Trove's debt");
+    function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
+        require(
+            _debtRepayment <= _currentDebt.sub(EBTC_GAS_COMPENSATION),
+            "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
+        );
     }
 
     function _requireCallerIsStabilityPool() internal view {
         require(msg.sender == stabilityPoolAddress, "BorrowerOps: Caller is not Stability Pool");
     }
 
-     function _requireSufficientLUSDBalance(ILUSDToken _lusdToken, address _borrower, uint _debtRepayment) internal view {
-        require(_lusdToken.balanceOf(_borrower) >= _debtRepayment, "BorrowerOps: Caller doesnt have enough LUSD to make repayment");
+    function _requireSufficientEBTCBalance(
+        IEBTCToken _ebtcToken,
+        address _borrower,
+        uint _debtRepayment
+    ) internal view {
+        require(
+            _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
+            "BorrowerOps: Caller doesnt have enough EBTC to make repayment"
+        );
     }
 
-    function _requireValidMaxFeePercentage(uint _maxFeePercentage, bool _isRecoveryMode) internal pure {
+    function _requireValidMaxFeePercentage(
+        uint _maxFeePercentage,
+        bool _isRecoveryMode
+    ) internal pure {
         if (_isRecoveryMode) {
-            require(_maxFeePercentage <= DECIMAL_PRECISION,
-                "Max fee percentage must less than or equal to 100%");
+            require(
+                _maxFeePercentage <= DECIMAL_PRECISION,
+                "Max fee percentage must less than or equal to 100%"
+            );
         } else {
-            require(_maxFeePercentage >= BORROWING_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
-                "Max fee percentage must be between 0.5% and 100%");
+            require(
+                _maxFeePercentage >= BORROWING_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
+                "Max fee percentage must be between 0.5% and 100%"
+            );
         }
     }
 
     // --- ICR and TCR getters ---
 
     // Compute the new collateral ratio, considering the change in coll and debt. Assumes 0 pending rewards.
-    function _getNewNominalICRFromTroveChange
-    (
+    function _getNewNominalICRFromCdpChange(
         uint _coll,
         uint _debt,
         uint _collChange,
         bool _isCollIncrease,
         uint _debtChange,
         bool _isDebtIncrease
-    )
-        pure
-        internal
-        returns (uint)
-    {
-        (uint newColl, uint newDebt) = _getNewTroveAmounts(_coll, _debt, _collChange, _isCollIncrease, _debtChange, _isDebtIncrease);
+    ) internal pure returns (uint) {
+        (uint newColl, uint newDebt) = _getNewCdpAmounts(
+            _coll,
+            _debt,
+            _collChange,
+            _isCollIncrease,
+            _debtChange,
+            _isDebtIncrease
+        );
 
         uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
         return newNICR;
     }
 
     // Compute the new collateral ratio, considering the change in coll and debt. Assumes 0 pending rewards.
-    function _getNewICRFromTroveChange
-    (
+    function _getNewICRFromCdpChange(
         uint _coll,
         uint _debt,
         uint _collChange,
@@ -610,50 +820,44 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint _debtChange,
         bool _isDebtIncrease,
         uint _price
-    )
-        pure
-        internal
-        returns (uint)
-    {
-        (uint newColl, uint newDebt) = _getNewTroveAmounts(_coll, _debt, _collChange, _isCollIncrease, _debtChange, _isDebtIncrease);
+    ) internal pure returns (uint) {
+        (uint newColl, uint newDebt) = _getNewCdpAmounts(
+            _coll,
+            _debt,
+            _collChange,
+            _isCollIncrease,
+            _debtChange,
+            _isDebtIncrease
+        );
 
         uint newICR = LiquityMath._computeCR(newColl, newDebt, _price);
         return newICR;
     }
 
-    function _getNewTroveAmounts(
+    function _getNewCdpAmounts(
         uint _coll,
         uint _debt,
         uint _collChange,
         bool _isCollIncrease,
         uint _debtChange,
         bool _isDebtIncrease
-    )
-        internal
-        pure
-        returns (uint, uint)
-    {
+    ) internal pure returns (uint, uint) {
         uint newColl = _coll;
         uint newDebt = _debt;
 
-        newColl = _isCollIncrease ? _coll.add(_collChange) :  _coll.sub(_collChange);
+        newColl = _isCollIncrease ? _coll.add(_collChange) : _coll.sub(_collChange);
         newDebt = _isDebtIncrease ? _debt.add(_debtChange) : _debt.sub(_debtChange);
 
         return (newColl, newDebt);
     }
 
-    function _getNewTCRFromTroveChange
-    (
+    function _getNewTCRFromCdpChange(
         uint _collChange,
         bool _isCollIncrease,
         uint _debtChange,
         bool _isDebtIncrease,
         uint _price
-    )
-        internal
-        view
-        returns (uint)
-    {
+    ) internal view returns (uint) {
         uint totalColl = getEntireSystemColl();
         uint totalDebt = getEntireSystemDebt();
 
@@ -676,13 +880,13 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        ILUSDToken cachedLusd = lusdToken;
-        require(token == address(cachedLusd), "Only LUSD");
+        IEBTCToken cachedEbtc = ebtcToken;
+        require(token == address(cachedEbtc), "Only LUSD");
 
         uint256 fee = amount * FEE_AMT / MAX_BPS;
 
         // Issue LUSD
-        cachedLusd.mint(address(receiver), amount);
+        cachedEbtc.mint(address(receiver), amount);
 
         // Callback
         require(
@@ -693,17 +897,18 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // Gas: Repay from user balance, so we don't trigger a new SSTORE
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
-        cachedLusd.transferFrom(address(receiver), FEE_RECIPIENT, fee);
+        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee);
 
+        // NOTE: We burn instead of pulling, they are equivalent
         // Burn amount, they must repay by holding it and we can burn
-        cachedLusd.burn(address(receiver), amount);
+        cachedEbtc.burn(address(receiver), amount);
     }
 
     function flashFee(
         address token,
         uint256 amount
     ) external view override returns (uint256) {
-        require(token == address(lusdToken), "Only LUSD");
+        require(token == address(ebtcToken), "Only LUSD");
 
         return amount * FEE_AMT / MAX_BPS;
     }
@@ -712,7 +917,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function maxFlashLoan(
         address token
     ) external view override returns (uint256) {
-        require(token == address(lusdToken), "Only LUSD");
+        require(token == address(ebtcToken), "Only LUSD");
 
         // TODO: Decide if max, or w/e
         // For now return 112 which is UniV3 compatible

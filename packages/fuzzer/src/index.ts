@@ -3,7 +3,7 @@ import "colors";
 
 import { chaos, order } from "./commands/chaos";
 import { warzone } from "./commands/warzone";
-import { checkSorting, checkSubgraphCmd, dumpTrovesCmd } from "./commands/checks";
+import { checkSorting, checkSubgraphCmd, dumpCdpsCmd } from "./commands/checks";
 
 const wrapCmd = <A extends unknown[], R>(cmd: (...args: A) => Promise<R>) => async (...args: A) => {
   try {
@@ -18,12 +18,12 @@ yargs
 
   .command(
     "warzone",
-    "Create lots of Troves.",
+    "Create lots of Cdps.",
     {
-      troves: {
+      cdps: {
         alias: "n",
         default: 1000,
-        description: "Number of troves to create"
+        description: "Number of cdps to create"
       }
     },
     wrapCmd(warzone)
@@ -54,12 +54,12 @@ yargs
 
   .command(
     "order",
-    "End chaos and restore order by liquidating every Trove except the Funder's.",
+    "End chaos and restore order by liquidating every Cdp except the Funder's.",
     {},
     wrapCmd(order)
   )
 
-  .command("check-sorting", "Check if Troves are sorted by ICR.", {}, wrapCmd(checkSorting))
+  .command("check-sorting", "Check if Cdps are sorted by ICR.", {}, wrapCmd(checkSorting))
 
   .command(
     "check-subgraph",
@@ -68,7 +68,7 @@ yargs
     wrapCmd(checkSubgraphCmd)
   )
 
-  .command("dump-troves", "Dump list of Troves.", {}, wrapCmd(dumpTrovesCmd))
+  .command("dump-cdps", "Dump list of Cdps.", {}, wrapCmd(dumpCdpsCmd))
 
   .strict()
   .demandCommand()

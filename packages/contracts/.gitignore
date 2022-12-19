@@ -12,6 +12,9 @@
 # Ethereum accounts for testing
 /accountsList.js 
 
+# Local addresses might differ
+/mainnetDeployment/localForkDeploymentOutput.json
+
 # Exported function gas costs and test outputs
 /gasTest/outputs
 
@@ -43,3 +46,5 @@ __pycache__
 build/
 reports/
 tests/simulation.csv
+out/
+forge-cache

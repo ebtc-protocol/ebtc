@@ -65,8 +65,8 @@ class MainnetDeploymentHelper {
   async deployLiquityCoreMainnet(tellorMasterAddr, deploymentState) {
     // Get contract factories
     const priceFeedFactory = await this.getFactory("PriceFeed")
-    const sortedTrovesFactory = await this.getFactory("SortedTroves")
-    const troveManagerFactory = await this.getFactory("TroveManager")
+    const sortedCdpsFactory = await this.getFactory("SortedCdps")
+    const cdpManagerFactory = await this.getFactory("CdpManager")
     const activePoolFactory = await this.getFactory("ActivePool")
     const stabilityPoolFactory = await this.getFactory("StabilityPool")
     const gasPoolFactory = await this.getFactory("GasPool")
@@ -74,13 +74,13 @@ class MainnetDeploymentHelper {
     const collSurplusPoolFactory = await this.getFactory("CollSurplusPool")
     const borrowerOperationsFactory = await this.getFactory("BorrowerOperations")
     const hintHelpersFactory = await this.getFactory("HintHelpers")
-    const lusdTokenFactory = await this.getFactory("LUSDToken")
+    const ebtcTokenFactory = await this.getFactory("EBTCToken")
     const tellorCallerFactory = await this.getFactory("TellorCaller")
 
     // Deploy txs
     const priceFeed = await this.loadOrDeploy(priceFeedFactory, 'priceFeed', deploymentState)
-    const sortedTroves = await this.loadOrDeploy(sortedTrovesFactory, 'sortedTroves', deploymentState)
-    const troveManager = await this.loadOrDeploy(troveManagerFactory, 'troveManager', deploymentState)
+    const sortedCdps = await this.loadOrDeploy(sortedCdpsFactory, 'sortedCdps', deploymentState)
+    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'cdpManager', deploymentState)
     const activePool = await this.loadOrDeploy(activePoolFactory, 'activePool', deploymentState)
     const stabilityPool = await this.loadOrDeploy(stabilityPoolFactory, 'stabilityPool', deploymentState)
     const gasPool = await this.loadOrDeploy(gasPoolFactory, 'gasPool', deploymentState)
@@ -90,24 +90,24 @@ class MainnetDeploymentHelper {
     const hintHelpers = await this.loadOrDeploy(hintHelpersFactory, 'hintHelpers', deploymentState)
     const tellorCaller = await this.loadOrDeploy(tellorCallerFactory, 'tellorCaller', deploymentState, [tellorMasterAddr])
 
-    const lusdTokenParams = [
-      troveManager.address,
+    const ebtcTokenParams = [
+      cdpManager.address,
       stabilityPool.address,
       borrowerOperations.address
     ]
-    const lusdToken = await this.loadOrDeploy(
-      lusdTokenFactory,
-      'lusdToken',
+    const ebtcToken = await this.loadOrDeploy(
+      ebtcTokenFactory,
+      'ebtcToken',
       deploymentState,
-      lusdTokenParams
+      ebtcTokenParams
     )
 
     if (!this.configParams.ETHERSCAN_BASE_URL) {
       console.log('No Etherscan Url defined, skipping verification')
     } else {
       await this.verifyContract('priceFeed', deploymentState)
-      await this.verifyContract('sortedTroves', deploymentState)
-      await this.verifyContract('troveManager', deploymentState)
+      await this.verifyContract('sortedCdps', deploymentState)
+      await this.verifyContract('cdpManager', deploymentState)
       await this.verifyContract('activePool', deploymentState)
       await this.verifyContract('stabilityPool', deploymentState)
       await this.verifyContract('gasPool', deploymentState)
@@ -116,14 +116,14 @@ class MainnetDeploymentHelper {
       await this.verifyContract('borrowerOperations', deploymentState)
       await this.verifyContract('hintHelpers', deploymentState)
       await this.verifyContract('tellorCaller', deploymentState, [tellorMasterAddr])
-      await this.verifyContract('lusdToken', deploymentState, lusdTokenParams)
+      await this.verifyContract('ebtcToken', deploymentState, ebtcTokenParams)
     }
 
     const coreContracts = {
       priceFeed,
-      lusdToken,
-      sortedTroves,
-      troveManager,
+      ebtcToken,
+      sortedCdps,
+      cdpManager,
       activePool,
       stabilityPool,
       gasPool,
@@ -136,7 +136,7 @@ class MainnetDeploymentHelper {
     return coreContracts
   }
 
-  async deployLQTYContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
+  async deployEBTCContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
     const lqtyStakingFactory = await this.getFactory("LQTYStaking")
     const lockupContractFactory_Factory = await this.getFactory("LockupContractFactory")
     const communityIssuanceFactory = await this.getFactory("CommunityIssuance")
@@ -171,13 +171,13 @@ class MainnetDeploymentHelper {
       await this.verifyContract('lqtyToken', deploymentState, lqtyTokenParams)
     }
 
-    const LQTYContracts = {
+    const EBTCContracts = {
       lqtyStaking,
       lockupContractFactory,
       communityIssuance,
       lqtyToken
     }
-    return LQTYContracts
+    return EBTCContracts
   }
 
   async deployUnipoolMainnet(deploymentState) {
@@ -193,26 +193,26 @@ class MainnetDeploymentHelper {
     return unipool
   }
 
-  async deployMultiTroveGetterMainnet(liquityCore, deploymentState) {
-    const multiTroveGetterFactory = await this.getFactory("MultiTroveGetter")
-    const multiTroveGetterParams = [
-      liquityCore.troveManager.address,
-      liquityCore.sortedTroves.address
+  async deployMultiCdpGetterMainnet(ebtcCore, deploymentState) {
+    const multiCdpGetterFactory = await this.getFactory("MultiCdpGetter")
+    const multiCdpGetterParams = [
+      ebtcCore.cdpManager.address,
+      ebtcCore.sortedCdps.address
     ]
-    const multiTroveGetter = await this.loadOrDeploy(
-      multiTroveGetterFactory,
-      'multiTroveGetter',
+    const multiCdpGetter = await this.loadOrDeploy(
+      multiCdpGetterFactory,
+      'multiCdpGetter',
       deploymentState,
-      multiTroveGetterParams
+      multiCdpGetterParams
     )
 
     if (!this.configParams.ETHERSCAN_BASE_URL) {
       console.log('No Etherscan Url defined, skipping verification')
     } else {
-      await this.verifyContract('multiTroveGetter', deploymentState, multiTroveGetterParams)
+      await this.verifyContract('multiCdpGetter', deploymentState, multiCdpGetterParams)
     }
 
-    return multiTroveGetter
+    return multiCdpGetter
   }
   // --- Connector methods ---
 
@@ -221,24 +221,24 @@ class MainnetDeploymentHelper {
     return owner == ZERO_ADDRESS
   }
   // Connect contracts to their dependencies
-  async connectCoreContractsMainnet(contracts, LQTYContracts, chainlinkProxyAddress) {
+  async connectCoreContractsMainnet(contracts, EBTCContracts, chainlinkProxyAddress) {
     const gasPrice = this.configParams.GAS_PRICE
     // Set ChainlinkAggregatorProxy and TellorCaller in the PriceFeed
     await this.isOwnershipRenounced(contracts.priceFeed) ||
       await this.sendAndWaitForTransaction(contracts.priceFeed.setAddresses(chainlinkProxyAddress, contracts.tellorCaller.address, {gasPrice}))
 
-    // set TroveManager addr in SortedTroves
-    await this.isOwnershipRenounced(contracts.sortedTroves) ||
-      await this.sendAndWaitForTransaction(contracts.sortedTroves.setParams(
+    // set CdpManager addr in SortedCdps
+    await this.isOwnershipRenounced(contracts.sortedCdps) ||
+      await this.sendAndWaitForTransaction(contracts.sortedCdps.setParams(
         maxBytes32,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.borrowerOperations.address, 
 	{gasPrice}
       ))
 
-    // set contracts in the Trove Manager
-    await this.isOwnershipRenounced(contracts.troveManager) ||
-      await this.sendAndWaitForTransaction(contracts.troveManager.setAddresses(
+    // set contracts in the Cdp Manager
+    await this.isOwnershipRenounced(contracts.cdpManager) ||
+      await this.sendAndWaitForTransaction(contracts.cdpManager.setAddresses(
         contracts.borrowerOperations.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
@@ -246,26 +246,26 @@ class MainnetDeploymentHelper {
         contracts.gasPool.address,
         contracts.collSurplusPool.address,
         contracts.priceFeed.address,
-        contracts.lusdToken.address,
-        contracts.sortedTroves.address,
-        LQTYContracts.lqtyToken.address,
-        LQTYContracts.lqtyStaking.address,
+        contracts.ebtcToken.address,
+        contracts.sortedCdps.address,
+        EBTCContracts.lqtyToken.address,
+        EBTCContracts.lqtyStaking.address,
 	{gasPrice}
       ))
 
     // set contracts in BorrowerOperations 
     await this.isOwnershipRenounced(contracts.borrowerOperations) ||
       await this.sendAndWaitForTransaction(contracts.borrowerOperations.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
         contracts.stabilityPool.address,
         contracts.gasPool.address,
         contracts.collSurplusPool.address,
         contracts.priceFeed.address,
-        contracts.sortedTroves.address,
-        contracts.lusdToken.address,
-        LQTYContracts.lqtyStaking.address,
+        contracts.sortedCdps.address,
+        contracts.ebtcToken.address,
+        EBTCContracts.lqtyStaking.address,
 	{gasPrice}
       ))
 
@@ -273,19 +273,19 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.stabilityPool) ||
       await this.sendAndWaitForTransaction(contracts.stabilityPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
-        contracts.lusdToken.address,
-        contracts.sortedTroves.address,
+        contracts.ebtcToken.address,
+        contracts.sortedCdps.address,
         contracts.priceFeed.address,
-        LQTYContracts.communityIssuance.address,
+        EBTCContracts.communityIssuance.address,
 	{gasPrice}
       ))
 
     await this.isOwnershipRenounced(contracts.activePool) ||
       await this.sendAndWaitForTransaction(contracts.activePool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.stabilityPool.address,
         contracts.defaultPool.address,
 	{gasPrice}
@@ -293,7 +293,7 @@ class MainnetDeploymentHelper {
 
     await this.isOwnershipRenounced(contracts.defaultPool) ||
       await this.sendAndWaitForTransaction(contracts.defaultPool.setAddresses(
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
 	{gasPrice}
       ))
@@ -301,7 +301,7 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(contracts.collSurplusPool) ||
       await this.sendAndWaitForTransaction(contracts.collSurplusPool.setAddresses(
         contracts.borrowerOperations.address,
-        contracts.troveManager.address,
+        contracts.cdpManager.address,
         contracts.activePool.address,
 	{gasPrice}
       ))
@@ -309,43 +309,43 @@ class MainnetDeploymentHelper {
     // set contracts in HintHelpers
     await this.isOwnershipRenounced(contracts.hintHelpers) ||
       await this.sendAndWaitForTransaction(contracts.hintHelpers.setAddresses(
-        contracts.sortedTroves.address,
-        contracts.troveManager.address,
+        contracts.sortedCdps.address,
+        contracts.cdpManager.address,
 	{gasPrice}
       ))
   }
 
-  async connectLQTYContractsMainnet(LQTYContracts) {
+  async connectEBTCContractsMainnet(EBTCContracts) {
     const gasPrice = this.configParams.GAS_PRICE
     // Set LQTYToken address in LCF
-    await this.isOwnershipRenounced(LQTYContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.lockupContractFactory.setLQTYTokenAddress(LQTYContracts.lqtyToken.address, {gasPrice}))
+    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.setLQTYTokenAddress(EBTCContracts.lqtyToken.address, {gasPrice}))
   }
 
-  async connectLQTYContractsToCoreMainnet(LQTYContracts, coreContracts) {
+  async connectEBTCContractsToCoreMainnet(EBTCContracts, coreContracts) {
     const gasPrice = this.configParams.GAS_PRICE
-    await this.isOwnershipRenounced(LQTYContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.lqtyStaking.setAddresses(
-        LQTYContracts.lqtyToken.address,
-        coreContracts.lusdToken.address,
-        coreContracts.troveManager.address, 
+    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.lqtyStaking.setAddresses(
+        EBTCContracts.lqtyToken.address,
+        coreContracts.ebtcToken.address,
+        coreContracts.cdpManager.address, 
         coreContracts.borrowerOperations.address,
         coreContracts.activePool.address,
 	{gasPrice}
       ))
 
-    await this.isOwnershipRenounced(LQTYContracts.communityIssuance) ||
-      await this.sendAndWaitForTransaction(LQTYContracts.communityIssuance.setAddresses(
-        LQTYContracts.lqtyToken.address,
+    await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
+        EBTCContracts.lqtyToken.address,
         coreContracts.stabilityPool.address,
 	{gasPrice}
       ))
   }
 
-  async connectUnipoolMainnet(uniPool, LQTYContracts, LUSDWETHPairAddr, duration) {
+  async connectUnipoolMainnet(uniPool, EBTCContracts, EBTCWETHPairAddr, duration) {
     const gasPrice = this.configParams.GAS_PRICE
     await this.isOwnershipRenounced(uniPool) ||
-      await this.sendAndWaitForTransaction(uniPool.setParams(LQTYContracts.lqtyToken.address, LUSDWETHPairAddr, duration, {gasPrice}))
+      await this.sendAndWaitForTransaction(uniPool.setParams(EBTCContracts.lqtyToken.address, EBTCWETHPairAddr, duration, {gasPrice}))
   }
 
   // --- Verify on Ethrescan ---

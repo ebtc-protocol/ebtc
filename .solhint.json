@@ -1,0 +1,13 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": [],
+  "rules": {
+    "no-unused-vars": "warn",
+    "max-line-length": "warn",
+    "payable-fallback": "warn",
+    "avoid-low-level-calls": "warn",
+    "state-visibility": "warn",
+    "reason-string": "warn",
+    "compiler-version": "warn"
+  }
+}

@@ -1,8 +1,8 @@
 const { TestHelper: { dec } } = require("../utils/testHelpers.js")
 
 const EchidnaTester = artifacts.require('EchidnaTester')
-const TroveManager = artifacts.require('TroveManager')
-const LUSDToken = artifacts.require('LUSDToken')
+const CdpManager = artifacts.require('CdpManager')
+const EBTCToken = artifacts.require('EBTCToken')
 const ActivePool = artifacts.require('ActivePool')
 const DefaultPool = artifacts.require('DefaultPool')
 const StabilityPool = artifacts.require('StabilityPool')
@@ -12,8 +12,8 @@ const StabilityPool = artifacts.require('StabilityPool')
 
 contract('Echidna debugger', async accounts => {
   let echidnaTester
-  let troveManager
-  let lusdToken
+  let cdpManager
+  let ebtcToken
   let activePool
   let defaultPool
   let stabilityPool
@@ -21,66 +21,66 @@ contract('Echidna debugger', async accounts => {
 
   before(async () => {
     echidnaTester = await EchidnaTester.new({ value: dec(11, 25) })
-    troveManager = await TroveManager.at(await echidnaTester.troveManager())
-    lusdToken = await LUSDToken.at(await echidnaTester.lusdToken())
+    cdpManager = await CdpManager.at(await echidnaTester.cdpManager())
+    ebtcToken = await EBTCToken.at(await echidnaTester.ebtcToken())
     activePool = await ActivePool.at(await echidnaTester.activePool())
     defaultPool = await DefaultPool.at(await echidnaTester.defaultPool())
     stabilityPool = await StabilityPool.at(await echidnaTester.stabilityPool())
-    GAS_POOL_ADDRESS = await troveManager.GAS_POOL_ADDRESS();
+    GAS_POOL_ADDRESS = await cdpManager.GAS_POOL_ADDRESS();
   })
 
-  it('openTrove', async () => {
-    await echidnaTester.openTroveExt(
+  it('openCdp', async () => {
+    await echidnaTester.openCdpExt(
       '28533397325200555203581702704626658822751905051193839801320459908900876958892',
       '52469987802830075086048985199642144541375565475567220729814021622139768827880',
       '9388634783070735775888100571650283386615011854365252563480851823632223689886'
     )
   })
 
-  it('openTrove', async () => {
-    await echidnaTester.openTroveExt('0', '0', '0')
+  it('openCdp', async () => {
+    await echidnaTester.openCdpExt('0', '0', '0')
   })
 
-  it.skip('trove order', async () => {
-    const trove1 = await echidnaTester.echidnaProxies(0)
-    console.log(trove1)
-    const trove2 = await echidnaTester.echidnaProxies(1)
+  it.skip('cdp order', async () => {
+    const cdp1 = await echidnaTester.echidnaProxies(0)
+    console.log(cdp1)
+    const cdp2 = await echidnaTester.echidnaProxies(1)
 
-    const icr1_before = await troveManager.getCurrentICR(trove1, '1000000000000000000')
-    const icr2_before = await troveManager.getCurrentICR(trove2, '1000000000000000000')
-    console.log('Trove 1', icr1_before, icr1_before.toString())
-    console.log('Trove 2', icr2_before, icr2_before.toString())
+    const icr1_before = await cdpManager.getCurrentICR(cdp1, '1000000000000000000')
+    const icr2_before = await cdpManager.getCurrentICR(cdp2, '1000000000000000000')
+    console.log('Cdp 1', icr1_before, icr1_before.toString())
+    console.log('Cdp 2', icr2_before, icr2_before.toString())
 
-    await echidnaTester.openTroveExt('0', '0', '30540440604590048251848424')
-    await echidnaTester.openTroveExt('1', '0', '0')
+    await echidnaTester.openCdpExt('0', '0', '30540440604590048251848424')
+    await echidnaTester.openCdpExt('1', '0', '0')
     await echidnaTester.setPriceExt('78051143795343077331468494330613608802436946862454908477491916')
-    const icr1_after = await troveManager.getCurrentICR(trove1, '1000000000000000000')
-    const icr2_after = await troveManager.getCurrentICR(trove2, '1000000000000000000')
-    console.log('Trove 1', icr1_after, icr1_after.toString())
-    console.log('Trove 2', icr2_after, icr2_after.toString())
+    const icr1_after = await cdpManager.getCurrentICR(cdp1, '1000000000000000000')
+    const icr2_after = await cdpManager.getCurrentICR(cdp2, '1000000000000000000')
+    console.log('Cdp 1', icr1_after, icr1_after.toString())
+    console.log('Cdp 2', icr2_after, icr2_after.toString())
 
-    const icr1_after_price = await troveManager.getCurrentICR(trove1, '78051143795343077331468494330613608802436946862454908477491916')
-    const icr2_after_price = await troveManager.getCurrentICR(trove2, '78051143795343077331468494330613608802436946862454908477491916')
-    console.log('Trove 1', icr1_after_price, icr1_after_price.toString())
-    console.log('Trove 2', icr2_after_price, icr2_after_price.toString())
+    const icr1_after_price = await cdpManager.getCurrentICR(cdp1, '78051143795343077331468494330613608802436946862454908477491916')
+    const icr2_after_price = await cdpManager.getCurrentICR(cdp2, '78051143795343077331468494330613608802436946862454908477491916')
+    console.log('Cdp 1', icr1_after_price, icr1_after_price.toString())
+    console.log('Cdp 2', icr2_after_price, icr2_after_price.toString())
   })
 
-  it.only('LUSD balance', async () => {
-    await echidnaTester.openTroveExt('0', '0', '4210965169908805439447313562489173090')
+  it.only('EBTC balance', async () => {
+    await echidnaTester.openCdpExt('0', '0', '4210965169908805439447313562489173090')
 
-    const totalSupply = await lusdToken.totalSupply();
-    const gasPoolBalance = await lusdToken.balanceOf(GAS_POOL_ADDRESS);
-    const activePoolBalance = await activePool.getLUSDDebt();
-    const defaultPoolBalance = await defaultPool.getLUSDDebt();
-    const stabilityPoolBalance = await stabilityPool.getTotalLUSDDeposits();
-    const currentTrove = await echidnaTester.echidnaProxies(0);
-    const troveBalance = lusdToken.balanceOf(currentTrove);
+    const totalSupply = await ebtcToken.totalSupply();
+    const gasPoolBalance = await ebtcToken.balanceOf(GAS_POOL_ADDRESS);
+    const activePoolBalance = await activePool.getEBTCDebt();
+    const defaultPoolBalance = await defaultPool.getEBTCDebt();
+    const stabilityPoolBalance = await stabilityPool.getTotalEBTCDeposits();
+    const currentCdp = await echidnaTester.echidnaProxies(0);
+    const cdpBalance = ebtcToken.balanceOf(currentCdp);
 
     console.log('totalSupply', totalSupply.toString());
     console.log('gasPoolBalance', gasPoolBalance.toString());
     console.log('activePoolBalance', activePoolBalance.toString());
     console.log('defaultPoolBalance', defaultPoolBalance.toString());
     console.log('stabilityPoolBalance', stabilityPoolBalance.toString());
-    console.log('troveBalance', troveBalance.toString());
+    console.log('cdpBalance', cdpBalance.toString());
   })
 })

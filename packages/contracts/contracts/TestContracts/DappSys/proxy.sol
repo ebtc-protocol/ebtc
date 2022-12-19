@@ -1,7 +1,7 @@
 // From: https://etherscan.io/address/0xa26e15c895efc0616177b7c1e7270a4c7d51c997#code
 /**
  *Submitted for verification at Etherscan.io on 2018-06-22
-*/
+ */
 
 // proxy.sol - execute actions atomically through the proxy's identity
 
@@ -23,42 +23,34 @@
 pragma solidity ^0.4.23;
 
 contract DSAuthority {
-    function canCall(
-        address src, address dst, bytes4 sig
-    ) public view returns (bool);
+    function canCall(address src, address dst, bytes4 sig) public view returns (bool);
 }
 
 contract DSAuthEvents {
-    event LogSetAuthority (address indexed authority);
-    event LogSetOwner     (address indexed owner);
+    event LogSetAuthority(address indexed authority);
+    event LogSetOwner(address indexed owner);
 }
 
 contract DSAuth is DSAuthEvents {
-    DSAuthority  public  authority;
-    address      public  owner;
+    DSAuthority public authority;
+    address public owner;
 
     constructor() public {
         owner = msg.sender;
         emit LogSetOwner(msg.sender);
     }
 
-    function setOwner(address owner_)
-        public
-        auth
-    {
+    function setOwner(address owner_) public auth {
         owner = owner_;
         emit LogSetOwner(owner);
     }
 
-    function setAuthority(DSAuthority authority_)
-        public
-        auth
-    {
+    function setAuthority(DSAuthority authority_) public auth {
         authority = authority_;
         emit LogSetAuthority(authority);
     }
 
-    modifier auth {
+    modifier auth() {
         require(isAuthorized(msg.sender, msg.sig));
         _;
     }
@@ -78,15 +70,15 @@ contract DSAuth is DSAuthEvents {
 
 contract DSNote {
     event LogNote(
-        bytes4   indexed  sig,
-        address  indexed  guy,
-        bytes32  indexed  foo,
-        bytes32  indexed  bar,
-        uint              wad,
-        bytes             fax
+        bytes4 indexed sig,
+        address indexed guy,
+        bytes32 indexed foo,
+        bytes32 indexed bar,
+        uint wad,
+        bytes fax
     ) anonymous;
 
-    modifier note {
+    modifier note() {
         bytes32 foo;
         bytes32 bar;
 
@@ -107,21 +99,19 @@ contract DSNote {
 // the proxy can be changed, this allows for dynamic ownership models
 // i.e. a multisig
 contract DSProxy is DSAuth, DSNote {
-    DSProxyCache public cache;  // global cache for contracts
+    DSProxyCache public cache; // global cache for contracts
 
     constructor(address _cacheAddr) public {
         require(setCache(_cacheAddr));
     }
 
-    function() public payable {
-    }
+    function() public payable {}
 
     // use the proxy to execute calldata _data on contract _code
-    function execute(bytes _code, bytes _data)
-        public
-        payable
-        returns (address target, bytes32 response)
-    {
+    function execute(
+        bytes _code,
+        bytes _data
+    ) public payable returns (address target, bytes32 response) {
         target = cache.read(_code);
         if (target == 0x0) {
             // deploy contract & store its address in cache
@@ -131,19 +121,23 @@ contract DSProxy is DSAuth, DSNote {
         response = execute(target, _data);
     }
 
-    function execute(address _target, bytes _data)
-        public
-        auth
-        note
-        payable
-        returns (bytes32 response)
-    {
+    function execute(
+        address _target,
+        bytes _data
+    ) public payable auth note returns (bytes32 response) {
         require(_target != 0x0);
 
         // call contract in current context
         assembly {
-            let succeeded := delegatecall(sub(gas, 5000), _target, add(_data, 0x20), mload(_data), 0, 32)
-            response := mload(0)      // load delegatecall output
+            let succeeded := delegatecall(
+                sub(gas, 5000),
+                _target,
+                add(_data, 0x20),
+                mload(_data),
+                0,
+                32
+            )
+            response := mload(0) // load delegatecall output
             switch iszero(succeeded)
             case 1 {
                 // throw if delegatecall failed
@@ -153,14 +147,9 @@ contract DSProxy is DSAuth, DSNote {
     }
 
     //set new cache
-    function setCache(address _cacheAddr)
-        public
-        auth
-        note
-        returns (bool)
-    {
-        require(_cacheAddr != 0x0);        // invalid cache address
-        cache = DSProxyCache(_cacheAddr);  // overwrite cache
+    function setCache(address _cacheAddr) public auth note returns (bool) {
+        require(_cacheAddr != 0x0); // invalid cache address
+        cache = DSProxyCache(_cacheAddr); // overwrite cache
         return true;
     }
 }
@@ -170,7 +159,7 @@ contract DSProxy is DSAuth, DSNote {
 // Deployed proxy addresses are logged
 contract DSProxyFactory {
     event Created(address indexed sender, address indexed owner, address proxy, address cache);
-    mapping(address=>bool) public isProxy;
+    mapping(address => bool) public isProxy;
     DSProxyCache public cache = new DSProxyCache();
 
     // deploys a new proxy instance
