@@ -6,7 +6,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 /*
- * Test suite that tests exactly one thing: opening CDPs
+ * Test suite that tests opening and closing CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
 contract CDPOpenCloseTest is eBTCBaseFixture {
