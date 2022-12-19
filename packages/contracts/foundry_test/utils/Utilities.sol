@@ -57,15 +57,4 @@ contract Utilities is Test {
         uint result = randomNumber % (max - min + 1) + min;
         return result;
     }
-
-    // Helper function to find minimum value in array
-    function findMin(uint[] memory _array) public pure returns (uint) {
-        uint min = _array[0];
-        for (uint i = 1; i < _array.length; i++) {
-            if (_array[i] < min) {
-                min = _array[i];
-            }
-        }
-        return min;
-    }
 }

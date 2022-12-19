@@ -20,6 +20,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         _utils = new Utilities();
     }
 
+    bytes32[] cdpIds;
+
     // -------- Increase Collateral Test cases --------
 
     // Happy case for borrowing and adding collateral within CDP
@@ -147,8 +149,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Test case for multiple users with random amount of CDPs, adding more collateral
     function testIncreaseCRManyUsersManyCdps() public {
-        uint amountCdps = _utils.generateRandomNumber(1, 20, msg.sender);
-        bytes32[] memory cdpIds = new bytes32[](AMOUNT_OF_USERS);
+        uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
@@ -164,8 +165,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
                 vm.prank(user);
                 borrowerOperations.openCdp{value : collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
-                bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-                cdpIds[userIx] = cdpId;
+                cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
         }
         // Make TCR snapshot before increasing collateral
@@ -179,7 +179,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Randomize collateral increase amount for each user
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint randCollIncrease = _utils.generateRandomNumber(
-                10 ether, 100000 ether, user
+                10 ether, 1000 ether, user
             );
             vm.prank(user);
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
@@ -229,23 +229,24 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Happy case for borrowing and withdrawing collateral within CDP for many users
     function testWithdrawCRManyUsers() public {
-        bytes32[] memory cdpIds = new bytes32[](AMOUNT_OF_USERS);
-        uint[] memory collateralsUsed = new uint[](AMOUNT_OF_USERS);
+        uint minimalCollUsed = 0;
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
+            vm.deal(user, type(uint96).max);
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(
                 50 ether, 10000000 ether, user
             );
-            vm.deal(user, type(uint96).max);
+            if (collAmount < minimalCollUsed || minimalCollUsed == 0) {
+                minimalCollUsed = collAmount;
+            }
             vm.startPrank(user);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
             );
             borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
             // Collect all cdpIds into array
-            cdpIds[userIx] = sortedCdps.cdpOfOwnerByIndex(user, 0);
-            collateralsUsed[userIx] = collAmount;
+            cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, 0));
             vm.stopPrank();
         }
         // Make TCR snapshot before decreasing collateral
@@ -257,10 +258,10 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Now, withdraw collateral from each CDP and make sure TCR declined
         for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
-            uint collToWithdrawLimit = _utils.findMin(collateralsUsed);
             // Use minimal coll amount borrowed to withdraw to not end up with ICR < MCR error
             uint randCollWithdraw = _utils.generateRandomNumber(
-                0.1 ether, collToWithdrawLimit.sub(10 ether), user
+                // Max value to withdraw is 20% of collateral
+                0.1 ether, minimalCollUsed.div(5), user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
@@ -270,6 +271,63 @@ contract CDPOpsTest is eBTCBaseFixture {
             assertGt(initialIcr, newIcr);
         }
         // Make sure TCR decreased after collateral was added
+        uint newTcr = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        assertGt(initialTcr, newTcr);
+    }
+
+    // Test case for multiple users with random amount of CDPs, adding more collateral
+    function testWithdrawCRManyUsersManyCdps() public {
+        uint minimalCollUsed = 0;
+        uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10100000 ether);
+            // Random collateral for each user
+            uint collAmount = _utils.generateRandomNumber(
+                28 ether, 100000 ether, user
+            );
+            uint collAmountChunk = collAmount.div(amountCdps);
+            // Set minimal collateral used for the future to reference it when withdrawing collateral
+            if (collAmountChunk < minimalCollUsed || minimalCollUsed == 0) {
+                minimalCollUsed = collAmountChunk;
+            }
+            uint borrowedAmount = _utils.calculateBorrowAmount(
+                collAmountChunk, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+            );
+            // Create multiple CDPs per user
+            for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
+                vm.prank(user);
+                borrowerOperations.openCdp{value : collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
+            }
+        }
+        // Make TCR snapshot before decreasing collateral
+        uint initialTcr = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        // Now, withdraw collateral for each CDP and make sure TCR decreased
+        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
+            // Randomize collateral increase amount for each user
+            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
+            uint randCollWithdraw = _utils.generateRandomNumber(
+                // Max value to withdraw is 20% of collateral
+                0.1 ether, minimalCollUsed.div(5), user
+            );
+            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            // Withdraw
+            vm.prank(user);
+            borrowerOperations.withdrawColl(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
+            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            // Make sure ICR for CDP decreased
+            assertGt(initialIcr, newIcr);
+        }
+        // Make sure TCR increased after collateral was added
         uint newTcr = LiquityMath._computeCR(
             borrowerOperations.getEntireSystemColl(),
             borrowerOperations.getEntireSystemDebt(),
