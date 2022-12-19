@@ -22,6 +22,14 @@ import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
 
 contract eBTCBaseFixture is Test {
+    uint internal constant FEE = 5e17;
+    uint256 internal constant MINIMAL_COLLATERAL_RATIO = 150e16;  // MCR: 150%
+    uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16;  // 200% - defensive CR
+    uint internal constant MIN_NET_DEBT = 1800e18;  // Subject to changes once CL is changed
+    // TODO: Modify these constants to increase/decrease amount of users
+    uint internal constant AMOUNT_OF_USERS = 100;
+
     using SafeMath for uint256;
     using SafeMath for uint96;
     using SafeMath for uint64;

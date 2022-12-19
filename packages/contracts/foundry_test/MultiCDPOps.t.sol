@@ -7,16 +7,8 @@ import {Utilities} from "./utils/Utilities.sol";
 
 /*
  * Test suite that tests opened CDPs with operations
- * TODO: implement
  */
 contract CDPTestOperations is eBTCBaseFixture {
-    uint private constant FEE = 5e17;
-    uint256 internal constant MINIMAL_COLLATERAL_RATIO = 150e16;  // MCR: 150%
-    uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
-    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16;  // 200% - defencive CR
-    // TODO: Modify these constants to increase/decrease amount of users
-
-    uint internal constant AMOUNT_OF_USERS = 100;
     Utilities internal _utils;
 
     function setUp() public override {
@@ -26,14 +18,14 @@ contract CDPTestOperations is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
         _utils = new Utilities();
     }
+    // -------- Increase Collateral Test cases --------
 
     // Happy case for borrowing and adding collateral within CDP
     function testIncreaseCRHappy() public {
         uint collAmount = 30 ether;
-        address payable[] memory users;
-        users = _utils.createUsers(1);
-        address user = users[0];
+        address user = _utils.getNextUserAddress();
         vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
         // Calculate borrowed amount
         uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
         borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
@@ -54,8 +46,42 @@ contract CDPTestOperations is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    // Test case for multiple users adding more collateral to their CDPs
-    function testIncreaseCRRandomized() public {
+    // Fuzzing for collAdd happy case scenario
+    function testIncreaseCRHappyFuzz(uint96 collAmount) public {
+        // Set min collAmount to avoid zero div error
+        collAmount = uint96(bound(collAmount, 1e15, type(uint96).max));
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint256).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+        );
+        // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
+        if (borrowedAmount < MIN_NET_DEBT) {
+            vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+            borrowerOperations.openCdp{value : collAmount}(FEE,  borrowedAmount,  "hint",  "hint");
+            return;
+        }
+        borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        // Get new CDP id
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        uint coll = cdpManager.getCdpColl(cdpId);
+        // Make sure collateral is as expected
+        assertEq(collAmount, coll);
+        // Get ICR for CDP:
+        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
+        // Add more collateral and make sure ICR changes
+        borrowerOperations.addColl{value : collAmount}(cdpId, "hint", "hint");
+        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        assert(newIcr != initialIcr);
+        // Make sure collateral increased by 2x
+        assertEq(collAmount.mul(2), cdpManager.getCdpColl(cdpId));
+        vm.stopPrank();
+    }
+
+    // Test case for random-multiple users adding more collateral to their CDPs
+    function testIncreaseCRRandomizedUsers() public {
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.startPrank(user);
@@ -81,14 +107,14 @@ contract CDPTestOperations is eBTCBaseFixture {
             vm.stopPrank();
         }
     }
+    // -------- Withdraw Collateral Test cases --------
 
     // Happy case for borrowing and withdrawing collateral within CDP
     function testWithdrawCRHappy() public {
         uint collAmount = 30 ether;
         uint withdrawnColl = 5 ether;
-        address payable[] memory users;
-        users = _utils.createUsers(1);
-        address user = users[0];
+        address user = _utils.getNextUserAddress();
+        vm.deal(user, type(uint96).max);
         vm.startPrank(user);
         // Calculate borrowed amount. Borrow less because of COLLATERAL_RATIO_DEFENSIVE is used which forces
         // to open more collateralized position
@@ -115,9 +141,8 @@ contract CDPTestOperations is eBTCBaseFixture {
     function testWithdrawIcrTooLow() public {
         uint collAmount = 30 ether;
         uint withdrawnColl = 10 ether;
-        address payable[] memory users;
-        users = _utils.createUsers(1);
-        address user = users[0];
+        address user = _utils.getNextUserAddress();
+        vm.deal(user, type(uint96).max);
         vm.startPrank(user);
         // Calculate borrowed amount
         uint borrowedAmount = _utils.calculateBorrowAmount(
