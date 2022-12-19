@@ -10,7 +10,6 @@ import "./Dependencies/console.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
-
 /*
  * The Active Pool holds the ETH collateral and LUSD debt (but not LUSD tokens) for all active troves.
  *
@@ -136,15 +135,26 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // We can just remove this check 
         // Then add a confirming FlashLoan Operation
         // Then receive via receive
-        _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH.add(msg.value);
-        emit ActivePoolETHBalanceUpdated(ETH);
+
+        // TODO: Change to allow WETH
+        require(
+            msg.sender == borrowerOperationsAddress ||
+            msg.sender == defaultPoolAddress ||
+            msg.sender == address(WETH),
+            "ActivePool: Caller is neither BO nor Default Pool"
+        );
+
+        // Only add ETH Counter if it's not from WETH
+        if(msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress) {
+
+            ETH = ETH.add(msg.value);
+            emit ActivePoolETHBalanceUpdated(ETH);
+        }
     }
 
     // === Flashloans === //
 
-    // TODO: Prob we will just allow WETH to save the check above
-    // OR: Rewrite receive
+
 
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -154,10 +164,16 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     ) external override returns (bool) {
         require(token == address(0), "ETH only");
         uint256 fee = amount * FEE_AMT / MAX_BPS;
+
+        uint256 requireNewBalance = address(this).balance + fee;
+
+        uint256 amountWithFee = amount + fee;
         
-        // TODO Send
         // Deposit Eth into WETH
         // Send WETH to receiver
+        WETH.deposit{value: amount}();
+
+        WETH.transfer(address(receiver), amount);
 
         // Callback
         require(
@@ -165,9 +181,18 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
             "IERC3156: Callback failed"
         );
 
-        // TODO: Repay via:
-        // Withdraw to this
         // Transfer of WETH to Fee recipient
+        WETH.transferFrom(address(receiver), address(this), amountWithFee);
+
+        // SEnd weth to fee recipient
+        WETH.transfer(FEE_RECIPIENT, fee);
+        
+        // Withdraw principal to this
+        WETH.withdraw(amount);
+
+        // Check new balance
+        // NOTE: Invariant Check, technically breaks CEI but I think we must use it
+        require(address(this).balance > requireNewBalance, "Insufficient Balance");
     }
 
     function flashFee(
