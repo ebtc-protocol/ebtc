@@ -2,6 +2,7 @@
 pragma solidity 0.6.11;
 
 import "forge-std/Test.sol";
+import "../contracts/Dependencies/LiquityMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
@@ -63,6 +64,12 @@ contract CDPTestOperations is eBTCBaseFixture {
             return;
         }
         borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        // Make TCR snapshot before increasing collateral
+        uint tcrBeforeCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         uint coll = cdpManager.getCdpColl(cdpId);
@@ -77,11 +84,19 @@ contract CDPTestOperations is eBTCBaseFixture {
         assert(newIcr != initialIcr);
         // Make sure collateral increased by 2x
         assertEq(collAmount.mul(2), cdpManager.getCdpColl(cdpId));
+
+        // Make sure TCR increased after collateral was added
+        uint tcrAfterCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        assertGt(tcrAfterCollAdd, tcrBeforeCollAdd);
         vm.stopPrank();
     }
 
     // Test case for random-multiple users adding more collateral to their CDPs
-    function testIncreaseCRRandomizedUsers() public {
+    function testIncreaseCRManyUsers() public {
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.startPrank(user);
@@ -133,6 +148,53 @@ contract CDPTestOperations is eBTCBaseFixture {
         // Make sure collateral was reduced by `withdrawnColl` amount
         assertEq(collAmount.sub(withdrawnColl), cdpManager.getCdpColl(cdpId));
         vm.stopPrank();
+    }
+
+    // Happy case for borrowing and withdrawing collateral within CDP for many users
+    function testWithdrawCRManyUsers() public {
+        bytes32[] memory cdpIds = new bytes32[](AMOUNT_OF_USERS);
+        uint[] memory collateralsUsed = new uint[](AMOUNT_OF_USERS);
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            address user = _utils.getNextUserAddress();
+            // Random collateral for each user
+            uint collAmount = _utils.generateRandomNumber(
+                50 ether, 10000000 ether, user
+            );
+            vm.deal(user, type(uint96).max);
+            vm.startPrank(user);
+            uint borrowedAmount = _utils.calculateBorrowAmount(
+                collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+            );
+            borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+            // Collect all cdpIds into array
+            cdpIds[userIx] = sortedCdps.cdpOfOwnerByIndex(user, 0);
+            collateralsUsed[userIx] = collAmount;
+            vm.stopPrank();
+        }
+        // Make TCR snapshot before decreasing collateral
+        uint tcrBeforeCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        // Now, withdraw collateral from each CDP and make sure TCR declined
+        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
+            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
+            uint collToWithdrawLimit = _utils.findMin(collateralsUsed);
+            // Use minimal coll amount borrowed to withdraw to not end up with ICR < MCR error
+            uint randCollWithdraw = _utils.generateRandomNumber(
+                0.1 ether, collToWithdrawLimit.sub(10 ether), user
+            );
+            vm.prank(user);
+            borrowerOperations.withdrawColl(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
+        }
+        // Make sure TCR decreased after collateral was added
+        uint tcrAfterCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        assertGt(tcrBeforeCollAdd, tcrAfterCollAdd);
     }
 
     /* Test case when user is trying to withraw too much collateral which results in
