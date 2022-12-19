@@ -14,7 +14,9 @@ contract CDPTestOperations is eBTCBaseFixture {
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 150e16;  // MCR: 150%
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
     uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16;  // 200% - defencive CR
+    // TODO: Modify these constants to increase/decrease amount of users
 
+    uint internal constant AMOUNT_OF_USERS = 100;
     Utilities internal _utils;
 
     function setUp() public override {
@@ -50,6 +52,34 @@ contract CDPTestOperations is eBTCBaseFixture {
         // Make sure collateral increased by 2x
         assertEq(collAmount.mul(2), cdpManager.getCdpColl(cdpId));
         vm.stopPrank();
+    }
+
+    // Test case for multiple users adding more collateral to their CDPs
+    function testIncreaseCRRandomized() public {
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.startPrank(user);
+            // Random collateral for each user
+            uint collAmount = _utils.generateRandomNumber(
+                28 ether, 10000000 ether, user
+            );
+            // Randomize collateral increase amount for each user
+            uint randCollIncrease = _utils.generateRandomNumber(
+                10 ether, 100000 ether, user
+            );
+            uint borrowedAmount = _utils.calculateBorrowAmount(
+                collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
+            );
+            // First, open new CDP
+            vm.deal(user, 10100000 ether);
+            borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+            // Increase coll by random value
+            borrowerOperations.addColl{value : randCollIncrease}(cdpId, "hint", "hint");
+            // Make sure collateral inreased by random value
+            assertEq(collAmount.add(randCollIncrease), cdpManager.getCdpColl(cdpId));
+            vm.stopPrank();
+        }
     }
 
     // Happy case for borrowing and withdrawing collateral within CDP
