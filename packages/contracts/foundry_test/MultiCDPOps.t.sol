@@ -19,6 +19,7 @@ contract CDPTestOperations is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
         _utils = new Utilities();
     }
+
     // -------- Increase Collateral Test cases --------
 
     // Happy case for borrowing and adding collateral within CDP
@@ -97,31 +98,49 @@ contract CDPTestOperations is eBTCBaseFixture {
 
     // Test case for random-multiple users adding more collateral to their CDPs
     function testIncreaseCRManyUsers() public {
+        bytes32[] memory cdpIds = new bytes32[](AMOUNT_OF_USERS);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
-            vm.startPrank(user);
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(
                 28 ether, 10000000 ether, user
-            );
-            // Randomize collateral increase amount for each user
-            uint randCollIncrease = _utils.generateRandomNumber(
-                10 ether, 100000 ether, user
             );
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
             );
             // First, open new CDP
             vm.deal(user, 10100000 ether);
+            vm.prank(user);
             borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-            // Increase coll by random value
-            borrowerOperations.addColl{value : randCollIncrease}(cdpId, "hint", "hint");
-            // Make sure collateral inreased by random value
-            assertEq(collAmount.add(randCollIncrease), cdpManager.getCdpColl(cdpId));
-            vm.stopPrank();
+            cdpIds[userIx] = cdpId;
         }
+        // Make TCR snapshot before increasing collateral
+        uint tcrBeforeCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        // Now, add collateral for each CDP and make sure TCR improved
+        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
+            // Randomize collateral increase amount for each user
+            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
+            uint randCollIncrease = _utils.generateRandomNumber(
+                10 ether, 100000 ether, user
+            );
+            vm.prank(user);
+            // Increase coll by random value
+            borrowerOperations.addColl{value : randCollIncrease}(cdpIds[cdpIx], "hint", "hint");
+        }
+        // Make sure TCR increased after collateral was added
+        uint tcrAfterCollAdd = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        assertGt(tcrAfterCollAdd, tcrBeforeCollAdd);
     }
+
     // -------- Withdraw Collateral Test cases --------
 
     // Happy case for borrowing and withdrawing collateral within CDP
