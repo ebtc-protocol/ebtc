@@ -102,8 +102,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Now, repay eBTC and make sure ICR improved
         for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
-            // Randomize ebtc repaid amnt from 10 eBTC to max eBTC per specific CDP
-            uint randRepayAmnt = _utils.generateRandomNumber(10e18, cdpManager.getCdpDebt(cdpIds[cdpIx]), user);
+            // Randomize ebtc repaid amnt from 10 eBTC to max ebtc.balanceOf(user) / amount of CDPs for user
+            uint randRepayAmnt = _utils.generateRandomNumber(10e18, eBTCToken.balanceOf(user).div(amountCdps), user);
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Repay eBTC for each CDP
