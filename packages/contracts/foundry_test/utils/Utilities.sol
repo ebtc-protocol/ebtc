@@ -17,7 +17,7 @@ contract Utilities is Test {
         return user;
     }
 
-    //create users with 100 ether balance
+    //create users with max - 1 ether balance
     function createUsers(uint256 userNum)
         public
         returns (address payable[] memory)
@@ -25,7 +25,7 @@ contract Utilities is Test {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
             address payable user = getNextUserAddress();
-            vm.deal(user, 10000000 ether);
+            vm.deal(user, type(uint256).max - 1);
             users[i] = user;
         }
         return users;
