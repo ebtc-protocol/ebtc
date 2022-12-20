@@ -118,7 +118,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     }
 	
     function setTellorQueryBuffer(uint256 _buffer) external onlyOwner {
-        require(_buffer > 0, '!buffer');
+        require(_buffer > 0, "!buffer");
         tellorQueryBufferSeconds = _buffer;
     }
 
