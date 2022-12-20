@@ -45,4 +45,11 @@ contract MockTellor {
     function retrieveData(uint256, uint256) external view returns (uint256) {
         return price;
     }
+	
+    function getDataBefore(bytes32 _queryId, uint256 _timestamp) external view returns (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved){
+        if (revertRequest) {
+            require(1 == 0, "Tellor request reverted");
+        }
+        return (true, abi.encode(price), updateTime);
+    }
 }

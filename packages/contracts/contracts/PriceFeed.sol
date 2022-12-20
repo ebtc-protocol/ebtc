@@ -33,6 +33,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     address cdpManagerAddress;
 
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
+    bytes32 public constant ETHUSD_TELLOR_QUERY_ID = 0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992;// { type: "SpotPrice", asset: "eth", currency: "usd" }
+    uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
@@ -113,6 +115,11 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         _storeChainlinkPrice(chainlinkResponse);
 
         _renounceOwnership();
+    }
+	
+    function setTellorQueryBuffer(uint256 _buffer) external onlyOwner {
+        require(_buffer > 0, '!buffer');
+        tellorQueryBufferSeconds = _buffer;
     }
 
     // --- Functions ---
@@ -557,7 +564,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         view
         returns (TellorResponse memory tellorResponse)
     {
-        try tellorCaller.getTellorCurrentValue(ETHUSD_TELLOR_REQ_ID) returns (
+        try tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds) returns (
             bool ifRetrieve,
             uint256 value,
             uint256 _timestampRetrieved
