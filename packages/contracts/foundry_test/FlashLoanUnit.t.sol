@@ -58,19 +58,23 @@ contract FlashLoanUnit is eBTCBaseFixture {
       vm.deal(user, type(uint256).max - 1 - user.balance);
       uint toDepositAmount = _utils.calculateCollateralAmount(amount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
       vm.prank(user);
-      borrowerOperations.openCdp{value : toDepositAmount * 2}(FEE, amount, "hint", "hint"); 
+      borrowerOperations.openCdp{value : toDepositAmount + 1}(FEE, amount, "hint", "hint"); 
       vm.prank(user);
       eBTCToken.transfer(recipient, amount);
     }
 
     // Basic happy path test
-    function test_basicLoanEBTC(uint256 loanAmount) public {
+    // We cap to uint128 avoid multiplication overflow
+    // TODO: Add a max / max - 1 test to show what happens
+    function test_basicLoanEBTC(uint128 loanAmount) public {
       require(address(ebtcReceiver) != address(0));
 
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
 
       // Funny enough 0 reverts because of deal not
       vm.assume(loanAmount > 0);
+
+
       // No cheecky overflow
       vm.assume(loanAmount + fee <= type(uint256).max);
 
@@ -78,7 +82,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
       vm.assume(fee > 1800e18);
 
       if(fee > 0){
-        dealEBTC(address(ebtcReceiver), fee);
+        deal(address(eBTCToken), address(ebtcReceiver), fee);
       }
 
 
@@ -130,6 +134,9 @@ contract FlashLoanUnit is eBTCBaseFixture {
     // Do nothing (no fee), check that it reverts
     function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
       vm.assume(loanAmount > 0);
+      uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+      vm.assume(fee > 1);
+
 
       vm.expectRevert();
       // Perform flashloan
