@@ -57,6 +57,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
       uint toDepositAmount = _utils.calculateCollateralAmount(amount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
       vm.prank(user);
       borrowerOperations.openCdp{value : toDepositAmount * 2}(FEE, amount, "hint", "hint"); 
+      vm.prank(user);
+      eBTCToken.transfer(recipient, amount);
     }
 
     // Basic happy path test
