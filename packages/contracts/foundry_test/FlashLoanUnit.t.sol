@@ -54,6 +54,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
       address payable[] memory users;
       users = _utils.createUsers(1);
       address user = users[0];
+      // Deal max - 1 - current bal so they have max - 1
+      vm.deal(user, type(uint256).max - 1 - user.balance);
       uint toDepositAmount = _utils.calculateCollateralAmount(amount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
       vm.prank(user);
       borrowerOperations.openCdp{value : toDepositAmount * 2}(FEE, amount, "hint", "hint"); 
