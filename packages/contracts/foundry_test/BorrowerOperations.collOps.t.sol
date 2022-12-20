@@ -11,6 +11,8 @@ import {Utilities} from "./utils/Utilities.sol";
  */
 contract CDPOpsTest is eBTCBaseFixture {
     Utilities internal _utils;
+    // Storage array of cdpIDs when impossible to calculate array size
+    bytes32[] cdpIds;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -19,8 +21,6 @@ contract CDPOpsTest is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
         _utils = new Utilities();
     }
-
-    bytes32[] cdpIds;
 
     // -------- Increase Collateral Test cases --------
 
@@ -95,55 +95,6 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         assertGt(newTcr, initialTcr);
         vm.stopPrank();
-    }
-
-    // Test case for random-multiple users adding more collateral to their CDPs
-    function testIncreaseCRManyUsers() public {
-        bytes32[] memory cdpIds = new bytes32[](AMOUNT_OF_USERS);
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
-            address user = _utils.getNextUserAddress();
-            // Random collateral for each user
-            uint collAmount = _utils.generateRandomNumber(
-                28 ether, 10000000 ether, user
-            );
-            uint borrowedAmount = _utils.calculateBorrowAmount(
-                collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
-            );
-            // First, open new CDP
-            vm.deal(user, 10100000 ether);
-            vm.prank(user);
-            borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-            cdpIds[userIx] = cdpId;
-        }
-        // Make TCR snapshot before increasing collateral
-        uint initialTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
-        // Now, add collateral for each CDP and make sure TCR improved
-        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
-            // Randomize collateral increase amount for each user
-            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
-            uint randCollIncrease = _utils.generateRandomNumber(
-                10 ether, 100000 ether, user
-            );
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
-            vm.prank(user);
-            // Increase coll by random value
-            borrowerOperations.addColl{value : randCollIncrease}(cdpIds[cdpIx], "hint", "hint");
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
-            // Make sure ICR for CDP increased
-            assertGt(newIcr, initialIcr);
-        }
-        // Make sure TCR increased after collateral was added
-        uint newTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
-        assertGt(newTcr, initialTcr);
     }
 
     // Test case for multiple users with random amount of CDPs, adding more collateral
@@ -224,58 +175,6 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure collateral was reduced by `withdrawnColl` amount
         assertEq(collAmount.sub(withdrawnColl), cdpManager.getCdpColl(cdpId));
         vm.stopPrank();
-    }
-
-    // Happy case for borrowing and withdrawing collateral within CDP for many users
-    function testWithdrawCRManyUsers() public {
-        uint minimalCollUsed = 0;
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
-            address user = _utils.getNextUserAddress();
-            vm.deal(user, type(uint96).max);
-            // Random collateral for each user
-            uint collAmount = _utils.generateRandomNumber(
-                50 ether, 10000000 ether, user
-            );
-            if (collAmount < minimalCollUsed || minimalCollUsed == 0) {
-                minimalCollUsed = collAmount;
-            }
-            vm.startPrank(user);
-            uint borrowedAmount = _utils.calculateBorrowAmount(
-                collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
-            );
-            borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
-            // Collect all cdpIds into array
-            cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, 0));
-            vm.stopPrank();
-        }
-        // Make TCR snapshot before decreasing collateral
-        uint initialTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
-        // Now, withdraw collateral from each CDP and make sure TCR declined
-        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
-            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
-            // Use minimal coll amount borrowed to withdraw to not end up with ICR < MCR error
-            uint randCollWithdraw = _utils.generateRandomNumber(
-                // Max value to withdraw is 20% of collateral
-                0.1 ether, minimalCollUsed.div(5), user
-            );
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
-            vm.prank(user);
-            borrowerOperations.withdrawColl(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
-            // Make sure ICR for CDP decreased after coll withdrawal
-            assertGt(initialIcr, newIcr);
-        }
-        // Make sure TCR decreased after collateral was added
-        uint newTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
-        assertGt(initialTcr, newTcr);
     }
 
     // Test case for multiple users with random amount of CDPs, adding more collateral
