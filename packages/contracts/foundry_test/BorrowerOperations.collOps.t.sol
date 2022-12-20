@@ -51,9 +51,9 @@ contract CDPOpsTest is eBTCBaseFixture {
     }
 
     // Fuzzing for collAdd happy case scenario
-    function testIncreaseCRHappyFuzz(uint96 collAmount) public {
-        // Set min collAmount to avoid zero div error
-        collAmount = uint96(bound(collAmount, 1e15, type(uint96).max));
+    function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
+        increaseAmnt = uint96(bound(increaseAmnt, 1e18, type(uint96).max));
+        uint collAmount = type(uint96).max;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint256).max);
@@ -75,18 +75,17 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint coll = cdpManager.getCdpColl(cdpId);
         // Make sure collateral is as expected
-        assertEq(collAmount, coll);
+        assertEq(collAmount, cdpManager.getCdpColl(cdpId));
         // Get ICR for CDP:
         uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
         // Add more collateral and make sure ICR changes
-        borrowerOperations.addColl{value : collAmount}(cdpId, "hint", "hint");
+        borrowerOperations.addColl{value : increaseAmnt}(cdpId, "hint", "hint");
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assert(newIcr != initialIcr);
-        // Make sure collateral increased by 2x
-        assertEq(collAmount.mul(2), cdpManager.getCdpColl(cdpId));
+        // Make sure collateral increased by increaseAmnt
+        assertEq(collAmount.add(increaseAmnt), cdpManager.getCdpColl(cdpId));
 
         // Make sure TCR increased after collateral was added
         uint newTcr = LiquityMath._computeCR(
