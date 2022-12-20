@@ -7,7 +7,8 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 /*
- * Test suite that tests opened CDPs with two different operations: addColl and withdrawColl
+ * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
+ * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
     Utilities internal _utils;
@@ -78,7 +79,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
-            vm.deal(user, 10100000 ether);
+            vm.deal(user, 1000000000 ether);
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
             uint collAmountChunk = collAmount.div(amountCdps);
@@ -101,8 +102,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Now, repay eBTC and make sure ICR improved
         for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
-            // Randomize ebtc repaid amnt from 10 eBTC to max ebtc.balanceOf(user) / amount of CDPs for user
-            uint randRepayAmnt = _utils.generateRandomNumber(10e18, eBTCToken.balanceOf(user).div(amountCdps), user);
+            // Randomize ebtc repaid amnt from 10 eBTC to max eBTC per specific CDP
+            uint randRepayAmnt = _utils.generateRandomNumber(10e18, cdpManager.getCdpDebt(cdpIds[cdpIx]), user);
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Repay eBTC for each CDP
@@ -194,6 +195,58 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         vm.stopPrank();
+    }
+
+    // Test case for multiple users with random amount of CDPs, withdrawing eBTC
+    function testWithdrawEBTCManyUsersManyCdps() public {
+        uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10100000 ether);
+            // Random collateral for each user
+            uint collAmount = _utils.generateRandomNumber(
+                28 ether, 100000 ether, user
+            );
+            uint collAmountChunk = collAmount.div(amountCdps);
+            uint borrowedAmount = _utils.calculateBorrowAmount(
+                collAmountChunk, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+            );
+            // Create multiple CDPs per user
+            for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
+                vm.prank(user);
+                borrowerOperations.openCdp{value : collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
+            }
+        }
+        // Make TCR snapshot before withdrawing eBTC
+        uint initialTcr = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        // Now, withdraw eBTC for each CDP and make sure TCR decreased
+        for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
+            // Randomize collateral increase amount for each user
+            address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
+            uint randCollWithdraw = _utils.generateRandomNumber(
+                // Max value to withdraw is 33% of eBTCs belong to CDP
+                0.1 ether, cdpManager.getCdpDebt(cdpIds[cdpIx]).div(3), user
+            );
+            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            vm.prank(user);
+            // Withdraw
+            borrowerOperations.withdrawEBTC(cdpIds[cdpIx], FEE, randCollWithdraw, "hint", "hint");
+            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            // Make sure ICR for CDP decreased
+            assertGt(initialIcr, newIcr);
+        }
+        // Make sure TCR increased after collateral was added
+        uint newTcr = LiquityMath._computeCR(
+            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getEntireSystemDebt(),
+            priceFeedMock.fetchPrice()
+        );
+        assertGt(initialTcr, newTcr);
     }
 }
 

@@ -8,6 +8,7 @@ import {Utilities} from "./utils/Utilities.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: addColl and withdrawColl
+ * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
     Utilities internal _utils;
@@ -177,9 +178,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    // Test case for multiple users with random amount of CDPs, adding more collateral
+    // Test case for multiple users with random amount of CDPs, withdrawing collateral
     function testWithdrawCRManyUsersManyCdps() public {
-        uint minimalCollUsed = 0;
         uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
@@ -189,10 +189,6 @@ contract CDPOpsTest is eBTCBaseFixture {
                 28 ether, 100000 ether, user
             );
             uint collAmountChunk = collAmount.div(amountCdps);
-            // Set minimal collateral used for the future to reference it when withdrawing collateral
-            if (collAmountChunk < minimalCollUsed || minimalCollUsed == 0) {
-                minimalCollUsed = collAmountChunk;
-            }
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
             );
@@ -215,7 +211,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint randCollWithdraw = _utils.generateRandomNumber(
                 // Max value to withdraw is 20% of collateral
-                0.1 ether, minimalCollUsed.div(5), user
+                0.1 ether, cdpManager.getCdpColl(cdpIds[cdpIx]).div(5), user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Withdraw
