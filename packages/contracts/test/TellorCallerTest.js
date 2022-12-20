@@ -28,14 +28,14 @@ contract('TellorCaller', async accounts => {
        await assertRevert(tellorCaller.getTellorBufferValue(qID, 0), '!bufferTime');
     })
 	
-    it("getTellorCurrentValue(bytes32, uint256) should return valid price", async () => {
+    it.skip("getTellorCurrentValue(bytes32, uint256) should return valid price", async () => {
        let _price = await tellorCaller.getTellorBufferValue(qID, qBuffer);
        //console.log('_retrieved=' + _price[0].toString() + ',_price=' + _price[1].toString() + ',timestamp=' + _price[2].toString());
        assert.isTrue(_price[0]);
        assert.isTrue(_price[2] < (Date.now() - qBuffer));
     })
 	
-    it("getTellorCurrentValue(bytes32, uint256) twice with different buffers", async () => {
+    it.skip("getTellorCurrentValue(bytes32, uint256) twice with different buffers", async () => {
        let _price = await tellorCaller.getTellorBufferValue(qID, qBuffer);
        assert.isTrue(_price[0]);
        assert.isTrue(_price[2] < (Date.now() - qBuffer));	   
