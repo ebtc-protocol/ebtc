@@ -44,6 +44,14 @@ contract Utilities is Test {
         public pure returns (uint256) {
         return coll.mul(price).div(collateralRatio);
     }
+    
+
+    /// @dev Given Borrow Amount, Price and Collateral Ratio tells you how much to deposit
+    function calculateCollateralAmount(
+        uint256 borrowAmount, uint256 price, uint256 collateralRatio
+    ) public pure returns (uint256) {
+        return collateralRatio.mul(borrowAmount).div(price);
+    }
 
     /* This is the function that generates the random number.
     * It takes the minimum and maximum values of the range as arguments

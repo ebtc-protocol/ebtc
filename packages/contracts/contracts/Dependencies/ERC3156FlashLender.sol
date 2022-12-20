@@ -7,7 +7,7 @@ import "../Interfaces/IWETH.sol";
 
 abstract contract ERC3156FlashLender is IERC3156FlashLender {
     // TODO: Fix
-    address constant internal FEE_RECIPIENT  = address(0);
+    address constant internal FEE_RECIPIENT  = address(1);
     uint256 constant internal FEE_AMT  = 50; // 50 BPS
     uint256 constant internal MAX_BPS  = 10_000;
     

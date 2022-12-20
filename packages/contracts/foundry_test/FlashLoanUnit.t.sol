@@ -50,9 +50,33 @@ contract FlashLoanUnit is eBTCBaseFixture {
       wethReceiver = new WETHFlashReceiver(); 
     }
 
-    function basicLoanEBTC(uint256 loanAmount) public {
-      // TODO: Separate test for 0 amount
+    function dealEBTC(address recipient, uint256 amount) public {
+      address payable[] memory users;
+      users = _utils.createUsers(1);
+      address user = users[0];
+      uint toDepositAmount = _utils.calculateCollateralAmount(amount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+      vm.prank(user);
+      borrowerOperations.openCdp{value : toDepositAmount * 2}(FEE, amount, "hint", "hint"); 
+    }
+
+    // Basic happy path test
+    function test_basicLoanEBTC(uint256 loanAmount) public {
+      require(address(ebtcReceiver) != address(0));
+
+      uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+
+      // Funny enough 0 reverts because of deal not
       vm.assume(loanAmount > 0);
+      // No cheecky overflow
+      vm.assume(loanAmount + fee <= type(uint256).max);
+
+      // Cannot deal if not enough
+      vm.assume(fee > 1800e18);
+
+      if(fee > 0){
+        dealEBTC(address(ebtcReceiver), fee);
+      }
+
 
       // Perform flashloan
       borrowerOperations.flashLoan(
@@ -65,7 +89,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Check fees were sent
     }
 
-    function zeroCaseEBTC() public {
+    // Explicit Zero amount test
+    function test_zeroCaseEBTC() public {
       // Zero test case
       uint256 loanAmount = 0;
 
@@ -76,10 +101,40 @@ contract FlashLoanUnit is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
+
+      // Doesn't revert as we have to pay nothing back
     }
 
-    function eBTCRevertsIfUnpaid() public {
-      // Send the eBTC somewhere else, see it revert
+    // TODO:
+    function test_overflowCaseEBTC() public {
+      // Zero test case
+      uint256 loanAmount = 0;
+
+      // Perform flashloan
+      borrowerOperations.flashLoan(
+        ebtcReceiver,
+        address(eBTCToken),
+        loanAmount,
+        abi.encodePacked(uint256(0))
+      );
+
+      // Doesn't revert as we have to pay nothing back
+      // TODO: Check spec
+    }
+
+
+    // Do nothing (no fee), check that it reverts
+    function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
+      vm.assume(loanAmount > 0);
+
+      vm.expectRevert();
+      // Perform flashloan
+      borrowerOperations.flashLoan(
+        uselessReceiver,
+        address(eBTCToken),
+        loanAmount,
+        abi.encodePacked(uint256(0))
+      );
     }
 
     // TODO: Read flashLoan Spec
@@ -89,7 +144,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
         - Revert if unpaid
         - Revert if target is not contract (Or just revert anyway so no prob)
      */
-    function eBTCSpec() public {
+    function test_eBTCSpec() public {
       // Send the eBTC somewhere else, see it revert
     }
 
