@@ -151,7 +151,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // -------- Withdraw Collateral Test cases --------
 
-    // Happy case for borrowing and withdrawing collateral within CDP
+    // Happy case for borrowing and withdrawing collateral from CDP
     function testWithdrawCRHappy() public {
         uint collAmount = 30 ether;
         uint withdrawnColl = 5 ether;
