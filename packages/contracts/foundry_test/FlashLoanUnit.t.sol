@@ -63,9 +63,9 @@ contract FlashLoanUnit is eBTCBaseFixture {
       eBTCToken.transfer(recipient, amount);
     }
 
-    // Basic happy path test
-    // We cap to uint128 avoid multiplication overflow
-    // TODO: Add a max / max - 1 test to show what happens
+    /// @dev Basic happy path test
+    /// @notice We cap to uint128 avoid multiplication overflow
+    ///   TODO: Add a max / max - 1 test to show what happens
     function test_basicLoanEBTC(uint128 loanAmount) public {
       require(address(ebtcReceiver) != address(0));
 
@@ -97,7 +97,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Check fees were sent
     }
 
-    // Explicit Zero amount test
+    /// @dev Can take a 0 flashloan, nothing happens
     function test_zeroCaseEBTC() public {
       // Zero test case
       uint256 loanAmount = 0;
@@ -113,12 +113,12 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Doesn't revert as we have to pay nothing back
     }
 
-    // TODO:
+    /// @dev Amount too high, we overflow when computing fees
     function test_overflowCaseEBTC() public {
-      // Zero test case
-      uint256 loanAmount = 0;
+      // Zero Overflow Case
+      uint256 loanAmount = type(uint256).max;
 
-      // Perform flashloan
+      vm.expectRevert();
       borrowerOperations.flashLoan(
         ebtcReceiver,
         address(eBTCToken),
@@ -133,10 +133,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
     // Do nothing (no fee), check that it reverts
     function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
-      vm.assume(loanAmount > 0);
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
       vm.assume(fee > 1);
-
 
       vm.expectRevert();
       // Perform flashloan
