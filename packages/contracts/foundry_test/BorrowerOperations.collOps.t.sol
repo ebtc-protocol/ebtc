@@ -67,7 +67,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Fuzzing for collAdd happy case scenario
     function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
-        increaseAmnt = uint96(bound(increaseAmnt, 1e14, type(uint96).max));
+        increaseAmnt = uint96(bound(increaseAmnt, 1e2, type(uint96).max));
         uint collAmount = 28 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
