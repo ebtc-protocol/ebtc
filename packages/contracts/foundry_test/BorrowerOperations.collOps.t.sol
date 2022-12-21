@@ -130,7 +130,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
             // Random collateral for each user
-            uint collAmount = _utils.generateRandomNumber(28 ether, 1000000 ether, user);
+            uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
             uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
@@ -140,6 +140,12 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Create multiple CDPs per user
             for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
+                // In case borrowedAmount < MIN_NET_DEBT should expect revert
+                if (borrowedAmount < MIN_NET_DEBT) {
+                    vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                    borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                    return;
+                }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
@@ -221,6 +227,12 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Create multiple CDPs per user
             for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
+                // In case borrowedAmount < MIN_NET_DEBT should expect revert
+                if (borrowedAmount < MIN_NET_DEBT) {
+                    vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                    borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                    return;
+                }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }

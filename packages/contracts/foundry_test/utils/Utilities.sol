@@ -57,7 +57,7 @@ contract Utilities is Test {
         uint result = (randomNumber % (max - min + 1)) + min;
         // Randomly shrink random number
         if (result % 4 == 0) {
-            result /= 10;
+            result /= 100;
         }
         return result;
     }
