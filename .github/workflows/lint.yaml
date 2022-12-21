@@ -1,7 +1,7 @@
-name: solhint-ci
+name: lint
 on: [pull_request]
 jobs:
-  solhint:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,5 +16,8 @@ jobs:
             yarn install --frozen-lockfile
             echo "$(yarn global bin)" >> $GITHUB_PATH
 
-      - name: Lint
+      - name: Solhint
         run: yarn solhint 'packages/contracts/contracts/*.sol'
+
+      - name: Prettier
+        run: yarn prettier-check
