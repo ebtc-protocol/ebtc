@@ -29,6 +29,7 @@ contract eBTCBaseFixture is Test {
     uint internal constant MIN_NET_DEBT = 1800e18; // Subject to changes once CL is changed
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
+    uint internal constant AMOUNT_OF_CDPS = 10;
 
     using SafeMath for uint256;
     using SafeMath for uint96;

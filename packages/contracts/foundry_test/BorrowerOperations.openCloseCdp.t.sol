@@ -198,7 +198,6 @@ contract CDPTest is eBTCBaseFixture {
      */
     function testCdpsForManyUsersManyCollManyCdps() public {
         // Randomize number of CDPs
-        uint amountCdps = _utils.generateRandomNumber(1, 20, msg.sender);
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             // Create multiple CDPs per user
@@ -206,13 +205,13 @@ contract CDPTest is eBTCBaseFixture {
             vm.deal(user, 10000000 ether);
             // Randomize collateral amount
             uint collAmount = _utils.generateRandomNumber(100000 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(amountCdps);
+            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO
             );
-            for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
+            for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
                 borrowerOperations.openCdp{value: collAmountChunk}(
                     FEE,
@@ -226,11 +225,11 @@ contract CDPTest is eBTCBaseFixture {
                 _cdpIdsExist[cdpId] = true;
             }
             // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
-            assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(amountCdps));
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(AMOUNT_OF_CDPS));
             // Warp after each user to increase randomness of next collateralAmount
             vm.warp(block.number + 1);
         }
-        // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `amountCDPs`
-        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(amountCdps));
+        // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(AMOUNT_OF_CDPS));
     }
 }

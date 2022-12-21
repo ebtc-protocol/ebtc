@@ -77,7 +77,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Fuzzing for collAdd happy case scenario
     function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
-        increaseAmnt = uint96(bound(increaseAmnt, 1e2, type(uint96).max));
+        increaseAmnt = uint96(bound(increaseAmnt, 1e1, type(uint96).max));
         uint collAmount = 28 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -126,20 +126,19 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Test case for multiple users with random amount of CDPs, adding more collateral
     function testIncreaseCRManyUsersManyCdps() public {
-        uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(amountCdps);
+            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO
             );
             // Create multiple CDPs per user
-            for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
+            for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
@@ -206,20 +205,19 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Test case for multiple users with random amount of CDPs, withdrawing collateral
     function testWithdrawCRManyUsersManyCdps() public {
-        uint amountCdps = _utils.generateRandomNumber(1, 10, msg.sender);
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 100000 ether, user);
-            uint collAmountChunk = collAmount.div(amountCdps);
+            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO_DEFENSIVE
             );
             // Create multiple CDPs per user
-            for (uint cdpIx = 0; cdpIx < amountCdps; cdpIx++) {
+            for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
