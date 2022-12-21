@@ -151,7 +151,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                         HINT,
                         HINT
                     );
-                    return;
+                    break;
                 }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
@@ -245,7 +245,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                         HINT,
                         HINT
                     );
-                    return;
+                    break;
                 }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
