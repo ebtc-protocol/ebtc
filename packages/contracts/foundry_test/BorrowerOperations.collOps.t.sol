@@ -142,8 +142,15 @@ contract CDPOpsTest is eBTCBaseFixture {
                 vm.prank(user);
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
-                    vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
-                    borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                    vm.expectRevert(
+                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                    );
+                    borrowerOperations.openCdp{value: collAmountChunk}(
+                        FEE,
+                        borrowedAmount,
+                        HINT,
+                        HINT
+                    );
                     return;
                 }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
@@ -229,8 +236,15 @@ contract CDPOpsTest is eBTCBaseFixture {
                 vm.prank(user);
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
-                    vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
-                    borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
+                    vm.expectRevert(
+                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                    );
+                    borrowerOperations.openCdp{value: collAmountChunk}(
+                        FEE,
+                        borrowedAmount,
+                        HINT,
+                        HINT
+                    );
                     return;
                 }
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);

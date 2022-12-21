@@ -100,6 +100,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     );
     event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
     event Debug(uint debt);
+
     // --- Dependency setters ---
 
     function setAddresses(
