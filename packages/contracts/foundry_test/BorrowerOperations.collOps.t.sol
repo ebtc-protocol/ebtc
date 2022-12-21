@@ -51,15 +51,29 @@ contract CDPOpsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
+    // Expect revert if trying to pass 0 as coll increase value
+    function testIncreaseCRWithZeroAmount() public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        vm.expectRevert(bytes("BorrowerOps: There must be either a collateral change or a debt change"));
+        borrowerOperations.addColl{value : 0}(cdpId, "hint", "hint");
+        vm.stopPrank();
+    }
+
     // Fuzzing for collAdd happy case scenario
     function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
-        increaseAmnt = uint96(bound(increaseAmnt, 1e18, type(uint96).max));
-        uint collAmount = type(uint96).max;
+        increaseAmnt = uint96(bound(increaseAmnt, 1e14, type(uint96).max));
+        uint collAmount = 28 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint256).max);
         uint borrowedAmount = _utils.calculateBorrowAmount(
-            collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+            collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO
         );
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (borrowedAmount < MIN_NET_DEBT) {
@@ -84,7 +98,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Add more collateral and make sure ICR changes
         borrowerOperations.addColl{value : increaseAmnt}(cdpId, "hint", "hint");
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
-        assert(newIcr != initialIcr);
+        assertGt(newIcr, initialIcr);
         // Make sure collateral increased by increaseAmnt
         assertEq(collAmount.add(increaseAmnt), cdpManager.getCdpColl(cdpId));
 
@@ -230,6 +244,20 @@ contract CDPOpsTest is eBTCBaseFixture {
         assertGt(initialTcr, newTcr);
     }
 
+    // Expect revert if trying to withdraw 0
+    function testWithdrawZeroAmnt() public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        vm.expectRevert(bytes("BorrowerOps: There must be either a collateral change or a debt change"));
+        borrowerOperations.withdrawColl(cdpId, 0, HINT, HINT);
+        vm.stopPrank();
+    }
+
     /* Test case when user is trying to withraw too much collateral which results in
     * ICR being too low, hence operation is reverted
     */
@@ -248,7 +276,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Withdraw collateral and make sure operation reverts with ICR < MCR
         vm.expectRevert(bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted"));
-        borrowerOperations.withdrawColl(cdpId, withdrawnColl, "hint", "hint");
+        borrowerOperations.withdrawColl(cdpId, withdrawnColl, HINT, HINT);
         vm.stopPrank();
     }
 }

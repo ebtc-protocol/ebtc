@@ -51,9 +51,24 @@ contract CDPOpsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
+    // Case when trying to repay 0 eBTC
+    function testRepayWithZeroAmnt() public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+        borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        // Repay eBTC and make sure it reverts for 0 amount
+        vm.expectRevert(bytes("BorrowerOps: There must be either a collateral change or a debt change"));
+        borrowerOperations.repayEBTC(cdpId, 0, HINT, HINT);
+        vm.stopPrank();
+    }
+
     // Fuzzing different amounts of eBTC repaid
     function testRepayEBTCFuzz(uint96 repayAmnt) public {
-        repayAmnt = uint96(bound(repayAmnt, 1e18, type(uint96).max));
+        repayAmnt = uint96(bound(repayAmnt, 1e13, type(uint96).max));
         // Coll amount will always be max of uint96
         uint collAmount = type(uint96).max;
         address user = _utils.getNextUserAddress();
@@ -151,10 +166,26 @@ contract CDPOpsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
+    // Fail when trying to withdraw 0 ebtc
+    function testWithdrawWithZeroAmnt() public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.deal(user, type(uint96).max);
+        vm.startPrank(user);
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount, priceFeedMock.fetchPrice(), COLLATERAL_RATIO_DEFENSIVE
+        );
+        borrowerOperations.openCdp{value : collAmount}(FEE, borrowedAmount, HINT, HINT);
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
+        vm.expectRevert(bytes("BorrowerOps: Debt increase requires non-zero debtChange"));
+        borrowerOperations.withdrawEBTC(cdpId, FEE, 0, "hint", "hint");
+        vm.stopPrank();
+    }
+
     // Fuzz for borrowing and withdrawing eBTC from CDP
     // Handle scenarios when users try to withdraw too much eBTC resulting in either ICR < MCR or TCR < CCR
     function testWithdrawEBTCFuzz(uint96 withdrawAmnt, uint96 collAmount) public {
-        withdrawAmnt = uint96(bound(withdrawAmnt, 1e18, type(uint96).max));
+        withdrawAmnt = uint96(bound(withdrawAmnt, 1e13, type(uint96).max));
         collAmount = uint96(bound(collAmount, 30e18, type(uint96).max));
 
         address user = _utils.getNextUserAddress();
