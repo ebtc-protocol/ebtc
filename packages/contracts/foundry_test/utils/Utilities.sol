@@ -55,6 +55,10 @@ contract Utilities is Test {
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;
+        // Randomly shrink random number
+        if (result % 4 == 0) {
+            result /= 10;
+        }
         return result;
     }
 }

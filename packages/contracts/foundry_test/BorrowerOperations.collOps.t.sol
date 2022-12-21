@@ -130,7 +130,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
             // Random collateral for each user
-            uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
+            uint collAmount = _utils.generateRandomNumber(28 ether, 1000000 ether, user);
             uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
