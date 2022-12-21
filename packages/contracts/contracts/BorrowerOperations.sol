@@ -917,7 +917,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     function maxFlashLoan(
         address token
     ) external view override returns (uint256) {
-        require(token == address(ebtcToken), "Only LUSD");
+        if(token != address(ebtcToken)) {
+            return 0;
+        }
 
         // TODO: Decide if max, or w/e
         // For now return 112 which is UniV3 compatible
