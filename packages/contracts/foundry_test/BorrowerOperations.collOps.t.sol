@@ -143,6 +143,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
+            _utils.mineBlocks(100);
         }
         // Make TCR snapshot before increasing collateral
         uint initialTcr = LiquityMath._computeCR(
@@ -163,6 +164,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
+            _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
         uint newTcr = LiquityMath._computeCR(
@@ -222,6 +224,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 borrowerOperations.openCdp{value: collAmountChunk}(FEE, borrowedAmount, HINT, HINT);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
+            _utils.mineBlocks(100);
         }
         // Make TCR snapshot before decreasing collateral
         uint initialTcr = LiquityMath._computeCR(
@@ -246,6 +249,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
+            _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
         uint newTcr = LiquityMath._computeCR(
