@@ -6,7 +6,16 @@ import {console2 as console} from "forge-std/console2.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
+// TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
 contract InterestRateTest is eBTCBaseFixture {
+    struct CdpState {
+        uint256 debt;
+        uint256 coll;
+        uint256 pendingEBTCDebtReward;
+        uint256 pendingEBTCInterest;
+        uint256 pendingETHReward;
+    }
+
     uint256 private testNumber;
     address payable[] users;
 
@@ -17,13 +26,9 @@ contract InterestRateTest is eBTCBaseFixture {
     uint public constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
 
-    struct CdpState {
-        uint256 debt;
-        uint256 coll;
-        uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
-        uint256 pendingETHReward;
-    }
+    ////////////////////////////////////////////////////////////////////////////
+    // Tests
+    ////////////////////////////////////////////////////////////////////////////
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -39,24 +44,23 @@ contract InterestRateTest is eBTCBaseFixture {
     }
 
     function testCalculateBorrowAmountFromDebt() public {
-        uint256 debtWithoutGasComp = 2000e18;
         bytes32 cdpId = borrowerOperations.openCdp{value: users[0].balance}(
             5e17,
-            _calculateBorrowAmountFromDebt(debtWithoutGasComp),
+            _calculateBorrowAmountFromDebt(2000e18),
             bytes32(0),
             bytes32(0)
         );
         (uint256 debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId);
         // Borrow amount + gas compensation
-        assertEq(debt, debtWithoutGasComp.add(EBTC_GAS_COMPENSATION));
+        assertEq(debt, 2000e18);
     }
 
     function testInterestIsApplied() public {
-        uint256 debtWithoutGasComp = 2000e18;
-        vm.prank(users[0]);
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: users[0].balance}(
+        uint256 coll = _calculateCollAmount(2000e18, 200e16);
+
+        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
             5e17,
-            _calculateBorrowAmountFromDebt(debtWithoutGasComp), // Excluding borrow fee and gas compensation
+            _calculateBorrowAmountFromDebt(2000e18), // Excluding borrow fee and gas compensation
             bytes32(0),
             bytes32(0)
         );
@@ -67,31 +71,36 @@ contract InterestRateTest is eBTCBaseFixture {
         bytes32 cdpId1 = sortedCdps.getLast();
         assertEq(cdpId0, cdpId1);
 
-        uint256 debt;
-        (debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId0);
-        assertEq(debt, debtWithoutGasComp.add(EBTC_GAS_COMPENSATION));
+        CdpState memory cdpState;
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        assertEq(cdpState.debt, 2000e18);
 
         skip(365 days);
 
-        (debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId0);
+        cdpState = _getEntireDebtAndColl(cdpId0);
         // Expected interest over a year is 2%
-        uint256 expectedInterest = debtWithoutGasComp.mul(2).div(100);
-        assertApproxEqRel(
-            debt,
-            debtWithoutGasComp.add(expectedInterest).add(EBTC_GAS_COMPENSATION),
-            0.0001e18
-        ); // Error is <0.01% of the expected value
+        assertApproxEqRel(cdpState.pendingEBTCInterest, 40e18, 0.001e18); // Error is <0.1% of the expected value
+        assertApproxEqRel(cdpState.debt, 2040e18, 0.0001e18); // Error is <0.01% of the expected value
+        uint256 oldDebt = cdpState.debt;
+
+        assertLt(cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()), 200e16);
+
+        // Apply pending interest
+        // TODO: Check active pool, treasury?
+        borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        assertEq(cdpState.pendingEBTCInterest, 0);
+        assertEq(cdpState.debt, oldDebt);
     }
 
     function testInterestIsSameForInteractingAndNonInteractingUsers() public {
-        vm.prank(users[0]);
         bytes32 cdpId0 = borrowerOperations.openCdp{value: 100 ether}(
             5e17,
             2000e18,
             bytes32(0),
             bytes32(0)
         );
-        vm.prank(users[1]);
         bytes32 cdpId1 = borrowerOperations.openCdp{value: 100 ether}(
             5e17,
             2000e18,
@@ -126,7 +135,6 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(debt0, debt1);
 
         // Realize pending debt
-        vm.prank(users[0]);
         borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
 
         (debt0, , , pendingInterest0, ) = cdpManager.getEntireDebtAndColl(cdpId0);
@@ -143,7 +151,6 @@ contract InterestRateTest is eBTCBaseFixture {
         assertApproxEqAbs(debt0, debt1, 1);
 
         // Realize pending debt
-        vm.prank(users[0]);
         borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
 
         (debt0, , , pendingInterest0, ) = cdpManager.getEntireDebtAndColl(cdpId0);
@@ -153,23 +160,18 @@ contract InterestRateTest is eBTCBaseFixture {
     }
 
     function testInterestIsAppliedOnRedistributedDebt() public {
-        uint256 debt0WithoutGasComp = 2000e18;
-        uint256 coll0 = _calculateCollAmount(debt0WithoutGasComp.add(EBTC_GAS_COMPENSATION), 300e16);
+        uint256 coll0 = _calculateCollAmount(4000e18, 300e16);
+        uint256 coll1 = _calculateCollAmount(2000e18, 200e16);
 
-        uint256 debt1 = 2000e18;
-        uint256 coll1 = _calculateCollAmount(debt1, 200e16);
-
-        vm.prank(users[0]);
         bytes32 cdpId0 = borrowerOperations.openCdp{value: coll0}(
             5e17,
-            _calculateBorrowAmountFromDebt(debt0WithoutGasComp),
+            _calculateBorrowAmountFromDebt(4000e18),
             bytes32(0),
             bytes32(0)
         );
-        vm.prank(users[1]);
         bytes32 cdpId1 = borrowerOperations.openCdp{value: coll1}(
             5e17,
-            _calculateBorrowAmountFromDebt(debt1.sub(EBTC_GAS_COMPENSATION)),
+            _calculateBorrowAmountFromDebt(2000e18),
             bytes32(0),
             bytes32(0)
         );
@@ -178,21 +180,22 @@ contract InterestRateTest is eBTCBaseFixture {
         priceFeedMock.setPrice(100e18);
 
         // Liquidate cdp1 and redistribute debt to cdp0
-        vm.prank(users[2]);
+        vm.prank(users[0]);
         cdpManager.liquidate(cdpId1);
 
         // Now ~half of cdp0's debt is pending and in the default pool
-        CdpState memory cdpState = _getEntireDebtAndColl(cdpId0);
+        CdpState memory cdpState;
+        cdpState = _getEntireDebtAndColl(cdpId0);
 
         // Check if pending debt/coll is correct
         // Some loss of precision due to rounding
-        assertApproxEqRel(cdpState.pendingEBTCDebtReward, debt1, 0.01e18);
+        assertApproxEqRel(cdpState.pendingEBTCDebtReward, 2000e18, 0.01e18);
         assertApproxEqRel(cdpState.pendingETHReward, coll1, 0.01e18);
 
         assertApproxEqRel(cdpState.coll, coll0.add(coll1), 0.01e18);
         assertApproxEqRel(
             cdpState.debt,
-            debt0WithoutGasComp.add(debt1).add(EBTC_GAS_COMPENSATION),
+            6000e18, // debt0 + debt1
             0.01e18
         );
 
@@ -202,12 +205,10 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(365 days);
 
         // Expected interest over a year is 2%
-        uint256 expectedInterest = (debt0WithoutGasComp.add(debt1)).mul(2).div(100);
-
         cdpState = _getEntireDebtAndColl(cdpId0);
         assertApproxEqRel(
             cdpState.debt,
-            debt0WithoutGasComp.add(debt1).add(expectedInterest).add(EBTC_GAS_COMPENSATION),
+            6120e18, // ~2% over a year
             0.01e18
         );
     }
@@ -217,6 +218,7 @@ contract InterestRateTest is eBTCBaseFixture {
     ////////////////////////////////////////////////////////////////////////////
 
     // TODO: Move somewhere else
+    // Source: https://github.com/transmissions11/solmate/blob/3a752b8c83427ed1ea1df23f092ea7a810205b6c/src/utils/FixedPointMathLib.sol#L53-L69
     function mulDivUp(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 z) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -232,10 +234,10 @@ contract InterestRateTest is eBTCBaseFixture {
     }
 
     function _calculateBorrowAmountFromDebt(uint256 amount) internal view returns (uint256) {
-        // Borrow amount = Debt / (1 + Borrow Rate)
+        // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
         return
             mulDivUp(
-                amount,
+                amount - EBTC_GAS_COMPENSATION,
                 DECIMAL_PRECISION,
                 DECIMAL_PRECISION.add(cdpManager.getBorrowingRateWithDecay())
             );

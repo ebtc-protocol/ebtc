@@ -1404,6 +1404,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function applyPendingRewards(bytes32 _cdpId) external override {
+        // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
         return _applyPendingRewards(activePool, defaultPool, _cdpId);
     }
@@ -1486,15 +1487,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Get the borrower's pending accumulated EBTC reward, earned by their stake
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
+        Cdp memory cdp = Cdps[_cdpId];
 
-        if (Cdps[_cdpId].status != Status.active) {
+        if (cdp.status != Status.active) {
             return (0, 0);
         }
 
-        uint stake = Cdps[_cdpId].stake;
-        // TODO: Check if interest should be applied on gas compensation
-        //       Gas compensation goes to the gas pool. Who pays interest on the gas pool?
-        uint initialDebt = Cdps[_cdpId].debt.sub(EBTC_GAS_COMPENSATION);
+        uint stake = cdp.stake;
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
@@ -1520,7 +1519,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint256 debtIncrease = L_EBTCInterest_new.sub(snapshotEBTCInterest);
         if (debtIncrease > 0 && snapshotEBTCInterest > 0) {
-            pendingEBTCInterest = initialDebt.mul(debtIncrease).div(snapshotEBTCInterest);
+            // Interest is applied on the total debt (i.e. including gas compensation)
+            pendingEBTCInterest = cdp.debt.mul(debtIncrease).div(snapshotEBTCInterest);
         }
 
         return (pendingEBTCDebtReward, pendingEBTCInterest);

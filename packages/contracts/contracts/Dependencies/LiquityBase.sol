@@ -64,6 +64,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return activeColl.add(liquidatedColl);
     }
 
+    // TODO: This doesn't include any pending interest.
     function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
