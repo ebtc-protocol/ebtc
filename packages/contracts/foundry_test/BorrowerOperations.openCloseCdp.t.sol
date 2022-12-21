@@ -10,13 +10,6 @@ import {Utilities} from "./utils/Utilities.sol";
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
 contract CDPTest is eBTCBaseFixture {
-    uint private constant FEE = 5e17;
-    uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
-    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 180e16; // 200% - defencive CR
-    uint internal constant MIN_NET_DEBT = 1800e18; // Subject to changes once CL is changed
-    // TODO: Modify these constants to increase/decrease amount of users
-    uint internal constant AMOUNT_OF_USERS = 100;
-
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     Utilities internal _utils;
