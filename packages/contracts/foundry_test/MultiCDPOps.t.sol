@@ -11,7 +11,7 @@ import {Utilities} from "./utils/Utilities.sol";
  */
 contract CDPTestOperations is eBTCBaseFixture {
     uint private constant FEE = 5e17;
-    uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
 
     Utilities internal _utils;
 

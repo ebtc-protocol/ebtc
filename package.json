@@ -54,8 +54,8 @@
     "test-contracts": "yarn workspace @ebtc/contracts test",
     "test-live": "run-s test-live:*",
     "coverage": "yarn workspace @ebtc/contracts coverage",
-    "prettier": "yarn workspace @ebtc/contracts prettier --write 'contracts/**/*.sol'",
-    "prettier-check": "yarn workspace @ebtc/contracts prettier --check 'contracts/**/*.sol'"
+    "prettier": "yarn workspace @ebtc/contracts prettier --write '(contracts|foundry_test)/**/*.sol'",
+    "prettier-check": "yarn workspace @ebtc/contracts prettier --check '(contracts|foundry_test)/**/*.sol'"
   },
   "devDependencies": {
     "@commitlint/cli": "^12.0.1",
