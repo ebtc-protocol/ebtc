@@ -274,6 +274,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Dependency setter ---
 
     constructor() public {
+        lastInterestRateUpdateTime = block.timestamp;
         L_EBTCInterest = DECIMAL_PRECISION;
     }
 
@@ -1491,14 +1492,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         }
 
         uint stake = Cdps[_cdpId].stake;
-        uint initialDebt = Cdps[_cdpId].debt.sub(EBTC_GAS_COMPENSATION); // TODO: Check
+        // TODO: Check if interest should be applied on gas compensation
+        //       Gas compensation goes to the gas pool. Who pays interest on the gas pool?
+        uint initialDebt = Cdps[_cdpId].debt.sub(EBTC_GAS_COMPENSATION);
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
         uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
             uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
-            console.log(unitAmountAfterInterest);
 
             L_EBTCDebt_new = L_EBTCDebt_new.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
             L_EBTCInterest_new = L_EBTCInterest_new.mul(unitAmountAfterInterest).div(
@@ -1672,6 +1674,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             emit L_EBTCInterestUpdated(L_EBTCInterest);
 
+            // TODO: Maybe subtract debt of gas pool and don't mint interest on that
             uint activeDebt = activePool.getEBTCDebt();
             uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 

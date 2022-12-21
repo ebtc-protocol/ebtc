@@ -17,11 +17,8 @@ contract Utilities is Test {
         return user;
     }
 
-    //create users with 100 ether balance
-    function createUsers(uint256 userNum)
-        public
-        returns (address payable[] memory)
-    {
+    //create users with 10000000 ether balance
+    function createUsers(uint256 userNum) public returns (address payable[] memory) {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
             address payable user = getNextUserAddress();
@@ -37,24 +34,38 @@ contract Utilities is Test {
         vm.roll(targetBlock);
     }
 
+    /* Calculate collateral amount to post based on required debt, collateral price and CR
+    Collateral amount is calculated as: (Debt * CR) / Price
+    */
+    function calculateCollAmount(
+        uint256 debt,
+        uint256 price,
+        uint256 collateralRatio
+    ) public pure returns (uint256) {
+        return debt.mul(collateralRatio).div(price);
+    }
+
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
     BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
     */
-    function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio)
-        public pure returns (uint256) {
+    function calculateBorrowAmount(
+        uint256 coll,
+        uint256 price,
+        uint256 collateralRatio
+    ) public pure returns (uint256) {
         return coll.mul(price).div(collateralRatio);
     }
 
     /* This is the function that generates the random number.
-    * It takes the minimum and maximum values of the range as arguments
-    * and returns the random number. Use `seed` attr to randomize more
-    */
+     * It takes the minimum and maximum values of the range as arguments
+     * and returns the random number. Use `seed` attr to randomize more
+     */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
         uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
-        uint result = randomNumber % (max - min + 1) + min;
+        uint result = (randomNumber % (max - min + 1)) + min;
         return result;
     }
 }
