@@ -1678,7 +1678,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             uint defaultDebt = defaultPool.getEBTCDebt();
             uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
 
-            // TODO: Do I need to do this?
+            // TODO: Do I need to do this? Should I do this while applying pending rewards?
             activePool.increaseEBTCDebt(activeDebtInterest);
             defaultPool.increaseEBTCDebt(defaultDebtInterest);
 

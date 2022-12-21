@@ -3,6 +3,7 @@
 pragma solidity 0.6.11;
 
 // TODO: Check if 0.8.x to 0.6.x breaks anything
+//       Maybe move to LiquityMath.sol
 // Source: https://github.com/transmissions11/solmate/blob/3a752b8c83427ed1ea1df23f092ea7a810205b6c/src/utils/SignedWadMath.sol
 library WadMath {
     /// @dev Will not work with negative bases, only use when x is positive.

@@ -1,11 +1,14 @@
 env:
   FORCE_COLOR: true
 
+
 on:
   push:
     branches:
       - main
   pull_request:
+    paths:
+      - "packages/contracts/**"
 
 name: foundry-test
 
@@ -42,7 +45,3 @@ jobs:
       - name: Foundry Test
         working-directory: ./packages/contracts/
         run: forge test -vvv
-
-      - name: Run snapshot
-        working-directory: ./packages/contracts/
-        run: forge snapshot
