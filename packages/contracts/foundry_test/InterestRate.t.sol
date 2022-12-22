@@ -43,18 +43,6 @@ contract InterestRateTest is eBTCBaseFixture {
         EBTC_GAS_COMPENSATION = cdpManager.EBTC_GAS_COMPENSATION();
     }
 
-    function testCalculateBorrowAmountFromDebt() public {
-        bytes32 cdpId = borrowerOperations.openCdp{value: users[0].balance}(
-            5e17,
-            _calculateBorrowAmountFromDebt(2000e18),
-            bytes32(0),
-            bytes32(0)
-        );
-        (uint256 debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId);
-        // Borrow amount + gas compensation
-        assertEq(debt, 2000e18);
-    }
-
     function testInterestIsApplied() public {
         uint256 coll = _calculateCollAmount(2000e18, 200e16);
 
@@ -67,6 +55,9 @@ contract InterestRateTest is eBTCBaseFixture {
         assertTrue(cdpId0 != "");
         assertEq(cdpManager.getCdpIdsCount(), 1);
 
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        assertGt(lqtyStakingBalanceOld, 0);
+
         // Make sure valid cdpId returned
         bytes32 cdpId1 = sortedCdps.getLast();
         assertEq(cdpId0, cdpId1);
@@ -75,23 +66,50 @@ contract InterestRateTest is eBTCBaseFixture {
         cdpState = _getEntireDebtAndColl(cdpId0);
         assertEq(cdpState.debt, 2000e18);
 
+        assertEq(cdpManager.getEntireSystemDebt(), 2000e18);
+        assertEq(activePool.getEBTCDebt(), 2000e18);
+
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
+
+        // Fast-forward 1 year
         skip(365 days);
+
+        // Has pending interest
+        assertTrue(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
         // Expected interest over a year is 2%
         assertApproxEqRel(cdpState.pendingEBTCInterest, 40e18, 0.001e18); // Error is <0.1% of the expected value
         assertApproxEqRel(cdpState.debt, 2040e18, 0.0001e18); // Error is <0.01% of the expected value
-        uint256 oldDebt = cdpState.debt;
+        uint256 debtOld = cdpState.debt;
 
         assertLt(cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()), 200e16);
 
+        assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
+
+        // Active pool only contains realized interest (no pending interest)
+        assertEq(activePool.getEBTCDebt(), 2000e18);
+
+        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+
         // Apply pending interest
-        // TODO: Check active pool, treasury?
         borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
         assertEq(cdpState.pendingEBTCInterest, 0);
-        assertEq(cdpState.debt, oldDebt);
+        assertEq(cdpState.debt, debtOld);
+
+        assertEq(cdpManager.getEntireSystemDebt(), debtOld);
+        assertEq(activePool.getEBTCDebt(), debtOld);
+
+        // Check interest is minted to LQTY staking contract
+        assertApproxEqRel(
+            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            40e18,
+            0.001e18
+        ); // Error is <0.1% of the expected value
     }
 
     function testInterestIsSameForInteractingAndNonInteractingUsers() public {
@@ -176,12 +194,17 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
 
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
+
         // Price falls from 200e18 to 100e18
         priceFeedMock.setPrice(100e18);
 
         // Liquidate cdp1 and redistribute debt to cdp0
         vm.prank(users[0]);
         cdpManager.liquidate(cdpId1);
+
+        // Has pending redistribution
+        assertTrue(cdpManager.hasPendingRewards(cdpId0));
 
         // Now ~half of cdp0's debt is pending and in the default pool
         CdpState memory cdpState;
@@ -202,15 +225,72 @@ contract InterestRateTest is eBTCBaseFixture {
         // No interest since no time has passed
         assertEq(cdpState.pendingEBTCInterest, 0);
 
+        assertEq(cdpManager.getEntireSystemDebt(), 6000e18);
+        assertEq(defaultPool.getEBTCDebt(), 2000e18);
+
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+
         skip(365 days);
 
         // Expected interest over a year is 2%
         cdpState = _getEntireDebtAndColl(cdpId0);
         assertApproxEqRel(
+            cdpState.pendingEBTCDebtReward,
+            2040e18, // ~2% over a year 2000e18
+            0.01e18
+        );
+        assertApproxEqRel(
+            cdpState.pendingEBTCInterest,
+            80e18, // ~2% over a year on 4000e18
+            0.01e18
+        );
+        assertApproxEqRel(
             cdpState.debt,
             6120e18, // ~2% over a year
             0.01e18
         );
+
+        // TODO: Check if precision loss can lead to issues. Can it be avoided?
+        assertApproxEqRel(cdpState.debt, cdpManager.getEntireSystemDebt(), 1);
+
+        // Default pool only contains realized interest (no pending interest)
+        assertEq(defaultPool.getEBTCDebt(), 2000e18);
+
+        uint256 debtOld = cdpState.debt;
+
+        // Apply pending interest
+        borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
+
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        assertEq(cdpState.pendingEBTCDebtReward, 0);
+        assertEq(cdpState.pendingEBTCInterest, 0);
+        assertEq(cdpState.debt, debtOld);
+
+        assertApproxEqRel(cdpManager.getEntireSystemDebt(), debtOld, 1);
+        // TODO: Check if precision loss can lead to issues. Can it be avoided?
+        assertApproxEqAbs(defaultPool.getEBTCDebt(), 0, 100);
+        assertEq(activePool.getEBTCDebt(), debtOld);
+
+        // Check interest is minted to LQTY staking contract
+        assertApproxEqRel(
+            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            120e18,
+            0.001e18
+        ); // Error is <0.1% of the expected value
+    }
+
+    function testCalculateBorrowAmountFromDebt() public {
+        bytes32 cdpId = borrowerOperations.openCdp{value: users[0].balance}(
+            5e17,
+            _calculateBorrowAmountFromDebt(2000e18),
+            bytes32(0),
+            bytes32(0)
+        );
+        (uint256 debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpId);
+        // Borrow amount + gas compensation
+        assertEq(debt, 2000e18);
     }
 
     ////////////////////////////////////////////////////////////////////////////

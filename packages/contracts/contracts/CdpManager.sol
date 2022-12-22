@@ -105,9 +105,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public L_ETH;
     uint public L_EBTCDebt;
 
-    // TODO: Update for compound interest
     /*
-     * L_EBTCInterest tracks the interest accumulated on a unit debt position. During its lifetime, each cdp earns:
+     * L_EBTCInterest tracks the interest accumulated on a unit debt position over time. During its lifetime, each cdp earns:
      *
      * A EBTCDebt increase of ( debt * [L_EBTCInterest - L_EBTCInterest(0)] / L_EBTCInterest(0) )
      *
@@ -1481,7 +1480,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return pendingETHReward;
     }
 
-    // Get the borrower's pending accumulated EBTC reward, earned by their stake
+    // Get the borrower's pending accumulated EBTC debt reward and debt interest, earned by their stake
+    // The debt reward includes any accumulated interest
     function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
         Cdp memory cdp = Cdps[_cdpId];
