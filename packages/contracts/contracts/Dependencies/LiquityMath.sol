@@ -3,7 +3,6 @@
 pragma solidity 0.6.11;
 
 import "./SafeMath.sol";
-import "./console.sol";
 
 library LiquityMath {
     using SafeMath for uint;
