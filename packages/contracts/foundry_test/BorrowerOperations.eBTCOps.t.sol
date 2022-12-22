@@ -98,6 +98,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.repayEBTC(cdpId, repayAmnt, HINT, HINT);
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
+        // Make sure eBTC balance decreased by repayAmnt precisely
+        assertEq(balanceSnapshot.sub(eBTCToken.balanceOf(user)), repayAmnt);
         // Make sure ICR for CDP improved after eBTC was repaid
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
@@ -236,6 +238,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             COLLATERAL_RATIO
         );
         borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
+        uint balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
         uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
@@ -266,6 +269,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure ICR decreased
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
+        // Make sure eBTC balance increased by withdrawAmnt
+        assertEq(eBTCToken.balanceOf(user).sub(balanceSnapshot), withdrawAmnt);
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         vm.stopPrank();
