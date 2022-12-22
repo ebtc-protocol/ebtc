@@ -120,7 +120,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
 
-    // Do nothing (no fee), check that it reverts
+    /// @dev Do nothing (no fee), check that it reverts
     function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
       // Ensure fee is not rounded down
@@ -138,10 +138,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
 
 
-    /**
-      Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
-        If successful, flashLoan MUST return true.
-     */
+
+    /// @dev This test converts the MUST into assets from the spec
+    ///   Using a custom receiver to ensure state and balances follow the spec
+    /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
     function test_eBTCSpec(uint128 amount, address randomToken) public {
         vm.assume(randomToken != address(eBTCToken));
 
