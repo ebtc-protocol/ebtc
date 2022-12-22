@@ -99,10 +99,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         BorrowerOperation operation
     );
     event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
-    event Debug(uint value);
-    event Debt(uint debt);
-    event newICR(uint value);
-    event oldICR(uint value);
 
     // --- Dependency setters ---
 
@@ -400,15 +396,11 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             );
             vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
         }
-        emit Debug(vars.netDebtChange);
         vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
         vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         vars.oldICR = LiquityMath._computeCR(vars.coll, vars.debt, vars.price);
-        emit oldICR(vars.oldICR);
-        emit Debug(vars.netDebtChange);
-        emit Debug(vars.price);
         vars.newICR = _getNewICRFromCdpChange(
             vars.coll,
             vars.debt,
@@ -418,7 +410,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             _isDebtIncrease,
             vars.price
         );
-        emit newICR(vars.newICR);
         assert(_collWithdrawal <= vars.coll);
 
         // Check the adjustment satisfies all conditions for the current system mode

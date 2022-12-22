@@ -141,11 +141,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before increasing collateral
-        uint initialTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
+        uint initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         // Now, repay eBTC and make sure ICR improved
         for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
@@ -165,11 +161,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after eBTC was repaid
-        uint newTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
+        uint newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         assertGt(newTcr, initialTcr);
     }
 
@@ -311,11 +303,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before withdrawing eBTC
-        uint initialTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
+        uint initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         // Now, withdraw eBTC for each CDP and make sure TCR decreased
         for (uint cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             // Randomize collateral increase amount for each user
@@ -336,11 +324,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
-        uint newTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
-            borrowerOperations.getEntireSystemDebt(),
-            priceFeedMock.fetchPrice()
-        );
+        uint newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         assertGt(initialTcr, newTcr);
     }
 }
