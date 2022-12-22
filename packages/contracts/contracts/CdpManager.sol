@@ -1187,7 +1187,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      */
     function _redeemCloseCdp(
         ContractsCache memory _contractsCache,
-        bytes32 _cdpId, // TODO
+        bytes32 _cdpId, // TODO: Remove?
         uint _EBTC,
         uint _ETH,
         address _borrower
@@ -1434,7 +1434,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _movePendingCdpRewardsToActivePool(
                 _activePool,
                 _defaultPool,
-                pendingEBTCDebtReward, // TODO: Check if interest is accounted for
+                pendingEBTCDebtReward,
                 pendingETHReward
             );
 
@@ -1589,7 +1589,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return _updateStakeAndTotalStakes(_cdpId);
     }
 
-    // TODO: Here
     // Update borrower's stake based on their latest collateral value
     function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
         uint newStake = _computeNewStake(Cdps[_cdpId].coll);
@@ -1667,7 +1666,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // New pending reward functions for interest rates
-    // TODO: Verify interest is only ticked before any new debt is added for any operation.
+    // TODO: Verify:
+    //       1. Interest is ticked *before* any new debt is added in any operation.
+    //       2. Interest is ticked before all operations.
     function _tickInterest() internal {
         uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
         if (timeElapsed > 0) {
