@@ -21,7 +21,6 @@ import {
 contract FlashLoanUnitEBTC is eBTCBaseFixture {
     uint private constant FEE = 5e17;
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
-    // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
 
     mapping(bytes32 => bool) private _cdpIdsExist;
@@ -61,7 +60,6 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
-    ///   TODO: Add a max / max - 1 test to show what happens
     function test_basicLoanEBTC(uint128 loanAmount) public {
       require(address(ebtcReceiver) != address(0));
 
@@ -119,9 +117,6 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
-
-      // Doesn't revert as we have to pay nothing back
-      // TODO: Check spec
     }
 
 
@@ -143,7 +138,6 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
 
 
-    // TODO: Read flashLoan Spec
     /**
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
