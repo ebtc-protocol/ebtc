@@ -902,6 +902,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // NOTE: We burn instead of pulling, they are equivalent
         // Burn amount, they must repay by holding it and we can burn
         cachedEbtc.burn(address(receiver), amount);
+
+        return true;
     }
 
     function flashFee(

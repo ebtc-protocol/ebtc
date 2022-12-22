@@ -4,9 +4,13 @@ pragma solidity 0.6.11;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
-import {UselessFlashReceiver, eBTCFlashReceiver, WETHFlashReceiver, FlashLoanSpecReceiver} from "./utils/Flashloans.sol";
+import {
+  UselessFlashReceiver, 
+  WETHFlashReceiver, 
+  FlashLoanSpecReceiver, 
+  FlashLoanWrongReturn
+} from "./utils/Flashloans.sol";
 
-// TODO: Basic
 
 /*
  * Unit Tests for Flashloans
@@ -26,9 +30,13 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
-    eBTCFlashReceiver internal ebtcReceiver;
     WETHFlashReceiver internal wethReceiver;
     FlashLoanSpecReceiver internal specReceiver;
+    FlashLoanWrongReturn internal wrongReturnReceiver;
+
+    // TODO: Finish
+    // Aso: Fix rest of fixtures to be using WETH only
+    address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function setUp() public override {
 
@@ -37,31 +45,20 @@ contract FlashLoanUnit is eBTCBaseFixture {
       eBTCBaseFixture.connectLQTYContracts();
       eBTCBaseFixture.connectCoreContracts();
       eBTCBaseFixture.connectLQTYContractsToCore();
-      _utils = new Utilities();
-
-      // Create a CDP
-      address payable[] memory users;
-      users = _utils.createUsers(1);
-      address user = users[0];
-      uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
-      // Make sure there is no CDPs in the system yet
-      assert(sortedCdps.getLast() == "");
-      vm.prank(user);
-      borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
 
       uselessReceiver = new UselessFlashReceiver();
-      ebtcReceiver = new eBTCFlashReceiver();
       wethReceiver = new WETHFlashReceiver(); 
       specReceiver = new FlashLoanSpecReceiver(); 
+      wrongReturnReceiver = new FlashLoanWrongReturn(); 
     }
 
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     ///   TODO: Add a max / max - 1 test to show what happens
-    function test_basicLoanEBTC(uint128 loanAmount) public {
-      require(address(ebtcReceiver) != address(0));
+    function test_basicLoanWETH(uint128 loanAmount) public {
+      require(address(wethReceiver) != address(0));
 
-      uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+      uint256 fee = activePool.flashFee(address(WETH), loanAmount);
 
       // Funny enough 0 reverts because of deal not
       vm.assume(loanAmount > 0);
@@ -73,13 +70,13 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Cannot deal if not enough
       vm.assume(fee > 1800e18);
 
-      deal(address(eBTCToken), address(ebtcReceiver), fee);
+      deal(address(WETH), address(wethReceiver), fee);
 
 
       // Perform flashloan
-      borrowerOperations.flashLoan(
-        ebtcReceiver,
-        address(eBTCToken),
+      activePool.flashLoan(
+        wethReceiver,
+        address(WETH),
         loanAmount,
         abi.encodePacked(uint256(0))
       );
@@ -88,14 +85,14 @@ contract FlashLoanUnit is eBTCBaseFixture {
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
-    function test_zeroCaseEBTC() public {
+    function test_zeroCaseWETH() public {
       // Zero test case
       uint256 loanAmount = 0;
 
       // Perform flashloan
-      borrowerOperations.flashLoan(
-        ebtcReceiver,
-        address(eBTCToken),
+      activePool.flashLoan(
+        wethReceiver,
+        address(WETH),
         loanAmount,
         abi.encodePacked(uint256(0))
       );
@@ -104,34 +101,33 @@ contract FlashLoanUnit is eBTCBaseFixture {
     }
 
     /// @dev Amount too high, we overflow when computing fees
-    function test_overflowCaseEBTC() public {
+    function test_overflowCaseWETH() public {
       // Zero Overflow Case
       uint256 loanAmount = type(uint256).max;
 
       vm.expectRevert();
-      borrowerOperations.flashLoan(
-        ebtcReceiver,
-        address(eBTCToken),
+      activePool.flashLoan(
+        wethReceiver,
+        address(WETH),
         loanAmount,
         abi.encodePacked(uint256(0))
       );
 
       // Doesn't revert as we have to pay nothing back
-      // TODO: Check spec
     }
 
 
     // Do nothing (no fee), check that it reverts
     function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
-      uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+      uint256 fee = activePool.flashFee(address(WETH), loanAmount);
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
 
       vm.expectRevert();
       // Perform flashloan
-      borrowerOperations.flashLoan(
+      activePool.flashLoan(
         uselessReceiver,
-        address(eBTCToken),
+        address(WETH),
         loanAmount,
         abi.encodePacked(uint256(0))
       );
@@ -144,28 +140,27 @@ contract FlashLoanUnit is eBTCBaseFixture {
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
-    function test_eBTCSpec(uint128 amount, address randomToken) public {
-
-        vm.assume(randomToken != address(eBTCToken));
+    function test_WETHSpec(uint128 amount, address randomToken) public {
+        vm.assume(randomToken != address(WETH));
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
-        assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), type(uint112).max);
+        assertEq(activePool.maxFlashLoan(address(WETH)), type(uint112).max);
 
         // If a token is not currently supported maxFlashLoan MUST return 0, instead of reverting.
-        assertEq(borrowerOperations.maxFlashLoan(randomToken), 0);
+        assertEq(activePool.maxFlashLoan(randomToken), 0);
 
-        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
+        uint256 fee = activePool.flashFee(address(WETH), amount);
 
         // The flashFee function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
 
         // If the token is not supported flashFee MUST revert.
         vm.expectRevert();
-        borrowerOperations.flashFee(randomToken, amount);
+        activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert();
-        borrowerOperations.flashLoan(
+        activePool.flashLoan(
           specReceiver,
           randomToken,
           amount,
@@ -174,16 +169,16 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
 
         if (fee > 0){
-          deal(address(eBTCToken), address(specReceiver), fee);
+          deal(address(WETH), address(specReceiver), fee);
         }
 
         // Set amount already there to ensure delta is amount received
-        specReceiver.setBalanceAlready(address(eBTCToken));
+        specReceiver.setBalanceAlready(address(WETH));
 
         // Perform flashloan
-        borrowerOperations.flashLoan(
+        bool returnValue = activePool.flashLoan(
           specReceiver,
-          address(eBTCToken),
+          address(WETH),
           amount,
           abi.encodePacked(uint256(0))
         );
@@ -199,24 +194,32 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
 
         // Data was not manipulated
-        assertEq(specReceiver.receivedToken(), address(eBTCToken));
+        assertEq(specReceiver.receivedToken(), address(WETH));
         assertEq(specReceiver.receivedAmount(), amount);
         assertEq(specReceiver.receivedData(), abi.encodePacked(uint256(0)));
 
         // Fee was not manipulated
         assertEq(specReceiver.receivedFee(), fee);
 
-
-
-
-
-        // TODO: Missing Lender verifications
         // The lender MUST verify that the onFlashLoan callback returns the keccak256 hash of “ERC3156FlashBorrower.onFlashLoan”.
+        // See `test_eBTCSpec_returnValue`
+
 
         // After the callback, the flashLoan function MUST take the amount + fee token from the receiver, or revert if this is not successful.
+        // Already tested by not granting allowance or not paying fee (See `test_eBTCRevertsIfUnpaid`)
 
         // If successful, flashLoan MUST return true.
+        assertTrue(returnValue);
     }
 
-    // TODO: Add Weth (perhaps separate file or w/e)
-}
+    function test_WETHSpec_returnValue() public {
+      vm.expectRevert("IERC3156: Callback failed");
+      activePool.flashLoan(
+          wrongReturnReceiver,
+          WETH,
+          123,
+          abi.encodePacked(uint256(0))
+        );
+      }
+       // TODO: Add Weth (perhaps separate file or w/e)
+  }
