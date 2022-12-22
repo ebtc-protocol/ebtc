@@ -50,8 +50,8 @@ interface ICdpManager is ILiquityBase {
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
+    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
+    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
     event CdpIndexUpdated(bytes32 _borrower, uint _newIndex);
 
     // --- Functions ---
@@ -77,6 +77,8 @@ interface ICdpManager is ILiquityBase {
     function lqtyToken() external view returns (ILQTYToken);
 
     function lqtyStaking() external view returns (ILQTYStaking);
+
+    function lastInterestRateUpdateTime() external view returns (uint);
 
     function getCdpIdsCount() external view returns (uint);
 
