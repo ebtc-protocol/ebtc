@@ -117,3 +117,20 @@ contract WETHFlashReceiver is IERC3156FlashBorrower {
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
   }
+
+
+/// @dev Return the wrong value to test revert case
+contract FlashLoanWrongReturn is IERC3156FlashBorrower {
+
+  function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+  ) external override returns (bytes32) {
+
+      IERC20(token).approve(msg.sender, fee);
+      return keccak256("THE WRONG VALUE");
+  }
+}
