@@ -2,7 +2,6 @@ const Decimal = require("decimal.js");
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
-const StabilityPool = artifacts.require("./StabilityPool.sol")
 
 const th = testHelpers.TestHelper
 const timeValues = testHelpers.TimeValues
@@ -17,7 +16,7 @@ const logLQTYBalanceAndError = (LQTYBalance_A, expectedLQTYBalance_A) => {
   )
 }
 
-const repeatedlyIssueLQTY = async (stabilityPool, timeBetweenIssuances, duration) => {
+const repeatedlyIssueLQTY = async (timeBetweenIssuances, duration) => {
   const startTimestamp = th.toBN(await th.getLatestBlockTimestamp(web3))
   let timePassed = 0
 
@@ -25,7 +24,6 @@ const repeatedlyIssueLQTY = async (stabilityPool, timeBetweenIssuances, duration
   while (timePassed < duration) {
     // console.log(`timePassed: ${timePassed}`)
     await th.fastForwardTime(timeBetweenIssuances, web3.currentProvider)
-    await stabilityPool._unprotectedTriggerLQTYIssuance()
 
     const currentTimestamp = th.toBN(await th.getLatestBlockTimestamp(web3))
     timePassed = currentTimestamp.sub(startTimestamp)
@@ -38,7 +36,6 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
   let borrowerOperations
   let communityIssuanceTester
   let lqtyToken
-  let stabilityPool
 
   const [owner, alice, frontEnd_1] = accounts;
 
@@ -51,10 +48,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
-    contracts.stabilityPool = await StabilityPool.new()
     contracts = await deploymentHelper.deployEBTCToken(contracts)
 
-    stabilityPool = contracts.stabilityPool
     borrowerOperations = contracts.borrowerOperations
 
     lqtyToken = LQTYContracts.lqtyToken

@@ -10,7 +10,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let functionCaller
   let borrowerOperations
@@ -28,7 +27,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     sortedCdps = coreContracts.sortedCdps
     cdpManager = coreContracts.cdpManager
     activePool = coreContracts.activePool
-    stabilityPool = coreContracts.stabilityPool
     defaultPool = coreContracts.defaultPool
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
@@ -93,15 +91,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     assert.equal(defaultPoolAddress, recordedDefaultPoolAddresss)
   })
 
-  // StabilityPool in CdpM
-  it('Sets the correct StabilityPool address in CdpManager', async () => {
-    const stabilityPoolAddress = stabilityPool.address
-
-    const recordedStabilityPoolAddresss = await cdpManager.stabilityPool()
-
-    assert.equal(stabilityPoolAddress, recordedStabilityPoolAddresss)
-  })
-
   // LQTY Staking in CdpM
   it('Sets the correct LQTYStaking address in CdpManager', async () => {
     const lqtyStakingAddress = lqtyStaking.address
@@ -111,14 +100,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   })
 
   // Active Pool
-
-  it('Sets the correct StabilityPool address in ActivePool', async () => {
-    const stabilityPoolAddress = stabilityPool.address
-
-    const recordedStabilityPoolAddress = await activePool.stabilityPoolAddress()
-
-    assert.equal(stabilityPoolAddress, recordedStabilityPoolAddress)
-  })
 
   it('Sets the correct DefaultPool address in ActivePool', async () => {
     const defaultPoolAddress = defaultPool.address
@@ -140,38 +121,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     const cdpManagerAddress = cdpManager.address
 
     const recordedCdpManagerAddress = await activePool.cdpManagerAddress()
-    assert.equal(cdpManagerAddress, recordedCdpManagerAddress)
-  })
-
-  // Stability Pool
-
-  it('Sets the correct ActivePool address in StabilityPool', async () => {
-    const activePoolAddress = activePool.address
-
-    const recordedActivePoolAddress = await stabilityPool.activePool()
-    assert.equal(activePoolAddress, recordedActivePoolAddress)
-  })
-
-  it('Sets the correct BorrowerOperations address in StabilityPool', async () => {
-    const borrowerOperationsAddress = borrowerOperations.address
-
-    const recordedBorrowerOperationsAddress = await stabilityPool.borrowerOperations()
-
-    assert.equal(borrowerOperationsAddress, recordedBorrowerOperationsAddress)
-  })
-
-  it('Sets the correct EBTCToken address in StabilityPool', async () => {
-    const ebtcTokenAddress = ebtcToken.address
-
-    const recordedClvTokenAddress = await stabilityPool.ebtcToken()
-
-    assert.equal(ebtcTokenAddress, recordedClvTokenAddress)
-  })
-
-  it('Sets the correct CdpManager address in StabilityPool', async () => {
-    const cdpManagerAddress = cdpManager.address
-
-    const recordedCdpManagerAddress = await stabilityPool.cdpManager()
     assert.equal(cdpManagerAddress, recordedCdpManagerAddress)
   })
 
@@ -342,12 +291,5 @@ contract('Deployment script - Sets correct contract addresses dependencies after
 
     const recordedLQTYTokenAddress = await communityIssuance.lqtyToken()
     assert.equal(lqtyTokenAddress, recordedLQTYTokenAddress)
-  })
-
-  it('Sets the correct StabilityPool address in CommunityIssuance', async () => {
-    const stabilityPoolAddress = stabilityPool.address
-
-    const recordedStabilityPoolAddress = await communityIssuance.stabilityPoolAddress()
-    assert.equal(stabilityPoolAddress, recordedStabilityPoolAddress)
   })
 })

@@ -16,7 +16,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
   let contracts
   let cdpManager
-  let stabilityPool
   let priceFeed
   let sortedCdps
 
@@ -27,13 +26,11 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     cdpManager = contracts.cdpManager
-    stabilityPool = contracts.stabilityPool
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
 
@@ -54,7 +51,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
 
       await openCdp({ ICR: toBN(dec(340, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
-      await stabilityPool.provideToSP(totalLiquidatedDebt, ZERO_ADDRESS, { from: whale })
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
@@ -112,45 +108,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
     })
 
-    it('Stability Pool profit matches', async () => {
-      const {
-        A_coll, A_totalDebt,
-        C_coll, C_totalDebt,
-        totalLiquidatedDebt,
-        price,
-      } = await setup()
-      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-
-      const spEthBefore = await stabilityPool.getETH()
-      const spEbtcBefore = await stabilityPool.getTotalEBTCDeposits()
-
-      const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId, _carolCdpId])
-
-      // Confirm all cdps removed
-      assert.isFalse(await sortedCdps.contains(_aliceCdpId))
-      assert.isFalse(await sortedCdps.contains(_carolCdpId))
-
-      // Confirm cdps have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
-
-      const spEthAfter = await stabilityPool.getETH()
-      const spEbtcAfter = await stabilityPool.getTotalEBTCDeposits()
-
-      // liquidate collaterals with the gas compensation fee subtracted
-      const expectedCollateralLiquidatedA = th.applyLiquidationFee(A_totalDebt.mul(mv._MCR).div(price))
-      const expectedCollateralLiquidatedC = th.applyLiquidationFee(C_coll)
-      // Stability Pool gains
-      const expectedGainInEBTC = expectedCollateralLiquidatedA.mul(price).div(mv._1e18BN).sub(A_totalDebt)
-      const realGainInEBTC = spEthAfter.sub(spEthBefore).mul(price).div(mv._1e18BN).sub(spEbtcBefore.sub(spEbtcAfter))
-
-      assert.equal(spEthAfter.sub(spEthBefore).toString(), expectedCollateralLiquidatedA.toString(), 'Stability Pool ETH doesn’t match')
-      assert.equal(spEbtcBefore.sub(spEbtcAfter).toString(), A_totalDebt.toString(), 'Stability Pool EBTC doesn’t match')
-      assert.equal(realGainInEBTC.toString(), expectedGainInEBTC.toString(), 'Stability Pool gains don’t match')
-    })
-
     it('A cdp over TCR is not liquidated', async () => {
       const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(280, 16)), extraParams: { from: alice } })
       const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(276, 16)), extraParams: { from: bob } })
@@ -162,7 +119,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
 
       await openCdp({ ICR: toBN(dec(310, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
-      await stabilityPool.provideToSP(totalLiquidatedDebt, ZERO_ADDRESS, { from: whale })
 
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
@@ -209,8 +165,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt)
 
       await openCdp({ ICR: toBN(dec(300, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
-      await stabilityPool.provideToSP(totalLiquidatedDebt, ZERO_ADDRESS, { from: whale })
-
+	  
       // Price drops
       await priceFeed.setPrice(dec(100, 18))
       const price = await priceFeed.getPrice()

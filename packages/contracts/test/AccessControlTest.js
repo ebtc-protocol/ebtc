@@ -27,7 +27,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let cdpManager
   let nameRegistry
   let activePool
-  let stabilityPool
   let defaultPool
   let functionCaller
   let borrowerOperations
@@ -49,7 +48,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     cdpManager = coreContracts.cdpManager
     nameRegistry = coreContracts.nameRegistry
     activePool = coreContracts.activePool
-    stabilityPool = coreContracts.stabilityPool
     defaultPool = coreContracts.defaultPool
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
@@ -72,18 +70,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     // Check CI has been properly funded
     const bal = await lqtyToken.balanceOf(communityIssuance.address)
     assert.equal(bal, expectedCISupplyCap)
-  })
-
-  describe('BorrowerOperations', async accounts => { 
-    it("moveETHGainToCdp(): reverts when called by an account that is not StabilityPool", async () => {
-      // Attempt call from alice
-      try {
-        const tx1= await borrowerOperations.moveETHGainToCdp(bob, bob, bob, { from: bob })
-      } catch (err) {
-         assert.include(err.message, "revert")
-        // assert.include(err.message, "BorrowerOps: Caller is not Stability Pool")
-      }
-    })
   })
 
   describe('CdpManager', async accounts => {
@@ -222,14 +208,14 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   describe('ActivePool', async accounts => {
     // sendETH
-    it("sendETH(): reverts when called by an account that is not BO nor CdpM nor SP", async () => {
+    it("sendETH(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
         const txAlice = await activePool.sendETH(alice, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is neither BorrowerOperations nor CdpManager nor StabilityPool")
+        assert.include(err.message, "Caller is neither BorrowerOperations nor CdpManager")
       }
     })
 
@@ -246,14 +232,14 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
 
     // decreaseEBTC
-    it("decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM nor SP", async () => {
+    it("decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
         const txAlice = await activePool.decreaseEBTCDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is neither BorrowerOperations nor CdpManager nor StabilityPool")
+        assert.include(err.message, "Caller is neither BorrowerOperations nor CdpManager")
       }
     })
 
@@ -320,36 +306,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('StabilityPool', async accounts => {
-    // --- onlyCdpManager --- 
-
-    // offset
-    it("offset(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        txAlice = await stabilityPool.offset(100, 10, { from: alice })
-        assert.fail(txAlice)
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not CdpManager")
-      }
-    })
-
-    // --- onlyActivePool ---
-
-    // fallback (payment)	
-    it("fallback(): reverts when called by an account that is not the Active Pool", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await web3.eth.sendTransaction({ from: alice, to: stabilityPool.address, value: 100 })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "StabilityPool: Caller is not ActivePool")
-      }
-    })
-  })
-
   describe('EBTCToken', async accounts => {
 
     //    mint
@@ -368,18 +324,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       } catch (err) {
         assert.include(err.message, "revert")
         // assert.include(err.message, "Caller is neither BorrowerOperations nor CdpManager nor StabilityPool")
-      }
-    })
-
-    // sendToPool
-    it("sendToPool(): reverts when called by an account that is not StabilityPool", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await ebtcToken.sendToPool(bob, activePool.address, 100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the StabilityPool")
       }
     })
 
@@ -504,24 +448,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       } catch (err) {
         assert.include(err.message, "revert")
       }
-    })
-  })
-
-  describe('CommunityIssuance', async accounts => {
-    it("sendLQTY(): reverts when caller is not the StabilityPool", async () => {
-      const tx1 = communityIssuance.sendLQTY(alice, dec(100, 18), {from: alice})
-      const tx2 = communityIssuance.sendLQTY(bob, dec(100, 18), {from: alice})
-      const tx3 = communityIssuance.sendLQTY(stabilityPool.address, dec(100, 18), {from: alice})
-     
-      assertRevert(tx1)
-      assertRevert(tx2)
-      assertRevert(tx3)
-    })
-
-    it("issueLQTY(): reverts when caller is not the StabilityPool", async () => {
-      const tx1 = communityIssuance.issueLQTY({from: alice})
-
-      assertRevert(tx1)
     })
   })
 

@@ -62,7 +62,7 @@ contract('EBTCToken', async accounts => {
   let chainId
   let ebtcTokenOriginal
   let ebtcTokenTester
-  let stabilityPool
+  let gasPool
   let cdpManager
   let borrowerOperations
 
@@ -92,8 +92,8 @@ contract('EBTCToken', async accounts => {
       //chainId = await web3.eth.getChainId()
       chainId = await ebtcTokenOriginal.getChainId()
 
-      stabilityPool = contracts.stabilityPool
-      cdpManager = contracts.stabilityPool
+      gasPool = contracts.gasPool
+      cdpManager = contracts.cdpManager
       borrowerOperations = contracts.borrowerOperations
 
       tokenVersion = await ebtcTokenOriginal.version()
@@ -221,7 +221,6 @@ contract('EBTCToken', async accounts => {
       await assertRevert(ebtcTokenTester.transfer(ebtcTokenTester.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(ZERO_ADDRESS, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(cdpManager.address, 1, { from: alice }))
-      await assertRevert(ebtcTokenTester.transfer(stabilityPool.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(borrowerOperations.address, 1, { from: alice }))
     })
 
@@ -258,34 +257,34 @@ contract('EBTCToken', async accounts => {
 
       // TODO: Rewrite this test - it should check the actual ebtcTokenTester's balance.
       it('sendToPool(): changes balances of Stability pool and user by the correct amounts', async () => {
-        const stabilityPool_BalanceBefore = await ebtcTokenTester.balanceOf(stabilityPool.address)
+        const gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
         const bob_BalanceBefore = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(stabilityPool_BalanceBefore, 0)
+        assert.equal(gasPool_BalanceBefore, 0)
         assert.equal(bob_BalanceBefore, 100)
 
-        await ebtcTokenTester.unprotectedSendToPool(bob, stabilityPool.address, 75)
+        await ebtcTokenTester.unprotectedSendToPool(bob, gasPool.address, 75)
 
-        const stabilityPool_BalanceAfter = await ebtcTokenTester.balanceOf(stabilityPool.address)
+        const gasPool_BalanceAfter = await ebtcTokenTester.balanceOf(gasPool.address)
         const bob_BalanceAfter = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(stabilityPool_BalanceAfter, 75)
+        assert.equal(gasPool_BalanceAfter, 75)
         assert.equal(bob_BalanceAfter, 25)
       })
 
       it('returnFromPool(): changes balances of Stability pool and user by the correct amounts', async () => {
         /// --- SETUP --- give pool 100 EBTC
-        await ebtcTokenTester.unprotectedMint(stabilityPool.address, 100)
+        await ebtcTokenTester.unprotectedMint(gasPool.address, 100)
 
         /// --- TEST ---
-        const stabilityPool_BalanceBefore = await ebtcTokenTester.balanceOf(stabilityPool.address)
+        const gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
         const  bob_BalanceBefore = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(stabilityPool_BalanceBefore, 100)
+        assert.equal(gasPool_BalanceBefore, 100)
         assert.equal(bob_BalanceBefore, 100)
 
-        await ebtcTokenTester.unprotectedReturnFromPool(stabilityPool.address, bob, 75)
+        await ebtcTokenTester.unprotectedReturnFromPool(gasPool.address, bob, 75)
 
-        const stabilityPool_BalanceAfter = await ebtcTokenTester.balanceOf(stabilityPool.address)
+        const gasPool_BalanceAfter = await ebtcTokenTester.balanceOf(gasPool.address)
         const bob_BalanceAfter = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(stabilityPool_BalanceAfter, 25)
+        assert.equal(gasPool_BalanceAfter, 25)
         assert.equal(bob_BalanceAfter, 175)
       })
     }
@@ -294,7 +293,6 @@ contract('EBTCToken', async accounts => {
       await assertRevert(ebtcTokenTester.transfer(ebtcTokenTester.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(ZERO_ADDRESS, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(cdpManager.address, 1, { from: alice }))
-      await assertRevert(ebtcTokenTester.transfer(stabilityPool.address, 1, { from: alice }))
       await assertRevert(ebtcTokenTester.transfer(borrowerOperations.address, 1, { from: alice }))
     })
 

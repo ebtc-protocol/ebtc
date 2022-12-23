@@ -3,7 +3,6 @@
 pragma solidity 0.6.11;
 
 import "./ILiquityBase.sol";
-import "./IStabilityPool.sol";
 import "./IEBTCToken.sol";
 import "./ILQTYToken.sol";
 import "./ILQTYStaking.sol";
@@ -17,7 +16,6 @@ interface ICdpManager is ILiquityBase {
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
@@ -60,7 +58,6 @@ interface ICdpManager is ILiquityBase {
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
@@ -69,8 +66,6 @@ interface ICdpManager is ILiquityBase {
         address _lqtyTokenAddress,
         address _lqtyStakingAddress
     ) external;
-
-    function stabilityPool() external view returns (IStabilityPool);
 
     function ebtcToken() external view returns (IEBTCToken);
 

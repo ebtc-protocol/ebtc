@@ -276,28 +276,6 @@ class CdpManagerProxy extends Proxy {
   }
 }
 
-class StabilityPoolProxy extends Proxy {
-  constructor(owner, proxies, stabilityPoolScriptAddress, stabilityPool) {
-    super(owner, proxies, stabilityPoolScriptAddress, stabilityPool)
-  }
-
-  async provideToSP(...params) {
-    return this.forwardFunction(params, 'provideToSP(uint256,address)')
-  }
-
-  async getCompoundedEBTCDeposit(user) {
-    return this.proxyFunctionWithUser('getCompoundedEBTCDeposit', user)
-  }
-
-  async deposits(user) {
-    return this.proxyFunctionWithUser('deposits', user)
-  }
-
-  async getDepositorETHGain(user) {
-    return this.proxyFunctionWithUser('getDepositorETHGain', user)
-  }
-}
-
 class SortedCdpsProxy extends Proxy {
   constructor(owner, proxies, sortedCdps) {
     super(owner, proxies, null, sortedCdps)
@@ -402,6 +380,10 @@ class LQTYStakingProxy extends Proxy {
     return this.proxyFunctionWithUser('stakes', user)
   }
 
+  async unstake(...params) {
+    return this.forwardFunction(params, 'unstake(uint256)')
+  }
+
   async F_EBTC(user) {
     return this.proxyFunctionWithUser('F_EBTC', user)
   }
@@ -412,7 +394,6 @@ module.exports = {
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
   CdpManagerProxy,
-  StabilityPoolProxy,
   SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
