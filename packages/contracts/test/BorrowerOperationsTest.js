@@ -36,7 +36,7 @@ contract('BorrowerOperations', async accounts => {
     // defaulter_1, defaulter_2,
     frontEnd_1, frontEnd_2, frontEnd_3] = accounts;
 
-    const bn8 = "0xF977814e90dA44bFA03b6295A0616a897441aceC";
+    const bn8 = "0x00000000219ab540356cBB839Cbe05303d7705Fa";
     let [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
     let bn8Signer;
 
@@ -47,7 +47,6 @@ contract('BorrowerOperations', async accounts => {
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let borrowerOperations
   let lqtyStaking
@@ -100,7 +99,6 @@ contract('BorrowerOperations', async accounts => {
       sortedCdps = contracts.sortedCdps
       cdpManager = contracts.cdpManager
       activePool = contracts.activePool
-      stabilityPool = contracts.stabilityPool
       defaultPool = contracts.defaultPool
       borrowerOperations = contracts.borrowerOperations
       hintHelpers = contracts.hintHelpers
@@ -123,7 +121,9 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
-      await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});
+      if (_signer._address != multisig){
+          await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});		  
+      }
       
     })
 
@@ -757,10 +757,11 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
+      let _tx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 10000000000 })
+      const gasUsedETH = toBN(_tx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_tx).toString()));
 
       const alice_ETHBalance_After = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before)
+      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before).add(gasUsedETH)
 
       assert.isTrue(balanceDiff.eq(toBN(dec(1, 'ether'))))
     })
@@ -814,7 +815,7 @@ contract('BorrowerOperations', async accounts => {
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
       const pendingDebtReward_B = await cdpManager.getPendingEBTCDebtReward(bobIndex)
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
-        assert.isTrue(reward.gt(toBN('0')))
+        assert.isTrue(reward.eq(toBN('0')))
       }
 
       // Alice and Bob withdraw from their Cdps
@@ -1580,22 +1581,22 @@ contract('BorrowerOperations', async accounts => {
 
     it("repayEBTC(): Succeeds when it would leave cdp with net debt >= minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
+      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 19) })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxA = await borrowerOperations.repayEBTC(AIndex, 1, AIndex, AIndex, { from: A })
       assert.isTrue(repayTxA.receipt.status)
 
-      await borrowerOperations.openCdp(th._100pct, dec(20, 25), B, B, { from: B, value: dec(100, 30) })
+      await borrowerOperations.openCdp(th._100pct, dec(20, 21), B, B, { from: B, value: dec(100, 19) })
       const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
 
-      const repayTxB = await borrowerOperations.repayEBTC(BIndex, dec(19, 25), BIndex, BIndex, { from: B })
+      const repayTxB = await borrowerOperations.repayEBTC(BIndex, dec(19, 19), BIndex, BIndex, { from: B })
       assert.isTrue(repayTxB.receipt.status)
     })
 
     it("repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
+      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 19) })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
@@ -3397,8 +3398,8 @@ contract('BorrowerOperations', async accounts => {
       const defaultPool_EBTCDebt = await defaultPool.getEBTCDebt()
 
       // Carol's liquidated coll (1 ETH) and drawn debt should have entered the Default Pool
-      assert.isAtMost(th.getDifference(defaultPool_ETH, liquidatedColl_C), 100)
-      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, liquidatedDebt_C), 100)
+      assert.isAtMost(th.getDifference(defaultPool_ETH, toBN('0')), 100)
+      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, toBN('0')), 100)
 
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
       const pendingDebtReward_A = await cdpManager.getPendingEBTCDebtReward(aliceIndex)
@@ -3521,12 +3522,13 @@ contract('BorrowerOperations', async accounts => {
 
     it("openCdp(): Opens a cdp with net debt >= minimum net debt", async () => {
       // Add 1 wei to correct for rounding error in helper function
-      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
+      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 19) })
       assert.isTrue(txA.receipt.status)
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
       assert.isTrue(await sortedCdps.contains(AIndex))
 
-      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(dec(47789898, 22)))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      let _amt = toBN(dec(47789898, 14))
+      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_amt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 19) })
       assert.isTrue(txC.receipt.status)
 
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
@@ -3534,13 +3536,13 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): reverts if net debt < minimum net debt", async () => {
-      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
+      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 19) })
       await assertRevert(txAPromise, "revert")
 
-      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 30) })
+      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 19) })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 19) })
       await assertRevert(txCPromise, "revert")
     })
 
@@ -4737,7 +4739,8 @@ contract('BorrowerOperations', async accounts => {
         const _100pctHex = '0xde0b6b3a7640000'
         const _1e25Hex = '0xd3c21bcecceda1000000'
         const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32)', [_100pctHex, _1e25Hex, th.DUMMY_BYTES32, th.DUMMY_BYTES32])
-        await nonPayable.forward(borrowerOperations.address, openCdpData, { value: dec(10000, 'ether') })
+        await bn8Signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("5000")});
+        await nonPayable.forward(borrowerOperations.address, openCdpData, { from: owner, value: dec(10000, 'ether') })
 
         const nonPayableIndex = await sortedCdps.cdpOfOwnerByIndex(nonPayable.address,0)
 
