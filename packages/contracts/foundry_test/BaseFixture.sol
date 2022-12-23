@@ -8,7 +8,6 @@ import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol"
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {StabilityPool} from "../contracts/StabilityPool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
@@ -43,7 +42,6 @@ contract eBTCBaseFixture is Test {
     SortedCdps sortedCdps;
     CdpManager cdpManager;
     ActivePool activePool;
-    StabilityPool stabilityPool;
     GasPool gasPool;
     DefaultPool defaultPool;
     CollSurplusPool collSurplusPool;
@@ -69,7 +67,6 @@ contract eBTCBaseFixture is Test {
         sortedCdps = new SortedCdps();
         cdpManager = new CdpManager();
         activePool = new ActivePool();
-        stabilityPool = new StabilityPool();
         gasPool = new GasPool();
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
@@ -77,7 +74,6 @@ contract eBTCBaseFixture is Test {
         hintHelpers = new HintHelpers();
         eBTCToken = new EBTCToken(
             address(cdpManager),
-            address(stabilityPool),
             address(borrowerOperations)
         );
 
@@ -107,7 +103,6 @@ contract eBTCBaseFixture is Test {
             address(borrowerOperations),
             address(activePool),
             address(defaultPool),
-            address(stabilityPool),
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
@@ -122,7 +117,6 @@ contract eBTCBaseFixture is Test {
             address(cdpManager),
             address(activePool),
             address(defaultPool),
-            address(stabilityPool),
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
@@ -131,22 +125,10 @@ contract eBTCBaseFixture is Test {
             address(lqtyStaking)
         );
 
-        // set contracts in stabilityPool
-        stabilityPool.setAddresses(
-            address(borrowerOperations),
-            address(cdpManager),
-            address(activePool),
-            address(eBTCToken),
-            address(sortedCdps),
-            address(priceFeedMock),
-            address(communityIssuance)
-        );
-
         // set contracts in activePool
         activePool.setAddresses(
             address(borrowerOperations),
             address(cdpManager),
-            address(stabilityPool),
             address(defaultPool)
         );
 
