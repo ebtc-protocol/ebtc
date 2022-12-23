@@ -20,8 +20,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     ICdpManager public cdpManager;
 
-    address stabilityPoolAddress;
-
     address gasPoolAddress;
 
     ICollSurplusPool collSurplusPool;
@@ -81,7 +79,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
@@ -106,7 +103,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
@@ -120,7 +116,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
-        checkContract(_stabilityPoolAddress);
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
@@ -131,7 +126,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         cdpManager = ICdpManager(_cdpManagerAddress);
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
-        stabilityPoolAddress = _stabilityPoolAddress;
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -143,7 +137,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
@@ -257,16 +250,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Send ETH as collateral to a cdp. Called by only the Stability Pool.
-    function moveETHGainToCdp(
-        bytes32 _cdpId,
-        bytes32 _upperHint,
-        bytes32 _lowerHint
-    ) external payable override {
-        _requireCallerIsStabilityPool();
-        _adjustCdpInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0);
-    }
-
     // Withdraw ETH collateral from a cdp
     function withdrawColl(
         bytes32 _cdpId,
@@ -374,10 +357,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // Confirm the operation is either a borrower adjusting their own cdp,
         // or a pure ETH transfer from the Stability Pool to a cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        assert(
-            msg.sender == _borrower ||
-                (msg.sender == stabilityPoolAddress && msg.value > 0 && _EBTCChange == 0)
-        );
+        assert(msg.sender == _borrower);
 
         contractsCache.cdpManager.applyPendingRewards(_cdpId);
 
@@ -750,11 +730,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
         );
     }
-
-    function _requireCallerIsStabilityPool() internal view {
-        require(msg.sender == stabilityPoolAddress, "BorrowerOps: Caller is not Stability Pool");
-    }
-
+	
     function _requireSufficientEBTCBalance(
         IEBTCToken _ebtcToken,
         address _borrower,
