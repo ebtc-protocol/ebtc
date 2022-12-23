@@ -40,7 +40,15 @@ contract CDPOpsTest is eBTCBaseFixture {
         }
     }
 
+    // Make sure if user didn't open CDP, cdps array is empty
+    function testGetCdpsOfUserDoesNotExist() public {
+        address user = _utils.getNextUserAddress();
+        bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
+        assertEq(0, cdps.length);
+    }
+
     // Keep amntOfCdps reasonable, as it will eat all the memory
+    // Change to fuzzed uint16 with caution, as it can consume > 10Gb of Memory
     function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
         uint collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
