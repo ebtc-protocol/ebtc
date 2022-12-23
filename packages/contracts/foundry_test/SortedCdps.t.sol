@@ -16,4 +16,48 @@ contract CDPOpsTest is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
         _utils = new Utilities();
     }
+
+    function testGetCdpsOfUser() public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+        // Open X amount of CDPs
+        for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
+            borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
+        }
+        vm.stopPrank();
+        bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
+        for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
+            bytes32 cdp = cdps[cdpIx];
+            assertEq(cdp, cdpId);
+        }
+    }
+
+    // Keep amntOfCdps reasonable, as it will eat all the memory
+    function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
+        uint collAmount = 30 ether;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+        // Open X amount of CDPs
+        for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
+            borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
+        }
+        vm.stopPrank();
+        bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
+        // And check that amount of CDPs as expected
+        assertEq(amntOfCdps, cdps.length);
+    }
 }
