@@ -3,7 +3,6 @@
 pragma solidity 0.6.11;
 
 import "./Interfaces/ICdpManager.sol";
-import "./Interfaces/IStabilityPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
@@ -20,8 +19,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Connected contract declarations ---
 
     address public borrowerOperationsAddress;
-
-    IStabilityPool public override stabilityPool;
 
     address gasPoolAddress;
 
@@ -208,7 +205,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
@@ -258,7 +254,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
@@ -270,7 +265,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
-        checkContract(_stabilityPoolAddress);
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
@@ -282,7 +276,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
-        stabilityPool = IStabilityPool(_stabilityPoolAddress);
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -294,7 +287,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
@@ -600,14 +592,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             ICollSurplusPool(address(0)),
             address(0)
         );
-        IStabilityPool stabilityPoolCached = stabilityPool;
 
         LocalVariables_OuterLiquidationFunction memory vars;
 
         LiquidationTotals memory totals;
 
         vars.price = priceFeed.fetchPrice();
-        vars.EBTCInStabPool = stabilityPoolCached.getTotalEBTCDeposits();
+        vars.EBTCInStabPool = _tmpGetReserveInLiquidation();
         vars.recoveryModeAtStart = _checkRecoveryMode(vars.price);
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
@@ -632,7 +623,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
-        stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
+        _tmpOffsetInLiquidation(totals.totalDebtToOffset, totals.totalCollToSendToSP);
         _redistributeDebtAndColl(
             contractsCache.activePool,
             contractsCache.defaultPool,
@@ -799,13 +790,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         IActivePool activePoolCached = activePool;
         IDefaultPool defaultPoolCached = defaultPool;
-        IStabilityPool stabilityPoolCached = stabilityPool;
 
         LocalVariables_OuterLiquidationFunction memory vars;
         LiquidationTotals memory totals;
 
         vars.price = priceFeed.fetchPrice();
-        vars.EBTCInStabPool = stabilityPoolCached.getTotalEBTCDeposits();
+        vars.EBTCInStabPool = _tmpGetReserveInLiquidation();
         vars.recoveryModeAtStart = _checkRecoveryMode(vars.price);
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.
@@ -831,7 +821,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
-        stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
+        _tmpOffsetInLiquidation(totals.totalDebtToOffset, totals.totalCollToSendToSP);
         _redistributeDebtAndColl(
             activePoolCached,
             defaultPoolCached,
@@ -1922,5 +1912,25 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint newDebt = Cdps[_cdpId].debt.sub(_debtDecrease);
         Cdps[_cdpId].debt = newDebt;
         return newDebt;
+    }
+	
+    // --- Temporary functions to be removed after new Liquidation code in-place ---
+	
+    // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
+    function _tmpOffsetInLiquidation(uint _debtToOffset, uint _collToAdd) internal {
+        IActivePool activePoolCached = activePool;
+
+        // decrease the liquidated EBTC debt from the active pool
+        activePoolCached.decreaseEBTCDebt(_debtToOffset);
+
+        // No Burn of the debt, i.e., debt token total supply keep same
+
+        // Just burn the collateral
+        activePoolCached.sendETH(address(0x000000000000000000000000000000000000dEaD), _collToAdd);
+    }	
+	
+    // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
+    function _tmpGetReserveInLiquidation() internal returns (uint){
+        return type(uint256).max;
     }
 }
