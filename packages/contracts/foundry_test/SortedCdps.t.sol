@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
-
 contract CDPOpsTest is eBTCBaseFixture {
     Utilities internal _utils;
 
