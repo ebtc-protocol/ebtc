@@ -2251,5 +2251,15 @@ contract('PriceFeed', async accounts => {
     const price = await priceFeed.lastGoodPrice()
     assert.equal(price, dec(246, 18))
   })
+
+  it("setTellorQueryBuffer() revert if not owner", async () => {
+    await setAddresses()
+    await assertRevert(priceFeed.setTellorQueryBuffer(4, {from: alice}), 'Ownable: caller is not the owner');
+  })
+
+  it("setTellorQueryBuffer() revert if buffer smaller than 0", async () => {
+    await setAddresses()
+    await assertRevert(priceFeed.setTellorQueryBuffer(0, {from: owner}), '!buffer');
+  })
 })
 
