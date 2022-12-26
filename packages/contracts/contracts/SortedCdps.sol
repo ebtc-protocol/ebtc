@@ -152,7 +152,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
         uint countOfCdps = _ownedCount[owner];
         bytes32[] memory cdps = new bytes32[](countOfCdps);
-        for (uint cdpIx = 0; cdpIx < countOfCdps; cdpIx++) {
+        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
             cdps[cdpIx] = _ownedCdps[owner][cdpIx];
         }
         return cdps;
