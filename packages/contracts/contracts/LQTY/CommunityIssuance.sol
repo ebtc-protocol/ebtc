@@ -59,9 +59,7 @@ contract CommunityIssuance is ICommunityIssuance, Ownable, CheckContract, BaseMa
         deploymentTime = block.timestamp;
     }
 
-    function setAddresses(
-        address _lqtyTokenAddress
-    ) external override onlyOwner {
+    function setAddresses(address _lqtyTokenAddress) external override onlyOwner {
         checkContract(_lqtyTokenAddress);
 
         lqtyToken = ILQTYToken(_lqtyTokenAddress);

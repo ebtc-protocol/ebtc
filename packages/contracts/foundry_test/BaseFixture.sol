@@ -72,10 +72,7 @@ contract eBTCBaseFixture is Test {
         collSurplusPool = new CollSurplusPool();
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(
-            address(cdpManager),
-            address(borrowerOperations)
-        );
+        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
 
         // Liquity Stuff
         lqtyStaking = new LQTYStaking();

@@ -287,6 +287,14 @@ contract('EBTCToken', async accounts => {
         assert.equal(gasPool_BalanceAfter, 25)
         assert.equal(bob_BalanceAfter, 175)
       })
+
+      it('returnFromPool(): should revert if caller is not CdpManager', async () => {
+        await assertRevert(ebtcTokenTester.returnFromPool(gasPool.address, bob, 75, {from: owner}), 'EBTC: Caller is not CdpManager')
+      })
+
+      it('burn(): should revert if caller is neither BorrowerOperations nor CdpManager', async () => {
+        await assertRevert(ebtcTokenTester.burn(bob, 75, {from: owner}), 'EBTC: Caller is neither BorrowerOperations nor CdpManager')
+      })
     }
 
     it('transfer(): transferring to a blacklisted address reverts', async () => {
