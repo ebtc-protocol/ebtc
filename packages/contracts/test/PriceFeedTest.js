@@ -1439,6 +1439,24 @@ contract('PriceFeed', async accounts => {
     const price = await priceFeed.lastGoodPrice()
     assert.equal(price, dec(100, 18))
   })
+  
+  it("C2 usingTellorChainlinkUntrusted: Tellor frozen with stale data while chainlink break", async () => {
+    await setAddresses()
+    priceFeed.setStatus(0) // status 0: Chainlink working
+	
+    await priceFeed.setLastGoodPrice(dec(999, 18))
+    let _p = await priceFeed.lastGoodPrice()
+
+    await mockChainlink.setPrice(0)
+
+    await mockTellor.setUpdateTime(1)
+    await mockTellor.setPrice(_p.toString())
+
+    await priceFeed.fetchPrice()
+
+    const status = await priceFeed.status()
+    assert.equal(status, 1)  // status 1: using Tellor, Chainlink untrusted
+  })
 
 
   // --- Case 3: Both Oracles suspect
@@ -1920,6 +1938,27 @@ contract('PriceFeed', async accounts => {
     const price = await priceFeed.lastGoodPrice()
     assert.equal(price, dec(50, 18))
   })
+  
+  it("C4 usingTellorChainlinkFrozen: Tellor frozen with stale data while chainlink is live, return last good price", async () => {
+    await setAddresses()
+    priceFeed.setStatus(3) // status 3: using Tellor, Chainlink frozen 
+	
+    const now = await th.getLatestBlockTimestamp(web3)
+    await mockChainlink.setUpdateTime(now) // Chainlink is current
+    await mockChainlink.setPrevPrice(dec(1234, 8))
+    await mockChainlink.setPrice(dec(1234, 8))
+    await priceFeed.setLastGoodPrice(dec(1234, 18))
+    let _p = await priceFeed.lastGoodPrice()
+
+    await mockTellor.setUpdateTime(1)
+    await mockTellor.setPrice('987')
+
+    await priceFeed.fetchPrice()
+
+    const status = await priceFeed.status()
+    assert.equal(status, 3)  // status 3: no change
+    assert.equal(toBN((await priceFeed.lastGoodPrice()).toString()).toString(), toBN(_p.toString()).toString());
+  })
 
 
 
@@ -2253,18 +2292,19 @@ contract('PriceFeed', async accounts => {
   })
 
   it("setTellorQueryBuffer() revert if not owner", async () => {
-    await setAddresses()
-    await assertRevert(priceFeed.setTellorQueryBuffer(4, {from: alice}), 'Ownable: caller is not the owner');
+    let _priceFeed = await PriceFeed.new({from: owner});
+    await assertRevert(_priceFeed.setTellorQueryBuffer(4, {from: alice}), 'Ownable: caller is not the owner');
   })
 
   it("setTellorQueryBuffer() revert if buffer smaller than 0", async () => {
-    await setAddresses()
-    await assertRevert(priceFeed.setTellorQueryBuffer(0, {from: owner}), '!buffer');
+    let _priceFeed = await PriceFeed.new({from: owner});
+    await assertRevert(_priceFeed.setTellorQueryBuffer(0, {from: (await priceFeed.owner())}), '!buffer');
   })
 
   it("setTellorQueryBuffer() with valid value", async () => {
     let _priceFeed = await PriceFeed.new({from: owner});
     let _buffer = 123456;
+    assert.isFalse(toBN((await _priceFeed.tellorQueryBufferSeconds()).toString()).eq(toBN(_buffer)))
     await _priceFeed.setTellorQueryBuffer(_buffer, {from: (await priceFeed.owner())});
     assert.equal(toBN((await _priceFeed.tellorQueryBufferSeconds()).toString()).toString(), toBN(_buffer).toString())
   })
