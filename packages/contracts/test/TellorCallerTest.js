@@ -46,6 +46,20 @@ contract('TellorCaller', async accounts => {
        assert.isTrue(_price[2] < (Date.now() - qBuffer));
     })
 	
+    it("getTellorBufferValue(bytes32, uint256) returns invalid price data with mock tellor", async () => {		
+       await mockTellor.setInvalidRequest(1) // invalid price
+       let _price = await tellorCaller.getTellorBufferValue(qID, qBuffer);
+       assert.isFalse(_price[0]);
+       assert.equal(_price[1].toString(), '0');
+    })
+	
+    it("getTellorBufferValue(bytes32, uint256) returns invalid timestamp data with mock tellor", async () => {		
+       await mockTellor.setInvalidRequest(2) // invalid timestamp
+       let _price = await tellorCaller.getTellorBufferValue(qID, qBuffer);
+       assert.isFalse(_price[0]);
+       assert.equal(_price[2].toString(), '0');
+    })
+	
     it("getTellorCurrentValue(bytes32, uint256) should revert if given buffer is 0", async () => {
        await assertRevert(tellorCaller.getTellorBufferValue(qID, 0), '!bufferTime');
     })

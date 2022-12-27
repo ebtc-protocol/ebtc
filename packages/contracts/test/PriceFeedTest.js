@@ -2261,5 +2261,12 @@ contract('PriceFeed', async accounts => {
     await setAddresses()
     await assertRevert(priceFeed.setTellorQueryBuffer(0, {from: owner}), '!buffer');
   })
+
+  it("setTellorQueryBuffer() with valid value", async () => {
+    let _priceFeed = await PriceFeed.new({from: owner});
+    let _buffer = 123456;
+    await _priceFeed.setTellorQueryBuffer(_buffer, {from: (await priceFeed.owner())});
+    assert.equal(toBN((await _priceFeed.tellorQueryBufferSeconds()).toString()).toString(), toBN(_buffer).toString())
+  })
 })
 

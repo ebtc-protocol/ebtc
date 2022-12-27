@@ -10,6 +10,7 @@ contract MockTellor {
     uint private updateTime;
 
     bool private revertRequest;
+    uint private invalidRequest; // 1 - price, 2 - timestamp
 
     // --- Setters for mock price data ---
 
@@ -27,6 +28,10 @@ contract MockTellor {
 
     function setRevertRequest() external {
         revertRequest = !revertRequest;
+    }
+
+    function setInvalidRequest(uint _invalidType) external {
+        invalidRequest = _invalidType;
     }
 
     // --- Mock data reporting functions ---
@@ -53,6 +58,13 @@ contract MockTellor {
         if (revertRequest) {
             require(1 == 0, "Tellor request reverted");
         }
-        return (true, abi.encode(price), updateTime);
+        return
+            invalidRequest > 0
+                ? (
+                    false,
+                    invalidRequest == 1 ? abi.encode(0) : abi.encode(price),
+                    invalidRequest == 2 ? 0 : updateTime
+                )
+                : (true, abi.encode(price), updateTime);
     }
 }
