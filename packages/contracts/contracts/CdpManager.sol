@@ -1913,9 +1913,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         Cdps[_cdpId].debt = newDebt;
         return newDebt;
     }
-	
+
     // --- Temporary functions to be removed after new Liquidation code in-place ---
-	
+
     // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
     function _tmpOffsetInLiquidation(uint _debtToOffset, uint _collToAdd) internal {
         IActivePool activePoolCached = activePool;
@@ -1927,10 +1927,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // Just burn the collateral
         activePoolCached.sendETH(address(0x000000000000000000000000000000000000dEaD), _collToAdd);
-    }	
-	
+    }
+
     // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
-    function _tmpGetReserveInLiquidation() internal returns (uint){
+    function _tmpGetReserveInLiquidation() internal returns (uint) {
         return type(uint256).max;
     }
 }

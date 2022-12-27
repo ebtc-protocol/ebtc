@@ -66,10 +66,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     event StabilityPoolAddressChanged(address _newStabilityPoolAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
-    constructor(
-        address _cdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) public {
+    constructor(address _cdpManagerAddress, address _borrowerOperationsAddress) public {
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
 
@@ -96,7 +93,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     }
 
     function burn(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorCdpMorSP();
+        _requireCallerIsBOorCdpM();
         _burn(_account, _amount);
     }
 
@@ -271,8 +268,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
             "EBTC: Cannot transfer tokens directly to the EBTC token contract or the zero address"
         );
         require(
-                _recipient != cdpManagerAddress &&
-                _recipient != borrowerOperationsAddress,
+            _recipient != cdpManagerAddress && _recipient != borrowerOperationsAddress,
             "EBTC: Cannot transfer tokens directly to the CdpManager or BorrowerOps"
         );
     }
@@ -284,19 +280,15 @@ contract EBTCToken is CheckContract, IEBTCToken {
         );
     }
 
-    function _requireCallerIsBOorCdpMorSP() internal view {
+    function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress ||
-                msg.sender == cdpManagerAddress,
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
             "EBTC: Caller is neither BorrowerOperations nor CdpManager"
         );
     }
 
     function _requireCallerIsCdpM() internal view {
-        require(
-            msg.sender == cdpManagerAddress,
-            "EBTC: Caller is not CdpManager"
-        );
+        require(msg.sender == cdpManagerAddress, "EBTC: Caller is not CdpManager");
     }
 
     // --- Optional functions ---

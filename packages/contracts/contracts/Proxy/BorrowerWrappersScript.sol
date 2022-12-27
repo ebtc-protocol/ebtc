@@ -118,8 +118,8 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         }
 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
-        if (totalEBTC > 0) {	
-            ebtcToken.transfer(address(0x000000000000000000000000000000000000dEaD), totalEBTC); 			
+        if (totalEBTC > 0) {
+            ebtcToken.transfer(address(0x000000000000000000000000000000000000dEaD), totalEBTC);
             //  stake LQTY if any
             uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
             uint claimedLQTY = lqtyBalanceAfter.sub(lqtyBalanceBefore);

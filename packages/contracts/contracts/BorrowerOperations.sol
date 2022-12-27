@@ -730,7 +730,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
         );
     }
-	
+
     function _requireSufficientEBTCBalance(
         IEBTCToken _ebtcToken,
         address _borrower,
