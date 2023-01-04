@@ -261,7 +261,7 @@ contract('SortedCdps', async accounts => {
       assert.equal(web3.utils.toHex(max), th.maxBytes32)
     })
 
-    it('cdpCountOf(): returns all user CDPs', async () => {
+    it('getCdpsOf(): returns all user CDPs', async () => {
       // Open 3 cdps
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
@@ -278,7 +278,7 @@ contract('SortedCdps', async accounts => {
       assert.deepEqual(cdps, expectedCdps);
     })
 
-    it('cdpCountOf(): returns no CDPs if user didnt open one', async () => {
+    it('getCdpsOf(): returns no CDPs if user didnt open one', async () => {
       // Alice has 3 CDPs opened
       const cdps = await sortedCdps.getCdpsOf(alice);
       assert.equal(cdps.length, 0)

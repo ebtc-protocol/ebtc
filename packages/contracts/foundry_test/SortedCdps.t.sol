@@ -66,5 +66,10 @@ contract CDPOpsTest is eBTCBaseFixture {
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         // And check that amount of CDPs as expected
         assertEq(amntOfCdps, cdps.length);
+        for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
+            bytes32 cdp = cdps[cdpIx];
+            assertEq(cdp, cdpId);
+        }
     }
 }
