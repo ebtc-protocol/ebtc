@@ -134,6 +134,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
       );
     }
 
+    event Debug(string name, uint256 value);
+
 
 
     /**
@@ -203,6 +205,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertEq(specReceiver.receivedAmount(), amount);
         assertEq(specReceiver.receivedData(), abi.encodePacked(uint256(0)));
 
+        emit Debug("fee", fee);
+        emit Debug("specReceiver.receivedFee(", specReceiver.receivedFee());
         // Fee was not manipulated
         assertEq(specReceiver.receivedFee(), fee);
 

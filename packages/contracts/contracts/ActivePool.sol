@@ -135,10 +135,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Then receive via receive
 
         // NOTE: Changed to allow WETH
+        if (msg.sender == address(WETH)) {
+            // Notice: WETH at the top to save gas and allow ETH.transfer to work
+            return;
+        }
+
+        // Previous code
         require(
             msg.sender == borrowerOperationsAddress ||
-            msg.sender == defaultPoolAddress ||
-            msg.sender == address(WETH),
+            msg.sender == defaultPoolAddress,
             "ActivePool: Caller is neither BO nor Default Pool"
         );
 
@@ -152,9 +157,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     // === Flashloans === //
 
-
-    event Debug(string name, uint256 value);
-
     function flashLoan(
         IERC3156FlashBorrower receiver,
         address token,
@@ -165,20 +167,16 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(amount > 0, "0 Amount");
         uint256 fee = amount * FEE_AMT / MAX_BPS;
 
-        emit Debug("fee", fee);
-
-        uint256 requireNewBalance = address(this).balance + fee;
-        emit Debug("requireNewBalance", requireNewBalance);
+        uint256 requiredNewBalance = address(this).balance;
 
         uint256 amountWithFee = amount + fee;
-        emit Debug("amountWithFee", amountWithFee);
+
         
         // Deposit Eth into WETH
         // Send WETH to receiver
         WETH.deposit{value: amount}();
 
         WETH.transfer(address(receiver), amount);
-        emit Debug("transfer", amount);
 
         // Callback
         require(
@@ -197,7 +195,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
-        require(address(this).balance > requireNewBalance, "Insufficient Balance");
+        require(address(this).balance == requiredNewBalance, "Must send Exact Balance");
+
+        return true;
     }
 
     function flashFee(
