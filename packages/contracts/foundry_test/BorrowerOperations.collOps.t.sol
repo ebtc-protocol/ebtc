@@ -34,7 +34,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
         // Get new CDP id
@@ -63,7 +63,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
@@ -84,7 +84,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (borrowedAmount < MIN_NET_DEBT) {
@@ -126,7 +126,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
-                COLLATERAL_RATIO
+                COLLATERAL_RATIO_DEFENSIVE
             );
             // Create multiple CDPs per user
             for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
@@ -268,7 +268,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
@@ -284,7 +284,7 @@ contract CDPOpsTest is eBTCBaseFixture {
      */
     function testWithdrawIcrTooLow() public {
         uint collAmount = 30 ether;
-        uint withdrawnColl = 10 ether;
+        uint withdrawnColl = 15 ether;
         address user = _utils.getNextUserAddress();
         vm.deal(user, type(uint96).max);
         vm.startPrank(user);
@@ -292,7 +292,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
         // Get new CDP id
