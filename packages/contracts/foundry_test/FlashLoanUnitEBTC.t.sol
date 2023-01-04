@@ -94,6 +94,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
       // Zero test case
       uint256 loanAmount = 0;
 
+      vm.expectRevert("0 Amount");
       // Perform flashloan
       borrowerOperations.flashLoan(
         ebtcReceiver,
@@ -101,8 +102,6 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
-
-      // Doesn't revert as we have to pay nothing back
     }
 
     /// @dev Amount too high, we overflow when computing fees
@@ -144,6 +143,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
     function test_eBTCSpec(uint128 amount, address randomToken) public {
         vm.assume(randomToken != address(eBTCToken));
+        vm.assume(amount > 0);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
         assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), type(uint112).max);

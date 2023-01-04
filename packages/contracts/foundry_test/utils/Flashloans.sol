@@ -113,7 +113,8 @@ contract WETHFlashReceiver is IERC3156FlashBorrower {
         // The flashLoan function MUST include a fee argument to onFlashLoan with the fee to pay for the loan on top of the principal, ensuring that fee == flashFee(token, amount).
         receivedFee = fee;
 
-        IERC20(token).approve(msg.sender, fee);
+        // TODO: Because of this we have to transfer both amounts and then burn them vs burning direcrly
+        IERC20(token).approve(msg.sender, amount + fee);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
   }

@@ -21,7 +21,6 @@ import {
 contract FlashLoanUnit is eBTCBaseFixture {
     uint private constant FEE = 5e17;
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
-    // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
 
     mapping(bytes32 => bool) private _cdpIdsExist;
@@ -72,6 +71,9 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
       deal(address(WETH), address(wethReceiver), fee);
 
+      // Give a bunch of ETH to the pool so we can loan it
+      deal(address(activePool), loanAmount);
+
 
       // Perform flashloan
       activePool.flashLoan(
@@ -89,6 +91,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Zero test case
       uint256 loanAmount = 0;
 
+      vm.expectRevert("0 Amount");
       // Perform flashloan
       activePool.flashLoan(
         wethReceiver,
@@ -96,8 +99,6 @@ contract FlashLoanUnit is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
-
-      // Doesn't revert as we have to pay nothing back
     }
 
     /// @dev Amount too high, we overflow when computing fees
@@ -135,16 +136,20 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
 
 
-    // TODO: Read flashLoan Spec
     /**
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
     function test_WETHSpec(uint128 amount, address randomToken) public {
         vm.assume(randomToken != address(WETH));
+        vm.assume(amount > 0);
+
+        // NOTE: Send funds for flashloan to be doable
+        vm.deal(address(activePool), amount);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
-        assertEq(activePool.maxFlashLoan(address(WETH)), type(uint112).max);
+        // In this case the balance of the pool
+        assertEq(activePool.maxFlashLoan(address(WETH)), address(activePool).balance);
 
         // If a token is not currently supported maxFlashLoan MUST return 0, instead of reverting.
         assertEq(activePool.maxFlashLoan(randomToken), 0);
@@ -212,7 +217,10 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertTrue(returnValue);
     }
 
-    function test_WETHSpec_returnValue() public {
+    function test_WETH_returnValue() public {
+      // NOTE: Send funds for spec
+      vm.deal(address(activePool), 123);
+
       vm.expectRevert("IERC3156: Callback failed");
       activePool.flashLoan(
           wrongReturnReceiver,
@@ -221,5 +229,4 @@ contract FlashLoanUnit is eBTCBaseFixture {
           abi.encodePacked(uint256(0))
         );
       }
-       // TODO: Add Weth (perhaps separate file or w/e)
   }

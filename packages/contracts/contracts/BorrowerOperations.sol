@@ -880,6 +880,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(amount > 0, "0 Amount");
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "Only LUSD");
 
