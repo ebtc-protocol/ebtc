@@ -882,7 +882,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     ) external override returns (bool) {
         require(amount > 0, "0 Amount");
         IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "Only LUSD");
+        require(token == address(cachedEbtc), "Only EBTC");
 
         uint256 fee = amount * FEE_AMT / MAX_BPS;
 
@@ -911,7 +911,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         address token,
         uint256 amount
     ) external view override returns (uint256) {
-        require(token == address(ebtcToken), "Only LUSD");
+        require(token == address(ebtcToken), "Only EBTC");
 
         return amount * FEE_AMT / MAX_BPS;
     }
