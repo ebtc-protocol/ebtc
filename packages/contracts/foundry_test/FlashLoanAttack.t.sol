@@ -12,6 +12,8 @@ import {
 } from "./utils/Flashloans.sol";
 import "../../contracts/Dependencies/IERC20.sol";
 import "../../contracts/Interfaces/IERC3156FlashLender.sol";
+import "../../contracts/Interfaces/IWETH.sol";
+
 
 /*
  * FlashLoan ReEntrancy Attack
@@ -61,6 +63,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     Utilities internal _utils;
+
+    IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
 
     function setUp() public override {
       // Base setup
@@ -112,9 +117,37 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
       );
     }
 
-    // function test_WethAttack(uint128 amount) public {
-    //   uint256 fee = activePool.flashFee(address(WETH), loanAmount);
+    function test_WethAttack(uint128 amount) public {
+      uint256 fee = activePool.flashFee(address(WETH), amount);
 
-    //   vm.assume(fee > 0);
-    // }
+      vm.assume(fee > 0);
+
+      FlashAttack attacker = new FlashAttack(IERC20(address(WETH)), IERC3156FlashLender(address(activePool)));
+      
+      
+      // Deal only fee for one, will revert
+      vm.deal(address(activePool), amount);
+      vm.deal(address(attacker), fee);
+
+      vm.expectRevert();
+      activePool.flashLoan(
+        IERC3156FlashBorrower(address(attacker)),
+        address(WETH),
+        amount,
+        abi.encodePacked(uint256(0))
+      );
+
+      // Deal only fee for one, will revert
+      vm.deal(address(activePool), amount * 2);
+      vm.deal(address(attacker), fee * 2);
+
+      vm.expectRevert();
+      activePool.flashLoan(
+        IERC3156FlashBorrower(address(attacker)),
+        address(WETH),
+        amount,
+        abi.encodePacked(uint256(0))
+      );
+    }
+
 }
