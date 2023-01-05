@@ -180,7 +180,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // Callback
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
             "IERC3156: Callback failed"
         );
 

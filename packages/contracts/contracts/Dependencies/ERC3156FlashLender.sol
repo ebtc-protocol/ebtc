@@ -13,4 +13,4 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender {
     
     // NOTE: Mainnet WETH
     IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-}
+    bytes32 public constant FLASH_SUCCESS_VALUE = keccak256("ERC3156FlashBorrower.onFlashLoan");
