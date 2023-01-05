@@ -165,7 +165,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         uint256 requiredNewBalance = address(this).balance;
 
-        uint256 amountWithFee = amount + fee;
+        uint256 amountWithFee = amount.add(fee);
 
         
         // Deposit Eth into WETH
