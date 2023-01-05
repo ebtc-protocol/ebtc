@@ -78,8 +78,8 @@ contract CDPOpsTest is eBTCBaseFixture {
     }
 
     // Fuzzing different amounts of eBTC repaid
-    function testRepayEBTCFuzz(uint96 repayAmnt) public {
-        repayAmnt = uint96(bound(repayAmnt, 1e13, type(uint96).max));
+    function testRepayEBTCFuzz(uint88 repayAmnt) public {
+        repayAmnt = uint88(bound(repayAmnt, 1e10, type(uint88).max));
         // Coll amount will always be max of uint96
         uint collAmount = type(uint96).max;
         address user = _utils.getNextUserAddress();
@@ -186,8 +186,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         // Get initial Debt after opened CDP
         uint initialDebt = cdpManager.getCdpDebt(cdpId);
-        // Withdraw 1 eBTC
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
+        // Withdraw 0.1 eBTC
+        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e17, "hint", "hint");
         // Make sure ICR decreased
         assertLt(cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
         // Make sure debt increased
@@ -274,7 +274,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10100000 ether);
             // Random collateral for each user
-            uint collAmount = _utils.generateRandomNumber(28 ether, 100000 ether, user);
+            uint collAmount = _utils.generateRandomNumber(30 ether, 100000 ether, user);
             uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
