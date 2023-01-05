@@ -147,12 +147,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
             "ActivePool: Caller is neither BO nor Default Pool"
         );
 
-        // Only add ETH Counter if it's not from WETH
-        if(msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress) {
-
-            ETH = ETH.add(msg.value);
-            emit ActivePoolETHBalanceUpdated(ETH);
-        }
+        ETH = ETH.add(msg.value);
+        emit ActivePoolETHBalanceUpdated(ETH);
     }
 
     // === Flashloans === //
