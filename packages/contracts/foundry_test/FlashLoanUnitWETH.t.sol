@@ -131,10 +131,6 @@ contract FlashLoanUnit is eBTCBaseFixture {
       );
     }
 
-    event Debug(string name, uint256 value);
-
-
-
     /**
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
@@ -202,8 +198,6 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertEq(specReceiver.receivedAmount(), amount);
         assertEq(specReceiver.receivedData(), abi.encodePacked(uint256(0)));
 
-        emit Debug("fee", fee);
-        emit Debug("specReceiver.receivedFee(", specReceiver.receivedFee());
         // Fee was not manipulated
         assertEq(specReceiver.receivedFee(), fee);
 
