@@ -757,7 +757,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      let _tx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 10000000000 })
+      let _tx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
       const gasUsedETH = toBN(_tx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_tx).toString()));
 
       const alice_ETHBalance_After = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
@@ -1581,22 +1581,22 @@ contract('BorrowerOperations', async accounts => {
 
     it("repayEBTC(): Succeeds when it would leave cdp with net debt >= minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 19) })
+      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxA = await borrowerOperations.repayEBTC(AIndex, 1, AIndex, AIndex, { from: A })
       assert.isTrue(repayTxA.receipt.status)
 
-      await borrowerOperations.openCdp(th._100pct, dec(20, 21), B, B, { from: B, value: dec(100, 19) })
+      await borrowerOperations.openCdp(th._100pct, dec(20, 25), B, B, { from: B, value: dec(100, 30) })
       const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
 
-      const repayTxB = await borrowerOperations.repayEBTC(BIndex, dec(19, 19), BIndex, BIndex, { from: B })
+      const repayTxB = await borrowerOperations.repayEBTC(BIndex, dec(19, 25), BIndex, BIndex, { from: B })
       assert.isTrue(repayTxB.receipt.status)
     })
 
     it("repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt", async () => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 19) })
+      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
@@ -3522,13 +3522,13 @@ contract('BorrowerOperations', async accounts => {
 
     it("openCdp(): Opens a cdp with net debt >= minimum net debt", async () => {
       // Add 1 wei to correct for rounding error in helper function
-      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 19) })
+      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
       assert.isTrue(txA.receipt.status)
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
       assert.isTrue(await sortedCdps.contains(AIndex))
 
-      let _amt = toBN(dec(47789898, 14))
-      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_amt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 19) })
+      let _amt = toBN(dec(47789898, 22))
+      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_amt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
       assert.isTrue(txC.receipt.status)
 
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
@@ -3536,13 +3536,13 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): reverts if net debt < minimum net debt", async () => {
-      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 19) })
+      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
       await assertRevert(txAPromise, "revert")
 
-      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 19) })
+      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 30) })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 19) })
+      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
       await assertRevert(txCPromise, "revert")
     })
 
