@@ -320,7 +320,7 @@ class TestHelper {
   }
 
   /*
-   * given the requested EBTC amomunt in openCdp, returns the total debt
+   * given the requested EBTC amount in openCdp, returns the total debt
    * So, it adds the gas compensation and the borrowing fee
    */
   static async getOpenCdpTotalDebt(contracts, ebtcAmount) {
