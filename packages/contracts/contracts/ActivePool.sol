@@ -158,7 +158,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(token == address(WETH), "WETH only");
+        require(token == address(WETH), "WETH Only");
         require(amount > 0, "0 Amount");
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
@@ -196,7 +196,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(WETH), "WETH only");
+        require(token == address(WETH), "WETH Only");
 
         return (amount * FEE_AMT) / MAX_BPS;
     }
