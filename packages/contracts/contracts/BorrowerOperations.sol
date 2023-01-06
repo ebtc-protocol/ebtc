@@ -15,9 +15,14 @@ import "./Dependencies/console.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
-
-contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOperations, ERC3156FlashLender {
-    string constant public NAME = "BorrowerOperations";
+contract BorrowerOperations is
+    LiquityBase,
+    Ownable,
+    CheckContract,
+    IBorrowerOperations,
+    ERC3156FlashLender
+{
+    string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
 
@@ -872,7 +877,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         return _getCompositeDebt(_debt);
     }
 
-
     // === Flash Loans === //
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -884,7 +888,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "Only EBTC");
 
-        uint256 fee = amount * FEE_AMT / MAX_BPS;
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
         // Issue LUSD
         cachedEbtc.mint(address(receiver), amount);
@@ -907,20 +911,15 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         return true;
     }
 
-    function flashFee(
-        address token,
-        uint256 amount
-    ) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(ebtcToken), "Only EBTC");
 
-        return amount * FEE_AMT / MAX_BPS;
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(
-        address token
-    ) external view override returns (uint256) {
-        if(token != address(ebtcToken)) {
+    function maxFlashLoan(address token) external view override returns (uint256) {
+        if (token != address(ebtcToken)) {
             return 0;
         }
 

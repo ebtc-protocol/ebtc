@@ -130,7 +130,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     receive() external payable {
         // FlashETH idea
-        // We can just remove this check 
+        // We can just remove this check
         // Then add a confirming FlashLoan Operation
         // Then receive via receive
 
@@ -142,8 +142,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // Previous code
         require(
-            msg.sender == borrowerOperationsAddress ||
-            msg.sender == defaultPoolAddress,
+            msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
             "ActivePool: Caller is neither BO nor Default Pool"
         );
 
@@ -161,16 +160,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     ) external override returns (bool) {
         require(token == address(WETH), "WETH only");
         require(amount > 0, "0 Amount");
-        uint256 fee = amount * FEE_AMT / MAX_BPS;
-
-
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
         uint256 requiredNewBalance = address(this).balance;
         require(amount <= requiredNewBalance, "Too much");
 
         uint256 amountWithFee = amount.add(fee);
 
-        
         // Deposit Eth into WETH
         // Send WETH to receiver
         WETH.deposit{value: amount}();
@@ -188,7 +184,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // SEnd weth to fee recipient
         WETH.transfer(FEE_RECIPIENT, fee);
-        
+
         // Withdraw principal to this
         WETH.withdraw(amount);
 
@@ -199,20 +195,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         return true;
     }
 
-    function flashFee(
-        address token,
-        uint256 amount
-    ) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(WETH), "WETH only");
 
-        return amount * FEE_AMT / MAX_BPS;
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(
-        address token
-    ) external view override returns (uint256) {
-        if(token != address(WETH)) {
+    function maxFlashLoan(address token) external view override returns (uint256) {
+        if (token != address(WETH)) {
             return 0;
         }
 

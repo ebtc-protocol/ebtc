@@ -283,8 +283,8 @@ contract EBTCToken is CheckContract, IEBTCToken {
         );
         require(
             _recipient != stabilityPoolAddress &&
-            _recipient != cdpManagerAddress &&
-            _recipient != borrowerOperationsAddress,
+                _recipient != cdpManagerAddress &&
+                _recipient != borrowerOperationsAddress,
             "EBTC: Cannot transfer tokens directly to the StabilityPool, CdpManager or BorrowerOps"
         );
     }
