@@ -22,7 +22,6 @@ import "../../contracts/Dependencies/IERC20.sol";
 contract FlashLoanUnitWETH is eBTCBaseFixture {
     uint private constant FEE = 5e17;
 
-
     Utilities internal _utils;
 
     // Flashloans
@@ -105,6 +104,8 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       // Zero Overflow Case
       uint256 loanAmount = type(uint256).max;
 
+      vm.deal(address(activePool), loanAmount);
+
       vm.expectRevert("SafeMath: addition overflow");
       activePool.flashLoan(
         wethReceiver,
@@ -116,15 +117,19 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
 
     // Do nothing (no fee), check that it reverts
-    function testEBTCRevertsIfUnpaid(uint256 loanAmount) public {
+    function testWETHRevertsIfUnpaid(uint256 loanAmount) public {
       uint256 fee = activePool.flashFee(address(WETH), loanAmount);
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
 
+      vm.deal(address(activePool), loanAmount);
+
       // NOTE: Capped to avoid overflow
       vm.assume(loanAmount < type(uint128).max);
 
-      vm.expectRevert("ERC20: transfer amount exceeds allowance");
+      // NOTE: WETH has no error message
+      // Source: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code#L68
+      vm.expectRevert();
       // Perform flashloan
       activePool.flashLoan(
         uselessReceiver,
