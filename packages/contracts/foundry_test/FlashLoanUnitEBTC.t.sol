@@ -124,6 +124,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
 
+      // NOTE: Capped to avoid overflow
+      vm.assume(loanAmount < type(uint128).max);
+
       vm.expectRevert("ERC20: transfer amount exceeds allowance");
       // Perform flashloan
       borrowerOperations.flashLoan(
