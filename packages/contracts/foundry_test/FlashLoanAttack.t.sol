@@ -54,7 +54,7 @@ contract FlashAttack {
 
 }
 
-contract FlashLoanUnitEBTC is eBTCBaseFixture {
+contract FlashLoanAttack is eBTCBaseFixture {
 
     uint private constant FEE = 5e17;
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
@@ -97,7 +97,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
       // Deal only fee for one, will revert
       deal(address(eBTCToken), address(attacker), fee);
 
-      vm.expectRevert();
+      vm.expectRevert(bytes("ERC20: burn amount exceeds balance"));
       borrowerOperations.flashLoan(
         IERC3156FlashBorrower(address(attacker)),
         address(eBTCToken),
