@@ -886,7 +886,7 @@ contract BorrowerOperations is
     ) external override returns (bool) {
         require(amount > 0, "0 Amount");
         IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "Only EBTC");
+        require(token == address(cachedEbtc), "EBTC Only");
 
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
@@ -912,7 +912,7 @@ contract BorrowerOperations is
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(ebtcToken), "Only EBTC");
+        require(token == address(ebtcToken), "EBTC Only");
 
         return (amount * FEE_AMT) / MAX_BPS;
     }
