@@ -10,6 +10,7 @@ import {
   FlashLoanSpecReceiver, 
   FlashLoanWrongReturn
 } from "./utils/Flashloans.sol";
+import "../../contracts/Dependencies/IERC20.sol";
 
 
 /*
@@ -71,7 +72,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Give a bunch of ETH to the pool so we can loan it
       deal(address(activePool), loanAmount);
 
-
+      uint256 prevFeeBalance = IERC20(WETH).balanceOf(activePool.FEE_RECIPIENT());
       // Perform flashloan
       activePool.flashLoan(
         wethReceiver,
@@ -80,7 +81,8 @@ contract FlashLoanUnit is eBTCBaseFixture {
         abi.encodePacked(uint256(0))
       );
 
-      // Check fees were sent
+      // Check fees were sent and balance increased exactly by the expected fee amount
+      assertEq(IERC20(WETH).balanceOf(activePool.FEE_RECIPIENT()), prevFeeBalance + fee);
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
