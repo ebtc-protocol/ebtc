@@ -260,6 +260,31 @@ contract('SortedCdps', async accounts => {
       assert.equal(web3.utils.toHex(max), th.maxBytes32)
     })
 
+    it('getCdpsOf(): returns all user CDPs', async () => {
+      // Open 3 cdps
+      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
+      const expectedCdps = [
+          await sortedCdps.cdpOfOwnerByIndex(alice, 0),
+          await sortedCdps.cdpOfOwnerByIndex(alice, 1),
+          await sortedCdps.cdpOfOwnerByIndex(alice, 2)
+      ];
+      // Alice has 3 CDPs opened
+      const cdps = await sortedCdps.getCdpsOf(alice);
+      assert.equal(cdps.length, 3)
+      // Make sure arrays are equal
+      assert.deepEqual(cdps, expectedCdps);
+    })
+
+    it('getCdpsOf(): returns no CDPs if user didnt open one', async () => {
+      // Alice has 3 CDPs opened
+      const cdps = await sortedCdps.getCdpsOf(alice);
+      assert.equal(cdps.length, 0)
+      // Make sure arrays are equal
+      assert.deepEqual(cdps, []);
+    })
+
     // --- findInsertPosition ---
 
     it("Finds the correct insert position given two addresses that loosely bound the correct position", async () => { 
