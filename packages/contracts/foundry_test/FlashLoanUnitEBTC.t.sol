@@ -21,9 +21,6 @@ import {
 contract FlashLoanUnitEBTC is eBTCBaseFixture {
     uint private constant FEE = 5e17;
     uint256 internal constant COLLATERAL_RATIO = 160e16;  // 160%: take higher CR as CCR is 150%
-    uint internal constant AMOUNT_OF_USERS = 100;
-
-    mapping(bytes32 => bool) private _cdpIdsExist;
 
     Utilities internal _utils;
 
