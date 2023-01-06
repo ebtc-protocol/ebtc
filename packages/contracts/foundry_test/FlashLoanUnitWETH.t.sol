@@ -19,7 +19,7 @@ import "../../contracts/Dependencies/IERC20.sol";
  * Flash Fee can go to zero due to rounding, that's marginal
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
-contract FlashLoanUnit is eBTCBaseFixture {
+contract FlashLoanUnitWETH is eBTCBaseFixture {
     uint private constant FEE = 5e17;
 
 
@@ -105,15 +105,13 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Zero Overflow Case
       uint256 loanAmount = type(uint256).max;
 
-      vm.expectRevert();
+      vm.expectRevert("SafeMath: addition overflow");
       activePool.flashLoan(
         wethReceiver,
         address(WETH),
         loanAmount,
         abi.encodePacked(uint256(0))
       );
-
-      // Doesn't revert as we have to pay nothing back
     }
 
 
@@ -123,7 +121,10 @@ contract FlashLoanUnit is eBTCBaseFixture {
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
 
-      vm.expectRevert();
+      // NOTE: Capped to avoid overflow
+      vm.assume(loanAmount < type(uint128).max);
+
+      vm.expectRevert("ERC20: transfer amount exceeds allowance");
       // Perform flashloan
       activePool.flashLoan(
         uselessReceiver,
@@ -157,11 +158,11 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertTrue(fee >= 0);
 
         // If the token is not supported flashFee MUST revert.
-        vm.expectRevert();
+        vm.expectRevert("WETH Only");
         activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert();
+        vm.expectRevert("WETH Only");
         activePool.flashLoan(
           specReceiver,
           randomToken,
