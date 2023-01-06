@@ -18,10 +18,7 @@ contract Utilities is Test {
     }
 
     //create users with 100 ether balance
-    function createUsers(uint256 userNum)
-        public
-        returns (address payable[] memory)
-    {
+    function createUsers(uint256 userNum) public returns (address payable[] memory) {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
             address payable user = getNextUserAddress();
@@ -40,21 +37,28 @@ contract Utilities is Test {
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
     BorrowedAmount is calculated as: (Collateral * eBTC Price) / CR
     */
-    function calculateBorrowAmount(uint256 coll, uint256 price, uint256 collateralRatio)
-        public pure returns (uint256) {
+    function calculateBorrowAmount(
+        uint256 coll,
+        uint256 price,
+        uint256 collateralRatio
+    ) public pure returns (uint256) {
         return coll.mul(price).div(collateralRatio);
     }
 
     /* This is the function that generates the random number.
-    * It takes the minimum and maximum values of the range as arguments
-    * and returns the random number. Use `seed` attr to randomize more
-    */
+     * It takes the minimum and maximum values of the range as arguments
+     * and returns the random number. Use `seed` attr to randomize more
+     */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, seed)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, now, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
-        uint result = randomNumber % (max - min + 1) + min;
+        uint result = (randomNumber % (max - min + 1)) + min;
+        // Randomly shrink random number
+        if (result % 4 == 0) {
+            result /= 100;
+        }
         return result;
     }
 }

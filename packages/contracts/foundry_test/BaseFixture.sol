@@ -20,8 +20,17 @@ import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
-
 contract eBTCBaseFixture is Test {
+    uint internal constant FEE = 5e17; // 0.5%
+    uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
+    uint public constant CCR = 150e16; // 150%
+    uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16; // 200% - defensive CR
+    uint internal constant MIN_NET_DEBT = 1800e18; // Subject to changes once CL is changed
+    // TODO: Modify these constants to increase/decrease amount of users
+    uint internal constant AMOUNT_OF_USERS = 100;
+    uint internal constant AMOUNT_OF_CDPS = 3;
+
     using SafeMath for uint256;
     using SafeMath for uint96;
     using SafeMath for uint64;
@@ -29,7 +38,7 @@ contract eBTCBaseFixture is Test {
     using SafeMath for uint16;
     using SafeMath for uint8;
     uint256 constant maxBytes32 = type(uint256).max;
-
+    bytes32 constant HINT = "hint";
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
     CdpManager cdpManager;
@@ -67,7 +76,9 @@ contract eBTCBaseFixture is Test {
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
         eBTCToken = new EBTCToken(
-            address(cdpManager), address(stabilityPool), address(borrowerOperations)
+            address(cdpManager),
+            address(stabilityPool),
+            address(borrowerOperations)
         );
 
         // Liquity Stuff
@@ -84,13 +95,12 @@ contract eBTCBaseFixture is Test {
             address(this)
         );
     }
+
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
-    */
+     */
     function connectCoreContracts() public virtual {
         // set CdpManager addr in SortedCdps
-        sortedCdps.setParams(
-            maxBytes32, address(cdpManager), address(borrowerOperations)
-        );
+        sortedCdps.setParams(maxBytes32, address(cdpManager), address(borrowerOperations));
 
         // set contracts in the Cdp Manager
         cdpManager.setAddresses(
@@ -153,14 +163,15 @@ contract eBTCBaseFixture is Test {
         // set contracts in HintHelpers
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager));
     }
+
     /* connectLQTYContracts() - wire up necessary liquity contracts
-    */
+     */
     function connectLQTYContracts() public virtual {
         lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
     }
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
-    */
+     */
     function connectLQTYContractsToCore() public virtual {
         lqtyStaking.setAddresses(
             address(lqtyToken),

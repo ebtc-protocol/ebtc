@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
@@ -77,7 +78,8 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     mapping(bytes32 => address) public cdpOwners;
     uint256 public nextCdpNonce;
-    bytes32 public constant dummyId = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 public constant dummyId =
+        0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // Mapping from cdp owner to list of owned cdp IDs
     mapping(address => mapping(uint256 => bytes32)) public override _ownedCdps;
@@ -119,7 +121,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         bytes32 serialized;
 
         serialized |= bytes32(nonce);
-        serialized |= bytes32(blockHeight) << (8 * 8);// to accommendate more than 4.2 billion blocks
+        serialized |= bytes32(blockHeight) << (8 * 8); // to accommendate more than 4.2 billion blocks
         serialized |= bytes32(uint256(owner)) << (12 * 8);
 
         return serialized;
@@ -144,6 +146,16 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     function cdpCountOf(address owner) public view override returns (uint256) {
         return _ownedCount[owner];
+    }
+
+    // Returns array of all user owned CDPs
+    function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
+        uint countOfCdps = _ownedCount[owner];
+        bytes32[] memory cdps = new bytes32[](countOfCdps);
+        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
+            cdps[cdpIx] = _ownedCdps[owner][cdpIx];
+        }
+        return cdps;
     }
 
     function insert(
