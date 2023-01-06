@@ -54,7 +54,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     ///   TODO: Add a max / max - 1 test to show what happens
-    function test_basicLoanWETH(uint128 loanAmount) public {
+    function testBasicLoanWETH(uint128 loanAmount) public {
       require(address(wethReceiver) != address(0));
 
       uint256 fee = activePool.flashFee(address(WETH), loanAmount);
@@ -87,7 +87,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
-    function test_zeroCaseWETH() public {
+    function testZeroCaseWETH() public {
       // Zero test case
       uint256 loanAmount = 0;
 
@@ -102,7 +102,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
     }
 
     /// @dev Amount too high, we overflow when computing fees
-    function test_overflowCaseWETH() public {
+    function testOverflowCaseWETH() public {
       // Zero Overflow Case
       uint256 loanAmount = type(uint256).max;
 
@@ -119,7 +119,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
 
 
     // Do nothing (no fee), check that it reverts
-    function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
+    function testEBTCRevertsIfUnpaid(uint256 loanAmount) public {
       uint256 fee = activePool.flashFee(address(WETH), loanAmount);
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
@@ -142,7 +142,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
-    function test_WETHSpec(uint128 amount, address randomToken) public {
+    function testWETHSpec(uint128 amount, address randomToken) public {
         vm.assume(randomToken != address(WETH));
         vm.assume(amount > 0);
 
@@ -211,7 +211,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertEq(specReceiver.receivedFee(), fee);
 
         // The lender MUST verify that the onFlashLoan callback returns the keccak256 hash of “ERC3156FlashBorrower.onFlashLoan”.
-        // See `test_eBTCSpec_returnValue`
+        // See `testWethSpecReturnValue`
 
 
         // After the callback, the flashLoan function MUST take the amount + fee token from the receiver, or revert if this is not successful.
@@ -221,7 +221,7 @@ contract FlashLoanUnit is eBTCBaseFixture {
         assertTrue(returnValue);
     }
 
-    function test_WETH_returnValue() public {
+    function testWETHReturnValue() public {
       // NOTE: Send funds for spec
       vm.deal(address(activePool), 123);
 

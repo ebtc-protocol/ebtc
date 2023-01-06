@@ -60,7 +60,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
-    function test_basicLoanEBTC(uint128 loanAmount) public {
+    function testBasicLoanEBTC(uint128 loanAmount) public {
       require(address(ebtcReceiver) != address(0));
 
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
@@ -90,7 +90,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
-    function test_zeroCaseEBTC() public {
+    function testZeroCaseEBTC() public {
       // Zero test case
       uint256 loanAmount = 0;
 
@@ -105,7 +105,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     /// @dev Amount too high, we overflow when computing fees
-    function test_overflowCaseEBTC() public {
+    function testOverflowCaseEBTC() public {
       // Zero Overflow Case
       uint256 loanAmount = type(uint256).max;
 
@@ -120,7 +120,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
 
     /// @dev Do nothing (no fee), check that it reverts
-    function test_eBTCRevertsIfUnpaid(uint256 loanAmount) public {
+    function testEBTCRevertsIfUnpaid(uint256 loanAmount) public {
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
       // Ensure fee is not rounded down
       vm.assume(fee > 1);
@@ -141,7 +141,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev This test converts the MUST into assets from the spec
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
-    function test_eBTCSpec(uint128 amount, address randomToken) public {
+    function testEBTCSpec(uint128 amount, address randomToken) public {
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
 
@@ -204,7 +204,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         assertEq(specReceiver.receivedFee(), fee);
 
         // The lender MUST verify that the onFlashLoan callback returns the keccak256 hash of “ERC3156FlashBorrower.onFlashLoan”.
-        // See `test_eBTCSpec_returnValue`
+        // See `testEBTCSpecReturnValue`
 
 
         // After the callback, the flashLoan function MUST take the amount + fee token from the receiver, or revert if this is not successful.
@@ -214,7 +214,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         assertTrue(returnValue);
     }
 
-    function test_eBTCSpec_returnValue() public {
+    function testEBTCSpecReturnValue() public {
       vm.expectRevert("IERC3156: Callback failed");
       borrowerOperations.flashLoan(
           wrongReturnReceiver,

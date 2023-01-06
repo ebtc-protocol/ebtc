@@ -86,7 +86,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
       borrowerOperations.openCdp{value : 30 ether}(FEE, borrowedAmount, "hint", "hint");
     }
 
-    function test_eBTCAttack(uint128 amount) public {
+    function testEBTCAttack(uint128 amount) public {
       uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
       vm.assume(fee > 0);
@@ -117,7 +117,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
       );
     }
 
-    function test_WethAttack(uint128 amount) public {
+    function testWethAttack(uint128 amount) public {
       uint256 fee = activePool.flashFee(address(WETH), amount);
 
       vm.assume(fee > 0);
