@@ -163,7 +163,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(amount > 0, "0 Amount");
         uint256 fee = amount * FEE_AMT / MAX_BPS;
 
+
+
         uint256 requiredNewBalance = address(this).balance;
+        require(amount <= requiredNewBalance, "Too much");
 
         uint256 amountWithFee = amount.add(fee);
 
