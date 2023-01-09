@@ -36,15 +36,8 @@ contract MockTellor {
 
     // --- Mock data reporting functions ---
 
-    function getTimestampbyRequestIDandIndex(uint, uint) external view returns (uint) {
+    function getUpdateTime() external view returns (uint) {
         return updateTime;
-    }
-
-    function getNewValueCountbyRequestId(uint) external view returns (uint) {
-        if (revertRequest) {
-            require(1 == 0, "Tellor request reverted");
-        }
-        return 1;
     }
 
     function retrieveData(uint256, uint256) external view returns (uint256) {

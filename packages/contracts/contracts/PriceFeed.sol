@@ -35,6 +35,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
     bytes32 public constant ETHUSD_TELLOR_QUERY_ID =
         0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992; // keccak256(abi.encode("SpotPrice", abi.encode("eth", "usd")))
+    //    bytes32 public constant ETHBTC_TELLOR_QUERY_ID =
+    //        0x60723147b1b97df5ff4e69cf99b6a414acc7da119109811af59fe417730945fe; // use this ETH/BTC query ID for ebtc: keccak256(abi.encode("SpotPrice", abi.encode("eth", "btc")))
     uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes, soft governance might help to change this default configuration if required
 
     // Use to convert a price answer to an 18-digit precision uint

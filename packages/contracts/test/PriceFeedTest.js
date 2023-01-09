@@ -512,7 +512,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     const priceFetchTx = await priceFeed.fetchPrice()
@@ -535,7 +535,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     const priceFetchTx = await priceFeed.fetchPrice()
@@ -922,7 +922,7 @@ contract('PriceFeed', async accounts => {
 
      // check Tellor price timestamp is out of date by > 4 hours
      const now = await th.getLatestBlockTimestamp(web3)
-     const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+     const tellorUpdateTime = await mockTellor.getUpdateTime()
      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
      await mockChainlink.setUpdateTime(now)
@@ -949,7 +949,7 @@ contract('PriceFeed', async accounts => {
 
      // check Tellor price timestamp is out of date by > 4 hours
      const now = await th.getLatestBlockTimestamp(web3)
-     const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+     const tellorUpdateTime = await mockTellor.getUpdateTime()
      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
      await mockChainlink.setUpdateTime(now)
@@ -1141,7 +1141,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setUpdateTime(now) // Chainlink's price is current
@@ -1169,7 +1169,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
   
     await mockChainlink.setUpdateTime(now) // Chainlink's price is current
@@ -1349,7 +1349,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setUpdateTime(now)
@@ -1375,7 +1375,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setUpdateTime(now)
@@ -1567,7 +1567,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await priceFeed.fetchPrice()
@@ -1593,7 +1593,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await priceFeed.fetchPrice()
@@ -1902,7 +1902,7 @@ contract('PriceFeed', async accounts => {
     assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
      // check Tellor price timestamp is out of date by > 4 hours
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await priceFeed.fetchPrice()
@@ -1930,7 +1930,7 @@ contract('PriceFeed', async accounts => {
     assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
      // check Tellor price timestamp is out of date by > 4 hours
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await priceFeed.fetchPrice()
@@ -2114,7 +2114,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setPrice(dec(998, 8))
@@ -2141,7 +2141,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setPrice(dec(998, 8))
@@ -2168,7 +2168,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setPrice(dec(99, 8)) // >50% price drop from previous Chainlink price
@@ -2195,7 +2195,7 @@ contract('PriceFeed', async accounts => {
 
     // check Tellor price timestamp is out of date by > 4 hours
     const now = await th.getLatestBlockTimestamp(web3)
-    const tellorUpdateTime = await mockTellor.getTimestampbyRequestIDandIndex(0, 0)
+    const tellorUpdateTime = await mockTellor.getUpdateTime()
     assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
     await mockChainlink.setPrice(dec(99, 8))  // > 50% price drop from previous Chainlink price
