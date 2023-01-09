@@ -51,7 +51,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     ///   TODO: Add a max / max - 1 test to show what happens
-    function testBasicLoanWETH(uint128 loanAmount) public {
+    function testBasicLoanWETH(uint128 loanAmount, uint128 giftAmount) public {
       require(address(wethReceiver) != address(0));
 
       uint256 fee = activePool.flashFee(address(WETH), loanAmount);
@@ -71,6 +71,10 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       // Give a bunch of ETH to the pool so we can loan it
       deal(address(activePool), loanAmount);
 
+      // Amount we randomly send to activePool
+      deal(address(WETH), address(activePool), giftAmount);
+      vm.assume(giftAmount > 0);
+
       uint256 prevFeeBalance = IERC20(WETH).balanceOf(activePool.FEE_RECIPIENT());
       // Perform flashloan
       activePool.flashLoan(
@@ -79,6 +83,8 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
+
+      assertEq(IERC20(WETH).balanceOf(address(activePool)), giftAmount);
 
       // Check fees were sent and balance increased exactly by the expected fee amount
       assertEq(IERC20(WETH).balanceOf(activePool.FEE_RECIPIENT()), prevFeeBalance + fee);
@@ -97,6 +103,16 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         loanAmount,
         abi.encodePacked(uint256(0))
       );
+    }
+
+    /// @dev Cannot send ETH to ActivePool
+    function testCannotSendEth(uint256 amount) public {
+      vm.deal(address(this), amount);
+      vm.assume(amount > 0);
+
+
+      vm.expectRevert("ActivePool: Caller is neither BO nor Default Pool");
+      payable(address(activePool)).call{value: amount}("");
     }
 
     /// @dev Amount too high, we overflow when computing fees
