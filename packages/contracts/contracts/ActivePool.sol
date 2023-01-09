@@ -129,11 +129,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     // --- Fallback function ---
 
     receive() external payable {
-        // FlashETH idea
-        // We can just remove this check
-        // Then add a confirming FlashLoan Operation
-        // Then receive via receive
-
         // NOTE: Changed to allow WETH
         if (msg.sender == address(WETH)) {
             // Notice: WETH at the top to save gas and allow ETH.transfer to work
@@ -141,6 +136,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         }
 
         // Previous code
+        // NOTE: You cannot `transfer` to this contract, you must `call` because we're using 2 SLOADs
         require(
             msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
             "ActivePool: Caller is neither BO nor Default Pool"
