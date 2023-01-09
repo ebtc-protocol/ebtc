@@ -404,7 +404,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             );
             vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
         }
-
         vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
         vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
 

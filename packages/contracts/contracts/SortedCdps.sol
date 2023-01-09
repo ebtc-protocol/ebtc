@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
@@ -145,6 +146,16 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     function cdpCountOf(address owner) public view override returns (uint256) {
         return _ownedCount[owner];
+    }
+
+    // Returns array of all user owned CDPs
+    function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
+        uint countOfCdps = _ownedCount[owner];
+        bytes32[] memory cdps = new bytes32[](countOfCdps);
+        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
+            cdps[cdpIx] = _ownedCdps[owner][cdpIx];
+        }
+        return cdps;
     }
 
     function insert(
