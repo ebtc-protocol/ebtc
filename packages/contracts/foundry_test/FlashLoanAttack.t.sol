@@ -124,7 +124,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
       
       // Deal only fee for one, will revert
       vm.deal(address(activePool), amount);
-      vm.deal(address(attacker), fee);
+      deal(address(WETH), address(attacker), fee);
 
       vm.expectRevert("Too much");
       activePool.flashLoan(
@@ -134,7 +134,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         abi.encodePacked(uint256(0))
       );
 
-      vm.deal(address(activePool), type(uint256).max);
+      vm.deal(address(activePool), amount * 2);
       deal(address(WETH), address(attacker), fee * 2);
       
       // Run the 2x looped FL
