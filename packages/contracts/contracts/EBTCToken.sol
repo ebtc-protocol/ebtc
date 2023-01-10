@@ -63,7 +63,6 @@ contract EBTCToken is CheckContract, IEBTCToken {
 
     // --- Events ---
     event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event StabilityPoolAddressChanged(address _newStabilityPoolAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
     constructor(address _cdpManagerAddress, address _borrowerOperationsAddress) public {

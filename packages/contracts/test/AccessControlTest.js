@@ -328,14 +328,14 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
 
     // returnFromPool
-    it("returnFromPool(): reverts when called by an account that is not CdpManager nor StabilityPool", async () => {
+    it("returnFromPool(): reverts when called by an account that is not CdpManager", async () => {
       // Attempt call from alice
       try {
         const txAlice = await ebtcToken.returnFromPool(activePool.address, bob, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is neither CdpManager nor StabilityPool")
+        // assert.include(err.message, "Caller is neither CdpManager")
       }
     })
   })

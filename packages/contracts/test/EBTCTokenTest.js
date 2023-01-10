@@ -256,7 +256,7 @@ contract('EBTCToken', async accounts => {
       })
 
       // TODO: Rewrite this test - it should check the actual ebtcTokenTester's balance.
-      it('sendToPool(): changes balances of Stability pool and user by the correct amounts', async () => {
+      it('unprotectedSendToPool(): changes balances of Gas pool and user by the correct amounts', async () => {
         const gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
         const bob_BalanceBefore = await ebtcTokenTester.balanceOf(bob)
         assert.equal(gasPool_BalanceBefore, 0)
@@ -275,7 +275,7 @@ contract('EBTCToken', async accounts => {
         await ebtcTokenTester.unprotectedMint(gasPool.address, 100)
 
         /// --- TEST ---
-        const gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
+        const  gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
         const  bob_BalanceBefore = await ebtcTokenTester.balanceOf(bob)
         assert.equal(gasPool_BalanceBefore, 100)
         assert.equal(bob_BalanceBefore, 100)
