@@ -105,6 +105,10 @@ contract FlashLoanAttack is eBTCBaseFixture {
       // Deal more
       deal(address(eBTCToken), address(attacker), fee * 2);
 
+      uint256 feeRecipientPreviousBalance = eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+      uint256 attackerPreviousBalance = eBTCToken.balanceOf(address(attacker));
+      uint256 ebtcSupplyBefore = eBTCToken.totalSupply();
+
       // It will go through, no issues
       borrowerOperations.flashLoan(
         IERC3156FlashBorrower(address(attacker)),
@@ -112,6 +116,10 @@ contract FlashLoanAttack is eBTCBaseFixture {
         amount,
         abi.encodePacked(uint256(0))
       );
+
+       assertEq(eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()), feeRecipientPreviousBalance + fee * 2);
+       assertEq(eBTCToken.balanceOf(address(attacker)), attackerPreviousBalance - fee * 2);
+       assertEq(eBTCToken.totalSupply(), ebtcSupplyBefore);
     }
 
     function testWethAttack(uint128 amount) public {
