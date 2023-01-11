@@ -16,7 +16,7 @@ import "../../contracts/Interfaces/IWETH.sol";
 
 
 /*
- * Runs Flashloans and deposits ETH into TroveManager
+ * Runs Flashloans and deposits ETH into CDPManager
  */
 contract FlashWithDeposit {
   IERC20 public immutable want;
