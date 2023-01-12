@@ -188,7 +188,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
         // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
         // NOTE: This means any balance > ETH is stuck, this is also present in LUSD as is
-        require(address(this).balance > ETH, "Must repay Balance");
+        require(address(this).balance >= ETH, "Must repay Balance");
 
         return true;
     }
