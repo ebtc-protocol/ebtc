@@ -99,8 +99,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         assertEq(second, cdp0Id);
     }
 
-    function testTroveShouldIncorprateInterest 
-
     /**
         Open two CDPs of random sizes at the same time.
         - How long does it take for compounding interest to cause them to flip?
