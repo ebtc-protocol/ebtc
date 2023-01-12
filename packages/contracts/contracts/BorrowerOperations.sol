@@ -890,7 +890,7 @@ contract BorrowerOperations is
 
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
-        // Issue LUSD
+        // Issue EBTC
         cachedEbtc.mint(address(receiver), amount);
 
         // Callback
