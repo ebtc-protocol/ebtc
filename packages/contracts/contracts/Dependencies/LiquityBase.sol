@@ -36,7 +36,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
 
-    uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
+    uint public constant INTEREST_RATE_PER_SECOND = 627520278 * 5; // 2% per year
 
     IActivePool public activePool;
 
