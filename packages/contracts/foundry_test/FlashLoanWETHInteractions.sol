@@ -104,7 +104,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
       deal(address(WETH), address(macroContract), fee);
       vm.deal(address(macroContract), amountToDepositInCDP);
 
-      vm.expectRevert("Must send Exact Balance");
+      vm.expectRevert("Must repay Balance");
       activePool.flashLoan(
         IERC3156FlashBorrower(address(macroContract)),
         address(WETH),
