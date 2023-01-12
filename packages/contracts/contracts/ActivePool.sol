@@ -137,10 +137,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // Previous code
         // NOTE: You cannot `transfer` to this contract, you must `call` because we're using 2 SLOADs
-        require(
-            msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
-            "ActivePool: Caller is neither BO nor Default Pool"
-        );
+        _requireCallerIsBorrowerOperationsOrDefaultPool();
 
         ETH = ETH.add(msg.value);
         emit ActivePoolETHBalanceUpdated(ETH);
