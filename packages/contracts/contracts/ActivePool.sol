@@ -22,7 +22,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
 
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
-    address public stabilityPoolAddress;
     address public defaultPoolAddress;
     uint256 internal ETH; // deposited ether tracker
     uint256 internal EBTCDebt;
@@ -39,22 +38,18 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     function setAddresses(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _stabilityPoolAddress,
         address _defaultPoolAddress
     ) external onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
-        checkContract(_stabilityPoolAddress);
         checkContract(_defaultPoolAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
-        stabilityPoolAddress = _stabilityPoolAddress;
         defaultPoolAddress = _defaultPoolAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
 
         _renounceOwnership();
@@ -78,7 +73,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     // --- Pool functionality ---
 
     function sendETH(address _account, uint _amount) external override {
-        _requireCallerIsBOorCdpMorSP();
+        _requireCallerIsBOorCdpM();
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
@@ -94,7 +89,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
-        _requireCallerIsBOorCdpMorSP();
+        _requireCallerIsBOorCdpM();
         EBTCDebt = EBTCDebt.sub(_amount);
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
@@ -105,15 +100,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         require(
             msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
             "ActivePool: Caller is neither BO nor Default Pool"
-        );
-    }
-
-    function _requireCallerIsBOorCdpMorSP() internal view {
-        require(
-            msg.sender == borrowerOperationsAddress ||
-                msg.sender == cdpManagerAddress ||
-                msg.sender == stabilityPoolAddress,
-            "ActivePool: Caller is neither BorrowerOperations nor CdpManager nor StabilityPool"
         );
     }
 

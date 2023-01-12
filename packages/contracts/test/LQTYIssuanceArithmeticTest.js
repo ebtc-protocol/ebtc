@@ -2,7 +2,6 @@ const Decimal = require("decimal.js");
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
-const StabilityPool = artifacts.require("./StabilityPool.sol")
 
 const th = testHelpers.TestHelper
 const timeValues = testHelpers.TimeValues
@@ -17,7 +16,7 @@ const logLQTYBalanceAndError = (LQTYBalance_A, expectedLQTYBalance_A) => {
   )
 }
 
-const repeatedlyIssueLQTY = async (stabilityPool, timeBetweenIssuances, duration) => {
+const repeatedlyIssueLQTY = async (timeBetweenIssuances, duration) => {
   const startTimestamp = th.toBN(await th.getLatestBlockTimestamp(web3))
   let timePassed = 0
 
@@ -25,7 +24,6 @@ const repeatedlyIssueLQTY = async (stabilityPool, timeBetweenIssuances, duration
   while (timePassed < duration) {
     // console.log(`timePassed: ${timePassed}`)
     await th.fastForwardTime(timeBetweenIssuances, web3.currentProvider)
-    await stabilityPool._unprotectedTriggerLQTYIssuance()
 
     const currentTimestamp = th.toBN(await th.getLatestBlockTimestamp(web3))
     timePassed = currentTimestamp.sub(startTimestamp)
@@ -38,7 +36,6 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
   let borrowerOperations
   let communityIssuanceTester
   let lqtyToken
-  let stabilityPool
 
   const [owner, alice, frontEnd_1] = accounts;
 
@@ -51,10 +48,8 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
     const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
-    contracts.stabilityPool = await StabilityPool.new()
     contracts = await deploymentHelper.deployEBTCToken(contracts)
 
-    stabilityPool = contracts.stabilityPool
     borrowerOperations = contracts.borrowerOperations
 
     lqtyToken = LQTYContracts.lqtyToken
@@ -761,144 +756,5 @@ contract('LQTY community issuance arithmetic tests', async accounts => {
     // )
 
     assert.isAtMost(th.getDifference(totalLQTYIssued, expectedTotalLQTYIssued), 1000000000000000)
-  })
-
-  /* ---  
-  Accumulated issuance error: how many tokens are lost over a given period, for a given issuance frequency? 
-  
-  Slow tests are skipped.
-  --- */
-
-  // TODO: Convert to 25mil issuance schedule
-  it.skip("Frequent token issuance: issuance event every year, for 30 years", async () => {
-    // Register front end with kickback rate = 100%
-    await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
-
-    // Alice opens cdp and deposits to SP
-    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
-    await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
-
-    assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
-
-    const timeBetweenIssuances = timeValues.SECONDS_IN_ONE_YEAR
-    const duration = await getDuration(timeValues.SECONDS_IN_ONE_YEAR * 30)
-
-    await repeatedlyIssueLQTY(stabilityPool, timeBetweenIssuances, duration)
-
-    // Depositor withdraws their deposit and accumulated LQTY
-    await stabilityPool.withdrawFromSP(dec(1, 18), { from: alice })
-
-    const LQTYBalance_A = await lqtyToken.balanceOf(alice)
-    const expectedLQTYBalance_A = th.toBN('33333333302289200000000000')
-    const diff = expectedLQTYBalance_A.sub(LQTYBalance_A)
-
-    // logLQTYBalanceAndError(LQTYBalance_A, expectedLQTYBalance_A)
-
-    // Check the actual balance differs by no more than 1e18 (i.e. 1 token) from the expected balance
-    assert.isTrue(diff.lte(th.toBN(dec(1, 18))))
-  })
-  /*  Results:
-  
-  Expected final balance: 33333333302289200000000000,
-  Actual final balance: 33333333302289247499999999,
-  Abs. error: -47499999999 */
-
-
-    // TODO: Convert to 25mil issuance schedule
-  it.skip("Frequent token issuance: issuance event every day, for 30 years", async () => {
-    // Register front end with kickback rate = 100%
-    await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
-
-    // Alice opens cdp and deposits to SP
-    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
-    await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
-
-    assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
-
-    const timeBetweenIssuances = timeValues.SECONDS_IN_ONE_DAY
-    const duration = await getDuration(timeValues.SECONDS_IN_ONE_YEAR * 30)
-
-    await repeatedlyIssueLQTY(stabilityPool, timeBetweenIssuances, duration)
-
-    // Depositor withdraws their deposit and accumulated LQTY
-    await stabilityPool.withdrawFromSP(dec(1, 18), { from: alice })
-
-    const LQTYBalance_A = await lqtyToken.balanceOf(alice)
-    const expectedLQTYBalance_A = th.toBN('33333333302289200000000000')
-    const diff = expectedLQTYBalance_A.sub(LQTYBalance_A)
-
-    // logLQTYBalanceAndError(LQTYBalance_A, expectedLQTYBalance_A)
-
-    // Check the actual balance differs by no more than 1e18 (i.e. 1 token) from the expected balance
-    assert.isTrue(diff.lte(th.toBN(dec(1, 18))))
-  })
-  /* Results:
-
-  Expected final balance: 33333333302289200000000000,
-  Actual final balance: 33333333302297188866666666,
-  Abs. error: -7988866666666  */
-
-  // TODO: Convert to 25mil issuance schedule
-  it.skip("Frequent token issuance: issuance event every minute, for 1 month", async () => {
-    // Register front end with kickback rate = 100%
-    await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
-
-    // Alice opens cdp and deposits to SP
-    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
-    await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
-
-    assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
-
-    const timeBetweenIssuances = timeValues.SECONDS_IN_ONE_MINUTE
-    const duration = await getDuration(timeValues.SECONDS_IN_ONE_MONTH)
-
-    await repeatedlyIssueLQTY(stabilityPool, timeBetweenIssuances, duration)
-
-    // Depositor withdraws their deposit and accumulated LQTY
-    await stabilityPool.withdrawFromSP(dec(1, 18), { from: alice })
-
-    const LQTYBalance_A = await lqtyToken.balanceOf(alice)
-    const expectedLQTYBalance_A = th.toBN('1845951269598880000000000')
-    const diff = expectedLQTYBalance_A.sub(LQTYBalance_A)
-
-    // logLQTYBalanceAndError(LQTYBalance_A, expectedLQTYBalance_A)
-
-    // Check the actual balance differs by no more than 1e18 (i.e. 1 token) from the expected balance
-    assert.isTrue(diff.lte(th.toBN(dec(1, 18))))
-  })
-  /* Results:
-
-  Expected final balance: 1845951269598880000000000,
-  Actual final balance: 1845951269564420199999999,
-  Abs. error: 34459800000001
-  */
-
-  // TODO: Convert to 25mil issuance schedule
-  it.skip("Frequent token issuance: issuance event every minute, for 1 year", async () => {
-    // Register front end with kickback rate = 100%
-    await stabilityPool.registerFrontEnd(dec(1, 18), { from: frontEnd_1 })
-
-    // Alice opens cdp and deposits to SP
-    await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(1, 'ether') })
-    await stabilityPool.provideToSP(dec(1, 18), frontEnd_1, { from: alice })
-
-    assert.isTrue(await stabilityPool.isEligibleForLQTY(alice))
-
-    const timeBetweenIssuances = timeValues.SECONDS_IN_ONE_MINUTE
-    const duration = await getDuration(timeValues.SECONDS_IN_ONE_YEAR)
-
-    await repeatedlyIssueLQTY(stabilityPool, timeBetweenIssuances, duration)
-
-    // Depositor withdraws their deposit and accumulated LQTY
-    await stabilityPool.withdrawFromSP(dec(1, 18), { from: alice })
-
-    const LQTYBalance_A = await lqtyToken.balanceOf(alice)
-    const expectedLQTYBalance_A = th.toBN('1845951269598880000000000')
-    const diff = expectedLQTYBalance_A.sub(LQTYBalance_A)
-
-    // logLQTYBalanceAndError(LQTYBalance_A, expectedLQTYBalance_A)
-
-    // Check the actual balance differs by no more than 1e18 (i.e. 1 token) from the expected balance
-    assert.isTrue(diff.lte(th.toBN(dec(1, 18))))
   })
 })

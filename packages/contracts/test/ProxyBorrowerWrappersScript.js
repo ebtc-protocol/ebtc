@@ -22,7 +22,6 @@ const {
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
   CdpManagerProxy,
-  StabilityPoolProxy,
   SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
@@ -45,7 +44,6 @@ contract('BorrowerWrappers', async accounts => {
   let cdpManagerOriginal
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let collSurplusPool
   let borrowerOperations
@@ -84,13 +82,13 @@ contract('BorrowerWrappers', async accounts => {
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
     borrowerWrappers = contracts.borrowerWrappers
     lqtyStaking = LQTYContracts.lqtyStaking
     lqtyToken = LQTYContracts.lqtyToken
+    dummyAddrs = "0x000000000000000000000000000000000000dEaD"
 
     EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
   })
@@ -238,12 +236,9 @@ contract('BorrowerWrappers', async accounts => {
   it('claimSPRewardsAndRecycle(): only owner can call it', async () => {
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
-    // Whale deposits 1850 EBTC in StabilityPool
-    await stabilityPool.provideToSP(dec(1850, 18), ZERO_ADDRESS, { from: whale })
 
-    // alice opens cdp and provides 150 EBTC to StabilityPool
+    // alice opens cdp
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
-    await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
 
     // Defaulter Cdp opened
     await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
@@ -269,13 +264,10 @@ contract('BorrowerWrappers', async accounts => {
     // Whale opens Cdp
     const whaleDeposit = toBN(dec(2350, 18))
     await openCdp({ extraEBTCAmount: whaleDeposit, ICR: toBN(dec(4, 18)), extraParams: { from: whale } })
-    // Whale deposits 1850 EBTC in StabilityPool
-    await stabilityPool.provideToSP(whaleDeposit, ZERO_ADDRESS, { from: whale })
 
-    // alice opens cdp and provides 150 EBTC to StabilityPool
+    // alice opens cdp
     const aliceDeposit = toBN(dec(150, 18))
     await openCdp({ extraEBTCAmount: aliceDeposit, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
-    await stabilityPool.provideToSP(aliceDeposit, ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -296,12 +288,8 @@ contract('BorrowerWrappers', async accounts => {
     const totalDeposits = whaleDeposit.add(aliceDeposit)
     const expectedEBTCLoss_A = liquidatedDebt_1.mul(aliceDeposit).div(totalDeposits)
 
-    const expectedCompoundedEBTCDeposit_A = toBN(dec(150, 18)).sub(expectedEBTCLoss_A)
-    const compoundedEBTCDeposit_A = await stabilityPool.getCompoundedEBTCDeposit(alice)
-    // collateral * 150 / 2500 * 0.995
-    const expectedETHGain_A = collateral.mul(aliceDeposit).div(totalDeposits).mul(toBN(dec(995, 15))).div(mv._1e18BN)
-
-    assert.isAtMost(th.getDifference(expectedCompoundedEBTCDeposit_A, compoundedEBTCDeposit_A), 1000)
+    // collateral * 150 / 2500 * 0.995 deprecated due to removal of stability pool
+    const expectedETHGain_A = toBN('0').mul(aliceDeposit).div(totalDeposits).mul(toBN(dec(995, 15))).div(mv._1e18BN)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
     const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
@@ -309,7 +297,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
@@ -319,13 +306,9 @@ contract('BorrowerWrappers', async accounts => {
     // to force LQTY issuance
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-    const expectedLQTYGain_A = toBN('50373424199406504708132')
+//    const expectedLQTYGain_A = toBN('50373424199406504708132')
 
     await priceFeed.setPrice(price.mul(toBN(2)));
-
-    // Alice claims SP rewards and puts them back in the system through the proxy
-    const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
-    await borrowerWrappers.claimSPRewardsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
     const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
@@ -333,7 +316,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check proxy balances remain the same
@@ -346,17 +328,11 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(cdpCollAfter, cdpCollBefore.add(expectedETHGain_A))
     // check that ICR remains constant
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
-    // check that Stability Pool deposit
-    th.assertIsApproximatelyEqual(depositAfter, depositBefore.sub(expectedEBTCLoss_A).add(netDebtChange))
     // check lqty balance remains the same
     th.assertIsApproximatelyEqual(lqtyBalanceAfter, lqtyBalanceBefore)
 
-    // LQTY staking
-    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
-
-    // Expect Alice has withdrawn all ETH gain
-    const alice_pendingETHGain = await stabilityPool.getDepositorETHGain(alice)
-    assert.equal(alice_pendingETHGain, 0)
+    // LQTY staking deprecated due to removal of stability pool
+//    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
   })
 
 
@@ -399,12 +375,6 @@ contract('BorrowerWrappers', async accounts => {
 
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
-    // Whale deposits 1850 EBTC in StabilityPool
-    await stabilityPool.provideToSP(dec(1850, 18), ZERO_ADDRESS, { from: whale })
-
-    // alice opens cdp and provides 150 EBTC to StabilityPool
-    //await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
-    //await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -434,7 +404,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
-    const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     // Alice claims staking rewards and puts them back in the system through the proxy
@@ -449,7 +418,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
-    const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check everything remains the same
@@ -459,14 +427,9 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(cdpDebtAfter, cdpDebtBefore, 10000)
     th.assertIsApproximatelyEqual(cdpCollAfter, cdpCollBefore)
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
-    th.assertIsApproximatelyEqual(depositAfter, depositBefore, 10000)
     th.assertIsApproximatelyEqual(lqtyBalanceBefore, lqtyBalanceAfter)
     // LQTY staking
     th.assertIsApproximatelyEqual(stakeAfter, stakeBefore)
-
-    // Expect Alice has withdrawn all ETH gain
-    const alice_pendingETHGain = await stabilityPool.getDepositorETHGain(alice)
-    assert.equal(alice_pendingETHGain, 0)
   })
 
   it('claimStakingGainsAndRecycle(): with only ETH gain', async () => {
@@ -479,9 +442,8 @@ contract('BorrowerWrappers', async accounts => {
     const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
-    // alice opens cdp and provides 150 EBTC to StabilityPool
+    // alice opens cdp
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
-    await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -510,14 +472,13 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
     const netDebtChange = proportionalEBTC.mul(toBN(dec(1, 18))).div(toBN(dec(1, 18)).add(borrowingRate))
 
-    const expectedLQTYGain_A = toBN('839557069990108416000000')
+//    const expectedLQTYGain_A = toBN('839557069990108416000000')
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     // Alice claims staking rewards and puts them back in the system through the proxy
@@ -526,6 +487,7 @@ contract('BorrowerWrappers', async accounts => {
     // Alice new EBTC gain due to her own Cdp adjustment: ((150/2000) * (borrowing fee over netDebtChange))
     const newBorrowingFee = await cdpManagerOriginal.getBorrowingFeeWithDecay(netDebtChange)
     const expectedNewEBTCGain_A = newBorrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
+    await lqtyStaking.unstake(0, {from: alice});// to trigger claim
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
     const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
@@ -533,7 +495,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check proxy balances remain the same
@@ -547,17 +508,11 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(cdpCollAfter, cdpCollBefore.add(expectedETHGain_A))
     // check that ICR remains constant
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
-    // check that Stability Pool deposit
-    th.assertIsApproximatelyEqual(depositAfter, depositBefore.add(netDebtChange), 10000)
     // check lqty balance remains the same
     th.assertIsApproximatelyEqual(lqtyBalanceBefore, lqtyBalanceAfter)
 
-    // LQTY staking
-    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
-
-    // Expect Alice has withdrawn all ETH gain
-    const alice_pendingETHGain = await stabilityPool.getDepositorETHGain(alice)
-    assert.equal(alice_pendingETHGain, 0)
+    // LQTY staking deprecated due to removal of stability pool
+//    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
   })
 
   it('claimStakingGainsAndRecycle(): with only EBTC gain', async () => {
@@ -566,9 +521,8 @@ contract('BorrowerWrappers', async accounts => {
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
-    // alice opens cdp and provides 150 EBTC to StabilityPool
+    // alice opens cdp
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
-    await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -593,13 +547,13 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
 
     // Alice claims staking rewards and puts them back in the system through the proxy
     await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
+    await lqtyStaking.unstake(0, {from: alice});// to trigger claim
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
     const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
@@ -607,7 +561,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check proxy balances remain the same
@@ -621,14 +574,8 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(cdpCollAfter, cdpCollBefore)
     // check that ICR remains constant
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
-    // check that Stability Pool deposit
-    th.assertIsApproximatelyEqual(depositAfter, depositBefore.add(expectedEBTCGain_A), 10000)
     // check lqty balance remains the same
     th.assertIsApproximatelyEqual(lqtyBalanceBefore, lqtyBalanceAfter)
-
-    // Expect Alice has withdrawn all ETH gain
-    const alice_pendingETHGain = await stabilityPool.getDepositorETHGain(alice)
-    assert.equal(alice_pendingETHGain, 0)
   })
 
   it('claimStakingGainsAndRecycle(): with both ETH and EBTC gains', async () => {
@@ -637,9 +584,8 @@ contract('BorrowerWrappers', async accounts => {
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
-    // alice opens cdp and provides 150 EBTC to StabilityPool
+    // alice opens cdp
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
-    await stabilityPool.provideToSP(dec(150, 18), ZERO_ADDRESS, { from: alice })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -675,22 +621,25 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositBefore = (await stabilityPool.deposits(alice))[0]
     const stakeBefore = await lqtyStaking.stakes(alice)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
     const netDebtChange = proportionalEBTC.mul(toBN(dec(1, 18))).div(toBN(dec(1, 18)).add(borrowingRate))
-    const expectedTotalEBTC = expectedEBTCGain_A.add(netDebtChange)
 
-    const expectedLQTYGain_A = toBN('839557069990108416000000')
+//    const expectedLQTYGain_A = toBN('839557069990108416000000')
 
     // Alice claims staking rewards and puts them back in the system through the proxy
+    let _ebtcBalBefore = await ebtcToken.balanceOf(dummyAddrs)
     await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
+    let _ebtcBalAfter = await ebtcToken.balanceOf(dummyAddrs)	
+    let _ebtcDelta = toBN(_ebtcBalAfter.toString()).sub(toBN(_ebtcBalBefore.toString()));
+    assert.isTrue(_ebtcDelta.gt(toBN('0')));
 
     // Alice new EBTC gain due to her own Cdp adjustment: ((150/2000) * (borrowing fee over netDebtChange))
     const newBorrowingFee = await cdpManagerOriginal.getBorrowingFeeWithDecay(netDebtChange)
     const expectedNewEBTCGain_A = newBorrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
+    await lqtyStaking.unstake(0, {from: alice});// to trigger claim
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
     const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
@@ -698,7 +647,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const depositAfter = (await stabilityPool.deposits(alice))[0]
     const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check proxy balances remain the same
@@ -712,17 +660,11 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(cdpCollAfter, cdpCollBefore.add(expectedETHGain_A))
     // check that ICR remains constant
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
-    // check that Stability Pool deposit
-    th.assertIsApproximatelyEqual(depositAfter, depositBefore.add(expectedTotalEBTC), 10000)
     // check lqty balance remains the same
     th.assertIsApproximatelyEqual(lqtyBalanceBefore, lqtyBalanceAfter)
 
-    // LQTY staking
-    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
-
-    // Expect Alice has withdrawn all ETH gain
-    const alice_pendingETHGain = await stabilityPool.getDepositorETHGain(alice)
-    assert.equal(alice_pendingETHGain, 0)
+    // LQTY staking deprecated due to removal of stability pool
+//    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
   })
 
 })

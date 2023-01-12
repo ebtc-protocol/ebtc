@@ -7,7 +7,6 @@ import "../Dependencies/LiquityMath.sol";
 import "../Dependencies/IERC20.sol";
 import "../Interfaces/IBorrowerOperations.sol";
 import "../Interfaces/ICdpManager.sol";
-import "../Interfaces/IStabilityPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILQTYStaking.sol";
 import "./BorrowerOperationsScript.sol";
@@ -21,7 +20,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     string public constant NAME = "BorrowerWrappersScript";
 
     ICdpManager immutable cdpManager;
-    IStabilityPool immutable stabilityPool;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
     IERC20 immutable lqtyToken;
@@ -39,10 +37,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         checkContract(_cdpManagerAddress);
         ICdpManager cdpManagerCached = ICdpManager(_cdpManagerAddress);
         cdpManager = cdpManagerCached;
-
-        IStabilityPool stabilityPoolCached = cdpManagerCached.stabilityPool();
-        checkContract(address(stabilityPoolCached));
-        stabilityPool = stabilityPoolCached;
 
         IPriceFeed priceFeedCached = cdpManagerCached.priceFeed();
         checkContract(address(priceFeedCached));
@@ -91,48 +85,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         );
     }
 
-    function claimSPRewardsAndRecycle(
-        bytes32 _cdpId,
-        uint _maxFee,
-        bytes32 _upperHint,
-        bytes32 _lowerHint
-    ) external {
-        uint collBalanceBefore = address(this).balance;
-        uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
-
-        // Claim rewards
-        stabilityPool.withdrawFromSP(0);
-
-        uint collBalanceAfter = address(this).balance;
-        uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
-        uint claimedCollateral = collBalanceAfter.sub(collBalanceBefore);
-
-        // Add claimed ETH to cdp, get more EBTC and stake it into the Stability Pool
-        if (claimedCollateral > 0) {
-            _requireUserHasCdp(_cdpId);
-            uint EBTCAmount = _getNetEBTCAmount(_cdpId, claimedCollateral);
-            borrowerOperations.adjustCdp{value: claimedCollateral}(
-                _cdpId,
-                _maxFee,
-                0,
-                EBTCAmount,
-                true,
-                _upperHint,
-                _lowerHint
-            );
-            // Provide withdrawn EBTC to Stability Pool
-            if (EBTCAmount > 0) {
-                stabilityPool.provideToSP(EBTCAmount, address(0));
-            }
-        }
-
-        // Stake claimed LQTY
-        uint claimedLQTY = lqtyBalanceAfter.sub(lqtyBalanceBefore);
-        if (claimedLQTY > 0) {
-            lqtyStaking.stake(claimedLQTY);
-        }
-    }
-
     function claimStakingGainsAndRecycle(
         bytes32 _cdpId,
         uint _maxFee,
@@ -167,9 +119,8 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
         if (totalEBTC > 0) {
-            stabilityPool.provideToSP(totalEBTC, address(0));
-
-            // Providing to Stability Pool also triggers LQTY claim, so stake it if any
+            ebtcToken.transfer(address(0x000000000000000000000000000000000000dEaD), totalEBTC);
+            //  stake LQTY if any
             uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
             uint claimedLQTY = lqtyBalanceAfter.sub(lqtyBalanceBefore);
             if (claimedLQTY > 0) {

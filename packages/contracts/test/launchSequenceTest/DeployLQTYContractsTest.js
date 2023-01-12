@@ -126,7 +126,6 @@ contract('Deploying the LQTY contracts: LCF, CI, LQTYStaking, and LQTYToken ', a
 
       const tx = await communityIssuance.setAddresses(
         lqtyToken.address,
-        coreContracts.stabilityPool.address,
         { from: liquityAG }
       );
       assert.isTrue(tx.receipt.status)
@@ -147,7 +146,6 @@ contract('Deploying the LQTY contracts: LCF, CI, LQTYStaking, and LQTYToken ', a
       try {
         const tx = await newCI.setAddresses(
           lqtyToken.address,
-          coreContracts.stabilityPool.address,
           { from: liquityAG }
         );
       

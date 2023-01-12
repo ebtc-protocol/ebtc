@@ -30,7 +30,6 @@ contract('CdpManager', async accounts => {
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let collSurplusPool
   let defaultPool
   let borrowerOperations
@@ -60,7 +59,6 @@ contract('CdpManager', async accounts => {
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
@@ -70,7 +68,6 @@ contract('CdpManager', async accounts => {
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
