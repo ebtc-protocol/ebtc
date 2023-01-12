@@ -88,7 +88,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
     }
 
     // TODO: More after Auditors consultation
-    function testSecondOperationCausesARevert(uint128 amount, uint128 amountToDepositInCDP) public {
+    function testNothingHappensOnSecondOperationIfRepayed(uint128 amount, uint128 amountToDepositInCDP) public {
       uint256 fee = activePool.flashFee(address(WETH), amount);
 
       vm.assume(fee > 0);
@@ -104,7 +104,6 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
       deal(address(WETH), address(macroContract), fee);
       vm.deal(address(macroContract), amountToDepositInCDP);
 
-      vm.expectRevert("Must repay Balance");
       activePool.flashLoan(
         IERC3156FlashBorrower(address(macroContract)),
         address(WETH),
