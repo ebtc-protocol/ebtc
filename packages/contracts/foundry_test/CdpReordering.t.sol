@@ -8,7 +8,7 @@ import {Utilities} from "./utils/Utilities.sol";
 import {LogUtils} from "./utils/LogUtils.sol";
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
-contract TroveReorderingTest is eBTCBaseFixture, LogUtils {
+contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     struct CdpState {
         uint256 debt;
         uint256 coll;
@@ -60,6 +60,48 @@ contract TroveReorderingTest is eBTCBaseFixture, LogUtils {
     }
 
     /**
+        Pending interest should be considered when inserting a new CDP
+        Create a CDP.
+        Later create a second trove that without interest, would be inserted _after_ the original CDP. However, considering the interest the first has accumulated, it should be inserted before. Ensure this happens.
+     */
+    function testPendingInterestShouldBeConsideredWhenInsertingNewCdp() public {
+        uint cdp0Debt = 2000e18;
+        uint cdp1Debt = 2001e18;
+
+        bytes32 cdp0Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+                5e17,
+                cdp0Debt,
+                bytes32(0),
+                bytes32(0)
+            );
+
+        console.log("Initial Cdp0 State");
+        _getAndPrintCdpState(cdp0Id);
+
+        skip(365 days);
+
+        console.log("Cdp0 State After Timewarp");
+        _getAndPrintCdpState(cdp0Id);
+
+        bytes32 cdp1Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+                5e17,
+                cdp1Debt,
+                bytes32(0),
+                bytes32(0)
+            );
+        
+        console.log("Initial Cdp1 State");
+        _getAndPrintCdpState(cdp1Id);
+
+        bytes32 first = sortedCdps.getFirst();
+        assertEq(first, cdp1Id);
+        bytes32 second = sortedCdps.getNext(first);
+        assertEq(second, cdp0Id);
+    }
+
+    function testTroveShouldIncorprateInterest 
+
+    /**
         Open two CDPs of random sizes at the same time.
         - How long does it take for compounding interest to cause them to flip?
         - What is the relative different in ICR/NICR of them at the maximum time?
@@ -94,7 +136,7 @@ contract TroveReorderingTest is eBTCBaseFixture, LogUtils {
         uint256[] memory cdpNICRAfter = new uint256[](numCdps);
 
         uint timeElapsed = 0;
-        uint maxTimeElapsed = 200 * 365 days;
+        uint maxTimeElapsed = 300 * 365 days;
 
         _getAndPrintCdpState(cdpIds[0]);
         _getAndPrintCdpState(cdpIds[1]);
