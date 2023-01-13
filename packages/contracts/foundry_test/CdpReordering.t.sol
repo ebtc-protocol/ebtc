@@ -183,10 +183,9 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
     /**
         Open two CDPs of set sizes at the same time.
-        - Does compounding interest to cause them to flip?
-        - What is the relative different in ICR/NICR of them at the maximum time?
+        - Ensure compound interest does not cause two CDPs to flip positions
     */
-    function testCdpReorderingTwoSameTimeSim() public {
+    function testCdpReorderingFromCompoundingInterest() public {
         uint256 numCdps = 2;
 
         uint256[] memory cdpColl = new uint256[](numCdps);
@@ -256,8 +255,8 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
                 (cdpNICRBefore[0] > cdpNICRBefore[1] && cdpNICRAfter[1] > cdpNICRAfter[0]) ||
                 (cdpNICRBefore[1] > cdpNICRBefore[0] && cdpNICRAfter[0] > cdpNICRAfter[1])
             ) {
-                console.log("Reorder!");
-                return;
+                console.log("Reorder Discovered after ", vm.toString(timeElapsed / 86400 / 365) ," years");
+                assert(false);
             }
             timeElapsed = timeElapsed + 365 days;
         }
