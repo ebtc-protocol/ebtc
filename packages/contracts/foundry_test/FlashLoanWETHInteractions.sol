@@ -97,13 +97,25 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
       // Peer review and change accordingly
       vm.assume(amountToDepositInCDP > 30 ether);
 
+      // Avoid over borrowing
+      vm.assume(amount < amountToDepositInCDP);
+
       FlashWithDeposit macroContract = new FlashWithDeposit(IERC20(address(WETH)), IERC3156FlashLender(address(activePool)), borrowerOperations);
       
-      // Deal only fee for one, will revert
-      vm.deal(address(activePool), amount);
+      // SETUP Contract
+      // Create a CDP by sending enough
+      address payable[] memory users;
+      users = _utils.createUsers(1);
+      address user = users[0];
+      uint borrowedAmount = _utils.calculateBorrowAmount(30 ether, priceFeedMock.fetchPrice(), COLLATERAL_RATIO);
+      vm.prank(user);
+      vm.deal(address(user), amountToDepositInCDP);
+      borrowerOperations.openCdp{value : amountToDepositInCDP}(FEE, borrowedAmount, "hint", "hint");
+      
       deal(address(WETH), address(macroContract), fee);
       vm.deal(address(macroContract), amountToDepositInCDP);
 
+      // Ensure Delta between ETH and balance is marginal
       activePool.flashLoan(
         IERC3156FlashBorrower(address(macroContract)),
         address(WETH),
