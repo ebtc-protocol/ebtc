@@ -77,7 +77,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
 
   describe('CdpManager', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(cdpManager, 10)
+      await testSetAddresses(cdpManager, 11)
     })
   })
 
