@@ -281,11 +281,12 @@ contract CDPOpsTest is eBTCBaseFixture {
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO_DEFENSIVE
             );
+            uint minBorrowedAmount = borrowedAmount.mul(btcPriceFeedMock.fetchPrice()).div(1e18);
             // Create multiple CDPs per user
             for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 vm.prank(user);
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
-                if (borrowedAmount < MIN_NET_DEBT) {
+                if (minBorrowedAmount < MIN_NET_DEBT) {
                     vm.expectRevert(
                         bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
                     );
@@ -309,9 +310,9 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Randomize collateral increase amount for each user
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint randCollWithdraw = _utils.generateRandomNumber(
-                // Max value to withdraw is 33% of eBTCs belong to CDP
+                // Max value to withdraw is 20% of eBTCs belong to CDP
                 0.1 ether,
-                cdpManager.getCdpDebt(cdpIds[cdpIx]).div(3),
+                cdpManager.getCdpDebt(cdpIds[cdpIx]).div(5),
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());

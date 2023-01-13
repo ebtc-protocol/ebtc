@@ -27,8 +27,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Amount of EBTC to be locked in gas pool on opening cdps
     uint public constant EBTC_GAS_COMPENSATION = 200e18;
 
-    // Minimum amount of net EBTC debt a cdp must have
-    uint public constant MIN_NET_DEBT = 1800e18;
+    // Minimum amount of net EBTC debt in USD a cdp must have
+    uint public constant MIN_NET_DEBT = 2000e18;
     // uint constant public MIN_NET_DEBT = 0;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
