@@ -125,11 +125,8 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
             console.log("Cdp0 State After Timewarp");
             _getAndPrintCdpState(cdp0Id);
             _printCdpList();
-            console.log("Initial Cdp1 State");
+            console.log("Cdp1 State After Creation");
             _getAndPrintCdpState(cdp1Id);
-
-            console.log(cdpManager.getNominalICR(cdp0Id));
-            console.log(cdpManager.getNominalICR(cdp1Id));
         }
         
     }
@@ -165,8 +162,16 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         bytes32 second = sortedCdps.getNext(first);
         assertEq(second, cdp1Id);
 
+        // TODO: Verify pending interest, total values 
+
+        /**
+            - the expected total debt owed (principal + interest) by cdp0 is around 2000*1.02
+            - the expected debt (pendingEBTCDebtInterest) over one year for cdp0 is around X
+            - the expected NICR for cdp0 is around 20/2254.2=0.0088724452 (which will be scaled by 1e20 in code)
+         */
+
         // Update Operation on one that should cause a reorder
-        // We will make CDP 1 have less debt, raising it's CR above that of CDP 0
+        // We will make CDP 1 have more collateral, raising it's CR above that of CDP 0
         borrowerOperations.addColl{value: 1e18}(cdp1Id, bytes32(0), bytes32(0));
 
         // They should have switched (1 -> 0)
