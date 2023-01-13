@@ -19,7 +19,12 @@ contract('PriceFeed', async accounts => {
   let mockChainlink
 
   const setAddresses = async () => {
-    await priceFeed.setAddresses(mockChainlink.address, tellorCaller.address, { from: owner })
+    await priceFeed.setAddresses(
+        mockChainlink.address,
+        tellorCaller.address,
+        "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",
+        { from: owner }
+    )
   }
 
   beforeEach(async () => {
@@ -89,23 +94,42 @@ contract('PriceFeed', async accounts => {
 
     it("setAddresses should fail whe called by nonOwner", async () => {
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: alice }),
+        priceFeed.setAddresses(
+            mockChainlink.address,
+            mockTellor.address,
+            "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",
+            { from: alice }
+        ),
         "Ownable: caller is not the owner"
       )
     })
 
     it("setAddresses should fail after address has already been set", async () => {
       // Owner can successfully set any address
-      const txOwner = await priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: owner })
+      const txOwner = await priceFeed.setAddresses(
+          mockChainlink.address,
+          mockTellor.address,
+          "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",
+          { from: owner }
+      )
       assert.isTrue(txOwner.receipt.status)
 
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: owner }),
+        priceFeed.setAddresses(
+            mockChainlink.address,
+            mockTellor.address,
+            "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",
+            { from: owner }
+        ),
         "Ownable: caller is not the owner"
       )
 
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: alice }),
+        priceFeed.setAddresses(
+            mockChainlink.address,
+            mockTellor.address,
+            "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",
+            { from: alice }),
         "Ownable: caller is not the owner"
       )
     })

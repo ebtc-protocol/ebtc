@@ -30,7 +30,7 @@ contract('TellorCaller', async accounts => {
     PriceFeed.setAsDeployed(dummyPriceFeed)
 	
     qID = await dummyPriceFeed.ETHUSD_TELLOR_QUERY_ID();
-    qBuffer = await dummyPriceFeed.tellorQueryBufferSeconds();
+    qBuffer = await dummyPriceFeed.TELLOR_QUERY_BUFFER_SECONDS();
 	
     dummyPrice = dec(7428, 13)
     await mockTellor.setPrice(dummyPrice)	

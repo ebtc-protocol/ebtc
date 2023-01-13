@@ -1,6 +1,7 @@
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
+const BTCPriceFeedTestnet = artifacts.require("./BTCPriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const DefaultPool = artifacts.require("./DefaultPool.sol");
@@ -88,6 +89,7 @@ class DeploymentHelper {
 
   static async deployLiquityCoreHardhat() {
     const priceFeedTestnet = await PriceFeedTestnet.new()
+    const btcPriceFeedTestnet = await BTCPriceFeedTestnet.new()
     const sortedCdps = await SortedCdps.new()
     const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
@@ -104,6 +106,7 @@ class DeploymentHelper {
     EBTCToken.setAsDeployed(ebtcToken)
     DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
+    BTCPriceFeedTestnet.setAsDeployed(btcPriceFeedTestnet)
     SortedCdps.setAsDeployed(sortedCdps)
     CdpManager.setAsDeployed(cdpManager)
     ActivePool.setAsDeployed(activePool)
@@ -115,6 +118,7 @@ class DeploymentHelper {
 
     const coreContracts = {
       priceFeedTestnet,
+      btcPriceFeedTestnet,
       ebtcToken,
       sortedCdps,
       cdpManager,
@@ -134,6 +138,7 @@ class DeploymentHelper {
 
     // Contract without testers (yet)
     testerContracts.priceFeedTestnet = await PriceFeedTestnet.new()
+    testerContracts.btcPriceFeedTestnet = await BTCPriceFeedTestnet.new()
     testerContracts.sortedCdps = await SortedCdps.new()
     // Actual tester contracts
     testerContracts.communityIssuance = await CommunityIssuanceTester.new()
@@ -213,6 +218,7 @@ class DeploymentHelper {
 
   static async deployLiquityCoreTruffle() {
     const priceFeedTestnet = await PriceFeedTestnet.new()
+    const btcPriceFeedTestnet = await BTCPriceFeedTestnet.new()
     const sortedCdps = await SortedCdps.new()
     const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
@@ -228,6 +234,7 @@ class DeploymentHelper {
     )
     const coreContracts = {
       priceFeedTestnet,
+      btcPriceFeedTestnet,
       ebtcToken,
       sortedCdps,
       cdpManager,
@@ -347,6 +354,7 @@ class DeploymentHelper {
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
+      contracts.btcPriceFeedTestnet.address,
       contracts.sortedCdps.address,
       contracts.ebtcToken.address,
       LQTYContracts.lqtyStaking.address

@@ -2,6 +2,7 @@
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
+const BTCPriceFeedTestnet = artifacts.require("./BTCPriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const DefaultPool = artifacts.require("./DefaultPool.sol");
@@ -11,6 +12,7 @@ const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
 const deployLiquity = async () => {
   const priceFeedTestnet = await PriceFeedTestnet.new()
+  const btcPriceFeedTestnet = await BTCPriceFeedTestnet.new()
   const sortedCdps = await SortedCdps.new()
   const cdpManager = await CdpManager.new()
   const activePool = await ActivePool.new()
@@ -25,6 +27,7 @@ const deployLiquity = async () => {
   )
   DefaultPool.setAsDeployed(defaultPool)
   PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
+  BTCPriceFeedTestnet.setAsDeployed(btcPriceFeedTestnet)
   EBTCToken.setAsDeployed(ebtcToken)
   SortedCdps.setAsDeployed(sortedCdps)
   CdpManager.setAsDeployed(cdpManager)

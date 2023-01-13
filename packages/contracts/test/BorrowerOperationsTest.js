@@ -1595,11 +1595,12 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt", async () => {
-      // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: dec(100, 30) })
+      // Borrowe 0.2 eBTC
+      await borrowerOperations.openCdp(th._100pct, toBN(dec(2, 17)), A, A, { from: A, value: dec(100, 30) })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
-      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
+      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, toBN(dec(1, 17)), AIndex, AIndex, { from: A })
+      // Try to repay 0.1 eBTC making net debt < min net debt(1600 USD < 2000 USD)
       await assertRevert(repayTxAPromise, "BorrowerOps: Cdp's net debt must be greater than minimum")
     })
 
@@ -3538,11 +3539,10 @@ contract('BorrowerOperations', async accounts => {
     it("openCdp(): reverts if net debt < minimum net debt", async () => {
       const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(100, 30) })
       await assertRevert(txAPromise, "revert")
-
-      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 30) })
+      const txBPromise = borrowerOperations.openCdp(th._100pct, toBN(dec(1, 13)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 30) })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(173, 18))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      const txCPromise = borrowerOperations.openCdp(th._100pct, toBN(dec(1, 13)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
       await assertRevert(txCPromise, "revert")
     })
 

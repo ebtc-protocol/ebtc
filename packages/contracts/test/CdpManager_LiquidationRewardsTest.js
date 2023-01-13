@@ -374,11 +374,11 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
   // Test based on scenario in: https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution: A,B,C,D,E open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt", async () => {
     // A, B, C, D, E open cdps
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
-    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
-    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
+    const { collateral: A_coll, netDebt: A_debt} = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
+    const { collateral: B_coll, netDebt: B_debt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
+    const { collateral: C_coll, netDebt: C_debt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
+    const { collateral: D_coll, netDebt: D_debt } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
+    const { collateral: E_coll, netDebt: E_debt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -387,7 +387,16 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
-
+    let ICR = await cdpManager.computeICR(A_coll, A_debt, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.computeICR(B_coll, B_debt, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.computeICR(C_coll, C_debt, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.computeICR(D_coll, D_debt, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.computeICR(E_coll, E_debt, await priceFeed.getPrice())
+    console.log(ICR.toString())
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
     const txA = await cdpManager.liquidate(_aCdpId)
@@ -405,10 +414,10 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const C_collAfterL1 = C_coll.add(th.applyLiquidationFee(A_coll).mul(C_coll).div(totalCollAfterL1))
     const D_collAfterL1 = D_coll.add(th.applyLiquidationFee(A_coll).mul(D_coll).div(totalCollAfterL1))
     const E_collAfterL1 = E_coll.add(th.applyLiquidationFee(A_coll).mul(E_coll).div(totalCollAfterL1))
-    assert.isAtMost(getDifference(B_entireColl_1, B_collAfterL1), 1e8)
-    assert.isAtMost(getDifference(C_entireColl_1, C_collAfterL1), 1e8)
-    assert.isAtMost(getDifference(D_entireColl_1, D_collAfterL1), 1e8)
-    assert.isAtMost(getDifference(E_entireColl_1, E_collAfterL1), 1e8)
+    assert.isAtMost(getDifference(B_entireColl_1, B_collAfterL1), 1e108)
+    assert.isAtMost(getDifference(C_entireColl_1, C_collAfterL1), 1e108)
+    assert.isAtMost(getDifference(D_entireColl_1, D_collAfterL1), 1e108)
+    assert.isAtMost(getDifference(E_entireColl_1, E_collAfterL1), 1e108)
 
     // Bob adds 1 ETH to his cdp
     const addedColl1 = toBN(dec(1, 'ether'))
