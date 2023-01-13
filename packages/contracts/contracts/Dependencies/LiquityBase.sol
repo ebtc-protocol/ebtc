@@ -4,7 +4,7 @@ pragma solidity 0.6.11;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
-import "./WadMath.sol";
+import "./FixedPointMathLib.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
@@ -36,7 +36,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
 
-    uint public constant INTEREST_RATE_PER_SECOND = 627520278 * 5; // 2% per year
+    uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
 
     IActivePool public activePool;
 
@@ -112,13 +112,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
         // TODO: Fuzz to check overflows/underflows
-        return
-            uint256(
-                WadMath.wadPow(
-                    int256(DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND)),
-                    int256(_time * DECIMAL_PRECISION)
-                )
-            );
+        return FixedPointMathLib.fpow(DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND), _time, 1e18);
+        // return FixedPointMathLib.fpow(INTEREST_RATE_PER_SECOND, _time, 1e18);
         // Simple interest
         // return DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND.mul(_time));
     }
