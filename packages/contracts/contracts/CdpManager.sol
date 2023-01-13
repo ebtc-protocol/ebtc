@@ -1105,7 +1105,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
              */
             if (
                 newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                _getNetDebt(newDebt).mul(btcPriceFeed.fetchPrice()).div(DECIMAL_PRECISION) < MIN_NET_DEBT
+                _getNetDebt(newDebt).mul(btcPriceFeed.fetchPrice()).div(DECIMAL_PRECISION) <
+                MIN_NET_DEBT
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

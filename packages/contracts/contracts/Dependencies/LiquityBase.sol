@@ -41,6 +41,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     IPriceFeed public override priceFeed;
     IPriceFeed public override btcPriceFeed;
+
     // --- Gas compensation functions ---
 
     // Returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation
