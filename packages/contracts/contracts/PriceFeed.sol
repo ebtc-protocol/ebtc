@@ -23,8 +23,6 @@ import "./Dependencies/console.sol";
 contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     using SafeMath for uint256;
 
-    string public constant NAME = "PriceFeed";
-
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
     ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
 
@@ -33,6 +31,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     address cdpManagerAddress;
     bytes32 public tellorQueryId;
 
+    string public constant NAME = "PriceFeed";
+    uint256 public constant TELLOR_QUERY_BUFFER_SECONDS = 901; // default 15 minutes, soft governance might help to change this default configuration if required
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
     bytes32 public constant ETHUSD_TELLOR_QUERY_ID =
         0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992; // keccak256(abi.encode("SpotPrice", abi.encode("eth", "usd")))
@@ -40,7 +40,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         0x60723147b1b97df5ff4e69cf99b6a414acc7da119109811af59fe417730945fe; // keccak256(abi.encode("SpotPrice", abi.encode("eth", "btc")))
     bytes32 public constant BTCUSD_TELLOR_QUERY_ID =
         0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac; // keccak256(abi.encode("SpotPrice", abi.encode("btc", "usd")))
-    uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes, soft governance might help to change this default configuration if required
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
@@ -572,7 +571,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         view
         returns (TellorResponse memory tellorResponse)
     {
-        try tellorCaller.getTellorBufferValue(tellorQueryId, tellorQueryBufferSeconds) returns (
+        try tellorCaller.getTellorBufferValue(tellorQueryId, TELLOR_QUERY_BUFFER_SECONDS) returns (
             bool ifRetrieve,
             uint256 value,
             uint256 _timestampRetrieved
