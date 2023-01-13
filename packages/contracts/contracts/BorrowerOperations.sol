@@ -31,8 +31,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public sortedCdps;
-
-    IPriceFeed public btcPriceFeed;
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:

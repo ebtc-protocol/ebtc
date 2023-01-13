@@ -106,6 +106,7 @@ contract eBTCBaseFixture is Test {
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
+            address(btcPriceFeedMock),
             address(eBTCToken),
             address(sortedCdps),
             address(lqtyToken),

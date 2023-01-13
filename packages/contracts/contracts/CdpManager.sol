@@ -257,6 +257,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
+        address _btcPriceFeedAddress,
         address _ebtcTokenAddress,
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
@@ -268,6 +269,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
+        checkContract(_btcPriceFeedAddress);
         checkContract(_ebtcTokenAddress);
         checkContract(_sortedCdpsAddress);
         checkContract(_lqtyTokenAddress);
@@ -279,6 +281,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
+        btcPriceFeed = IPriceFeed(_btcPriceFeedAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
@@ -1102,7 +1105,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
              */
             if (
                 newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                _getNetDebt(newDebt) < MIN_NET_DEBT
+                _getNetDebt(newDebt).mul(btcPriceFeed.fetchPrice()).div(DECIMAL_PRECISION) < MIN_NET_DEBT
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

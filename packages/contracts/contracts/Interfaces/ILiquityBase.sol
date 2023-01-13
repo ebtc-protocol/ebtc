@@ -6,4 +6,5 @@ import "./IPriceFeed.sol";
 
 interface ILiquityBase {
     function priceFeed() external view returns (IPriceFeed);
+    function btcPriceFeed() external view returns (IPriceFeed);
 }

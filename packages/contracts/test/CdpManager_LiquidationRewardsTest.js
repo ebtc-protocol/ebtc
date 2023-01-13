@@ -387,21 +387,38 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(dec(100, 18))
-    let ICR = await cdpManager.computeICR(A_coll, A_debt, await priceFeed.getPrice())
+    let ICR = await cdpManager.getCurrentICR(_aCdpId, await priceFeed.getPrice())
     console.log(ICR.toString())
-    ICR = await cdpManager.computeICR(B_coll, B_debt, await priceFeed.getPrice())
+    ICR = await cdpManager.getCurrentICR(_bCdpId, await priceFeed.getPrice())
     console.log(ICR.toString())
-    ICR = await cdpManager.computeICR(C_coll, C_debt, await priceFeed.getPrice())
+    ICR = await cdpManager.getCurrentICR(_cCdpId, await priceFeed.getPrice())
     console.log(ICR.toString())
-    ICR = await cdpManager.computeICR(D_coll, D_debt, await priceFeed.getPrice())
+    ICR = await cdpManager.getCurrentICR(_dCdpId, await priceFeed.getPrice())
     console.log(ICR.toString())
-    ICR = await cdpManager.computeICR(E_coll, E_debt, await priceFeed.getPrice())
+    ICR = await cdpManager.getCurrentICR(_eCdpId, await priceFeed.getPrice())
     console.log(ICR.toString())
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
+    let collA = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
+    let debtA = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireDebt
+    // console.log(collA.toString())
+    // console.log(debtA.toString())
+    // console.log((await ebtcToken.balanceOf(A)).toString())
     const txA = await cdpManager.liquidate(_aCdpId)
     assert.isTrue(txA.receipt.status)
     assert.isFalse(await sortedCdps.contains(_aCdpId))
+
+    ICR = await cdpManager.getCurrentICR(_aCdpId, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    // console.log(th.computeICR(collA, debtA, await priceFeed.getPrice()).toString())
+    ICR = await cdpManager.getCurrentICR(_bCdpId, dec(100, 18))
+    console.log(ICR.toString())
+    ICR = await cdpManager.getCurrentICR(_cCdpId, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.getCurrentICR(_dCdpId, await priceFeed.getPrice())
+    console.log(ICR.toString())
+    ICR = await cdpManager.getCurrentICR(_eCdpId, await priceFeed.getPrice())
+    console.log(ICR.toString())
 
     // Check entireColl for each cdp:
     const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl

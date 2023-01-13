@@ -340,6 +340,7 @@ class DeploymentHelper {
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
+      contracts.btcPriceFeedTestnet.address,
       contracts.ebtcToken.address,
       contracts.sortedCdps.address,
       LQTYContracts.lqtyToken.address,
