@@ -32,6 +32,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public sortedCdps;
 
+    IPriceFeed public btcPriceFeed;
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
@@ -106,6 +107,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
+        address _btcPriceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _lqtyStakingAddress
@@ -119,6 +121,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
+        checkContract(_btcPriceFeedAddress);
         checkContract(_sortedCdpsAddress);
         checkContract(_ebtcTokenAddress);
         checkContract(_lqtyStakingAddress);
@@ -129,6 +132,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
+        btcPriceFeed = IPriceFeed(_btcPriceFeedAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         lqtyStakingAddress = _lqtyStakingAddress;

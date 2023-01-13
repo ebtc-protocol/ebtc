@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../contracts/Dependencies/SafeMath.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol";
+import {BTCPriceFeedTestnet} from "../contracts/TestContracts/BTCPriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
@@ -39,6 +40,7 @@ contract eBTCBaseFixture is Test {
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
     PriceFeedTestnet priceFeedMock;
+    BTCPriceFeedTestnet btcPriceFeedMock;
     SortedCdps sortedCdps;
     CdpManager cdpManager;
     ActivePool activePool;
@@ -64,6 +66,7 @@ contract eBTCBaseFixture is Test {
     function setUp() public virtual {
         borrowerOperations = new BorrowerOperations();
         priceFeedMock = new PriceFeedTestnet();
+        btcPriceFeedMock = new BTCPriceFeedTestnet();
         sortedCdps = new SortedCdps();
         cdpManager = new CdpManager();
         activePool = new ActivePool();
@@ -117,6 +120,7 @@ contract eBTCBaseFixture is Test {
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
+            address(btcPriceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
             address(lqtyStaking)

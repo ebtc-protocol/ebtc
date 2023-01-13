@@ -36,6 +36,7 @@ interface IBorrowerOperations {
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
+        address _btcPriceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _lqtyStakingAddress
