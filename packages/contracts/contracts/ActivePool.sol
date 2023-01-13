@@ -144,7 +144,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     }
 
     // === Flashloans === //
-    event Debug(string name, uint256 value);
+
     function flashLoan(
         IERC3156FlashBorrower receiver,
         address token,
@@ -153,11 +153,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     ) external override returns (bool) {
         require(token == address(WETH), "WETH Only");
         require(amount > 0, "0 Amount");
-        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
-
-
         require(amount <= address(this).balance, "Too much");
 
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
         uint256 amountWithFee = amount.add(fee);
 
         // Deposit Eth into WETH
@@ -175,19 +173,20 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Transfer of WETH to Fee recipient
         WETH.transferFrom(address(receiver), address(this), amountWithFee);
 
-        // SEnd weth to fee recipient
+        // Send weth to fee recipient
         WETH.transfer(FEE_RECIPIENT, fee);
 
         // Withdraw principal to this
         // NOTE: Could withdraw all to avoid stuck WETH
         WETH.withdraw(amount);
-        emit Debug("Balance fee", address(this).balance);
-        emit Debug("ETH", ETH);
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
         // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
         // NOTE: This means any balance > ETH is stuck, this is also present in LUSD as is
+
+        // NOTE: This check effectively prevents running 2 FL at the same time
+        //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
         require(address(this).balance >= ETH, "Must repay Balance");
 
         return true;
