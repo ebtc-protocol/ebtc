@@ -940,7 +940,8 @@ class TestHelper {
 
   static async redeemCollateral(redeemer, contracts, EBTCAmount, gasPrice = 0, maxFee = this._100pct) {
     const price = await contracts.priceFeedTestnet.getPrice()
-    const tx = await this.performRedemptionTx(redeemer, price, contracts, EBTCAmount, maxFee, gasPrice)
+    const btcPrice = await contracts.btcPriceFeedTestnet.getPrice()
+    const tx = await this.performRedemptionTx(redeemer, price, btcPrice, contracts, EBTCAmount, maxFee, gasPrice)
     const gas = await this.gasUsed(tx)
     return gas
   }
@@ -951,26 +952,27 @@ class TestHelper {
       gasPrice = 10000000000;//10 GWEI
     }
     const price = await contracts.priceFeedTestnet.getPrice()
-    const tx = await this.performRedemptionTx(redeemer, price, contracts, EBTCAmount, maxFee, gasPrice)
+    const btcPrice = await contracts.btcPriceFeedTestnet.getPrice()
+    const tx = await this.performRedemptionTx(redeemer, price, btcPrice, contracts, EBTCAmount, maxFee, gasPrice)
     return tx
   }
 
   static async redeemCollateral_allAccounts_randomAmount(min, max, accounts, contracts) {
     const gasCostList = []
     const price = await contracts.priceFeedTestnet.getPrice()
-
+    const btcPrice = await contracts.btcPriceFeedTestnet.getPrice()
     for (const redeemer of accounts) {
       const randEBTCAmount = this.randAmountInWei(min, max)
 
-      await this.performRedemptionTx(redeemer, price, contracts, randEBTCAmount)
+      await this.performRedemptionTx(redeemer, price, btcPrice, contracts, randEBTCAmount)
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async performRedemptionTx(redeemer, price, contracts, EBTCAmount, maxFee = 0, gasPrice_toUse = 0) {
-    const redemptionhint = await contracts.hintHelpers.getRedemptionHints(EBTCAmount, price, gasPrice_toUse)
+  static async performRedemptionTx(redeemer, price, btcPrice, contracts, EBTCAmount, maxFee = 0, gasPrice_toUse = 0) {
+    const redemptionhint = await contracts.hintHelpers.getRedemptionHints(EBTCAmount, price, btcPrice, gasPrice_toUse)
 
     const firstRedemptionHint = redemptionhint[0]
     const partialRedemptionNewICR = redemptionhint[1]

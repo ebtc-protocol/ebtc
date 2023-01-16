@@ -37,6 +37,7 @@ contract('CdpManager', async accounts => {
     let beadpSigner;
 
   let priceFeed
+  let btcPriceFeed
   let ebtcToken
   let sortedCdps
   let cdpManager
@@ -75,6 +76,7 @@ contract('CdpManager', async accounts => {
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
     priceFeed = contracts.priceFeedTestnet
+    btcPriceFeed = contracts.btcPriceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
@@ -2239,13 +2241,13 @@ contract('CdpManager', async accounts => {
     // Drop the price
     const price = toBN(dec(100, 18))
     await priceFeed.setPrice(price);
-
+    const btcPrice = await btcPriceFeed.getPrice()
     // --- TEST ---
     const redemptionAmount = C_debt.add(B_debt).add(partialRedemptionAmount)
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     assert.equal(firstRedemptionHint, _carolCdpId)
     const expectedICR = A_coll.mul(price).sub(partialRedemptionAmount.mul(mv._1e18BN)).div(A_totalDebt.sub(partialRedemptionAmount))
@@ -2258,17 +2260,15 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(290, 16)), extraParams: { from: bob } })
     await openCdp({ ICR: toBN(dec(250, 16)), extraParams: { from: carol } })
     await openCdp({ ICR: toBN(dec(180, 16)), extraParams: { from: dennis } })
-
     const price = await priceFeed.getPrice();
-
+    const btcPrice = await btcPriceFeed.getPrice()
     // --- TEST ---
 
-    // Get hints for a redemption of 170 + 30 + some extra EBTC. At least 3 iterations are needed
+    // Get hints for a redemption of 19900. At least 3 iterations are needed
     // for total redemption of the given amount.
     const {
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints('210' + _18_zeros, price, 2) // limit _maxIterations to 2
-
+    } = await hintHelpers.getRedemptionHints('19900' + _18_zeros, price, btcPrice, 2) // limit _maxIterations to 2
     assert.equal(partialRedemptionHintNICR, '0')
   });
 
@@ -2292,6 +2292,7 @@ contract('CdpManager', async accounts => {
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // --- TEST ---
@@ -2300,7 +2301,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     // We don't need to use getApproxHint for this test, since it's not the subject of this
     // test case, and the list is very small, so the correct position is quickly found
@@ -2387,6 +2388,7 @@ contract('CdpManager', async accounts => {
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // --- TEST ---
@@ -2395,7 +2397,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     // We don't need to use getApproxHint for this test, since it's not the subject of this
     // test case, and the list is very small, so the correct position is quickly found
@@ -2472,6 +2474,7 @@ contract('CdpManager', async accounts => {
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // --- TEST ---
@@ -2480,7 +2483,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     // We don't need to use getApproxHint for this test, since it's not the subject of this
     // test case, and the list is very small, so the correct position is quickly found
@@ -2557,6 +2560,7 @@ contract('CdpManager', async accounts => {
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // Increase price to start Erin, and decrease it again so its ICR is under MCR
@@ -2572,7 +2576,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     // We don't need to use getApproxHint for this test, since it's not the subject of this
     // test case, and the list is very small, so the correct position is quickly found
@@ -2802,7 +2806,7 @@ contract('CdpManager', async accounts => {
     // A's remaining debt would be 29950 + 19950 + 5950 + 50 - 55000 = 900.
     // Since this is below the min net debt of 100, A should be skipped and untouched by the redemption
     const A_debt = await cdpManager.getCdpDebt(_aCdpId)
-    await th.assertIsApproximatelyEqual(A_debt, dec(6000, 18))
+    await th.assertIsApproximatelyEqual(A_debt, dec(600, 18))
   })
 
   it('redeemCollateral(): doesnt perform the final partial redemption in the sequence if the hint is out-of-date', async () => {
@@ -2824,6 +2828,7 @@ contract('CdpManager', async accounts => {
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // --- TEST --- 
@@ -2831,7 +2836,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(redemptionAmount, price, btcPrice, 0)
 
     const { 0: upperPartialRedemptionHint, 1: lowerPartialRedemptionHint } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -2845,7 +2850,7 @@ contract('CdpManager', async accounts => {
       const {
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints(dec(1, 18), price, 0)
+      } = await hintHelpers.getRedemptionHints(dec(1, 18), price, btcPrice, 0)
 
       const { 0: upperPartialRedemptionHint, 1: lowerPartialRedemptionHint } = await sortedCdps.findInsertPosition(
         partialRedemptionHintNICR,
@@ -3291,7 +3296,7 @@ contract('CdpManager', async accounts => {
     assert.equal(activePool_coll_before.toString(), totalColl)
 
     const price = await priceFeed.getPrice()
-
+    const btcPrice = await btcPriceFeed.getPrice()
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
@@ -3299,7 +3304,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(dec(400, 18), price, 0)
+    } = await hintHelpers.getRedemptionHints(dec(400, 18), price, btcPrice, 0)
 
     const { 0: upperPartialRedemptionHint, 1: lowerPartialRedemptionHint } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -3359,7 +3364,7 @@ contract('CdpManager', async accounts => {
     assert.equal(activePool_coll_before, totalColl)
 
     const price = await priceFeed.getPrice()
-
+    const btcPrice = await btcPriceFeed.getPrice()
     let firstRedemptionHint
     let partialRedemptionHintNICR
 
@@ -3371,7 +3376,7 @@ contract('CdpManager', async accounts => {
       ({
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints(dec(1000, 18), price, 0))
+      } = await hintHelpers.getRedemptionHints(dec(1000, 18), price, btcPrice, 0))
 
       const { 0: upperPartialRedemptionHint_1, 1: lowerPartialRedemptionHint_1 } = await sortedCdps.findInsertPosition(
         partialRedemptionHintNICR,
@@ -3399,7 +3404,7 @@ contract('CdpManager', async accounts => {
       ({
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints('401000000000000000000', price, 0))
+      } = await hintHelpers.getRedemptionHints('401000000000000000000', price, btcPrice, 0))
 
       const { 0: upperPartialRedemptionHint_2, 1: lowerPartialRedemptionHint_2 } = await sortedCdps.findInsertPosition(
         partialRedemptionHintNICR,
@@ -3425,7 +3430,7 @@ contract('CdpManager', async accounts => {
       ({
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints('239482309000000000000000000', price, 0))
+      } = await hintHelpers.getRedemptionHints('239482309000000000000000000', price, btcPrice, 0))
 
       const { 0: upperPartialRedemptionHint_3, 1: lowerPartialRedemptionHint_3 } = await sortedCdps.findInsertPosition(
         partialRedemptionHintNICR,
@@ -3453,7 +3458,7 @@ contract('CdpManager', async accounts => {
       ({
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints('239482309000000000000000000', price, 0))
+      } = await hintHelpers.getRedemptionHints('239482309000000000000000000', price, btcPrice, 0))
 
       const { 0: upperPartialRedemptionHint_4, 1: lowerPartialRedemptionHint_4 } = await sortedCdps.findInsertPosition(
         partialRedemptionHintNICR,
@@ -3492,7 +3497,7 @@ contract('CdpManager', async accounts => {
     const totalColl = W_coll.add(A_coll).add(B_coll).add(C_coll).add(D_coll)
 
     const price = await priceFeed.getPrice()
-
+    const btcPrice = await btcPriceFeed.getPrice()
     const _120_EBTC = '120000000000000000000'
     const _373_EBTC = '373000000000000000000'
     const _950_EBTC = '950000000000000000000'
@@ -3509,7 +3514,7 @@ contract('CdpManager', async accounts => {
     ({
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(_120_EBTC, price, 0))
+    } = await hintHelpers.getRedemptionHints(_120_EBTC, price, btcPrice, 0))
 
     const { 0: upperPartialRedemptionHint_1, 1: lowerPartialRedemptionHint_1 } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -3542,7 +3547,7 @@ contract('CdpManager', async accounts => {
     ({
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(_373_EBTC, price, 0))
+    } = await hintHelpers.getRedemptionHints(_373_EBTC, price, btcPrice, 0))
 
     const { 0: upperPartialRedemptionHint_2, 1: lowerPartialRedemptionHint_2 } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -3571,7 +3576,7 @@ contract('CdpManager', async accounts => {
     ({
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(_950_EBTC, price, 0))
+    } = await hintHelpers.getRedemptionHints(_950_EBTC, price, btcPrice, 0))
 
     const { 0: upperPartialRedemptionHint_3, 1: lowerPartialRedemptionHint_3 } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -3606,11 +3611,12 @@ contract('CdpManager', async accounts => {
     assert.equal((await ebtcToken.balanceOf(bob)), dec(100, 18))
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
 
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(dec(100, 18), price, 0)
+    } = await hintHelpers.getRedemptionHints(dec(100, 18), price, btcPrice, 0)
 
     const { 0: upperPartialRedemptionHint, 1: lowerPartialRedemptionHint } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -3648,10 +3654,12 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual((await activePool.getEBTCDebt()).toString(), totalDebt)
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
+
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints('101000000000000000000', price, 0)
+    } = await hintHelpers.getRedemptionHints('101000000000000000000', price, btcPrice, 0)
 
     const { 0: upperPartialRedemptionHint, 1: lowerPartialRedemptionHint } = await sortedCdps.findInsertPosition(
       partialRedemptionHintNICR,
@@ -4266,6 +4274,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const price = await priceFeed.getPrice()
+    const btcPrice = await btcPriceFeed.getPrice()
     assert.equal(price, dec(200, 18))
 
     // --- TEST ---
@@ -4279,7 +4288,7 @@ contract('CdpManager', async accounts => {
       const {
         firstRedemptionHint,
         partialRedemptionHintNICR
-      } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
+      } = await hintHelpers.getRedemptionHints(ebtcAmount, price,  btcPrice, 0)
 
       // Don't pay for gas, as it makes it easier to calculate the received Ether
       const redemptionTx = await cdpManager.redeemCollateral(
@@ -4302,7 +4311,7 @@ contract('CdpManager', async accounts => {
     const {
       firstRedemptionHint,
       partialRedemptionHintNICR
-    } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
+    } = await hintHelpers.getRedemptionHints(ebtcAmount, price, btcPrice, 0)
 
     await assertRevert(
       cdpManager.redeemCollateral(

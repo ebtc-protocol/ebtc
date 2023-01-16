@@ -58,6 +58,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     function getRedemptionHints(
         uint _EBTCamount,
         uint _price,
+        uint _btcPrice,
         uint _maxIterations
     )
         external
@@ -91,12 +92,12 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
             uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(
                 cdpManager.getPendingEBTCDebtReward(currentCdpId)
             );
-
+            // Denominate the net debt in USD to compare with MIN_NET_DEBT properly
             if (netEBTCDebt > remainingEBTC) {
-                if (netEBTCDebt > MIN_NET_DEBT) {
+                if (netEBTCDebt.mul(_btcPrice).div(DECIMAL_PRECISION) > MIN_NET_DEBT) {
                     uint maxRedeemableEBTC = LiquityMath._min(
                         remainingEBTC,
-                        netEBTCDebt.sub(MIN_NET_DEBT)
+                        netEBTCDebt.sub(MIN_NET_DEBT.mul(DECIMAL_PRECISION).div(_btcPrice))
                     );
 
                     uint ETH = cdpManager.getCdpColl(currentCdpId).add(
