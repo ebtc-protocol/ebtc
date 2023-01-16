@@ -88,7 +88,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
     }
 
     // TODO: More after Auditors consultation
-    function testNothingHappensOnSecondOperationIfRepayed(uint128 amount, uint128 amountToDepositInCDP) public {
+    function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
       uint256 fee = activePool.flashFee(address(WETH), amount);
 
       vm.assume(fee > 0);
@@ -122,6 +122,8 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         amount,
         abi.encodePacked(uint256(amountToDepositInCDP))
       );
+
+      assertTrue(eBTCToken.balanceOf(address(macroContract)) > 0);
     }
 
 }
