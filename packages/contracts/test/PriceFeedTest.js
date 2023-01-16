@@ -104,6 +104,18 @@ contract('PriceFeed', async accounts => {
       )
     })
 
+    it("setAddresses should fail when passed incorrect Query ID", async () => {
+      await assertRevert(
+          priceFeed.setAddresses(
+              mockChainlink.address,
+              mockTellor.address,
+              "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4993",
+              {from: owner}
+          ),
+          "PriceFeed: Unsupported Tellor query ID"
+      )
+    })
+
     it("setAddresses should fail after address has already been set", async () => {
       // Owner can successfully set any address
       const txOwner = await priceFeed.setAddresses(
