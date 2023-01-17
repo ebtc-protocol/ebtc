@@ -725,7 +725,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function _requireAtLeastMinNetDebt(uint _netDebt, uint _price) internal pure {
         require(
-            _netDebt.mul(_price).div(DECIMAL_PRECISION) >= MIN_NET_DEBT,
+            _getDebtInUsd(_netDebt, _price) >= MIN_NET_DEBT,
             "BorrowerOps: Cdp's net debt must be greater than minimum"
         );
     }

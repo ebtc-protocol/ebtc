@@ -87,6 +87,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return TCR < CCR;
     }
 
+    function _getDebtInUsd(uint _debt, uint _btcPrice) internal pure returns (uint) {
+        return _debt.mul(_btcPrice).div(DECIMAL_PRECISION);
+    }
+
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
         uint feePercentage = _fee.mul(DECIMAL_PRECISION).div(_amount);
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
