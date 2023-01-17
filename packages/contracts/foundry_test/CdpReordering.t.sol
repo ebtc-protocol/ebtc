@@ -32,7 +32,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     // TODO: Inherit base fixture from LiquityBase
     uint256 EBTC_GAS_COMPENSATION;
     uint256 public constant DECIMAL_PRECISION = 1e18;
-    uint256 internal constant MAX_UINT256 = 2**256 - 1;
+    uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
 
     bool constant DEBUG = false; // Print debug logging
 
@@ -128,7 +128,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
             console.log("Cdp1 State After Creation");
             _getAndPrintCdpState(cdp1Id);
         }
-        
     }
 
     /**
@@ -162,7 +161,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         bytes32 second = sortedCdps.getNext(first);
         assertEq(second, cdp1Id);
 
-        // TODO: Verify pending interest, total values 
+        // TODO: Verify pending interest, total values
 
         /**
             - the expected total debt owed (principal + interest) by cdp0 is around 2000*1.02
@@ -246,7 +245,10 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
             if (DEBUG) {
                 console.log("NCIR After [0] ", format(cdpNICRAfter[0]));
                 console.log("NCIR After [1] ", format(cdpNICRAfter[1]));
-                console.log("NICR After Diff", format(stdMath.delta(cdpNICRAfter[0], cdpNICRAfter[1])));
+                console.log(
+                    "NICR After Diff",
+                    format(stdMath.delta(cdpNICRAfter[0], cdpNICRAfter[1]))
+                );
                 console.log("");
             }
 
@@ -255,7 +257,11 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
                 (cdpNICRBefore[0] > cdpNICRBefore[1] && cdpNICRAfter[1] > cdpNICRAfter[0]) ||
                 (cdpNICRBefore[1] > cdpNICRBefore[0] && cdpNICRAfter[0] > cdpNICRAfter[1])
             ) {
-                console.log("Reorder Discovered after ", vm.toString(timeElapsed / 86400 / 365) ," years");
+                console.log(
+                    "Reorder Discovered after ",
+                    vm.toString(timeElapsed / 86400 / 365),
+                    " years"
+                );
                 assert(false);
             }
             timeElapsed = timeElapsed + 365 days;
@@ -263,11 +269,10 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     }
 
     // Duplicated helper functions, should be consolidated
-    function _calculateCollAmount(uint256 debt, uint256 collateralRatio)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateCollAmount(
+        uint256 debt,
+        uint256 collateralRatio
+    ) internal view returns (uint256) {
         return _utils.calculateCollAmount(debt, priceFeedMock.getPrice(), collateralRatio);
     }
 
@@ -320,8 +325,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         while (i < numCdps) {
             if (i == 0) {
                 cdpId = sortedCdps.getFirst();
-            }
-            else {
+            } else {
                 cdpId = sortedCdps.getNext(cdpId);
             }
             console.log(vm.toString(cdpId));

@@ -43,6 +43,18 @@ contract InterestRateTest is eBTCBaseFixture {
         EBTC_GAS_COMPENSATION = cdpManager.EBTC_GAS_COMPENSATION();
     }
 
+    /**
+        - Confirm some basic CDP properites hold (count, ID, sorting with 1 CDP)
+        - Confirm CDP is generated with the intended debt value, and that the entire system debt and active pool are as expected
+        - Ensure no pending rewards before time has passed
+        - Ensure pending interest is present for CDP after one year, and that it has the correct value given assumed interest rate. pendingEBTCInterest and debt values for the CDP should reflect this
+        - Ensure the interest is reflected in ICR - ICR has gone down for CDP (more debt, same collateral)
+        - Ensure the debt is reflected in entire system debt (note this only covers the _one CDP_ state and should handle _N CDPs_)
+        - Ensure active pool does _not_ reflect the new debt (it's implicit and not realized as tokens yet)
+        - Ensure LQTY staking balance hasn't changed during this process
+
+        Next, apply pending interest via an addColl() operation
+    */
     function testInterestIsApplied() public {
         uint256 coll = _calculateCollAmount(2000e18, 200e16);
 
@@ -52,6 +64,8 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             bytes32(0)
         );
+
+        // Confirm basic CDP properties hold
         assertTrue(cdpId0 != "");
         assertEq(cdpManager.getCdpIdsCount(), 1);
 
@@ -69,6 +83,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpManager.getEntireSystemDebt(), 2000e18);
         assertEq(activePool.getEBTCDebt(), 2000e18);
 
+        // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         // Fast-forward 1 year
@@ -112,6 +127,12 @@ contract InterestRateTest is eBTCBaseFixture {
         ); // Error is <0.1% of the expected value
     }
 
+    /**
+        - Open two identical CDPS
+        - Advance time and ensure the debt and interest accrued are identical
+        - Now, add collateral to one of the CDPS (a single wei). This interaction realizes the pending debt.
+        - Advance time and ensure the pending interest is the same across both CDPS
+     */
     function testInterestIsSameForInteractingAndNonInteractingUsers() public {
         bytes32 cdpId0 = borrowerOperations.openCdp{value: 100 ether}(
             5e17,

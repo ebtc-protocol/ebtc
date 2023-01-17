@@ -112,6 +112,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
         // TODO: Fuzz to check overflows/underflows
-        return FixedPointMathLib.fpow(DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND), _time, DECIMAL_PRECISION);
+        return
+            FixedPointMathLib.fpow(
+                DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
+                _time,
+                DECIMAL_PRECISION
+            );
     }
 }
