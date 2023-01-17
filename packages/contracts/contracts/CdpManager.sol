@@ -1683,6 +1683,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             emit LTermsUpdated(L_ETH, L_EBTCDebt, L_EBTCInterest);
 
+            // TODO: Investigate adding the remainder retraoctive feature that the other LTerms have. Does this fix precision issues?
             // Calculate pending interest on each pool
             uint activeDebt = activePool.getEBTCDebt();
             uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);

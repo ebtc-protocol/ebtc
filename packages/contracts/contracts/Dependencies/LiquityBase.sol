@@ -4,7 +4,7 @@ pragma solidity 0.6.11;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
-import "./WadMath.sol";
+import "./FixedPointMathLib.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
@@ -113,13 +113,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
         // TODO: Fuzz to check overflows/underflows
         return
-            uint256(
-                WadMath.wadPow(
-                    int256(DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND)),
-                    int256(_time * DECIMAL_PRECISION)
-                )
+            FixedPointMathLib.fpow(
+                DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
+                _time,
+                DECIMAL_PRECISION
             );
-        // Simple interest
-        // return DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND.mul(_time));
     }
 }
