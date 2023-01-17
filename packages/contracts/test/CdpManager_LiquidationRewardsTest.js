@@ -404,10 +404,10 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const C_collAfterL1 = C_coll.add(th.applyLiquidationFee(A_coll).mul(C_coll).div(totalCollAfterL1))
     const D_collAfterL1 = D_coll.add(th.applyLiquidationFee(A_coll).mul(D_coll).div(totalCollAfterL1))
     const E_collAfterL1 = E_coll.add(th.applyLiquidationFee(A_coll).mul(E_coll).div(totalCollAfterL1))
-    assert.isAtMost(getDifference(B_entireColl_1, B_collAfterL1), 1e108)
-    assert.isAtMost(getDifference(C_entireColl_1, C_collAfterL1), 1e108)
-    assert.isAtMost(getDifference(D_entireColl_1, D_collAfterL1), 1e108)
-    assert.isAtMost(getDifference(E_entireColl_1, E_collAfterL1), 1e108)
+    assert.isAtMost(getDifference(B_entireColl_1, B_collAfterL1), 1e8)
+    assert.isAtMost(getDifference(C_entireColl_1, C_collAfterL1), 1e8)
+    assert.isAtMost(getDifference(D_entireColl_1, D_collAfterL1), 1e8)
+    assert.isAtMost(getDifference(E_entireColl_1, E_collAfterL1), 1e8)
 
     // Bob adds 1 ETH to his cdp
     const addedColl1 = toBN(dec(1, 'ether'))
@@ -426,9 +426,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const B_collAfterL2 = B_collAfterL1.add(addedColl1).add(th.applyLiquidationFee(C_collAfterL1).mul(B_collAfterL1.add(addedColl1)).div(totalCollAfterL2))
     const D_collAfterL2 = D_collAfterL1.add(th.applyLiquidationFee(C_collAfterL1).mul(D_collAfterL1).div(totalCollAfterL2))
     const E_collAfterL2 = E_collAfterL1.add(th.applyLiquidationFee(C_collAfterL1).mul(E_collAfterL1).div(totalCollAfterL2))
-    // console.log(`D_entireColl_2: ${D_entireColl_2}`)
-    // console.log(`E_entireColl_2: ${E_entireColl_2}`)
-    //assert.isAtMost(getDifference(B_entireColl_2, B_collAfterL2), 1e8)
     assert.isAtMost(getDifference(D_entireColl_2, D_collAfterL2), 1e8)
     assert.isAtMost(getDifference(E_entireColl_2, E_collAfterL2), 1e8)
 
