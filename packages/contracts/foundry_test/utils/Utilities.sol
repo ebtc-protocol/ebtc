@@ -4,10 +4,14 @@ pragma solidity 0.6.11;
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "../../contracts/Dependencies/SafeMath.sol";
+import "../../contracts/Interfaces/ICdpManager.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
     using SafeMath for uint256;
+
+    uint internal constant DECIMAL_PRECISION = 1e18;
+    uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
 
     function getNextUserAddress() public returns (address payable) {
@@ -71,5 +75,34 @@ contract Utilities is Test {
             result /= 100;
         }
         return result;
+    }
+
+    // Source: https://github.com/transmissions11/solmate/blob/3a752b8c83427ed1ea1df23f092ea7a810205b6c/src/utils/FixedPointMathLib.sol#L53-L69
+    function mulDivUp(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 z) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Equivalent to require(denominator != 0 && (y == 0 || x <= type(uint256).max / y))
+            if iszero(mul(denominator, iszero(mul(y, gt(x, div(MAX_UINT256, y)))))) {
+                revert(0, 0)
+            }
+
+            // If x * y modulo the denominator is strictly greater than 0,
+            // 1 is added to round up the division of x * y by the denominator.
+            z := add(gt(mod(mul(x, y), denominator), 0), div(mul(x, y), denominator))
+        }
+    }
+
+    function calculateBorrowAmountFromDebt(
+        uint256 amount,
+        uint gasCompensation,
+        uint borrowingRate
+    ) public view returns (uint256) {
+        // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
+        return
+            mulDivUp(
+                amount - gasCompensation,
+                DECIMAL_PRECISION,
+                DECIMAL_PRECISION.add(borrowingRate)
+            );
     }
 }
