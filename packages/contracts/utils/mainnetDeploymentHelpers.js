@@ -68,7 +68,6 @@ class MainnetDeploymentHelper {
     const sortedCdpsFactory = await this.getFactory("SortedCdps")
     const cdpManagerFactory = await this.getFactory("CdpManager")
     const activePoolFactory = await this.getFactory("ActivePool")
-    const stabilityPoolFactory = await this.getFactory("StabilityPool")
     const gasPoolFactory = await this.getFactory("GasPool")
     const defaultPoolFactory = await this.getFactory("DefaultPool")
     const collSurplusPoolFactory = await this.getFactory("CollSurplusPool")
@@ -82,7 +81,6 @@ class MainnetDeploymentHelper {
     const sortedCdps = await this.loadOrDeploy(sortedCdpsFactory, 'sortedCdps', deploymentState)
     const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'cdpManager', deploymentState)
     const activePool = await this.loadOrDeploy(activePoolFactory, 'activePool', deploymentState)
-    const stabilityPool = await this.loadOrDeploy(stabilityPoolFactory, 'stabilityPool', deploymentState)
     const gasPool = await this.loadOrDeploy(gasPoolFactory, 'gasPool', deploymentState)
     const defaultPool = await this.loadOrDeploy(defaultPoolFactory, 'defaultPool', deploymentState)
     const collSurplusPool = await this.loadOrDeploy(collSurplusPoolFactory, 'collSurplusPool', deploymentState)
@@ -92,7 +90,6 @@ class MainnetDeploymentHelper {
 
     const ebtcTokenParams = [
       cdpManager.address,
-      stabilityPool.address,
       borrowerOperations.address
     ]
     const ebtcToken = await this.loadOrDeploy(
@@ -109,7 +106,6 @@ class MainnetDeploymentHelper {
       await this.verifyContract('sortedCdps', deploymentState)
       await this.verifyContract('cdpManager', deploymentState)
       await this.verifyContract('activePool', deploymentState)
-      await this.verifyContract('stabilityPool', deploymentState)
       await this.verifyContract('gasPool', deploymentState)
       await this.verifyContract('defaultPool', deploymentState)
       await this.verifyContract('collSurplusPool', deploymentState)
@@ -125,7 +121,6 @@ class MainnetDeploymentHelper {
       sortedCdps,
       cdpManager,
       activePool,
-      stabilityPool,
       gasPool,
       defaultPool,
       collSurplusPool,
@@ -242,7 +237,6 @@ class MainnetDeploymentHelper {
         contracts.borrowerOperations.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
-        contracts.stabilityPool.address,
         contracts.gasPool.address,
         contracts.collSurplusPool.address,
         contracts.priceFeed.address,
@@ -259,7 +253,6 @@ class MainnetDeploymentHelper {
         contracts.cdpManager.address,
         contracts.activePool.address,
         contracts.defaultPool.address,
-        contracts.stabilityPool.address,
         contracts.gasPool.address,
         contracts.collSurplusPool.address,
         contracts.priceFeed.address,
@@ -270,23 +263,10 @@ class MainnetDeploymentHelper {
       ))
 
     // set contracts in the Pools
-    await this.isOwnershipRenounced(contracts.stabilityPool) ||
-      await this.sendAndWaitForTransaction(contracts.stabilityPool.setAddresses(
-        contracts.borrowerOperations.address,
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        contracts.ebtcToken.address,
-        contracts.sortedCdps.address,
-        contracts.priceFeed.address,
-        EBTCContracts.communityIssuance.address,
-	{gasPrice}
-      ))
-
     await this.isOwnershipRenounced(contracts.activePool) ||
       await this.sendAndWaitForTransaction(contracts.activePool.setAddresses(
         contracts.borrowerOperations.address,
         contracts.cdpManager.address,
-        contracts.stabilityPool.address,
         contracts.defaultPool.address,
 	{gasPrice}
       ))
@@ -337,7 +317,6 @@ class MainnetDeploymentHelper {
     await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
       await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
         EBTCContracts.lqtyToken.address,
-        coreContracts.stabilityPool.address,
 	{gasPrice}
       ))
   }

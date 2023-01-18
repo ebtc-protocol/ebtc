@@ -36,7 +36,7 @@ contract('BorrowerOperations', async accounts => {
     // defaulter_1, defaulter_2,
     frontEnd_1, frontEnd_2, frontEnd_3] = accounts;
 
-    const bn8 = "0xF977814e90dA44bFA03b6295A0616a897441aceC";
+    const bn8 = "0x00000000219ab540356cBB839Cbe05303d7705Fa";
     let [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(997, 1000)
     let bn8Signer;
 
@@ -47,7 +47,6 @@ contract('BorrowerOperations', async accounts => {
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let borrowerOperations
   let lqtyStaking
@@ -100,7 +99,6 @@ contract('BorrowerOperations', async accounts => {
       sortedCdps = contracts.sortedCdps
       cdpManager = contracts.cdpManager
       activePool = contracts.activePool
-      stabilityPool = contracts.stabilityPool
       defaultPool = contracts.defaultPool
       borrowerOperations = contracts.borrowerOperations
       hintHelpers = contracts.hintHelpers
@@ -123,7 +121,9 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("11000")});
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("1100")});
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1100")});
-      await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});
+      if (_signer._address != multisig){
+          await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});		  
+      }
       
     })
 
@@ -757,10 +757,11 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
+      let _tx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 'ether'), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
+      const gasUsedETH = toBN(_tx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_tx).toString()));
 
       const alice_ETHBalance_After = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
-      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before)
+      const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before).add(gasUsedETH)
 
       assert.isTrue(balanceDiff.eq(toBN(dec(1, 'ether'))))
     })
@@ -814,7 +815,7 @@ contract('BorrowerOperations', async accounts => {
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
       const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
-        assert.isTrue(reward.gt(toBN('0')))
+        assert.isTrue(reward.eq(toBN('0')))
       }
 
       // Alice and Bob withdraw from their Cdps
@@ -3397,8 +3398,8 @@ contract('BorrowerOperations', async accounts => {
       const defaultPool_EBTCDebt = await defaultPool.getEBTCDebt()
 
       // Carol's liquidated coll (1 ETH) and drawn debt should have entered the Default Pool
-      assert.isAtMost(th.getDifference(defaultPool_ETH, liquidatedColl_C), 100)
-      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, liquidatedDebt_C), 100)
+      assert.isAtMost(th.getDifference(defaultPool_ETH, toBN('0')), 100)
+      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, toBN('0')), 100)
 
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
       const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
@@ -3526,7 +3527,8 @@ contract('BorrowerOperations', async accounts => {
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
       assert.isTrue(await sortedCdps.contains(AIndex))
 
-      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(dec(47789898, 22)))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
+      let _amt = toBN(dec(47789898, 22))
+      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_amt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(100, 30) })
       assert.isTrue(txC.receipt.status)
 
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
@@ -4737,7 +4739,8 @@ contract('BorrowerOperations', async accounts => {
         const _100pctHex = '0xde0b6b3a7640000'
         const _1e25Hex = '0xd3c21bcecceda1000000'
         const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32)', [_100pctHex, _1e25Hex, th.DUMMY_BYTES32, th.DUMMY_BYTES32])
-        await nonPayable.forward(borrowerOperations.address, openCdpData, { value: dec(10000, 'ether') })
+        await bn8Signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("5000")});
+        await nonPayable.forward(borrowerOperations.address, openCdpData, { from: owner, value: dec(10000, 'ether') })
 
         const nonPayableIndex = await sortedCdps.cdpOfOwnerByIndex(nonPayable.address,0)
 

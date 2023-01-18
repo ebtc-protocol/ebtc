@@ -11,7 +11,7 @@ import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILiquityBase.sol";
 
 /*
- * Base contract for CdpManager, BorrowerOperations and StabilityPool. Contains global system constants and
+ * Base contract for CdpManager, BorrowerOperations. Contains global system constants and
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {

@@ -453,4 +453,18 @@ interface ITellor {
      * @return uint total supply
      */
     function totalSupply() external view returns (uint256);
+
+    /**
+     * @dev Finds the most recent undisputed submission for a given queryId before a specific timestamp.
+     * It is recommended to use this function with a buffer time when retrieving oracle values. This allows time for bad values to be disputed.
+     * @param _queryId is the queryId to look up the value for
+     * @param _timestamp before which to search for latest value
+     * @return _ifRetrieve bool true if able to retrieve a non-zero value
+     * @return _value the value retrieved
+     * @return _timestampRetrieved the value's timestamp
+     */
+    function getDataBefore(
+        bytes32 _queryId,
+        uint256 _timestamp
+    ) external view returns (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved);
 }
