@@ -157,6 +157,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         // The flashFee function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
+        assertEq(fee, amount * borrowerOperations.FEE_AMT() / borrowerOperations.MAX_BPS());
 
         // If the token is not supported flashFee MUST revert.
         vm.expectRevert("EBTC Only");
