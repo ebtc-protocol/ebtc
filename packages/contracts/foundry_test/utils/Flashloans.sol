@@ -19,10 +19,9 @@ contract UselessFlashReceiver is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
-      return keccak256("ERC3156FlashBorrower.onFlashLoan");
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
-
 
 contract eBTCFlashReceiver is IERC3156FlashBorrower {
     function onFlashLoan(
@@ -32,14 +31,12 @@ contract eBTCFlashReceiver is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
-      
-      // Approve fee
-      IERC20(token).approve(msg.sender, fee);
+        // Approve fee
+        IERC20(token).approve(msg.sender, fee);
 
-      // Amount is burned directly
-  
+        // Amount is burned directly
 
-      return keccak256("ERC3156FlashBorrower.onFlashLoan");
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
 
@@ -51,49 +48,46 @@ contract WETHFlashReceiver is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
+        // Set allowance to caller to repay
+        IERC20(token).approve(msg.sender, amount + fee);
 
-      // Set allowance to caller to repay
-      IERC20(token).approve(msg.sender, amount + fee);
-
-      return keccak256("ERC3156FlashBorrower.onFlashLoan");
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
-  contract FlashLoanSpecReceiver is IERC3156FlashBorrower {
-  // TODO: Write partial functions to verify those statements
 
-  /// @notice Sets of flags to test internal state from the test
-  ///   Ultimately a basic way to prove that things have happened, without creating overly complex code
-  // 1)
-  bool public called;
-  // 2)
-  uint256 public balanceReceived;
+contract FlashLoanSpecReceiver is IERC3156FlashBorrower {
+    // TODO: Write partial functions to verify those statements
 
-  address public caller;
+    /// @notice Sets of flags to test internal state from the test
+    ///   Ultimately a basic way to prove that things have happened, without creating overly complex code
+    // 1)
+    bool public called;
+    // 2)
+    uint256 public balanceReceived;
 
-  // Cached received data
-  address public receivedToken;
-  uint256 public receivedAmount;
-  bytes public receivedData;
-  
-  uint256 public receivedFee;
+    address public caller;
 
-  /// @dev Set the balance, so we can check delta for 2)
-  function setBalanceAlready(address token) external {
-    balanceReceived = IERC20(token).balanceOf(address(this));
-  }
+    // Cached received data
+    address public receivedToken;
+    uint256 public receivedAmount;
+    bytes public receivedData;
 
+    uint256 public receivedFee;
+
+    /// @dev Set the balance, so we can check delta for 2)
+    function setBalanceAlready(address token) external {
+        balanceReceived = IERC20(token).balanceOf(address(this));
+    }
 
     function onFlashLoan(
-          address initiator,
-          address token,
-          uint256 amount,
-          uint256 fee,
-          bytes calldata data
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
     ) external override returns (bytes32) {
-
         // TODO: Create custom receiver, that reverts based on the checks below
         // Ultimately not reverting means the spec is follow based on the MUSTs
-
 
         // TODO: Add custom spec receiver
         // 1) The flashLoan function MUST include a callback to the onFlashLoan function in a IERC3156FlashBorrower contract.
@@ -117,21 +111,18 @@ contract WETHFlashReceiver is IERC3156FlashBorrower {
         IERC20(token).approve(msg.sender, amount + fee);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
-  }
-
+}
 
 /// @dev Return the wrong value to test revert case
 contract FlashLoanWrongReturn is IERC3156FlashBorrower {
-
-  function onFlashLoan(
+    function onFlashLoan(
         address initiator,
         address token,
         uint256 amount,
         uint256 fee,
         bytes calldata data
-  ) external override returns (bytes32) {
-
-      IERC20(token).approve(msg.sender, fee);
-      return keccak256("THE WRONG VALUE");
-  }
+    ) external override returns (bytes32) {
+        IERC20(token).approve(msg.sender, fee);
+        return keccak256("THE WRONG VALUE");
+    }
 }
