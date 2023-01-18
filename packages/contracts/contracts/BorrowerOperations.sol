@@ -884,9 +884,9 @@ contract BorrowerOperations is
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(amount > 0, "0 Amount");
+        require(amount > 0, "BorrowerOperations: 0 Amount");
         IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "EBTC Only");
+        require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
 
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
@@ -896,7 +896,7 @@ contract BorrowerOperations is
         // Callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
-            "IERC3156: Callback failed"
+            "BorrowerOperations: IERC3156: Callback failed"
         );
 
         // Gas: Repay from user balance, so we don't trigger a new SSTORE
@@ -912,7 +912,7 @@ contract BorrowerOperations is
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(ebtcToken), "EBTC Only");
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
         return (amount * FEE_AMT) / MAX_BPS;
     }

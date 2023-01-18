@@ -151,9 +151,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(token == address(WETH), "WETH Only");
-        require(amount > 0, "0 Amount");
-        require(amount <= address(this).balance, "Too much");
+        require(token == address(WETH), "ActivePool: WETH Only");
+        require(amount > 0, "ActivePool: 0 Amount");
+        require(amount <= address(this).balance, "ActivePool: Too much");
 
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
         uint256 amountWithFee = amount.add(fee);
@@ -167,7 +167,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
-            "IERC3156: Callback failed"
+            "ActivePool: IERC3156: Callback failed"
         );
 
         // Transfer of WETH to Fee recipient
@@ -187,13 +187,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
-        require(address(this).balance >= ETH, "Must repay Balance");
+        require(address(this).balance >= ETH, "ActivePool: Must repay Balance");
 
         return true;
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(WETH), "WETH Only");
+        require(token == address(WETH), "ActivePool: WETH Only");
 
         return (amount * FEE_AMT) / MAX_BPS;
     }

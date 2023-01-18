@@ -95,7 +95,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       // Zero test case
       uint256 loanAmount = 0;
 
-      vm.expectRevert("0 Amount");
+      vm.expectRevert("ActivePool: 0 Amount");
       // Perform flashloan
       activePool.flashLoan(
         wethReceiver,
@@ -177,13 +177,14 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         // The flashFee function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
+        assertEq(fee, amount * activePool.FEE_AMT() / activePool.MAX_BPS());
 
         // If the token is not supported flashFee MUST revert.
-        vm.expectRevert("WETH Only");
+        vm.expectRevert("ActivePool: WETH Only");
         activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("WETH Only");
+        vm.expectRevert("ActivePool: WETH Only");
         activePool.flashLoan(
           specReceiver,
           randomToken,
@@ -240,7 +241,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       // NOTE: Send funds for spec
       vm.deal(address(activePool), 123);
 
-      vm.expectRevert("IERC3156: Callback failed");
+      vm.expectRevert("ActivePool: IERC3156: Callback failed");
       activePool.flashLoan(
           wrongReturnReceiver,
           WETH,

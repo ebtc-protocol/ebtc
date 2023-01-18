@@ -93,7 +93,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
       // Zero test case
       uint256 loanAmount = 0;
 
-      vm.expectRevert("0 Amount");
+      vm.expectRevert("BorrowerOperations: 0 Amount");
       // Perform flashloan
       borrowerOperations.flashLoan(
         ebtcReceiver,
@@ -160,11 +160,11 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         assertEq(fee, amount * borrowerOperations.FEE_AMT() / borrowerOperations.MAX_BPS());
 
         // If the token is not supported flashFee MUST revert.
-        vm.expectRevert("EBTC Only");
+        vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("EBTC Only");
+        vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashLoan(
           specReceiver,
           randomToken,
@@ -218,7 +218,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     function testEBTCSpecReturnValue() public {
-      vm.expectRevert("IERC3156: Callback failed");
+      vm.expectRevert("BorrowerOperations: IERC3156: Callback failed");
       borrowerOperations.flashLoan(
           wrongReturnReceiver,
           address(eBTCToken),

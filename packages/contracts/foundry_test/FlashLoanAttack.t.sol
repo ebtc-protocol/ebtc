@@ -134,7 +134,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
       vm.deal(address(activePool), amount);
       deal(address(WETH), address(attacker), fee);
 
-      vm.expectRevert("Too much");
+      vm.expectRevert("ActivePool: Too much");
       activePool.flashLoan(
         IERC3156FlashBorrower(address(attacker)),
         address(WETH),
@@ -147,7 +147,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
       
       // Check is to ensure that we didn't donate too much
       vm.assume(address(activePool).balance - amount < activePool.getETH());
-      vm.expectRevert("Must repay Balance");
+      vm.expectRevert("ActivePool: Must repay Balance");
       activePool.flashLoan(
         IERC3156FlashBorrower(address(attacker)),
         address(WETH),
