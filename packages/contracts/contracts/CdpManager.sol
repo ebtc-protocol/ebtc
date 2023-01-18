@@ -330,18 +330,276 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Cdp Liquidation functions ---
 
-    // Single liquidation function. Closes the cdp if its ICR is lower than the minimum collateral ratio.
+    // Single CDP liquidation function.
     function liquidate(bytes32 _cdpId) external override {
         _requireCdpIsActive(_cdpId);
 
-        bytes32[] memory cdpIds = new bytes32[](1);
-        cdpIds[0] = _cdpId;
-        batchLiquidateCdps(cdpIds);
+        // accrue interest accordingly
+        _tickInterest();
+
+        uint256 _price = priceFeed.fetchPrice();
+
+        // prepare local variables
+        uint256 _ICR = getCurrentICR(_cdpId, _price);
+        (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
+            _price,
+            lastInterestRateUpdateTime
+        );
+
+        LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
+            _cdpId,
+            0,
+            _price,
+            _ICR,
+            _cdpId,
+            _cdpId,
+            (_TCR < CCR),
+            _TCR
+        );
+
+        require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
+
+        LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
+            (_TCR >= CCR),
+            systemDebt,
+            systemColl,
+            0,
+            0,
+            0,
+            _cdpId,
+            _price,
+            _ICR
+        );
+
+        ContractsCache memory _contractsCache = ContractsCache(
+            activePool,
+            defaultPool,
+            ebtcToken,
+            lqtyStaking,
+            sortedCdps,
+            collSurplusPool,
+            gasPoolAddress
+        );
+        _liquidateSingleCDP(_contractsCache, _liqState, _rs);
+    }
+
+    struct LocalVar_InternalLiquidate {
+        bytes32 _cdpId;
+        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
+        uint256 _price;
+        uint256 _ICR;
+        bytes32 _upperPartialHint;
+        bytes32 _lowerPartialHint;
+        bool _recoveryModeAtStart;
+        uint256 _TCR;
+    }
+
+    struct LocalVar_RecoveryLiquidate {
+        bool backToNormalMode;
+        uint256 entireSystemDebt;
+        uint256 entireSystemColl;
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+        uint256 totalColSurplus;
+        bytes32 _cdpId;
+        uint256 _price;
+        uint256 _ICR;
+    }
+
+    function _liquidateSingleCDPInRecoveryMode(
+        ContractsCache memory _contractsCache,
+        LocalVar_RecoveryLiquidate memory _recoveryState
+    ) private returns (LocalVar_RecoveryLiquidate memory) {
+        // liquidate entire debt
+        (
+            uint256 _totalDebtToBurn,
+            uint256 _totalColToSend
+        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _recoveryState._cdpId);
+
+        // cap the liquidated collateral if required
+        uint256 _cappedColPortion;
+        address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_recoveryState._cdpId);
+
+        // avoid stack too deep
+        {
+            _cappedColPortion = _recoveryState._ICR > MCR
+                ? _totalDebtToBurn.mul(MCR).div(_recoveryState._price)
+                : _totalColToSend;
+            _cappedColPortion = _cappedColPortion < _totalColToSend
+                ? _cappedColPortion
+                : _totalColToSend;
+            uint256 _collSurplus = (_cappedColPortion == _totalColToSend)
+                ? 0
+                : _totalColToSend.sub(_cappedColPortion);
+            if (_collSurplus > 0) {
+                _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
+                _recoveryState.totalColSurplus = _recoveryState.totalColSurplus.add(_collSurplus);
+            }
+        }
+        _recoveryState.totalDebtToBurn = _recoveryState.totalDebtToBurn.add(_totalDebtToBurn);
+        _recoveryState.totalColToSend = _recoveryState.totalColToSend.add(_cappedColPortion);
+
+        // check if system back to normal mode
+        _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt > _totalDebtToBurn
+            ? _recoveryState.entireSystemDebt.sub(_totalDebtToBurn)
+            : 0;
+        _recoveryState.entireSystemColl = _recoveryState.entireSystemColl > _totalColToSend
+            ? _recoveryState.entireSystemColl.sub(_totalColToSend)
+            : 0;
+        _recoveryState.backToNormalMode = !_checkPotentialRecoveryMode(
+            _recoveryState.entireSystemColl,
+            _recoveryState.entireSystemDebt,
+            _recoveryState._price
+        );
+
+        emit CdpLiquidated(
+            _recoveryState._cdpId,
+            _borrower,
+            _totalDebtToBurn,
+            _cappedColPortion,
+            CdpManagerOperation.liquidateInRecoveryMode
+        );
+        emit CdpUpdated(
+            _recoveryState._cdpId,
+            _borrower,
+            0,
+            0,
+            0,
+            CdpManagerOperation.liquidateInRecoveryMode
+        );
+
+        return _recoveryState;
+    }
+
+    // liquidate given CDP by repaying debt in full or partially if its ICR is below MCR or TCR in recovery mode.
+    // For partially liquidation, caller should use HintHelper smart contract to get correct hints for reinsertion into sorted CDP list
+    function _liquidateSingleCDP(
+        ContractsCache memory _contractsCache,
+        LocalVar_InternalLiquidate memory _liqState,
+        LocalVar_RecoveryLiquidate memory _recoveryState
+    ) internal {
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+
+        if (_liqState._partialAmount == 0) {
+            (totalDebtToBurn, totalColToSend) = _liquidateCDPByExternalLiquidator(
+                _contractsCache,
+                _liqState,
+                _recoveryState
+            );
+        } else {
+            // TODO partial liquidation
+        }
+
+        _finalizeExternalLiquidation(_contractsCache, totalDebtToBurn, totalColToSend);
+    }
+
+    function _finalizeExternalLiquidation(
+        ContractsCache memory _contractsCache,
+        uint256 totalDebtToBurn,
+        uint256 totalColToSend
+    ) internal {
+        // update the staking and collateral snapshots
+        totalStakesSnapshot = totalStakes;
+        totalCollateralSnapshot = _contractsCache
+            .activePool
+            .getETH()
+            .add(_contractsCache.defaultPool.getETH())
+            .sub(totalColToSend);
+
+        // TODO any additional compensation to liquidator?
+        emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
+
+        // burn the debt from liquidator
+        _contractsCache.ebtcToken.burn(msg.sender, totalDebtToBurn);
+
+        // CEI: ensure sending back collateral to liquidator is last thing to do
+        _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
+    }
+
+    // liquidate (and close) the CDP from an external liquidator
+    // this function would return the liquidated debt and collateral of the given CDP
+    function _liquidateCDPByExternalLiquidator(
+        ContractsCache memory _contractsCache,
+        LocalVar_InternalLiquidate memory _liqState,
+        LocalVar_RecoveryLiquidate memory _recoveryState
+    ) private returns (uint256, uint256) {
+        uint256 entireDebt;
+        uint256 entireColl;
+
+        if (_liqState._recoveryModeAtStart) {
+            LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
+                _contractsCache,
+                _recoveryState
+            );
+
+            // housekeeping leftover collateral for liquidated CDP
+            if (_outputState.totalColSurplus > 0) {
+                _contractsCache.activePool.sendETH(
+                    address(_contractsCache.collSurplusPool),
+                    _outputState.totalColSurplus
+                );
+            }
+
+            entireDebt = _outputState.totalDebtToBurn;
+            entireColl = _outputState.totalColToSend;
+        } else {
+            (uint _debt, uint _coll) = _liquidateCDPByExternalLiquidatorWithoutEvent(
+                _contractsCache,
+                _liqState._cdpId
+            );
+            entireDebt = _debt;
+            entireColl = _coll;
+
+            address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_liqState._cdpId);
+            CdpManagerOperation _mode = CdpManagerOperation.liquidateInNormalMode;
+            emit CdpLiquidated(_liqState._cdpId, _borrower, entireDebt, entireColl, _mode);
+            emit CdpUpdated(_liqState._cdpId, _borrower, 0, 0, 0, _mode);
+        }
+
+        return (entireDebt, entireColl);
+    }
+
+    // liquidate (and close) the CDP from an external liquidator
+    // this function would return the liquidated debt and collateral of the given CDP
+    // without emmiting events
+    function _liquidateCDPByExternalLiquidatorWithoutEvent(
+        ContractsCache memory _contractsCache,
+        bytes32 _cdpId
+    ) private returns (uint256, uint256) {
+        // calculate entire debt to repay
+        (
+            uint256 entireDebt,
+            uint256 entireColl,
+            uint256 pendingDebtReward,
+            uint pendingDebtInterest,
+            uint pendingCollReward
+        ) = getEntireDebtAndColl(_cdpId);
+
+        // move around distributed debt and collateral if any
+        if (pendingDebtReward > 0 || pendingCollReward > 0) {
+            _movePendingCdpRewardsToActivePool(
+                _contractsCache.activePool,
+                _contractsCache.defaultPool,
+                pendingDebtReward,
+                pendingCollReward
+            );
+        }
+
+        // offset debt from Active Pool
+        _contractsCache.activePool.decreaseEBTCDebt(entireDebt);
+
+        // housekeeping after liquidation by closing the CDP
+        _removeStake(_cdpId);
+        _closeCdp(_cdpId, Status.closedByLiquidation);
+
+        return (entireDebt, entireColl);
     }
 
     // --- Inner single liquidation functions ---
 
     // Liquidate one cdp, in Normal Mode.
+    // TODO @deprecated, to remove later when all tests is adapted to new liquidation logic
     function _liquidateNormalMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
@@ -400,6 +658,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // Liquidate one cdp, in Recovery Mode.
+    // TODO @deprecated, to remove later when all tests is adapted to new liquidation logic
     function _liquidateRecoveryMode(
         IActivePool _activePool,
         IDefaultPool _defaultPool,
