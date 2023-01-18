@@ -55,7 +55,8 @@ contract InterestRateTest is eBTCBaseFixture {
 
         Next, apply pending interest via an addColl() operation
     */
-    function testInterestIsApplied() public {
+    function testInterestIsAppliedAddCollOps() public {
+        vm.startPrank(users[0]);
         uint256 coll = _calculateCollAmount(2000e18, 200e16);
 
         bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
@@ -65,16 +66,8 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
 
-        // Confirm basic CDP properties hold
-        assertTrue(cdpId0 != "");
-        assertEq(cdpManager.getCdpIdsCount(), 1);
-
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertGt(lqtyStakingBalanceOld, 0);
-
-        // Make sure valid cdpId returned
-        bytes32 cdpId1 = sortedCdps.getLast();
-        assertEq(cdpId0, cdpId1);
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -110,6 +103,70 @@ contract InterestRateTest is eBTCBaseFixture {
         // Apply pending interest
         borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
 
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
+
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        assertEq(cdpState.pendingEBTCInterest, 0);
+        assertEq(cdpState.debt, debtOld);
+
+        assertEq(cdpManager.getEntireSystemDebt(), debtOld);
+        assertEq(activePool.getEBTCDebt(), debtOld);
+
+        // Check interest is minted to LQTY staking contract
+        assertApproxEqRel(
+            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            40e18,
+            0.001e18
+        ); // Error is <0.1% of the expected value
+    }
+    /**
+        Confirm that interest is applied to a CDP when collateral is removed by user
+    */
+    function testInterestIsAppliedWithdrawCollOps() public {
+        vm.startPrank(users[0]);
+        uint256 coll = _calculateCollAmount(2000e18, 200e16);
+        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
+            5e17,
+            _calculateBorrowAmountFromDebt(2000e18), // Excluding borrow fee and gas compensation
+            bytes32(0),
+            bytes32(0)
+        );
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        assertGt(lqtyStakingBalanceOld, 0);
+
+        CdpState memory cdpState;
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        assertEq(cdpState.debt, 2000e18);
+
+        assertEq(cdpManager.getEntireSystemDebt(), 2000e18);
+        assertEq(activePool.getEBTCDebt(), 2000e18);
+
+        // Confirm no pending rewards before time has passed
+        assertFalse(cdpManager.hasPendingRewards(cdpId0));
+
+        // Fast-forward 1 year
+        skip(365 days);
+
+        // Has pending interest
+        assertTrue(cdpManager.hasPendingRewards(cdpId0));
+
+        cdpState = _getEntireDebtAndColl(cdpId0);
+        // Expected interest over a year is 2%
+        assertApproxEqRel(cdpState.pendingEBTCInterest, 40e18, 0.001e18); // Error is <0.1% of the expected value
+        assertApproxEqRel(cdpState.debt, 2040e18, 0.0001e18); // Error is <0.01% of the expected value
+        uint256 debtOld = cdpState.debt;
+
+        assertLt(cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()), 200e16);
+
+        assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
+
+        // Active pool only contains realized interest (no pending interest)
+        assertEq(activePool.getEBTCDebt(), 2000e18);
+
+        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+
+        // Apply pending interest
+        borrowerOperations.withdrawColl(cdpId0, 1e17,  bytes32(0), bytes32(0));
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
