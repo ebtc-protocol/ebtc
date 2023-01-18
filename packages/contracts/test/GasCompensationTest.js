@@ -29,7 +29,6 @@ contract('Gas compensation tests', async accounts => {
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let borrowerOperations
 
@@ -62,7 +61,6 @@ contract('Gas compensation tests', async accounts => {
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
@@ -72,7 +70,6 @@ contract('Gas compensation tests', async accounts => {
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
     borrowerOperations = contracts.borrowerOperations
 
@@ -391,12 +388,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt.add(C_totalDebt), extraParams: { from: erin } })
 
-    // D, E each provide EBTC to SP
-    await stabilityPool.provideToSP(A_totalDebt, ZERO_ADDRESS, { from: dennis, gasPrice: GAS_PRICE })
-    await stabilityPool.provideToSP(B_totalDebt.add(C_totalDebt), ZERO_ADDRESS, { from: erin, gasPrice: GAS_PRICE })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-
     // --- Price drops to 9.99 ---
     await priceFeed.setPrice('9990000000000000000')
     const price_1 = await priceFeed.getPrice()
@@ -421,14 +412,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
     assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
 
-    // Check SP EBTC has decreased due to the liquidation 
-    const EBTCinSP_A = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_A.lte(EBTCinSP_0))
-
-    // Check ETH in SP has received the liquidation
-    const ETHinSP_A = await stabilityPool.getETH()
-    assert.equal(ETHinSP_A.toString(), aliceColl.sub(_0pt5percent_aliceColl)) // 1 ETH - 0.5%
-
     // --- Price drops to 3 ---
     await priceFeed.setPrice(dec(3, 18))
     const price_2 = await priceFeed.getPrice()
@@ -450,14 +433,6 @@ contract('Gas compensation tests', async accounts => {
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     assert.equal(compensationReceived_B, _0pt5percent_bobColl) // 0.5% of 2 ETH
-
-    // Check SP EBTC has decreased due to the liquidation of B
-    const EBTCinSP_B = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_B.lt(EBTCinSP_A))
-
-    // Check ETH in SP has received the liquidation
-    const ETHinSP_B = await stabilityPool.getETH()
-    assert.equal(ETHinSP_B.toString(), aliceColl.sub(_0pt5percent_aliceColl).add(bobColl).sub(_0pt5percent_bobColl)) // (1 + 2 ETH) * 0.995
 
 
     // --- Price drops to 3 ---
@@ -482,14 +457,6 @@ contract('Gas compensation tests', async accounts => {
     const compensationReceived_C = (liquidatorBalance_after_C.sub(liquidatorBalance_before_C).add(toBN(C_GAS_Used_Liquidator * GAS_PRICE))).toString()
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     assert.equal(compensationReceived_C, _0pt5percent_carolColl)
-
-    // Check SP EBTC has decreased due to the liquidation of C
-    const EBTCinSP_C = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_C.lt(EBTCinSP_B))
-
-    // Check ETH in SP has not changed due to the lquidation of C
-    const ETHinSP_C = await stabilityPool.getETH()
-    assert.equal(ETHinSP_C.toString(), aliceColl.sub(_0pt5percent_aliceColl).add(bobColl).sub(_0pt5percent_bobColl).add(carolColl).sub(_0pt5percent_carolColl)) // (1+2+3 ETH) * 0.995
   })
 
   it('gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder', async () => {
@@ -504,13 +471,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
     await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
-
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis , gasPrice: GAS_PRICE })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin , gasPrice: GAS_PRICE })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-    const ETHinSP_0 = await stabilityPool.getETH()
 
     // --- Price drops to 199.999 ---
     await priceFeed.setPrice('199999000000000000000')
@@ -542,18 +502,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
     assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
 
-    // Check SP EBTC has decreased due to the liquidation of A
-    const EBTCinSP_A = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_A.lt(EBTCinSP_0))
-
-    // Check ETH in SP has increased by the remainder of B's coll
-    const collRemainder_A = aliceColl.sub(_0pt5percent_aliceColl)
-    const ETHinSP_A = await stabilityPool.getETH()
-
-    const SPETHIncrease_A = ETHinSP_A.sub(ETHinSP_0)
-
-    assert.isAtMost(th.getDifference(SPETHIncrease_A, collRemainder_A), 1000)
-
     // --- Price drops to 15 ---
     await priceFeed.setPrice(dec(15, 18))
     const price_2 = await priceFeed.getPrice()
@@ -583,18 +531,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
     assert.equal(compensationReceived_B, _0pt5percent_bobColl)
-
-    // Check SP EBTC has decreased due to the liquidation of B
-    const EBTCinSP_B = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_B.lt(EBTCinSP_A))
-
-    // Check ETH in SP has increased by the remainder of B's coll
-    const collRemainder_B = bobColl.sub(_0pt5percent_bobColl)
-    const ETHinSP_B = await stabilityPool.getETH()
-
-    const SPETHIncrease_B = ETHinSP_B.sub(ETHinSP_A)
-
-    assert.isAtMost(th.getDifference(SPETHIncrease_B, collRemainder_B), 1000)
   })
 
   it('gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder', async () => {
@@ -610,13 +546,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol} })
     await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis} })
     await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin} })
-
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis, gasPrice: GAS_PRICE })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin, gasPrice: GAS_PRICE })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-    const ETHinSP_0 = await stabilityPool.getETH()
 
     await priceFeed.setPrice(dec(200, 18))
     const price_1 = await priceFeed.getPrice()
@@ -647,18 +576,6 @@ contract('Gas compensation tests', async accounts => {
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A).add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))).toString()
     assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
 
-    // Check SP EBTC has decreased due to the liquidation of A 
-    const EBTCinSP_A = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_A.lt(EBTCinSP_0))
-
-    // Check ETH in SP has increased by the remainder of A's coll
-    const collRemainder_A = aliceColl.sub(_0pt5percent_aliceColl)
-    const ETHinSP_A = await stabilityPool.getETH()
-
-    const SPETHIncrease_A = ETHinSP_A.sub(ETHinSP_0)
-
-    assert.isAtMost(th.getDifference(SPETHIncrease_A, collRemainder_A), 1000)
-
 
     /* 
    ETH:USD price = 200
@@ -686,18 +603,6 @@ contract('Gas compensation tests', async accounts => {
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
     assert.equal(compensationReceived_B, _0pt5percent_bobColl)
 
-    // Check SP EBTC has decreased due to the liquidation of B
-    const EBTCinSP_B = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_B.lt(EBTCinSP_A))
-
-    // Check ETH in SP has increased by the remainder of B's coll
-    const collRemainder_B = bobColl.sub(_0pt5percent_bobColl)
-    const ETHinSP_B = await stabilityPool.getETH()
-
-    const SPETHIncrease_B = ETHinSP_B.sub(ETHinSP_A)
-
-    assert.isAtMost(th.getDifference(SPETHIncrease_B, collRemainder_B), 1000)
-
   })
 
   // --- Event emission in single liquidation ---
@@ -713,12 +618,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(300, 18), extraParams: { from: carol } })
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: A_totalDebt, extraParams: { from: dennis } })
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: B_totalDebt, extraParams: { from: erin } })
-
-    // D, E each provide EBTC to SP
-    await stabilityPool.provideToSP(A_totalDebt, ZERO_ADDRESS, { from: dennis })
-    await stabilityPool.provideToSP(B_totalDebt, ZERO_ADDRESS, { from: erin })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
 
     // th.logBN('TCR', await cdpManager.getTCR(await priceFeed.getPrice()))
     // --- Price drops to 9.99 ---
@@ -789,13 +688,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(60, 18)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
     await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     await openCdp({ ICR: toBN(dec(80, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
-
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-    const ETHinSP_0 = await stabilityPool.getETH()
 
     // --- Price drops to 199.999 ---
     await priceFeed.setPrice('199999000000000000000')
@@ -888,13 +780,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     await openCdp({ ICR: toBN(dec(4, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
 
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: dennis })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-    const ETHinSP_0 = await stabilityPool.getETH()
-
     await priceFeed.setPrice(dec(200, 18))
     const price_1 = await priceFeed.getPrice()
 
@@ -975,12 +860,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
     let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
 
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: flyn })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
-
     // price drops to 200 
     await priceFeed.setPrice(dec(200, 18))
     const price = await priceFeed.getPrice()
@@ -1036,17 +915,9 @@ contract('Gas compensation tests', async accounts => {
     const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
-    // Check EBTC in SP has decreased
-    const EBTCinSP_1 = await stabilityPool.getTotalEBTCDeposits()
-    assert.isTrue(EBTCinSP_1.lt(EBTCinSP_0))
-
     // Check liquidator's balance has increased by the expected compensation amount
     const compensationReceived = (liquidatorBalance_after.sub(liquidatorBalance_before).add(toBN(GAS_Used_Liquidator * GAS_PRICE))).toString()
     assert.equal(expectedGasComp, compensationReceived)
-
-    // Check ETH in stability pool now equals the expected liquidated collateral
-    const ETHinSP = (await stabilityPool.getETH()).toString()
-    assert.equal(expectedLiquidatedColl, ETHinSP)
   })
 
   // liquidateCdps - full redistribution
@@ -1118,7 +989,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check EBTC in DefaultPool has decreased
     const EBTCinDefaultPool_1 = await defaultPool.getEBTCDebt()
-    assert.isTrue(EBTCinDefaultPool_1.gt(EBTCinDefaultPool_0))
+    assert.isTrue(EBTCinDefaultPool_1.eq(EBTCinDefaultPool_0))
 
     // Check liquidator's balance has increased by the expected compensation amount
     const compensationReceived = (liquidatorBalance_after.sub(liquidatorBalance_before).add(toBN(GAS_Used_Liquidator * GAS_PRICE))).toString()
@@ -1127,7 +998,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check ETH in defaultPool now equals the expected liquidated collateral
     const ETHinDefaultPool = (await defaultPool.getETH()).toString()
-    assert.isAtMost(th.getDifference(expectedLiquidatedColl, ETHinDefaultPool), 1000)
+    assert.isAtMost(th.getDifference('0', ETHinDefaultPool), 1000)
   })
 
   //  --- event emission in liquidation sequence ---
@@ -1149,12 +1020,6 @@ contract('Gas compensation tests', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
     let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
-
-    // D, E each provide 10000 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: erin })
-    await stabilityPool.provideToSP(dec(1, 23), ZERO_ADDRESS, { from: flyn })
-
-    const EBTCinSP_0 = await stabilityPool.getTotalEBTCDeposits()
 
     // price drops to 200 
     await priceFeed.setPrice(dec(200, 18))
