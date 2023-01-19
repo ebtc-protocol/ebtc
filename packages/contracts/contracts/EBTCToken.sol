@@ -87,7 +87,7 @@ contract EBTCToken is CheckContract, IEBTCToken {
     // --- Functions for intra-Liquity calls ---
 
     function mint(address _account, uint256 _amount) external override {
-        _requireCallerIsBorrowerOperations();
+        _requireCallerIsBOorCdpM();
         _mint(_account, _amount);
     }
 

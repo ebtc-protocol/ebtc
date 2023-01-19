@@ -66,7 +66,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
@@ -2412,7 +2412,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check A's collateral and debt remain the same
     const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1].add(await cdpManager.getPendingETHReward(_aliceCdpId))
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add(await cdpManager.getPendingEBTCDebtReward(_aliceCdpId))
+    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId))[0])
 
     assert.equal(entireColl_A.toString(), '0')
     assert.equal(entireDebt_A.toString(), '0')
@@ -3757,9 +3757,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
 
     // Confirm D, B, C coll & debt have not changed
-    const dennisDebt_After = (await cdpManager.Cdps(_dennisCdpId))[0].add(await cdpManager.getPendingEBTCDebtReward(dennis))
-    const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add(await cdpManager.getPendingEBTCDebtReward(bob))
-    const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add(await cdpManager.getPendingEBTCDebtReward(carol))
+    const dennisDebt_After = (await cdpManager.Cdps(_dennisCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(dennis))[0])
+    const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(bob))[0])
+    const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(carol))[0])
 
     const dennisColl_After = (await cdpManager.Cdps(_dennisCdpId))[1].add(await cdpManager.getPendingETHReward(dennis))  
     const bobColl_After = (await cdpManager.Cdps(_bobCdpId))[1].add(await cdpManager.getPendingETHReward(bob))
@@ -4062,7 +4062,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check A's collateral and debt are the same
     const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1].add(await cdpManager.getPendingETHReward(_aliceCdpId))
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add(await cdpManager.getPendingEBTCDebtReward(_aliceCdpId))
+    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId))[0])
 
     assert.equal(entireColl_A.toString(), '0')
     th.assertIsApproximatelyEqual(entireDebt_A.toString(), '0')

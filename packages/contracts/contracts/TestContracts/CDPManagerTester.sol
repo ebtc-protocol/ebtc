@@ -56,4 +56,9 @@ contract CdpManagerTester is CdpManager {
     //        uint cdpOwnersArrayLength = CdpOwners.length;
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
     //    }
+
+    // Set interest rate as 0 for js tests
+    function _calcUnitAmountAfterInterest(uint) internal pure override returns (uint) {
+        return DECIMAL_PRECISION;
+    }
 }

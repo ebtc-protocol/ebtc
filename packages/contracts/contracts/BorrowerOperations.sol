@@ -154,12 +154,15 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external payable override {
+    ) external payable override returns (bytes32) {
         ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_openCdp memory vars;
 
         vars.price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        bool isRecoveryMode = _checkRecoveryMode(
+            vars.price,
+            cdpManager.lastInterestRateUpdateTime()
+        );
 
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
         //        _requireCdpisNotActive(contractsCache.cdpManager, msg.sender);
@@ -239,6 +242,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             BorrowerOperation.openCdp
         );
         emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
+
+        return _cdpId;
     }
 
     // Send ETH as collateral to a cdp
@@ -345,7 +350,10 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         _requireCdpisActive(contractsCache.cdpManager, _cdpId);
 
         vars.price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        bool isRecoveryMode = _checkRecoveryMode(
+            vars.price,
+            cdpManager.lastInterestRateUpdateTime()
+        );
 
         if (_isDebtIncrease) {
             _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
@@ -643,7 +651,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function _requireNotInRecoveryMode(uint _price) internal view {
         require(
-            !_checkRecoveryMode(_price),
+            !_checkRecoveryMode(_price, cdpManager.lastInterestRateUpdateTime()),
             "BorrowerOps: Operation not permitted during Recovery Mode"
         );
     }
@@ -831,7 +839,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         uint _price
     ) internal view returns (uint) {
         uint totalColl = getEntireSystemColl();
-        uint totalDebt = getEntireSystemDebt();
+        uint totalDebt = _getEntireSystemDebt(cdpManager.lastInterestRateUpdateTime());
 
         totalColl = _isCollIncrease ? totalColl.add(_collChange) : totalColl.sub(_collChange);
         totalDebt = _isDebtIncrease ? totalDebt.add(_debtChange) : totalDebt.sub(_debtChange);

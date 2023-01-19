@@ -4,6 +4,7 @@ pragma solidity 0.6.11;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
+import "./FixedPointMathLib.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
@@ -35,6 +36,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
 
+    uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
+
     IActivePool public activePool;
 
     IDefaultPool public defaultPool;
@@ -64,24 +67,40 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return activeColl.add(liquidatedColl);
     }
 
-    function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
+    function _getEntireSystemDebt(
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
+
+        uint timeElapsed = block.timestamp.sub(_lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
+
+            activeDebt = activeDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            closedDebt = closedDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+        }
 
         return activeDebt.add(closedDebt);
     }
 
-    function _getTCR(uint _price) internal view returns (uint TCR) {
+    function _getTCR(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint TCR) {
         uint entireSystemColl = getEntireSystemColl();
-        uint entireSystemDebt = getEntireSystemDebt();
+        uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
         TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
 
         return TCR;
     }
 
-    function _checkRecoveryMode(uint _price) internal view returns (bool) {
-        uint TCR = _getTCR(_price);
+    function _checkRecoveryMode(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (bool) {
+        uint TCR = _getTCR(_price, _lastInterestRateUpdateTime);
 
         return TCR < CCR;
     }
@@ -89,5 +108,15 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
         uint feePercentage = _fee.mul(DECIMAL_PRECISION).div(_amount);
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
+    }
+
+    function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
+        // TODO: Fuzz to check overflows/underflows
+        return
+            FixedPointMathLib.fpow(
+                DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
+                _time,
+                DECIMAL_PRECISION
+            );
     }
 }

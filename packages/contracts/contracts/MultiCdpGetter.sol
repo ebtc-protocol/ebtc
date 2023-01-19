@@ -15,6 +15,7 @@ contract MultiCdpGetter {
         uint stake;
         uint snapshotETH;
         uint snapshotEBTCDebt;
+        uint snapshotEBTCInterest;
     }
 
     CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
@@ -82,9 +83,12 @@ contract MultiCdpGetter {
                 ,
 
             ) = cdpManager.Cdps(currentCdpId);
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
-                currentCdpId
-            );
+
+            (
+                _cdps[idx].snapshotETH,
+                _cdps[idx].snapshotEBTCDebt,
+                _cdps[idx].snapshotEBTCInterest
+            ) = cdpManager.rewardSnapshots(currentCdpId);
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
@@ -113,9 +117,12 @@ contract MultiCdpGetter {
                 ,
 
             ) = cdpManager.Cdps(currentCdpId);
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
-                currentCdpId
-            );
+
+            (
+                _cdps[idx].snapshotETH,
+                _cdps[idx].snapshotEBTCDebt,
+                _cdps[idx].snapshotEBTCInterest
+            ) = cdpManager.rewardSnapshots(currentCdpId);
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }

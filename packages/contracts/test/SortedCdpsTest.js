@@ -73,7 +73,7 @@ contract('SortedCdps', async accounts => {
     })  
 	
     beforeEach(async () => {
-      contracts = await deploymentHelper.deployLiquityCore()
+      contracts = await deploymentHelper.deployTesterContractsHardhat()
       contracts.cdpManager = await CdpManagerTester.new()
       contracts.ebtcToken = await EBTCToken.new(
         contracts.cdpManager.address,
