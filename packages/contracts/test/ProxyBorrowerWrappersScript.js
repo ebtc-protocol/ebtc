@@ -241,7 +241,7 @@ contract('BorrowerWrappers', async accounts => {
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
 
     // Defaulter Cdp opened
-    await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
     const defaulterProxyAddress = borrowerWrappers.getProxyAddressFromUser(defaulter_1);
     let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
@@ -250,6 +250,7 @@ contract('BorrowerWrappers', async accounts => {
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
+    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner } }) 
     const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 
@@ -281,6 +282,7 @@ contract('BorrowerWrappers', async accounts => {
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
+    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner } }) 
     const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 

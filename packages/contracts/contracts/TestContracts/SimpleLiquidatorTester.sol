@@ -30,6 +30,7 @@ contract SimpleLiquidationTester {
     receive() external payable {
         emit EtherReceived(msg.sender, msg.value);
         if (_onReceiveType == 1) {
+            _onReceiveType = 0; // just to stop at reenter once
             _cdpManager.liquidate(_reEnterLiqCdpId); //reenter liquidation
         } else if (_onReceiveType == 2) {
             revert("revert on receive");
