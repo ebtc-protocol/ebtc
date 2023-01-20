@@ -139,19 +139,13 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         uint256 cdp0Debt = 2000e18;
         uint256 cdp1Debt = 2001e18;
 
-        bytes32 cdp0Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)}(
-            FEE,
-            cdp0Debt,
-            bytes32(0),
-            bytes32(0)
-        );
+        bytes32 cdp0Id = borrowerOperations.openCdp{
+            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        }(FEE, cdp0Debt, bytes32(0), bytes32(0));
 
-        bytes32 cdp1Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)}(
-            FEE,
-            cdp1Debt,
-            bytes32(0),
-            bytes32(0)
-        );
+        bytes32 cdp1Id = borrowerOperations.openCdp{
+            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        }(FEE, cdp1Debt, bytes32(0), bytes32(0));
 
         skip(365 days);
 
@@ -176,8 +170,8 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         // They should have switched (1 -> 0)
         first = sortedCdps.getFirst();
         assertEq(first, cdp1Id);
-//        second = sortedCdps.getNext(first);
-//        assertEq(second, cdp0Id);
+        //        second = sortedCdps.getNext(first);
+        //        assertEq(second, cdp0Id);
     }
 
     /**
