@@ -329,6 +329,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // --- Cdp Liquidation functions ---
+    // -----------------------------------------------------------------
+    //    CDP ICR     |       Liquidation Behavior (TODO gas compensation?)
+    //
+    //  < MCR         |  debt could be fully repaid by liquidator
+    //                |  and ALL collateral transferred to liquidator
+    //
+    //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
+    //                |  debt could be fully repaid by liquidator
+    //                |  and up to (repaid debt * MCR) worth of collateral
+    //                |  transferred to liquidator while the residue of collateral
+    //                |  will be available in CollSurplusPool for owner to claim
+    // -----------------------------------------------------------------
 
     // Single CDP liquidation function.
     function liquidate(bytes32 _cdpId) external override {
