@@ -84,7 +84,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (borrowedAmount < MIN_NET_DEBT) {

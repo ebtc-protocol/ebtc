@@ -98,7 +98,7 @@ contract CDPTest is eBTCBaseFixture {
         vm.prank(user);
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
         vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
-        borrowerOperations.openCdp{value: address(user).balance}(FEE, 180e18, "hint", "hint");
+        borrowerOperations.openCdp{value: address(user).balance}(FEE, 1e15, "hint", "hint");
     }
 
     /* Open CDPs for random amount of users
