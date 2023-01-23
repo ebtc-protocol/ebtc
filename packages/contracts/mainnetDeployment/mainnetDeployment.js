@@ -177,10 +177,11 @@ async function mainnetDeploy(configParams) {
   let chainlinkPrice = await chainlinkProxy.latestAnswer()
   console.log(`current Chainlink price: ${chainlinkPrice}`)
 
+  // TODO: FIX THE TELLOR DEPLOYMENT, FAILS TO DEPLOY PROJECT
   // Check Tellor price directly (through our TellorCaller)
-  let tellorPriceResponse = await ebtcCore.tellorCaller.getTellorCurrentValue(1) // id == 1: the ETH-USD request ID
-  console.log(`current Tellor price: ${tellorPriceResponse[1]}`)
-  console.log(`current Tellor timestamp: ${tellorPriceResponse[2]}`)
+  // let tellorPriceResponse = await ebtcCore.tellorCaller.getTellorCurrentValue(1) // id == 1: the ETH-USD request ID
+  // console.log(`current Tellor price: ${tellorPriceResponse[1]}`)
+  // console.log(`current Tellor timestamp: ${tellorPriceResponse[2]}`)
 
   // // --- Lockup Contracts ---
   console.log("LOCKUP CONTRACT CHECKS")
