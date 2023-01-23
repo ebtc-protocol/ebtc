@@ -128,9 +128,6 @@ contract('Gas compensation tests', async accounts => {
   })
 
   it('_getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral < $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200
     coll = 9.999 ETH  
@@ -155,9 +152,6 @@ contract('Gas compensation tests', async accounts => {
   })
 
   it('getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral = $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200
     coll = 10 ETH  
@@ -168,9 +162,6 @@ contract('Gas compensation tests', async accounts => {
   })
 
   it('getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral = $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200 $/E
     coll = 100 ETH  
@@ -219,100 +210,87 @@ contract('Gas compensation tests', async accounts => {
 
   // gets debt + 50 when 0.5% of coll < $10
   it('_getCompositeDebt(): returns (debt + 50) when collateral < $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200
     coll = 9.999 ETH 
     debt = 10 EBTC
-    0.5% of coll = 0.04995 ETH. USD value: $9.99
-    -> Expect composite debt = 10 + 200  = 2100 EBTC*/
+    -> Expect composite debt = 10 + 0.01 eBTC  = 10.01 EBTC*/
     const compositeDebt_1 = await cdpManagerTester.getCompositeDebt(dec(10, 18))
-    assert.equal(compositeDebt_1, dec(210, 18))
+    assert.equal(compositeDebt_1, dec(1001, 16))
 
     /* ETH:USD price = 200
      coll = 0.055 ETH  
      debt = 0 EBTC
-     0.5% of coll = 0.000275 ETH. USD value: $0.055
-     -> Expect composite debt = 0 + 200 = 200 EBTC*/
+     -> Expect composite debt = 0 + 0.01 = 200 EBTC*/
     const compositeDebt_2 = await cdpManagerTester.getCompositeDebt(0)
-    assert.equal(compositeDebt_2, dec(200, 18))
+    assert.equal(compositeDebt_2, dec(1, 16))
 
     // /* ETH:USD price = 200
     // coll = 6.09232408808723580 ETH 
     // debt = 200 EBTC 
     // 0.5% of coll = 0.004995 ETH. USD value: $6.09
-    // -> Expect  composite debt =  200 + 200 = 400  EBTC */
+    // -> Expect  composite debt 200.01  EBTC */
     const compositeDebt_3 = await cdpManagerTester.getCompositeDebt(dec(200, 18))
-    assert.equal(compositeDebt_3, '400000000000000000000')
+    assert.equal(compositeDebt_3, '200010000000000000000')
   })
 
   // returns $10 worth of ETH when 0.5% of coll == $10
   it('getCompositeDebt(): returns (debt + 50) collateral = $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200
     coll = 10 ETH  
     debt = 123.45 EBTC
     0.5% of coll = 0.5 ETH. USD value: $10
-    -> Expect composite debt = (123.45 + 200) = 323.45 EBTC  */
+    -> Expect composite debt = 123.46 EBTC  */
     const compositeDebt = await cdpManagerTester.getCompositeDebt('123450000000000000000')
-    assert.equal(compositeDebt, '323450000000000000000')
+    assert.equal(compositeDebt, '123460000000000000000')
   })
 
   /// *** 
 
   // gets debt + 50 when 0.5% of coll > 10
   it('getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value', async () => {
-    const price = await priceFeed.getPrice()
-    assert.equal(price, dec(200, 18))
-
     /* 
     ETH:USD price = 200 $/E
     coll = 100 ETH  
     debt = 2000 EBTC
-    -> Expect composite debt = (2000 + 200) = 2200 EBTC  */
+    -> Expect composite debt 2200.01 EBTC  */
     const compositeDebt_1 = (await cdpManagerTester.getCompositeDebt(dec(2000, 18))).toString()
-    assert.equal(compositeDebt_1, '2200000000000000000000')
+    assert.equal(compositeDebt_1, '2000010000000000000000')
 
     /* 
     ETH:USD price = 200 $/E
     coll = 10.001 ETH  
     debt = 200 EBTC
-    -> Expect composite debt = (200 + 200) = 400 EBTC  */
+    -> Expect composite debt 200,01 EBTC  */
     const compositeDebt_2 = (await cdpManagerTester.getCompositeDebt(dec(200, 18))).toString()
-    assert.equal(compositeDebt_2, '400000000000000000000')
+    assert.equal(compositeDebt_2, '200010000000000000000')
 
     /* 
     ETH:USD price = 200 $/E
     coll = 37.5 ETH  
     debt = 500 EBTC
-    -> Expect composite debt = (500 + 200) = 700 EBTC  */
+    -> Expect composite debt = (500 + 200) = 500.01 EBTC  */
     const compositeDebt_3 = (await cdpManagerTester.getCompositeDebt(dec(500, 18))).toString()
-    assert.equal(compositeDebt_3, '700000000000000000000')
+    assert.equal(compositeDebt_3, '500010000000000000000')
 
     /* 
     ETH:USD price = 45323.54542 $/E
     coll = 94758.230582309850 ETH  
     debt = 1 billion EBTC
-    -> Expect composite debt = (1000000000 + 200) = 1000000200 EBTC  */
+    -> Expect composite debt 1000000000,01 EBTC  */
     await priceFeed.setPrice('45323545420000000000000')
-    const price_2 = await priceFeed.getPrice()
     const compositeDebt_4 = (await cdpManagerTester.getCompositeDebt(dec(1, 27))).toString()
-    assert.isAtMost(th.getDifference(compositeDebt_4, '1000000200000000000000000000'), 100000000000)
+    assert.isAtMost(th.getDifference(compositeDebt_4, '1000000000010000000000000000'), 100000000000)
 
     /* 
     ETH:USD price = 1000000 $/E (1 million)
     coll = 300000000 ETH   (300 million)
     debt = 54321.123456789 EBTC
-   -> Expect composite debt = (54321.123456789 + 200) = 54521.123456789 EBTC */
+   -> Expect composite debt = (54321.123456789 + 200) = 54321,133456789 EBTC */
     await priceFeed.setPrice(dec(1, 24))
-    const price_3 = await priceFeed.getPrice()
     const compositeDebt_5 = (await cdpManagerTester.getCompositeDebt('54321123456789000000000')).toString()
-    assert.equal(compositeDebt_5, '54521123456789000000000')
+    assert.equal(compositeDebt_5, '54321133456789000000000')
   })
 
   // --- Test ICRs with virtual debt ---
@@ -414,7 +392,6 @@ contract('Gas compensation tests', async accounts => {
 
     // --- Price drops to 3 ---
     await priceFeed.setPrice(dec(3, 18))
-    const price_2 = await priceFeed.getPrice()
 
     /* 
     ETH:USD price = 3
