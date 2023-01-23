@@ -1,6 +1,6 @@
 const externalAddrs  = {
   // https://data.chain.link/eth-usd
-  CHAINLINK_ETHUSD_PROXY: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", 
+  CHAINLINK_ETHUSD_PROXY: "0xac559f25b1619171cbc396a50854a3240b6a4e99",
   // https://docs.tellor.io/tellor/integration/reference-page
   TELLOR_MASTER:"0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0",
   // https://uniswap.org/docs/v2/smart-contracts/factory/
