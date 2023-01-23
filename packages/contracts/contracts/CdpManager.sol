@@ -358,6 +358,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             lastInterestRateUpdateTime
         );
 
+        require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
+
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
             0,
@@ -368,8 +370,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             (_TCR < CCR),
             _TCR
         );
-
-        require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
             (_TCR >= CCR),
@@ -525,6 +525,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // burn the debt from liquidator
         _contractsCache.ebtcToken.burn(msg.sender, totalDebtToBurn);
 
+        // offset debt from Active Pool
+        _contractsCache.activePool.decreaseEBTCDebt(totalDebtToBurn);
+
         // CEI: ensure sending back collateral to liquidator is last thing to do
         _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
     }
@@ -536,9 +539,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
     ) private returns (uint256, uint256) {
-        uint256 entireDebt;
-        uint256 entireColl;
-
         if (_liqState._recoveryModeAtStart) {
             LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
                 _contractsCache,
@@ -553,23 +553,20 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 );
             }
 
-            entireDebt = _outputState.totalDebtToBurn;
-            entireColl = _outputState.totalColToSend;
+            return (_outputState.totalDebtToBurn, _outputState.totalColToSend);
         } else {
             (uint _debt, uint _coll) = _liquidateCDPByExternalLiquidatorWithoutEvent(
                 _contractsCache,
                 _liqState._cdpId
             );
-            entireDebt = _debt;
-            entireColl = _coll;
 
             address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_liqState._cdpId);
             CdpManagerOperation _mode = CdpManagerOperation.liquidateInNormalMode;
-            emit CdpLiquidated(_liqState._cdpId, _borrower, entireDebt, entireColl, _mode);
+            emit CdpLiquidated(_liqState._cdpId, _borrower, _debt, _coll, _mode);
             emit CdpUpdated(_liqState._cdpId, _borrower, 0, 0, 0, _mode);
-        }
 
-        return (entireDebt, entireColl);
+            return (_debt, _coll);
+        }
     }
 
     // liquidate (and close) the CDP from an external liquidator
@@ -597,9 +594,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 pendingCollReward
             );
         }
-
-        // offset debt from Active Pool
-        _contractsCache.activePool.decreaseEBTCDebt(entireDebt);
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
