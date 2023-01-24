@@ -253,16 +253,16 @@ async function mainnetDeploy(configParams) {
   // Open cdp if not yet opened
   let cdpCount = await ebtcCore.sortedCdps.cdpCountOf(deployerWallet.address)
   if (cdpCount.toString() == '0') {
-    let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
-    let _3ETHcoll = th.dec(30, 'ether') // 3 ETH
+    let _kEBTCWithdrawal = th.dec(2200, 18) // 2200 EBTC
+    let _50ETHcoll = th.dec(50 * 2200, 'ether') // 2200 * 50 ETH
     console.log("Deployer opens a cdp ...")
     await mdh.sendAndWaitForTransaction(
       ebtcCore.borrowerOperations.openCdp(
         th._100pct,
-        _3kEBTCWithdrawal,
+        _kEBTCWithdrawal,
         th.DUMMY_BYTES32,
         th.DUMMY_BYTES32,
-        { value: _3ETHcoll, gasPrice }
+        { value: _50ETHcoll, gasPrice }
       )
     )
   } else {
@@ -318,7 +318,7 @@ async function mainnetDeploy(configParams) {
   if (deployerLPTokenBal.toString() == '0') {
     console.log('Providing liquidity to Uniswap...')
     // Give router an allowance for EBTC
-    await ebtcCore.ebtcToken.increaseAllowance(uniswapV2Router02.address, dec(10000, 18))
+    await ebtcCore.ebtcToken.increaseAllowance(uniswapV2Router02.address, dec(1000000000000, 18))
 
     // Check Router's spending allowance
     const routerEBTCAllowanceFromDeployer = await ebtcCore.ebtcToken.allowance(deployerWallet.address, uniswapV2Router02.address)
@@ -327,13 +327,11 @@ async function mainnetDeploy(configParams) {
     // Get amounts for liquidity provision
     const LP_ETH = dec(1, 'ether')
 
+    console.log(chainlinkPrice.toString());
     // Convert 8-digit CL price to 18 and multiply by ETH amount
-    const EBTCAmount = toBigNum(chainlinkPrice)
-      .mul(toBigNum(dec(1, 10)))
-      .mul(toBigNum(LP_ETH))
-      .div(toBigNum(dec(1, 18)))
+    const EBTCAmount = toBigNum(chainlinkPrice, 8)
 
-    const minEBTCAmount = EBTCAmount.sub(toBigNum(dec(100, 18)))
+    const minEBTCAmount = EBTCAmount.sub(toBigNum(dec(5, 6)))
 
     latestBlock = await ethers.provider.getBlockNumber()
     now = (await ethers.provider.getBlock(latestBlock)).timestamp
@@ -369,8 +367,8 @@ async function mainnetDeploy(configParams) {
   cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
   if (cdpCount.toString() == '0') {
     console.log("Acct 2 opens a cdp ...")
-    let _1500EBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
-    let _15_ETHcoll = th.dec(30, 18) // 30 ETH
+    let _1500EBTCWithdrawal = th.dec(2750, 18) // 3000 EBTC
+    let _15_ETHcoll = th.dec(2750 * 65, 18) // 30 ETH
     const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
     const borrowerOpsAcct2 = await new ethers.Contract(ebtcCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
 
