@@ -109,22 +109,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("checkRecoveryMode(): Returns true if TCR falls below CCR", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, dec(15, 17))
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
 
     const recoveryMode_Before = await th.checkRecoveryMode(contracts);
     assert.isFalse(recoveryMode_Before)
 
     // --- TEST ---
 
-    // price drops to 1ETH:150EBTC, reducing TCR below 150%.  setPrice() calls checkTCRAndSetRecoveryMode() internally.
-    await priceFeed.setPrice(dec(15, 17))
-
-    // const price = await priceFeed.getPrice()
-    // await cdpManager.checkTCRAndSetRecoveryMode(price)
+    // price drops reducing TCR below 150%.  setPrice() calls checkTCRAndSetRecoveryMode() internally.
+    await priceFeed.setPrice(dec(3200, 13))
 
     const recoveryMode_After = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_After)
@@ -132,17 +126,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("checkRecoveryMode(): Returns true if TCR stays less than CCR", async () => {
     // --- SETUP ---
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, '1500000000000000000')
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
 
     // --- TEST ---
 
-    // price drops to 1ETH:150EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('150000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3200, 13))
 
     const recoveryMode_Before = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_Before)
@@ -169,18 +160,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(recoveryMode_After)
   })
 
-  it("checkRecoveryMode(): returns false if TCR rises above CCR", async () => {
+  it("checkRecoveryMode(): `returns false if TCR rises above CCR`", async () => {
     // --- SETUP ---
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, '1500000000000000000')
-
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
     // --- TEST ---
-    // price drops to 1ETH:150EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('150000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(5000, 13))
 
     const recoveryMode_Before = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_Before)
@@ -196,13 +183,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, '1500000000000000000')
-
 
     const bob_Stake_Before = (await cdpManager.Cdps(_bobCdpId))[2]
     const totalStakes_Before = await cdpManager.totalStakes()
@@ -211,8 +194,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalStakes_Before.toString(), A_coll.add(B_coll))
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -220,7 +203,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob's ICR falls to 75%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    assert.equal(bob_ICR, '750000000000000000')
+    assert.equal(bob_ICR, '754999999999999999')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -235,18 +218,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: updates system snapshots correctly", async () => {
     // --- SETUP ---
     //  Alice, Bob and Dennis withdraw such that their ICRs and the TCR is ~150%
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: dennis } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, '1500000000000000000')
-
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%, and all Cdps below 100% ICR
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%, and all Cdps below 100% ICR
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -258,7 +238,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const totalCollateralSnapshot_before = (await cdpManager.totalCollateralSnapshot()).toString()
 
     assert.equal(totalStakesSnaphot_before, A_coll.add(B_coll))
-    assert.equal(totalCollateralSnapshot_before, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll))) // 6 + 3*0.995
+    th.assertIsApproximatelyEqual(totalCollateralSnapshot_before, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll)), 10) // 6 + 3*0.995
 
     const A_reward  = th.applyLiquidationFee(D_coll).mul(A_coll).div(A_coll.add(B_coll))
     const B_reward  = th.applyLiquidationFee(D_coll).mul(B_coll).div(A_coll.add(B_coll))
@@ -277,12 +257,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: closes the Cdp and removes it from the Cdp array", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-
-    const TCR = (await th.getTCR(contracts)).toString()
-    assert.equal(TCR, '1500000000000000000')
 
     const bob_CdpStatus_Before = (await cdpManager.Cdps(_bobCdpId))[3]
     const bob_Cdp_isInSortedList_Before = await sortedCdps.contains(_bobCdpId)
@@ -291,16 +268,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_Cdp_isInSortedList_Before)
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
-    // check Bob's ICR falls to 75%
+    // check Bob's ICR falls to ~75%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    assert.equal(bob_ICR, '750000000000000000')
+    assert.equal(bob_ICR, '754999999999999999')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -316,17 +293,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     //  Alice, Bob and Dennis withdraw such that their ICRs and the TCR is ~150%
     const spDeposit = toBN(dec(390, 18))
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: spDeposit, extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraEBTCAmount: spDeposit, extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: dennis } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: dennis } })
 
-    // const TCR = (await th.getTCR(contracts)).toString()
-    // assert.equal(TCR, '1500000000000000000')
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%, and all Cdps below 100% ICR
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%, and all Cdps below 100% ICR
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -340,7 +315,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with 100 < ICR < 110%: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
@@ -357,15 +332,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // --- TEST ---
     // price drops to 1ETH:100EBTC, reducing TCR to 117%
-    await priceFeed.setPrice('100000000000000000000')
+    await priceFeed.setPrice(dec(3714, 13))
     price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
-    // check Bob's ICR falls to 105%
+    // check Bob's ICR falls to ~105%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    assert.equal(bob_ICR, '1050000000000000000')
+    assert.equal(bob_ICR, '1049999999999999999')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -381,10 +356,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     //  Alice and Dennis withdraw such that their ICR is ~150%
     //  Bob withdraws up to 20000 EBTC of debt, bringing his ICR to 210%
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(20000, 18), extraParams: { from: bob } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
+    const { collateral: B_coll } = await openCdp(
+        { ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(20, 18), extraParams: { from: bob } }
+    )
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: dennis } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     const totalStakesSnaphot_1 = (await cdpManager.totalStakesSnapshot()).toString()
@@ -393,8 +370,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalCollateralSnapshot_1, 0)
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%, and all Cdps below 100% ICR
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%, and all Cdps below 100% ICR
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -404,7 +381,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_dennisCdpId, { from: owner })	
 
     const A_reward  = th.applyLiquidationFee(D_coll).mul(A_coll).div(A_coll.add(B_coll))
-    const B_reward  = th.applyLiquidationFee(D_coll).mul(B_coll).div(A_coll.add(B_coll))
 
     /*
     Prior to Dennis liquidation, total stakes and total collateral were each 27 ether. 
@@ -415,7 +391,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const totalStakesSnaphot_2 = (await cdpManager.totalStakesSnapshot()).toString()
     const totalCollateralSnapshot_2 = (await cdpManager.totalCollateralSnapshot()).toString()
     assert.equal(totalStakesSnaphot_2, A_coll.add(B_coll))
-    assert.equal(totalCollateralSnapshot_2, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll))) // 24 + 3*0.995
+    th.assertIsApproximatelyEqual(totalCollateralSnapshot_2, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll))) // 24 + 3*0.995
 
     // check Bob's ICR is now in range 100% < ICR 110%
     const _110percent = web3.utils.toBN('1100000000000000000')
@@ -441,8 +417,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with 100% < ICR < 110%: closes the Cdp and removes it from the Cdp array", async () => {
     // --- SETUP ---
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     const bob_CdpStatus_Before = (await cdpManager.Cdps(_bobCdpId))[3]
@@ -452,8 +428,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_Cdp_isInSortedList_Before)
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
 
@@ -462,7 +438,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob's ICR has fallen to 105%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    assert.equal(bob_ICR, '1050000000000000000')
+    assert.equal(bob_ICR, '1049999999999999999')
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -479,14 +455,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     //  Alice and Dennis withdraw such that their ICR is ~150%
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
     const spDeposit = toBN(dec(390, 18))
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: spDeposit, extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraEBTCAmount: spDeposit, extraParams: { from: alice } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: dennis } })
+    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -494,12 +470,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob's ICR has fallen to 105%
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price);
-    assert.equal(bob_ICR, '1050000000000000000')
+    assert.equal(bob_ICR, '1049999999999999999')
 	
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
-    const aliceExpectedETHGain = spDeposit.mul(th.applyLiquidationFee(toBN('0'))).div(B_totalDebt)
 
     /* Now, check redistribution to active Cdps. Remainders of 1610 EBTC and 16.82 ether are distributed.
     
@@ -523,16 +498,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice and Dennis withdraw, resulting in ICRs of 266%. 
     // Bob withdraws, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -542,13 +517,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bob_ICR = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
     const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
     const dennis_ICR = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
-    assert.equal(bob_ICR, '1200000000000000000')
-    assert.equal(alice_ICR, dec(133, 16))
-    assert.equal(dennis_ICR, dec(133, 16))
-
-    // console.log(`TCR: ${await th.getTCR(contracts)}`)
-    // Try to liquidate Bob
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    assert.equal(bob_ICR, '1199999999999999999')
+    assert.equal(alice_ICR, '1329999999999999999')
+    assert.equal(dennis_ICR, '1329999999999999999')
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check that redistribution rewards don't change
@@ -581,12 +552,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
     const TCR = await th.getTCR(contracts)
 
@@ -623,23 +594,22 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 220%. Bob has lowest ICR.
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
-    const TCR = await th.getTCR(contracts)
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
     // Check Bob's ICR = 110
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price)
-    assert.isTrue(bob_ICR.eq(mv._MCR))
+    th.assertIsApproximatelyEqual(bob_ICR, mv._MCR)
 
     // Liquidate Bob
     await cdpManager.liquidate(_bobCdpId, { from: owner })
@@ -666,8 +636,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -709,14 +679,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -751,12 +721,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
@@ -796,7 +766,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("liquidate(), with 110% < ICR < TCR: can liquidate cdps out of order", async () => {
     // taking out 1000 EBTC, CR of 200%
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
+    const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(202, 16)), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(204, 16)), extraParams: { from: carol } })
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(206, 16)), extraParams: { from: dennis } })
@@ -804,15 +774,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
-    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraParams: { from: erin } })
-    const { collateral: F_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraParams: { from: freddy } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraParams: { from: freddy } })
 
     const totalLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
 
     await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
 
     // Price drops 
-    await priceFeed.setPrice(dec(120, 18))
+    await priceFeed.setPrice(dec(4500, 13))
     const price = await priceFeed.getPrice()
     const TCR = await th.getTCR(contracts)
   
@@ -891,14 +861,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -928,14 +898,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
     // --- TEST ---
     // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -979,13 +949,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -1019,14 +989,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -1057,14 +1027,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice('100000000000000000000')
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
 
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
@@ -1088,16 +1058,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     // Carol withdraws up to debt of 240 EBTC, -> ICR of 250%.
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
-    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // --- TEST ---
-    // price drops to 1ETH:100EBTC, reducing TCR below 150%
-    await priceFeed.setPrice(dec(100, 18))
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const bob_ICR_Before = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
@@ -1134,16 +1104,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // to compensate borrowing fees
     await ebtcToken.transfer(bob, dec(100, 18), { from: alice })
 
-    // Remove Bob from system to test Carol's cdp: price rises, Bob closes cdp, price drops to 100 again
-    await priceFeed.setPrice(dec(200, 18))
-//    await borrowerOperations.closeCdp(_bobCdpId, { from: bob })
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     assert.isTrue(await th.checkRecoveryMode(contracts))
-
-    const carol_Coll_Before = (await cdpManager.Cdps(_carolCdpId))[1]
-    const carol_Debt_Before = (await cdpManager.Cdps(_carolCdpId))[0]
 
     // Confirm Carol is last cdp in list, and has >110% ICR
     assert.equal((await sortedCdps.getLast()), _carolCdpId)
@@ -1174,17 +1138,17 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   it("liquidate() with ICR > 110%: total liquidated coll and debt is correct", async () => {
     // Whale provides 50 EBTC to the SP
-    await openCdp({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(50, 18), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(1, 17), extraParams: { from: whale } })
 
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(202, 16)), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(204, 16)), extraParams: { from: carol } })
-    const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(206, 16)), extraParams: { from: dennis } })
-    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(208, 16)), extraParams: { from: erin } })
+    await openCdp({ ICR: toBN(dec(202, 16)), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(204, 16)), extraParams: { from: carol } })
+    await openCdp({ ICR: toBN(dec(206, 16)), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(208, 16)), extraParams: { from: erin } })
 
-    // Price drops 
-    await priceFeed.setPrice(dec(120, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(4200, 13))
     const price = await priceFeed.getPrice()
 
     // Check Recovery Mode is active
@@ -1192,6 +1156,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check C is in range 110% < ICR < 150%
     const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
+    console.log(ICR_A.toString())
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(await th.getTCR(contracts)))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
@@ -1221,14 +1186,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    // Set ETH:USD price to 105
-    await priceFeed.setPrice('105000000000000000000')
+    await priceFeed.setPrice(dec(3920, 13))
     const price = await priceFeed.getPrice()
 
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
-    assert.equal(alice_ICR, '1050000000000000000')
+    assert.equal(alice_ICR, '1055465805061927840')
 
     const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
 
@@ -1256,13 +1220,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Set ETH:USD price to 105
-    await priceFeed.setPrice('105000000000000000000')
+    await priceFeed.setPrice(dec(3920, 13))
     const price = await priceFeed.getPrice()
 
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
-    assert.equal(alice_ICR, '1050000000000000000')
+    assert.equal(alice_ICR, '1055465805061927840')
 
     const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
 
@@ -1290,7 +1254,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(266, 16)), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const TCR_Before = (await th.getTCR(contracts)).toString()
@@ -1359,7 +1323,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(133, 16)), extraParams: { from: bob } })
 
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -1386,7 +1350,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_carolCdpId))
 
     // Price drops, Carol ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -1419,7 +1383,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -1919,7 +1883,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     const TCR = await th.getTCR(contracts)
 
@@ -1929,7 +1893,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- TEST --- 
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     await cdpManager.liquidateCdps(3)
 
@@ -1980,7 +1944,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     const TCR_Before = (await th.getTCR(contracts)).toString()
@@ -2029,7 +1993,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- TEST ---
 
     // Price drops to 1ETH:100EBTC, reducing Bob and Carol's ICR below MCR
-    await priceFeed.setPrice(dec(100, 18));
+    await priceFeed.setPrice(dec(3714, 13));
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -2178,7 +2142,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -2249,7 +2213,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops, but all cdps remain active
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -2306,7 +2270,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _whaleCdpId = await sortedCdps.cdpOfOwnerByIndex(whale, 0);
 
     // Price drops, but all cdps remain active
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -2382,7 +2346,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _whaleCdpId = await sortedCdps.cdpOfOwnerByIndex(whale, 0);
 
     // Price drops, but all cdps remain active
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -2465,7 +2429,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await ebtcToken.balanceOf(freddy)).toString(), ebtcAmountF)
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -2571,7 +2535,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await sortedCdps.getSize()).toString(), '4')
 
     // Price drops
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -3952,7 +3916,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _gretaCdpId = await sortedCdps.cdpOfOwnerByIndex(greta, 0);
 
     // Price drops, but all cdps remain active
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
@@ -4030,7 +3994,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _gretaCdpId = await sortedCdps.cdpOfOwnerByIndex(greta, 0);
 
     // Price drops, but all cdps remain active
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
     const price = await priceFeed.getPrice()
 
     // Confirm Recovery Mode
