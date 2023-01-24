@@ -755,14 +755,14 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         bool _isRecoveryMode
     ) internal pure {
         if (_isRecoveryMode) {
-            require(
+            require(    
                 _maxFeePercentage <= DECIMAL_PRECISION,
                 "Max fee percentage must less than or equal to 100%"
             );
         } else {
             require(
                 _maxFeePercentage >= BORROWING_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
-                "Max fee percentage must be between 0.5% and 100%"
+                "Max fee percentage must be between 0% and 100%"
             );
         }
     }
