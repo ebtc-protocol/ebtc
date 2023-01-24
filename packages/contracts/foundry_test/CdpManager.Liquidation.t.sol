@@ -21,6 +21,15 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
     uint public constant DECIMAL_PRECISION = 1e18;
 
+    // CdpManager internal struct for CDP
+    struct Cdp {
+        uint debt;
+        uint coll;
+        uint stake;
+        uint status;
+        uint128 arrayIndex;
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
@@ -35,6 +44,78 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         ) = cdpManager.getEntireDebtAndColl(cdpId);
         return
             CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Invariants for ebtc system
+    // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
+    // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
+    // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
+    // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
+    // - cdp_manager_2： total collateral snapshot is equal to whatever in active pool & default pool
+    // - cdp_manager_3： total collateral snapshot is equal to sum of individual CDP accounting number
+    ////////////////////////////////////////////////////////////////////////////
+
+    function _assert_active_pool_invariant_1() internal {
+        assertGe(
+            address(activePool).balance,
+            activePool.getETH(),
+            "System Invariant: active_pool_1"
+        );
+    }
+
+    function _assert_active_pool_invariant_2() internal {
+        assertGe(
+            eBTCToken.totalSupply(),
+            activePool.getEBTCDebt(),
+            "System Invariant: active_pool_2"
+        );
+    }
+
+    function _assert_active_pool_invariant_3() internal {
+        assertEq(
+            eBTCToken.totalSupply(),
+            activePool.getEBTCDebt().add(defaultPool.getEBTCDebt()),
+            "System Invariant: active_pool_3"
+        );
+    }
+
+    function _assert_cdp_manager_invariant_1() internal {
+        assertEq(
+            cdpManager.getCdpIdsCount(),
+            sortedCdps.getSize(),
+            "System Invariant: cdp_manager_1"
+        );
+    }
+
+    function _assert_cdp_manager_invariant_2() internal {
+        assertEq(
+            cdpManager.totalCollateralSnapshot(),
+            activePool.getETH().add(defaultPool.getETH()),
+            "System Invariant: cdp_manager_2"
+        );
+    }
+
+    function _assert_cdp_manager_invariant_3() internal {
+        uint _sumColl;
+        for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
+            bytes32 _cdpId = cdpManager.CdpIds(i);
+            (uint _debt, uint _coll, , , ) = cdpManager.Cdps(_cdpId);
+            _sumColl = _sumColl.add(_coll);
+        }
+        assertEq(cdpManager.totalCollateralSnapshot(), _sumColl, "System Invariant: cdp_manager_3");
+    }
+
+    function _ensureSystemInvariants() internal {
+        _assert_active_pool_invariant_1();
+        _assert_active_pool_invariant_2();
+        _assert_active_pool_invariant_3();
+        _assert_cdp_manager_invariant_1();
+    }
+
+    function _ensureSystemInvariants_Liquidation() internal {
+        _assert_cdp_manager_invariant_2();
+        _assert_cdp_manager_invariant_3();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -91,6 +172,8 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         // Price falls
         priceFeedMock.setPrice(price);
 
+        _ensureSystemInvariants();
+
         // Liquidate cdp1
         uint _TCR = cdpManager.getTCR(price);
         uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
@@ -107,5 +190,8 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
             // check state is closedByLiquidation
             assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
         }
+
+        _ensureSystemInvariants();
+        _ensureSystemInvariants_Liquidation();
     }
 }
