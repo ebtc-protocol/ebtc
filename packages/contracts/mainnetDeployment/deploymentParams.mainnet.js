@@ -2,7 +2,7 @@ const externalAddrs  = {
   // https://data.chain.link/eth-usd
   CHAINLINK_ETHBTC_PROXY: "0xac559f25b1619171cbc396a50854a3240b6a4e99",
   // https://docs.tellor.io/tellor/integration/reference-page
-  TELLOR_MASTER:"0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0",
+  TELLOR_MASTER:"0xB3B662644F8d3138df63D2F43068ea621e2981f9",
   // https://uniswap.org/docs/v2/smart-contracts/factory/
   UNISWAP_V2_FACTORY: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
   UNISWAP_V2_ROUTER02: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
