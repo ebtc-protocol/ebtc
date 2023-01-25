@@ -167,18 +167,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
         //        _requireCdpisNotActive(contractsCache.cdpManager, msg.sender);
 
-        vars.EBTCFee;
         vars.netDebt = _EBTCAmount;
 
-        if (!isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(
-                contractsCache.cdpManager,
-                contractsCache.ebtcToken,
-                _EBTCAmount,
-                _maxFeePercentage
-            );
-            vars.netDebt = vars.netDebt.add(vars.EBTCFee);
-        }
         _requireAtLeastMinNetDebt(vars.netDebt);
 
         // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
@@ -241,7 +231,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             vars.stake,
             BorrowerOperation.openCdp
         );
-        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
+        emit EBTCBorrowingFeePaid(_cdpId, 0);
 
         return _cdpId;
     }
@@ -374,16 +364,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         vars.netDebtChange = _EBTCChange;
 
-        // If the adjustment incorporates a debt increase and system is in Normal Mode, then trigger a borrowing fee
-        if (_isDebtIncrease && !isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(
-                contractsCache.cdpManager,
-                contractsCache.ebtcToken,
-                _EBTCChange,
-                _maxFeePercentage
-            );
-            vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
-        }
         vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
         vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
 
@@ -439,7 +419,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             vars.stake,
             BorrowerOperation.adjustCdp
         );
-        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
+        emit EBTCBorrowingFeePaid(_cdpId, 0);
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         _moveTokensAndETHfromAdjustment(
@@ -498,25 +478,6 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
     }
 
     // --- Helper functions ---
-
-    function _triggerBorrowingFee(
-        ICdpManager _cdpManager,
-        IEBTCToken _ebtcToken,
-        uint _EBTCAmount,
-        uint _maxFeePercentage
-    ) internal returns (uint) {
-        _cdpManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
-        uint EBTCFee = _cdpManager.getBorrowingFee(_EBTCAmount);
-
-        _requireUserAcceptsFee(EBTCFee, _EBTCAmount, _maxFeePercentage);
-
-        // Send fee to LQTY staking contract
-        lqtyStaking.increaseF_EBTC(EBTCFee);
-        _ebtcToken.mint(lqtyStakingAddress, EBTCFee);
-
-        return EBTCFee;
-    }
-
     function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
         uint usdValue = _price.mul(_coll).div(DECIMAL_PRECISION);
 

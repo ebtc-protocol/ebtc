@@ -876,7 +876,7 @@ contract('BorrowerOperations', async accounts => {
       "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
     })
 
-    it("withdrawEBTC(): decays a non-zero base rate", async () => {
+    xit("withdrawEBTC(): decays a non-zero base rate", async () => {
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       await openCdp({ extraEBTCAmount: toBN(dec(20, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
@@ -1089,7 +1089,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(baseRate_3, '0')
     })
 
-    it("withdrawEBTC(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation", async () => {
+    xit("withdrawEBTC(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation", async () => {
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
 
       await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
@@ -3555,7 +3555,7 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(txCPromise, "revert")
     })
 
-    it("openCdp(): decays a non-zero base rate", async () => {
+    xit("openCdp(): decays a non-zero base rate", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
@@ -3619,7 +3619,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(baseRate_3, '0')
     })
 
-    it("openCdp(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation", async () => {
+    xit("openCdp(): lastFeeOpTime doesn't update if less time than decay interval has passed since the last fee operation", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
@@ -3689,7 +3689,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.openCdp('4999999999999999', dec(19500, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(3100, 'ether') })
     })
 
-    it("openCdp(): reverts if fee exceeds max fee percentage", async () => {
+    xit("openCdp(): reverts if fee exceeds max fee percentage", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       await openCdp({ extraEBTCAmount: toBN(dec(40000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
@@ -3707,23 +3707,23 @@ contract('BorrowerOperations', async accounts => {
       //       actual fee percentage: 0.005000000186264514
       // user's max fee percentage:  0.0049999999999999999
       let borrowingRate = await cdpManager.getBorrowingRate() // expect max(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
 
       const lessThan5pct = '49999999999999999'
       await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
       // Attempt with maxFee 1%
       await assertRevert(borrowerOperations.openCdp(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
       // Attempt with maxFee 3.754%
       await assertRevert(borrowerOperations.openCdp(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
       // Attempt with maxFee 1e-16%
       await assertRevert(borrowerOperations.openCdp(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
     })
@@ -3738,7 +3738,7 @@ contract('BorrowerOperations', async accounts => {
       await cdpManager.setLastFeeOpTimeToNow()
 
       let borrowingRate = await cdpManager.getBorrowingRate() // expect min(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
 
       // Attempt with maxFee > 5%
       const moreThan5pct = '50000000000000001'
@@ -3746,21 +3746,21 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(tx1.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
 
       // Attempt with maxFee = 5%
       const tx2 = await borrowerOperations.openCdp(dec(5, 16), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: H, value: dec(100, 'ether') })
       assert.isTrue(tx2.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
 
       // Attempt with maxFee 10%
       const tx3 = await borrowerOperations.openCdp(dec(1, 17), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(100, 'ether') })
       assert.isTrue(tx3.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(toBN(0)))
 
       // Attempt with maxFee 37.659%
       const tx4 = await borrowerOperations.openCdp(dec(37659, 13), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(100, 'ether') })
@@ -3771,7 +3771,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(tx5.receipt.status)
     })
 
-    it("openCdp(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity", async () => {
+    xit("openCdp(): borrower can't grief the baseRate and stop it decaying by issuing debt at higher frequency than the decay granularity", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(10000, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(30000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
@@ -3803,7 +3803,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
-    it("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
+    xit("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -3837,7 +3837,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
-    it("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
+    xit("openCdp(): Borrowing at zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -3868,10 +3868,10 @@ contract('BorrowerOperations', async accounts => {
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
       const F_EBTC_After = await lqtyStaking.F_EBTC()
-      assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
+      assert.isTrue(F_EBTC_After.eq(F_EBTC_Before))
     })
 
-    it("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
+    xit("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })

@@ -1845,19 +1845,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function getRedemptionRate() public view override returns (uint) {
-        return _calcRedemptionRate(baseRate);
+        return REDEMPTION_FEE_FLOOR;
     }
 
     function getRedemptionRateWithDecay() public view override returns (uint) {
-        return _calcRedemptionRate(_calcDecayedBaseRate());
-    }
-
-    function _calcRedemptionRate(uint _baseRate) internal pure returns (uint) {
-        return
-            LiquityMath._min(
-                REDEMPTION_FEE_FLOOR.add(_baseRate),
-                DECIMAL_PRECISION // cap at a maximum of 100%
-            );
+        return REDEMPTION_FEE_FLOOR;
     }
 
     function _getRedemptionFee(uint _ETHDrawn) internal view returns (uint) {
@@ -1877,27 +1869,19 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Borrowing fee functions ---
 
     function getBorrowingRate() public view override returns (uint) {
-        return _calcBorrowingRate(baseRate);
+        return 0;
     }
 
     function getBorrowingRateWithDecay() public view override returns (uint) {
-        return _calcBorrowingRate(_calcDecayedBaseRate());
-    }
-
-    function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return LiquityMath._min(BORROWING_FEE_FLOOR.add(_baseRate), MAX_BORROWING_FEE);
+        return 0;
     }
 
     function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRate(), _EBTCDebt);
+        return 0;
     }
 
     function getBorrowingFeeWithDecay(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRateWithDecay(), _EBTCDebt);
-    }
-
-    function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return _borrowingRate.mul(_EBTCDebt).div(DECIMAL_PRECISION);
+        return 0;
     }
 
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
