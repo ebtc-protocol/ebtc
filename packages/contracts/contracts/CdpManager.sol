@@ -360,6 +360,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
 
+        bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
             0,
@@ -367,12 +368,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _ICR,
             _cdpId,
             _cdpId,
-            (_TCR < CCR),
+            (_recoveryModeAtStart),
             _TCR
         );
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
-            (_TCR >= CCR),
+            (!_recoveryModeAtStart),
             systemDebt,
             systemColl,
             0,

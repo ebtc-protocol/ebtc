@@ -21,15 +21,6 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
     uint public constant DECIMAL_PRECISION = 1e18;
 
-    // CdpManager internal struct for CDP
-    struct Cdp {
-        uint debt;
-        uint coll;
-        uint stake;
-        uint status;
-        uint128 arrayIndex;
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
