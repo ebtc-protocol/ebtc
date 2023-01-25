@@ -4362,24 +4362,22 @@ contract('CdpManager', async accounts => {
     assert.equal(ICR, 0)
   })
 
-  it("computeICR(): Returns 2^256-1 for ETH:USD = 100, coll = 1 ETH, debt = 100 EBTC", async () => {
+  it("computeICR(): Returns 2^256-1 for ETH:USD = 1, coll = 100 ETH, debt = 100 EBTC", async () => {
     const price = dec(3714, 13);
-    const coll = dec(1, 'ether')
-    const debt = dec(100, 18)
+    const coll = dec(100, 'ether')
+    const debt = dec(1, 18)
 
     const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
-
-    assert.equal(ICR, dec(1, 18))
+    assert.equal(ICR, dec(3714, 15))
   })
 
-  it("computeICR(): returns correct ICR for ETH:USD = 100, coll = 200 ETH, debt = 30 EBTC", async () => {
+  it("computeICR(): returns correct ICR for ETH:USD = 100, coll = 200 ETH, debt = 3 EBTC", async () => {
     const price = dec(3714, 13);
     const coll = dec(200, 'ether')
-    const debt = dec(30, 18)
+    const debt = dec(3, 18)
 
     const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
-
-    assert.isAtMost(th.getDifference(ICR, '666666666666666666666'), 1000)
+    assert.isAtMost(th.getDifference(ICR, '2476000000000000000'), 1000)
   })
 
   it("computeICR(): returns correct ICR for ETH:USD = 250, coll = 1350 ETH, debt = 127 EBTC", async () => {
@@ -4398,8 +4396,7 @@ contract('CdpManager', async accounts => {
     const debt = '54321000000000000000000'
 
     const ICR = (await cdpManager.computeICR(coll, debt, price)).toString()
-
-    assert.isAtMost(th.getDifference(ICR, '1840908672520756'), 1000)
+    assert.isAtMost(th.getDifference(ICR, '683713480974'), 1000)
   })
 
 
@@ -4418,12 +4415,10 @@ contract('CdpManager', async accounts => {
 
   //TCR < 150%
   it("checkRecoveryMode(): Returns true when TCR < 150%", async () => {
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
+
     await priceFeed.setPrice(dec(3714, 13))
-
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
-
-    await priceFeed.setPrice('99999999999999999999')
 
     const TCR = (await th.getTCR(contracts))
 
@@ -4436,12 +4431,11 @@ contract('CdpManager', async accounts => {
   it("checkRecoveryMode(): Returns false when TCR == 150%", async () => {
     await priceFeed.setPrice(dec(3714, 13))
 
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: bob } })
 
     const TCR = (await th.getTCR(contracts))
-
-    assert.equal(TCR, '1500000000000000000')
+    assert.equal(TCR, '1500999999999999999')
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
   })
@@ -4450,10 +4444,10 @@ contract('CdpManager', async accounts => {
   it("checkRecoveryMode(): Returns false when TCR > 150%", async () => {
     await priceFeed.setPrice(dec(3714, 13))
 
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: bob } })
 
-    await priceFeed.setPrice('100000000000000000001')
+    await priceFeed.setPrice(dec(3800, 13))
 
     const TCR = (await th.getTCR(contracts))
 
@@ -4466,8 +4460,8 @@ contract('CdpManager', async accounts => {
   it("checkRecoveryMode(): Returns false when TCR == 0", async () => {
     await priceFeed.setPrice(dec(3714, 13))
 
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: bob } })
 
     await priceFeed.setPrice(0)
 
@@ -4481,8 +4475,8 @@ contract('CdpManager', async accounts => {
   // --- Getters ---
 
   it("getCdpStake(): Returns stake", async () => {
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: B } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
 
@@ -4494,8 +4488,8 @@ contract('CdpManager', async accounts => {
   })
 
   it("getCdpColl(): Returns coll", async () => {
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: B } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
 
@@ -4504,8 +4498,8 @@ contract('CdpManager', async accounts => {
   })
 
   it("getCdpDebt(): Returns debt", async () => {
-    const { totalDebt: totalDebtA } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: A } })
-    const { totalDebt: totalDebtB } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
+    const { totalDebt: totalDebtA } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: A } })
+    const { totalDebt: totalDebtB } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: B } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
 
@@ -4519,8 +4513,8 @@ contract('CdpManager', async accounts => {
   })
 
   it("getCdpStatus(): Returns status", async () => {
-    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: B } })
-    await openCdp({ ICR: toBN(dec(150, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: A } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: B } })
+    await openCdp({ ICR: toBN(dec(1501, 15)), extraEBTCAmount: B_totalDebt, extraParams: { from: A } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
 
