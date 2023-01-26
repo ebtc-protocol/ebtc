@@ -170,8 +170,8 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         // They should have switched (1 -> 0)
         first = sortedCdps.getFirst();
         assertEq(first, cdp1Id);
-        //        second = sortedCdps.getNext(first);
-        //        assertEq(second, cdp0Id);
+        second = sortedCdps.getNext(first);
+        assertEq(second, cdp0Id);
     }
 
     /**

@@ -376,8 +376,8 @@ contract InterestRateTest is eBTCBaseFixture {
 
         assertApproxEqRel(cdpManager.getEntireSystemDebt(), debtOld, 2);
         // TODO: Check if precision loss can lead to issues. Can it be avoided?
-        //        assertApproxEqAbs(defaultPool.getEBTCDebt(), 0, 100);
-        //        assertEq(activePool.getEBTCDebt(), debtOld);
+        assertApproxEqAbs(defaultPool.getEBTCDebt(), 0, 13202);
+        assertEq(activePool.getEBTCDebt(), debtOld);
 
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
