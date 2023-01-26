@@ -111,7 +111,7 @@ contract('SortedCdps', async accounts => {
     })
 
     it('contains(): returns true for addresses that have opened cdps', async () => {
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
@@ -133,7 +133,7 @@ contract('SortedCdps', async accounts => {
     })
 
     it('contains(): returns false for addresses that have not opened cdps', async () => {
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: carol } })
 
@@ -149,7 +149,7 @@ contract('SortedCdps', async accounts => {
     it('contains(): returns false for addresses that opened and then closed a cdp', async () => {
       await openCdp({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
@@ -184,7 +184,7 @@ contract('SortedCdps', async accounts => {
     it('contains(): returns true for addresses that opened, closed and then re-opened a cdp', async () => {
       await openCdp({ ICR: toBN(dec(1000, 18)), extraEBTCAmount: toBN(dec(3000, 18)), extraParams: { from: whale } })
 
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await checkCdpId(_aliceCdpId, alice);
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: bob } })
@@ -239,7 +239,7 @@ contract('SortedCdps', async accounts => {
 
     // true when list size is 1 and the cdp the only one in system
     it('contains(): true when list size is 1 and the cdp the only one in system', async () => {
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await checkCdpId(_aliceCdpId, alice);
 
@@ -248,7 +248,7 @@ contract('SortedCdps', async accounts => {
 
     // false when list size is 1 and cdp is not in the system
     it('contains(): false when list size is 1 and cdp is not in the system', async () => {
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
 
       assert.isFalse(await sortedCdps.contains(bob))
     })
@@ -262,7 +262,7 @@ contract('SortedCdps', async accounts => {
 
     it('getCdpsOf(): returns all user CDPs', async () => {
       // Open 3 cdps
-      await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
       const expectedCdps = [

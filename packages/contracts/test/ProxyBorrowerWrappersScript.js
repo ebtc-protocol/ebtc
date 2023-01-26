@@ -199,7 +199,7 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimCollateralAndOpenCdp(): sending value in the transaction', async () => {
     // alice opens Cdp
-    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({ extraParams: { from: alice } })
+    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
@@ -246,7 +246,7 @@ contract('BorrowerWrappers', async accounts => {
     let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
     // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
-    const price = toBN(dec(100, 18))
+    const price = toBN(dec(1500, 13))
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
@@ -277,7 +277,7 @@ contract('BorrowerWrappers', async accounts => {
     let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
     // price drops: defaulters' Cdps fall below MCR, alice and whale Cdp remain active
-    const price = toBN(dec(100, 18))
+    const price = toBN(dec(1500, 13))
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
@@ -286,7 +286,6 @@ contract('BorrowerWrappers', async accounts => {
 
     // Alice EBTCLoss is ((150/2500) * liquidatedDebt)
     const totalDeposits = whaleDeposit.add(aliceDeposit)
-    const expectedEBTCLoss_A = liquidatedDebt_1.mul(aliceDeposit).div(totalDeposits)
 
     // collateral * 150 / 2500 * 0.995 deprecated due to removal of stability pool
     const expectedETHGain_A = toBN('0').mul(aliceDeposit).div(totalDeposits).mul(toBN(dec(995, 15))).div(mv._1e18BN)
@@ -297,16 +296,12 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const stakeBefore = await lqtyStaking.stakes(alice)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
-    const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
-    const netDebtChange = proportionalEBTC.mul(mv._1e18BN).div(mv._1e18BN.add(borrowingRate))
 
     // to force LQTY issuance
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
-//    const expectedLQTYGain_A = toBN('50373424199406504708132')
 
     await priceFeed.setPrice(price.mul(toBN(2)));
 
@@ -433,14 +428,13 @@ contract('BorrowerWrappers', async accounts => {
   })
 
   it('claimStakingGainsAndRecycle(): with only ETH gain', async () => {
-    const price = toBN(dec(200, 18))
+    const price = await priceFeed.getPrice();
 
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
-    const borrowingFee = netDebt.sub(ebtcAmount)
+    await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
 
     // alice opens cdp
     await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
@@ -472,15 +466,11 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
     const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const stakeBefore = await lqtyStaking.stakes(alice)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
     const netDebtChange = proportionalEBTC.mul(toBN(dec(1, 18))).div(toBN(dec(1, 18)).add(borrowingRate))
 
-//    const expectedLQTYGain_A = toBN('839557069990108416000000')
-
-    const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     // Alice claims staking rewards and puts them back in the system through the proxy
     await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
 
@@ -495,7 +485,6 @@ contract('BorrowerWrappers', async accounts => {
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
     const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
-    const stakeAfter = await lqtyStaking.stakes(alice)
 
     // check proxy balances remain the same
     assert.equal(ethBalanceAfter.toString(), ethBalanceBefore.toString())
@@ -510,9 +499,6 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(ICRAfter, ICRBefore)
     // check lqty balance remains the same
     th.assertIsApproximatelyEqual(lqtyBalanceBefore, lqtyBalanceAfter)
-
-    // LQTY staking deprecated due to removal of stability pool
-//    th.assertIsApproximatelyEqual(stakeAfter, stakeBefore.add(expectedLQTYGain_A))
   })
 
   it('claimStakingGainsAndRecycle(): with only EBTC gain', async () => {
@@ -579,7 +565,7 @@ contract('BorrowerWrappers', async accounts => {
   })
 
   it('claimStakingGainsAndRecycle(): with both ETH and EBTC gains', async () => {
-    const price = toBN(dec(200, 18))
+    const price = await priceFeed.getPrice();
 
     // Whale opens Cdp
     await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
