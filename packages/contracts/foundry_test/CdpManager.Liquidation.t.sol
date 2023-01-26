@@ -157,6 +157,9 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         );
         vm.stopPrank();
 
+        // get original debt upon CDP open
+        CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
+
         // accrue some interest before liquidation
         skip(365 days);
 
@@ -171,9 +174,25 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         bool _recoveryMode = _TCR < cdpManager.CCR();
         if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
+            assertGe(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
+            uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
+            uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
             vm.prank(users[0]);
             cdpManager.liquidate(cdpId1);
+            uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
+            uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
+            assertEq(
+                _cdpState.debt,
+                _debtLiquidatorBefore.sub(_debtLiquidatorAfter),
+                "!liquidator repayment"
+            );
+            assertEq(
+                _cdpState.debt,
+                _debtSystemBefore.sub(_debtSystemAfter),
+                "!system debt reduction"
+            );
 
             // target CDP got liquidated
             assertFalse(sortedCdps.contains(cdpId1));
