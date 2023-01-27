@@ -205,6 +205,62 @@ contract InterestRateTest is eBTCBaseFixture {
     }
 
     /**
+    Confirm that interest is applied to a CDP when user repays eBTC
+    */
+    function testInterestIsAppliedRepayEbtc() public {
+        CdpState memory cdpState;
+        vm.startPrank(users[0]);
+        uint debt = 2000e18;
+        uint256 coll = _utils.calculateCollAmount(debt, priceFeedMock.getPrice(), 200e16);
+        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+            FEE,
+            _utils.calculateBorrowAmountFromDebt(
+                debt,
+                cdpManager.EBTC_GAS_COMPENSATION(),
+                cdpManager.getBorrowingRateWithDecay()
+            ), // Excluding borrow fee and gas compensation
+            bytes32(0),
+            bytes32(0)
+        );
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
+        assertGt(balanceSnapshot, 0);
+
+        // Fast-forward 1 year
+        skip(365 days);
+        cdpState = _getEntireDebtAndColl(cdpId);
+        uint256 debtOld = cdpState.debt;
+        // User decided to repay 10% of eBTC after 1 year. This should apply pending interest
+        borrowerOperations.repayEBTC(
+            cdpId,
+            // Repay 10% of eBTC
+            debt.div(10),
+            HINT,
+            HINT
+        );
+        // Make sure eBTC balance decreased
+        assertLt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
+
+        assertFalse(cdpManager.hasPendingRewards(cdpId));
+
+        cdpState = _getEntireDebtAndColl(cdpId);
+        assertEq(cdpState.pendingEBTCInterest, 0);
+        // Make sure user's debt decreased
+        assertLt(cdpState.debt, debtOld);
+        // Make sure total debt decreased
+        assertLt(cdpManager.getEntireSystemDebt(), debtOld);
+        // Make sure debt in active pool decreased by 10%
+        assertEq(activePool.getEBTCDebt(), debtOld.sub(debt.div(10)));
+
+        // Check interest is minted to LQTY staking contract
+        assertApproxEqRel(
+            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            40e18,
+            0.001e18
+        ); // Error is <0.1% of the expected value
+    }
+
+    /**
         - Open two identical CDPS
         - Advance time and ensure the debt and interest accrued are identical
         - Now, add collateral to one of the CDPS (a single wei). This interaction realizes the pending debt.
