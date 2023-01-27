@@ -135,6 +135,29 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
+    struct LocalVar_InternalLiquidate {
+        bytes32 _cdpId;
+        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
+        uint256 _price;
+        uint256 _ICR;
+        bytes32 _upperPartialHint;
+        bytes32 _lowerPartialHint;
+        bool _recoveryModeAtStart;
+        uint256 _TCR;
+    }
+
+    struct LocalVar_RecoveryLiquidate {
+        bool backToNormalMode;
+        uint256 entireSystemDebt;
+        uint256 entireSystemColl;
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+        uint256 totalColSurplus;
+        bytes32 _cdpId;
+        uint256 _price;
+        uint256 _ICR;
+    }
+
     struct LocalVariables_OuterLiquidationFunction {
         uint price;
         uint EBTCInStabPool;
@@ -394,29 +417,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             gasPoolAddress
         );
         _liquidateSingleCDP(_contractsCache, _liqState, _rs);
-    }
-
-    struct LocalVar_InternalLiquidate {
-        bytes32 _cdpId;
-        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
-        uint256 _price;
-        uint256 _ICR;
-        bytes32 _upperPartialHint;
-        bytes32 _lowerPartialHint;
-        bool _recoveryModeAtStart;
-        uint256 _TCR;
-    }
-
-    struct LocalVar_RecoveryLiquidate {
-        bool backToNormalMode;
-        uint256 entireSystemDebt;
-        uint256 entireSystemColl;
-        uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalColSurplus;
-        bytes32 _cdpId;
-        uint256 _price;
-        uint256 _ICR;
     }
 
     function _liquidateSingleCDPInRecoveryMode(

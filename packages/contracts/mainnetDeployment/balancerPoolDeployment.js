@@ -23,7 +23,7 @@ const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
 const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const EBTC = '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0';
-const CHAINLINK_ETHUSD_PROXY = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
+const CHAINLINK_ETHBTC_PROXY = '0xAc559F25B1619171CbC396a50854A3240b6A4e99';
 
 const tokens = [EBTC, WETH];
 const weights = [toBigNum(dec(4, 17)), toBigNum(dec(6, 17))];
@@ -64,7 +64,7 @@ async function main() {
   );
 
   const chainlinkProxy = new ethers.Contract(
-    CHAINLINK_ETHUSD_PROXY,
+    CHAINLINK_ETHBTC_PROXY,
     ChainlinkAggregatorV3Interface,
     deployerWallet
   );

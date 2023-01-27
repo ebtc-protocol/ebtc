@@ -126,8 +126,8 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
     // Test single CDP liquidation with price fluctuation
     function testLiquidateSingleCDP(uint256 price, uint256 debtAmt) public {
-        vm.assume(debtAmt > 2000e18);
-        vm.assume(debtAmt < 200000000e18);
+        vm.assume(debtAmt > 1e17);
+        vm.assume(debtAmt < 10000e18);
 
         uint _curPrice = priceFeedMock.getPrice();
         vm.assume(_curPrice > price * 2);
@@ -135,10 +135,10 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
         vm.startPrank(users[0]);
-        borrowerOperations.openCdp{value: 100 ether}(
+        borrowerOperations.openCdp{value: 10000 ether}(
             DECIMAL_PRECISION,
             _utils.calculateBorrowAmountFromDebt(
-                2001e18,
+                2e17,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
             ),
@@ -174,7 +174,7 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         bool _recoveryMode = _TCR < cdpManager.CCR();
         if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGe(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);

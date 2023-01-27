@@ -37,6 +37,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
   let borrowerOperations
 
   let contracts
+  let _signer 
 
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
@@ -75,7 +76,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _ownerBal = await web3.eth.getBalance(owner);
     let _beadpBal = await web3.eth.getBalance(beadp);
     let _ownerRicher = toBN(_ownerBal.toString()).gt(toBN(_beadpBal.toString()));
-    let _signer = _ownerRicher? ownerSigner : beadpSigner;
+    _signer = _ownerRicher? ownerSigner : beadpSigner;
   
     await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000")});
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("1000")});
@@ -97,8 +98,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
-    // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -110,8 +111,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isTrue(txB.receipt.status)
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
-    // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    // Price bounces back
+    await priceFeed.setPrice(dec(7428, 13))
 
     // C, D open cdps
     const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: carol } })
@@ -120,7 +121,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -158,7 +159,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.equal(entireSystemColl, A_coll.add(C_coll).add(th.applyLiquidationFee(toBN('0').add(toBN('0')))))
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: A, B, C Open. C Liquidated. D, E, F Open. F Liquidated. Distributes correct rewards", async () => {
@@ -170,8 +171,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
-    // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -183,8 +184,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isTrue(txC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
-    // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    // Price bounces back
+    await priceFeed.setPrice(dec(7428, 13))
 
     // D, E, F open cdps
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: dennis } })
@@ -194,8 +195,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
     let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
-    // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Confirm not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -250,7 +251,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.equal(entireSystemColl, A_coll.add(B_coll).add(D_coll).add(E_coll).add(th.applyLiquidationFee(toBN('0').add(toBN('0')))))
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
   ////
 
@@ -261,8 +262,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 
-    // Price drops to 1 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(100, 13))
 
     // L1: A liquidated
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: bob});	
@@ -271,14 +272,14 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isTrue(txA.receipt.status)
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
-    // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    // Price bounces back
+    await priceFeed.setPrice(dec(7428, 13))
     // C, opens cdp
     const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
-    // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(100, 13))
 
     // L2: B Liquidated
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	
@@ -286,14 +287,14 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isTrue(txB.receipt.status)
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
-    // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    // Price bounces back
+    await priceFeed.setPrice(dec(7428, 13))
     // D opens cdp
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // L3: C Liquidated
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
@@ -302,13 +303,13 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
     // E opens cdp
     const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: erin } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // L4: D Liquidated
     await debtToken.transfer(owner, (await debtToken.balanceOf(erin)), {from: erin});
@@ -317,13 +318,13 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
     // F opens cdp
     const { collateral: F_coll } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: freddy } })
     let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // L5: E Liquidated
     await debtToken.transfer(owner, (await debtToken.balanceOf(freddy)), {from: freddy});
@@ -377,7 +378,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(th.getDifference(entireSystemColl, F_coll.add(gainedETH)), 1000)
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(1000, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(5, 16))
   })
 
   // ---Cdp adds collateral --- 
@@ -385,11 +386,16 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
   // Test based on scenario in: https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution: A,B,C,D,E open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt", async () => {
     // A, B, C, D, E open cdps
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
-    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
+    await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: D, value: ethers.utils.parseEther("20000")});
+    await _signer.sendTransaction({ to: E, value: ethers.utils.parseEther("270000")});
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: B } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: C } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
-    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: E } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -397,7 +403,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
@@ -433,7 +439,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isTrue(txC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_cCdpId))
 
-    const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
     const D_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _dCdpId)).entireColl
     const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
@@ -474,19 +479,24 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
   // Test based on scenario in: https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution: A,B,C,D open. Liq(A). B adds coll. Liq(C). B and D have correct coll and debt", async () => {
     // A, B, C, D, E open cdps
-    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: A } })
-    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: B } })
-    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: C } })
+    await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("270000")});
+    await _signer.sendTransaction({ to: D, value: ethers.utils.parseEther("30000")});
+    await _signer.sendTransaction({ to: E, value: ethers.utils.parseEther("270000")});
+    const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: A } })
+    const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: B } })
+    const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: C } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(20000, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: D } })
-    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100000, 18), extraParams: { from: E } })
+    const { collateral: E_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(10000, 18), extraParams: { from: E } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
     let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
     let _eCdpId = await sortedCdps.cdpOfOwnerByIndex(E, 0);
 
-    // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    // Price drops
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Check entireColl for each cdp:
     const A_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _aCdpId)).entireColl
@@ -609,7 +619,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Carol
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	
@@ -619,7 +629,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
@@ -629,7 +639,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Alice	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
@@ -666,7 +676,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Carol
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	
@@ -676,7 +686,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
@@ -687,7 +697,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate D
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
@@ -749,7 +759,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(th.getDifference(alice_EBTCDebt, expected_A_debt), 10000)
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). C tops up. E Enters, Liq(E). Distributes correct rewards", async () => {
@@ -757,7 +767,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     // A, B, C, D open cdps
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(11, 18), extraParams: { from: carol, value: _998_Ether } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -765,7 +775,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Dennis
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
@@ -775,7 +785,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH
     const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
@@ -804,7 +814,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Erin
     await debtToken.transfer(owner, (await debtToken.balanceOf(erin)), {from: erin});	
@@ -856,7 +866,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(entireSystemColl_3, totalCollAfterL1.add(th.applyLiquidationFee(toBN('0'))))
 
     // check EBTC gas compensation
-//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: Cdp with the majority stake tops up. A,B,C, D open. Liq(D). A, B, C top up. E Enters, Liq(E). Distributes correct rewards", async () => {
@@ -864,7 +874,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     // A, B, C open cdps
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(11, 18), extraParams: { from: carol, value: _998_Ether } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -872,7 +882,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Dennis
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
@@ -882,7 +892,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
     const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
@@ -915,7 +925,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Erin
     await debtToken.transfer(owner, (await debtToken.balanceOf(erin)), {from: erin});	
@@ -967,13 +977,16 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(entireSystemColl_3, totalCollAfterL1.add(th.applyLiquidationFee(toBN('0'))))
 
     // check EBTC gas compensation
-//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   // --- Cdp withdraws collateral ---
 
   it("redistribution: A,B,C Open. Liq(C). B withdraws coll. Liq(A). B acquires all coll and debt", async () => {
     // A, B, C open cdps
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("2000")});
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
@@ -982,7 +995,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Carol
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	
@@ -992,7 +1005,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     //Bob withdraws 0.5 ETH from his cdp
     const withdrawnColl = toBN(dec(500, 'finney'))
@@ -1002,7 +1015,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Alice
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
@@ -1030,11 +1043,14 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(th.getDifference(bob_EBTCDebt, toBN('0').mul(toBN(2)).add(B_totalDebt).add(toBN('0'))), 1000)
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: A,B,C Open. Liq(C). B withdraws coll. D Opens. Liq(D). Distributes correct rewards.", async () => {
     // A, B, C open cdps
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("2000")});
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: carol } })
@@ -1043,28 +1059,31 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Carol
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
+    const { collateral: Owner_coll, totalDebt: Owner_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
+    let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
     const txC = await cdpManager.liquidate(_carolCdpId, {from: owner})
     assert.isTrue(txC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     //Bob  withdraws 0.5 ETH from his cdp
     const withdrawnColl = toBN(dec(500, 'finney'))
     await borrowerOperations.withdrawColl(_bobCdpId, withdrawnColl, _bobCdpId, _bobCdpId, { from: bob })
 
     // D opens cdp
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("2000")});
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate D
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
@@ -1126,20 +1145,27 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(th.getDifference(alice_EBTCDebt, expected_A_debt), 10000)
 
     const entireSystemColl = (await activePool.getETH()).add(await defaultPool.getETH())
-    th.assertIsApproximatelyEqual(entireSystemColl, A_coll.add(B_coll).add(th.applyLiquidationFee(toBN('0'))).sub(withdrawnColl).add(th.applyLiquidationFee(toBN('0'))))
+    th.assertIsApproximatelyEqual(entireSystemColl, A_coll.add(B_coll).add(Owner_coll).add(th.applyLiquidationFee(toBN('0'))).sub(withdrawnColl).add(th.applyLiquidationFee(toBN('0'))))
     const entireSystemDebt = (await activePool.getEBTCDebt()).add(await defaultPool.getEBTCDebt())
-    th.assertIsApproximatelyEqual(entireSystemDebt, A_totalDebt.add(B_totalDebt).add(toBN('0')).add(toBN('0')))
+    let _aliceDebt = await cdpManager.getCdpDebt(_aliceCdpId);
+    let _bobDebt = await cdpManager.getCdpDebt(_bobCdpId);
+    let _ownerDebt = await cdpManager.getCdpDebt(_ownerCdpId);
+    th.assertIsApproximatelyEqual(entireSystemDebt, _aliceDebt.add(_bobDebt).add(_ownerDebt).add(toBN('0')).add(toBN('0')))
 
     // check EBTC gas compensation
-//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    th.assertIsApproximatelyEqual((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). C withdraws some coll. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C, D open cdps
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("5000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("5000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("3000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(11, 18), extraParams: { from: carol, value: _998_Ether } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -1147,17 +1173,19 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Dennis
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
+    await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("2000")});
+    const { collateral: Owner_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: owner } })
     const txD = await cdpManager.liquidate(_dennisCdpId, {from: owner})
     assert.isTrue(txD.receipt.status)
     assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
     const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
@@ -1166,9 +1194,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Expect 1995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH())
-    th.assertIsApproximatelyEqual(entireSystemColl_1, A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(toBN('0'))))
+    th.assertIsApproximatelyEqual(entireSystemColl_1, A_coll.add(B_coll).add(C_coll).add(Owner_coll).add(th.applyLiquidationFee(toBN('0'))))
 
-    const totalColl = A_coll.add(B_coll).add(C_coll)
+    const totalColl = A_coll.add(B_coll).add(C_coll).add(Owner_coll)
     th.assertIsApproximatelyEqual(alice_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(A_coll).div(totalColl))
     th.assertIsApproximatelyEqual(bob_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(B_coll).div(totalColl))
     th.assertIsApproximatelyEqual(carol_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(C_coll).div(totalColl))
@@ -1186,7 +1214,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Erin
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from: bob});
@@ -1221,7 +1249,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
       .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
-    const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(toBN('0'))).sub(C_withdrawnColl)
+    const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(Owner_coll).add(th.applyLiquidationFee(toBN('0'))).sub(C_withdrawnColl)
     const A_collAfterL1 = A_coll.add(A_coll.mul(th.applyLiquidationFee(toBN('0'))).div(A_coll.add(B_coll).add(C_coll)))
     const expected_A_coll = A_collAfterL1.add(A_collAfterL1.mul(th.applyLiquidationFee(toBN('0'))).div(totalCollAfterL1))
     const B_collAfterL1 = B_coll.add(B_coll.mul(th.applyLiquidationFee(toBN('0'))).div(A_coll.add(B_coll).add(C_coll)))
@@ -1238,15 +1266,19 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(entireSystemColl_3, totalCollAfterL1.add(th.applyLiquidationFee(toBN('0'))))
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   it("redistribution: Cdp with the majority stake withdraws. A,B,C,D open. Liq(D). A, B, C withdraw. E Enters, Liq(E). Distributes correct rewards", async () => {
     const _998_Ether = toBN('998000000000000000000')
     // A, B, C, D open cdps
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("5000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("5000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("3000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: bob } })
-    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(110, 18), extraParams: { from: carol, value: _998_Ether } })
+    const { collateral: C_coll } = await openCdp({ extraEBTCAmount: dec(11, 18), extraParams: { from: carol, value: _998_Ether } })
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis, value: dec(1000, 'ether') } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -1254,17 +1286,19 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Dennis
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from: dennis});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
+    await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("2000")});
+    const { collateral: Owner_coll } = await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: owner } })
     const txD = await cdpManager.liquidate(_dennisCdpId, {from: owner})
     assert.isTrue(txD.receipt.status)
     assert.isFalse(await sortedCdps.contains(_dennisCdpId))
 
     // Price bounces back to 200 $/E
-    await priceFeed.setPrice(dec(200, 18))
+    await priceFeed.setPrice(dec(7428, 13))
 
     // Expected rewards:  alice: 1 ETH, bob: 1 ETH, carol: 998 ETH (*0.995)
     const alice_ETHReward_1 = await cdpManager.getPendingETHReward(_aliceCdpId)
@@ -1273,9 +1307,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Expect 1995 ETH in system now
     const entireSystemColl_1 = (await activePool.getETH()).add(await defaultPool.getETH())
-    th.assertIsApproximatelyEqual(entireSystemColl_1, A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(toBN('0'))))
+    th.assertIsApproximatelyEqual(entireSystemColl_1, A_coll.add(B_coll).add(C_coll).add(Owner_coll).add(th.applyLiquidationFee(toBN('0'))))
 
-    const totalColl = A_coll.add(B_coll).add(C_coll)
+    const totalColl = A_coll.add(B_coll).add(C_coll).add(Owner_coll)
     th.assertIsApproximatelyEqual(alice_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(A_coll).div(totalColl))
     th.assertIsApproximatelyEqual(bob_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(B_coll).div(totalColl))
     th.assertIsApproximatelyEqual(carol_ETHReward_1.toString(), th.applyLiquidationFee(toBN('0')).mul(C_coll).div(totalColl))
@@ -1313,7 +1347,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // Price drops to 100 $/E
-    await priceFeed.setPrice(dec(100, 18))
+    await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate Erin
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from: bob});
@@ -1348,7 +1382,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
       .add(await cdpManager.getPendingETHReward(_carolCdpId)))
       .toString()
 
-    const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(th.applyLiquidationFee(toBN('0'))).sub(withdrawnColl.mul(toBN(3)))
+    const totalCollAfterL1 = A_coll.add(B_coll).add(C_coll).add(Owner_coll).add(th.applyLiquidationFee(toBN('0'))).sub(withdrawnColl.mul(toBN(3)))
     const A_collAfterL1 = A_coll.add(A_coll.mul(th.applyLiquidationFee(toBN('0'))).div(A_coll.add(B_coll).add(C_coll))).sub(withdrawnColl)
     const expected_A_coll = A_collAfterL1.add(A_collAfterL1.mul(th.applyLiquidationFee(toBN('0'))).div(totalCollAfterL1))
     const B_collAfterL1 = B_coll.add(B_coll.mul(th.applyLiquidationFee(toBN('0'))).div(A_coll.add(B_coll).add(C_coll))).sub(withdrawnColl)
@@ -1365,13 +1399,16 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(entireSystemColl_3, totalCollAfterL1.add(th.applyLiquidationFee(toBN('0'))))
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(400, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(2, 16))
   })
 
   // For calculations of correct values used in test, see scenario 1:
   // https://docs.google.com/spreadsheets/d/1F5p3nZy749K5jwO-bwJeTsRoY7ewMfWIQ3QHtokxqzo/edit?usp=sharing
   it("redistribution, all operations: A,B,C open. Liq(A). D opens. B adds, C withdraws. Liq(B). E & F open. D adds. Liq(F). Distributes correct rewards", async () => {
     // A, B, C open cdps
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("2000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: bob } })
     const { collateral: C_coll } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: carol } })
@@ -1380,7 +1417,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
     // Price drops to 1 $/E
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // Liquidate A 
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});	 
@@ -1401,9 +1438,10 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(await cdpManager.totalCollateralSnapshot(), totalCollateralSnapshotAfterL1)
 
     // Price rises to 1000
-    await priceFeed.setPrice(dec(1000, 18))
+    await priceFeed.setPrice(dec(9000, 13))
 
     // D opens cdp
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("3000")});
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
@@ -1419,7 +1457,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const C_collAfterL1 = C_coll.add(C_pendingRewardsAfterL1).sub(C_withdrawnColl)
 
     // Price drops
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // Liquidate B
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from: bob});	 
@@ -1441,9 +1479,11 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(await cdpManager.totalCollateralSnapshot(), totalCollateralSnapshotAfterL2)
 
     // Price rises to 1000
-    await priceFeed.setPrice(dec(1000, 18))
+    await priceFeed.setPrice(dec(9000, 13))
 
     // E and F open cdps
+    await _signer.sendTransaction({ to: erin, value: ethers.utils.parseEther("2000")});
+    await _signer.sendTransaction({ to: freddy, value: ethers.utils.parseEther("2000")});
     const { collateral: E_coll, totalDebt: E_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: erin } })
     const { collateral: F_coll, totalDebt: F_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: freddy } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
@@ -1454,7 +1494,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis, value: D_addedColl })
 
     // Price drops to 1
-    await priceFeed.setPrice(dec(1, 18))
+    await priceFeed.setPrice(dec(100, 13))
 
     // Liquidate F
     await debtToken.transfer(owner, (await debtToken.balanceOf(freddy)), {from: freddy});	 
@@ -1505,7 +1545,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(totalCollateralSnapshot, totalCollateralSnapshotAfterL3)
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(600, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(3, 16))
   })
 
   // For calculations of correct values used in test, see scenario 2:
@@ -1658,6 +1698,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     th.assertIsApproximatelyEqual(totalCollateralSnapshot, totalCollateralSnapshotAfterL3)
 
     // check EBTC gas compensation
-//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(600, 18))
+//    assert.equal((await ebtcToken.balanceOf(owner)).toString(), dec(3, 16))
   })
 })

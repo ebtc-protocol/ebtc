@@ -1,7 +1,7 @@
 pragma solidity 0.6.11;
 
 interface ICdpManager {
-    function liquidate(bytes32 _troveId) external;
+    function liquidate(bytes32 _cdpId) external;
 }
 
 contract SimpleLiquidationTester {
@@ -23,8 +23,8 @@ contract SimpleLiquidationTester {
         _reEnterLiqCdpId = _cdpId;
     }
 
-    function liquidateCdp(bytes32 _troveId) external {
-        _cdpManager.liquidate(_troveId);
+    function liquidateCdp(bytes32 _cdpId) external {
+        _cdpManager.liquidate(_cdpId);
     }
 
     receive() external payable {

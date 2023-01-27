@@ -66,7 +66,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR"); 
 	  
       // recovery mode	  
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
       assert.isTrue((await cdpManager.checkRecoveryMode(_newPrice)));
       await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice, value: dec(100, 'ether') })
@@ -84,7 +84,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
 	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // liquidator bob coming in but failed to liquidate due to insufficient debt
@@ -96,7 +96,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
       await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: alice}), "CdpManager: Only one cdp in the system");
   })
@@ -110,7 +110,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colDeposited = await cdpManager.getCdpColl(_aliceCdpId);
 	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // liquidator bob coming in 
@@ -171,7 +171,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colDeposited = await cdpManager.getCdpColl(_aliceCdpId);
 	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // non-EOA liquidator coming in	
@@ -235,7 +235,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: owner } }) 
 	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // non-EOA liquidator coming in	
@@ -275,7 +275,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
 	  
       // price slump
-      let _newPrice = dec(60, 18);
+      let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // non-EOA liquidator coming in	
@@ -310,7 +310,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(aliceCdpOwner == alice);
 
       // maniuplate price to liquidate alice
-      let _newPrice = dec(11, 18);
+      let _newPrice = dec(800, 13);
       await priceFeed.setPrice(_newPrice);  
       assert.isTrue(await cdpManager.checkRecoveryMode(_newPrice));
 
@@ -324,12 +324,17 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _TCR = await cdpManager.getTCR(_newPrice);
       let _aliceICR = await cdpManager.getCurrentICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
+      assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_MCR.toString())));
       let _liquidateRecoveryTx = await cdpManager.liquidate(aliceCdpId, { from: owner});	  
       let postDebtOfOwner = await debtToken.balanceOf(owner);
       let postETHOfOwner = await ethers.provider.getBalance(owner);
       assert.isFalse(await sortedCdps.contains(aliceCdpId));
       let _liquidatedEvents = th.getAllEventsByName(_liquidateRecoveryTx, 'CdpLiquidated');
       assert.equal(_liquidatedEvents.length, 1, '!CdpLiquidated event');
+      assert.equal(_liquidatedEvents[0].args[0], aliceCdpId, '!liquidated CDP ID');
+      assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
+      assert.equal(_liquidatedEvents[0].args[2].toString(), aliceDebt.toString(), '!liquidated CDP debt');
+      assert.equal(_liquidatedEvents[0].args[3].toString(), aliceColl.toString(), '!liquidated CDP collateral');
       assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(postETHOfOwner.toString()).sub(toBN(prevETHOfOwner.toString())).add(_gasEtherUsed);
@@ -357,7 +362,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(aliceCdpOwner == alice);
 
       // maniuplate price to liquidate alice
-      let _newPrice = dec(100, 18);
+      let _newPrice = dec(3900, 13);
       await priceFeed.setPrice(_newPrice);  
       assert.isTrue(await cdpManager.checkRecoveryMode(_newPrice));
 
@@ -372,17 +377,24 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _aliceICR = await cdpManager.getCurrentICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).gt(toBN(_MCR.toString())));
+      let _cappedLiqColl = toBN(aliceDebt.toString()).mul(toBN(_MCR.toString())).div(toBN(_newPrice));
       let _liquidateRecoveryTx = await cdpManager.liquidate(aliceCdpId, { from: owner});	  
       let postDebtOfOwner = await debtToken.balanceOf(owner);
       let postETHOfOwner = await ethers.provider.getBalance(owner);
       assert.isFalse(await sortedCdps.contains(aliceCdpId));
       let _liquidatedEvents = th.getAllEventsByName(_liquidateRecoveryTx, 'CdpLiquidated');
       assert.equal(_liquidatedEvents.length, 1, '!CdpLiquidated event');
+      assert.equal(_liquidatedEvents[0].args[0], aliceCdpId, '!liquidated CDP ID');
+      assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
+      assert.equal(_liquidatedEvents[0].args[2].toString(), aliceDebt.toString(), '!liquidated CDP debt');
+      assert.equal(_liquidatedEvents[0].args[3].toString(), _cappedLiqColl.toString(), '!liquidated CDP collateral');
       assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(postETHOfOwner.toString()).sub(toBN(prevETHOfOwner.toString())).add(_gasEtherUsed);
+      let _expectClaimSurplus = toBN(aliceColl.toString()).sub(_cappedLiqColl);
       let _toClaimSurplus = await collSurplusPool.getCollateral(alice);
       assert.isTrue(toBN(_toClaimSurplus.toString()).gt(toBN('0')));
+      assert.equal(_toClaimSurplus.toString(), _expectClaimSurplus.toString());
 
       // owner get collateral from alice by repaying the debts
       assert.equal(toBN(prevDebtOfOwner.toString()).sub(toBN(postDebtOfOwner.toString())).toString(), toBN(aliceDebt.toString()).toString());

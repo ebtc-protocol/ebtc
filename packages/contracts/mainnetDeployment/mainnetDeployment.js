@@ -107,7 +107,7 @@ async function mainnetDeploy(configParams) {
   )
 
   // Connect all core contracts up
-  await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY)
+  await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY)
   await mdh.connectEBTCContractsMainnet(EBTCContracts)
   await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore)
 
@@ -168,7 +168,7 @@ async function mainnetDeploy(configParams) {
   // Check chainlink proxy price ---
 
   const chainlinkProxy = new ethers.Contract(
-    configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY,
+    configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY,
     ChainlinkAggregatorV3Interface,
     deployerWallet
   )
@@ -219,7 +219,7 @@ async function mainnetDeploy(configParams) {
   // Check PriceFeed's & TellorCaller's stored addresses
   const priceFeedCLAddress = await ebtcCore.priceFeed.priceAggregator()
   const priceFeedTellorCallerAddress = await ebtcCore.priceFeed.tellorCaller()
-  assert.equal(priceFeedCLAddress, configParams.externalAddrs.CHAINLINK_ETHUSD_PROXY)
+  assert.equal(priceFeedCLAddress, configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY)
   assert.equal(priceFeedTellorCallerAddress, ebtcCore.tellorCaller.address)
 
   // Check Tellor address
