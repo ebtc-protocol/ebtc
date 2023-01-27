@@ -261,6 +261,66 @@ contract InterestRateTest is eBTCBaseFixture {
             0.001e18
         ); // Error is <0.1% of the expected value
     }
+
+    /**
+    Confirm that interest is applied to a CDP when user closes their position
+    */
+    function testInterestIsAppliedCloseCdp() public {
+        CdpState memory cdpState;
+        vm.startPrank(users[0]);
+
+        uint debt = 2000e18;
+        uint256 coll = _utils.calculateCollAmount(debt, priceFeedMock.getPrice(), 200e16);
+        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+            FEE,
+            _utils.calculateBorrowAmountFromDebt(
+                debt,
+                cdpManager.EBTC_GAS_COMPENSATION(),
+                cdpManager.getBorrowingRateWithDecay()
+            ), // Excluding borrow fee and gas compensation
+            bytes32(0),
+            bytes32(0)
+        );
+        // Borrow for the second time so user has enough eBTC to close their first CDP
+        bytes32 cdpId2 = borrowerOperations.openCdp{value: coll}(
+            FEE,
+            _utils.calculateBorrowAmountFromDebt(
+                debt,
+                cdpManager.EBTC_GAS_COMPENSATION(),
+                cdpManager.getBorrowingRateWithDecay()
+            ),
+            bytes32(0),
+            bytes32(0)
+        );
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        assertGt(lqtyStakingBalanceOld, 0);
+        uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
+        assertGt(balanceSnapshot, 0);
+
+        // Fast-forward 1 year
+        skip(365 days);
+        uint256 debtOld = cdpManager.getEntireSystemDebt();
+        // User decided to close first CDP after 1 year. This should apply pending interest
+        borrowerOperations.closeCdp(cdpId);
+        // Make sure eBTC balance decreased
+        assertLt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
+
+        assertFalse(cdpManager.hasPendingRewards(cdpId));
+        assertTrue(cdpManager.hasPendingRewards(cdpId2));
+
+        cdpState = _getEntireDebtAndColl(cdpId);
+        assertEq(cdpState.pendingEBTCInterest, 0);
+        // Make sure user's debt is now 0
+        assertEq(cdpState.debt, 0);
+
+        // Check interest is minted to LQTY staking contract twice from both CDPs
+        assertApproxEqRel(
+            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            80e18,
+            0.001e18
+        ); // Error is <0.1% of the expected value
+    }
+
     /**
     Confirm that interest is applied to a CDP when user withdraws eBTC
     */
