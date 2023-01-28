@@ -26,10 +26,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
     uint public constant CCR = 1500000000000000000; // 150%
 
     // Amount of EBTC to be locked in gas pool on opening cdps
-    uint public constant EBTC_GAS_COMPENSATION = 200e18;
+    uint public constant EBTC_GAS_COMPENSATION = 1e16;
 
     // Minimum amount of net EBTC debt a cdp must have
-    uint public constant MIN_NET_DEBT = 1800e18;
+    // TODO: Should be denominated in ETH, see: https://github.com/Badger-Finance/ebtc/issues/16
+    uint public constant MIN_NET_DEBT = 1e17;
     // uint constant public MIN_NET_DEBT = 0;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
@@ -88,12 +89,24 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint _price,
         uint _lastInterestRateUpdateTime
     ) internal view returns (uint TCR) {
+        (uint TCR, uint entireSystemColl, uint entireSystemDebt) = _getTCRWithTotalCollAndDebt(
+            _price,
+            _lastInterestRateUpdateTime
+        );
+
+        return TCR;
+    }
+
+    function _getTCRWithTotalCollAndDebt(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint TCR, uint _coll, uint _debt) {
         uint entireSystemColl = getEntireSystemColl();
         uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
         TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
 
-        return TCR;
+        return (TCR, entireSystemColl, entireSystemDebt);
     }
 
     function _checkRecoveryMode(

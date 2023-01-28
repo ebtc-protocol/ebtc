@@ -53,7 +53,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await openCdp({ ICR: toBN(dec(340, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
 
       // Price drops
-      await priceFeed.setPrice(dec(100, 18))
+      await priceFeed.setPrice(dec(3500, 13))
       const price = await priceFeed.getPrice()
       const TCR = await th.getTCR(contracts)
 
@@ -121,7 +121,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await openCdp({ ICR: toBN(dec(310, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
 
       // Price drops
-      await priceFeed.setPrice(dec(100, 18))
+      await priceFeed.setPrice(dec(3500, 13))
       const price = await priceFeed.getPrice()
       const TCR = await th.getTCR(contracts)
 
@@ -167,7 +167,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await openCdp({ ICR: toBN(dec(300, 16)), extraEBTCAmount: totalLiquidatedDebt, extraParams: { from: whale } })
 	  
       // Price drops
-      await priceFeed.setPrice(dec(100, 18))
+      await priceFeed.setPrice(dec(3500, 13))
       const price = await priceFeed.getPrice()
       const TCR = await th.getTCR(contracts)
 

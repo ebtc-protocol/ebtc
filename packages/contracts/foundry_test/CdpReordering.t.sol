@@ -139,19 +139,13 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         uint256 cdp0Debt = 2000e18;
         uint256 cdp1Debt = 2001e18;
 
-        bytes32 cdp0Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
-            5e17,
-            cdp0Debt,
-            bytes32(0),
-            bytes32(0)
-        );
+        bytes32 cdp0Id = borrowerOperations.openCdp{
+            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        }(FEE, cdp0Debt, bytes32(0), bytes32(0));
 
-        bytes32 cdp1Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
-            5e17,
-            cdp1Debt,
-            bytes32(0),
-            bytes32(0)
-        );
+        bytes32 cdp1Id = borrowerOperations.openCdp{
+            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        }(FEE, cdp1Debt, bytes32(0), bytes32(0));
 
         skip(365 days);
 
@@ -171,7 +165,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         // Update Operation on one that should cause a reorder
         // We will make CDP 1 have more collateral, raising it's CR above that of CDP 0
-        borrowerOperations.addColl{value: 1e18}(cdp1Id, bytes32(0), bytes32(0));
+        borrowerOperations.addColl{value: 10000e18}(cdp1Id, bytes32(0), bytes32(0));
 
         // They should have switched (1 -> 0)
         first = sortedCdps.getFirst();

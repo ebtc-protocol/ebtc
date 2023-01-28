@@ -9,7 +9,8 @@ import "../Interfaces/IPriceFeed.sol";
  * variable. The contract does not connect to a live Chainlink price feed.
  */
 contract PriceFeedTestnet is IPriceFeed {
-    uint256 private _price = 200 * 1e18;
+    // ETH / BTC price == ~13.4517 ETH per BTC
+    uint256 private _price = 7428 * 1e13;
 
     // --- Functions ---
 
