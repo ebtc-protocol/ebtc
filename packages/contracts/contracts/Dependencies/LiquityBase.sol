@@ -89,12 +89,24 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint _price,
         uint _lastInterestRateUpdateTime
     ) internal view returns (uint TCR) {
+        (uint TCR, uint entireSystemColl, uint entireSystemDebt) = _getTCRWithTotalCollAndDebt(
+            _price,
+            _lastInterestRateUpdateTime
+        );
+
+        return TCR;
+    }
+
+    function _getTCRWithTotalCollAndDebt(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint TCR, uint _coll, uint _debt) {
         uint entireSystemColl = getEntireSystemColl();
         uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
         TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
 
-        return TCR;
+        return (TCR, entireSystemColl, entireSystemDebt);
     }
 
     function _checkRecoveryMode(
