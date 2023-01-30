@@ -5,6 +5,13 @@ import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
+import {LiquityBase} from "../contracts/Dependencies/LiquityBase.sol";
+
+contract LiquityTester is LiquityBase {
+    function calcUnitAmountAfterInterest(uint _time) public pure virtual returns (uint) {
+        return _calcUnitAmountAfterInterest(_time);
+    }
+}
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
 contract InterestRateTest is eBTCBaseFixture {
@@ -20,6 +27,7 @@ contract InterestRateTest is eBTCBaseFixture {
     address payable[] users;
 
     Utilities internal _utils;
+    LiquityTester internal _liquityTester;
 
     uint public constant DECIMAL_PRECISION = 1e18;
 
@@ -52,6 +60,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         _utils = new Utilities();
         users = _utils.createUsers(3);
+        _liquityTester = new LiquityTester();
     }
 
     /**
@@ -920,5 +929,18 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract
         assertGt(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+    }
+
+    function testFuzzCalcUnitAmountAfterInterest(uint256 time) public {
+        // After 150676588855, fpow will start failing with overflow
+        // This means that if `_lastInterestRateUpdateTime` wasn't updated for ~47.85 years, `calcUnitAmountAfterInterest`
+        // will fail with overflow
+        if (time >= 150676588855) {
+            vm.expectRevert();
+            _liquityTester.calcUnitAmountAfterInterest(time);
+        } else {
+            uint256 result = _liquityTester.calcUnitAmountAfterInterest(time);
+            assertGt(result, 0);
+        }
     }
 }
