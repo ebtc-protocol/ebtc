@@ -89,7 +89,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -167,7 +167,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -246,7 +246,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -308,7 +308,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -371,7 +371,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -613,7 +613,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -672,7 +672,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -734,7 +734,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -751,7 +751,7 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(amntOfDays);
         cdpState = _getEntireDebtAndColl(cdpId);
         uint256 debtOld = cdpState.debt;
-        // User decided to repay 10% of eBTC after 1 year. This should apply pending interest
+        // User decided to repay 10%. This should apply pending interest
         borrowerOperations.repayEBTC(
             cdpId,
             // Repay 10% of eBTC
@@ -799,7 +799,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
@@ -874,7 +874,7 @@ contract InterestRateTest is eBTCBaseFixture {
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
-            ), // Excluding borrow fee and gas compensation
+            ),
             bytes32(0),
             bytes32(0)
         );
