@@ -620,7 +620,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         // Borrow for the second time so user has enough eBTC to close their first CDP
-         borrowerOperations.openCdp{value: coll}(
+        borrowerOperations.openCdp{value: coll}(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
