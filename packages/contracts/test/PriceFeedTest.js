@@ -154,55 +154,6 @@ contract('PriceFeed', async accounts => {
   })
 
   // --- Chainlink breaks ---
-  it("C1 Chainlink breaks, Tellor working: fetchPrice should return the correct Tellor price, taking into account Tellor's 6-digit granularity", async () => {
-    await setAddresses()
-    // --- Chainlink fails, system switches to Tellor ---
-    const statusBefore = await priceFeed.status()
-    assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-    // Chainlink breaks with negative price
-    await mockChainlink.setPrevPrice(dec(1, 8))
-    await mockChainlink.setPrice("-5000")
-
-    await mockTellor.setPrice(dec(123, 6))
-    await mockChainlink.setUpdateTime(0)
-
-    const priceFetchTx = await priceFeed.fetchPrice()
-    const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '1') // status 1: using Tellor, Chainlink untrusted
-
-    let price = await priceFeed.lastGoodPrice()
-    assert.equal(price, dec(123, 18))
-
-    // Tellor price is 10 at 6-digit precision
-    await mockTellor.setPrice(dec(10, 6))
-    await priceFeed.fetchPrice()
-    price = await priceFeed.lastGoodPrice()
-    // Check Liquity PriceFeed gives 10, with 18 digit precision
-    assert.equal(price, dec(10, 18))
-
-    // Tellor price is 1e9 at 6-digit precision
-    await mockTellor.setPrice(dec(1, 15))
-    await priceFeed.fetchPrice()
-    price = await priceFeed.lastGoodPrice()
-    // Check Liquity PriceFeed gives 1e9, with 18 digit precision
-    assert.equal(price, dec(1, 27))
-
-    // Tellor price is 0.0001 at 6-digit precision
-    await mockTellor.setPrice(100)
-    await priceFeed.fetchPrice()
-    price = await priceFeed.lastGoodPrice()
-    // Check Liquity PriceFeed gives 0.0001 with 18 digit precision
-
-    assert.equal(price, dec(1, 14))
-
-    // Tellor price is 1234.56789 at 6-digit precision
-    await mockTellor.setPrice(dec(1234567890))
-    await priceFeed.fetchPrice()
-    price = await priceFeed.lastGoodPrice()
-    // Check Liquity PriceFeed gives 0.0001 with 18 digit precision
-    assert.equal(price, '1234567890000000000000')
-  })
 
   it("C1 chainlinkWorking: Chainlink broken by zero latest roundId, Tellor working: switch to usingChainlinkTellorUntrusted", async () => {
     await setAddresses()

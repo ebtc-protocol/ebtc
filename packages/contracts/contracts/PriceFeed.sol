@@ -487,11 +487,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
             uint256(_chainlinkResponse.answer),
             _chainlinkResponse.decimals
         );
-        uint scaledTellorPrice = _scaleTellorPriceByDigits(_tellorResponse.value);
 
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint minPrice = LiquityMath._min(scaledTellorPrice, scaledChainlinkPrice);
-        uint maxPrice = LiquityMath._max(scaledTellorPrice, scaledChainlinkPrice);
+        uint minPrice = LiquityMath._min(_tellorResponse.value, scaledChainlinkPrice);
+        uint maxPrice = LiquityMath._max(_tellorResponse.value, scaledChainlinkPrice);
         uint percentPriceDifference = maxPrice.sub(minPrice).mul(DECIMAL_PRECISION).div(minPrice);
 
         /*
@@ -522,10 +521,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         return price;
     }
 
-    function _scaleTellorPriceByDigits(uint _price) internal pure returns (uint) {
-        return _price.mul(10 ** (TARGET_DIGITS - TELLOR_DIGITS));
-    }
-
     function _changeStatus(Status _status) internal {
         status = _status;
         emit PriceFeedStatusChanged(_status);
@@ -537,10 +532,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     }
 
     function _storeTellorPrice(TellorResponse memory _tellorResponse) internal returns (uint) {
-        uint scaledTellorPrice = _scaleTellorPriceByDigits(_tellorResponse.value);
-        _storePrice(scaledTellorPrice);
-
-        return scaledTellorPrice;
+        _storePrice(_tellorResponse.value);
+        return _tellorResponse.value;
     }
 
     function _storeChainlinkPrice(
@@ -560,7 +553,11 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
      * "_getCurrentTellorResponse" fetches ETH/USD and BTC/USD prices from Tellor, and returns them as a
      * TellorResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
      */
-    function _getCurrentTellorResponse() internal view returns (TellorResponse memory tellorResponse) {
+    function _getCurrentTellorResponse()
+        internal
+        view
+        returns (TellorResponse memory tellorResponse)
+    {
         uint ethUsdValue;
         uint ethUsdTimestamp;
         uint btcUsdValue;
@@ -569,7 +566,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         bool btcUsdRetrieved;
 
         // First, fetch ETH/USD price from tellor. If it fails, return the TellorResponse struct with success = false.
-        try tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+        try
+            tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
         returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
             ethUsdRetrieved = ifRetrieved;
             ethUsdValue = value;
@@ -578,7 +576,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
             return (tellorResponse);
         }
         // Then, fetch BTC/USD price from tellor. If it fails, return the TellorResponse struct with success = false.
-        try tellorCaller.getTellorBufferValue(BTCUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+        try
+            tellorCaller.getTellorBufferValue(BTCUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
         returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
             btcUsdRetrieved = ifRetrieved;
             btcUsdValue = value;
@@ -593,7 +592,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         tellorResponse.ifRetrieve = ethUsdRetrieved && btcUsdRetrieved;
         return (tellorResponse);
     }
-
 
     function _getCurrentChainlinkResponse()
         internal

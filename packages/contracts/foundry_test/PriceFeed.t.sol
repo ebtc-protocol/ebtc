@@ -9,23 +9,16 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
-
-    function getCurrentTellorResponse()
-        public
-        view
-        returns (TellorResponse memory tellorResponse) {
-            return _getCurrentTellorResponse();
+    function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
+        return _getCurrentTellorResponse();
     }
 
     function getCurrentChainlinkResponse()
         public
         view
-        returns (ChainlinkResponse memory chainlinkResponse) {
-            return _getCurrentChainlinkResponse();
-    }
-
-    function scaleTellorPriceByDigits(uint _price) public view returns (uint256) {
-        return _scaleTellorPriceByDigits(_price);
+        returns (ChainlinkResponse memory chainlinkResponse)
+    {
+        return _getCurrentChainlinkResponse();
     }
 
     function scaleChainlinkPriceByDigits(uint _price, uint _decimals) public view returns (uint256) {
@@ -40,30 +33,29 @@ contract PriceFeedTester is PriceFeed {
     }
 }
 
-
 contract PriceFeedTest is eBTCBaseFixture {
     PriceFeedTester internal _priceFeed;
     TellorCaller internal _tellorCaller;
     bytes32[] cdpIds;
 
-    function setUp() public override {
+    // To run this forktest, make tests public instead of private
+    function testPriceFeedFork() private {
         _priceFeed = new PriceFeedTester();
         _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
         _priceFeed.setAddresses(0xAc559F25B1619171CbC396a50854A3240b6A4e99, address(_tellorCaller));
-    }
-
-    function testDummy() public {
         PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
 
         console.log("Tellor Response:");
 
         console.log(tellorResponse.value);
-        console.log(_priceFeed.scaleTellorPriceByDigits(tellorResponse.value));
         console.log("Chainlink Response:");
-        PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed.getCurrentChainlinkResponse();
+        PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed
+            .getCurrentChainlinkResponse();
         console.log(uint256(chainlinkResponse.answer));
-        console.log(_priceFeed.scaleChainlinkPriceByDigits(
-                uint256(chainlinkResponse.answer), chainlinkResponse.decimals
+        console.log(
+            _priceFeed.scaleChainlinkPriceByDigits(
+                uint256(chainlinkResponse.answer),
+                chainlinkResponse.decimals
             )
         );
 

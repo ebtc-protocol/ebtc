@@ -43,7 +43,8 @@ contract MockTellor {
     function retrieveData(uint256, uint256) external view returns (uint256) {
         return price;
     }
-
+    // TODO: Make sure to set 2 different prices and return different price based on how many times
+    // TODO: this function was called
     function getDataBefore(
         bytes32 _queryId,
         uint256 _timestamp
