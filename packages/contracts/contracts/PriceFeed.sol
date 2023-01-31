@@ -35,8 +35,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
     bytes32 public constant ETHUSD_TELLOR_QUERY_ID =
         0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992; // keccak256(abi.encode("SpotPrice", abi.encode("eth", "usd")))
-    //    bytes32 public constant ETHBTC_TELLOR_QUERY_ID =
-    //        0x60723147b1b97df5ff4e69cf99b6a414acc7da119109811af59fe417730945fe; // use this ETH/BTC query ID for ebtc: keccak256(abi.encode("SpotPrice", abi.encode("eth", "btc")))
+    bytes32 public constant BTCUSD_TELLOR_QUERY_ID =
+        0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac; // use this BTC/USD query ID for ebtc: keccak256(abi.encode("SpotPrice", abi.encode("btc", "usd")))
     uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes, soft governance might help to change this default configuration if required
 
     // Use to convert a price answer to an 18-digit precision uint
@@ -556,27 +556,44 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     }
 
     // --- Oracle response wrapper functions ---
+    /*
+     * "_getCurrentTellorResponse" fetches ETH/USD and BTC/USD prices from Tellor, and returns them as a
+     * TellorResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
+     */
+    function _getCurrentTellorResponse() internal view returns (TellorResponse memory tellorResponse) {
+        uint ethUsdValue;
+        uint ethUsdTimestamp;
+        uint btcUsdValue;
+        uint btcUsdTimestamp;
+        bool ethUsdRetrieved;
+        bool btcUsdRetrieved;
 
-    function _getCurrentTellorResponse()
-        internal
-        view
-        returns (TellorResponse memory tellorResponse)
-    {
-        try
-            tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
-        returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-            // If call to Tellor succeeds, return the response and success = true
-            tellorResponse.ifRetrieve = ifRetrieve;
-            tellorResponse.value = value;
-            tellorResponse.timestamp = _timestampRetrieved;
-            tellorResponse.success = true;
-
-            return (tellorResponse);
+        // First, fetch ETH/USD price from tellor. If it fails, return the TellorResponse struct with success = false.
+        try tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+        returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
+            ethUsdRetrieved = ifRetrieved;
+            ethUsdValue = value;
+            ethUsdTimestamp = timestampRetrieved;
         } catch {
-            // If call to Tellor reverts, return a zero response with success = false
             return (tellorResponse);
         }
+        // Then, fetch BTC/USD price from tellor. If it fails, return the TellorResponse struct with success = false.
+        try tellorCaller.getTellorBufferValue(BTCUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+        returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
+            btcUsdRetrieved = ifRetrieved;
+            btcUsdValue = value;
+            btcUsdTimestamp = timestampRetrieved;
+        } catch {
+            return (tellorResponse);
+        }
+        // Lastly, calculate ETH/BTC price as (ETH/USD) / (BTC/USD)
+        tellorResponse.value = ethUsdValue.mul(DECIMAL_PRECISION).div(btcUsdValue);
+        tellorResponse.timestamp = LiquityMath._min(ethUsdTimestamp, btcUsdTimestamp);
+        tellorResponse.success = true;
+        tellorResponse.ifRetrieve = ethUsdRetrieved && btcUsdRetrieved;
+        return (tellorResponse);
     }
+
 
     function _getCurrentChainlinkResponse()
         internal
