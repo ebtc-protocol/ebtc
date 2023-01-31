@@ -41,7 +41,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
-    uint public constant TELLOR_DIGITS = 6;
+    uint public constant TELLOR_DIGITS = 18;
 
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4

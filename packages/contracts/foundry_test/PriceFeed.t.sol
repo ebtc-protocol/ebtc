@@ -16,6 +16,28 @@ contract PriceFeedTester is PriceFeed {
         returns (TellorResponse memory tellorResponse) {
             return _getCurrentTellorResponse();
     }
+
+    function getCurrentChainlinkResponse()
+        public
+        view
+        returns (ChainlinkResponse memory chainlinkResponse) {
+            return _getCurrentChainlinkResponse();
+    }
+
+    function scaleTellorPriceByDigits(uint _price) public view returns (uint256) {
+        return _scaleTellorPriceByDigits(_price);
+    }
+
+    function scaleChainlinkPriceByDigits(uint _price, uint _decimals) public view returns (uint256) {
+        return _scaleChainlinkPriceByDigits(_price, _decimals);
+    }
+
+    function bothOraclesSimilarPrice(
+        ChainlinkResponse memory _chainlinkResponse,
+        TellorResponse memory _tellorResponse
+    ) public view returns (bool) {
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
+    }
 }
 
 
@@ -32,8 +54,23 @@ contract PriceFeedTest is eBTCBaseFixture {
 
     function testDummy() public {
         PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
-        console.log(tellorResponse.value);
 
+        console.log("Tellor Response:");
+
+        console.log(tellorResponse.value);
+        console.log(_priceFeed.scaleTellorPriceByDigits(tellorResponse.value));
+        console.log("Chainlink Response:");
+        PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed.getCurrentChainlinkResponse();
+        console.log(uint256(chainlinkResponse.answer));
+        console.log(_priceFeed.scaleChainlinkPriceByDigits(
+                uint256(chainlinkResponse.answer), chainlinkResponse.decimals
+            )
+        );
+
+        console.log("PriceFeed Response:");
         console.log(_priceFeed.fetchPrice());
+
+        bool similar = _priceFeed.bothOraclesSimilarPrice(chainlinkResponse, tellorResponse);
+        console.log(similar);
     }
 }
