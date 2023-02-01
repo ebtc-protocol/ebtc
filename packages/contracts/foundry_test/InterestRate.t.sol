@@ -328,15 +328,18 @@ contract InterestRateTest is eBTCBaseFixture {
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertGt(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
-        assertGt(balanceSnapshot, 0);
 
         // Fast-forward 1 year
         skip(365 days);
         uint256 debtOld = cdpManager.getEntireSystemDebt();
         // User decided to close first CDP after 1 year. This should apply pending interest
         borrowerOperations.closeCdp(cdpId);
-        // Make sure eBTC balance decreased
-        assertLt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
+        // Make sure eBTC balance decreased by debt of first CDP plus realized interest
+        assertApproxEqRel(
+            balanceSnapshot.sub(debt).sub(40e18),
+            eBTCToken.balanceOf(users[0]),
+            0.01e18
+        );
 
         assertFalse(cdpManager.hasPendingRewards(cdpId));
         assertTrue(cdpManager.hasPendingRewards(cdpId2));
@@ -381,22 +384,25 @@ contract InterestRateTest is eBTCBaseFixture {
         assertGt(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         assertGt(balanceSnapshot, 0);
-
-        // Fast-forward 1 year
-        skip(365 days);
         cdpState = _getEntireDebtAndColl(cdpId);
         uint256 debtOld = cdpState.debt;
+        // Fast-forward 1 year
+        skip(365 days);
         // Withdraw 1 eBTC after 1 year. This should apply pending interest
         borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
-        // Make sure eBTC balance increased
-        assertGt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
+        // Make sure eBTC balance increased by 1eBTC plus realized interest
+        assertEq(balanceSnapshot.add(1e18), eBTCToken.balanceOf(users[0]));
 
         assertFalse(cdpManager.hasPendingRewards(cdpId));
 
         cdpState = _getEntireDebtAndColl(cdpId);
         assertEq(cdpState.pendingEBTCInterest, 0);
-        // Make sure user's debt increased
-        assertGt(cdpState.debt, debtOld);
+        // Make sure user's debt increased by 1eBTC plus realized interest
+        assertApproxEqRel(
+            debtOld.add(40e18).add(1e18),
+            cdpState.debt,
+            0.001e18
+        );
         // Make sure total debt increased
         assertGt(cdpManager.getEntireSystemDebt(), debtOld);
         // Check interest is minted to LQTY staking contract
@@ -711,8 +717,6 @@ contract InterestRateTest is eBTCBaseFixture {
         // Make sure user's debt is now 0
         assertEq(cdpState.debt, 0);
         // Make sure that interest was applied
-        console.log(eBTCToken.balanceOf(address(lqtyStaking)));
-        console.log(lqtyStakingBalanceOld);
         assertGt(eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld), 0);
     }
 
