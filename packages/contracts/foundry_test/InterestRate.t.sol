@@ -332,12 +332,14 @@ contract InterestRateTest is eBTCBaseFixture {
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertGt(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
-
+        uint icrSnapshot = cdpManager.getCurrentICR(cdpId2, priceFeedMock.getPrice());
         // Fast-forward 1 year
         skip(365 days);
         uint256 debtOld = cdpManager.getEntireSystemDebt();
         // User decided to close first CDP after 1 year. This should apply pending interest
         borrowerOperations.closeCdp(cdpId);
+        // Make sure that ICR for second CDP decreased after interest ticked and interest was realized against second CDP
+        assertLt(cdpManager.getCurrentICR(cdpId2, priceFeedMock.getPrice()), icrSnapshot);
         // Make sure eBTC balance decreased by debt of first CDP plus realized interest
         assertApproxEqRel(
             balanceSnapshot.sub(debt).sub(40e18),
