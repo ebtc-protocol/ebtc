@@ -268,16 +268,14 @@ contract InterestRateTest is eBTCBaseFixture {
             HINT
         );
         // Make sure eBTC balance decreased
-        assertLt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
+        assertEq(eBTCToken.balanceOf(users[0]), balanceSnapshot.sub(debt.div(10)));
 
         assertFalse(cdpManager.hasPendingRewards(cdpId));
 
         cdpState = _getEntireDebtAndColl(cdpId);
         assertEq(cdpState.pendingEBTCInterest, 0);
-        // Make sure user's debt decreased
-        assertLt(cdpState.debt, debtOld);
         // Make sure total debt decreased
-        assertLt(cdpManager.getEntireSystemDebt(), debtOld);
+        assertEq(cdpManager.getEntireSystemDebt(), debtOld.sub(debt.div(10)));
         // Make sure debt in active pool decreased by 10%
         assertEq(activePool.getEBTCDebt(), debtOld.sub(debt.div(10)));
 
@@ -287,6 +285,10 @@ contract InterestRateTest is eBTCBaseFixture {
             40e18,
             0.001e18
         ); // Error is <0.1% of the expected value
+
+        // Make sure user's debt decreased and calculated as follows:
+        // debt = debtOld - 10% of debtOld + 40e18 (interest)
+        assertApproxEqRel(cdpState.debt, debt.sub(debt.div(10)).add(40e18), 0.01e18);
     }
 
     /**
