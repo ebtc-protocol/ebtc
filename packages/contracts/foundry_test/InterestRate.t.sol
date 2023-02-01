@@ -106,7 +106,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
-
+        uint nicrBefore = cdpManager.getNominalICR(cdpId0);
         // Fast-forward 1 year
         skip(365 days);
 
@@ -132,7 +132,9 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
 
         // Apply pending interest
-        borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl{value: 2000e18}(cdpId0, bytes32(0), bytes32(0));
+        // Make sure that NICR increased after user added more collateral
+        assertLt(nicrBefore, cdpManager.getNominalICR(cdpId0));
 
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
@@ -183,7 +185,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
-
+        uint nicrBefore = cdpManager.getNominalICR(cdpId0);
         // Fast-forward 1 year
         skip(365 days);
 
@@ -210,6 +212,8 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Apply pending interest
         borrowerOperations.withdrawColl(cdpId0, 1e17, bytes32(0), bytes32(0));
+        // Make sure that NICR decreased after user withdrew collateral
+        assertGt(nicrBefore, cdpManager.getNominalICR(cdpId0));
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -386,23 +390,23 @@ contract InterestRateTest is eBTCBaseFixture {
         assertGt(balanceSnapshot, 0);
         cdpState = _getEntireDebtAndColl(cdpId);
         uint256 debtOld = cdpState.debt;
+        uint nicrBefore = cdpManager.getNominalICR(cdpId);
+
         // Fast-forward 1 year
         skip(365 days);
         // Withdraw 1 eBTC after 1 year. This should apply pending interest
         borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
         // Make sure eBTC balance increased by 1eBTC plus realized interest
         assertEq(balanceSnapshot.add(1e18), eBTCToken.balanceOf(users[0]));
+        // Make sure that NICR decreased after user withdrew eBTC
+        assertGt(nicrBefore, cdpManager.getNominalICR(cdpId));
 
         assertFalse(cdpManager.hasPendingRewards(cdpId));
 
         cdpState = _getEntireDebtAndColl(cdpId);
         assertEq(cdpState.pendingEBTCInterest, 0);
         // Make sure user's debt increased by 1eBTC plus realized interest
-        assertApproxEqRel(
-            debtOld.add(40e18).add(1e18),
-            cdpState.debt,
-            0.001e18
-        );
+        assertApproxEqRel(debtOld.add(40e18).add(1e18), cdpState.debt, 0.001e18);
         // Make sure total debt increased
         assertGt(cdpManager.getEntireSystemDebt(), debtOld);
         // Check interest is minted to LQTY staking contract
@@ -635,6 +639,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE,
             1
         );
+        uint nicrBefore = cdpManager.getNominalICR(cdpId);
         // Fast-forward X amount of days
         skip(amntOfDays);
         uint256 debtOld = cdpState.debt;
@@ -645,6 +650,9 @@ contract InterestRateTest is eBTCBaseFixture {
             cdpManager.getCurrentICR(cdpId, priceFeedMock.getPrice()),
             COLLATERAL_RATIO_DEFENSIVE.sub(1)
         );
+        // Make sure NICR decreased
+        assertGt(nicrBefore, cdpManager.getNominalICR(cdpId));
+
         // Make sure eBTC balance increased
         assertGt(eBTCToken.balanceOf(users[0]), balanceSnapshot);
 
@@ -828,6 +836,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE,
             1
         );
+        uint nicrBefore = cdpManager.getNominalICR(cdpId0);
         skip(amntOfDays);
 
         // Has pending interest
@@ -850,6 +859,9 @@ contract InterestRateTest is eBTCBaseFixture {
             cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()),
             COLLATERAL_RATIO_DEFENSIVE
         );
+        // Make sure NICR increased
+        assertLt(nicrBefore, cdpManager.getNominalICR(cdpId0));
+
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -902,6 +914,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE,
             1
         );
+        uint nicrBefore = cdpManager.getNominalICR(cdpId0);
         skip(amntOfDays);
 
         // Has pending interest
@@ -914,6 +927,9 @@ contract InterestRateTest is eBTCBaseFixture {
             cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()),
             COLLATERAL_RATIO_DEFENSIVE
         );
+
+        // Make sure NICR decreased
+        assertGt(nicrBefore, cdpManager.getNominalICR(cdpId0));
 
         assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
 
