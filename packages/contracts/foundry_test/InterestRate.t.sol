@@ -15,6 +15,8 @@ contract LiquityTester is LiquityBase {
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
 contract InterestRateTest is eBTCBaseFixture {
+    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
+
     bytes32[] cdpIds;
     struct CdpState {
         uint256 debt;
@@ -131,7 +133,9 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(activePool.getEBTCDebt(), 2000e18);
 
         assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
-
+        vm.expectEmit(false, false, false, true);
+        // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
+        emit LTermsUpdated(0, 0, 1019986589312086194);
         // Apply pending interest
         borrowerOperations.addColl{value: 2000e18}(cdpId0, bytes32(0), bytes32(0));
         // Make sure that NICR increased after user added more collateral
@@ -211,6 +215,9 @@ contract InterestRateTest is eBTCBaseFixture {
 
         assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
 
+        vm.expectEmit(false, false, false, true);
+        // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
+        emit LTermsUpdated(0, 0, 1019986589312086194);
         // Apply pending interest
         borrowerOperations.withdrawColl(cdpId0, 1e17, bytes32(0), bytes32(0));
         // Make sure that NICR decreased after user withdrew collateral
@@ -264,6 +271,9 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(365 days);
         cdpState = _getEntireDebtAndColl(cdpId);
         uint256 debtOld = cdpState.debt;
+        vm.expectEmit(false, false, false, true);
+        // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
+        emit LTermsUpdated(0, 0, 1019986589312086194);
         // User decided to repay 10% of eBTC after 1 year. This should apply pending interest
         borrowerOperations.repayEBTC(
             cdpId,
@@ -340,6 +350,9 @@ contract InterestRateTest is eBTCBaseFixture {
         // Fast-forward 1 year
         skip(365 days);
         uint256 debtOld = cdpManager.getEntireSystemDebt();
+        vm.expectEmit(false, false, false, true);
+        // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
+        emit LTermsUpdated(0, 0, 1019986589312086194);
         // User decided to close first CDP after 1 year. This should apply pending interest
         borrowerOperations.closeCdp(cdpId);
         // Make sure that ICR for second CDP decreased after interest ticked and interest was realized against second CDP
@@ -461,6 +474,9 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Fast-forward 1 year
         skip(365 days);
+        vm.expectEmit(false, false, false, true);
+        // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
+        emit LTermsUpdated(0, 0, 1019986589312086194);
         // Withdraw 1 eBTC after 1 year. This should apply pending interest
         borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
         // Make sure eBTC balance increased by 1eBTC
