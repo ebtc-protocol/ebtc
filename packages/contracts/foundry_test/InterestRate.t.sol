@@ -15,6 +15,7 @@ contract LiquityTester is LiquityBase {
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
 contract InterestRateTest is eBTCBaseFixture {
+    bytes32[] cdpIds;
     struct CdpState {
         uint256 debt;
         uint256 coll;
@@ -366,6 +367,65 @@ contract InterestRateTest is eBTCBaseFixture {
         ); // Error is <0.1% of the expected value
         // Check that user ETH balance increased specifically by CDP.eth withdrawn value
         assertEq(ethSnapshot.add(coll), address(users[0]).balance);
+    }
+
+    /**
+    Confirm that after interest compounds, it won't be possible to withdraw coll as ICR decreases over time
+    Opens N identical CDPs to make sure TCR is too high if one CDP decides to withdraw a lot
+    */
+    function testInterestIsAppliedImpactsICRAndDoesntAllowWithdraw() public {
+        CdpState memory cdpState1;
+        CdpState memory cdpState2;
+        uint debt = 2000e18;
+
+        // eBTC amount that does not revert before interest is applied but reverts after interest is applied
+        uint sweetSpotDebt = 890e18;
+
+        uint256 coll = _utils.calculateCollAmount(debt, priceFeedMock.getPrice(), COLLATERAL_RATIO);
+        // Open N identical CDPs
+        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+            address user = _utils.getNextUserAddress();
+            vm.deal(user, 10000000 ether);
+            vm.prank(user);
+            bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+                FEE,
+                debt,
+                bytes32(0),
+                bytes32(0)
+            );
+            cdpIds.push(cdpId);
+        }
+        bytes32 benchmarkCdpId = cdpIds[0];
+        bytes32 triggerCdpId = cdpIds[1];
+        bytes32 testedCdpId = cdpIds[2];
+        // Withdraw some eBTC to make sure it won't revert:
+        address user0 = sortedCdps.getOwnerAddress(cdpIds[0]);
+        vm.prank(user0);
+        borrowerOperations.withdrawEBTC(benchmarkCdpId, FEE, sweetSpotDebt, "hint", "hint");
+        uint icrSnapshot = cdpManager.getCurrentICR(testedCdpId, priceFeedMock.getPrice());
+        // Fast-forward 1 year
+        skip(365 days);
+        // Repay some eBTC to trigger tick interest
+        address user1 = sortedCdps.getOwnerAddress(triggerCdpId);
+        vm.prank(user1);
+        borrowerOperations.repayEBTC(
+            triggerCdpId,
+            // Repay 25% of eBTC of cdp3
+            debt.div(4),
+            HINT,
+            HINT
+        );
+
+        // Make sure that ICR for second CDP decreased after interest ticked and interest was realized against second CDP
+        assertLt(cdpManager.getCurrentICR(testedCdpId, priceFeedMock.getPrice()), icrSnapshot);
+
+        // Try to withdrwaw eBTC: that will result in ICR decrease below ICR floor
+        address user2 = sortedCdps.getOwnerAddress(testedCdpId);
+        vm.prank(user2);
+        vm.expectRevert(
+            bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+        );
+        borrowerOperations.withdrawEBTC(testedCdpId, FEE, sweetSpotDebt, "hint", "hint");
     }
 
     /**
