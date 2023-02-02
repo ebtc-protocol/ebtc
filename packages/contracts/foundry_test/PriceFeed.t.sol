@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 
 import {PriceFeed} from "../contracts/PriceFeed.sol";
+import {MockTellor} from "../contracts/TestContracts/MockTellor.sol";
+import {MockAggregator} from "../contracts/TestContracts/MockAggregator.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
@@ -36,9 +38,36 @@ contract PriceFeedTester is PriceFeed {
 contract PriceFeedTest is eBTCBaseFixture {
     PriceFeedTester internal _priceFeed;
     TellorCaller internal _tellorCaller;
+    MockTellor internal _mockTellor;
+    MockAggregator internal _mockChainlink;
     bytes32[] cdpIds;
 
-    // To run this forktest, make tests public instead of private
+    function setUp() public override {
+        _priceFeed = new PriceFeedTester();
+        _mockTellor = new MockTellor();
+        _mockChainlink = new MockAggregator();
+        _tellorCaller = new TellorCaller(address(_mockTellor));
+        // Set current and prev prices in both oracles
+        _mockChainlink.setLatestRoundId(3);
+        _mockChainlink.setPrevRoundId(2);
+        _mockChainlink.setPrice(7018000);
+        _mockChainlink.setPrevPrice(7018000);
+        _mockTellor.setEthPrice(1500e18);
+        _mockTellor.setEthPrice(20000e18);
+
+        _mockChainlink.setUpdateTime(block.timestamp);
+        _mockTellor.setUpdateTime(block.timestamp);
+        _priceFeed.setAddresses(address(_mockChainlink), address(_tellorCaller));
+    }
+
+    function testMockedPrice() public {
+        _priceFeed.fetchPrice();
+        uint price = _priceFeed.lastGoodPrice();
+        // Picks up scaled chainlink price
+        assertEq(price, 70180000000000000);
+    }
+
+    // TODO: To run this forktest, make tests public instead of private
     function testPriceFeedFork() private {
         _priceFeed = new PriceFeedTester();
         _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);

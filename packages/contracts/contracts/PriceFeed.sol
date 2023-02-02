@@ -584,6 +584,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         } catch {
             return (tellorResponse);
         }
+        // If one of the two prices was not retrieved, return the TellorResponse struct with success = false.
+        if (!ethUsdRetrieved || !btcUsdRetrieved) {
+            return (tellorResponse);
+        }
         // Lastly, calculate ETH/BTC price as (ETH/USD) / (BTC/USD)
         tellorResponse.value = ethUsdValue.mul(DECIMAL_PRECISION).div(btcUsdValue);
         tellorResponse.timestamp = LiquityMath._min(ethUsdTimestamp, btcUsdTimestamp);
