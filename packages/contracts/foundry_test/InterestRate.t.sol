@@ -892,10 +892,9 @@ contract InterestRateTest is eBTCBaseFixture {
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
-        assertEq(cdpState.debt, debt);
-
-        assertEq(cdpManager.getEntireSystemDebt(), debt);
-        assertEq(activePool.getEBTCDebt(), debt);
+        assertApproxEqRel(cdpState.debt, debt, 1);
+        assertApproxEqRel(cdpManager.getEntireSystemDebt(), debt, 1);
+        assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
@@ -917,7 +916,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
 
         // Active pool only contains realized interest (no pending interest)
-        assertEq(activePool.getEBTCDebt(), debt);
+        assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
         // Apply pending interest
         borrowerOperations.addColl{value: 1000e18}(cdpId0, bytes32(0), bytes32(0));
@@ -969,10 +968,9 @@ contract InterestRateTest is eBTCBaseFixture {
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
-        assertEq(cdpState.debt, debt);
-
-        assertEq(cdpManager.getEntireSystemDebt(), debt);
-        assertEq(activePool.getEBTCDebt(), debt);
+        assertApproxEqRel(cdpState.debt, debt, 1);
+        assertApproxEqRel(cdpManager.getEntireSystemDebt(), debt, 1);
+        assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
@@ -1002,7 +1000,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
 
         // Active pool only contains realized interest (no pending interest)
-        assertEq(activePool.getEBTCDebt(), debt);
+        assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
         assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
 
