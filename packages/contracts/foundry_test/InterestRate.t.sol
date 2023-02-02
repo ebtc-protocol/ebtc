@@ -620,7 +620,8 @@ contract InterestRateTest is eBTCBaseFixture {
     function testFuzzInterestIsAppliedWithdrawEbtc(uint16 amntOfDays) public {
         CdpState memory cdpState;
         vm.startPrank(users[0]);
-        uint debt = 2000e18;
+        uint debt = _utils.generateRandomNumber(100e18, 2000e18, address(amntOfDays));
+        console.log(debt);
         uint256 coll = _utils.calculateCollAmount(
             debt,
             priceFeedMock.getPrice(),
@@ -651,7 +652,7 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(amntOfDays);
         uint256 debtOld = cdpState.debt;
         // Withdraw 1 eBTC after N amnt of time. This should apply pending interest
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e16, "hint", "hint");
         // Make sure ICR decreased as withdrew more eBTC
         assertLt(
             cdpManager.getCurrentICR(cdpId, priceFeedMock.getPrice()),
@@ -683,7 +684,7 @@ contract InterestRateTest is eBTCBaseFixture {
         CdpState memory cdpState;
         vm.startPrank(users[0]);
 
-        uint debt = 2000e18;
+        uint debt = _utils.generateRandomNumber(100e18, 2000e18, address(amntOfDays));
         uint256 coll = _utils.calculateCollAmount(
             debt,
             priceFeedMock.getPrice(),
@@ -743,7 +744,7 @@ contract InterestRateTest is eBTCBaseFixture {
         CdpState memory cdpState;
         vm.startPrank(users[0]);
 
-        uint debt = 2000e18;
+        uint debt = _utils.generateRandomNumber(100e18, 2000e18, address(amntOfDays));
         uint256 coll = _utils.calculateCollAmount(
             debt,
             priceFeedMock.getPrice(),
@@ -808,8 +809,9 @@ contract InterestRateTest is eBTCBaseFixture {
     function testFuzzInterestIsAppliedAddCollOps(uint16 amntOfDays) public {
         amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
         vm.startPrank(users[0]);
+        uint debt = _utils.generateRandomNumber(100e18, 2000e18, address(amntOfDays));
         uint256 coll = _utils.calculateCollAmount(
-            2000e18,
+            debt,
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
@@ -817,7 +819,7 @@ contract InterestRateTest is eBTCBaseFixture {
         bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
-                2000e18,
+                debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
             ),
@@ -830,10 +832,10 @@ contract InterestRateTest is eBTCBaseFixture {
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
-        assertEq(cdpState.debt, 2000e18);
+        assertEq(cdpState.debt, debt);
 
-        assertEq(cdpManager.getEntireSystemDebt(), 2000e18);
-        assertEq(activePool.getEBTCDebt(), 2000e18);
+        assertEq(cdpManager.getEntireSystemDebt(), debt);
+        assertEq(activePool.getEBTCDebt(), debt);
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
@@ -855,7 +857,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
 
         // Active pool only contains realized interest (no pending interest)
-        assertEq(activePool.getEBTCDebt(), 2000e18);
+        assertEq(activePool.getEBTCDebt(), debt);
 
         // Apply pending interest
         borrowerOperations.addColl{value: 1000e18}(cdpId0, bytes32(0), bytes32(0));
@@ -886,15 +888,16 @@ contract InterestRateTest is eBTCBaseFixture {
     function testFuzzInterestIsAppliedWithdrawCollOps(uint16 amntOfDays) public {
         amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
         vm.startPrank(users[0]);
+        uint debt = _utils.generateRandomNumber(100e18, 2000e18, address(amntOfDays));
         uint256 coll = _utils.calculateCollAmount(
-            2000e18,
+            debt,
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
-                2000e18,
+                debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
                 cdpManager.getBorrowingRateWithDecay()
             ),
@@ -906,10 +909,10 @@ contract InterestRateTest is eBTCBaseFixture {
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
-        assertEq(cdpState.debt, 2000e18);
+        assertEq(cdpState.debt, debt);
 
-        assertEq(cdpManager.getEntireSystemDebt(), 2000e18);
-        assertEq(activePool.getEBTCDebt(), 2000e18);
+        assertEq(cdpManager.getEntireSystemDebt(), debt);
+        assertEq(activePool.getEBTCDebt(), debt);
 
         // Confirm no pending rewards before time has passed
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
@@ -939,12 +942,12 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpState.debt, cdpManager.getEntireSystemDebt());
 
         // Active pool only contains realized interest (no pending interest)
-        assertEq(activePool.getEBTCDebt(), 2000e18);
+        assertEq(activePool.getEBTCDebt(), debt);
 
         assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
 
         // Apply pending interest
-        borrowerOperations.withdrawColl(cdpId0, 100e18, bytes32(0), bytes32(0));
+        borrowerOperations.withdrawColl(cdpId0, 1e18, bytes32(0), bytes32(0));
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
         cdpState = _getEntireDebtAndColl(cdpId0);
