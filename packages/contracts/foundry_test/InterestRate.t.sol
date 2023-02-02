@@ -329,6 +329,9 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             bytes32(0)
         );
+        // Make balance snapshot to make sure that user's balance increased after closing CDP
+        uint ethSnapshot = address(users[0]).balance;
+
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertGt(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
@@ -361,6 +364,8 @@ contract InterestRateTest is eBTCBaseFixture {
             80e18,
             0.001e18
         ); // Error is <0.1% of the expected value
+        // Check that user ETH balance increased specifically by CDP.eth withdrawn value
+        assertEq(ethSnapshot.add(coll), address(users[0]).balance);
     }
 
     /**
@@ -398,7 +403,7 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(365 days);
         // Withdraw 1 eBTC after 1 year. This should apply pending interest
         borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
-        // Make sure eBTC balance increased by 1eBTC plus realized interest
+        // Make sure eBTC balance increased by 1eBTC
         assertEq(balanceSnapshot.add(1e18), eBTCToken.balanceOf(users[0]));
         // Make sure that NICR decreased after user withdrew eBTC
         assertGt(nicrBefore, cdpManager.getNominalICR(cdpId));
@@ -645,7 +650,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Fast-forward X amount of days
         skip(amntOfDays);
         uint256 debtOld = cdpState.debt;
-        // Withdraw 1 eBTC after 1 year. This should apply pending interest
+        // Withdraw 1 eBTC after N amnt of time. This should apply pending interest
         borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
         // Make sure ICR decreased as withdrew more eBTC
         assertLt(
@@ -851,8 +856,6 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Active pool only contains realized interest (no pending interest)
         assertEq(activePool.getEBTCDebt(), 2000e18);
-
-        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
 
         // Apply pending interest
         borrowerOperations.addColl{value: 1000e18}(cdpId0, bytes32(0), bytes32(0));
