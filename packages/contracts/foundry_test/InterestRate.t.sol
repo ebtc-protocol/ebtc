@@ -34,9 +34,6 @@ contract InterestRateTest is eBTCBaseFixture {
 
     uint public constant DECIMAL_PRECISION = 1e18;
 
-    uint public constant LOWER_BOUND_DEBT = 100e18;
-    uint internal constant UPPER_BOUND_DEBT = 2000e18;
-
     ////////////////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
@@ -492,7 +489,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Make sure user's debt increased by 1eBTC plus realized interest
         assertApproxEqRel(debtOld.add(40e18).add(1e18), cdpState.debt, 0.001e18);
         // Make sure total debt increased
-        assertApproxEqRel(debtOld.add(40e18).add(1e18), cdpManager.getEntireSystemDebt(),  0.001e18);
+        assertApproxEqRel(debtOld.add(40e18).add(1e18), cdpManager.getEntireSystemDebt(), 0.001e18);
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
             eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
@@ -969,11 +966,6 @@ contract InterestRateTest is eBTCBaseFixture {
         amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
         debt = uint96(bound(debt, 100e18, 20000e18));
         vm.startPrank(users[0]);
-        uint debt = _utils.generateRandomNumber(
-            LOWER_BOUND_DEBT,
-            UPPER_BOUND_DEBT,
-            address(amntOfDays)
-        );
         uint256 coll = _utils.calculateCollAmount(
             debt,
             priceFeedMock.getPrice(),
