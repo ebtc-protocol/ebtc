@@ -3,7 +3,6 @@
 pragma solidity 0.6.11;
 
 import "../PriceFeed.sol";
-import "../Dependencies/console.sol";
 
 contract MockTellor {
     // --- Mock price data ---

@@ -592,7 +592,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         tellorResponse.value = ethUsdValue.mul(DECIMAL_PRECISION).div(btcUsdValue);
         tellorResponse.timestamp = LiquityMath._min(ethUsdTimestamp, btcUsdTimestamp);
         tellorResponse.success = true;
-        tellorResponse.ifRetrieve = ethUsdRetrieved && btcUsdRetrieved;
+        tellorResponse.ifRetrieve = true;
         return (tellorResponse);
     }
 
