@@ -135,6 +135,29 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
+    struct LocalVar_InternalLiquidate {
+        bytes32 _cdpId;
+        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
+        uint256 _price;
+        uint256 _ICR;
+        bytes32 _upperPartialHint;
+        bytes32 _lowerPartialHint;
+        bool _recoveryModeAtStart;
+        uint256 _TCR;
+    }
+
+    struct LocalVar_RecoveryLiquidate {
+        bool backToNormalMode;
+        uint256 entireSystemDebt;
+        uint256 entireSystemColl;
+        uint256 totalDebtToBurn;
+        uint256 totalColToSend;
+        uint256 totalColSurplus;
+        bytes32 _cdpId;
+        uint256 _price;
+        uint256 _ICR;
+    }
+
     struct LocalVariables_OuterLiquidationFunction {
         uint price;
         uint EBTCInStabPool;
@@ -388,6 +411,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
 
+        bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
             _partialAmount,
@@ -395,12 +419,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _ICR,
             _upperPartialHint,
             _lowerPartialHint,
-            (_TCR < CCR),
+            (_recoveryModeAtStart),
             _TCR
         );
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
-            (_TCR >= CCR),
+            (!_recoveryModeAtStart),
             systemDebt,
             systemColl,
             0,
@@ -421,29 +445,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             gasPoolAddress
         );
         _liquidateSingleCDP(_contractsCache, _liqState, _rs);
-    }
-
-    struct LocalVar_InternalLiquidate {
-        bytes32 _cdpId;
-        uint256 _partialAmount; // EBTC denomination, used only for partial liquidation, default 0 means full liquidation
-        uint256 _price;
-        uint256 _ICR;
-        bytes32 _upperPartialHint;
-        bytes32 _lowerPartialHint;
-        bool _recoveryModeAtStart;
-        uint256 _TCR;
-    }
-
-    struct LocalVar_RecoveryLiquidate {
-        bool backToNormalMode;
-        uint256 entireSystemDebt;
-        uint256 entireSystemColl;
-        uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalColSurplus;
-        bytes32 _cdpId;
-        uint256 _price;
-        uint256 _ICR;
     }
 
     function _liquidateSingleCDPInRecoveryMode(

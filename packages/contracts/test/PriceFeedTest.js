@@ -59,7 +59,7 @@ contract('PriceFeed', async accounts => {
   describe('PriceFeed internal testing contract', async accounts => {
     it("fetchPrice before setPrice should return the default price", async () => {
       const price = await priceFeedTestnet.getPrice()
-      assert.equal(price, dec(200, 18))
+      assert.equal(price, dec(7428, 13))
     })
     it("should be able to fetchPrice after setPrice, output of former matching input of latter", async () => {
       await priceFeedTestnet.setPrice(dec(100, 18))
