@@ -1206,7 +1206,7 @@ contract('PriceFeed', async accounts => {
     await priceFeed.fetchPrice()
 
     const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, '4') // status 4: Using Chainlink, Tellor untrusted
   })
 
   it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with 0 eth price: switch to usingChainlinkTellorUntrusted", async () => {
@@ -1225,7 +1225,7 @@ contract('PriceFeed', async accounts => {
     await priceFeed.fetchPrice()
 
     const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, '4') // status 4: Using Chainlink, Tellor untrusted
   })
 
   it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with 0 btc price: switch to usingChainlinkTellorUntrusted", async () => {
@@ -1244,7 +1244,7 @@ contract('PriceFeed', async accounts => {
     await priceFeed.fetchPrice()
 
     const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, '4') // status 4: Using Chainlink, Tellor untrusted
   })
 
   it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with ifRetrieve = false: switch to usingChainlinkTellorUntrusted", async () => {
@@ -1263,7 +1263,7 @@ contract('PriceFeed', async accounts => {
     await priceFeed.fetchPrice()
 
     const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, '4') // status 4: // status 4: Using Chainlink, Tellor untrusted
   })
 
   it("C1 chainlinkWorking: Chainlink is working and Tellor breaks: return Chainlink price", async () => {
