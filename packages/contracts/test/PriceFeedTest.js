@@ -2022,11 +2022,7 @@ contract('PriceFeed', async accounts => {
     const status = await priceFeed.status()
     assert.equal(status, 3)  // status 3: no change
     assert.equal(toBN((await priceFeed.lastGoodPrice()).toString()).toString(), toBN(_p.toString()).toString());
-    const statusAfter = await priceFeed.status()
-    assert.equal(statusAfter, '3') // status 3: using Tellor, Chainlink frozen
   })
-
-
 
   // --- Case 5 ---
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live and Tellor price >5% - no status change", async () => {
