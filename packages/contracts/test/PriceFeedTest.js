@@ -1209,6 +1209,63 @@ contract('PriceFeed', async accounts => {
     assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
   })
 
+  it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with 0 eth price: switch to usingChainlinkTellorUntrusted", async () => {
+    await setAddresses()
+    priceFeed.setLastGoodPrice(dec(1200, 18)) // establish a "last good price" from the previous price fetch
+
+    const statusBefore = await priceFeed.status()
+    assert.equal(statusBefore, '0') // status 0: Chainlink working
+
+    await mockChainlink.setPrevPrice(dec(7413, 13))
+    await mockChainlink.setPrice(dec(7413, 13))
+
+    await mockTellor.setEthPrice(dec(0))
+    await mockTellor.setBtcPrice(dec(21000, 18))
+
+    await priceFeed.fetchPrice()
+
+    const statusAfter = await priceFeed.status()
+    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+  })
+
+  it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with 0 btc price: switch to usingChainlinkTellorUntrusted", async () => {
+    await setAddresses()
+    priceFeed.setLastGoodPrice(dec(1200, 18)) // establish a "last good price" from the previous price fetch
+
+    const statusBefore = await priceFeed.status()
+    assert.equal(statusBefore, '0') // status 0: Chainlink working
+
+    await mockChainlink.setPrevPrice(dec(7413, 13))
+    await mockChainlink.setPrice(dec(7413, 13))
+
+    await mockTellor.setEthPrice(dec(1500, 18))
+    await mockTellor.setBtcPrice(dec(0, 18))
+
+    await priceFeed.fetchPrice()
+
+    const statusAfter = await priceFeed.status()
+    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+  })
+
+  it("C1 chainlinkWorking: Chainlink is working and Tellor breaks with ifRetrieve = false: switch to usingChainlinkTellorUntrusted", async () => {
+    await setAddresses()
+    priceFeed.setLastGoodPrice(dec(1200, 18)) // establish a "last good price" from the previous price fetch
+
+    const statusBefore = await priceFeed.status()
+    assert.equal(statusBefore, '0') // status 0: Chainlink working
+
+    await mockChainlink.setPrevPrice(dec(7413, 13))
+    await mockChainlink.setPrice(dec(7413, 13))
+
+    await mockTellor.setEthPrice(dec(1500, 18))
+    await mockTellor.setBtcPrice(dec(21000, 18))
+    await mockTellor.setRevertRequest()
+    await priceFeed.fetchPrice()
+
+    const statusAfter = await priceFeed.status()
+    assert.equal(statusAfter, '4') // status 4: Using Tellor, Chainlink untrusted
+  })
+
   it("C1 chainlinkWorking: Chainlink is working and Tellor breaks: return Chainlink price", async () => {
     await setAddresses()
     priceFeed.setLastGoodPrice(dec(1200, 18)) // establish a "last good price" from the previous price fetch
