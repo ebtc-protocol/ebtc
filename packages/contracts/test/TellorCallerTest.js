@@ -31,9 +31,8 @@ contract('TellorCaller', async accounts => {
 	
     qID = await dummyPriceFeed.ETHUSD_TELLOR_QUERY_ID();
     qBuffer = await dummyPriceFeed.tellorQueryBufferSeconds();
-	
-    dummyPrice = dec(7428, 13)
-    await mockTellor.setPrice(dummyPrice)	
+    await mockTellor.setEthPrice(dec(1500, 18))
+    await mockTellor.setBtcPrice(dec(20000, 18))
     const now = await th.getLatestBlockTimestamp(web3)	
     // set oracle update time to (now - buffer - 1) to satisfy the Tellor getDataBefore() semantic requirement:
     //     Finds the most RECENT UNDISPUTED submission BEFROE a specific timestamp
@@ -44,7 +43,7 @@ contract('TellorCaller', async accounts => {
     it("getTellorBufferValue(bytes32, uint256) with mock tellor", async () => {
        let _price = await tellorCaller.getTellorBufferValue(qID, qBuffer);
        assert.isTrue(_price[0]);
-       assert.equal(_price[1].toString(), dummyPrice);
+       assert.equal(_price[1].toString(), '1500000000000000000000');
        assert.isTrue(_price[2] < (Date.now() - qBuffer));
     })
 	
