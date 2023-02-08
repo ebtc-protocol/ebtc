@@ -621,9 +621,9 @@ contract('BorrowerOperations', async accounts => {
 
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
-      // Try to withdraw 0.1 ETH and expect revert
+      // Try to withdraw .5 ETH and expect revert
       try {
-        const txBob = await borrowerOperations.withdrawColl(bobIndex, toBN(100000000000000000), bobIndex, bobIndex, { from: bob })
+        const txBob = await borrowerOperations.withdrawColl(bobIndex, toBN(500000000000000000), bobIndex, bobIndex, { from: bob })
         assert.isFalse(txBob.receipt.status)
       } catch (err) {
         assert.include(err.message, "revert")
@@ -1604,7 +1604,11 @@ contract('BorrowerOperations', async accounts => {
       // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("20000")});
       let _colAmt = dec(100, 18);
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: _colAmt })
+      const price = await priceFeed.getPrice()
+      const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
+      const minNetDebt = minNetDebtEth.mul(price).div(toBN('1000000000000000000'))
+      const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).add(toBN(1))
+      await borrowerOperations.openCdp(th._100pct, MIN_DEBT.add(toBN('2')), A, A, { from: A, value: _colAmt })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
@@ -2440,7 +2444,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceDebt = await getCdpEntireDebt(aliceIndex)
       const aliceColl = await getCdpEntireColl(aliceIndex)
       const debtIncrease = toBN(dec(1, 17))
-      const collIncrease = toBN(dec(10, 'ether'))
+      const collIncrease = toBN(dec(15, 'ether'))
 
       const newICR = await cdpManager.computeICR(aliceColl.add(collIncrease), aliceDebt.add(debtIncrease), price)
 
@@ -3654,11 +3658,14 @@ contract('BorrowerOperations', async accounts => {
       let _colAmt = dec(1000, 18);
       const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _colAmt })
       await assertRevert(txAPromise, "revert")
-
-      const txBPromise = borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.sub(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
+      const price = await priceFeed.getPrice()
+      const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
+      const minNetDebt = minNetDebtEth.mul(price).div(toBN('1000000000000000000'))
+      const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).sub(toBN(1))
+      const txBPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT.sub(toBN(dec(1, 16))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT.sub(toBN(dec(1, 16))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
       await assertRevert(txCPromise, "revert")
     })
 

@@ -39,7 +39,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     struct LocalVariables_adjustCdp {
         uint price;
-        uint reversedPrice;
+        uint btcEthPrice;
         uint collChange;
         uint netDebtChange;
         bool isCollIncrease;
@@ -56,7 +56,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     struct LocalVariables_openCdp {
         uint price;
-        uint reversedPrice;
+        uint btcEthPrice;
         uint EBTCFee;
         uint netDebt;
         uint compositeDebt;
@@ -162,7 +162,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         vars.price = priceFeed.fetchPrice();
         // Reverse ETH/BTC price to BTC/ETH
-        vars.reversedPrice = DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(vars.price);
+        vars.btcEthPrice = DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(vars.price);
         bool isRecoveryMode = _checkRecoveryMode(
             vars.price,
             cdpManager.lastInterestRateUpdateTime()
@@ -182,8 +182,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             );
             vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
-        console.log(vars.netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
-        _requireAtLeastMinNetDebt(vars.netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
+        _requireAtLeastMinNetDebt(vars.netDebt.mul(vars.btcEthPrice).div(DECIMAL_PRECISION));
 
         // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
@@ -355,7 +354,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         vars.price = priceFeed.fetchPrice();
         // Reversed BTC/ETH price
-        vars.reversedPrice = DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(vars.price);
+        vars.btcEthPrice = DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(vars.price);
         bool isRecoveryMode = _checkRecoveryMode(
             vars.price,
             cdpManager.lastInterestRateUpdateTime()
@@ -412,7 +411,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
         if (!_isDebtIncrease && _EBTCChange > 0) {
             uint _netDebt = _getNetDebt(vars.debt).sub(vars.netDebtChange);
-            _requireAtLeastMinNetDebt(_netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
+            _requireAtLeastMinNetDebt(_netDebt.mul(vars.btcEthPrice).div(DECIMAL_PRECISION));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
