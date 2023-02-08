@@ -1590,7 +1590,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(1, 27))
 
     // D opens cdp: 0.035 ETH
-    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: dennis, value: toBN(dec(35, 15)) } })
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: dennis, value: toBN(dec(350, 18)) } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
     // Bob adds 11.33909 ETH to his cdp
@@ -1635,7 +1635,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     F: 0.0007 ETH
     */
     const { collateral: E_coll, totalDebt: E_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: erin, value: toBN(dec(1, 22)) } })
-    const { collateral: F_coll, totalDebt: F_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: freddy, value: toBN('700000000000000') } })
+    const { collateral: F_coll, totalDebt: F_totalDebt } = await openCdp({ extraEBTCAmount: dec(100, 18), extraParams: { from: freddy, value: toBN('700000000000000000000') } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
     let _freddyCdpId = await sortedCdps.cdpOfOwnerByIndex(freddy, 0);
 
