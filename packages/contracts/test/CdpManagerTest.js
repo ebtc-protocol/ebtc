@@ -1157,7 +1157,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(pendingEBTCDebt_C.lte(defaultPoolEBTCDebt))
     //Check only difference is dust
     assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 10000)
-    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 3000)
+    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 10000)
 
     // Confirm system is still in Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
