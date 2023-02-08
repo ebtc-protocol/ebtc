@@ -182,8 +182,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             );
             vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
-        _requireAtLeastMinNetDebt(vars.netDebt);
-        _requireAtLeastMinNetDebt(vars.netDebt.mul(DECIMAL_PRECISION).div(vars.reversedPrice));
+        console.log(vars.netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
+        _requireAtLeastMinNetDebt(vars.netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
 
         // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
@@ -412,7 +412,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
         if (!_isDebtIncrease && _EBTCChange > 0) {
             uint _netDebt = _getNetDebt(vars.debt).sub(vars.netDebtChange);
-            _requireAtLeastMinNetDebt(_netDebt.mul(DECIMAL_PRECISION).div(vars.reversedPrice));
+            _requireAtLeastMinNetDebt(_netDebt.mul(vars.reversedPrice).div(DECIMAL_PRECISION));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
