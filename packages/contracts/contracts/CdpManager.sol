@@ -365,12 +365,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
+    //                |  OR debt could be partially repaid by liquidator and 
+    //                |  liquidator could get collateral of (repaidDebt * min(PLCR, ICR) / price)
     //
     //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
     //                |  debt could be fully repaid by liquidator
     //                |  and up to (repaid debt * MCR) worth of collateral
     //                |  transferred to liquidator while the residue of collateral
     //                |  will be available in CollSurplusPool for owner to claim
+    //                |  OR debt could be partially repaid by liquidator and 
+    //                |  liquidator could get collateral of (repaidDebt * min(PLCR, ICR) / price)
     // -----------------------------------------------------------------
 
     // Single CDP liquidation function (fully).
@@ -649,35 +653,34 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _partialDebt = _partialState._partialAmount;
 
         // calculate entire debt to repay
-        LocalVar_CdpDebtColl memory _detAndColl = _getEntireDebtAndColl(_cdpId);
+        LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
 		
-        require(_partialDebt < _detAndColl.entireDebt, "!maxDebtByPartialLiq");		
-        uint newDebt = _detAndColl.entireDebt.sub(_partialDebt);
+        require(_partialDebt < _debtAndColl.entireDebt, "!maxDebtByPartialLiq");		
+        uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
         require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartialLiq");
 
-        // TODO might consider to revert upon partial liquidation for the CDP if its ICR < PLCR
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
         uint _colRatio = PLCR > _partialState._ICR ? (_partialState._ICR) : PLCR;
         uint _partialColl = _partialDebt.mul(_colRatio).div(_partialState._price);
-        require(_partialColl < _detAndColl.entireColl, "!maxCollByPartialLiq");
+        require(_partialColl < _debtAndColl.entireColl, "!maxCollByPartialLiq");
 
-        uint newColl = _detAndColl.entireColl.sub(_partialColl);
+        uint newColl = _debtAndColl.entireColl.sub(_partialColl);
 
         // apply pending debt and collateral if any
         {
-            uint _debtIncrease = _detAndColl.pendingDebtInterest.add(_detAndColl.pendingDebtReward);
+            uint _debtIncrease = _debtAndColl.pendingDebtInterest.add(_debtAndColl.pendingDebtReward);
             if (_debtIncrease > 0) {
                 Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(_debtIncrease);
             }
-            if (_detAndColl.pendingCollReward > 0) {
-                Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(_detAndColl.pendingCollReward);
+            if (_debtAndColl.pendingCollReward > 0) {
+                Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(_debtAndColl.pendingCollReward);
             }
-            if (_detAndColl.pendingDebtReward > 0 || _detAndColl.pendingCollReward > 0) {
+            if (_debtAndColl.pendingDebtReward > 0 || _debtAndColl.pendingCollReward > 0) {
                 _movePendingCdpRewardsToActivePool(
                     _contractsCache.activePool,
                     _contractsCache.defaultPool,
-                    _detAndColl.pendingDebtReward,
-                    _detAndColl.pendingCollReward
+                    _debtAndColl.pendingDebtReward,
+                    _debtAndColl.pendingCollReward
                 );
             }
         }

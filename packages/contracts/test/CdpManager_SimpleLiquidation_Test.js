@@ -593,7 +593,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           if(i < _partialLiquidations - 1){
              const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmounts[i], _aliceCdpId, _aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(tx);			  
-          }else{
+          }else{			 
              const finalTx = await cdpManager.liquidate(_aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(finalTx);
           }			  
@@ -632,6 +632,22 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // Confirm CDPs have status 'closed by liquidation' (Status enum element idx 3)
       assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+  })
+  
+  it("Partial liquidation can not leave CDP below minimum debt size", async () => {
+      await openCdp({ ICR: toBN(dec(299, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _debtBorrowed = await cdpManager.getCdpDebt(_aliceCdpId);
+	  
+      // price slump
+      let _newPrice = dec(2400, 13);
+      await priceFeed.setPrice(_newPrice);
+	  
+      // liquidator bob coming in 
+      await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});     
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq");  
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed.sub(toBN('1')), _aliceCdpId, _aliceCdpId, {from: bob}), "!minDebtLeftByPartialLiq");  
   })
   
 })
