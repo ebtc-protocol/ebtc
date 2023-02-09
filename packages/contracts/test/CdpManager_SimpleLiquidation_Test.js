@@ -42,7 +42,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     activePool = contracts.activePool;
     minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();	
     _MCR = await cdpManager.MCR();
-    PLCR = await cdpManager.PLCR();
+    LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
 
@@ -486,7 +486,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _icr = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
 
       assert.isTrue(toBN(_icr.toString()).lt(_MCR));
-      assert.isTrue(toBN(_icr.toString()).lt(PLCR));
+      assert.isTrue(toBN(_icr.toString()).lt(LICR));
       let _colRatio = _icr;	 
 	  
       let _debtLiquidated = _partialAmount;

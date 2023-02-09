@@ -19,9 +19,9 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
 
-    // Collateral Ratio applied for Partial cdp Liquidation as incentive
+    // Collateral Ratio applied for Liquidation Incentive
     // i.e., liquidator repay $1 worth of debt to get back $1.05 worth of collateral
-    uint public constant PLCR = 1050000000000000000; // 105%
+    uint public constant LICR = 1050000000000000000; // 105%
 
     // Minimum collateral ratio for individual cdps
     uint public constant MCR = 1100000000000000000; // 110%

@@ -366,7 +366,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
     //                |  OR debt could be partially repaid by liquidator and 
-    //                |  liquidator could get collateral of (repaidDebt * min(PLCR, ICR) / price)
+    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     //
     //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
     //                |  debt could be fully repaid by liquidator
@@ -374,7 +374,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //                |  transferred to liquidator while the residue of collateral
     //                |  will be available in CollSurplusPool for owner to claim
     //                |  OR debt could be partially repaid by liquidator and 
-    //                |  liquidator could get collateral of (repaidDebt * min(PLCR, ICR) / price)
+    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     // -----------------------------------------------------------------
 
     // Single CDP liquidation function (fully).
@@ -660,7 +660,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartialLiq");
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
-        uint _colRatio = PLCR > _partialState._ICR ? (_partialState._ICR) : PLCR;
+        uint _colRatio = LICR > _partialState._ICR ? (_partialState._ICR) : LICR;
         uint _partialColl = _partialDebt.mul(_colRatio).div(_partialState._price);
         require(_partialColl < _debtAndColl.entireColl, "!maxCollByPartialLiq");
 
