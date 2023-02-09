@@ -1606,14 +1606,14 @@ contract('BorrowerOperations', async accounts => {
       let _colAmt = dec(100, 18);
       const price = await priceFeed.getPrice()
       const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
-      const minNetDebt = minNetDebtEth.mul(price).div(toBN('1000000000000000000'))
+      const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).add(toBN(1))
       await borrowerOperations.openCdp(th._100pct, MIN_DEBT.add(toBN('2')), A, A, { from: A, value: _colAmt })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
       await assertRevert(repayTxAPromise, "BorrowerOps: Cdp's net debt must be greater than minimum")
-    })
+    }, "repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt")
 
     it("adjustCdp(): Reverts if repaid amount is greater than current debt", async () => {
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("20000")});
@@ -3660,7 +3660,7 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(txAPromise, "revert")
       const price = await priceFeed.getPrice()
       const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
-      const minNetDebt = minNetDebtEth.mul(price).div(toBN('1000000000000000000'))
+      const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).sub(toBN(1))
       const txBPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
       await assertRevert(txBPromise, "revert")

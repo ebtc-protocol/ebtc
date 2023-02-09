@@ -122,12 +122,21 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
-        // TODO: Fuzz to check overflows/underflows
         return
             FixedPointMathLib.fpow(
                 DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
                 _time,
                 DECIMAL_PRECISION
             );
+    }
+
+    // Convert ETH/BTC price to BTC/ETH price
+    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+        return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
+    }
+
+    // Convert debt denominated in BTC to debt denominated in ETH given that _price is BTC/ETH
+    function _convertDebtDenomination(uint _debt, uint _price) internal view returns (uint) {
+        return _debt.mul(_price).div(DECIMAL_PRECISION);
     }
 }
