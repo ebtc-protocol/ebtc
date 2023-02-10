@@ -1156,8 +1156,8 @@ contract('CdpManager', async accounts => {
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
     assert.isTrue(pendingEBTCDebt_C.lte(defaultPoolEBTCDebt))
     //Check only difference is dust
-    assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 10000)
-    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 10000)
+    assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 6000)
+    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 7000)
 
     // Confirm system is still in Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -3413,7 +3413,7 @@ contract('CdpManager', async accounts => {
 
     // Check activePool debt reduced
     const activePool_debt_after = await activePool.getEBTCDebt()
-    assert.equal(activePool_debt_before.sub(activePool_debt_after).toString(), '400010000000000000000')
+    assert.equal(activePool_debt_before.sub(activePool_debt_after).toString(), '400020000000000000000')
 
     // Check Erin's balance after
     const erin_balance_after = (await ebtcToken.balanceOf(erin)).toString()

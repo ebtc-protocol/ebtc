@@ -1400,7 +1400,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
              */
             if (
                 newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                _convertDebtDenominationToEth(_getNetDebt(newDebt), _redeemColFromCdp._price) < MIN_NET_DEBT
+                _convertDebtDenominationToEth(_getNetDebt(newDebt), _redeemColFromCdp._price) <
+                MIN_NET_DEBT
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

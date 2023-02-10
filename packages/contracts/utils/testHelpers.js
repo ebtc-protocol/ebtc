@@ -677,7 +677,7 @@ class TestHelper {
     const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (
       await this.getNetBorrowingAmount(contracts, minNetDebt)
-    ).add(this.toBN(100))
+    ).add(this.toBN(10))
     const ebtcAmount = MIN_DEBT.add(extraEBTCAmount)
     if (!ICR && !extraParams.value) ICR = this.toBN(this.dec(15, 17)) // 150%
     else if (typeof ICR == 'string') ICR = this.toBN(ICR)
