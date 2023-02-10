@@ -655,9 +655,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // calculate entire debt to repay
         LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
 
-        require(_partialDebt < _debtAndColl.entireDebt, "!maxDebtByPartialLiq");
+        require((_partialDebt + MIN_NET_DEBT) <= _debtAndColl.entireDebt, "!maxDebtByPartialLiq");
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
-        require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartialLiq");
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
         uint _colRatio = LICR > _partialState._ICR ? (_partialState._ICR) : LICR;
@@ -711,9 +710,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
         uint _coll = Cdps[_cdpId].coll;
         uint _debt = Cdps[_cdpId].debt;
-
-        require(_coll > _partialColl, "!partialColl");
-        require(_debt > _partialDebt, "!partialDebt");
 
         Cdps[_cdpId].coll = _coll.sub(_partialColl);
         Cdps[_cdpId].debt = _debt.sub(_partialDebt);

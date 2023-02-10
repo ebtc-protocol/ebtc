@@ -666,8 +666,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // liquidator bob coming in 
       await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});     
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq");  
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed.sub(toBN('1')), _aliceCdpId, _aliceCdpId, {from: bob}), "!minDebtLeftByPartialLiq");  
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq"); 
   })
   
 })
