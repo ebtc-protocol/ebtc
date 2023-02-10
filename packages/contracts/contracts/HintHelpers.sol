@@ -78,7 +78,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         LocalVariables_getRedemptionHints memory vars;
         vars.remainingEBTC = _EBTCamount;
         // Find out minimal debt value denominated in ETH
-        vars.minNetDebtInBTC = _convertDebtDenomination(MIN_NET_DEBT, _price);
+        vars.minNetDebtInBTC = _convertDebtDenominationToBtc(MIN_NET_DEBT, _price);
         vars.currentCdpId = sortedCdpsCached.getLast();
         vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
 

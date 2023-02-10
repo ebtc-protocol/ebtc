@@ -28,7 +28,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Amount of EBTC to be locked in gas pool on opening cdps
     uint public constant EBTC_GAS_COMPENSATION = 1e16;
 
-    // Minimum amount of net EBTC debt denominated in ETH a cdp must have. Decided to be 2ETH of EBTC
+    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
     uint public constant MIN_NET_DEBT = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
@@ -135,8 +135,18 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
     }
 
-    // Convert debt denominated in BTC to debt denominated in ETH given that _price is BTC/ETH
-    function _convertDebtDenomination(uint _debt, uint _price) internal view returns (uint) {
+    // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
+    // _debt is denominated in BTC
+    // _price is ETH/BTC
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+        uint priceReciprocal = _getPriceReciprocal(_price);
+        return _debt.mul(priceReciprocal).div(DECIMAL_PRECISION);
+    }
+
+    // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
+    // _debt is denominated in ETH
+    // _price is ETH/BTC
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
         return _debt.mul(_price).div(DECIMAL_PRECISION);
     }
 }
