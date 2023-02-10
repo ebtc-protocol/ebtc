@@ -443,6 +443,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await priceFeed.setPrice(_newPrice);
       assert.isTrue(await cdpManager.checkRecoveryMode(_newPrice));
       let _bobICR = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
+      assert.isTrue(toBN(_bobICR.toString()).lt(LICR));
       let _colRatio = _bobICR;	 
 	  
       await debtToken.transfer(alice, (await debtToken.balanceOf(bob)), {from: bob});
@@ -469,11 +470,16 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // check collateral change & calculation in receovery mode
       assert.equal(_collDecreased.toString(), _ethSeizedByLiquidator.toString(), '!partially liquidation collateral change in liquidator');
-      assert.equal(_collDecreased.toString(), _debtDecreased.mul(_colRatio).div(toBN(dec(100,16))).mul(toBN(dec(1, 18))).div(toBN(_newPrice)).toString());	 
+      assert.equal(_collDecreased.toString(), _debtDecreased.mul(_colRatio).div(toBN(dec(100,16))).mul(toBN(dec(1, 18))).div(toBN(_newPrice)).toString());	
+	 
+      // bob still sit on the second of list
+      _firstId = await sortedCdps.getFirst();
+      _secondId = await sortedCdps.getNext(_firstId);
+      assert.equal(_secondId, _bobCdpId); 
   }) 
   
   it("CDP below MCR could be partially liquidated in normal mode", async () => {
-      await openCdp({ ICR: toBN(dec(305, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(335, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
@@ -496,8 +502,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _icr = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
 
       assert.isTrue(toBN(_icr.toString()).lt(_MCR));
-      assert.isTrue(toBN(_icr.toString()).lt(LICR));
-      let _colRatio = _icr;	 
+      assert.isTrue(toBN(_icr.toString()).gt(LICR));
+      let _colRatio = LICR;	 
 	  
       let _debtLiquidated = _partialAmount;
       let _collLiquidated = _debtLiquidated.mul(_colRatio).div(toBN(_newPrice));
@@ -519,7 +525,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colSystemPost = await cdpManager.getEntireSystemColl();
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);	  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();	
+      let _collInActivePoolPost = await activePool.getETH();
 
       // check CdpUpdated event
       const troveUpdatedEvents = th.getAllEventsByName(tx, 'CdpUpdated')
