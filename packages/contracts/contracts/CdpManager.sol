@@ -365,7 +365,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
-    //                |  OR debt could be partially repaid by liquidator and 
+    //                |  OR debt could be partially repaid by liquidator and
     //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     //
     //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
@@ -373,7 +373,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //                |  and up to (repaid debt * MCR) worth of collateral
     //                |  transferred to liquidator while the residue of collateral
     //                |  will be available in CollSurplusPool for owner to claim
-    //                |  OR debt could be partially repaid by liquidator and 
+    //                |  OR debt could be partially repaid by liquidator and
     //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     // -----------------------------------------------------------------
 
@@ -654,8 +654,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // calculate entire debt to repay
         LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
-		
-        require(_partialDebt < _debtAndColl.entireDebt, "!maxDebtByPartialLiq");		
+
+        require(_partialDebt < _debtAndColl.entireDebt, "!maxDebtByPartialLiq");
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
         require(newDebt >= MIN_NET_DEBT, "!minDebtLeftByPartialLiq");
 
@@ -668,7 +668,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // apply pending debt and collateral if any
         {
-            uint _debtIncrease = _debtAndColl.pendingDebtInterest.add(_debtAndColl.pendingDebtReward);
+            uint _debtIncrease = _debtAndColl.pendingDebtInterest.add(
+                _debtAndColl.pendingDebtReward
+            );
             if (_debtIncrease > 0) {
                 Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(_debtIncrease);
             }

@@ -53,6 +53,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   
   it("CDP needs to be active to be liquidated", async() => {	  
       await assertRevert(cdpManager.liquidate(th.DUMMY_BYTES32, {from: bob}), "CdpManager: Cdp does not exist or is closed");  
+      await assertRevert(cdpManager.partiallyLiquidate(th.DUMMY_BYTES32, 123, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: bob}), "CdpManager: Cdp does not exist or is closed");
   })
   
   it("ICR needs to be either below MCR in normal mode or below TCR in recovery mode for being liquidatable", async() => {
@@ -64,7 +65,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // normal mode	  
       let _aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, (await priceFeed.getPrice()));
       assert.isTrue(_aliceICR.gt(_MCR));
-      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR"); 
+      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");  
 	  
       // recovery mode	  
       let _newPrice = dec(2400, 13);
@@ -75,7 +77,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _TCR = await cdpManager.getTCR(_newPrice);
       assert.isTrue(_aliceICR.gt(_TCR));
       await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
-	  
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");	  
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {
@@ -432,6 +434,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _lastId = await sortedCdps.getLast();
       assert.equal(_lastId, _ownerCdpId);
 	  
+      // accumulate some interest
+      await ethers.provider.send("evm_increaseTime", [8640000]);
+      await ethers.provider.send("evm_mine");
+	  
       // price slump to make system enter recovery mode
       let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
@@ -476,6 +482,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // alice now sit top of sorted CDP list according to NICR
       assert.equal((await sortedCdps.getFirst()), _aliceCdpId);
+	  
+      // accumulate some interest
+      await ethers.provider.send("evm_increaseTime", [8640000]);
+      await ethers.provider.send("evm_mine");
 	  
       // price slump
       let _newPrice = dec(2400, 13);
@@ -569,6 +579,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
       let _debtBorrowed = await cdpManager.getCdpDebt(_aliceCdpId);
       let _colDeposited = await cdpManager.getCdpColl(_aliceCdpId);
+	  
+      // accumulate some interest
+      await ethers.provider.send("evm_increaseTime", [8640000]);
+      await ethers.provider.send("evm_mine");
 	  
       // price slump
       let _newPrice = dec(2400, 13);

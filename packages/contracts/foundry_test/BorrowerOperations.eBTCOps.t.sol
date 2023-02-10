@@ -251,7 +251,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice()
         );
         // Make sure tx is reverted if user tries to make withdraw resulting in either TCR < CCR or ICR < MCR
-        if (projectedTcr < CCR || projectedIcr < MINIMAL_COLLATERAL_RATIO) {
+        if (projectedTcr <= CCR || projectedIcr <= MINIMAL_COLLATERAL_RATIO) {
             vm.expectRevert();
             borrowerOperations.withdrawEBTC(cdpId, FEE, withdrawAmnt, "hint", "hint");
             return;
