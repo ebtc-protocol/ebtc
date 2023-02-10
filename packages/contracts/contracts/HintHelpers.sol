@@ -19,8 +19,14 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event CdpManagerAddressChanged(address _cdpManagerAddress);
 
-    // --- Dependency setters ---
+    struct LocalVariables_getRedemptionHints {
+        uint remainingEBTC;
+        uint minNetDebtInBTC;
+        bytes32 currentCdpId;
+        address currentCdpuser;
+    }
 
+    // --- Dependency setters ---
     function setAddresses(
         address _sortedCdpsAddress,
         address _cdpManagerAddress
@@ -69,43 +75,48 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         )
     {
         ISortedCdps sortedCdpsCached = sortedCdps;
-
-        uint remainingEBTC = _EBTCamount;
-        bytes32 currentCdpId = sortedCdpsCached.getLast();
-        address currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
+        LocalVariables_getRedemptionHints memory vars;
+        vars.remainingEBTC = _EBTCamount;
+        // Find out minimal debt value denominated in ETH
+        vars.minNetDebtInBTC = _convertDebtDenominationToBtc(MIN_NET_DEBT, _price);
+        vars.currentCdpId = sortedCdpsCached.getLast();
+        vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
 
         while (
-            currentCdpuser != address(0) && cdpManager.getCurrentICR(currentCdpId, _price) < MCR
+            vars.currentCdpuser != address(0) &&
+            cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
         ) {
-            currentCdpId = sortedCdpsCached.getPrev(currentCdpId);
-            currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
+            vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
+            vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
         }
 
-        firstRedemptionHint = currentCdpId;
+        firstRedemptionHint = vars.currentCdpId;
 
         if (_maxIterations == 0) {
             _maxIterations = uint(-1);
         }
 
-        while (currentCdpuser != address(0) && remainingEBTC > 0 && _maxIterations-- > 0) {
+        while (vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0) {
             uint pendingEBTC;
             {
                 (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager
-                    .getPendingEBTCDebtReward(currentCdpId);
+                    .getPendingEBTCDebtReward(vars.currentCdpId);
                 pendingEBTC = pendingEBTCDebtReward.add(pendingEBTCInterest);
             }
 
-            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(pendingEBTC);
+            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId)).add(
+                pendingEBTC
+            );
 
-            if (netEBTCDebt > remainingEBTC) {
-                if (netEBTCDebt > MIN_NET_DEBT) {
+            if (netEBTCDebt > vars.remainingEBTC) {
+                if (netEBTCDebt > vars.minNetDebtInBTC) {
                     uint maxRedeemableEBTC = LiquityMath._min(
-                        remainingEBTC,
-                        netEBTCDebt.sub(MIN_NET_DEBT)
+                        vars.remainingEBTC,
+                        netEBTCDebt.sub(vars.minNetDebtInBTC)
                     );
 
-                    uint ETH = cdpManager.getCdpColl(currentCdpId).add(
-                        cdpManager.getPendingETHReward(currentCdpId)
+                    uint ETH = cdpManager.getCdpColl(vars.currentCdpId).add(
+                        cdpManager.getPendingETHReward(vars.currentCdpId)
                     );
 
                     uint newColl = ETH.sub(maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price));
@@ -117,18 +128,18 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
                         compositeDebt
                     );
 
-                    remainingEBTC = remainingEBTC.sub(maxRedeemableEBTC);
+                    vars.remainingEBTC = vars.remainingEBTC.sub(maxRedeemableEBTC);
                 }
                 break;
             } else {
-                remainingEBTC = remainingEBTC.sub(netEBTCDebt);
+                vars.remainingEBTC = vars.remainingEBTC.sub(netEBTCDebt);
             }
 
-            currentCdpId = sortedCdpsCached.getPrev(currentCdpId);
-            currentCdpuser = sortedCdpsCached.getOwnerAddress(currentCdpId);
+            vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
+            vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
         }
 
-        truncatedEBTCamount = _EBTCamount.sub(remainingEBTC);
+        truncatedEBTCamount = _EBTCamount.sub(vars.remainingEBTC);
     }
 
     /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 

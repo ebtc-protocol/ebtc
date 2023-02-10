@@ -28,10 +28,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Amount of EBTC to be locked in gas pool on opening cdps
     uint public constant EBTC_GAS_COMPENSATION = 1e16;
 
-    // Minimum amount of net EBTC debt a cdp must have
-    // TODO: Should be denominated in ETH, see: https://github.com/Badger-Finance/ebtc/issues/16
-    uint public constant MIN_NET_DEBT = 1e17;
-    // uint constant public MIN_NET_DEBT = 0;
+    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
+    uint public constant MIN_NET_DEBT = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -124,12 +122,31 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
-        // TODO: Fuzz to check overflows/underflows
         return
             FixedPointMathLib.fpow(
                 DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
                 _time,
                 DECIMAL_PRECISION
             );
+    }
+
+    // Convert ETH/BTC price to BTC/ETH price
+    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+        return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
+    }
+
+    // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
+    // _debt is denominated in BTC
+    // _price is ETH/BTC
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+        uint priceReciprocal = _getPriceReciprocal(_price);
+        return _debt.mul(priceReciprocal).div(DECIMAL_PRECISION);
+    }
+
+    // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
+    // _debt is denominated in ETH
+    // _price is ETH/BTC
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
+        return _debt.mul(_price).div(DECIMAL_PRECISION);
     }
 }

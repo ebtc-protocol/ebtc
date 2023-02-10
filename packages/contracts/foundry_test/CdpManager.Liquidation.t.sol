@@ -126,7 +126,7 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
     // Test single CDP liquidation with price fluctuation
     function testLiquidateSingleCDP(uint256 price, uint256 debtAmt) public {
-        vm.assume(debtAmt > 1e17);
+        vm.assume(debtAmt > 1e18);
         vm.assume(debtAmt < 10000e18);
 
         uint _curPrice = priceFeedMock.getPrice();
