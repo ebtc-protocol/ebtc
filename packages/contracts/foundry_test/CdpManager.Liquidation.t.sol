@@ -212,7 +212,7 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
     // - when its ICR is higher than LICR then the collateral to liquidator is (repaidDebt * LICR) / price
     // - when its ICR is lower than LICR then the collateral to liquidator is (repaidDebt * ICR) / price
     function testPartiallyLiquidateSingleCDP(uint256 debtAmt, uint256 partialRatioBps) public {
-        vm.assume(debtAmt > 1e17);
+        vm.assume(debtAmt > 1e18);
         vm.assume(debtAmt < 10000e18);
         vm.assume(partialRatioBps < 10000);
         vm.assume(partialRatioBps > 0);
@@ -265,8 +265,16 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
             LocalVar_PartialLiq memory _partialLiq;
             _partialLiq._ratio = _icrGtLICR ? cdpManager.LICR() : _ICR;
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
-            if (_cdpState.debt - _partialLiq._repaidDebt < cdpManager.MIN_NET_DEBT()) {
-                _partialLiq._repaidDebt = _cdpState.debt - cdpManager.MIN_NET_DEBT();
+            if (
+                (_cdpState.debt - _partialLiq._repaidDebt) <
+                ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18)
+            ) {
+                _partialLiq._repaidDebt =
+                    _cdpState.debt -
+                    ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18);
+                if (_partialLiq._repaidDebt >= 2) {
+                    _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
+                }
             }
             _partialLiq._collToLiquidator =
                 (_partialLiq._repaidDebt * _partialLiq._ratio) /

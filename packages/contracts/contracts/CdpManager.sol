@@ -655,7 +655,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // calculate entire debt to repay
         LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
 
-        require((_partialDebt + MIN_NET_DEBT) <= _debtAndColl.entireDebt, "!maxDebtByPartialLiq");
+        require(
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _partialState._price)) <=
+                _debtAndColl.entireDebt,
+            "!maxDebtByPartialLiq"
+        );
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
