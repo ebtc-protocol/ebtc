@@ -159,13 +159,13 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         LocalVariables_openCdp memory vars;
 
         vars.price = priceFeed.fetchPrice();
+        // Reverse ETH/BTC price to BTC/ETH
         bool isRecoveryMode = _checkRecoveryMode(
             vars.price,
             cdpManager.lastInterestRateUpdateTime()
         );
 
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
-        //        _requireCdpisNotActive(contractsCache.cdpManager, msg.sender);
 
         vars.EBTCFee;
         vars.netDebt = _EBTCAmount;
@@ -179,7 +179,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             );
             vars.netDebt = vars.netDebt.add(vars.EBTCFee);
         }
-        _requireAtLeastMinNetDebt(vars.netDebt);
+        _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(vars.netDebt, vars.price));
 
         // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
@@ -350,6 +350,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         _requireCdpisActive(contractsCache.cdpManager, _cdpId);
 
         vars.price = priceFeed.fetchPrice();
+        // Reversed BTC/ETH price
         bool isRecoveryMode = _checkRecoveryMode(
             vars.price,
             cdpManager.lastInterestRateUpdateTime()
@@ -405,7 +406,8 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
         // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
         if (!_isDebtIncrease && _EBTCChange > 0) {
-            _requireAtLeastMinNetDebt(_getNetDebt(vars.debt).sub(vars.netDebtChange));
+            uint _netDebt = _getNetDebt(vars.debt).sub(vars.netDebtChange);
+            _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(_netDebt, vars.price));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
         }
