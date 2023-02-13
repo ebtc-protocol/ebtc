@@ -902,11 +902,11 @@ contract BorrowerOperations is
         // Gas: Repay from user balance, so we don't trigger a new SSTORE
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
-        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee);
+        // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
+        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee.add(amount));
 
-        // NOTE: We burn instead of pulling, they are equivalent
-        // Burn amount, they must repay by holding it and we can burn
-        cachedEbtc.burn(address(receiver), amount);
+        // Burn amount, from FEE_RECIPIENT
+        cachedEbtc.burn(address(FEE_RECIPIENT), amount);
 
         return true;
     }
