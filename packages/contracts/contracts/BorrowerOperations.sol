@@ -888,7 +888,7 @@ contract BorrowerOperations is
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
 
-        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
 
         // Issue EBTC
         cachedEbtc.mint(address(receiver), amount);
