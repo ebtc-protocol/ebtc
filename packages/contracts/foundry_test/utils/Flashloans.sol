@@ -31,10 +31,8 @@ contract eBTCFlashReceiver is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
-        // Approve fee
-        IERC20(token).approve(msg.sender, fee);
-
-        // Amount is burned directly
+        // Approve amount and fee
+        IERC20(token).approve(msg.sender, amount + fee);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
