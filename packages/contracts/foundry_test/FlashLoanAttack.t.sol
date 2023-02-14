@@ -90,7 +90,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         // Deal only fee for one, will revert
         deal(address(eBTCToken), address(attacker), fee);
 
-        vm.expectRevert(bytes("ERC20: burn amount exceeds balance"));
+        vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
         borrowerOperations.flashLoan(
             IERC3156FlashBorrower(address(attacker)),
             address(eBTCToken),

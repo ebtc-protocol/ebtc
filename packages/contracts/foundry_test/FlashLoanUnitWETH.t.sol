@@ -103,20 +103,17 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         vm.deal(address(activePool), loanAmount);
 
-        vm.expectRevert("SafeMath: addition overflow");
+        vm.expectRevert("SafeMath: multiplication overflow");
         activePool.flashLoan(wethReceiver, address(WETH), loanAmount, abi.encodePacked(uint256(0)));
     }
 
     // Do nothing (no fee), check that it reverts
-    function testWETHRevertsIfUnpaid(uint256 loanAmount) public {
+    function testWETHRevertsIfUnpaid(uint128 loanAmount) public {
         uint256 fee = activePool.flashFee(address(WETH), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
         vm.deal(address(activePool), loanAmount);
-
-        // NOTE: Capped to avoid overflow
-        vm.assume(loanAmount < type(uint128).max);
 
         // NOTE: WETH has no error message
         // Source: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code#L68

@@ -104,7 +104,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // Zero Overflow Case
         uint256 loanAmount = type(uint256).max;
 
-        vm.expectRevert("SafeMath: addition overflow");
+        vm.expectRevert("SafeMath: multiplication overflow");
         borrowerOperations.flashLoan(
             ebtcReceiver,
             address(eBTCToken),
@@ -114,13 +114,12 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     /// @dev Do nothing (no fee), check that it reverts
-    function testEBTCRevertsIfUnpaid(uint256 loanAmount) public {
+    function testEBTCRevertsIfUnpaid(uint128 loanAmount) public {
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
-        // NOTE: Capped to avoid overflow
-        vm.assume(loanAmount < type(uint128).max);
+        deal(address(eBTCToken), address(uselessReceiver), fee);
 
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
         // Perform flashloan
