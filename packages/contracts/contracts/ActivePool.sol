@@ -195,7 +195,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(WETH), "ActivePool: WETH Only");
 
-        return (amount * FEE_AMT) / MAX_BPS;
+        return amount.mul(FEE_AMT).div(MAX_BPS);
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
