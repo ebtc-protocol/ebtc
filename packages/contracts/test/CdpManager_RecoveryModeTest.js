@@ -628,6 +628,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob’s collateral surplus
     const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
+
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))

@@ -496,26 +496,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             uint256 _totalColToSend
         ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _liqState._cdpId);
         uint256 _cappedColPortion;
+        uint256 _collSurplus;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_liqState._cdpId);
-        // Calculate liquidation incentive for liquidator
-        // If ICR is less than 100%: give away entire collateral to liquidator
-        // If ICR is between 100% and 105%: give away (ICR * price) worth of collateral to liquidator
-        // If ICR is more than 105%: give away 100% + 2% worth of collateral to liquidator
-        // TODO: Refactor to separate function
         {
-            if (_liqState._ICR > _105pct) {
-                _cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(_liqState._price);
-            } else if (_liqState._ICR > _100pct && _liqState._ICR < _105pct) {
-                _cappedColPortion = _totalDebtToBurn.mul(_liqState._ICR).div(_liqState._price);
-            } else {
-                _cappedColPortion = _totalColToSend;
-            }
-            _cappedColPortion = _cappedColPortion < _totalColToSend
-                ? _cappedColPortion
-                : _totalColToSend;
-            uint256 _collSurplus = (_cappedColPortion == _totalColToSend)
-                ? 0
-                : _totalColToSend.sub(_cappedColPortion);
+            (_cappedColPortion, _collSurplus) = _calculateSurplusAndCap(
+                _liqState._ICR,
+                _liqState._price,
+                _totalDebtToBurn,
+                _totalColToSend
+            );
             if (_collSurplus > 0) {
                 // Give back leftovers to the borrower if any
                 _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
@@ -555,27 +544,17 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
+        uint256 _collSurplus;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_recoveryState._cdpId);
 
         // avoid stack too deep
         {
-            if (_recoveryState._ICR > _105pct) {
-                _cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(
-                    _recoveryState._price
-                );
-            } else if (_recoveryState._ICR > _100pct && _recoveryState._ICR < _105pct) {
-                _cappedColPortion = _totalDebtToBurn.mul(_recoveryState._ICR).div(
-                    _recoveryState._price
-                );
-            } else {
-                _cappedColPortion = _totalColToSend;
-            }
-            _cappedColPortion = _cappedColPortion < _totalColToSend
-                ? _cappedColPortion
-                : _totalColToSend;
-            uint256 _collSurplus = (_cappedColPortion == _totalColToSend)
-                ? 0
-                : _totalColToSend.sub(_cappedColPortion);
+            (_cappedColPortion, _collSurplus) = _calculateSurplusAndCap(
+                _recoveryState._ICR,
+                _recoveryState._price,
+                _totalDebtToBurn,
+                _totalColToSend
+            );
             if (_collSurplus > 0) {
                 _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
                 _recoveryState.totalColSurplus = _recoveryState.totalColSurplus.add(_collSurplus);
@@ -672,6 +651,30 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
         _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
+    }
+
+    // Function that calculates the amount of collateral to send to liquidator(plus incentive) and the amount of collateral surplus
+    function _calculateSurplusAndCap(
+        uint _ICR,
+        uint _price,
+        uint _totalDebtToBurn,
+        uint _totalColToSend
+    ) private pure returns (uint cappedColPortion, uint collSurplus) {
+        // Calculate liquidation incentive for liquidator
+        // If ICR is less than 100%: give away entire collateral to liquidator
+        // If ICR is between 100% and 105%: give away (ICR * price) worth of collateral to liquidator
+        // If ICR is more than 105%: give away 100% + 2% worth of collateral to liquidator
+        if (_ICR > _105pct) {
+            cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(_price);
+        } else if (_ICR > _100pct && _ICR < _105pct) {
+            cappedColPortion = _totalDebtToBurn.mul(_ICR).div(_price);
+        } else {
+            cappedColPortion = _totalColToSend;
+        }
+        cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
+        collSurplus = (cappedColPortion == _totalColToSend)
+            ? 0
+            : _totalColToSend.sub(cappedColPortion);
     }
 
     // --- Inner single liquidation functions ---
