@@ -377,7 +377,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _aliceICR = await cdpManager.getCurrentICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).gt(toBN(_MCR.toString())));
-      let _cappedLiqColl = toBN(aliceDebt.toString()).mul(toBN(dec(102, 16))).div(toBN(_newPrice));
+      let _cappedLiqColl = toBN(aliceDebt.toString()).mul(toBN(dec(102, 16))).div(toBN(_newPrice)).add(mv._LIQUIDATION_REWARD);
       let _liquidateRecoveryTx = await cdpManager.liquidate(aliceCdpId, { from: owner});	  
       let postDebtOfOwner = await debtToken.balanceOf(owner);
       let postETHOfOwner = await ethers.provider.getBalance(owner);

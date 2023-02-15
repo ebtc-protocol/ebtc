@@ -660,14 +660,17 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _totalDebtToBurn,
         uint _totalColToSend
     ) private pure returns (uint cappedColPortion, uint collSurplus) {
-        // Calculate liquidation incentive for liquidator
+        // Calculate liquidation incentive for liquidator:
         // If ICR is less than 100%: give away entire collateral to liquidator
         // If ICR is between 100% and 105%: give away (ICR * price) worth of collateral to liquidator
         // If ICR is more than 105%: give away 100% + 2% worth of collateral to liquidator
+        // Always add LIQUIDATOR_REWARD except the case when ICR is less than 100%
         if (_ICR > _105pct) {
             cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(_price);
+            cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
         } else if (_ICR > _100pct && _ICR < _105pct) {
             cappedColPortion = _totalDebtToBurn.mul(_ICR).div(_price);
+            cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
         } else {
             cappedColPortion = _totalColToSend;
         }
