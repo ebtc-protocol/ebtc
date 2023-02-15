@@ -627,7 +627,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -637,14 +637,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     th.assertIsApproximatelyEqual(bob_balanceAfter, bob_expectedBalance.add(th.toBN(bob_remainingCollateral)))
   })
 
-  it("liquidate(), with ICR% = 110 < TCR: repay the cdp debt entirely, there’s no collateral surplus", async () => {
+  it("liquidate(), with ICR% = 110 < TCR: repay the cdp debt entirely, collsuprlus present", async () => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 220%. Bob has lowest ICR.
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
     await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
     await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
-    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
@@ -676,7 +676,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), '0')
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
+    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
   })
 
   it("liquidate(), with  110% < ICR < TCR: removes stake and updates totalStakes", async () => {
@@ -724,7 +725,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalStakes_After.toString(), A_coll.add(D_coll))
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -825,7 +826,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(bob_Cdp_isInSortedList_After)
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -902,9 +903,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
 
     // check collateral surplus
-    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
-    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
+    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(dennis), dennis_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(carol), carol_remainingCollateral)
@@ -1663,7 +1664,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus: 5.76 * 100 - 480 * 1.1
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -1744,7 +1745,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(102, 16))).div(price))
     th.assertIsApproximatelyEqual((await collSurplusPool.getCollateral(bob)).toString(), bob_remainingCollateral.toString())
 
     // can claim collateral

@@ -501,11 +501,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // If ICR is less than 100%: give away entire collateral to liquidator
         // If ICR is between 100% and 105%: give away (ICR * price) worth of collateral to liquidator
         // If ICR is more than 105%: give away 100% + 2% worth of collateral to liquidator
+        // TODO: Refactor to separate function
         {
             if (_liqState._ICR > _105pct) {
-                _cappedColPortion = _totalColToSend.mul(_100pct.add(_2pct)).div(_liqState._price);
+                _cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(_liqState._price);
             } else if (_liqState._ICR > _100pct && _liqState._ICR < _105pct) {
-                _cappedColPortion = _totalColToSend.mul(_liqState._ICR).div(_liqState._price);
+                _cappedColPortion = _totalDebtToBurn.mul(_liqState._ICR).div(_liqState._price);
             } else {
                 _cappedColPortion = _totalColToSend;
             }
@@ -559,11 +560,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // avoid stack too deep
         {
             if (_recoveryState._ICR > _105pct) {
-                _cappedColPortion = _totalColToSend.mul(_100pct.add(_2pct)).div(
+                _cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(
                     _recoveryState._price
                 );
             } else if (_recoveryState._ICR > _100pct && _recoveryState._ICR < _105pct) {
-                _cappedColPortion = _totalColToSend.mul(_recoveryState._ICR).div(
+                _cappedColPortion = _totalDebtToBurn.mul(_recoveryState._ICR).div(
                     _recoveryState._price
                 );
             } else {
