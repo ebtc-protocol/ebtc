@@ -482,7 +482,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                     _outputState.totalColSurplus
                 );
             }
-            return (_liqState.totalDebtToBurn, _liqState.totalColToSend);
+            return (_outputState.totalDebtToBurn, _outputState.totalColToSend);
         }
     }
 
@@ -518,7 +518,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _liqState._cdpId,
             _borrower,
             _totalDebtToBurn,
-            _totalColToSend,
+            _cappedColPortion,
             CdpManagerOperation.liquidateInNormalMode
         );
         emit CdpUpdated(
@@ -666,11 +666,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // If ICR is more than 105%: give away 100% + 2% worth of collateral to liquidator
         // Always add LIQUIDATOR_REWARD except the case when ICR is less than 100%
         if (_ICR > _105pct) {
-            cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_2pct)).div(_price);
+            cappedColPortion = _totalDebtToBurn.mul(_100pct.add(_5pct)).div(_price);
             cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
         } else if (_ICR > _100pct && _ICR < _105pct) {
             cappedColPortion = _totalDebtToBurn.mul(_ICR).div(_price);
-            cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
         } else {
             cappedColPortion = _totalColToSend;
         }

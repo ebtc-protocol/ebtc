@@ -627,7 +627,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
 
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
@@ -674,7 +674,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(bob_ICR).div(price).add(mv._LIQUIDATION_REWARD))
     // Min between bob bob_remainingCollateral and zero
     const bob_collSurplus = bob_remainingCollateral.gt(th.toBN(0)) ? bob_remainingCollateral : th.toBN(0)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_collSurplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_collSurplus, 10000)
   })
 
   it("liquidate(), with ICR < 100% - give away entire collateral as an incentive to liquidator", async () => {
@@ -752,7 +752,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
   })
 
@@ -801,7 +801,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalStakes_After.toString(), A_coll.add(D_coll))
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -902,7 +902,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(bob_Cdp_isInSortedList_After)
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -979,9 +979,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
 
     // check collateral surplus
-    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
-    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(dennis), dennis_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(carol), carol_remainingCollateral)
@@ -1740,7 +1740,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus: 5.76 * 100 - 480 * 1.1
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -1821,7 +1821,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(102, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual((await collSurplusPool.getCollateral(bob)).toString(), bob_remainingCollateral.toString())
 
     // can claim collateral

@@ -19,7 +19,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
     uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
-    uint public constant _2pct = 20000000000000000; // 2e16 == 2%
+    uint public constant _5pct = 50000000000000000; // 5e16 == 5%
 
     // Minimum collateral ratio for individual cdps
     uint public constant MCR = 1100000000000000000; // 110%
