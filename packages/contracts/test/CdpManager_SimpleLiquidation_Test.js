@@ -479,12 +479,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   }) 
   
   it("CDP below MCR could be partially liquidated in normal mode", async () => {
-      await openCdp({ ICR: toBN(dec(335, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(345, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
-      let _debtBorrowed = await cdpManager.getCdpDebt(_aliceCdpId);
-      let _colDeposited = await cdpManager.getCdpColl(_aliceCdpId);
+      let _colOriginallyDeposited = await cdpManager.getCdpColl(_aliceCdpId);
+      await openCdp({ ICR: toBN(dec(169, 16)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
 	  
       // alice now sit top of sorted CDP list according to NICR
       assert.equal((await sortedCdps.getFirst()), _aliceCdpId);
@@ -496,6 +497,17 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // price slump
       let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
+	  
+      // FIXME get some pending rewards for remaining CDP
+      await cdpManager.liquidateCdps(1, {from: owner});
+      assert.isFalse(await sortedCdps.contains(_ownerCdpId));
+      let _rewardETH = await cdpManager.getPendingETHReward(_aliceCdpId);
+      assert.isTrue(toBN(_rewardETH.toString()).gt(toBN('0')));
+      let _rewardEBTCDebt = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
+      assert.isTrue(toBN(_rewardEBTCDebt[0].toString()).gt(toBN('0')));	  
+      await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice, value: dec(1, 'ether') }); //apply pending rewards
+      let _debtBorrowed = await cdpManager.getCdpDebt(_aliceCdpId);
+      let _colDeposited = await cdpManager.getCdpColl(_aliceCdpId);
 	  
       // liquidator bob coming in firstly partially liquidate some portion(0.1 EBTC) of alice
       let _partialAmount = toBN("100000000000000000"); // 0.1e18
@@ -509,7 +521,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collLiquidated = _debtLiquidated.mul(_colRatio).div(toBN(_newPrice));
       let _debtRemaining = _debtBorrowed.sub(_debtLiquidated);
       let _collRemaining = _colDeposited.sub(_collLiquidated);
-      let _stakeRemaining = _collRemaining;
 	  
       // liquidator bob coming in 
       await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});	  
@@ -526,6 +537,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);	  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
       let _collInActivePoolPost = await activePool.getETH();
+      let _stakeRemaining = await cdpManager.getCdpStake(_aliceCdpId);
 
       // check CdpUpdated event
       const troveUpdatedEvents = th.getAllEventsByName(tx, 'CdpUpdated')
