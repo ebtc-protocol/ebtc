@@ -1365,7 +1365,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         singleRedemption.ETHLot = singleRedemption.EBTCLot.mul(DECIMAL_PRECISION).div(
             _redeemColFromCdp._price
         );
-
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
         uint newDebt = (Cdps[_redeemColFromCdp._cdpId].debt).sub(singleRedemption.EBTCLot);
         uint newColl = (Cdps[_redeemColFromCdp._cdpId].coll).sub(singleRedemption.ETHLot);
@@ -1401,7 +1400,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
              */
             if (
                 newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                _getNetDebt(newDebt) < MIN_NET_DEBT
+                _convertDebtDenominationToEth(_getNetDebt(newDebt), _redeemColFromCdp._price) <
+                MIN_NET_DEBT
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

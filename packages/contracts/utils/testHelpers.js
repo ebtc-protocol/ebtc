@@ -680,12 +680,13 @@ class TestHelper {
     else if (typeof extraEBTCAmount == 'string') extraEBTCAmount = this.toBN(extraEBTCAmount)
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
-
+    const price = await contracts.priceFeedTestnet.getPrice()
+    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_DEBT()
+    const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (
-      await this.getNetBorrowingAmount(contracts, await contracts.borrowerOperations.MIN_NET_DEBT())
-    ).add(this.toBN(0)) // previously added 1 to avoid rounding issues - no need without borrowing fee
+      await this.getNetBorrowingAmount(contracts, minNetDebt)
+    ).add(this.toBN(10))
     const ebtcAmount = MIN_DEBT.add(extraEBTCAmount)
-
     if (!ICR && !extraParams.value) ICR = this.toBN(this.dec(15, 17)) // 150%
     else if (typeof ICR == 'string') ICR = this.toBN(ICR)
 
@@ -703,7 +704,6 @@ class TestHelper {
       extraParams.value = ICR.mul(totalDebt).div(price)
       if (DEBUG) console.log("proposed ICR:", extraParams.value.toString())
     }
-
     const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
