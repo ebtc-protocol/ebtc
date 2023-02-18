@@ -940,6 +940,7 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, '1000000000000000001', dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
     })
 
+    // Disabled due to borrow fee removal
     xit("withdrawEBTC(): reverts if max fee < 0.5% in Normal mode", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(20, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
