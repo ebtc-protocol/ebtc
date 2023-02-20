@@ -426,7 +426,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // liquidate given CDP by repaying debt in full or partially if its ICR is below MCR or TCR in recovery mode.
-    // For partially liquidation, caller should use HintHelper smart contract to get correct hints for reinsertion into sorted CDP list
+    // For partial liquidation, caller should use HintHelper smart contract to get correct hints for reinsertion into sorted CDP list
     function _liquidateSingleCDP(
         ContractsCache memory _contractsCache,
         LocalVar_InternalLiquidate memory _liqState,
@@ -653,7 +653,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
     }
 
-    // Function that calculates the amount of collateral to send to liquidator(plus incentive) and the amount of collateral surplus
+    // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
     function _calculateSurplusAndCap(
         uint _ICR,
         uint _price,
