@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
-
+pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
@@ -76,7 +76,8 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Fuzzing for collAdd happy case scenario
     function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
-        increaseAmnt = uint96(bound(increaseAmnt, 1e1, type(uint96).max));
+        vm.assume(increaseAmnt > 1e1);
+        vm.assume(increaseAmnt < type(uint96).max);
         uint collAmount = 28 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
