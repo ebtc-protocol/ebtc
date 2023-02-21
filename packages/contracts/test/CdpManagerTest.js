@@ -3205,7 +3205,8 @@ contract('CdpManager', async accounts => {
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, 1, GAS_PRICE, dec(10, 18), '4999999999999999'), "Max fee percentage must be between 0.5% and 100%")
   })
 
-  it("redeemCollateral(): reverts if fee exceeds max fee percentage", async () => {
+  // Disabled as actual fee never exceeds 0.5%
+  xit("redeemCollateral(): reverts if fee exceeds max fee percentage", async () => {
     await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("3000")});
     await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("3000")});
     await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("3000")});
