@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
-
+pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -694,8 +694,11 @@ contract InterestRateTest is eBTCBaseFixture {
     Confirm that interest is applied to a CDP when user withdraws eBTC when passed FUZZ amount of time
     */
     function testFuzzInterestIsAppliedWithdrawEbtc(uint16 amntOfDays, uint96 debt) public {
-        amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
-        debt = uint96(bound(debt, 100e18, 20000e18));
+        vm.assume(amntOfDays > 1);
+        vm.assume(amntOfDays < type(uint16).max);
+
+        vm.assume(debt > 100e18);
+        vm.assume(debt < 20000e18);
         CdpState memory cdpState;
         vm.startPrank(users[0]);
         uint256 coll = _utils.calculateCollAmount(
@@ -757,8 +760,11 @@ contract InterestRateTest is eBTCBaseFixture {
     Confirm that interest is applied to a CDP when user closes their position when passed FUZZ amount of time
     */
     function testFuzzInterestIsAppliedCloseCdp(uint16 amntOfDays, uint96 debt) public {
-        amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
-        debt = uint96(bound(debt, 100e18, 20000e18));
+        vm.assume(amntOfDays > 1);
+        vm.assume(amntOfDays < type(uint16).max);
+
+        vm.assume(debt > 100e18);
+        vm.assume(debt < 20000e18);
         CdpState memory cdpState;
         vm.startPrank(users[0]);
 
@@ -820,8 +826,11 @@ contract InterestRateTest is eBTCBaseFixture {
     Confirm that interest is applied to a CDP when user repays eBTC after FUZZED amount of time
     */
     function testFuzzInterestIsAppliedRepayEbtc(uint16 amntOfDays, uint96 debt) public {
-        amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
-        debt = uint96(bound(debt, 100e18, 20000e18));
+        vm.assume(amntOfDays > 1);
+        vm.assume(amntOfDays < type(uint16).max);
+
+        vm.assume(debt > 100e18);
+        vm.assume(debt < 20000e18);
         CdpState memory cdpState;
         vm.startPrank(users[0]);
 
@@ -886,8 +895,11 @@ contract InterestRateTest is eBTCBaseFixture {
         Confirm that interest is applied to a CDP when collateral is added by user after FUZZ amnt of time
     */
     function testFuzzInterestIsAppliedAddCollOps(uint16 amntOfDays, uint96 debt) public {
-        amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
-        debt = uint96(bound(debt, 100e18, 20000e18));
+        vm.assume(amntOfDays > 1);
+        vm.assume(amntOfDays < type(uint16).max);
+
+        vm.assume(debt > 100e18);
+        vm.assume(debt < 20000e18);
         vm.startPrank(users[0]);
 
         uint256 coll = _utils.calculateCollAmount(
@@ -965,8 +977,11 @@ contract InterestRateTest is eBTCBaseFixture {
         Confirm that interest is applied to a CDP when collateral is removed by user after FUZZ amnt of time
     */
     function testFuzzInterestIsAppliedWithdrawCollOps(uint16 amntOfDays, uint96 debt) public {
-        amntOfDays = uint16(bound(amntOfDays, 1, type(uint16).max));
-        debt = uint96(bound(debt, 100e18, 20000e18));
+        vm.assume(amntOfDays > 1);
+        vm.assume(amntOfDays < type(uint16).max);
+
+        vm.assume(debt > 100e18);
+        vm.assume(debt < 20000e18);
         vm.startPrank(users[0]);
         uint256 coll = _utils.calculateCollAmount(
             debt,
