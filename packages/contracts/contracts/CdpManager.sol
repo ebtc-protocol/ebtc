@@ -663,7 +663,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
-        uint _colRatio = LICR > _partialState._ICR ? (_partialState._ICR) : LICR;
+        uint _colRatio = LICR > _partialState._ICR ? _partialState._ICR : LICR;
         uint _partialColl = _partialDebt.mul(_colRatio).div(_partialState._price);
         require(_partialColl < _debtAndColl.entireColl, "!maxCollByPartialLiq");
 
@@ -730,7 +730,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     ) internal {
         bytes32 _cdpId = _partialState._cdpId;
 
-        // ensure new ICR NOT decrease due to partial liquidation
+        // ensure new ICR does NOT decrease due to partial liquidation
         require(getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
 
         // reInsert into sorted CDP list
