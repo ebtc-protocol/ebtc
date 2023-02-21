@@ -199,9 +199,9 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
             // check state is closedByLiquidation
             assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
+            _ensureSystemInvariants_Liquidation();
         }
 
         _ensureSystemInvariants();
-        _ensureSystemInvariants_Liquidation();
     }
 }
