@@ -4396,7 +4396,7 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual(B_balanceAfter, B_expectedBalance.add(B_surplus))
     th.assertIsApproximatelyEqual(C_balanceAfter, C_expectedBalance.add(C_surplus))
   })
-
+ 
   it('redeemCollateral(): reverts if fee eats up all returned collateral', async () => {
     // --- SETUP ---
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});

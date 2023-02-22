@@ -3845,7 +3845,7 @@ contract('BorrowerOperations', async accounts => {
       //       actual fee percentage: 0.005000000186264514
       // user's max fee percentage:  0.0049999999999999999
       let borrowingRate = await cdpManager.getBorrowingRate() // expect max(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       const lessThan5pct = '49999999999999999'
       await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
@@ -3879,7 +3879,7 @@ contract('BorrowerOperations', async accounts => {
       await cdpManager.setLastFeeOpTimeToNow()
 
       let borrowingRate = await cdpManager.getBorrowingRate() // expect min(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee > 5%
       const moreThan5pct = '50000000000000001'
@@ -3948,7 +3948,8 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
-    it("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
+    //skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -3986,8 +3987,9 @@ contract('BorrowerOperations', async accounts => {
       const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
-
-    it("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
+    
+    // skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -4024,8 +4026,9 @@ contract('BorrowerOperations', async accounts => {
       const F_EBTC_After = await lqtyStaking.F_EBTC()
       assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
     })
-
-    it("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
+  
+    // skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
