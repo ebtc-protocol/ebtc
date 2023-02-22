@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
-
+pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -199,9 +199,9 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
             // check state is closedByLiquidation
             assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
+            _ensureSystemInvariants_Liquidation();
         }
 
         _ensureSystemInvariants();
-        _ensureSystemInvariants_Liquidation();
     }
 }
