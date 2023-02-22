@@ -4126,7 +4126,7 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual(
       A_balanceAfter.sub(A_balanceBefore),
       ETHDrawn.sub(
-        toBN(dec(5, 15)).add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
+        toBN(dec(5, 15))//.add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
           .mul(ETHDrawn).div(mv._1e18BN)
       ).sub(toBN(gasUsed * GAS_PRICE)), // substract gas used for cdpManager.redeemCollateral from expected received ETH
       100000
@@ -4444,8 +4444,10 @@ contract('CdpManager', async accounts => {
       firstRedemptionHint,
       partialRedemptionHintNICR
     } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
-
-    await assertRevert(
+    // Since we apply static redemption fee rate, 
+    // thus the fee calculated as [fixedRate.mul(_ETHDrawn).div(1e18)] 
+    // would never exceed underlying collateral
+    //await assertRevert(
       cdpManager.redeemCollateral(
         ebtcAmount,
         firstRedemptionHint,
@@ -4457,9 +4459,9 @@ contract('CdpManager', async accounts => {
           from: alice,
           gasPrice: GAS_PRICE
         }
-      ),
-      'CdpManager: Fee would eat up all returned collateral'
-    )
+      );//,
+      //'CdpManager: Fee would eat up all returned collateral'
+    //)
   })
 
   it("getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward", async () => {
