@@ -2163,7 +2163,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;    
+        return BORROWING_FEE_FLOOR;
     }
 
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
