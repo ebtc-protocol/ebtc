@@ -135,6 +135,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
+    struct LocalVar_CdpDebtColl {
+        uint256 entireDebt;
+        uint256 entireColl;
+        uint256 pendingDebtReward;
+        uint pendingDebtInterest;
+        uint pendingCollReward;
+    }
+
     struct LocalVar_InternalLiquidate {
         bytes32 _cdpId;
         uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
@@ -635,14 +643,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return (entireDebt, entireColl);
     }
 
-    struct LocalVar_CdpDebtColl {
-        uint256 entireDebt;
-        uint256 entireColl;
-        uint256 pendingDebtReward;
-        uint pendingDebtInterest;
-        uint pendingCollReward;
-    }
-
     // Liquidate partially the CDP by an external liquidator
     // This function would return the liquidated debt and collateral of the given CDP
     function _liquidateCDPPartially(
@@ -654,12 +654,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // calculate entire debt to repay
         LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
-
-        require(
-            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _partialState._price)) <=
-                _debtAndColl.entireDebt,
-            "!maxDebtByPartialLiq"
-        );
+        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState._price);
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
@@ -670,6 +665,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint newColl = _debtAndColl.entireColl.sub(_partialColl);
 
         // apply pending debt and collateral if any
+        // and update CDP internal accounting for debt and collateral
+        // if there is liquidation redistribution
         {
             uint _debtIncrease = _debtAndColl.pendingDebtInterest.add(
                 _debtAndColl.pendingDebtReward
@@ -2424,6 +2421,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(
             _maxFeePercentage >= REDEMPTION_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
             "Max fee percentage must be between 0.5% and 100%"
+        );
+    }
+
+    function _requirePartialLiqDebtSize(uint _partialDebt, uint _entireDebt, uint _price) internal {
+        require(
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _price)) <= _entireDebt,
+            "!maxDebtByPartialLiq"
         );
     }
 
