@@ -4412,7 +4412,9 @@ contract('CdpManager', async accounts => {
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // keep redeeming until we get the base rate to the ceiling of 100%
-    for (let i = 0; i < 2; i++) {
+    // With zero borrowing fee, [total supply of EBTC] is reduced since no more minting of fee to staking
+    // thus the redemption rate is increased more quickly due to [total supply of EBTC] is used in denominator for rate update
+    for (let i = 0; i < 1; i++) {
       // Find hints for redeeming
       const {
         firstRedemptionHint,
