@@ -98,7 +98,7 @@ contract InterestRateTest is eBTCBaseFixture {
         );
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -179,7 +179,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -263,7 +263,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
 
         // Fast-forward 1 year
@@ -343,7 +343,7 @@ contract InterestRateTest is eBTCBaseFixture {
         uint ethSnapshot = address(users[0]).balance;
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         uint icrSnapshot = cdpManager.getCurrentICR(cdpId2, priceFeedMock.getPrice());
         // Fast-forward 1 year
@@ -464,7 +464,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         cdpState = _getEntireDebtAndColl(cdpId);
         uint256 debtOld = cdpState.debt;
@@ -717,7 +717,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
         assertApproxEqRel(
@@ -795,7 +795,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
         assertApproxEqRel(
@@ -850,7 +850,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
         assertApproxEqRel(
@@ -920,7 +920,7 @@ contract InterestRateTest is eBTCBaseFixture {
         );
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);
@@ -999,7 +999,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0)
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
-        assertGt(lqtyStakingBalanceOld, 0);
+        assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
         cdpState = _getEntireDebtAndColl(cdpId0);

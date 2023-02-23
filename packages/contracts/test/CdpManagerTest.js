@@ -1156,8 +1156,8 @@ contract('CdpManager', async accounts => {
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
     assert.isTrue(pendingEBTCDebt_C.lte(defaultPoolEBTCDebt))
     //Check only difference is dust
-    assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 6000)
-    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 7000)
+    assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 6100)
+    assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 3000)
 
     // Confirm system is still in Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -4396,7 +4396,7 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual(B_balanceAfter, B_expectedBalance.add(B_surplus))
     th.assertIsApproximatelyEqual(C_balanceAfter, C_expectedBalance.add(C_surplus))
   })
-
+ 
   it('redeemCollateral(): reverts if fee eats up all returned collateral', async () => {
     // --- SETUP ---
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
@@ -4412,7 +4412,9 @@ contract('CdpManager', async accounts => {
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // keep redeeming until we get the base rate to the ceiling of 100%
-    for (let i = 0; i < 2; i++) {
+    // With zero borrowing fee, [total supply of EBTC] is reduced since no more minting of fee to staking
+    // thus the redemption rate is increased more quickly due to [total supply of EBTC] is used in denominator for rate update
+    for (let i = 0; i < 1; i++) {
       // Find hints for redeeming
       const {
         firstRedemptionHint,
