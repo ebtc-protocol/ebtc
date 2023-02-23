@@ -3851,17 +3851,17 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1%
       await assertRevert(borrowerOperations.openCdp(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 3.754%
       await assertRevert(borrowerOperations.openCdp(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1e-16%
       await assertRevert(borrowerOperations.openCdp(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
     })
@@ -3887,21 +3887,21 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(tx1.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee = 5%
       const tx2 = await borrowerOperations.openCdp(dec(5, 16), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: H, value: dec(2000, 'ether') })
       assert.isTrue(tx2.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 10%
       const tx3 = await borrowerOperations.openCdp(dec(1, 17), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(2000, 'ether') })
       assert.isTrue(tx3.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 37.659%
       const tx4 = await borrowerOperations.openCdp(dec(37659, 13), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(2000, 'ether') })
