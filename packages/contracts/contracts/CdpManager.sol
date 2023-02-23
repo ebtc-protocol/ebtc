@@ -668,9 +668,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         if (_ICR > _105pct) {
             cappedColPortion = _totalDebtToBurn.mul(_105pct).div(_price);
             cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
-        } else if (_ICR > _100pct && _ICR < _105pct) {
-            cappedColPortion = _totalDebtToBurn.mul(_ICR).div(_price);
-            cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
         } else {
             cappedColPortion = _totalColToSend;
         }
