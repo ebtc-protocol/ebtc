@@ -16,6 +16,7 @@ const MoneyValues = {
 
   _zeroBN: web3.utils.toBN('0'),
   _1e18BN: web3.utils.toBN('1000000000000000000'),
+  _1_5e18BN: web3.utils.toBN('1050000000000000000'),
   _10e18BN: web3.utils.toBN('10000000000000000000'),
   _100e18BN: web3.utils.toBN('100000000000000000000'),
   _100BN: web3.utils.toBN('100'),
@@ -23,6 +24,8 @@ const MoneyValues = {
   _150BN: web3.utils.toBN('150'),
 
   _MCR: web3.utils.toBN('1100000000000000000'),
+  // Liq reward is 0.2 eth
+  _LIQUIDATION_REWARD: web3.utils.toBN('200000000000000000'),
   _ICR100: web3.utils.toBN('1000000000000000000'),
   _CCR: web3.utils.toBN('1500000000000000000'),
 }
