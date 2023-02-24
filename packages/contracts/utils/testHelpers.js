@@ -3,6 +3,8 @@ const BN = require('bn.js')
 const LockupContract = artifacts.require(("./LockupContract.sol"))
 const Destructible = artifacts.require("./TestContracts/Destructible.sol")
 
+const DEBUG = false
+
 const MoneyValues = {
   negative_5e17: "-" + web3.utils.toWei('500', 'finney'),
   negative_1e18: "-" + web3.utils.toWei('1', 'ether'),
@@ -326,6 +328,12 @@ class TestHelper {
   static async getOpenCdpTotalDebt(contracts, ebtcAmount) {
     const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
     const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
+
+    if (DEBUG) {
+      console.log("fee: ", fee.toString())
+      console.log("compositeDebt: ", compositeDebt.toString())
+    }
+    
     return compositeDebt.add(fee)
   }
 
@@ -338,10 +346,10 @@ class TestHelper {
     return this.getNetBorrowingAmount(contracts, actualDebt)
   }
 
-  // Subtracts the borrowing fee
+  // Vestigal function retained for ease of old test conversions - used to Subtract the borrowing fee
   static async getNetBorrowingAmount(contracts, debtWithFee) {
     const borrowingRate = await contracts.cdpManager.getBorrowingRateWithDecay()
-    return this.toBN(debtWithFee).mul(MoneyValues._1e18BN).div(MoneyValues._1e18BN.add(borrowingRate))
+    return this.toBN(debtWithFee)
   }
 
   // Adds the borrowing fee
@@ -684,10 +692,17 @@ class TestHelper {
 
     const totalDebt = await this.getOpenCdpTotalDebt(contracts, ebtcAmount)
     const netDebt = await this.getActualDebtFromComposite(totalDebt, contracts)
+    
+    if (DEBUG) {
+      console.log("totalDebt: ", totalDebt.toString())
+      console.log("netDebt: ", netDebt.toString())
+    }
+    
 
     if (ICR) {
       const price = await contracts.priceFeedTestnet.getPrice()
       extraParams.value = ICR.mul(totalDebt).div(price)
+      if (DEBUG) console.log("proposed ICR:", extraParams.value.toString())
     }
     const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 

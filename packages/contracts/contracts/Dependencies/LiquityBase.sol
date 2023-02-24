@@ -37,7 +37,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
-    uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
+    uint public constant BORROWING_FEE_FLOOR = 0; // 0.5%
 
     uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
 

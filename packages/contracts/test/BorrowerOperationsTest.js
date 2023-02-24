@@ -940,7 +940,8 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(borrowerOperations.withdrawEBTC(AIndex, '1000000000000000001', dec(1, 18), AIndex, AIndex, { from: A }), "Max fee percentage must be between 0.5% and 100%")
     })
 
-    it("withdrawEBTC(): reverts if max fee < 0.5% in Normal mode", async () => {
+    // Disabled due to borrow fee removal
+    xit("withdrawEBTC(): reverts if max fee < 0.5% in Normal mode", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(10, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(20, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       await openCdp({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
@@ -1611,7 +1612,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.openCdp(th._100pct, MIN_DEBT.add(toBN('2')), A, A, { from: A, value: _colAmt })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
-      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 2, AIndex, AIndex, { from: A })
+      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 3, AIndex, AIndex, { from: A })
       await assertRevert(repayTxAPromise, "BorrowerOps: Cdp's net debt must be greater than minimum")
     }, "repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt")
 
@@ -2161,7 +2162,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(D_EBTCBalanceAfter.eq(D_EBTCBalanceBefore.add(EBTCRequest_D)))
     })
 
-    it("adjustCdp(): Borrowing at zero base rate changes EBTC balance of LQTY staking contract", async () => {
+    it("adjustCdp(): Borrowing at zero rate does not change EBTC balance of LQTY staking contract", async () => {
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(40, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
@@ -2177,14 +2178,14 @@ contract('BorrowerOperations', async accounts => {
 
       // Check staking EBTC balance before > 0
       const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
-      assert.isTrue(lqtyStaking_EBTCBalance_Before.gt(toBN('0')))
+      assert.isTrue(lqtyStaking_EBTCBalance_Before.eq(toBN('0')))
 
       // D adjusts cdp
       await borrowerOperations.adjustCdp(DIndex, th._100pct, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance after > staking balance before
       const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
-      assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
+      assert.isTrue(lqtyStaking_EBTCBalance_After.eq(lqtyStaking_EBTCBalance_Before))
     })
 
     it("adjustCdp(): Borrowing at zero base rate changes LQTY staking contract EBTC fees-per-unit-staked", async () => {
@@ -2219,7 +2220,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check staking EBTC balance increases
       const F_EBTC_After = await lqtyStaking.F_EBTC()
-      assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
+      assert.isTrue(F_EBTC_After.eq(F_EBTC_Before))
     })
 
     it("adjustCdp(): Borrowing at zero base rate sends total requested EBTC to the user", async () => {
@@ -2511,7 +2512,7 @@ contract('BorrowerOperations', async accounts => {
       await lqtyStaking.stake(dec(100, 18), { from: bob })
 
       const lqtyStakingEBTCBalanceBefore = await ebtcToken.balanceOf(lqtyStaking.address)
-      assert.isTrue(lqtyStakingEBTCBalanceBefore.gt(toBN('0')))
+      assert.isTrue(lqtyStakingEBTCBalanceBefore.eq(toBN('0')))
 
       const txAlice = await borrowerOperations.adjustCdp(aliceIndex, th._100pct, 0, dec(1, 14), true, aliceIndex, aliceIndex, { from: alice, value: dec(100, 'ether') })
       assert.isTrue(txAlice.receipt.status)
@@ -2558,7 +2559,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(bobDebt.gt(toBN('0')))
 
       const bobFee = toBN(await th.getEventArgByIndex(bobOpenTx, 'EBTCBorrowingFeePaid', 1))
-      assert.isTrue(bobFee.gt(toBN('0')))
+      assert.isTrue(bobFee.eq(toBN('0')))
 
       // Alice transfers EBTC to bob to compensate borrowing fees
       await ebtcToken.transfer(bob, bobFee, { from: alice })
@@ -3548,11 +3549,20 @@ contract('BorrowerOperations', async accounts => {
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
       const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
 
-      //Confirm Bob's EBTC balance is less than his cdp debt
-      const B_EBTCBal = await ebtcToken.balanceOf(B)
+      // Confirm Bob's EBTC balance is less than his cdp debt
+      // Without borrowing fees, we expect balance + gas compensation pool amount to equal debt, so we have to transfer some away otherwise there will be sufficient eBTC in the user's wallet
+      let B_EBTCBal = await ebtcToken.balanceOf(B)
       const B_cdpDebt = await getCdpEntireDebt(BIndex)
+      const gasCompensation = await borrowerOperations.EBTC_GAS_COMPENSATION()
+      const B_EBTCBal_withCompensation = toBN(B_EBTCBal).add(toBN(gasCompensation))
 
       assert.isTrue(B_EBTCBal.lt(B_cdpDebt))
+      assert.isTrue(B_cdpDebt.eq(B_EBTCBal_withCompensation))
+
+      await ebtcToken.transfer(A, 1, {from: B})
+      
+      B_EBTCBal = await ebtcToken.balanceOf(B)
+      assert.isTrue(B_EBTCBal.lt(toBN(B_cdpDebt).sub(toBN(gasCompensation))))
 
       const closeCdpPromise_B = borrowerOperations.closeCdp(BIndex, { from: B })
 
@@ -3835,23 +3845,23 @@ contract('BorrowerOperations', async accounts => {
       //       actual fee percentage: 0.005000000186264514
       // user's max fee percentage:  0.0049999999999999999
       let borrowingRate = await cdpManager.getBorrowingRate() // expect max(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       const lessThan5pct = '49999999999999999'
       await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1%
       await assertRevert(borrowerOperations.openCdp(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 3.754%
       await assertRevert(borrowerOperations.openCdp(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1e-16%
       await assertRevert(borrowerOperations.openCdp(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
     })
@@ -3869,7 +3879,7 @@ contract('BorrowerOperations', async accounts => {
       await cdpManager.setLastFeeOpTimeToNow()
 
       let borrowingRate = await cdpManager.getBorrowingRate() // expect min(0.5 + 5%, 5%) rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee > 5%
       const moreThan5pct = '50000000000000001'
@@ -3877,21 +3887,21 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(tx1.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee = 5%
       const tx2 = await borrowerOperations.openCdp(dec(5, 16), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: H, value: dec(2000, 'ether') })
       assert.isTrue(tx2.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 10%
       const tx3 = await borrowerOperations.openCdp(dec(1, 17), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(2000, 'ether') })
       assert.isTrue(tx3.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
-      assert.equal(borrowingRate, dec(5, 16))
+      assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 37.659%
       const tx4 = await borrowerOperations.openCdp(dec(37659, 13), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(2000, 'ether') })
@@ -3938,7 +3948,8 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(baseRate_2.lt(baseRate_1))
     })
 
-    it("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
+    //skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -3976,8 +3987,9 @@ contract('BorrowerOperations', async accounts => {
       const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
-
-    it("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
+    
+    // skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -4014,8 +4026,9 @@ contract('BorrowerOperations', async accounts => {
       const F_EBTC_After = await lqtyStaking.F_EBTC()
       assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
     })
-
-    it("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
+  
+    // skip: There is never a non-zero base rate for borrowing
+    xit("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
       await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
@@ -4086,7 +4099,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check EBTC reward per LQTY staked > 0
       const F_EBTC_After = await lqtyStaking.F_EBTC()
-      assert.isTrue(F_EBTC_After.gt(toBN('0')))
+      assert.isTrue(F_EBTC_After.eq(toBN('0')))
     })
 
     it("openCdp(): Borrowing at zero base rate charges minimum fee", async () => {
@@ -4196,7 +4209,7 @@ contract('BorrowerOperations', async accounts => {
       // price drops to 1ETH:100EBTC, reducing TCR below 150%
       await priceFeed.setPrice(dec(3000, 13))
       const price = await priceFeed.getPrice()
-
+      
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Carol opens at 150% ICR in Recovery Mode
@@ -4210,7 +4223,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(carol_CdpStatus, 1)
 
       const carolICR = await cdpManager.getCurrentICR(carolIndex, price)
-      assert.isTrue(carolICR.gt(toBN(dec(150, 16))))
+      assert.isTrue(carolICR.gte(toBN(dec(150, 16))))
     })
 
     it("openCdp(): Reverts opening a cdp with min debt when system is in Recovery Mode", async () => {

@@ -2316,7 +2316,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return LiquityMath._min(BORROWING_FEE_FLOOR.add(_baseRate), MAX_BORROWING_FEE);
+        return BORROWING_FEE_FLOOR;
     }
 
     function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
@@ -2328,7 +2328,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return _borrowingRate.mul(_EBTCDebt).div(DECIMAL_PRECISION);
+        return BORROWING_FEE_FLOOR;
     }
 
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
