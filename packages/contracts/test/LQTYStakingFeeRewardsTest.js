@@ -37,7 +37,6 @@ contract('LQTYStaking revenue share tests', async accounts => {
   let sortedCdps
   let cdpManager
   let activePool
-  let stabilityPool
   let defaultPool
   let borrowerOperations
   let lqtyStaking
@@ -63,7 +62,6 @@ contract('LQTYStaking revenue share tests', async accounts => {
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    stabilityPool = contracts.stabilityPool
     defaultPool = contracts.defaultPool
     borrowerOperations = contracts.borrowerOperations
     hintHelpers = contracts.hintHelpers

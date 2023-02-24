@@ -171,7 +171,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     }
 
     function increaseF_EBTC(uint _EBTCFee) external override {
-        _requireCallerIsBorrowerOperations();
+        _requireCallerIsBOorCdpM();
         uint EBTCFeePerLQTYStaked;
 
         if (totalLQTYStaked > 0) {
@@ -226,6 +226,13 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
     function _requireCallerIsBorrowerOperations() internal view {
         require(msg.sender == borrowerOperationsAddress, "LQTYStaking: caller is not BorrowerOps");
+    }
+
+    function _requireCallerIsBOorCdpM() internal view {
+        require(
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
+            "LQTYStaking: Caller is neither BorrowerOperations nor CdpManager"
+        );
     }
 
     function _requireCallerIsActivePool() internal view {

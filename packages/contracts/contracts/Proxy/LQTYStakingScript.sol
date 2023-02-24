@@ -16,4 +16,8 @@ contract LQTYStakingScript is CheckContract {
     function stake(uint _LQTYamount) external {
         LQTYStaking.stake(_LQTYamount);
     }
+
+    function unstake(uint _LQTYamount) external {
+        LQTYStaking.unstake(_LQTYamount);
+    }
 }

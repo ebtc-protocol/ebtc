@@ -45,15 +45,12 @@ contract CommunityIssuance is ICommunityIssuance, Ownable, CheckContract, BaseMa
 
     ILQTYToken public lqtyToken;
 
-    address public stabilityPoolAddress;
-
     uint public totalLQTYIssued;
     uint public immutable deploymentTime;
 
     // --- Events ---
 
     event LQTYTokenAddressSet(address _lqtyTokenAddress);
-    event StabilityPoolAddressSet(address _stabilityPoolAddress);
     event TotalLQTYIssuedUpdated(uint _totalLQTYIssued);
 
     // --- Functions ---
@@ -62,38 +59,18 @@ contract CommunityIssuance is ICommunityIssuance, Ownable, CheckContract, BaseMa
         deploymentTime = block.timestamp;
     }
 
-    function setAddresses(
-        address _lqtyTokenAddress,
-        address _stabilityPoolAddress
-    ) external override onlyOwner {
+    function setAddresses(address _lqtyTokenAddress) external override onlyOwner {
         checkContract(_lqtyTokenAddress);
-        checkContract(_stabilityPoolAddress);
 
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
-        stabilityPoolAddress = _stabilityPoolAddress;
 
         // When LQTYToken deployed, it should have transferred CommunityIssuance's LQTY entitlement
         uint LQTYBalance = lqtyToken.balanceOf(address(this));
         assert(LQTYBalance >= LQTYSupplyCap);
 
         emit LQTYTokenAddressSet(_lqtyTokenAddress);
-        emit StabilityPoolAddressSet(_stabilityPoolAddress);
 
         _renounceOwnership();
-    }
-
-    function issueLQTY() external override returns (uint) {
-        _requireCallerIsStabilityPool();
-
-        uint latestTotalLQTYIssued = LQTYSupplyCap.mul(_getCumulativeIssuanceFraction()).div(
-            DECIMAL_PRECISION
-        );
-        uint issuance = latestTotalLQTYIssued.sub(totalLQTYIssued);
-
-        totalLQTYIssued = latestTotalLQTYIssued;
-        emit TotalLQTYIssuedUpdated(latestTotalLQTYIssued);
-
-        return issuance;
     }
 
     /* Gets 1-f^t    where: f < 1
@@ -114,15 +91,5 @@ contract CommunityIssuance is ICommunityIssuance, Ownable, CheckContract, BaseMa
         return cumulativeIssuanceFraction;
     }
 
-    function sendLQTY(address _account, uint _LQTYamount) external override {
-        _requireCallerIsStabilityPool();
-
-        lqtyToken.transfer(_account, _LQTYamount);
-    }
-
     // --- 'require' functions ---
-
-    function _requireCallerIsStabilityPool() internal view {
-        require(msg.sender == stabilityPoolAddress, "CommunityIssuance: caller is not SP");
-    }
 }

@@ -88,9 +88,14 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         }
 
         while (currentCdpuser != address(0) && remainingEBTC > 0 && _maxIterations-- > 0) {
-            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(
-                cdpManager.getPendingEBTCDebtReward(currentCdpId)
-            );
+            uint pendingEBTC;
+            {
+                (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager
+                    .getPendingEBTCDebtReward(currentCdpId);
+                pendingEBTC = pendingEBTCDebtReward.add(pendingEBTCInterest);
+            }
+
+            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(currentCdpId)).add(pendingEBTC);
 
             if (netEBTCDebt > remainingEBTC) {
                 if (netEBTCDebt > MIN_NET_DEBT) {

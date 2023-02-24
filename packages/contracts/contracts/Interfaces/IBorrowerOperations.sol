@@ -9,7 +9,6 @@ interface IBorrowerOperations {
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
@@ -34,7 +33,6 @@ interface IBorrowerOperations {
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
@@ -48,15 +46,9 @@ interface IBorrowerOperations {
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external payable;
+    ) external payable returns (bytes32);
 
     function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable;
-
-    function moveETHGainToCdp(
-        bytes32 _cdpId,
-        bytes32 _upperHint,
-        bytes32 _lowerHint
-    ) external payable;
 
     function withdrawColl(
         bytes32 _cdpId,

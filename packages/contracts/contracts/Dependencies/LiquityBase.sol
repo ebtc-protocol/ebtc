@@ -4,13 +4,14 @@ pragma solidity 0.6.11;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
+import "./FixedPointMathLib.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILiquityBase.sol";
 
 /*
- * Base contract for CdpManager, BorrowerOperations and StabilityPool. Contains global system constants and
+ * Base contract for CdpManager, BorrowerOperations. Contains global system constants and
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {
@@ -25,15 +26,18 @@ contract LiquityBase is BaseMath, ILiquityBase {
     uint public constant CCR = 1500000000000000000; // 150%
 
     // Amount of EBTC to be locked in gas pool on opening cdps
-    uint public constant EBTC_GAS_COMPENSATION = 200e18;
+    uint public constant EBTC_GAS_COMPENSATION = 1e16;
 
     // Minimum amount of net EBTC debt a cdp must have
-    uint public constant MIN_NET_DEBT = 1800e18;
+    // TODO: Should be denominated in ETH, see: https://github.com/Badger-Finance/ebtc/issues/16
+    uint public constant MIN_NET_DEBT = 1e17;
     // uint constant public MIN_NET_DEBT = 0;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
     uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
+
+    uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
 
     IActivePool public activePool;
 
@@ -64,24 +68,40 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return activeColl.add(liquidatedColl);
     }
 
-    function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
+    function _getEntireSystemDebt(
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
+
+        uint timeElapsed = block.timestamp.sub(_lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
+
+            activeDebt = activeDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            closedDebt = closedDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+        }
 
         return activeDebt.add(closedDebt);
     }
 
-    function _getTCR(uint _price) internal view returns (uint TCR) {
+    function _getTCR(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint TCR) {
         uint entireSystemColl = getEntireSystemColl();
-        uint entireSystemDebt = getEntireSystemDebt();
+        uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
         TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
 
         return TCR;
     }
 
-    function _checkRecoveryMode(uint _price) internal view returns (bool) {
-        uint TCR = _getTCR(_price);
+    function _checkRecoveryMode(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (bool) {
+        uint TCR = _getTCR(_price, _lastInterestRateUpdateTime);
 
         return TCR < CCR;
     }
@@ -89,5 +109,15 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
         uint feePercentage = _fee.mul(DECIMAL_PRECISION).div(_amount);
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
+    }
+
+    function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
+        // TODO: Fuzz to check overflows/underflows
+        return
+            FixedPointMathLib.fpow(
+                DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
+                _time,
+                DECIMAL_PRECISION
+            );
     }
 }

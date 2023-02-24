@@ -4,7 +4,6 @@ const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const DefaultPool = artifacts.require("./DefaultPool.sol");
-const StabilityPool = artifacts.require("./StabilityPool.sol")
 const GasPool = artifacts.require("./GasPool.sol")
 const CollSurplusPool = artifacts.require("./CollSurplusPool.sol")
 const FunctionCaller = artifacts.require("./TestContracts/FunctionCaller.sol")
@@ -20,7 +19,6 @@ const Unipool =  artifacts.require("./Unipool.sol")
 
 const LQTYTokenTester = artifacts.require("./LQTYTokenTester.sol")
 const CommunityIssuanceTester = artifacts.require("./CommunityIssuanceTester.sol")
-const StabilityPoolTester = artifacts.require("./StabilityPoolTester.sol")
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
@@ -32,7 +30,6 @@ const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
 const BorrowerOperationsScript = artifacts.require('BorrowerOperationsScript')
 const BorrowerWrappersScript = artifacts.require('BorrowerWrappersScript')
 const CdpManagerScript = artifacts.require('CdpManagerScript')
-const StabilityPoolScript = artifacts.require('StabilityPoolScript')
 const TokenScript = artifacts.require('TokenScript')
 const LQTYStakingScript = artifacts.require('LQTYStakingScript')
 const {
@@ -40,7 +37,6 @@ const {
   BorrowerOperationsProxy,
   BorrowerWrappersProxy,
   CdpManagerProxy,
-  StabilityPoolProxy,
   SortedCdpsProxy,
   TokenProxy,
   LQTYStakingProxy
@@ -95,7 +91,6 @@ class DeploymentHelper {
     const sortedCdps = await SortedCdps.new()
     const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
-    const stabilityPool = await StabilityPool.new()
     const gasPool = await GasPool.new()
     const defaultPool = await DefaultPool.new()
     const collSurplusPool = await CollSurplusPool.new()
@@ -104,7 +99,6 @@ class DeploymentHelper {
     const hintHelpers = await HintHelpers.new()
     const ebtcToken = await EBTCToken.new(
       cdpManager.address,
-      stabilityPool.address,
       borrowerOperations.address
     )
     EBTCToken.setAsDeployed(ebtcToken)
@@ -113,7 +107,6 @@ class DeploymentHelper {
     SortedCdps.setAsDeployed(sortedCdps)
     CdpManager.setAsDeployed(cdpManager)
     ActivePool.setAsDeployed(activePool)
-    StabilityPool.setAsDeployed(stabilityPool)
     GasPool.setAsDeployed(gasPool)
     CollSurplusPool.setAsDeployed(collSurplusPool)
     FunctionCaller.setAsDeployed(functionCaller)
@@ -126,7 +119,6 @@ class DeploymentHelper {
       sortedCdps,
       cdpManager,
       activePool,
-      stabilityPool,
       gasPool,
       defaultPool,
       collSurplusPool,
@@ -147,7 +139,6 @@ class DeploymentHelper {
     testerContracts.communityIssuance = await CommunityIssuanceTester.new()
     testerContracts.activePool = await ActivePoolTester.new()
     testerContracts.defaultPool = await DefaultPoolTester.new()
-    testerContracts.stabilityPool = await StabilityPoolTester.new()
     testerContracts.gasPool = await GasPool.new()
     testerContracts.collSurplusPool = await CollSurplusPool.new()
     testerContracts.math = await LiquityMathTester.new()
@@ -157,7 +148,6 @@ class DeploymentHelper {
     testerContracts.hintHelpers = await HintHelpers.new()
     testerContracts.ebtcToken =  await EBTCTokenTester.new(
       testerContracts.cdpManager.address,
-      testerContracts.stabilityPool.address,
       testerContracts.borrowerOperations.address
     )
     return testerContracts
@@ -226,7 +216,6 @@ class DeploymentHelper {
     const sortedCdps = await SortedCdps.new()
     const cdpManager = await CdpManager.new()
     const activePool = await ActivePool.new()
-    const stabilityPool = await StabilityPool.new()
     const gasPool = await GasPool.new()
     const defaultPool = await DefaultPool.new()
     const collSurplusPool = await CollSurplusPool.new()
@@ -235,7 +224,6 @@ class DeploymentHelper {
     const hintHelpers = await HintHelpers.new()
     const ebtcToken = await EBTCToken.new(
       cdpManager.address,
-      stabilityPool.address,
       borrowerOperations.address
     )
     const coreContracts = {
@@ -244,7 +232,6 @@ class DeploymentHelper {
       sortedCdps,
       cdpManager,
       activePool,
-      stabilityPool,
       gasPool,
       defaultPool,
       collSurplusPool,
@@ -283,7 +270,6 @@ class DeploymentHelper {
   static async deployEBTCToken(contracts) {
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     return contracts
@@ -292,7 +278,6 @@ class DeploymentHelper {
   static async deployEBTCTokenTester(contracts) {
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.borrowerOperations.address
     )
     return contracts
@@ -313,9 +298,6 @@ class DeploymentHelper {
 
     const cdpManagerScript = await CdpManagerScript.new(contracts.cdpManager.address)
     contracts.cdpManager = new CdpManagerProxy(owner, proxies, cdpManagerScript.address, contracts.cdpManager)
-
-    const stabilityPoolScript = await StabilityPoolScript.new(contracts.stabilityPool.address)
-    contracts.stabilityPool = new StabilityPoolProxy(owner, proxies, stabilityPoolScript.address, contracts.stabilityPool)
 
     contracts.sortedCdps = new SortedCdpsProxy(owner, proxies, contracts.sortedCdps)
 
@@ -348,7 +330,6 @@ class DeploymentHelper {
       contracts.borrowerOperations.address,
       contracts.activePool.address,
       contracts.defaultPool.address,
-      contracts.stabilityPool.address,
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
@@ -363,7 +344,6 @@ class DeploymentHelper {
       contracts.cdpManager.address,
       contracts.activePool.address,
       contracts.defaultPool.address,
-      contracts.stabilityPool.address,
       contracts.gasPool.address,
       contracts.collSurplusPool.address,
       contracts.priceFeedTestnet.address,
@@ -372,21 +352,9 @@ class DeploymentHelper {
       LQTYContracts.lqtyStaking.address
     )
 
-    // set contracts in the Pools
-    await contracts.stabilityPool.setAddresses(
-      contracts.borrowerOperations.address,
-      contracts.cdpManager.address,
-      contracts.activePool.address,
-      contracts.ebtcToken.address,
-      contracts.sortedCdps.address,
-      contracts.priceFeedTestnet.address,
-      LQTYContracts.communityIssuance.address
-    )
-
     await contracts.activePool.setAddresses(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
-      contracts.stabilityPool.address,
       contracts.defaultPool.address
     )
 
@@ -423,8 +391,7 @@ class DeploymentHelper {
     )
   
     await LQTYContracts.communityIssuance.setAddresses(
-      LQTYContracts.lqtyToken.address,
-      coreContracts.stabilityPool.address
+      LQTYContracts.lqtyToken.address
     )
   }
 

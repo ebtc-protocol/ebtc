@@ -3,7 +3,6 @@
 pragma solidity 0.6.11;
 
 import "./Interfaces/ICdpManager.sol";
-import "./Interfaces/IStabilityPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
@@ -20,8 +19,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Connected contract declarations ---
 
     address public borrowerOperationsAddress;
-
-    IStabilityPool public override stabilityPool;
 
     address gasPoolAddress;
 
@@ -61,6 +58,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
     uint public lastFeeOperationTime;
+
+    // The timestamp of the latest interest rate update
+    uint public override lastInterestRateUpdateTime;
 
     enum Status {
         nonExistent,
@@ -102,6 +102,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public L_ETH;
     uint public L_EBTCDebt;
 
+    /*
+     * L_EBTCInterest tracks the interest accumulated on a unit debt position over time. During its lifetime, each cdp earns:
+     *
+     * A EBTCDebt increase of ( debt * [L_EBTCInterest - L_EBTCInterest(0)] / L_EBTCInterest(0) )
+     *
+     * Where L_EBTCInterest(0) is the snapshot of L_EBTCInterest for the active cdp taken at the instant the cdp was opened
+     */
+    uint public L_EBTCInterest;
+
     // Map active cdps to their RewardSnapshot
     mapping(bytes32 => RewardSnapshot) public rewardSnapshots;
 
@@ -109,6 +118,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     struct RewardSnapshot {
         uint ETH;
         uint EBTCDebt;
+        uint EBTCInterest;
     }
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
@@ -137,6 +147,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint collToLiquidate;
         uint pendingDebtReward;
         uint pendingCollReward;
+        uint pendingDebtInterest;
     }
 
     struct LocalVariables_LiquidationSequence {
@@ -208,7 +219,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event StabilityPoolAddressChanged(address _stabilityPoolAddress);
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
@@ -241,8 +251,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
+    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
+    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
 
     enum CdpManagerOperation {
@@ -254,11 +264,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Dependency setter ---
 
+    constructor() public {
+        // TODO: Move to setAddresses or _tickInterest?
+        lastInterestRateUpdateTime = block.timestamp;
+        L_EBTCInterest = DECIMAL_PRECISION;
+    }
+
     function setAddresses(
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _stabilityPoolAddress,
         address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
@@ -270,7 +285,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
         checkContract(_defaultPoolAddress);
-        checkContract(_stabilityPoolAddress);
         checkContract(_gasPoolAddress);
         checkContract(_collSurplusPoolAddress);
         checkContract(_priceFeedAddress);
@@ -282,7 +296,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
-        stabilityPool = IStabilityPool(_stabilityPoolAddress);
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -294,7 +307,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit StabilityPoolAddressChanged(_stabilityPoolAddress);
         emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
@@ -342,6 +354,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             singleLiquidation.entireCdpDebt,
             singleLiquidation.entireCdpColl,
             vars.pendingDebtReward,
+            ,
             vars.pendingCollReward
         ) = getEntireDebtAndColl(_cdpId);
 
@@ -400,10 +413,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         if (CdpIds.length <= 1) {
             return singleLiquidation;
         } // don't liquidate if last cdp
+
         (
             singleLiquidation.entireCdpDebt,
             singleLiquidation.entireCdpColl,
             vars.pendingDebtReward,
+            ,
             vars.pendingCollReward
         ) = getEntireDebtAndColl(_cdpId);
 
@@ -600,15 +615,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             ICollSurplusPool(address(0)),
             address(0)
         );
-        IStabilityPool stabilityPoolCached = stabilityPool;
 
         LocalVariables_OuterLiquidationFunction memory vars;
 
         LiquidationTotals memory totals;
 
         vars.price = priceFeed.fetchPrice();
-        vars.EBTCInStabPool = stabilityPoolCached.getTotalEBTCDeposits();
-        vars.recoveryModeAtStart = _checkRecoveryMode(vars.price);
+        vars.EBTCInStabPool = _tmpGetReserveInLiquidation();
+        vars.recoveryModeAtStart = _checkRecoveryMode(vars.price, lastInterestRateUpdateTime);
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
         if (vars.recoveryModeAtStart) {
@@ -632,7 +646,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
-        stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
+        _tmpOffsetInLiquidation(totals.totalDebtToOffset, totals.totalCollToSendToSP);
         _redistributeDebtAndColl(
             contractsCache.activePool,
             contractsCache.defaultPool,
@@ -684,7 +698,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         vars.remainingEBTCInStabPool = _EBTCInStabPool;
         vars.backToNormalMode = false;
-        vars.entireSystemDebt = getEntireSystemDebt();
+        vars.entireSystemDebt = _getEntireSystemDebt(lastInterestRateUpdateTime);
         vars.entireSystemColl = getEntireSystemColl();
 
         vars.user = _contractsCache.sortedCdps.getLast();
@@ -799,14 +813,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         IActivePool activePoolCached = activePool;
         IDefaultPool defaultPoolCached = defaultPool;
-        IStabilityPool stabilityPoolCached = stabilityPool;
 
         LocalVariables_OuterLiquidationFunction memory vars;
         LiquidationTotals memory totals;
 
         vars.price = priceFeed.fetchPrice();
-        vars.EBTCInStabPool = stabilityPoolCached.getTotalEBTCDeposits();
-        vars.recoveryModeAtStart = _checkRecoveryMode(vars.price);
+        vars.EBTCInStabPool = _tmpGetReserveInLiquidation();
+        vars.recoveryModeAtStart = _checkRecoveryMode(vars.price, lastInterestRateUpdateTime);
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.
         if (vars.recoveryModeAtStart) {
@@ -831,7 +844,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
         // Move liquidated ETH and EBTC to the appropriate pools
-        stabilityPoolCached.offset(totals.totalDebtToOffset, totals.totalCollToSendToSP);
+        _tmpOffsetInLiquidation(totals.totalDebtToOffset, totals.totalCollToSendToSP);
         _redistributeDebtAndColl(
             activePoolCached,
             defaultPoolCached,
@@ -884,7 +897,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         vars.remainingEBTCInStabPool = _EBTCInStabPool;
         vars.backToNormalMode = false;
-        vars.entireSystemDebt = getEntireSystemDebt();
+        vars.entireSystemDebt = _getEntireSystemDebt(lastInterestRateUpdateTime);
         vars.entireSystemColl = getEntireSystemColl();
 
         for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
@@ -1049,6 +1062,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _defaultPool.sendETHToActivePool(_ETH);
     }
 
+    function _mintPendingEBTCInterest(
+        ILQTYStaking _lqtyStaking,
+        IEBTCToken _ebtcToken,
+        uint _EBTCInterest
+    ) internal {
+        // Send interest to LQTY staking contract
+        _lqtyStaking.increaseF_EBTC(_EBTCInterest);
+        _ebtcToken.mint(address(_lqtyStaking), _EBTCInterest);
+    }
+
     // --- Redemption functions ---
 
     struct LocalVariables_RedeemCollateralFromCdp {
@@ -1154,7 +1177,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      */
     function _redeemCloseCdp(
         ContractsCache memory _contractsCache,
-        bytes32 _cdpId,
+        bytes32 _cdpId, // TODO: Remove?
         uint _EBTC,
         uint _ETH,
         address _borrower
@@ -1241,7 +1264,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _requireAmountGreaterThanZero(_EBTCamount);
         _requireEBTCBalanceCoversRedemption(contractsCache.ebtcToken, msg.sender, _EBTCamount);
 
-        totals.totalEBTCSupplyAtStart = getEntireSystemDebt();
+        totals.totalEBTCSupplyAtStart = _getEntireSystemDebt(lastInterestRateUpdateTime);
         // Confirm redeemer's balance is less than total EBTC supply
         assert(contractsCache.ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
 
@@ -1358,15 +1381,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     function _getCurrentCdpAmounts(bytes32 _cdpId) internal view returns (uint, uint) {
         uint pendingETHReward = getPendingETHReward(_cdpId);
-        uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
 
         uint currentETH = Cdps[_cdpId].coll.add(pendingETHReward);
-        uint currentEBTCDebt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward);
+        uint currentEBTCDebt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward).add(pendingEBTCInterest);
 
         return (currentETH, currentEBTCDebt);
     }
 
     function applyPendingRewards(bytes32 _cdpId) external override {
+        // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
         return _applyPendingRewards(activePool, defaultPool, _cdpId);
     }
@@ -1377,16 +1401,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         IDefaultPool _defaultPool,
         bytes32 _cdpId
     ) internal {
+        _tickInterest();
+
         if (hasPendingRewards(_cdpId)) {
             _requireCdpIsActive(_cdpId);
 
             // Compute pending rewards
             uint pendingETHReward = getPendingETHReward(_cdpId);
-            uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+            (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = getPendingEBTCDebtReward(
+                _cdpId
+            );
 
             // Apply pending rewards to cdp's state
             Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(pendingETHReward);
-            Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward);
+            Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward).add(
+                pendingEBTCInterest
+            );
 
             _updateCdpRewardSnapshots(_cdpId);
 
@@ -1413,13 +1443,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Update borrower's snapshots of L_ETH and L_EBTCDebt to reflect the current values
     function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
+        _tickInterest();
         return _updateCdpRewardSnapshots(_cdpId);
     }
 
     function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
         rewardSnapshots[_cdpId].ETH = L_ETH;
         rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
-        emit CdpSnapshotsUpdated(L_ETH, L_EBTCDebt);
+        rewardSnapshots[_cdpId].EBTCInterest = L_EBTCInterest;
+        emit CdpSnapshotsUpdated(L_ETH, L_EBTCDebt, L_EBTCInterest);
     }
 
     // Get the borrower's pending accumulated ETH reward, earned by their stake
@@ -1438,20 +1470,47 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return pendingETHReward;
     }
 
-    // Get the borrower's pending accumulated EBTC reward, earned by their stake
-    function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint) {
+    // Get the borrower's pending accumulated EBTC debt reward and debt interest, earned by their stake
+    // The debt reward includes any accumulated interest
+    function getPendingEBTCDebtReward(bytes32 _cdpId) public view override returns (uint, uint) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
-        uint rewardPerUnitStaked = L_EBTCDebt.sub(snapshotEBTCDebt);
+        Cdp memory cdp = Cdps[_cdpId];
 
-        if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
-            return 0;
+        if (cdp.status != Status.active) {
+            return (0, 0);
         }
 
-        uint stake = Cdps[_cdpId].stake;
+        uint stake = cdp.stake;
 
-        uint pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
+        uint L_EBTCDebt_new = L_EBTCDebt;
+        uint L_EBTCInterest_new = L_EBTCInterest;
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
 
-        return pendingEBTCDebtReward;
+            L_EBTCDebt_new = L_EBTCDebt_new.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            L_EBTCInterest_new = L_EBTCInterest_new.mul(unitAmountAfterInterest).div(
+                DECIMAL_PRECISION
+            );
+        }
+
+        uint rewardPerUnitStaked = L_EBTCDebt_new.sub(snapshotEBTCDebt);
+
+        uint pendingEBTCDebtReward;
+        if (rewardPerUnitStaked > 0) {
+            pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
+        }
+
+        uint pendingEBTCInterest;
+        uint snapshotEBTCInterest = rewardSnapshots[_cdpId].EBTCInterest;
+
+        uint256 debtIncrease = L_EBTCInterest_new.sub(snapshotEBTCInterest);
+        if (debtIncrease > 0 && snapshotEBTCInterest > 0) {
+            // Interest is applied on the total debt (i.e. including gas compensation)
+            pendingEBTCInterest = cdp.debt.mul(debtIncrease).div(snapshotEBTCInterest);
+        }
+
+        return (pendingEBTCDebtReward, pendingEBTCInterest);
     }
 
     function hasPendingRewards(bytes32 _cdpId) public view override returns (bool) {
@@ -1464,7 +1523,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             return false;
         }
 
-        return (rewardSnapshots[_cdpId].ETH < L_ETH);
+        uint L_EBTCInterest_new = L_EBTCInterest;
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
+            L_EBTCInterest_new = L_EBTCInterest_new.mul(unitAmountAfterInterest).div(
+                DECIMAL_PRECISION
+            );
+        }
+
+        // Returns true if there have been any redemptions or pending interest
+        return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+            rewardSnapshots[_cdpId].EBTCInterest < L_EBTCInterest_new); // Includes the case for interest on L_EBTCDebt
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions.
@@ -1474,15 +1544,21 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         public
         view
         override
-        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward)
+        returns (
+            uint debt,
+            uint coll,
+            uint pendingEBTCDebtReward,
+            uint pendingEBTCInterest,
+            uint pendingETHReward
+        )
     {
         debt = Cdps[_cdpId].debt;
         coll = Cdps[_cdpId].coll;
 
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        (pendingEBTCDebtReward, pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
         pendingETHReward = getPendingETHReward(_cdpId);
 
-        debt = debt.add(pendingEBTCDebtReward);
+        debt = debt.add(pendingEBTCDebtReward).add(pendingEBTCInterest);
         coll = coll.add(pendingETHReward);
     }
 
@@ -1571,12 +1647,50 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         L_ETH = L_ETH.add(ETHRewardPerUnitStaked);
         L_EBTCDebt = L_EBTCDebt.add(EBTCDebtRewardPerUnitStaked);
 
-        emit LTermsUpdated(L_ETH, L_EBTCDebt);
+        emit LTermsUpdated(L_ETH, L_EBTCDebt, L_EBTCInterest);
 
         // Transfer coll and debt from ActivePool to DefaultPool
         _activePool.decreaseEBTCDebt(_debt);
         _defaultPool.increaseEBTCDebt(_debt);
         _activePool.sendETH(address(_defaultPool), _coll);
+    }
+
+    // New pending reward functions for interest rates
+    // TODO: Verify:
+    //       1. Interest is ticked *before* any new debt is added in any operation.
+    //       2. Interest is ticked before all operations.
+    function _tickInterest() internal {
+        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        if (timeElapsed > 0) {
+            // timeElapsed >= interestTimeWindow
+            lastInterestRateUpdateTime = block.timestamp;
+
+            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
+            uint unitInterest = unitAmountAfterInterest.sub(DECIMAL_PRECISION);
+
+            L_EBTCDebt = L_EBTCDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+            L_EBTCInterest = L_EBTCInterest.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
+
+            emit LTermsUpdated(L_ETH, L_EBTCDebt, L_EBTCInterest);
+
+            // TODO: Investigate adding the remainder retraoctive feature that the other LTerms have. Does this fix precision issues?
+            // Calculate pending interest on each pool
+            uint activeDebt = activePool.getEBTCDebt();
+            uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
+
+            uint defaultDebt = defaultPool.getEBTCDebt();
+            uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
+
+            // Mint pending interest and do accounting
+            activePool.increaseEBTCDebt(activeDebtInterest);
+            defaultPool.increaseEBTCDebt(defaultDebtInterest);
+
+            _mintPendingEBTCInterest(
+                lqtyStaking,
+                ebtcToken,
+                activeDebtInterest.add(defaultDebtInterest)
+            );
+        }
     }
 
     function closeCdp(bytes32 _cdpId) external override {
@@ -1596,6 +1710,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         rewardSnapshots[_cdpId].ETH = 0;
         rewardSnapshots[_cdpId].EBTCDebt = 0;
+        rewardSnapshots[_cdpId].EBTCInterest = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
         sortedCdps.remove(_cdpId);
@@ -1672,12 +1787,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // --- Recovery Mode and TCR functions ---
 
+    function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
+        return _getEntireSystemDebt(lastInterestRateUpdateTime);
+    }
+
     function getTCR(uint _price) external view override returns (uint) {
-        return _getTCR(_price);
+        return _getTCR(_price, lastInterestRateUpdateTime);
     }
 
     function checkRecoveryMode(uint _price) external view override returns (bool) {
-        return _checkRecoveryMode(_price);
+        return _checkRecoveryMode(_price, lastInterestRateUpdateTime);
     }
 
     // Check whether or not the system *would be* in Recovery Mode,
@@ -1853,7 +1972,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _requireTCRoverMCR(uint _price) internal view {
-        require(_getTCR(_price) >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
+        require(
+            _getTCR(_price, lastInterestRateUpdateTime) >= MCR,
+            "CdpManager: Cannot redeem when TCR < MCR"
+        );
     }
 
     function _requireAfterBootstrapPeriod() internal view {
@@ -1922,5 +2044,25 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint newDebt = Cdps[_cdpId].debt.sub(_debtDecrease);
         Cdps[_cdpId].debt = newDebt;
         return newDebt;
+    }
+
+    // --- Temporary functions to be removed after new Liquidation code in-place ---
+
+    // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
+    function _tmpOffsetInLiquidation(uint _debtToOffset, uint _collToAdd) internal {
+        IActivePool activePoolCached = activePool;
+
+        // decrease the liquidated EBTC debt from the active pool
+        activePoolCached.decreaseEBTCDebt(_debtToOffset);
+
+        // No Burn of the debt, i.e., debt token total supply keep same
+
+        // Just burn the collateral
+        activePoolCached.sendETH(address(0x000000000000000000000000000000000000dEaD), _collToAdd);
+    }
+
+    // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
+    function _tmpGetReserveInLiquidation() internal returns (uint) {
+        return type(uint256).max;
     }
 }

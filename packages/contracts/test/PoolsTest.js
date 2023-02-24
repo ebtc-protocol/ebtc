@@ -1,4 +1,3 @@
-const StabilityPool = artifacts.require("./StabilityPool.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const DefaultPool = artifacts.require("./DefaultPool.sol")
 const NonPayable = artifacts.require("./NonPayable.sol")
@@ -10,32 +9,6 @@ const dec = th.dec
 
 const _minus_1_Ether = web3.utils.toWei('-1', 'ether')
 
-contract('StabilityPool', async accounts => {
-  /* mock* are EOA’s, temporarily used to call protected functions.
-  TODO: Replace with mock contracts, and later complete transactions from EOA
-  */
-  let stabilityPool
-
-  const [owner, alice] = accounts;
-
-  beforeEach(async () => {
-    stabilityPool = await StabilityPool.new()
-    const mockActivePoolAddress = (await NonPayable.new()).address
-    const dumbContractAddress = (await NonPayable.new()).address
-    await stabilityPool.setAddresses(dumbContractAddress, dumbContractAddress, mockActivePoolAddress, dumbContractAddress, dumbContractAddress, dumbContractAddress, dumbContractAddress)
-  })
-
-  it('getETH(): gets the recorded ETH balance', async () => {
-    const recordedETHBalance = await stabilityPool.getETH()
-    assert.equal(recordedETHBalance, 0)
-  })
-
-  it('getTotalEBTCDeposits(): gets the recorded EBTC balance', async () => {
-    const recordedETHBalance = await stabilityPool.getTotalEBTCDeposits()
-    assert.equal(recordedETHBalance, 0)
-  })
-})
-
 contract('ActivePool', async accounts => {
 
   let activePool, mockBorrowerOperations
@@ -45,7 +18,7 @@ contract('ActivePool', async accounts => {
     activePool = await ActivePool.new()
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
-    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, dumbContractAddress, dumbContractAddress)
+    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, dumbContractAddress)
   })
 
   it('getETH(): gets the recorded ETH balance', async () => {

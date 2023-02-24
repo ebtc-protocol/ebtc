@@ -4,10 +4,14 @@ pragma solidity 0.6.11;
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "../../contracts/Dependencies/SafeMath.sol";
+import "../../contracts/Interfaces/ICdpManager.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
     using SafeMath for uint256;
+
+    uint internal constant DECIMAL_PRECISION = 1e18;
+    uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
 
     function getNextUserAddress() public returns (address payable) {
@@ -17,7 +21,7 @@ contract Utilities is Test {
         return user;
     }
 
-    //create users with 100 ether balance
+    //create users with 10000000 ether balance
     function createUsers(uint256 userNum) public returns (address payable[] memory) {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
@@ -32,6 +36,17 @@ contract Utilities is Test {
     function mineBlocks(uint256 numBlocks) public {
         uint256 targetBlock = block.number + numBlocks;
         vm.roll(targetBlock);
+    }
+
+    /* Calculate collateral amount to post based on required debt, collateral price and CR
+    Collateral amount is calculated as: (Debt * CR) / Price
+    */
+    function calculateCollAmount(
+        uint256 debt,
+        uint256 price,
+        uint256 collateralRatio
+    ) public pure returns (uint256) {
+        return debt.mul(collateralRatio).div(price);
     }
 
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
@@ -60,10 +75,43 @@ contract Utilities is Test {
      */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.difficulty, now, seed)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, now, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;
+        // Randomly shrink random number
+        if (result % 4 == 0) {
+            result /= 100;
+        }
         return result;
+    }
+
+    // Source: https://github.com/transmissions11/solmate/blob/3a752b8c83427ed1ea1df23f092ea7a810205b6c/src/utils/FixedPointMathLib.sol#L53-L69
+    function mulDivUp(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 z) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Equivalent to require(denominator != 0 && (y == 0 || x <= type(uint256).max / y))
+            if iszero(mul(denominator, iszero(mul(y, gt(x, div(MAX_UINT256, y)))))) {
+                revert(0, 0)
+            }
+
+            // If x * y modulo the denominator is strictly greater than 0,
+            // 1 is added to round up the division of x * y by the denominator.
+            z := add(gt(mod(mul(x, y), denominator), 0), div(mul(x, y), denominator))
+        }
+    }
+
+    function calculateBorrowAmountFromDebt(
+        uint256 amount,
+        uint gasCompensation,
+        uint borrowingRate
+    ) public view returns (uint256) {
+        // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
+        return
+            mulDivUp(
+                amount - gasCompensation,
+                DECIMAL_PRECISION,
+                DECIMAL_PRECISION.add(borrowingRate)
+            );
     }
 }

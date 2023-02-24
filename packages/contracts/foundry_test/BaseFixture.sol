@@ -8,7 +8,6 @@ import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol"
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {StabilityPool} from "../contracts/StabilityPool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
@@ -21,6 +20,16 @@ import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 
 contract eBTCBaseFixture is Test {
+    uint internal constant FEE = 5e15; // 0.5%
+    uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
+    uint public constant CCR = 150e16; // 150%
+    uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
+    uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16; // 200% - defensive CR
+    uint internal constant MIN_NET_DEBT = 1e17; // Subject to changes once CL is changed
+    // TODO: Modify these constants to increase/decrease amount of users
+    uint internal constant AMOUNT_OF_USERS = 100;
+    uint internal constant AMOUNT_OF_CDPS = 3;
+
     using SafeMath for uint256;
     using SafeMath for uint96;
     using SafeMath for uint64;
@@ -28,12 +37,11 @@ contract eBTCBaseFixture is Test {
     using SafeMath for uint16;
     using SafeMath for uint8;
     uint256 constant maxBytes32 = type(uint256).max;
-
+    bytes32 constant HINT = "hint";
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
     CdpManager cdpManager;
     ActivePool activePool;
-    StabilityPool stabilityPool;
     GasPool gasPool;
     DefaultPool defaultPool;
     CollSurplusPool collSurplusPool;
@@ -59,17 +67,12 @@ contract eBTCBaseFixture is Test {
         sortedCdps = new SortedCdps();
         cdpManager = new CdpManager();
         activePool = new ActivePool();
-        stabilityPool = new StabilityPool();
         gasPool = new GasPool();
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(
-            address(cdpManager),
-            address(stabilityPool),
-            address(borrowerOperations)
-        );
+        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
 
         // Liquity Stuff
         lqtyStaking = new LQTYStaking();
@@ -97,7 +100,6 @@ contract eBTCBaseFixture is Test {
             address(borrowerOperations),
             address(activePool),
             address(defaultPool),
-            address(stabilityPool),
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
@@ -112,7 +114,6 @@ contract eBTCBaseFixture is Test {
             address(cdpManager),
             address(activePool),
             address(defaultPool),
-            address(stabilityPool),
             address(gasPool),
             address(collSurplusPool),
             address(priceFeedMock),
@@ -121,22 +122,10 @@ contract eBTCBaseFixture is Test {
             address(lqtyStaking)
         );
 
-        // set contracts in stabilityPool
-        stabilityPool.setAddresses(
-            address(borrowerOperations),
-            address(cdpManager),
-            address(activePool),
-            address(eBTCToken),
-            address(sortedCdps),
-            address(priceFeedMock),
-            address(communityIssuance)
-        );
-
         // set contracts in activePool
         activePool.setAddresses(
             address(borrowerOperations),
             address(cdpManager),
-            address(stabilityPool),
             address(defaultPool)
         );
 
