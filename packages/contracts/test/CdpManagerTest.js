@@ -3205,7 +3205,8 @@ contract('CdpManager', async accounts => {
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, 1, GAS_PRICE, dec(10, 18), '4999999999999999'), "Max fee percentage must be between 0.5% and 100%")
   })
 
-  it("redeemCollateral(): reverts if fee exceeds max fee percentage", async () => {
+  // Disabled as actual fee never exceeds 0.5%
+  xit("redeemCollateral(): reverts if fee exceeds max fee percentage", async () => {
     await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("3000")});
     await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("3000")});
     await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("3000")});
@@ -4125,7 +4126,7 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual(
       A_balanceAfter.sub(A_balanceBefore),
       ETHDrawn.sub(
-        toBN(dec(5, 15)).add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
+        toBN(dec(5, 15))//.add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
           .mul(ETHDrawn).div(mv._1e18BN)
       ).sub(toBN(gasUsed * GAS_PRICE)), // substract gas used for cdpManager.redeemCollateral from expected received ETH
       100000
@@ -4445,8 +4446,10 @@ contract('CdpManager', async accounts => {
       firstRedemptionHint,
       partialRedemptionHintNICR
     } = await hintHelpers.getRedemptionHints(ebtcAmount, price, 0)
-
-    await assertRevert(
+    // Since we apply static redemption fee rate, 
+    // thus the fee calculated as [fixedRate.mul(_ETHDrawn).div(1e18)] 
+    // would never exceed underlying collateral
+    //await assertRevert(
       cdpManager.redeemCollateral(
         ebtcAmount,
         firstRedemptionHint,
@@ -4458,9 +4461,9 @@ contract('CdpManager', async accounts => {
           from: alice,
           gasPrice: GAS_PRICE
         }
-      ),
-      'CdpManager: Fee would eat up all returned collateral'
-    )
+      );//,
+      //'CdpManager: Fee would eat up all returned collateral'
+    //)
   })
 
   it("getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward", async () => {
