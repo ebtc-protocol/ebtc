@@ -19,6 +19,7 @@ const MoneyValues = {
   _1_5e18BN: web3.utils.toBN('1050000000000000000'),
   _10e18BN: web3.utils.toBN('10000000000000000000'),
   _100e18BN: web3.utils.toBN('100000000000000000000'),
+  _1000e18BN: web3.utils.toBN('1000000000000000000000'),
   _1Be18BN: web3.utils.toBN('1000000000000000000000000000'),
   _100BN: web3.utils.toBN('100'),
   _110BN: web3.utils.toBN('110'),
@@ -724,6 +725,8 @@ class TestHelper {
       await contracts.collateral.deposit(extraParams);
       extraParams.value = 0;
     }
+    // Give some more ETH for misc purposes:
+    await contracts.collateral.deposit({from: extraParams.from, value: MoneyValues._1000e18BN});
     await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: extraParams.from});
     const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
 
@@ -1202,6 +1205,7 @@ class TestHelper {
       assert.isFalse(tx.receipt.status) // when this assert fails, the expected revert didn't occur, i.e. the tx succeeded
     } catch (err) {
       // console.log("tx failed")
+      console.log(err.message)
       assert.include(err.message, "revert")
       // TODO !!!
       

@@ -49,7 +49,7 @@ contract CollateralTokenTester is ICollateralToken {
     }
 
     function transferFrom(address src, address dst, uint wad) public override returns (bool) {
-        require(balanceOf[src] >= wad);
+        require(balanceOf[src] >= wad, "ERC20: transfer amount exceeds balance");
 
         if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
             require(allowance[src][msg.sender] >= wad);
