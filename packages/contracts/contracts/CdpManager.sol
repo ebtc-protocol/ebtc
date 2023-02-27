@@ -135,6 +135,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
+    struct LocalVar_CdpDebtColl {
+        uint256 entireDebt;
+        uint256 entireColl;
+        uint256 pendingDebtReward;
+        uint pendingDebtInterest;
+        uint pendingCollReward;
+    }
+
     struct LocalVar_InternalLiquidate {
         bytes32 _cdpId;
         uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
@@ -273,6 +281,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _coll,
         CdpManagerOperation _operation
     );
+    event CdpPartiallyLiquidated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        CdpManagerOperation operation
+    );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
@@ -285,7 +300,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         applyPendingRewards,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
-        redeemCollateral
+        redeemCollateral,
+        partiallyLiquidate
     }
 
     // --- Dependency setter ---
@@ -360,16 +376,40 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
+    //                |  OR debt could be partially repaid by liquidator and
+    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     //
     //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
     //                |  debt could be fully repaid by liquidator
     //                |  and up to (repaid debt * MCR) worth of collateral
     //                |  transferred to liquidator while the residue of collateral
     //                |  will be available in CollSurplusPool for owner to claim
+    //                |  OR debt could be partially repaid by liquidator and
+    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
     // -----------------------------------------------------------------
 
-    // Single CDP liquidation function.
+    // Single CDP liquidation function (fully).
     function liquidate(bytes32 _cdpId) external override {
+        _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
+    }
+
+    // Single CDP liquidation function (partially).
+    function partiallyLiquidate(
+        bytes32 _cdpId,
+        uint256 _partialAmount,
+        bytes32 _upperPartialHint,
+        bytes32 _lowerPartialHint
+    ) external override {
+        _liquidateSingle(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
+    }
+
+    // Single CDP liquidation function.
+    function _liquidateSingle(
+        bytes32 _cdpId,
+        uint _partialAmount,
+        bytes32 _upperPartialHint,
+        bytes32 _lowerPartialHint
+    ) internal {
         _requireCdpIsActive(_cdpId);
 
         // accrue interest accordingly
@@ -389,11 +429,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
-            0,
+            _partialAmount,
             _price,
             _ICR,
-            _cdpId,
-            _cdpId,
+            _upperPartialHint,
+            _lowerPartialHint,
             (_recoveryModeAtStart),
             _TCR,
             0,
@@ -442,7 +482,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _recoveryState
             );
         } else {
-            // TODO partial liquidation
+            (totalDebtToBurn, totalColToSend) = _liquidateCDPPartially(_contractsCache, _liqState);
         }
 
         _finalizeExternalLiquidation(_contractsCache, totalDebtToBurn, totalColToSend);
@@ -626,6 +666,110 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _closeCdp(_cdpId, Status.closedByLiquidation);
 
         return (entireDebt, entireColl);
+    }
+
+    // Liquidate partially the CDP by an external liquidator
+    // This function would return the liquidated debt and collateral of the given CDP
+    function _liquidateCDPPartially(
+        ContractsCache memory _contractsCache,
+        LocalVar_InternalLiquidate memory _partialState
+    ) private returns (uint256, uint256) {
+        bytes32 _cdpId = _partialState._cdpId;
+        uint _partialDebt = _partialState._partialAmount;
+
+        // calculate entire debt to repay
+        LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
+        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState._price);
+        uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
+
+        // credit to https://arxiv.org/pdf/2212.07306.pdf for details
+        uint _colRatio = LICR > _partialState._ICR ? _partialState._ICR : LICR;
+        uint _partialColl = _partialDebt.mul(_colRatio).div(_partialState._price);
+        require(_partialColl < _debtAndColl.entireColl, "!maxCollByPartialLiq");
+
+        uint newColl = _debtAndColl.entireColl.sub(_partialColl);
+
+        // apply pending debt and collateral if any
+        // and update CDP internal accounting for debt and collateral
+        // if there is liquidation redistribution
+        {
+            uint _debtIncrease = _debtAndColl.pendingDebtInterest.add(
+                _debtAndColl.pendingDebtReward
+            );
+            if (_debtIncrease > 0) {
+                Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(_debtIncrease);
+            }
+            if (_debtAndColl.pendingCollReward > 0) {
+                Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(_debtAndColl.pendingCollReward);
+            }
+            if (_debtAndColl.pendingDebtReward > 0 || _debtAndColl.pendingCollReward > 0) {
+                _movePendingCdpRewardsToActivePool(
+                    _contractsCache.activePool,
+                    _contractsCache.defaultPool,
+                    _debtAndColl.pendingDebtReward,
+                    _debtAndColl.pendingCollReward
+                );
+            }
+        }
+
+        // updating the CDP accounting for partial liquidation
+        _partiallyReduceCdpDebt(_cdpId, _partialDebt, _partialColl);
+
+        // reInsert into sorted CDP list after partial liquidation
+        {
+            _reInsertPartialLiquidation(
+                _contractsCache,
+                _partialState,
+                LiquityMath._computeNominalCR(newColl, newDebt)
+            );
+            emit CdpPartiallyLiquidated(
+                _cdpId,
+                _contractsCache.sortedCdps.getOwnerAddress(_cdpId),
+                _partialDebt,
+                _partialColl,
+                CdpManagerOperation.partiallyLiquidate
+            );
+        }
+        return (_partialDebt, _partialColl);
+    }
+
+    function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
+        uint _coll = Cdps[_cdpId].coll;
+        uint _debt = Cdps[_cdpId].debt;
+
+        Cdps[_cdpId].coll = _coll.sub(_partialColl);
+        Cdps[_cdpId].debt = _debt.sub(_partialDebt);
+        _updateStakeAndTotalStakes(_cdpId);
+
+        _updateCdpRewardSnapshots(_cdpId);
+    }
+
+    // Re-Insertion into SortedCdp list after partial liquidation
+    function _reInsertPartialLiquidation(
+        ContractsCache memory _contractsCache,
+        LocalVar_InternalLiquidate memory _partialState,
+        uint _newNICR
+    ) internal {
+        bytes32 _cdpId = _partialState._cdpId;
+
+        // ensure new ICR does NOT decrease due to partial liquidation
+        require(getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
+
+        // reInsert into sorted CDP list
+        _contractsCache.sortedCdps.reInsert(
+            _cdpId,
+            _newNICR,
+            _partialState._upperPartialHint,
+            _partialState._lowerPartialHint
+        );
+        emit CdpUpdated(
+            _cdpId,
+            _contractsCache.sortedCdps.getOwnerAddress(_cdpId),
+            Cdps[_cdpId].debt,
+            Cdps[_cdpId].coll,
+            Cdps[_cdpId].stake,
+            CdpManagerOperation.partiallyLiquidate
+        );
     }
 
     function _finalizeExternalLiquidation(
@@ -1877,6 +2021,27 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             rewardSnapshots[_cdpId].EBTCInterest < L_EBTCInterest_new); // Includes the case for interest on L_EBTCDebt
     }
 
+    // Return the Cdps entire debt and coll struct
+    function _getEntireDebtAndColl(
+        bytes32 _cdpId
+    ) internal view returns (LocalVar_CdpDebtColl memory) {
+        (
+            uint256 entireDebt,
+            uint256 entireColl,
+            uint256 pendingDebtReward,
+            uint pendingDebtInterest,
+            uint pendingCollReward
+        ) = getEntireDebtAndColl(_cdpId);
+        return
+            LocalVar_CdpDebtColl(
+                entireDebt,
+                entireColl,
+                pendingDebtReward,
+                pendingDebtInterest,
+                pendingCollReward
+            );
+    }
+
     // Return the Cdps entire debt and coll, including pending rewards from redistributions.
     function getEntireDebtAndColl(
         bytes32 _cdpId
@@ -2326,6 +2491,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(
             _maxFeePercentage >= REDEMPTION_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
             "Max fee percentage must be between 0.5% and 100%"
+        );
+    }
+
+    function _requirePartialLiqDebtSize(uint _partialDebt, uint _entireDebt, uint _price) internal {
+        require(
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _price)) <= _entireDebt,
+            "!maxDebtByPartialLiq"
         );
     }
 
