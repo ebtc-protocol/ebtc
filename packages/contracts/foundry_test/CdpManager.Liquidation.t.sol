@@ -49,7 +49,7 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
     function _assert_active_pool_invariant_1() internal {
         assertGe(
-            address(activePool).balance,
+            collateral.balanceOf(address(activePool)),
             activePool.getETH(),
             "System Invariant: active_pool_1"
         );
@@ -136,7 +136,9 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
         vm.startPrank(users[0]);
-        borrowerOperations.openCdp{value: 10000 ether}(
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        borrowerOperations.openCdp(
             DECIMAL_PRECISION,
             _utils.calculateBorrowAmountFromDebt(
                 2e17,
@@ -144,13 +146,16 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            (10000 ether)
         );
-        bytes32 cdpId1 = borrowerOperations.openCdp{value: coll1}(
+        collateral.deposit{value: coll1}();
+        bytes32 cdpId1 = borrowerOperations.openCdp(
             DECIMAL_PRECISION,
             debtAmt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll1
         );
         vm.stopPrank();
 
@@ -224,7 +229,9 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, _icrGtLICR ? 297e16 : 206e16);
 
         vm.startPrank(users[0]);
-        borrowerOperations.openCdp{value: 10000 ether}(
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        borrowerOperations.openCdp(
             DECIMAL_PRECISION,
             _utils.calculateBorrowAmountFromDebt(
                 2e17,
@@ -232,13 +239,16 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            (10000 ether)
         );
-        bytes32 cdpId1 = borrowerOperations.openCdp{value: coll1}(
+        collateral.deposit{value: coll1}();
+        bytes32 cdpId1 = borrowerOperations.openCdp(
             DECIMAL_PRECISION,
             debtAmt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll1
         );
         vm.stopPrank();
 

@@ -21,6 +21,7 @@ interface ICdpManager is ILiquityBase {
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     event Liquidation(
         uint _liquidatedDebt,
@@ -64,7 +65,8 @@ interface ICdpManager is ILiquityBase {
         address _ebtcTokenAddress,
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
-        address _lqtyStakingAddress
+        address _lqtyStakingAddress,
+        address _collTokenAddress
     ) external;
 
     function ebtcToken() external view returns (IEBTCToken);

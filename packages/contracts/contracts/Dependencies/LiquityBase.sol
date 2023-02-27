@@ -9,6 +9,7 @@ import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILiquityBase.sol";
+import "../Dependencies/ICollateralToken.sol";
 
 /*
  * Base contract for CdpManager, BorrowerOperations. Contains global system constants and
@@ -50,6 +51,9 @@ contract LiquityBase is BaseMath, ILiquityBase {
     IDefaultPool public defaultPool;
 
     IPriceFeed public override priceFeed;
+
+    // the only collateral token allowed in CDP
+    ICollateralToken public collateral;
 
     // --- Gas compensation functions ---
 

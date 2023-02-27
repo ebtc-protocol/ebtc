@@ -25,6 +25,7 @@ const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
+const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 
 // Proxy scripts
 const BorrowerOperationsScript = artifacts.require('BorrowerOperationsScript')
@@ -101,6 +102,7 @@ class DeploymentHelper {
       cdpManager.address,
       borrowerOperations.address
     )
+    const collateral = await CollateralTokenTester.new()  
     EBTCToken.setAsDeployed(ebtcToken)
     DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
@@ -112,6 +114,7 @@ class DeploymentHelper {
     FunctionCaller.setAsDeployed(functionCaller)
     BorrowerOperations.setAsDeployed(borrowerOperations)
     HintHelpers.setAsDeployed(hintHelpers)
+    CollateralTokenTester.setAsDeployed(collateral)
 
     const coreContracts = {
       priceFeedTestnet,
@@ -124,7 +127,8 @@ class DeploymentHelper {
       collSurplusPool,
       functionCaller,
       borrowerOperations,
-      hintHelpers
+      hintHelpers,
+      collateral
     }
     return coreContracts
   }
@@ -150,6 +154,7 @@ class DeploymentHelper {
       testerContracts.cdpManager.address,
       testerContracts.borrowerOperations.address
     )
+    testerContracts.collateral = await CollateralTokenTester.new()
     return testerContracts
   }
 
@@ -226,6 +231,7 @@ class DeploymentHelper {
       cdpManager.address,
       borrowerOperations.address
     )
+    const collateral = await CollateralTokenTester.new()    
     const coreContracts = {
       priceFeedTestnet,
       ebtcToken,
@@ -237,7 +243,8 @@ class DeploymentHelper {
       collSurplusPool,
       functionCaller,
       borrowerOperations,
-      hintHelpers
+      hintHelpers,
+      collateral
     }
     return coreContracts
   }
@@ -336,7 +343,8 @@ class DeploymentHelper {
       contracts.ebtcToken.address,
       contracts.sortedCdps.address,
       LQTYContracts.lqtyToken.address,
-      LQTYContracts.lqtyStaking.address
+      LQTYContracts.lqtyStaking.address,
+      contracts.collateral.address
     )
 
     // set contracts in BorrowerOperations 
@@ -349,24 +357,29 @@ class DeploymentHelper {
       contracts.priceFeedTestnet.address,
       contracts.sortedCdps.address,
       contracts.ebtcToken.address,
-      LQTYContracts.lqtyStaking.address
+      LQTYContracts.lqtyStaking.address,
+      contracts.collateral.address
     )
 
     await contracts.activePool.setAddresses(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
-      contracts.defaultPool.address
+      contracts.defaultPool.address,
+      contracts.collateral.address,
+      contracts.collSurplusPool.address
     )
 
     await contracts.defaultPool.setAddresses(
       contracts.cdpManager.address,
       contracts.activePool.address,
+      contracts.collateral.address
     )
 
     await contracts.collSurplusPool.setAddresses(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
       contracts.activePool.address,
+      contracts.collateral.address
     )
 
     // set contracts in HintHelpers

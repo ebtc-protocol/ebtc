@@ -19,6 +19,7 @@ const MoneyValues = {
   _1_5e18BN: web3.utils.toBN('1050000000000000000'),
   _10e18BN: web3.utils.toBN('10000000000000000000'),
   _100e18BN: web3.utils.toBN('100000000000000000000'),
+  _1Be18BN: web3.utils.toBN('1000000000000000000000000000'),
   _100BN: web3.utils.toBN('100'),
   _110BN: web3.utils.toBN('110'),
   _150BN: web3.utils.toBN('150'),
@@ -558,7 +559,9 @@ class TestHelper {
     for (const account of accounts) {
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
+      await contracts.collateral.deposit({from: account, value: ETHAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, ETHAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -573,7 +576,9 @@ class TestHelper {
       const randCollAmount = this.randAmountInWei(minETH, maxETH)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, { from: account, value: randCollAmount })
+      await contracts.collateral.deposit({from: account, value: randCollAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, randCollAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -590,7 +595,9 @@ class TestHelper {
 
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
+      await contracts.collateral.deposit({from: account, value: randCollAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, randCollAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -613,7 +620,9 @@ class TestHelper {
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, randCollAmount, totalDebt)
 
       const feeFloor = this.dec(5, 16)
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, { from: account, value: randCollAmount })
+      await contracts.collateral.deposit({from: account, value: randCollAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, proportionalEBTC, upperHint, lowerHint, randCollAmount, { from: account, value: 0 })
 
       if (logging && tx.receipt.status) {
         i++
@@ -634,7 +643,9 @@ class TestHelper {
       const totalDebt = await this.getOpenCdpTotalDebt(contracts, randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, randEBTCAmount, upperHint, lowerHint, { from: account, value: ETHAmount })
+      await contracts.collateral.deposit({from: account, value: ETHAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, randEBTCAmount, upperHint, lowerHint, ETHAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -662,7 +673,9 @@ class TestHelper {
       const totalDebt = await this.getOpenCdpTotalDebt(contracts, EBTCAmountWei)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, ETHAmount, totalDebt)
 
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmountWei, upperHint, lowerHint, { from: account, value: ETHAmount })
+      await contracts.collateral.deposit({from: account, value: ETHAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmountWei, upperHint, lowerHint, ETHAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
       i += 1
@@ -701,20 +714,25 @@ class TestHelper {
       console.log("netDebt: ", netDebt.toString())
     }
     
-
+    let _collAmt;
     if (ICR) {
       const price = await contracts.priceFeedTestnet.getPrice()
       extraParams.value = ICR.mul(totalDebt).div(price)
       if (DEBUG) console.log("proposed ICR:", extraParams.value.toString())
+      _collAmt = extraParams.value;
+      // convert ETH to collateral
+      await contracts.collateral.deposit(extraParams);
+      extraParams.value = 0;
     }
-    const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
+    await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: extraParams.from});
+    const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
 
     return {
       ebtcAmount,
       netDebt,
       totalDebt,
       ICR,
-      collateral: extraParams.value,
+      collateral: _collAmt,
       tx
     }
   }
@@ -774,7 +792,9 @@ class TestHelper {
 
       // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
-        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
+        await contracts.collateral.deposit({from: account, value: ETHChangeBN});
+        await contracts.collateral.approve(contracts.borrowerOperations, MoneyValues._1Be18BN, {from: account});
+        tx = await contracts.borrowerOperations.adjustCdpWithColl(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, ETHChangeBN, { from: account, value: 0 })
       // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
@@ -806,7 +826,9 @@ class TestHelper {
 
       // Add ETH to cdp
       if (ETHChangeBN.gt(zero)) {
-        tx = await contracts.borrowerOperations.adjustCdp(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, { from: account, value: ETHChangeBN })
+        await contracts.collateral.deposit({from: account, value: ETHChangeBN});
+        await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+        tx = await contracts.borrowerOperations.adjustCdpWithColl(this._100pct, 0, EBTCChangeBN, isDebtIncrease, upperHint, lowerHint, ETHChangeBN, { from: account, value: 0 })
       // Withdraw ETH from cdp
       } else if (ETHChangeBN.lt(zero)) {
         ETHChangeBN = ETHChangeBN.neg()
@@ -828,7 +850,9 @@ class TestHelper {
       const { newColl, newDebt } = await this.getCollAndDebtFromAddColl(contracts, account, amount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.addColl(upperHint, lowerHint, { from: account, value: amount })
+      await contracts.collateral.deposit({from: account, value: amount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.addColl(upperHint, lowerHint, amount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -843,7 +867,9 @@ class TestHelper {
       const { newColl, newDebt } = await this.getCollAndDebtFromAddColl(contracts, account, randCollAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.addColl(upperHint, lowerHint, { from: account, value: randCollAmount })
+      await contracts.collateral.deposit({from: account, value: randCollAmount});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      const tx = await contracts.borrowerOperations.addColl(upperHint, lowerHint, randCollAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -1024,7 +1050,10 @@ class TestHelper {
     for (const account of accounts) {
       const coll = web3.utils.toWei(amountFinney.toString(), 'finney')
 
-      await contracts.borrowerOperations.openCdp(this._100pct, '200000000000000000000', account, account, { from: account, value: coll })
+      // convert ETH to collateral
+      await contracts.collateral.deposit({from: account, value: coll});
+      await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
+      await contracts.borrowerOperations.openCdp(this._100pct, '200000000000000000000', account, account, coll, { from: account, value: 0 })
 
       amountFinney += 10
     }

@@ -7,6 +7,7 @@ import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/ICollateralToken.sol";
 
 contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     using SafeMath for uint256;
@@ -16,6 +17,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
     address public activePoolAddress;
+    ICollateralToken public collateral;
 
     // deposited ether tracker
     uint256 internal ETH;
@@ -27,6 +29,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
     event EtherSent(address _to, uint _amount);
@@ -36,19 +39,23 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     function setAddresses(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _activePoolAddress
+        address _activePoolAddress,
+        address _collTokenAddress
     ) external override onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
+        checkContract(_collTokenAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
+        collateral = ICollateralToken(_collTokenAddress);
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
+        emit CollateralAddressChanged(_collTokenAddress);
 
         _renounceOwnership();
     }
@@ -82,10 +89,11 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         balances[_account] = 0;
         emit CollBalanceUpdated(_account, 0);
 
+        require(ETH >= claimableColl, "!CollSurplusPoolBal");
         ETH = ETH.sub(claimableColl);
         emit EtherSent(_account, claimableColl);
 
-        (bool success, ) = _account.call{value: claimableColl}("");
+        bool success = collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
         require(success, "CollSurplusPool: sending ETH failed");
     }
 
@@ -106,10 +114,15 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         require(msg.sender == activePoolAddress, "CollSurplusPool: Caller is not Active Pool");
     }
 
+    function receiveColl(uint _value) external override {
+        _requireCallerIsActivePool();
+        ETH = ETH.add(_value);
+    }
+
     // --- Fallback function ---
 
     receive() external payable {
         _requireCallerIsActivePool();
-        ETH = ETH.add(msg.value);
+        revert("no more ETH");
     }
 }

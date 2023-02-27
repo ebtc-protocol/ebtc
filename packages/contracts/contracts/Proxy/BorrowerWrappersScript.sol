@@ -62,8 +62,9 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
-        bytes32 _lowerHint
-    ) external payable {
+        bytes32 _lowerHint,
+        uint _collAmount
+    ) external {
         uint balanceBefore = address(this).balance;
 
         // Claim collateral
@@ -74,15 +75,10 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         // already checked in CollSurplusPool
         assert(balanceAfter > balanceBefore);
 
-        uint totalCollateral = balanceAfter.sub(balanceBefore).add(msg.value);
+        uint totalCollateral = balanceAfter.sub(balanceBefore).add(_collAmount);
 
         // Open cdp with obtained collateral, plus collateral sent by user
-        borrowerOperations.openCdp{value: totalCollateral}(
-            _maxFee,
-            _EBTCAmount,
-            _upperHint,
-            _lowerHint
-        );
+        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, totalCollateral);
     }
 
     function claimStakingGainsAndRecycle(
@@ -106,14 +102,15 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         if (gainedCollateral > 0) {
             _requireUserHasCdp(_cdpId);
             netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
-            borrowerOperations.adjustCdp{value: gainedCollateral}(
+            borrowerOperations.adjustCdpWithColl(
                 _cdpId,
                 _maxFee,
                 0,
                 netEBTCAmount,
                 true,
                 _upperHint,
-                _lowerHint
+                _lowerHint,
+                gainedCollateral
             );
         }
 

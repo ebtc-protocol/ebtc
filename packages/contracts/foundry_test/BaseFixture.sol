@@ -19,6 +19,7 @@ import {CommunityIssuance} from "../contracts/LQTY/CommunityIssuance.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
+import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 
 contract eBTCBaseFixture is Test {
     uint internal constant FEE = 5e15; // 0.5%
@@ -50,6 +51,7 @@ contract eBTCBaseFixture is Test {
     BorrowerOperations borrowerOperations;
     HintHelpers hintHelpers;
     EBTCToken eBTCToken;
+    CollateralTokenTester collateral;
 
     // LQTY Stuff
     LQTYToken lqtyToken;
@@ -74,6 +76,7 @@ contract eBTCBaseFixture is Test {
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
         eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
+        collateral = new CollateralTokenTester();
 
         // Liquity Stuff
         lqtyStaking = new LQTYStaking();
@@ -107,7 +110,8 @@ contract eBTCBaseFixture is Test {
             address(eBTCToken),
             address(sortedCdps),
             address(lqtyToken),
-            address(lqtyStaking)
+            address(lqtyStaking),
+            address(collateral)
         );
 
         // set contracts in BorrowerOperations
@@ -120,24 +124,28 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
-            address(lqtyStaking)
+            address(lqtyStaking),
+            address(collateral)
         );
 
         // set contracts in activePool
         activePool.setAddresses(
             address(borrowerOperations),
             address(cdpManager),
-            address(defaultPool)
+            address(defaultPool),
+            address(collateral),
+            address(collSurplusPool)
         );
 
         // set contracts in defaultPool
-        defaultPool.setAddresses(address(cdpManager), address(activePool));
+        defaultPool.setAddresses(address(cdpManager), address(activePool), address(collateral));
 
         // set contracts in collSurplusPool
         collSurplusPool.setAddresses(
             address(borrowerOperations),
             address(cdpManager),
-            address(activePool)
+            address(activePool),
+            address(collateral)
         );
 
         // set contracts in HintHelpers

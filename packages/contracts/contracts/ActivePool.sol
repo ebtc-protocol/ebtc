@@ -3,10 +3,13 @@
 pragma solidity 0.6.11;
 
 import "./Interfaces/IActivePool.sol";
+import "./Interfaces/IDefaultPool.sol";
+import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/ICollateralToken.sol";
 
 /*
  * The Active Pool holds the ETH collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -23,8 +26,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
     address public defaultPoolAddress;
+    address public collSurplusPoolAddress;
     uint256 internal ETH; // deposited ether tracker
     uint256 internal EBTCDebt;
+    ICollateralToken public collateral;
 
     // --- Events ---
 
@@ -32,25 +37,35 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolETHBalanceUpdated(uint _ETH);
+    event CollateralAddressChanged(address _collTokenAddress);
+    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
 
     // --- Contract setters ---
 
     function setAddresses(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _defaultPoolAddress
+        address _defaultPoolAddress,
+        address _collTokenAddress,
+        address _collSurplusAddress
     ) external onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_defaultPoolAddress);
+        checkContract(_collTokenAddress);
+        checkContract(_collSurplusAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         defaultPoolAddress = _defaultPoolAddress;
+        collateral = ICollateralToken(_collTokenAddress);
+        collSurplusPoolAddress = _collSurplusAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
+        emit CollateralAddressChanged(_collTokenAddress);
+        emit CollSurplusPoolAddressChanged(_collSurplusAddress);
 
         _renounceOwnership();
     }
@@ -74,12 +89,18 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
 
     function sendETH(address _account, uint _amount) external override {
         _requireCallerIsBOorCdpM();
+        require(ETH >= _amount, "!ActivePoolBal");
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
 
-        (bool success, ) = _account.call{value: _amount}("");
+        bool success = collateral.transfer(_account, _amount); //_account.call{value: _amount}("");
         require(success, "ActivePool: sending ETH failed");
+        if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(_amount);
+        } else if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(_amount);
+        }
     }
 
     function increaseEBTCDebt(uint _amount) external override {
@@ -110,11 +131,16 @@ contract ActivePool is Ownable, CheckContract, IActivePool {
         );
     }
 
+    function receiveColl(uint _value) external override {
+        _requireCallerIsBorrowerOperationsOrDefaultPool();
+        ETH = ETH.add(_value);
+        emit ActivePoolETHBalanceUpdated(ETH);
+    }
+
     // --- Fallback function ---
 
     receive() external payable {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH.add(msg.value);
-        emit ActivePoolETHBalanceUpdated(ETH);
+        revert("no more ETH");
     }
 }
