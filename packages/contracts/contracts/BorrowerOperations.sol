@@ -403,7 +403,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
             _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
             _requireNonZeroDebtChange(_EBTCChange);
         }
-        _requireSingularCollChange(_collWithdrawal);
+        _requireSingularCollChange(_collWithdrawal, _collAddAmount);
         _requireNonZeroAdjustment(_collWithdrawal, _EBTCChange, _collAddAmount);
 
         // Confirm the operation is either a borrower adjusting their own cdp,
@@ -669,9 +669,9 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
         require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collWithdrawal) internal view {
+    function _requireSingularCollChange(uint _collWithdrawal, uint _collAdd) internal view {
         require(
-            msg.value == 0 || _collWithdrawal == 0,
+            _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot withdraw and add coll"
         );
     }
