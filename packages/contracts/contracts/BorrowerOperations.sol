@@ -550,7 +550,7 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function _transferCollFromUser(uint _collAmount) internal {
         bool _success = collateral.transferFrom(msg.sender, address(this), _collAmount);
-        require(_success, "!colTransfer");
+        require(_success, "BorrowerOperations: Cannot transfer coll from user");
     }
 
     function _triggerBorrowingFee(

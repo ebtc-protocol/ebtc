@@ -719,7 +719,12 @@ class TestHelper {
     if (ICR) {
       const price = await contracts.priceFeedTestnet.getPrice()
       extraParams.value = ICR.mul(totalDebt).div(price)
-      if (DEBUG) console.log("proposed ICR:", extraParams.value.toString())
+      if (DEBUG) console.log("proposed ICR:", ICR.toString())
+      _collAmt = extraParams.value;
+      // convert ETH to collateral
+      await contracts.collateral.deposit(extraParams);
+      extraParams.value = 0;
+    } else {
       _collAmt = extraParams.value;
       // convert ETH to collateral
       await contracts.collateral.deposit(extraParams);

@@ -431,7 +431,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Bob adds 1 ETH to his cdp
     const addedColl1 = toBN(dec(110, 'ether'))
-    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: addedColl1 })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: B, value: addedColl1});
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, addedColl1, { from: B, value: 0 })
 
     // Liquidate C
     await debtToken.transfer(owner, (await debtToken.balanceOf(C)), {from: C});
@@ -454,7 +456,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Bob adds 1 ETH to his cdp
     const addedColl2 = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: addedColl2 })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: B, value: addedColl2});
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, addedColl2, { from: B, value: 0 })
 
     // Liquidate E
     await debtToken.transfer(owner, (await debtToken.balanceOf(E)), {from: E});	
@@ -537,7 +541,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(getDifference(E_expectedPendingETH_1, E_ETHGain_1), 1e8)
 
     // // Bob adds 1 ETH to his cdp
-    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: dec(110, 'ether') })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: B, value: dec(110, 'ether')});
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, dec(110, 'ether'), { from: B, value: 0 })
 
     // Check entireColl for each cdp
     const B_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
@@ -576,7 +582,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     assert.isAtMost(getDifference(E_expectedPendingETH_2, E_ETHGain_2), 1e8)
 
     // // Bob adds 1 ETH to his cdp
-    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, { from: B, value: dec(1, 'ether') })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: B, value: dec(1, 'ether')});
+    await borrowerOperations.addColl(_bCdpId, _bCdpId, _bCdpId, dec(1, 'ether'), { from: B, value: 0 })
 
     // Check entireColl for each cdp
     const B_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _bCdpId)).entireColl
@@ -633,7 +641,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+    await contracts.collateral.deposit({from: bob, value: addedColl});
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, addedColl, { from: bob, value: 0 })
 
     // Alice withdraws EBTC
     await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
@@ -690,7 +700,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Bob adds ETH to his cdp
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+    await contracts.collateral.deposit({from: bob, value: addedColl});
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, addedColl, { from: bob, value: 0 })
 
     // D opens cdp
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: dec(110, 18), extraParams: { from: dennis } })
@@ -803,7 +815,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Carol adds 1 ETH to her cdp, brings it to 1992.01 total coll
     const C_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol, value: dec(1, 'ether') })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: carol});
+    await contracts.collateral.deposit({from: carol, value: dec(1, 'ether')});
+    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, dec(1, 'ether'), { from: carol, value: 0 })
 
     //Expect 1996 ETH in system now
     const entireSystemColl_2 = (await activePool.getETH()).add(await defaultPool.getETH())
@@ -912,9 +926,15 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     bringing them to 2.995, 2.995, 1992.01 total coll each. */
 
     const addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice, value: addedColl })
-    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: addedColl })
-    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, { from: carol, value: addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+    await contracts.collateral.deposit({from: alice, value: addedColl});
+    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, addedColl, { from: alice, value: 0 })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+    await contracts.collateral.deposit({from: bob, value: addedColl});
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, addedColl, { from: bob, value: 0 })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: carol});
+    await contracts.collateral.deposit({from: carol, value: addedColl});
+    await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, addedColl, { from: carol, value: 0 })
 
     //Expect 1998 ETH in system now
     const entireSystemColl_2 = (await activePool.getETH()).add(await defaultPool.getETH()).toString()
@@ -1447,7 +1467,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     //Bob adds 1 ETH to his cdp
     const B_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: B_addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+    await contracts.collateral.deposit({from: bob, value: B_addedColl});
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, B_addedColl, { from: bob, value: 0  })
 
     //Carol  withdraws 1 ETH from her cdp
     const C_withdrawnColl = toBN(dec(1, 'ether'))
@@ -1491,7 +1513,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // D tops up
     const D_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis, value: D_addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: dennis});
+    await contracts.collateral.deposit({from: dennis, value: D_addedColl});
+    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, D_addedColl, { from: dennis, value: 0 })
 
     // Price drops to 1
     await priceFeed.setPrice(dec(100, 13))
@@ -1595,7 +1619,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Bob adds 11.33909 ETH to his cdp
     const B_addedColl = toBN('11339090000000000000')
-    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, { from: bob, value: B_addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+    await contracts.collateral.deposit({from: bob, value: B_addedColl});
+    await borrowerOperations.addColl(_bobCdpId, _bobCdpId, _bobCdpId, B_addedColl, { from: bob, value: 0 })
 
     // Carol withdraws 15 ETH from her cdp
     const C_withdrawnColl = toBN(dec(15, 'ether'))
@@ -1641,7 +1667,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // D tops up
     const D_addedColl = toBN(dec(1, 'ether'))
-    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, { from: dennis, value: D_addedColl })
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: dennis});
+    await contracts.collateral.deposit({from: dennis, value: D_addedColl});
+    await borrowerOperations.addColl(_dennisCdpId, _dennisCdpId, _dennisCdpId, D_addedColl, { from: dennis, value: 0 })
 
     const D_collAfterL2 = D_coll.add(D_pendingRewardsAfterL2).add(D_addedColl)
 
