@@ -72,6 +72,7 @@ contract('CdpManager', async accounts => {
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
     hintHelpers = contracts.hintHelpers
+    debtToken = ebtcToken;
 
     lqtyStaking = LQTYContracts.lqtyStaking
     lqtyToken = LQTYContracts.lqtyToken
@@ -108,12 +109,17 @@ contract('CdpManager', async accounts => {
     for (account of tinyCdps) {
       await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: account, value: dec(2, 20) })
       _tinyCdpIds[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+      await debtToken.transfer(owner, (await debtToken.balanceOf(account)).sub(toBN('2')), {from: account});	  
     }
 
     // liquidate 1 cdp at ~50% total system collateral
     await priceFeed.setPrice(dec(50, 18))
     assert.isTrue(await cdpManager.checkRecoveryMode(await priceFeed.getPrice()))
-    await cdpManager.liquidate(_aCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(A)).sub(toBN('2')), {from: A});  
+    await debtToken.transfer(owner, (await debtToken.balanceOf(C)).sub(toBN('2')), {from: C});	  
+    await debtToken.transfer(owner, (await debtToken.balanceOf(D)).sub(toBN('2')), {from: D});	  
+    await debtToken.transfer(owner, (await debtToken.balanceOf(E)).sub(toBN('2')), {from: E});	  
+    await cdpManager.liquidate(_aCdpId, {from: owner})
 
     console.log(`totalStakesSnapshot after L1: ${await cdpManager.totalStakesSnapshot()}`)
     console.log(`totalCollateralSnapshot after L1: ${await cdpManager.totalCollateralSnapshot()}`)
@@ -130,7 +136,7 @@ contract('CdpManager', async accounts => {
     // - Liquidate a tiny cdp
     // - Adjust B's collateral by 1 wei
     for (let [idx, cdp] of tinyCdps.entries()) {
-      await cdpManager.liquidate(_tinyCdpIds[cdp])
+      await cdpManager.liquidate(_tinyCdpIds[cdp], {from: owner})
       console.log(`B stake after L${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
       console.log(`Snapshots ratio after L${idx + 2}: ${await getSnapshotsRatio()}`)
       await borrowerOperations.adjustCdp(_bCdpId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei

@@ -3,6 +3,8 @@ const BN = require('bn.js')
 const LockupContract = artifacts.require(("./LockupContract.sol"))
 const Destructible = artifacts.require("./TestContracts/Destructible.sol")
 
+const DEBUG = false
+
 const MoneyValues = {
   negative_5e17: "-" + web3.utils.toWei('500', 'finney'),
   negative_1e18: "-" + web3.utils.toWei('1', 'ether'),
@@ -14,6 +16,7 @@ const MoneyValues = {
 
   _zeroBN: web3.utils.toBN('0'),
   _1e18BN: web3.utils.toBN('1000000000000000000'),
+  _1_5e18BN: web3.utils.toBN('1050000000000000000'),
   _10e18BN: web3.utils.toBN('10000000000000000000'),
   _100e18BN: web3.utils.toBN('100000000000000000000'),
   _100BN: web3.utils.toBN('100'),
@@ -21,6 +24,8 @@ const MoneyValues = {
   _150BN: web3.utils.toBN('150'),
 
   _MCR: web3.utils.toBN('1100000000000000000'),
+  // Liq reward is 0.2 eth
+  _LIQUIDATION_REWARD: web3.utils.toBN('200000000000000000'),
   _ICR100: web3.utils.toBN('1000000000000000000'),
   _CCR: web3.utils.toBN('1500000000000000000'),
 }
@@ -326,6 +331,12 @@ class TestHelper {
   static async getOpenCdpTotalDebt(contracts, ebtcAmount) {
     const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
     const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
+
+    if (DEBUG) {
+      console.log("fee: ", fee.toString())
+      console.log("compositeDebt: ", compositeDebt.toString())
+    }
+    
     return compositeDebt.add(fee)
   }
 
@@ -338,10 +349,10 @@ class TestHelper {
     return this.getNetBorrowingAmount(contracts, actualDebt)
   }
 
-  // Subtracts the borrowing fee
+  // Vestigal function retained for ease of old test conversions - used to Subtract the borrowing fee
   static async getNetBorrowingAmount(contracts, debtWithFee) {
     const borrowingRate = await contracts.cdpManager.getBorrowingRateWithDecay()
-    return this.toBN(debtWithFee).mul(MoneyValues._1e18BN).div(MoneyValues._1e18BN.add(borrowingRate))
+    return this.toBN(debtWithFee)
   }
 
   // Adds the borrowing fee
@@ -672,23 +683,30 @@ class TestHelper {
     else if (typeof extraEBTCAmount == 'string') extraEBTCAmount = this.toBN(extraEBTCAmount)
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
-
+    const price = await contracts.priceFeedTestnet.getPrice()
+    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_DEBT()
+    const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (
-      await this.getNetBorrowingAmount(contracts, await contracts.borrowerOperations.MIN_NET_DEBT())
-    ).add(this.toBN(1)) // add 1 to avoid rounding issues
+      await this.getNetBorrowingAmount(contracts, minNetDebt)
+    ).add(this.toBN(10))
     const ebtcAmount = MIN_DEBT.add(extraEBTCAmount)
-
     if (!ICR && !extraParams.value) ICR = this.toBN(this.dec(15, 17)) // 150%
     else if (typeof ICR == 'string') ICR = this.toBN(ICR)
 
     const totalDebt = await this.getOpenCdpTotalDebt(contracts, ebtcAmount)
     const netDebt = await this.getActualDebtFromComposite(totalDebt, contracts)
+    
+    if (DEBUG) {
+      console.log("totalDebt: ", totalDebt.toString())
+      console.log("netDebt: ", netDebt.toString())
+    }
+    
 
     if (ICR) {
       const price = await contracts.priceFeedTestnet.getPrice()
       extraParams.value = ICR.mul(totalDebt).div(price)
+      if (DEBUG) console.log("proposed ICR:", extraParams.value.toString())
     }
-
     const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {

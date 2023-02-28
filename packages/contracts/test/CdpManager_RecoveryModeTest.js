@@ -51,16 +51,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   let collSurplusPool
 
   let contracts
+  let _signer
 
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   before(async () => {	  
-    // let _forkBlock = hre.network.config['forking']['blockNumber'];
-    // let _forkUrl = hre.network.config['forking']['url'];
-    // console.log("resetting to mainnet fork: block=" + _forkBlock + ',url=' + _forkUrl);
-    // await hre.network.provider.request({ method: "hardhat_reset", params: [ { forking: { jsonRpcUrl: _forkUrl, blockNumber: _forkBlock }} ] });
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [beadp]}); 
     beadpSigner = await ethers.provider.getSigner(beadp);	
   })
@@ -83,6 +80,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     functionCaller = contracts.functionCaller
     borrowerOperations = contracts.borrowerOperations
     collSurplusPool = contracts.collSurplusPool
+    debtToken = ebtcToken;
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -92,7 +90,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _ownerBal = await web3.eth.getBalance(owner);
     let _beadpBal = await web3.eth.getBalance(beadp);
     let _ownerRicher = toBN(_ownerBal.toString()).gt(toBN(_beadpBal.toString()));
-    let _signer = _ownerRicher? ownerSigner : beadpSigner;
+    _signer = _ownerRicher? ownerSigner : beadpSigner;
   
     await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("1000")});
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("1000")});
@@ -183,6 +181,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR < 100%: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -206,13 +205,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(bob_ICR, '754999999999999999')
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    const { collateral: Owner_coll } = await openCdp({ ICR: toBN(dec(1601, 15)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     const bob_Stake_After = (await cdpManager.Cdps(_bobCdpId))[2]
     const totalStakes_After = await cdpManager.totalStakes()
 
     assert.equal(bob_Stake_After, 0)
-    assert.equal(totalStakes_After.toString(), A_coll)
+    assert.equal(totalStakes_After.toString(), toBN(A_coll.toString()).add(toBN(Owner_coll.toString())).toString())
   })
 
   it("liquidate(), with ICR < 100%: updates system snapshots correctly", async () => {
@@ -232,13 +234,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode)
 
     // Dennis is liquidated
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
     await cdpManager.liquidate(_dennisCdpId, { from: owner })
 
     const totalStakesSnaphot_before = (await cdpManager.totalStakesSnapshot()).toString()
     const totalCollateralSnapshot_before = (await cdpManager.totalCollateralSnapshot()).toString()
 
     assert.equal(totalStakesSnaphot_before, A_coll.add(B_coll))
-    th.assertIsApproximatelyEqual(totalCollateralSnapshot_before, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll)), 10) // 6 + 3*0.995
+    assert.equal(totalCollateralSnapshot_before, A_coll.add(B_coll).add(th.applyLiquidationFee(toBN('0')))) // 6 + 3*0.995
 
     const A_reward  = th.applyLiquidationFee(D_coll).mul(A_coll).div(A_coll.add(B_coll))
     const B_reward  = th.applyLiquidationFee(D_coll).mul(B_coll).div(A_coll.add(B_coll))
@@ -251,12 +256,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.equal(totalStakesSnaphot_After.toString(), A_coll)
     // total collateral should always be 9 minus gas compensations, as all liquidations in this test case are full redistributions
-    assert.isAtMost(th.getDifference(totalCollateralSnapshot_After, A_coll.add(A_reward).add(th.applyLiquidationFee(B_coll.add(B_reward)))), 1000) // 3 + 4.5*0.995 + 1.5*0.995^2
+    assert.isAtMost(th.getDifference(totalCollateralSnapshot_After, A_coll.add(toBN('0')).add(th.applyLiquidationFee(toBN('0').add(toBN('0'))))), 1000) // 3 + 4.5*0.995 + 1.5*0.995^2
   })
 
   it("liquidate(), with ICR < 100%: closes the Cdp and removes it from the Cdp array", async () => {
     // --- SETUP ---
     //  Alice and Bob withdraw such that the TCR is ~150%
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -280,6 +286,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(bob_ICR, '754999999999999999')
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await openCdp({ ICR: toBN(dec(1601, 15)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob's Cdp is successfully closed, and removed from sortedList
@@ -307,6 +316,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode)
 
     // liquidate bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
   })
 
@@ -315,6 +327,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with 100 < ICR < 110%: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("20000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -343,13 +357,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(bob_ICR, '1049999999999999999')
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    const { collateral: Owner_coll } = await openCdp({ ICR: toBN(dec(1601, 15)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     const bob_Stake_After = (await cdpManager.Cdps(_bobCdpId))[2]
     const totalStakes_After = await cdpManager.totalStakes()
 
     assert.equal(bob_Stake_After, 0)
-    assert.equal(totalStakes_After.toString(), A_coll)
+    assert.equal(totalStakes_After.toString(), toBN(A_coll.toString()).add(toBN(Owner_coll.toString())).toString())
   })
 
   it("liquidate(), with 100% < ICR < 110%: updates system snapshots correctly", async () => {
@@ -378,6 +395,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode)
 
     // Dennis is liquidated	with 0.75 ICR, fully redistributeds
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_dennisCdpId, { from: owner })	
 
     const A_reward  = th.applyLiquidationFee(D_coll).mul(A_coll).div(A_coll.add(B_coll))
@@ -391,7 +410,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const totalStakesSnaphot_2 = (await cdpManager.totalStakesSnapshot()).toString()
     const totalCollateralSnapshot_2 = (await cdpManager.totalCollateralSnapshot()).toString()
     assert.equal(totalStakesSnaphot_2, A_coll.add(B_coll))
-    th.assertIsApproximatelyEqual(totalCollateralSnapshot_2, A_coll.add(B_coll).add(th.applyLiquidationFee(D_coll))) // 24 + 3*0.995
+    assert.equal(totalCollateralSnapshot_2, A_coll.add(B_coll).add(th.applyLiquidationFee(toBN('0')))) // 24 + 3*0.995
 
     // check Bob's ICR is now in range 100% < ICR 110%
     const _110percent = web3.utils.toBN('1100000000000000000')
@@ -403,20 +422,24 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(_100percent))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    const { collateral: Owner_coll } = await openCdp({ ICR: toBN(dec(1601, 15)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* After Bob's liquidation, Bob's stake (21 ether) should be removed from total stakes, 
     but his collateral should remain in the system (*0.995). */
     const totalStakesSnaphot_3 = (await cdpManager.totalStakesSnapshot())
     const totalCollateralSnapshot_3 = (await cdpManager.totalCollateralSnapshot())
-    assert.equal(totalStakesSnaphot_3.toString(), A_coll)
+    assert.equal(totalStakesSnaphot_3.toString(), toBN(A_coll.toString()).add(toBN(Owner_coll.toString())).toString())
     // total collateral should always be 27 minus gas compensations, as all liquidations in this test case are full redistributions
-    assert.isAtMost(th.getDifference(totalCollateralSnapshot_3.toString(), A_coll.add(A_reward).add(th.applyLiquidationFee(toBN('0').add(toBN('0'))))), 1000)
+    assert.isAtMost(th.getDifference(totalCollateralSnapshot_3.toString(), A_coll.add(Owner_coll).add(th.applyLiquidationFee(toBN('0').add(toBN('0'))))), 1000)
   })
 
   it("liquidate(), with 100% < ICR < 110%: closes the Cdp and removes it from the Cdp array", async () => {
     // --- SETUP ---
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -441,6 +464,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(bob_ICR, '1049999999999999999')
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await openCdp({ ICR: toBN(dec(1601, 15)), extraEBTCAmount: dec(100, 18), extraParams: { from: owner } })
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob's Cdp is successfully closed, and removed from sortedList
@@ -455,6 +481,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     //  Alice and Dennis withdraw such that their ICR is ~150%
     //  Bob withdraws up to 2000 EBTC of debt, bringing his ICR to 210%
     const spDeposit = toBN(dec(390, 18))
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("10000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraEBTCAmount: spDeposit, extraParams: { from: alice } })
     const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -473,6 +502,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(bob_ICR, '1049999999999999999')
 	
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
 
@@ -500,6 +532,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Bob withdraws, resulting in ICR of 240%. Bob has lowest ICR.
     await openCdp({ ICR: toBN(dec(266, 16)), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("80000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
@@ -517,9 +551,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bob_ICR = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
     const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
     const dennis_ICR = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
+	
     assert.equal(bob_ICR, '1199999999999999999')
     assert.equal(alice_ICR, '1329999999999999999')
     assert.equal(dennis_ICR, '1329999999999999999')
+
+    // console.log(`TCR: ${await th.getTCR(contracts)}`)
+    // Try to liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check that redistribution rewards don't change
@@ -550,6 +591,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
@@ -569,6 +613,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(mv._MCR) && bob_ICR.lt(TCR))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* Total Pool deposits was 1490 EBTC, Alice sole depositor.
@@ -580,7 +627,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -590,11 +638,89 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     th.assertIsApproximatelyEqual(bob_balanceAfter, bob_expectedBalance.add(th.toBN(bob_remainingCollateral)))
   })
 
-  it("liquidate(), with ICR% = 110 < TCR: repay the cdp debt entirely, there’s no collateral surplus", async () => {
+  it("liquidate(), with 100% < ICR < 105%: give incentive over 100 pct", async () => {
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp(
+        { ICR: toBN(dec(205, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } }
+    )
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
+    await openCdp(
+        { ICR: toBN(dec(266, 16)),
+          extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } }
+    )
+    // --- TEST ---
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
+    const price = await priceFeed.getPrice()
+
+    const recoveryMode = await th.checkRecoveryMode(contracts)
+    assert.isTrue(recoveryMode)
+
+    // Check Bob's ICR is between 100% and 105%
+    const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price)
+    assert.isTrue(bob_ICR.gt(mv._1e18BN) && bob_ICR.lt(mv._1_5e18BN))
+
+    // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await cdpManager.liquidate(_bobCdpId, { from: owner })
+
+    // check Bob’s collateral surplus
+    // Bob's leftover is Initial Collateral - (Debt * bob ICR) / price
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(bob_ICR).div(price).add(mv._LIQUIDATION_REWARD))
+    // Min between bob bob_remainingCollateral and zero
+    const bob_collSurplus = bob_remainingCollateral.gt(th.toBN(0)) ? bob_remainingCollateral : th.toBN(0)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_collSurplus, 10000)
+  })
+
+  it("liquidate(), with ICR < 100% - give away entire collateral as an incentive to liquidator", async () => {
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
+    const { totalDebt: B_totalDebt } = await openCdp(
+        { ICR: toBN(dec(199, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } }
+    )
+    let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
+    await openCdp(
+        { ICR: toBN(dec(266, 16)),
+          extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } }
+    )
+    // --- TEST ---
+    // price drops, reducing TCR below 150%
+    await priceFeed.setPrice(dec(3714, 13))
+    const price = await priceFeed.getPrice()
+
+    const recoveryMode = await th.checkRecoveryMode(contracts)
+    assert.isTrue(recoveryMode)
+
+    // Check Bob's ICR is below 100%
+    const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price)
+    assert.isTrue(bob_ICR.lt(mv._1e18BN))
+
+    // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await cdpManager.liquidate(_bobCdpId, { from: owner })
+
+    // check Bob’s collateral surplus
+    // Bob's doesn't have any collateral left as he had ICR < 100% and his collateral was given to liquidator
+    assert.equal(await collSurplusPool.getCollateral(owner), 0)
+  })
+
+  it("liquidate(), with ICR% = 110 < TCR: repay the cdp debt entirely, collsuprlus present", async () => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 220%. Bob has lowest ICR.
-    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
@@ -612,6 +738,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     th.assertIsApproximatelyEqual(bob_ICR, mv._MCR)
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* (FIXME with new liquidation logiv). Total Pool deposits was 1490 EBTC, Alice sole depositor.
@@ -623,13 +752,17 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     */
 
     // check Bob’s collateral surplus
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), '0')
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
   })
 
   it("liquidate(), with  110% < ICR < TCR: removes stake and updates totalStakes", async () => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
@@ -655,6 +788,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(mv._MCR) && bob_ICR.lt(await th.getTCR(contracts)))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check stake and totalStakes after
@@ -665,7 +801,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalStakes_After.toString(), A_coll.add(D_coll))
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -679,6 +815,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
@@ -704,6 +843,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(mv._MCR) && bob_ICR.lt(await th.getTCR(contracts)))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     const totalStakesSnaphot_After = (await cdpManager.totalStakesSnapshot())
@@ -719,6 +861,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
@@ -744,6 +889,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(mv._MCR) && bob_ICR.lt(await th.getTCR(contracts)))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check Bob's Cdp is closed after liquidation
@@ -754,7 +902,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(bob_Cdp_isInSortedList_After)
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -803,6 +951,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Cdps are ordered by ICR, low to high: A, B, C, D.
 
     // Liquidate out of ICR order: D, B, C.  Confirm Recovery Mode is active prior to each.
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
     const liquidationTx_D = await cdpManager.liquidate(_dennisCdpId)
   
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -827,9 +979,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
 
     // check collateral surplus
-    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
-    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const dennis_remainingCollateral = D_coll.sub(D_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
+    const carol_remainingCollateral = C_coll.sub(C_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(dennis), dennis_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(carol), carol_remainingCollateral)
@@ -861,6 +1013,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
@@ -881,7 +1036,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_Cdp_isInSortedList_Before)
 
     // Try to liquidate Bob
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* Since the pool only contains 100 EBTC, and Bob's pre-liquidation debt was 250 EBTC,
@@ -898,6 +1054,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
@@ -918,7 +1077,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_Cdp_isInSortedList_Before)
 
     // Try to liquidate Bob
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* (FIXME with new liquidation logic) the liquidator only contains 100 EBTC, and Bob's pre-liquidation debt was 250 EBTC, 
@@ -948,6 +1108,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -961,7 +1123,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode)
 
     // Try to liquidate Bob
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /*  (FIXME with new liquidation logic) Since Bob's debt (250 EBTC) is larger than all EBTC in liquidator, Liquidation won’t happen
@@ -989,6 +1152,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -1008,8 +1174,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(totalStakesSnaphot_Before, 0)
     assert.equal(totalCollateralSnapshot_Before, 0)
 
-    // (FIXME with new liquidation logic) Liquidate Bob, it won’t happen as there are no funds in the SP
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* After liquidation, totalStakes snapshot should still equal the total stake: 25 ether
@@ -1026,7 +1192,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with ICR > 110%: causes correct debt repaid and ETH gain to liquidator, and doesn't redistribute to active cdps", async () => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
-    // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
+    // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.})
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("80000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -1039,8 +1208,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
-    // (FIXME with new liquidation logic) Try to liquidate Bob. Shouldn’t happen
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* For this Recovery Mode test case with ICR > 110%, there should be no redistribution of remainder to active Cdps. 
@@ -1058,10 +1227,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     // Carol withdraws up to debt of 240 EBTC, -> ICR of 250%.
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(1500, 18), extraParams: { from: alice } })
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(250, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("90000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: dennis } })
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
@@ -1082,8 +1255,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await sortedCdps.getLast()).toString(), _bobCdpId)
     assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).gt(mv._MCR))
 
-    // (FIXME with new liquidation logic) L1: Try to liquidate Bob. Nothing happens
-//    await assertRevert(cdpManager.liquidate(_bobCdpId, { from: owner }), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()).sub(toBN(dec(50, 18))), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check Bob remains active
@@ -1102,7 +1275,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
 
     // to compensate borrowing fees
-    await ebtcToken.transfer(bob, dec(100, 18), { from: alice })
+//    await ebtcToken.transfer(bob, dec(100, 18), { from: alice })
 
     await priceFeed.setPrice(dec(3714, 13))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
@@ -1114,7 +1287,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).gt(mv._MCR))
 
     // L2: Try to liquidate Carol. Nothing happens
-//    await assertRevert(cdpManager.liquidate(_carolCdpId), "CdpManager: nothing to liquidate")
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
     await cdpManager.liquidate(_carolCdpId)
 
     // Check Carol's collateral and debt remains the same
@@ -1161,9 +1335,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
     const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
 
-    // (FIXME with new liquidation logic) Try to liquidate Alice
-//    await assertRevert(cdpManager.liquidate(_aliceCdpId), "CdpManager: nothing to liquidate")
-    await cdpManager.liquidate(_aliceCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
+    await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Expect system debt and system coll not reduced
     const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
@@ -1232,6 +1406,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal(activeCdpsCount_Before, 2)
 
     // Liquidate the cdp
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
     await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Check Alice's cdp is removed, and bob remains
@@ -1266,9 +1443,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bob_ICR = await cdpManager.getCurrentICR(_bobCdpId, price)
     assert.isTrue(bob_ICR.gte(mv._MCR))
 
-    // (FIXME with new liquidation logic) Attempt to liquidate bob
-//    await assertRevert(cdpManager.liquidate(_bobCdpId), "CdpManager: nothing to liquidate")
-    await cdpManager.liquidate(_bobCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
+    await cdpManager.liquidate(_bobCdpId, {from: owner})
 
     // check A, B, C remain active
     assert.isFalse((await sortedCdps.contains(_bobCdpId)))
@@ -1302,7 +1480,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(TCR))
     // Try to liquidate A
-    await assertRevert(cdpManager.liquidate(_aCdpId), "CdpManager: nothing to liquidate")
+    //await assertRevert(cdpManager.liquidate(_aCdpId), "CdpManager: nothing to liquidate")
 
     // Check liquidation of A does nothing - cdp remains in system
     assert.isTrue(await sortedCdps.contains(_aCdpId))
@@ -1310,7 +1488,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check C, with ICR < TCR, can be liquidated
     assert.isTrue(ICR_C.lt(TCR))
-    const liqTxC = await cdpManager.liquidate(_cCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(A)), {from : A});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(B)), {from : B});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(C)), {from : C});
+    const liqTxC = await cdpManager.liquidate(_cCdpId, {from: owner})
     assert.isTrue(liqTxC.receipt.status)
 
     assert.isFalse(await sortedCdps.contains(_cCdpId))
@@ -1354,7 +1535,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Carol liquidated, and her cdp is closed
-    const txCarol_L1 = await cdpManager.liquidate(_carolCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
+    const txCarol_L1 = await cdpManager.liquidate(_carolCdpId, {from: owner})
     assert.isTrue(txCarol_L1.receipt.status)
 
     // Check Carol's cdp is closed by liquidation
@@ -1402,6 +1586,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(carol_ICR_Before.lte(mv._MCR))
 
     // Liquidate defaulter. 30 EBTC and 0.3 ETH is distributed uniformly between A, B and C. Each receive 10 EBTC, 0.1 ETH
+    await debtToken.transfer(owner, (await debtToken.balanceOf(defaulter_1)), {from : defaulter_1});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
     await cdpManager.liquidate(_defaulter1CdpId)
 
     const alice_ICR_After = await cdpManager.getCurrentICR(_aliceCdpId, price)
@@ -1428,9 +1616,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_rawICR.gte(mv._MCR))
 
     //liquidate A, B, C
-    await assertRevert(cdpManager.liquidate(_aliceCdpId), "CdpManager: nothing to liquidate")
-    await cdpManager.liquidate(_bobCdpId)
-    await cdpManager.liquidate(_carolCdpId)
+    assert.isTrue(await th.checkRecoveryMode(contracts))
+    await assertRevert(cdpManager.liquidate(_aliceCdpId), "!_ICR")
+    assert.isTrue(await th.checkRecoveryMode(contracts))
+    await cdpManager.liquidate(_bobCdpId, {from: owner})
+    assert.isFalse(await th.checkRecoveryMode(contracts))
+    await cdpManager.liquidate(_carolCdpId, {from: owner})
 
     /*  Since there is 0 EBTC in the liquidator, A, with ICR >110%, should stay active.
     Check Alice stays active, Carol gets liquidated, and Bob gets liquidated 
@@ -1448,6 +1639,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(): does not affect address that has no cdp", async () => {
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     const spDeposit = C_totalDebt.add(toBN(dec(1000, 18)))
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("30000")});
     await openCdp({ ICR: toBN(dec(220, 16)), extraEBTCAmount: spDeposit, extraParams: { from: bob } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
@@ -1461,7 +1653,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Carol gets liquidated
-    await cdpManager.liquidate(_carolCdpId)
+    await openCdp({ ICR: toBN(dec(200, 16)), extraEBTCAmount: C_totalDebt, extraParams: { from: owner } });
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
+    await cdpManager.liquidate(_carolCdpId, {from: owner})
 
     // Attempt to liquidate Dennis
     try {
@@ -1493,24 +1687,29 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check sortedList size is 4
     assert.equal((await sortedCdps.getSize()).toString(), '4')
+    await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("400000")});
+    await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: toBN(dec(10000,18)), extraParams: { from: owner } })
 
     // Liquidate A, B and C
-    await cdpManager.liquidate(_aliceCdpId)
-    await cdpManager.liquidate(_bobCdpId)
-    await cdpManager.liquidate(_carolCdpId)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
+    await cdpManager.liquidate(_aliceCdpId, {from: owner})
+    await cdpManager.liquidate(_bobCdpId, {from: owner})
+    await cdpManager.liquidate(_carolCdpId, {from: owner})
 
     // Confirm A, B, C closed
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
-    // Check sortedList size reduced to 1
-    assert.equal((await sortedCdps.getSize()).toString(), '1')
+    // Check sortedList size reduced to 2
+    assert.equal((await sortedCdps.getSize()).toString(), '2')
 
     // Confirm token balances have not changed
-    assert.equal((await ebtcToken.balanceOf(alice)).toString(), A_ebtcAmount)
-    assert.equal((await ebtcToken.balanceOf(bob)).toString(), B_ebtcAmount)
-    assert.equal((await ebtcToken.balanceOf(carol)).toString(), C_ebtcAmount)
+    assert.equal((await ebtcToken.balanceOf(alice)).toString(), '0')
+    assert.equal((await ebtcToken.balanceOf(bob)).toString(), '0')
+    assert.equal((await ebtcToken.balanceOf(carol)).toString(), '0')
   })
 
   it("liquidate(), with 110% < ICR < TCR, can claim collateral, re-open, be reedemed and claim again", async () => {
@@ -1519,6 +1718,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Bob withdraws up to 480 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
     const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(240, 16)), extraEBTCAmount: dec(480, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt, extraParams: { from: alice } })
 
     // --- TEST ---
@@ -1535,10 +1735,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_ICR.gt(mv._MCR) && bob_ICR.lt(TCR))
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus: 5.76 * 100 - 480 * 1.1
-    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll.sub(B_totalDebt.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -1570,8 +1772,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   it("liquidate(), with 110% < ICR < TCR, can claim collateral, after another claim from a redemption", async () => {
     // --- SETUP ---
     // Bob withdraws up to 90 EBTC of debt, resulting in ICR of 222%
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
     const { collateral: B_coll, netDebt: B_netDebt } = await openCdp({ ICR: toBN(dec(222, 16)), extraEBTCAmount: dec(90, 18), extraParams: { from: bob } })
     // Dennis withdraws to 150 EBTC of debt, resulting in ICRs of 266%.
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_netDebt, extraParams: { from: dennis } })
 
     // --- TEST ---
@@ -1595,6 +1799,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const { collateral: B_coll_2, totalDebt: B_totalDebt_2 } = await openCdp({ ICR: toBN(dec(240, 16)), extraParams: { from: bob, value: _3_Ether } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     // Alice get EBTC by opening CDP
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_totalDebt_2, extraParams: { from: alice } })
 
     // price drops, reducing TCR below 150%
@@ -1611,10 +1816,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // debt is increased by fee, due to previous redemption
 
     // Liquidate Bob
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // check Bob’s collateral surplus
-    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(11, 17))).div(price))
+    const bob_remainingCollateral = B_coll_2.sub(B_totalDebt_2.mul(th.toBN(dec(105, 16))).div(price).add(mv._LIQUIDATION_REWARD))
     th.assertIsApproximatelyEqual((await collSurplusPool.getCollateral(bob)).toString(), bob_remainingCollateral.toString())
 
     // can claim collateral
@@ -1638,8 +1845,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const { totalDebt: E_totalDebt } = await openCdp({ ICR: toBN(dec(261, 16)), extraParams: { from: erin } })
     const { totalDebt: F_totalDebt } = await openCdp({ ICR: toBN(dec(250, 16)), extraParams: { from: freddy } })
     const { totalDebt: G_totalDebt } = await openCdp({ ICR: toBN(dec(235, 16)), extraParams: { from: greta } })
+    await _signer.sendTransaction({ to: harry, value: ethers.utils.parseEther("150000")});
     const { totalDebt: H_totalDebt } = await openCdp({ ICR: toBN(dec(222, 16)), extraEBTCAmount: dec(5000, 18), extraParams: { from: harry } })
     const liquidationAmount = E_totalDebt.add(F_totalDebt).add(G_totalDebt).add(H_totalDebt)
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("200000")});
     await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: liquidationAmount, extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
@@ -2035,6 +2244,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(198, 16)), extraEBTCAmount: dec(101, 18), extraParams: { from: defaulter_1 } })
     await openCdp({ ICR: toBN(dec(184, 16)), extraEBTCAmount: dec(217, 18), extraParams: { from: defaulter_2 } })
     await openCdp({ ICR: toBN(dec(183, 16)), extraEBTCAmount: dec(328, 18), extraParams: { from: defaulter_3 } })
+    await _signer.sendTransaction({ to: defaulter_4, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(186, 16)), extraEBTCAmount: dec(431, 18), extraParams: { from: defaulter_4 } })
     let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
     let _defaulter2CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_2, 0);
@@ -2074,12 +2284,17 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   })
 
   it("liquidateCdps(): A liquidation sequence of pure redistributions decreases the TCR, due to gas compensation, but up to 0.5%", async () => {
+    await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("10000")});
     const { collateral: W_coll, totalDebt: W_totalDebt } = await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(500, 18), extraParams: { from: whale } })
 
     const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(300, 16)), extraParams: { from: alice } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(400, 16)), extraParams: { from: carol } })
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(600, 16)), extraParams: { from: dennis } })
 
+    await _signer.sendTransaction({ to: defaulter_1, value: ethers.utils.parseEther("1000")});
+    await _signer.sendTransaction({ to: defaulter_2, value: ethers.utils.parseEther("1000")});
+    await _signer.sendTransaction({ to: defaulter_3, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: defaulter_4, value: ethers.utils.parseEther("10000")});
     const { collateral: d1_coll, totalDebt: d1_totalDebt } = await openCdp({ ICR: toBN(dec(198, 16)), extraEBTCAmount: dec(101, 18), extraParams: { from: defaulter_1 } })
     const { collateral: d2_coll, totalDebt: d2_totalDebt } = await openCdp({ ICR: toBN(dec(184, 16)), extraEBTCAmount: dec(217, 18), extraParams: { from: defaulter_2 } })
     const { collateral: d3_coll, totalDebt: d3_totalDebt } = await openCdp({ ICR: toBN(dec(183, 16)), extraEBTCAmount: dec(328, 18), extraParams: { from: defaulter_3 } })
@@ -2137,6 +2352,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Defaulter opens with 60 EBTC, 0.6 ETH
     await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: defaulter_1 } })
     let _defaulter1CdpId = await sortedCdps.cdpOfOwnerByIndex(defaulter_1, 0);
+    await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("120000")});
+    await openCdp({ ICR: toBN(dec(151, 16)), extraEBTCAmount: toBN(dec(6000,18)), extraParams: { from: owner } })
 
     // Price drops
     await priceFeed.setPrice(dec(3718, 13))
@@ -2160,6 +2377,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(carol_ICR_Before.lte(mv._MCR))
 
     // Liquidate defaulter. 30 EBTC and 0.3 ETH is distributed uniformly between A, B and C. Each receive 10 EBTC, 0.1 ETH
+    await debtToken.transfer(owner, (await debtToken.balanceOf(defaulter_1)), {from : defaulter_1});
     await cdpManager.liquidate(_defaulter1CdpId)
 
     const alice_ICR_After = await cdpManager.getCurrentICR(_aliceCdpId, price)
@@ -2184,7 +2402,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(bob_rawICR.gte(mv._MCR))
 
     // Liquidate A, B, C
-    await cdpManager.liquidateCdps(10)
+    await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
+    await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});	
+    await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
+    await cdpManager.liquidateCdps(10, {from: owner})
 
     /*  Since there is 0 EBTC in the liquidator, A, with ICR >110%, should stay active.
    Check Alice stays active, Carol gets liquidated, and Bob gets liquidated 
@@ -2518,9 +2739,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   })
 
   it("liquidateCdps(): Liquidating cdps at ICR <=100%", async () => {
-    // Whale provides 400 EBTC to the SP
+    await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(300, 16)), extraEBTCAmount: dec(400, 18), extraParams: { from: whale } })
 
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(182, 16)), extraEBTCAmount: dec(170, 18), extraParams: { from: alice } })
     await openCdp({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(300, 18), extraParams: { from: bob } })
     await openCdp({ ICR: toBN(dec(170, 16)), extraParams: { from: carol } })
@@ -3609,6 +3832,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: bob } })
     const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(212, 16)), extraParams: { from: carol } })
     const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(213, 16)), extraParams: { from: dennis } })
+    await _signer.sendTransaction({ to: erin, value: ethers.utils.parseEther("10000")});
+    await _signer.sendTransaction({ to: freddy, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(280, 16)), extraEBTCAmount: dec(500, 18), extraParams: { from: erin } })
     await openCdp({ ICR: toBN(dec(282, 16)), extraEBTCAmount: dec(500, 18), extraParams: { from: freddy } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
