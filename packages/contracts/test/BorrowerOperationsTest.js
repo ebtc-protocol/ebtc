@@ -447,11 +447,10 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
-      const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
       // Carol attempts to add collateral to her non-existent cdp
       try {
-        const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: carol })
+        const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: alice })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
@@ -710,7 +709,6 @@ contract('BorrowerOperations', async accounts => {
 
       // check before
       const activePool_ETH_before = await activePool.getETH()
-      const activePool_RawEther_before = toBN(await web3.eth.getBalance(activePool.address))
       // Withdraw 0.1 ether
       await borrowerOperations.withdrawColl(aliceIndex, dec(1, 17), aliceIndex, aliceIndex, { from: alice })
 
@@ -718,7 +716,6 @@ contract('BorrowerOperations', async accounts => {
       const activePool_ETH_After = await activePool.getETH()
       const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_After.eq(activePool_ETH_before.sub(toBN(dec(1, 17)))))
-      assert.isTrue(activePool_RawEther_After.eq(activePool_RawEther_before.sub(toBN(dec(1, 17)))))
     })
 
     it("withdrawColl(): updates the stake and updates the total stakes", async () => {
@@ -751,14 +748,14 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice, value: dec(2, 'ether') } })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const alice_ETHBalance_Before = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
+      const alice_ETHBalance_Before = toBN(web3.utils.toBN(await contracts.collateral.balanceOf(alice)))
       let _tx = await borrowerOperations.withdrawColl(aliceIndex, dec(1, 17), aliceIndex, aliceIndex, { from: alice, gasPrice: 0 })
       const gasUsedETH = toBN(_tx.receipt.effectiveGasPrice.toString()).mul(toBN(th.gasUsed(_tx).toString()));
 
-      const alice_ETHBalance_After = toBN(web3.utils.toBN(await web3.eth.getBalance(alice)))
+      const alice_ETHBalance_After = toBN(web3.utils.toBN(await contracts.collateral.balanceOf(alice)))
       const balanceDiff = alice_ETHBalance_After.sub(alice_ETHBalance_Before).add(gasUsedETH)
 
-      assert.isTrue(balanceDiff.eq(toBN(dec(1, 17))))
+      assert.equal(balanceDiff.toString(), toBN(dec(1, 17)).toString())
     })
 
     it("withdrawColl(): applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots", async () => {
@@ -956,9 +953,6 @@ contract('BorrowerOperations', async accounts => {
       const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
       const DIndex = await sortedCdps.cdpOfOwnerByIndex(D,0)
-      const EIndex = await sortedCdps.cdpOfOwnerByIndex(E,0)
-
-      const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
       await cdpManager.setBaseRate(dec(5, 16))
@@ -1009,8 +1003,6 @@ contract('BorrowerOperations', async accounts => {
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
       const DIndex = await sortedCdps.cdpOfOwnerByIndex(D,0)
       const EIndex = await sortedCdps.cdpOfOwnerByIndex(E,0)
-
-      const totalSupply = await ebtcToken.totalSupply()
 
       // Artificially make baseRate 5%
       await cdpManager.setBaseRate(dec(5, 16))
@@ -1576,7 +1568,11 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("20000")});
       let _colAmt = dec(10000, 18);
-      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, { from: A, value: _colAmt })
+      await contracts.collateral.deposit({from: A, value: ethers.utils.parseEther("20000")});
+      await contracts.collateral.deposit({from: B, value: ethers.utils.parseEther("20000")});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+      await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, _colAmt, { from: A })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxA = await borrowerOperations.repayEBTC(AIndex, 1, AIndex, AIndex, { from: A })
@@ -1584,7 +1580,7 @@ contract('BorrowerOperations', async accounts => {
 
       let _debtAmt = dec(20, 17);
       let _repayAmt = dec(10, 17);
-      await borrowerOperations.openCdp(th._100pct, _debtAmt, B, B, { from: B, value: _colAmt })
+      await borrowerOperations.openCdp(th._100pct, _debtAmt, B, B, _colAmt, { from: B })
       const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
 
       const repayTxB = await borrowerOperations.repayEBTC(BIndex, _repayAmt, BIndex, BIndex, { from: B })
@@ -1599,7 +1595,9 @@ contract('BorrowerOperations', async accounts => {
       const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
       const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).add(toBN(1))
-      await borrowerOperations.openCdp(th._100pct, MIN_DEBT.add(toBN('2')), A, A, { from: A, value: _colAmt })
+      await contracts.collateral.deposit({from: A, value: ethers.utils.parseEther("20000")});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await borrowerOperations.openCdp(th._100pct, MIN_DEBT.add(toBN('2')), A, A, _colAmt, { from: A })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 3, AIndex, AIndex, { from: A })
@@ -3292,10 +3290,8 @@ contract('BorrowerOperations', async accounts => {
 
       // Check active Pool ETH before
       const activePool_ETH_before = await activePool.getETH()
-      const activePool_RawEther_before = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_before.eq(aliceColl.add(dennisColl)))
       assert.isTrue(activePool_ETH_before.gt(toBN('0')))
-      assert.isTrue(activePool_RawEther_before.eq(activePool_ETH_before))
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
@@ -3305,9 +3301,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check after
       const activePool_ETH_After = await activePool.getETH()
-      const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_After.eq(dennisColl))
-      assert.isTrue(activePool_RawEther_After.eq(dennisColl))
     })
 
     it("closeCdp(): reduces ActivePool debt by correct amount", async () => {
@@ -3633,13 +3627,17 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("10000")});
       await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("20000")});
       let _colAmt = dec(5000, 18);
-      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _colAmt })
+      await contracts.collateral.deposit({from: A, value: ethers.utils.parseEther("10000")});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.deposit({from: C, value: ethers.utils.parseEther("20000")});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
+      const txA = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN(1))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: A })
       assert.isTrue(txA.receipt.status)
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
       assert.isTrue(await sortedCdps.contains(AIndex))
 
       let _debtAmt = toBN(dec(47789898,10));
-      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_debtAmt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+      const txC = await borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT.add(_debtAmt)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: C })
       assert.isTrue(txC.receipt.status)
 
       const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
@@ -3648,16 +3646,22 @@ contract('BorrowerOperations', async accounts => {
 
     it("openCdp(): reverts if net debt < minimum net debt", async () => {
       let _colAmt = dec(1000, 18);
-      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: _colAmt })
+      await contracts.collateral.deposit({from: A, value: _colAmt});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.deposit({from: B, value: _colAmt});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+      await contracts.collateral.deposit({from: C, value: _colAmt});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
+      const txAPromise = borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: A })
       await assertRevert(txAPromise, "revert")
       const price = await priceFeed.getPrice()
       const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
       const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).sub(toBN(1))
-      const txBPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: _colAmt })
+      const txBPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: B })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT.sub(toBN(dec(1, 16))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: _colAmt })
+      const txCPromise = borrowerOperations.openCdp(th._100pct, MIN_DEBT.sub(toBN(dec(1, 16))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: C })
       await assertRevert(txCPromise, "revert")
     })
 
@@ -3780,30 +3784,46 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): reverts if max fee > 100%", async () => {
-      await assertRevert(borrowerOperations.openCdp(dec(2, 18), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(1000, 'ether') }), "Max fee percentage must be between 0.5% and 100%")
-      await assertRevert(borrowerOperations.openCdp('1000000000000000001', dec(20000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(1000, 'ether') }), "Max fee percentage must be between 0.5% and 100%")
+      await contracts.collateral.deposit({from: A, value: dec(1000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.deposit({from: B, value: dec(1000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+      await assertRevert(borrowerOperations.openCdp(dec(2, 18), dec(10000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: A }), "Max fee percentage must be between 0.5% and 100%")
+      await assertRevert(borrowerOperations.openCdp('1000000000000000001', dec(20000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: B }), "Max fee percentage must be between 0.5% and 100%")
     })
 
     it("openCdp(): reverts if max fee < 0.5% in Normal mode", async () => {
-      await assertRevert(borrowerOperations.openCdp(0, dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(1200, 'ether') }), "Max fee percentage must be between 0.5% and 100%")
-      await assertRevert(borrowerOperations.openCdp(1, dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(1000, 'ether') }), "Max fee percentage must be between 0.5% and 100%")
-      await assertRevert(borrowerOperations.openCdp('4999999999999999', dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(1200, 'ether') }), "Max fee percentage must be between 0.5% and 100%")
+      await contracts.collateral.deposit({from: A, value: dec(10000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.deposit({from: B, value: dec(10000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+      await assertRevert(borrowerOperations.openCdp(0, dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1200, 'ether'), { from: A }), "Max fee percentage must be between 0.5% and 100%")
+      await assertRevert(borrowerOperations.openCdp(1, dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: A }), "Max fee percentage must be between 0.5% and 100%")
+      await assertRevert(borrowerOperations.openCdp('4999999999999999', dec(195000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1200, 'ether'), { from: B }), "Max fee percentage must be between 0.5% and 100%")
     })
 
     it("openCdp(): allows max fee < 0.5% in Recovery Mode", async () => {
-      await borrowerOperations.openCdp(th._100pct, dec(1, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: A, value: dec(50, 'ether') })
+      await contracts.collateral.deposit({from: A, value: dec(1000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+      await contracts.collateral.deposit({from: B, value: dec(1000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+      await contracts.collateral.deposit({from: C, value: dec(1000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
+      await contracts.collateral.deposit({from: D, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: D});
+      await borrowerOperations.openCdp(th._100pct, dec(1, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(50, 'ether'), { from: A })
 
       await priceFeed.setPrice(dec(1500, 13))
       assert.isTrue(await th.checkRecoveryMode(contracts))
-      await borrowerOperations.openCdp(0, dec(1, 17), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: B, value: dec(100, 'ether') })
+      await borrowerOperations.openCdp(0, dec(1, 17), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(100, 'ether'), { from: B })
       await priceFeed.setPrice(dec(750, 13))
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      await borrowerOperations.openCdp(1, dec(1, 17), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: C, value: dec(50, 'ether') })
+      await borrowerOperations.openCdp(1, dec(1, 17), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(50, 'ether'), { from: C })
       await priceFeed.setPrice(dec(500, 13))
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      await borrowerOperations.openCdp('4999999999999999', dec(1, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(3100, 'ether') })
+      await borrowerOperations.openCdp('4999999999999999', dec(1, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(3100, 'ether'), { from: D })
     })
 
     it("openCdp(): reverts if fee exceeds max fee percentage", async () => {
@@ -3813,10 +3833,6 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(200, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(300, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
       await openCdp({ extraEBTCAmount: toBN(dec(400, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: C } })
-
-      const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
-      const BIndex = await sortedCdps.cdpOfOwnerByIndex(B,0)
-      const CIndex = await sortedCdps.cdpOfOwnerByIndex(C,0)
 
       const totalSupply = await ebtcToken.totalSupply()
 
@@ -3830,22 +3846,24 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       const lessThan5pct = '49999999999999999'
-      await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
+      await contracts.collateral.deposit({from: D, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: D});
+      await assertRevert(borrowerOperations.openCdp(lessThan5pct, dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: D }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1%
-      await assertRevert(borrowerOperations.openCdp(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
+      await assertRevert(borrowerOperations.openCdp(dec(1, 16), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: D}), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 3.754%
-      await assertRevert(borrowerOperations.openCdp(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
+      await assertRevert(borrowerOperations.openCdp(dec(3754, 13), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: D }), "Fee exceeded provided maximum")
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
       // Attempt with maxFee 1e-16%
-      await assertRevert(borrowerOperations.openCdp(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(1000, 'ether') }), "Fee exceeded provided maximum")
+      await assertRevert(borrowerOperations.openCdp(dec(5, 15), dec(30000, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1000, 'ether'), { from: D }), "Fee exceeded provided maximum")
     })
 
     it("openCdp(): succeeds when fee is less than max fee percentage", async () => {
@@ -3865,32 +3883,42 @@ contract('BorrowerOperations', async accounts => {
 
       // Attempt with maxFee > 5%
       const moreThan5pct = '50000000000000001'
-      const tx1 = await borrowerOperations.openCdp(moreThan5pct, dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(2000, 'ether') })
+      await contracts.collateral.deposit({from: D, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: D});
+      const tx1 = await borrowerOperations.openCdp(moreThan5pct, dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2000, 'ether'), { from: D })
       assert.isTrue(tx1.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee = 5%
-      const tx2 = await borrowerOperations.openCdp(dec(5, 16), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: H, value: dec(2000, 'ether') })
+      await contracts.collateral.deposit({from: H, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: H});
+      const tx2 = await borrowerOperations.openCdp(dec(5, 16), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2000, 'ether'), { from: H })
       assert.isTrue(tx2.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 10%
-      const tx3 = await borrowerOperations.openCdp(dec(1, 17), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: E, value: dec(2000, 'ether') })
+      await contracts.collateral.deposit({from: E, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: E});
+      const tx3 = await borrowerOperations.openCdp(dec(1, 17), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2000, 'ether'), { from: E })
       assert.isTrue(tx3.receipt.status)
 
       borrowingRate = await cdpManager.getBorrowingRate() // expect 5% rate
       assert.isTrue(borrowingRate.eq(BORROWING_FEE_FLOOR))
 
       // Attempt with maxFee 37.659%
-      const tx4 = await borrowerOperations.openCdp(dec(37659, 13), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: F, value: dec(2000, 'ether') })
+      await contracts.collateral.deposit({from: F, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: F});
+      const tx4 = await borrowerOperations.openCdp(dec(37659, 13), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2000, 'ether'), { from: F })
       assert.isTrue(tx4.receipt.status)
 
       // Attempt with maxFee 100%
-      const tx5 = await borrowerOperations.openCdp(dec(1, 18), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: G, value: dec(2000, 'ether') })
+      await contracts.collateral.deposit({from: G, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: G});
+      const tx5 = await borrowerOperations.openCdp(dec(1, 18), dec(100, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2000, 'ether'), { from: G })
       assert.isTrue(tx5.receipt.status)
     })
 
@@ -4090,8 +4118,10 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
       await openCdp({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: B } })
 
+      await contracts.collateral.deposit({from: C, value: dec(100000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
       const EBTCRequest = toBN(dec(2, 18))
-      const txC = await borrowerOperations.openCdp(th._100pct, EBTCRequest, ZERO_ADDRESS, ZERO_ADDRESS, { value: dec(100, 'ether'), from: C })
+      const txC = await borrowerOperations.openCdp(th._100pct, EBTCRequest, ZERO_ADDRESS, ZERO_ADDRESS, dec(100, 'ether'), { from: C })
       const _EBTCFee = toBN(th.getEventArgByName(txC, "EBTCBorrowingFeePaid", "_EBTCFee"))
 
       const expectedFee = BORROWING_FEE_FLOOR.mul(toBN(EBTCRequest)).div(toBN(dec(1, 18)))
@@ -4213,11 +4243,10 @@ contract('BorrowerOperations', async accounts => {
       //  Alice and Bob add coll and withdraw such  that the TCR is ~150%
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("5000")});
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("5000")});
+      await contracts.collateral.deposit({from: carol, value: dec(5000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: carol});
       await openCdp({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       await openCdp({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(151, 16)), extraParams: { from: bob } })
-
-      const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
-      const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
       const TCR = (await th.getTCR(contracts)).toString()
       th.assertIsApproximatelyEqual(toBN(TCR), dec(150, 16), 10000000000000000)
@@ -4227,7 +4256,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      await assertRevert(borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT), th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: carol, value: dec(1, 'ether') }))
+      await assertRevert(borrowerOperations.openCdp(th._100pct, await getNetBorrowingAmount(MIN_NET_DEBT), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: carol }))
     })
 
     it("openCdp(): creates a new Cdp and assigns the correct collateral and debt amount", async () => {
@@ -4246,7 +4275,9 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(status_Before, 0)
 
       const EBTCRequest = MIN_NET_DEBT
-      await borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: dec(100, 'ether') })
+      await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+      await borrowerOperations.openCdp(th._100pct, MIN_NET_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(100, 'ether'), { from: alice })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       // Get the expected debt based on the EBTC request (adding fee and liq. reserve on top)
@@ -4390,7 +4421,6 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(50, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
-      const carolIndex = await sortedCdps.cdpOfOwnerByIndex(carol,0)
 
       // Check Cdp is active
       const alice_Cdp_1 = await cdpManager.Cdps(aliceIndex)
@@ -4431,8 +4461,9 @@ contract('BorrowerOperations', async accounts => {
       const alice_Cdp_Before = await cdpManager.Cdps(alice)
       const debt_Before = alice_Cdp_Before[0]
       assert.equal(debt_Before, 0)
-
-      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 18)), alice, alice, { from: alice, value: dec(100, 'ether') })
+      await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 18)), alice, alice, dec(100, 'ether'), { from: alice })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       // check after
@@ -4460,9 +4491,9 @@ contract('BorrowerOperations', async accounts => {
       // check before
       const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
       assert.equal(alice_EBTCTokenBalance_Before, 0)
-
-      await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, { from: alice, value: dec(100, 'ether') })
-      const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
+      await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+      await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+      await borrowerOperations.openCdp(th._100pct, dec(1, 18), alice, alice, dec(100, 'ether'), { from: alice })
 
       // check after
       const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
@@ -4605,8 +4636,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         await priceFeed.setPrice(dec(1000, 13))
 
@@ -4639,8 +4674,13 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
@@ -4651,7 +4691,7 @@ contract('BorrowerOperations', async accounts => {
         const liquidationTx = await cdpManager.liquidate(bobIndex, {from: owner})
         assert.isFalse(await sortedCdps.contains(bobIndex))
 
-        const [liquidatedDebt, liquidatedColl, _] = th.getEmittedLiquidationValues(liquidationTx)
+        th.getEmittedLiquidationValues(liquidationTx)
 
         await priceFeed.setPrice(dec(7428, 13))
         const price = await priceFeed.getPrice()
@@ -4673,8 +4713,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
@@ -4706,8 +4750,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(5, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
@@ -4739,8 +4787,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
@@ -4773,8 +4825,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("51000")});
@@ -4809,8 +4865,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await _signer.sendTransaction({ to: owner, value: ethers.utils.parseEther("51000")});	
@@ -4845,8 +4905,12 @@ contract('BorrowerOperations', async accounts => {
         const cdpColl = toBN(dec(1000, 'ether'))
         const cdpTotalDebt = toBN(dec(10, 18))
         const cdpEBTCAmount = await getOpenCdpEBTCAmount(cdpTotalDebt)
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, alice, alice, { from: alice, value: cdpColl })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, bob, bob, { from: bob, value: cdpColl })
+        await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
+        await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
+        await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, alice, alice, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, bob, bob, cdpColl, { from: bob })
 
         const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
@@ -4909,7 +4973,7 @@ contract('BorrowerOperations', async accounts => {
     })
 
     if (!withProxy) {
-      it("closeCdp(): fails if owner cannot receive ETH", async () => {
+      xit("closeCdp(): fails if owner cannot receive ETH", async () => {
         const nonPayable = await NonPayable.new()
 
         // we need 2 cdps to be able to close 1 and have 1 remaining in the system
