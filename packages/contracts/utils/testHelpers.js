@@ -733,6 +733,11 @@ class TestHelper {
     // Give some more ETH for misc purposes:
     await contracts.collateral.deposit({from: extraParams.from, value: MoneyValues._1000e18BN});
     await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: extraParams.from});
+    // handle deposit for DSProxy
+    if (extraParams.usrProxy){
+        await contracts.collateral.transfer(extraParams.usrProxy, _collAmt, {from: extraParams.from});	
+        if (DEBUG) console.log('transfer coll to proxy=' + extraParams.usrProxy);	
+    }
     const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
 
     return {

@@ -10,6 +10,7 @@ interface ILQTYStaking {
     event CdpManagerAddressSet(address _cdpManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
+    event CollateralAddressSet(address _collTokenAddress);
 
     event StakeChanged(address indexed staker, uint newStake);
     event StakingGainsWithdrawn(address indexed staker, uint EBTCGain, uint ETHGain);
@@ -26,7 +27,8 @@ interface ILQTYStaking {
         address _ebtcTokenAddress,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
-        address _activePoolAddress
+        address _activePoolAddress,
+        address _collTokenAddress
     ) external;
 
     function stake(uint _LQTYamount) external;

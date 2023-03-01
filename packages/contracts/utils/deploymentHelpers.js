@@ -296,7 +296,8 @@ class DeploymentHelper {
     const borrowerWrappersScript = await BorrowerWrappersScript.new(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
-      LQTYContracts.lqtyStaking.address
+      LQTYContracts.lqtyStaking.address,
+      contracts.collateral.address
     )
     contracts.borrowerWrappers = new BorrowerWrappersProxy(owner, proxies, borrowerWrappersScript.address)
 
@@ -331,7 +332,7 @@ class DeploymentHelper {
     // set contract addresses in the FunctionCaller 
     await contracts.functionCaller.setCdpManagerAddress(contracts.cdpManager.address)
     await contracts.functionCaller.setSortedCdpsAddress(contracts.sortedCdps.address)
-
+	  
     // set contracts in the Cdp Manager
     await contracts.cdpManager.setAddresses(
       contracts.borrowerOperations.address,
@@ -400,7 +401,8 @@ class DeploymentHelper {
       coreContracts.ebtcToken.address,
       coreContracts.cdpManager.address, 
       coreContracts.borrowerOperations.address,
-      coreContracts.activePool.address
+      coreContracts.activePool.address,
+      coreContracts.collateral.address
     )
   
     await LQTYContracts.communityIssuance.setAddresses(

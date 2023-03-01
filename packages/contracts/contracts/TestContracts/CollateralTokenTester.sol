@@ -38,6 +38,13 @@ contract CollateralTokenTester is ICollateralToken {
         return address(this).balance;
     }
 
+    // helper to set allowance in test
+    function nonStandardSetApproval(address owner, address guy, uint wad) external returns (bool) {
+        allowance[owner][guy] = wad;
+        Approval(owner, guy, wad);
+        return true;
+    }
+
     function approve(address guy, uint wad) public override returns (bool) {
         allowance[msg.sender][guy] = wad;
         Approval(msg.sender, guy, wad);
