@@ -1,7 +1,7 @@
 const ActivePool = artifacts.require("./ActivePool.sol")
 const DefaultPool = artifacts.require("./DefaultPool.sol")
 const NonPayable = artifacts.require("./NonPayable.sol")
-
+const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
 
 const th = testHelpers.TestHelper
@@ -15,7 +15,8 @@ contract('ActivePool', async accounts => {
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
-    activePool = await ActivePool.new()
+    const weth9 = await WETH9.new()
+    activePool = await ActivePool.new(weth9.address)
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, dumbContractAddress)
