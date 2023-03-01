@@ -157,11 +157,11 @@ contract('CdpManager', async accounts => {
 
     // check ActivePool ETH and EBTC debt before
     const activePool_ETH_Before = (await activePool.getETH()).toString()
-    const activePool_RawEther_Before = (await web3.eth.getBalance(activePool.address)).toString()
+    const activePool_stEth_Before = (await contracts.collateral.balanceOf(activePool.address)).toString()
     const activePool_EBTCDebt_Before = (await activePool.getEBTCDebt()).toString()
 
     assert.equal(activePool_ETH_Before, A_collateral.add(B_collateral))
-    assert.equal(activePool_RawEther_Before, A_collateral.add(B_collateral))
+    assert.equal(activePool_stEth_Before, A_collateral.add(B_collateral))
     th.assertIsApproximatelyEqual(activePool_EBTCDebt_Before, A_totalDebt.add(B_totalDebt))
 
     // price drops to 1ETH:100EBTC, reducing Bob's ICR below MCR
@@ -178,7 +178,7 @@ contract('CdpManager', async accounts => {
 
     // check ActivePool ETH and EBTC debt 
     const activePool_ETH_After = (await activePool.getETH()).toString()
-    const activePool_RawEther_After = (await web3.eth.getBalance(activePool.address)).toString()
+    const activePool_RawEther_After = (await contracts.collateral.balanceOf(activePool.address)).toString()
     const activePool_EBTCDebt_After = (await activePool.getEBTCDebt()).toString()
 
     assert.equal(activePool_ETH_After, A_collateral)
@@ -1117,8 +1117,8 @@ contract('CdpManager', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Confirm C has ICR > TCR
-    await borrowerOperations.addColl(_cCdpId, _cCdpId, _cCdpId, { from: C, value: dec(6, 'ether') })
-    await borrowerOperations.addColl(_dCdpId, _dCdpId, _dCdpId, { from: D, value: dec(6, 'ether') })
+    await borrowerOperations.addColl(_cCdpId, _cCdpId, _cCdpId, dec(6, 'ether'), { from: C })
+    await borrowerOperations.addColl(_dCdpId, _dCdpId, _dCdpId, dec(6, 'ether'), { from: D })
     const TCR = await cdpManager.getTCR(price)
     const ICR_C = await cdpManager.getCurrentICR(_cCdpId, price)
   
@@ -1163,7 +1163,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     await priceFeed.setPrice(dec(2500, 13))
-    await borrowerOperations.addColl(_eCdpId, _eCdpId, _eCdpId, { from: E, value: dec(10, 'ether') })
+    await borrowerOperations.addColl(_eCdpId, _eCdpId, _eCdpId, dec(10, 'ether'), { from: E })
 
     // Try to liquidate C again. 
     const liqTx2 = await cdpManager.liquidateCdps(2, {from: owner})
@@ -2361,15 +2361,13 @@ contract('CdpManager', async accounts => {
     const { netDebt: C_netDebt } = await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(10, 18), extraParams: { from: carol } })
     const partialRedemptionAmount = toBN(2)
     const redemptionAmount = C_netDebt.add(B_netDebt).add(partialRedemptionAmount)
-    // start Dennis with a high ICR
-    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("25000")});
     await openCdp({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_Before = toBN(await contracts.collateral.balanceOf(dennis))
 
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
@@ -2426,7 +2424,7 @@ contract('CdpManager', async accounts => {
     assert.equal(bob_debt_After, '0')
     assert.equal(carol_debt_After, '0')
 
-    const dennis_ETHBalance_After = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
