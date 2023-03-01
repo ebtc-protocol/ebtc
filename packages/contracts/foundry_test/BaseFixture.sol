@@ -166,7 +166,8 @@ contract eBTCBaseFixture is Test {
             address(eBTCToken),
             address(cdpManager),
             address(borrowerOperations),
-            address(activePool)
+            address(activePool),
+            address(collateral)
         );
     }
 }
