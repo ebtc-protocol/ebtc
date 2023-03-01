@@ -28,7 +28,7 @@ contract BorrowerOperationsScript is CheckContract {
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
-    ) external payable {
+    ) external {
         borrowerOperations.addColl(_cdpId, _upperHint, _lowerHint, _collAmount);
     }
 

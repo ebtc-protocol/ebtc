@@ -51,6 +51,7 @@ contract('BorrowerWrappers', async accounts => {
   let lqtyTokenOriginal
   let lqtyToken
   let lqtyStaking
+  let collToken;
 
   let contracts
 
@@ -70,6 +71,8 @@ contract('BorrowerWrappers', async accounts => {
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
+	  
+    let originalBorrowerOperations = contracts.borrowerOperations
 
     cdpManagerOriginal = contracts.cdpManager
     lqtyTokenOriginal = LQTYContracts.lqtyToken
@@ -89,6 +92,13 @@ contract('BorrowerWrappers', async accounts => {
     lqtyStaking = LQTYContracts.lqtyStaking
     lqtyToken = LQTYContracts.lqtyToken
     dummyAddrs = "0x000000000000000000000000000000000000dEaD"
+    collToken = contracts.collateral;	
+	
+    // approve BorrowerOperations for CDP proxy
+    for (let usr of users) {
+         const usrProxyAddress = borrowerWrappers.getProxyAddressFromUser(usr)
+         await collToken.nonStandardSetApproval(usrProxyAddress, originalBorrowerOperations.address, mv._1Be18BN);
+    }
 
     EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
   })
@@ -137,10 +147,10 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimCollateralAndOpenCdp(): reverts if nothing to claim', async () => {
     // Whale opens Cdp
-    await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens Cdp
-    const { ebtcAmount, collateral } = await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice } })
+    const { ebtcAmount, collateral } = await openCdp({ ICR: toBN(dec(15, 17)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -165,9 +175,9 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimCollateralAndOpenCdp(): without sending any value', async () => {
     // alice opens Cdp
-    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({extraEBTCAmount: 0, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
+    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({extraEBTCAmount: 0, ICR: toBN(dec(3, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(5, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(5, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -187,7 +197,7 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
-    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice })
+    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, 0, { from: alice })
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -199,9 +209,9 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimCollateralAndOpenCdp(): sending value in the transaction', async () => {
     // alice opens Cdp
-    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+    const { ebtcAmount, netDebt: redeemAmount, collateral } = await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: redeemAmount, ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -221,7 +231,8 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
-    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice, value: collateral })
+    await collToken.transfer(borrowerWrappers.getProxyAddressFromUser(alice), collateral, {from: alice});
+    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, collateral, { from: alice, value: 0 })
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -235,13 +246,13 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimSPRewardsAndRecycle(): only owner can call it', async () => {
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
     const defaulterProxyAddress = borrowerWrappers.getProxyAddressFromUser(defaulter_1);
     let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
@@ -250,7 +261,7 @@ contract('BorrowerWrappers', async accounts => {
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
-    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner } }) 
+    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner, usrProxy: borrowerWrappers.getProxyAddressFromUser(owner) } }) 
     const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 
@@ -264,16 +275,16 @@ contract('BorrowerWrappers', async accounts => {
   it('claimSPRewardsAndRecycle():', async () => {
     // Whale opens Cdp
     const whaleDeposit = toBN(dec(2350, 18))
-    await openCdp({ extraEBTCAmount: whaleDeposit, ICR: toBN(dec(4, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: whaleDeposit, ICR: toBN(dec(4, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens cdp
     const aliceDeposit = toBN(dec(150, 18))
-    await openCdp({ extraEBTCAmount: aliceDeposit, ICR: toBN(dec(3, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: aliceDeposit, ICR: toBN(dec(3, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
     const defaulterProxyAddress = borrowerWrappers.getProxyAddressFromUser(defaulter_1);
     let _defaulterCdpId1 = await sortedCdps.cdpOfOwnerByIndex(defaulterProxyAddress, 0);
 
@@ -282,7 +293,7 @@ contract('BorrowerWrappers', async accounts => {
     await priceFeed.setPrice(price);
 
     // Defaulter cdp closed
-    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner } }) 
+    await openCdp({ ICR: toBN(dec(210, 16)), extraEBTCAmount: netDebt, extraParams: { from: owner, usrProxy: borrowerWrappers.getProxyAddressFromUser(owner) } }) 
     const liquidationTX_1 = await cdpManager.liquidate(_defaulterCdpId1, { from: owner })
     const [liquidatedDebt_1] = await th.getEmittedLiquidationValues(liquidationTX_1)
 
@@ -337,10 +348,10 @@ contract('BorrowerWrappers', async accounts => {
 
   it('claimStakingGainsAndRecycle(): only owner can call it', async () => {
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -351,7 +362,7 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
 
     // skip bootstrapping phase
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
@@ -371,7 +382,7 @@ contract('BorrowerWrappers', async accounts => {
     const price = toBN(dec(200, 18))
 
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // mint some LQTY
     await lqtyTokenOriginal.unprotectedMint(borrowerOperations.getProxyAddressFromUser(whale), dec(1850, 18))
@@ -382,7 +393,7 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
@@ -433,13 +444,13 @@ contract('BorrowerWrappers', async accounts => {
     const price = await priceFeed.getPrice();
 
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // Defaulter Cdp opened
-    await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
 
     // alice opens cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -507,10 +518,10 @@ contract('BorrowerWrappers', async accounts => {
     const price = toBN(dec(200, 18))
 
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -523,7 +534,7 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
@@ -570,10 +581,10 @@ contract('BorrowerWrappers', async accounts => {
     const price = await priceFeed.getPrice();
 
     // Whale opens Cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale } })
+    await openCdp({ extraEBTCAmount: toBN(dec(1850, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: whale, usrProxy: borrowerWrappers.getProxyAddressFromUser(whale) } })
 
     // alice opens cdp
-    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice } })
+    await openCdp({ extraEBTCAmount: toBN(dec(150, 18)), extraParams: { from: alice, usrProxy: borrowerWrappers.getProxyAddressFromUser(alice) } })
     const aliceProxyAddress = borrowerWrappers.getProxyAddressFromUser(alice);
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(aliceProxyAddress, 0);
 
@@ -586,7 +597,7 @@ contract('BorrowerWrappers', async accounts => {
     await lqtyStaking.stake(dec(150, 18), { from: alice })
 
     // Defaulter Cdp opened
-    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1 } })
+    const { ebtcAmount, netDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
     const borrowingFee = netDebt.sub(ebtcAmount)
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
