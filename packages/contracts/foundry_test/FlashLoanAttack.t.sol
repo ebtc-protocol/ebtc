@@ -6,9 +6,8 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
-import "../../contracts/Dependencies/IERC20.sol";
-import "../../contracts/Interfaces/IERC3156FlashLender.sol";
-import "../../contracts/Interfaces/IWETH.sol";
+import "../contracts/Dependencies/IERC20.sol";
+import "../contracts/Interfaces/IERC3156FlashLender.sol";
 
 /*
  * FlashLoan ReEntrancy Attack
@@ -49,8 +48,6 @@ contract FlashAttack {
 
 contract FlashLoanAttack is eBTCBaseFixture {
     Utilities internal _utils;
-
-    IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     function setUp() public override {
         // Base setup
@@ -122,36 +119,36 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint128 amount) public {
-        uint256 fee = activePool.flashFee(address(WETH), amount);
+        uint256 fee = activePool.flashFee(address(weth), amount);
 
         vm.assume(fee > 0);
 
         FlashAttack attacker = new FlashAttack(
-            IERC20(address(WETH)),
+            IERC20(address(weth)),
             IERC3156FlashLender(address(activePool))
         );
 
         // Deal only fee for one, will revert
         vm.deal(address(activePool), amount);
-        deal(address(WETH), address(attacker), fee);
+        deal(address(weth), address(attacker), fee);
 
         vm.expectRevert("ActivePool: Too much");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),
-            address(WETH),
+            address(weth),
             amount,
             abi.encodePacked(uint256(0))
         );
 
         vm.deal(address(activePool), amount * 2);
-        deal(address(WETH), address(attacker), fee * 2);
+        deal(address(weth), address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
         vm.assume(address(activePool).balance - amount < activePool.getETH());
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),
-            address(WETH),
+            address(weth),
             amount,
             abi.encodePacked(uint256(0))
         );

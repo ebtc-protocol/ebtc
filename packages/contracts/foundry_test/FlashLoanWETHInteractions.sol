@@ -6,9 +6,8 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture, BorrowerOperations} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
-import "../../contracts/Dependencies/IERC20.sol";
-import "../../contracts/Interfaces/IERC3156FlashLender.sol";
-import "../../contracts/Interfaces/IWETH.sol";
+import "../contracts/Dependencies/IERC20.sol";
+import "../contracts/Interfaces/IERC3156FlashLender.sol";
 
 /*
  * Runs Flashloans and deposits ETH into CDPManager
@@ -18,7 +17,7 @@ contract FlashWithDeposit {
     IERC3156FlashLender public immutable lender;
     BorrowerOperations public borrowerOperations;
 
-    uint internal constant MIN_NET_DEBT = 1800e18; // Subject to changes once CL is changed
+    uint internal constant MIN_NET_DEBT = 2e18; // Subject to changes once CL is changed
     uint private constant FEE = 5e17;
 
     constructor(
@@ -58,8 +57,6 @@ contract FlashWithDeposit {
 contract FlashLoanWETHInteractions is eBTCBaseFixture {
     Utilities internal _utils;
 
-    IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
@@ -83,21 +80,20 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         borrowerOperations.openCdp{value: 30 ether}(FEE, borrowedAmount, "hint", "hint");
     }
 
-    // TODO: More after Auditors consultation
     function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
-        uint256 fee = activePool.flashFee(address(WETH), amount);
+        uint256 fee = activePool.flashFee(address(weth), amount);
 
         vm.assume(fee > 0);
 
         // TODO: Could change to w/e but this should be fine
         // Peer review and change accordingly
-        vm.assume(amountToDepositInCDP > 30 ether);
+        vm.assume(amountToDepositInCDP > 100 ether);
 
         // Avoid over borrowing
         vm.assume(amount < amountToDepositInCDP);
 
         FlashWithDeposit macroContract = new FlashWithDeposit(
-            IERC20(address(WETH)),
+            IERC20(address(weth)),
             IERC3156FlashLender(address(activePool)),
             borrowerOperations
         );
@@ -108,21 +104,21 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         users = _utils.createUsers(1);
         address user = users[0];
         uint borrowedAmount = _utils.calculateBorrowAmount(
-            30 ether,
+            amountToDepositInCDP,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            COLLATERAL_RATIO_DEFENSIVE
         );
         vm.prank(user);
         vm.deal(address(user), amountToDepositInCDP);
         borrowerOperations.openCdp{value: amountToDepositInCDP}(FEE, borrowedAmount, "hint", "hint");
 
-        deal(address(WETH), address(macroContract), fee);
+        deal(address(weth), address(macroContract), fee);
         vm.deal(address(macroContract), amountToDepositInCDP);
 
         // Ensure Delta between ETH and balance is marginal
         activePool.flashLoan(
             IERC3156FlashBorrower(address(macroContract)),
-            address(WETH),
+            address(weth),
             amount,
             abi.encodePacked(uint256(amountToDepositInCDP))
         );

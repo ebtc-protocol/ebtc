@@ -22,6 +22,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     string public constant NAME = "ActivePool";
 
+    IWETH public immutable WETH;
+
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
     address public defaultPoolAddress;
@@ -34,6 +36,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolETHBalanceUpdated(uint _ETH);
+
+    constructor(address _weth) public {
+        WETH = IWETH(_weth);
+    }
 
     // --- Contract setters ---
 
