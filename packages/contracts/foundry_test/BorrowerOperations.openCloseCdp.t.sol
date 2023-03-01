@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
-
+pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
@@ -177,7 +177,8 @@ contract CDPTest is eBTCBaseFixture {
      * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
      */
     function testCdpsForManyUsersManyMinDebtTooLow(uint96 collAmount) public {
-        collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
+        vm.assume(collAmount > 1 ether);
+        vm.assume(collAmount < 10000000 ether);
 
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,

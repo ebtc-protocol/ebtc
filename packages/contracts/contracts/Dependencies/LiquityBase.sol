@@ -18,6 +18,12 @@ contract LiquityBase is BaseMath, ILiquityBase {
     using SafeMath for uint;
 
     uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
+    uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
+    uint public constant _5pct = 50000000000000000; // 5e16 == 5%
+
+    // Collateral Ratio applied for Liquidation Incentive
+    // i.e., liquidator repay $1 worth of debt to get back $1.05 worth of collateral
+    uint public constant LICR = 1050000000000000000; // 105%
 
     // Minimum collateral ratio for individual cdps
     uint public constant MCR = 1100000000000000000; // 110%
@@ -28,14 +34,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Amount of EBTC to be locked in gas pool on opening cdps
     uint public constant EBTC_GAS_COMPENSATION = 1e16;
 
-    // Minimum amount of net EBTC debt a cdp must have
-    // TODO: Should be denominated in ETH, see: https://github.com/Badger-Finance/ebtc/issues/16
-    uint public constant MIN_NET_DEBT = 1e17;
-    // uint constant public MIN_NET_DEBT = 0;
+    uint public constant LIQUIDATOR_REWARD = 2e17;
+
+    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
+    uint public constant MIN_NET_DEBT = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
-    uint public constant BORROWING_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
+    uint public constant BORROWING_FEE_FLOOR = 0; // 0.5%
 
     uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
 
@@ -89,12 +95,24 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint _price,
         uint _lastInterestRateUpdateTime
     ) internal view returns (uint TCR) {
+        (uint TCR, uint entireSystemColl, uint entireSystemDebt) = _getTCRWithTotalCollAndDebt(
+            _price,
+            _lastInterestRateUpdateTime
+        );
+
+        return TCR;
+    }
+
+    function _getTCRWithTotalCollAndDebt(
+        uint _price,
+        uint _lastInterestRateUpdateTime
+    ) internal view returns (uint TCR, uint _coll, uint _debt) {
         uint entireSystemColl = getEntireSystemColl();
         uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
         TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
 
-        return TCR;
+        return (TCR, entireSystemColl, entireSystemDebt);
     }
 
     function _checkRecoveryMode(
@@ -112,12 +130,31 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _calcUnitAmountAfterInterest(uint _time) internal pure virtual returns (uint) {
-        // TODO: Fuzz to check overflows/underflows
         return
             FixedPointMathLib.fpow(
                 DECIMAL_PRECISION.add(INTEREST_RATE_PER_SECOND),
                 _time,
                 DECIMAL_PRECISION
             );
+    }
+
+    // Convert ETH/BTC price to BTC/ETH price
+    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+        return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
+    }
+
+    // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
+    // _debt is denominated in BTC
+    // _price is ETH/BTC
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+        uint priceReciprocal = _getPriceReciprocal(_price);
+        return _debt.mul(priceReciprocal).div(DECIMAL_PRECISION);
+    }
+
+    // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
+    // _debt is denominated in ETH
+    // _price is ETH/BTC
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
+        return _debt.mul(_price).div(DECIMAL_PRECISION);
     }
 }

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../Test.sol";
-import "../StdJson.sol";
+import "../src/StdCheats.sol";
+import "../src/Test.sol";
+import "../src/StdJson.sol";
 
 contract StdCheatsTest is Test {
     Bar test;
@@ -67,7 +68,7 @@ contract StdCheatsTest is Test {
     }
 
     function testMakeAddrEquivalence() public {
-        (address addr, ) = makeAddrAndKey("1337");
+        (address addr,) = makeAddrAndKey("1337");
         assertEq(makeAddr("1337"), addr);
     }
 
@@ -102,71 +103,26 @@ contract StdCheatsTest is Test {
         assertEq(barToken.totalSupply(), 10000e18);
     }
 
-    function testBound() public {
-        assertEq(bound(5, 0, 4), 0);
-        assertEq(bound(0, 69, 69), 69);
-        assertEq(bound(0, 68, 69), 68);
-        assertEq(bound(10, 150, 190), 160);
-        assertEq(bound(300, 2800, 3200), 3100);
-        assertEq(bound(9999, 1337, 6666), 6006);
-    }
-
-    function testCannotBoundMaxLessThanMin() public {
-        vm.expectRevert(bytes("Test bound(uint256,uint256,uint256): Max is less than min."));
-        bound(5, 100, 10);
-    }
-
-    function testBound(
-        uint256 num,
-        uint256 min,
-        uint256 max
-    ) public {
-        if (min > max) (min, max) = (max, min);
-
-        uint256 bounded = bound(num, min, max);
-
-        assertGe(bounded, min);
-        assertLe(bounded, max);
-    }
-
-    function testBoundUint256Max() public {
-        assertEq(bound(0, type(uint256).max - 1, type(uint256).max), type(uint256).max - 1);
-        assertEq(bound(1, type(uint256).max - 1, type(uint256).max), type(uint256).max);
-    }
-
-    function testCannotBoundMaxLessThanMin(
-        uint256 num,
-        uint256 min,
-        uint256 max
-    ) public {
-        vm.assume(min > max);
-        vm.expectRevert(bytes("Test bound(uint256,uint256,uint256): Max is less than min."));
-        bound(num, min, max);
-    }
-
     function testDeployCode() public {
-        address deployed = deployCode("StdCheats.t.sol:StdCheatsTest", bytes(""));
-        assertEq(string(getCode(deployed)), string(getCode(address(this))));
+        address deployed = deployCode("StdCheats.t.sol:Bar", bytes(""));
+        assertEq(string(getCode(deployed)), string(getCode(address(test))));
     }
 
     function testDeployCodeNoArgs() public {
-        address deployed = deployCode("StdCheats.t.sol:StdCheatsTest");
-        assertEq(string(getCode(deployed)), string(getCode(address(this))));
+        address deployed = deployCode("StdCheats.t.sol:Bar");
+        assertEq(string(getCode(deployed)), string(getCode(address(test))));
     }
 
-    // We need that payable constructor in order to send ETH on construction
-    constructor() payable {}
-
     function testDeployCodeVal() public {
-        address deployed = deployCode("StdCheats.t.sol:StdCheatsTest", bytes(""), 1 ether);
-        assertEq(string(getCode(deployed)), string(getCode(address(this))));
-	assertEq(deployed.balance, 1 ether);
+        address deployed = deployCode("StdCheats.t.sol:Bar", bytes(""), 1 ether);
+        assertEq(string(getCode(deployed)), string(getCode(address(test))));
+        assertEq(deployed.balance, 1 ether);
     }
 
     function testDeployCodeValNoArgs() public {
-        address deployed = deployCode("StdCheats.t.sol:StdCheatsTest", 1 ether);
-        assertEq(string(getCode(deployed)), string(getCode(address(this))));
-	assertEq(deployed.balance, 1 ether);
+        address deployed = deployCode("StdCheats.t.sol:Bar", 1 ether);
+        assertEq(string(getCode(deployed)), string(getCode(address(test))));
+        assertEq(deployed.balance, 1 ether);
     }
 
     // We need this so we can call "this.deployCode" rather than "deployCode" directly
@@ -175,7 +131,7 @@ contract StdCheatsTest is Test {
     }
 
     function testDeployCodeFail() public {
-        vm.expectRevert(bytes("Test deployCode(string): Deployment failed."));
+        vm.expectRevert(bytes("StdCheats deployCode(string): Deployment failed."));
         this.deployCodeHelper("StdCheats.t.sol:RevertingContract");
     }
 
@@ -196,61 +152,151 @@ contract StdCheatsTest is Test {
         }
     }
 
+    function testDeriveRememberKey() public {
+        string memory mnemonic = "test test test test test test test test test test test junk";
+
+        (address deployer, uint256 privateKey) = deriveRememberKey(mnemonic, 0);
+        assertEq(deployer, 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        assertEq(privateKey, 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80);
+    }
+
     function testBytesToUint() public {
-        assertEq(3, bytesToUint(hex'03'));
-        assertEq(2, bytesToUint(hex'02'));
-        assertEq(255, bytesToUint(hex'ff'));
-        assertEq(29625, bytesToUint(hex'73b9'));
+        assertEq(3, bytesToUint_test(hex"03"));
+        assertEq(2, bytesToUint_test(hex"02"));
+        assertEq(255, bytesToUint_test(hex"ff"));
+        assertEq(29625, bytesToUint_test(hex"73b9"));
     }
 
     function testParseJsonTxDetail() public {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/src/test/fixtures/broadcast.log.json");
+        string memory path = string.concat(root, "/test/fixtures/broadcast.log.json");
         string memory json = vm.readFile(path);
         bytes memory transactionDetails = json.parseRaw(".transactions[0].tx");
         RawTx1559Detail memory rawTxDetail = abi.decode(transactionDetails, (RawTx1559Detail));
         Tx1559Detail memory txDetail = rawToConvertedEIP1559Detail(rawTxDetail);
         assertEq(txDetail.from, 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
         assertEq(txDetail.to, 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
-        assertEq(txDetail.data, hex'23e99187000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000013370000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004');
+        assertEq(
+            txDetail.data,
+            hex"23e99187000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000013370000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004"
+        );
         assertEq(txDetail.nonce, 3);
         assertEq(txDetail.txType, 2);
         assertEq(txDetail.gas, 29625);
         assertEq(txDetail.value, 0);
     }
 
-    function testReadEIP1559Transaction() public {
+    function testReadEIP1559Transaction() public view {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/src/test/fixtures/broadcast.log.json");
+        string memory path = string.concat(root, "/test/fixtures/broadcast.log.json");
         uint256 index = 0;
         Tx1559 memory transaction = readTx1559(path, index);
+        transaction;
     }
 
-    function testReadEIP1559Transactions() public {
+    function testReadEIP1559Transactions() public view {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/src/test/fixtures/broadcast.log.json");
+        string memory path = string.concat(root, "/test/fixtures/broadcast.log.json");
         Tx1559[] memory transactions = readTx1559s(path);
+        transactions;
     }
 
     function testReadReceipt() public {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/src/test/fixtures/broadcast.log.json");
-        uint index = 5;
+        string memory path = string.concat(root, "/test/fixtures/broadcast.log.json");
+        uint256 index = 5;
         Receipt memory receipt = readReceipt(path, index);
-        assertEq(receipt.logsBloom,
-                 hex"00000000000800000000000000000010000000000000000000000000000180000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100");
+        assertEq(
+            receipt.logsBloom,
+            hex"00000000000800000000000000000010000000000000000000000000000180000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100"
+        );
     }
 
-    function testReadReceipts() public {
+    function testReadReceipts() public view {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/src/test/fixtures/broadcast.log.json");
+        string memory path = string.concat(root, "/test/fixtures/broadcast.log.json");
         Receipt[] memory receipts = readReceipts(path);
+        receipts;
     }
 
+    function testGasMeteringModifier() public {
+        uint256 gas_start_normal = gasleft();
+        addInLoop();
+        uint256 gas_used_normal = gas_start_normal - gasleft();
+
+        uint256 gas_start_single = gasleft();
+        addInLoopNoGas();
+        uint256 gas_used_single = gas_start_single - gasleft();
+
+        uint256 gas_start_double = gasleft();
+        addInLoopNoGasNoGas();
+        uint256 gas_used_double = gas_start_double - gasleft();
+
+        emit log_named_uint("Normal gas", gas_used_normal);
+        emit log_named_uint("Single modifier gas", gas_used_single);
+        emit log_named_uint("Double modifier  gas", gas_used_double);
+        assertTrue(gas_used_double + gas_used_single < gas_used_normal);
+    }
+
+    function addInLoop() internal pure returns (uint256) {
+        uint256 b;
+        for (uint256 i; i < 10000; i++) {
+            b += i;
+        }
+        return b;
+    }
+
+    function addInLoopNoGas() internal noGasMetering returns (uint256) {
+        return addInLoop();
+    }
+
+    function addInLoopNoGasNoGas() internal noGasMetering returns (uint256) {
+        return addInLoopNoGas();
+    }
+
+    function bytesToUint_test(bytes memory b) private pure returns (uint256) {
+        uint256 number;
+        for (uint256 i = 0; i < b.length; i++) {
+            number = number + uint256(uint8(b[i])) * (2 ** (8 * (b.length - (i + 1))));
+        }
+        return number;
+    }
+
+    function testAssumeNoPrecompiles(address addr) external {
+        assumeNoPrecompiles(addr, getChain("optimism_goerli").chainId);
+        assertTrue(
+            addr < address(1) || (addr > address(9) && addr < address(0x4200000000000000000000000000000000000000))
+                || addr > address(0x4200000000000000000000000000000000000800)
+        );
+    }
+
+    function testAssumePayable() external {
+        // all should revert since these addresses are not payable
+
+        // VM address
+        vm.expectRevert();
+        assumePayable(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
+        // Console address
+        vm.expectRevert();
+        assumePayable(0x000000000000000000636F6e736F6c652e6c6f67);
+
+        // Create2Deployer
+        vm.expectRevert();
+        assumePayable(0x4e59b44847b379578588920cA78FbF26c0B4956C);
+    }
+
+    function testAssumePayable(address addr) external {
+        assumePayable(addr);
+        assertTrue(
+            addr != 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D && addr != 0x000000000000000000636F6e736F6c652e6c6f67
+                && addr != 0x4e59b44847b379578588920cA78FbF26c0B4956C
+        );
+    }
 }
 
 contract Bar {
-    constructor() {
+    constructor() payable {
         /// `DEAL` STDCHEAT
         totalSupply = 10000e18;
         balanceOf[address(this)] = totalSupply;
@@ -260,17 +306,19 @@ contract Bar {
     function bar(address expectedSender) public payable {
         require(msg.sender == expectedSender, "!prank");
     }
+
     function origin(address expectedSender) public payable {
         require(msg.sender == expectedSender, "!prank");
         require(tx.origin == expectedSender, "!prank");
     }
+
     function origin(address expectedSender, address expectedOrigin) public payable {
         require(msg.sender == expectedSender, "!prank");
         require(tx.origin == expectedOrigin, "!prank");
     }
 
     /// `DEAL` STDCHEAT
-    mapping (address => uint256) public balanceOf;
+    mapping(address => uint256) public balanceOf;
     uint256 public totalSupply;
 }
 
@@ -279,4 +327,3 @@ contract RevertingContract {
         revert();
     }
 }
-

@@ -85,6 +85,13 @@ interface ICdpManager is ILiquityBase {
 
     function liquidate(bytes32 _cdpId) external;
 
+    function partiallyLiquidate(
+        bytes32 _cdpId,
+        uint256 _partialAmount,
+        bytes32 _upperPartialHint,
+        bytes32 _lowerPartialHint
+    ) external;
+
     function liquidateCdps(uint _n) external;
 
     function batchLiquidateCdps(bytes32[] calldata _cdpArray) external;

@@ -71,7 +71,8 @@ contract('Gas compensation tests', async accounts => {
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
     defaultPool = contracts.defaultPool
-    borrowerOperations = contracts.borrowerOperations
+    borrowerOperations = contracts.borrowerOperations	
+    debtToken = ebtcToken;
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
@@ -86,6 +87,7 @@ contract('Gas compensation tests', async accounts => {
     await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("14000")});
     await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("12000")});
     await _signer.sendTransaction({ to: erin, value: ethers.utils.parseEther("12000")});
+    await _signer.sendTransaction({ to: flyn, value: ethers.utils.parseEther("10000")});
     
     const signer_address = await _signer.getAddress()
     const b8nSigner_address = await bn8Signer.getAddress()
@@ -376,6 +378,8 @@ contract('Gas compensation tests', async accounts => {
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(dennis)), {from: dennis});
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     let _liqAliceTx = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE });
     const A_GAS_Used_Liquidator = th.gasUsed(_liqAliceTx)
@@ -383,8 +387,8 @@ contract('Gas compensation tests', async accounts => {
 	
     // Check liquidator's balance increases by 0.5% of A's coll (1 ETH)
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A).add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
-    assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
+    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
+    assert.equal(compensationReceived_A, _0pt5percent_aliceColl.add(aliceColl))
 
     // --- Price drops to 3 ---
     await priceFeed.setPrice(dec(1000, 13))
@@ -397,14 +401,15 @@ contract('Gas compensation tests', async accounts => {
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by B's 0.5% of coll, 2 ETH
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN(dec(7428, 13)))
-    // assert.equal(compensationReceived_B, _0pt5percent_bobColl) // 0.5% of 2 ETH
+    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN(dec(7428, 13)))
+    assert.equal(compensationReceived_B, _0pt5percent_bobColl) // 0.5% of 2 ETH
 
 
     // --- Price drops to 3 ---
@@ -420,14 +425,15 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidatorBalance_before_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const C_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_carolCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_C = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by C's 0.5% of coll, 3 ETH
     const compensationReceived_C = (liquidatorBalance_after_C.sub(liquidatorBalance_before_C).add(toBN(C_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
-    assert.equal(compensationReceived_C, _0pt5percent_carolColl)
+    const _0pt5percent_carolColl = toBN('0');//carolColl.div(web3.utils.toBN('200'))
+    assert.equal(compensationReceived_C, _0pt5percent_carolColl.add(carolColl))
   })
 
   it('gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder', async () => {
@@ -464,14 +470,16 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A).add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
-    assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
+    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
+    assert.equal(compensationReceived_A, _0pt5percent_aliceColl.add(aliceColl))
 
     // --- Price drops to 15 ---
     await priceFeed.setPrice(dec(15, 18))
@@ -494,14 +502,15 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by $10 worth of coll
-    const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    assert.equal(compensationReceived_B, _0pt5percent_bobColl)
+    assert.equal(compensationReceived_B, _0pt5percent_bobColl.add(bobColl))
   })
 
   it('gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder', async () => {
@@ -531,7 +540,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check value of 0.5% of collateral in USD is > $10
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -539,13 +548,15 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidatorBalance_before_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const A_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_A = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A).add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    assert.equal(compensationReceived_A, _0pt5percent_aliceColl)
+    assert.equal(compensationReceived_A, _0pt5percent_aliceColl.add(aliceColl))
 
 
     /* 
@@ -558,7 +569,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check value of 0.5% of collateral in USD is > $10
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -566,13 +577,14 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidatorBalance_before_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
     const B_GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after_B = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check liquidator's balance increases by 0.5% of coll
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B).add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))).toString()
-    assert.equal(compensationReceived_B, _0pt5percent_bobColl)
+    assert.equal(compensationReceived_B, _0pt5percent_bobColl.add(bobColl))
 
   })
 
@@ -607,9 +619,11 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const expectedGasComp_A = aliceColl.mul(th.toBN(5)).div(th.toBN(1000))
+    const expectedGasComp_A = toBN('0');//aliceColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
     const expectedLiquidatedDebt_A =  aliceDebt
 
@@ -633,9 +647,10 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const expectedGasComp_B = bobColl.mul(th.toBN(5)).div(th.toBN(1000))
+    const expectedGasComp_B = toBN('0');//bobColl.mul(th.toBN(5)).div(th.toBN(1000))
     const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
     const expectedLiquidatedDebt_B =  bobDebt
 
@@ -679,14 +694,16 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(aliceCollValueInUSD.gt(th.toBN(dec(10, 18))))
 
     // Check value of 0.5% of collateral in USD is < $10
-    const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
-    // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)	
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
     const expectedGasComp_A = _0pt5percent_aliceColl
@@ -722,9 +739,10 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
     const expectedGasComp_B = _0pt5percent_bobColl
     const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
     const expectedLiquidatedDebt_B =  bobDebt
@@ -757,14 +775,16 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
     const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
-    const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
-    // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)	
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(alice)), {from: alice});
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_A = _0pt5percent_aliceColl
@@ -789,7 +809,7 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
     const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
-    const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -797,6 +817,7 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
+    await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
     const expectedGasComp_B = _0pt5percent_bobColl
