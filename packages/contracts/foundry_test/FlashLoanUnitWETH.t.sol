@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.11;
+pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -14,7 +15,6 @@ import "../../contracts/Dependencies/IERC20.sol";
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitWETH is eBTCBaseFixture {
-    uint private constant FEE = 5e17;
 
     Utilities internal _utils;
 
