@@ -15,7 +15,6 @@ import "../../contracts/Dependencies/IERC20.sol";
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitWETH is eBTCBaseFixture {
-
     Utilities internal _utils;
 
     // Flashloans
