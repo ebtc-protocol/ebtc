@@ -77,25 +77,25 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
 
   describe('CdpManager', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(cdpManager, 10)
+      await testSetAddresses(cdpManager, 11)
     })
   })
 
   describe('BorrowerOperations', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(borrowerOperations, 9)
+      await testSetAddresses(borrowerOperations, 10)
     })
   })
 
   describe('DefaultPool', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(defaultPool, 2)
+      await testSetAddresses(defaultPool, 3)
     })
   })
 
   describe('ActivePool', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(activePool, 3)
+      await testSetAddresses(activePool, 5)
     })
   })
 
@@ -142,7 +142,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
 
   describe('LQTYStaking', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(lqtyStaking, 5)
+      await testSetAddresses(lqtyStaking, 6)
     })
   })
 

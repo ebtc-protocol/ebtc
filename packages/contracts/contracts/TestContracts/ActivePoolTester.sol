@@ -11,7 +11,7 @@ contract ActivePoolTester is ActivePool {
         EBTCDebt = EBTCDebt.add(_amount);
     }
 
-    function unprotectedPayable() external payable {
-        ETH = ETH.add(msg.value);
+    function unprotectedReceiveColl(uint _amount) external {
+        ETH = ETH.add(_amount);
     }
 }
