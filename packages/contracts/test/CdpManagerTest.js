@@ -2428,7 +2428,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
     
     // console.log("*********************************************************************************")
     // console.log("ETHFee: " + ETHFee)
@@ -2461,7 +2461,7 @@ contract('CdpManager', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_Before = toBN(await contracts.collateral.balanceOf(dennis))
 
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
@@ -2518,11 +2518,11 @@ contract('CdpManager', async accounts => {
     assert.equal(bob_debt_After, '0')
     assert.equal(carol_debt_After, '0')
 
-    const dennis_ETHBalance_After = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2545,7 +2545,7 @@ contract('CdpManager', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_Before = toBN(await contracts.collateral.balanceOf(dennis))
 
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
@@ -2602,11 +2602,11 @@ contract('CdpManager', async accounts => {
     assert.equal(bob_debt_After, '0')
     assert.equal(carol_debt_After, '0')
 
-    const dennis_ETHBalance_After = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2629,7 +2629,7 @@ contract('CdpManager', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_Before = toBN(await contracts.collateral.balanceOf(dennis))
 
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
@@ -2693,11 +2693,11 @@ contract('CdpManager', async accounts => {
     assert.equal(bob_debt_After, '0')
     assert.equal(carol_debt_After, '0')
 
-    const dennis_ETHBalance_After = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee)).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2819,9 +2819,15 @@ contract('CdpManager', async accounts => {
   })
 
   it("redeemCollateral(): performs partial redemption if resultant debt is > minimum net debt", async () => {
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 18)), A, A, { from: A, value: dec(1000, 'ether') })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(2, 18)), B, B, { from: B, value: dec(1000, 'ether') })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, { from: C, value: dec(1000, 'ether') })
+    await contracts.collateral.deposit({from: A, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+    await contracts.collateral.deposit({from: B, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: C, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 18)), A, A, dec(1000, 'ether'), { from: A })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(2, 18)), B, B, dec(1000, 'ether'), { from: B })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -2848,12 +2854,15 @@ contract('CdpManager', async accounts => {
   })
 
   it("redeemCollateral(): doesn't perform partial redemption if resultant debt would be < minimum net debt", async () => {
-    await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("2000")});
-    await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("2000")});
-    await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("2000")});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10, 18)), A, A, { from: A, value: dec(1000, 'ether') })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5, 18)), B, B, { from: B, value: dec(1000, 'ether') })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, { from: C, value: dec(1000, 'ether') })
+    await contracts.collateral.deposit({from: A, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
+    await contracts.collateral.deposit({from: B, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
+    await contracts.collateral.deposit({from: C, value: dec(1000, 'ether')});
+    await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10, 18)), A, A, dec(1000, 'ether'), { from: A })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5, 18)), B, B, dec(1000, 'ether'), { from: B })
+    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -2893,7 +2902,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(100, 18)), extraEBTCAmount: redemptionAmount, extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const dennis_ETHBalance_Before = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_Before = toBN(await contracts.collateral.balanceOf(dennis))
 
     const dennis_EBTCBalance_Before = await ebtcToken.balanceOf(dennis)
 
@@ -2966,12 +2975,12 @@ contract('CdpManager', async accounts => {
     // got in the way, he would have needed to redeem 3 EBTC to fully complete his redemption of 20 EBTC.
     // This would have required a different hint, therefore he ended up with a partial redemption.
 
-    const dennis_ETHBalance_After = toBN(await web3.eth.getBalance(dennis))
+    const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     // Expect only 17 worth of ETH drawn
     const expectedTotalETHDrawn = fullfilledRedemptionAmount.sub(frontRunRedepmtion).mul(mv._1e18BN).div(price) // redempted EBTC converted to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee).sub(toBN(th.gasUsed(redemptionTx) * GAS_PRICE)) // substract gas used for cdpManager.redeemCollateral from expected received ETH
+    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee)
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -3926,7 +3935,7 @@ contract('CdpManager', async accounts => {
     assert.equal(await cdpManager.baseRate(), '0')
 
     // Check LQTY Staking contract balance before is zero
-    const lqtyStakingBalance_Before = await web3.eth.getBalance(lqtyStaking.address)
+    const lqtyStakingBalance_Before = await contracts.collateral.balanceOf(lqtyStaking.address)
     assert.equal(lqtyStakingBalance_Before, '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
@@ -3942,7 +3951,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking contract balance after is non-zero
-    const lqtyStakingBalance_After = toBN(await web3.eth.getBalance(lqtyStaking.address))
+    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
     assert.isTrue(lqtyStakingBalance_After.gt(toBN('0')))
   })
 
@@ -4016,7 +4025,7 @@ contract('CdpManager', async accounts => {
     const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    const lqtyStakingBalance_Before = toBN(await web3.eth.getBalance(lqtyStaking.address))
+    const lqtyStakingBalance_Before = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
 
     // B redeems 10 EBTC
     await th.redeemCollateral(B, contracts, dec(10, 18), GAS_PRICE)
@@ -4024,7 +4033,7 @@ contract('CdpManager', async accounts => {
     // Check B's balance has decreased by 10 EBTC
     assert.equal(await ebtcToken.balanceOf(B), B_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
-    const lqtyStakingBalance_After = toBN(await web3.eth.getBalance(lqtyStaking.address))
+    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
 
     // check LQTY Staking balance has increased
     assert.isTrue(lqtyStakingBalance_After.gt(lqtyStakingBalance_Before))
@@ -4092,7 +4101,7 @@ contract('CdpManager', async accounts => {
     const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
     const totalDebt = W_totalDebt.add(A_totalDebt).add(B_totalDebt).add(C_totalDebt)
 
-    const A_balanceBefore = toBN(await web3.eth.getBalance(A))
+    const A_balanceBefore = toBN(await contracts.collateral.balanceOf(A))
 
     // Confirm baseRate before redemption is 0
     const baseRate = await cdpManager.baseRate()
@@ -4116,7 +4125,7 @@ contract('CdpManager', async accounts => {
     ETHRemainder = 0.045 - 0.001003... = 0.0439961538462
     */
 
-    const A_balanceAfter = toBN(await web3.eth.getBalance(A))
+    const A_balanceAfter = toBN(await contracts.collateral.balanceOf(A))
 
     // check A's ETH balance has increased by 0.045 ETH 
     const price = await priceFeed.getPrice()
@@ -4126,7 +4135,7 @@ contract('CdpManager', async accounts => {
       ETHDrawn.sub(
         toBN(dec(5, 15))//.add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
           .mul(ETHDrawn).div(mv._1e18BN)
-      ).sub(toBN(gasUsed * GAS_PRICE)), // substract gas used for cdpManager.redeemCollateral from expected received ETH
+      ),
       100000
     )
   })
@@ -4322,9 +4331,9 @@ contract('CdpManager', async accounts => {
       C_netDebt, C_coll,
     } = await redeemCollateral3Full1Partial()
 
-    const A_balanceBefore = toBN(await web3.eth.getBalance(A))
-    const B_balanceBefore = toBN(await web3.eth.getBalance(B))
-    const C_balanceBefore = toBN(await web3.eth.getBalance(C))
+    const A_balanceBefore = toBN(await contracts.collateral.balanceOf(A))
+    const B_balanceBefore = toBN(await contracts.collateral.balanceOf(B))
+    const C_balanceBefore = toBN(await contracts.collateral.balanceOf(C))
 
     // CollSurplusPool endpoint cannot be called directly
     await assertRevert(collSurplusPool.claimColl(A), 'CollSurplusPool: Caller is not Borrower Operations')
@@ -4333,13 +4342,13 @@ contract('CdpManager', async accounts => {
     const B_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: B, gasPrice: GAS_PRICE  }))
     const C_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: C, gasPrice: GAS_PRICE  }))
 
-    const A_expectedBalance = A_balanceBefore.sub(toBN(A_GAS * GAS_PRICE))
-    const B_expectedBalance = B_balanceBefore.sub(toBN(B_GAS * GAS_PRICE))
-    const C_expectedBalance = C_balanceBefore.sub(toBN(C_GAS * GAS_PRICE))
+    const A_expectedBalance = A_balanceBefore
+    const B_expectedBalance = B_balanceBefore
+    const C_expectedBalance = C_balanceBefore
 
-    const A_balanceAfter = toBN(await web3.eth.getBalance(A))
-    const B_balanceAfter = toBN(await web3.eth.getBalance(B))
-    const C_balanceAfter = toBN(await web3.eth.getBalance(C))
+    const A_balanceAfter = toBN(await contracts.collateral.balanceOf(A))
+    const B_balanceAfter = toBN(await contracts.collateral.balanceOf(B))
+    const C_balanceAfter = toBN(await contracts.collateral.balanceOf(C))
 
     const price = toBN(await priceFeed.getPrice())
 
@@ -4375,21 +4384,21 @@ contract('CdpManager', async accounts => {
     assert.isTrue(B_collAfter.eq(B_coll))
     assert.isTrue(C_collAfter.eq(C_coll))
 
-    const A_balanceBefore = toBN(await web3.eth.getBalance(A))
-    const B_balanceBefore = toBN(await web3.eth.getBalance(B))
-    const C_balanceBefore = toBN(await web3.eth.getBalance(C))
+    const A_balanceBefore = toBN(await contracts.collateral.balanceOf(A))
+    const B_balanceBefore = toBN(await contracts.collateral.balanceOf(B))
+    const C_balanceBefore = toBN(await contracts.collateral.balanceOf(C))
 
     const A_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: A, gasPrice: GAS_PRICE  }))
     const B_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: B, gasPrice: GAS_PRICE  }))
     const C_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: C, gasPrice: GAS_PRICE  }))
 
-    const A_expectedBalance = A_balanceBefore.sub(toBN(A_GAS * GAS_PRICE))
-    const B_expectedBalance = B_balanceBefore.sub(toBN(B_GAS * GAS_PRICE))
-    const C_expectedBalance = C_balanceBefore.sub(toBN(C_GAS * GAS_PRICE))
+    const A_expectedBalance = A_balanceBefore
+    const B_expectedBalance = B_balanceBefore
+    const C_expectedBalance = C_balanceBefore
 
-    const A_balanceAfter = toBN(await web3.eth.getBalance(A))
-    const B_balanceAfter = toBN(await web3.eth.getBalance(B))
-    const C_balanceAfter = toBN(await web3.eth.getBalance(C))
+    const A_balanceAfter = toBN(await contracts.collateral.balanceOf(A))
+    const B_balanceAfter = toBN(await contracts.collateral.balanceOf(B))
+    const C_balanceAfter = toBN(await contracts.collateral.balanceOf(C))
 
     th.assertIsApproximatelyEqual(A_balanceAfter, A_expectedBalance.add(A_surplus))
     th.assertIsApproximatelyEqual(B_balanceAfter, B_expectedBalance.add(B_surplus))
@@ -4437,7 +4446,7 @@ contract('CdpManager', async accounts => {
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
-      await borrowerOperations.adjustCdp(_aliceCdpId, th._100pct, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, { from: alice, value: ebtcAmount.mul(mv._1e18BN).div(price) })
+      await borrowerOperations.adjustCdpWithColl(_aliceCdpId, th._100pct, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, ebtcAmount.mul(mv._1e18BN).div(price), { from: alice })
     }
 
     const {
