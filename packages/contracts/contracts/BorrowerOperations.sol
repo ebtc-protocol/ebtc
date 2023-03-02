@@ -13,7 +13,15 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 
-contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOperations {
+import "./Dependencies/ERC3156FlashLender.sol";
+
+contract BorrowerOperations is
+    LiquityBase,
+    Ownable,
+    CheckContract,
+    IBorrowerOperations,
+    ERC3156FlashLender
+{
     string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
@@ -852,5 +860,57 @@ contract BorrowerOperations is LiquityBase, Ownable, CheckContract, IBorrowerOpe
 
     function getCompositeDebt(uint _debt) external pure override returns (uint) {
         return _getCompositeDebt(_debt);
+    }
+
+    // === Flash Loans === //
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external override returns (bool) {
+        require(amount > 0, "BorrowerOperations: 0 Amount");
+        IEBTCToken cachedEbtc = ebtcToken;
+        require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
+
+        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
+
+        // Issue EBTC
+        cachedEbtc.mint(address(receiver), amount);
+
+        // Callback
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
+            "BorrowerOperations: IERC3156: Callback failed"
+        );
+
+        // Gas: Repay from user balance, so we don't trigger a new SSTORE
+        // Safe to use transferFrom and unchecked as it's a standard token
+        // Also saves gas
+        // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
+        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee.add(amount));
+
+        // Burn amount, from FEE_RECIPIENT
+        cachedEbtc.burn(address(FEE_RECIPIENT), amount);
+
+        return true;
+    }
+
+    function flashFee(address token, uint256 amount) external view override returns (uint256) {
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+
+        return amount.mul(FEE_AMT).div(MAX_BPS);
+    }
+
+    /// @dev Max flashloan, exclusively in ETH equals to the current balance
+    function maxFlashLoan(address token) external view override returns (uint256) {
+        if (token != address(ebtcToken)) {
+            return 0;
+        }
+
+        // TODO: Decide if max, or w/e
+        // For now return 112 which is UniV3 compatible
+        // Source: I made it up
+        return type(uint112).max;
     }
 }

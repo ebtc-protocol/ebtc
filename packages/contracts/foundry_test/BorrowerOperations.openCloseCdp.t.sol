@@ -127,8 +127,6 @@ contract CDPTest is eBTCBaseFixture {
             assertEq(sortedCdps.cdpCountOf(user), 1);
             // Check borrowed amount
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
-            // Warp after each user to increase randomness of next collateralAmount
-            vm.warp(block.number + 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
@@ -227,8 +225,6 @@ contract CDPTest is eBTCBaseFixture {
             }
             // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
             assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(AMOUNT_OF_CDPS));
-            // Warp after each user to increase randomness of next collateralAmount
-            vm.warp(block.number + 1);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(AMOUNT_OF_CDPS));

@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/SafeMath.sol";
+import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
@@ -42,6 +43,7 @@ contract eBTCBaseFixture is Test {
     PriceFeedTestnet priceFeedMock;
     SortedCdps sortedCdps;
     CdpManager cdpManager;
+    WETH9 weth;
     ActivePool activePool;
     GasPool gasPool;
     DefaultPool defaultPool;
@@ -67,7 +69,8 @@ contract eBTCBaseFixture is Test {
         priceFeedMock = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
         cdpManager = new CdpManager();
-        activePool = new ActivePool();
+        weth = new WETH9();
+        activePool = new ActivePool(address(weth));
         gasPool = new GasPool();
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
