@@ -168,18 +168,18 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(token == address(WETH), "ActivePool: WETH Only");
+        require(token == address(collateral), "ActivePool: collateral Only");
         require(amount > 0, "ActivePool: 0 Amount");
-        require(amount <= address(this).balance, "ActivePool: Too much");
+        require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
         uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
         uint256 amountWithFee = amount.add(fee);
 
         // Deposit Eth into WETH
         // Send WETH to receiver
-        WETH.deposit{value: amount}();
+        //        WETH.deposit{value: amount}();
 
-        WETH.transfer(address(receiver), amount);
+        collateral.transfer(address(receiver), amount);
 
         // Callback
         require(
@@ -188,14 +188,14 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         );
 
         // Transfer of WETH to Fee recipient
-        WETH.transferFrom(address(receiver), address(this), amountWithFee);
+        collateral.transferFrom(address(receiver), address(this), amountWithFee);
 
         // Send weth to fee recipient
-        WETH.transfer(FEE_RECIPIENT, fee);
+        collateral.transfer(FEE_RECIPIENT, fee);
 
         // Withdraw principal to this
         // NOTE: Could withdraw all to avoid stuck WETH
-        WETH.withdraw(amount);
+        //        WETH.withdraw(amount);
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
@@ -204,23 +204,23 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
-        require(address(this).balance >= ETH, "ActivePool: Must repay Balance");
+        require(collateral.balanceOf(address(this)) >= ETH, "ActivePool: Must repay Balance");
 
         return true;
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(WETH), "ActivePool: WETH Only");
+        require(token == address(collateral), "ActivePool: collateral Only");
 
         return amount.mul(FEE_AMT).div(MAX_BPS);
     }
 
-    /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(address token) external view override returns (uint256) {
-        if (token != address(WETH)) {
+    /// @dev Max flashloan, exclusively in collateral token equals to the current balance
+    function maxFlashLoan(address token) public view override returns (uint256) {
+        if (token != address(collateral)) {
             return 0;
         }
 
-        return address(this).balance;
+        return collateral.balanceOf(address(this));
     }
 }

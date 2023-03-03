@@ -8,6 +8,7 @@ import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 import "../contracts/Dependencies/IERC20.sol";
 import "../contracts/Interfaces/IERC3156FlashLender.sol";
+import "../contracts/Interfaces/IWETH.sol";
 
 /*
  * Runs Flashloans and deposits ETH into CDPManager
@@ -16,6 +17,7 @@ contract FlashWithDeposit {
     IERC20 public immutable want;
     IERC3156FlashLender public immutable lender;
     BorrowerOperations public borrowerOperations;
+    address public collToken;
 
     uint internal constant MIN_NET_DEBT = 2e18; // Subject to changes once CL is changed
     uint private constant FEE = 5e17;
@@ -23,14 +25,17 @@ contract FlashWithDeposit {
     constructor(
         IERC20 _want,
         IERC3156FlashLender _lender,
-        BorrowerOperations _borrowerOperations
+        BorrowerOperations _borrowerOperations,
+        address collTokenAddress
     ) public {
         want = _want;
         lender = _lender;
         borrowerOperations = _borrowerOperations;
+        collToken = collTokenAddress;
 
         // Approve to repay
         IERC20(_want).approve(address(_lender), type(uint256).max);
+        IERC20(collToken).approve(address(borrowerOperations), type(uint256).max);
     }
 
     function onFlashLoan(
@@ -46,7 +51,8 @@ contract FlashWithDeposit {
 
         // Run an operation with BorrowerOperations
         // W/e we got send as value
-        borrowerOperations.openCdp{value: amount}(FEE, MIN_NET_DEBT, "hint", "hint");
+        IWETH(collToken).deposit{value: amount}();
+        borrowerOperations.openCdp(FEE, MIN_NET_DEBT, "hint", "hint", amount);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
@@ -76,12 +82,15 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         );
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
-        vm.prank(user);
-        borrowerOperations.openCdp{value: 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
     }
 
     function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
-        uint256 fee = activePool.flashFee(address(weth), amount);
+        uint256 fee = activePool.flashFee(address(collateral), amount);
 
         vm.assume(fee > 0);
 
@@ -93,9 +102,10 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         vm.assume(amount < amountToDepositInCDP);
 
         FlashWithDeposit macroContract = new FlashWithDeposit(
-            IERC20(address(weth)),
+            IERC20(address(collateral)),
             IERC3156FlashLender(address(activePool)),
-            borrowerOperations
+            borrowerOperations,
+            address(collateral)
         );
 
         // SETUP Contract
@@ -108,17 +118,20 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        vm.prank(user);
         vm.deal(address(user), amountToDepositInCDP);
-        borrowerOperations.openCdp{value: amountToDepositInCDP}(FEE, borrowedAmount, "hint", "hint");
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: amountToDepositInCDP}();
+        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", amountToDepositInCDP);
+        vm.stopPrank();
 
-        deal(address(weth), address(macroContract), fee);
+        deal(address(collateral), address(macroContract), fee);
         vm.deal(address(macroContract), amountToDepositInCDP);
 
         // Ensure Delta between ETH and balance is marginal
         activePool.flashLoan(
             IERC3156FlashBorrower(address(macroContract)),
-            address(weth),
+            address(collateral),
             amount,
             abi.encodePacked(uint256(amountToDepositInCDP))
         );
