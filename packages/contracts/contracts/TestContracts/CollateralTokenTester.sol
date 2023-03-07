@@ -76,12 +76,12 @@ contract CollateralTokenTester is ICollateralToken {
         _ethPerShare = _ePerS;
     }
 
-    function getSharesByPooledEth(uint256 _ethAmount) external override returns (uint256) {
+    function getSharesByPooledEth(uint256 _ethAmount) external view override returns (uint256) {
         uint _tmp = _mul(1e18, _ethAmount);
         return _div(_tmp, _ethPerShare);
     }
 
-    function getPooledEthByShares(uint256 _sharesAmount) external override returns (uint256) {
+    function getPooledEthByShares(uint256 _sharesAmount) external view override returns (uint256) {
         uint _tmp = _mul(_ethPerShare, _sharesAmount);
         return _div(_tmp, 1e18);
     }

@@ -102,6 +102,19 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public L_ETH;
     uint public L_EBTCDebt;
 
+    /* Global Index for (Full Price Per Share) of underlying collateral token */
+    uint256 public stFPPSg;
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_ETH & L_EBTCdebt */
+    uint256 public stFeePerUnitg = 1e18;
+    /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
+    uint256 public stFeePerUnitgError;
+    /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
+    mapping(bytes32 => uint256) public stFeePerUnitcdp;
+    /* Update timestamp for global index */
+    uint256 lastIndexTimestamp;
+    /* Global Index update minimal interval, typically it is updated once per day  */
+    uint256 public constant INDEX_UPD_INTERVAL = 43200; // 12 hours
+
     /*
      * L_EBTCInterest tracks the interest accumulated on a unit debt position over time. During its lifetime, each cdp earns:
      *
@@ -296,6 +309,20 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
     event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
+    event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event CollateralFeePerUnitUpdated(
+        uint _oldPerUnit,
+        uint _newPerUnit,
+        address _feeRecipient,
+        uint _feeTaken
+    );
+    event CdpFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _oldPerUnitCdp,
+        uint _newPerUnitCdp,
+        uint _collReduced,
+        uint collLeft
+    );
 
     enum CdpManagerOperation {
         applyPendingRewards,
@@ -361,6 +388,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit LQTYTokenAddressChanged(_lqtyTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
         emit CollateralAddressChanged(_collTokenAddress);
+
+        _syncIndex();
+        stFeePerUnitg = 1e18;
 
         _renounceOwnership();
     }
@@ -2442,6 +2472,94 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         return (block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE);
     }
 
+    // Update the global index via collateral token
+    function _syncIndex() internal {
+        uint _oldIndex = stFPPSg;
+        stFPPSg = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+        lastIndexTimestamp = block.timestamp;
+        emit CollateralGlobalIndexUpdated(_oldIndex, stFPPSg, lastIndexTimestamp);
+    }
+
+    // Calculate fee for given pair of collateral indexes, following are returned values:
+    // - fee split in collateral token which will be deduced from current total system collateral
+    // - fee split increase per unit, used to update stFeePerUnitg
+    // - fee split calculation error, used to update stFeePerUnitgError
+    function _calcFeeUponStakingReward(
+        uint256 _newIndex,
+        uint256 _prevIndex
+    ) internal view returns (uint256, uint256, uint256) {
+        require(_newIndex > _prevIndex, "CdpManager: only take fee with bigger new index");
+        uint256 deltaIndex = _newIndex.sub(_prevIndex);
+        uint256 deltaIndexFees = deltaIndex.mul(STAKING_REWARD_SPLIT).div(MAX_REWARD_SPLIT);
+
+        // we take the fee for all CDPs immediately which is scaled by index precision
+        uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
+        uint256 _cachedAllStakes = totalStakes;
+        // return the values to update the global fee accumulator
+        uint256 _deltaFeeSplitShare = _deltaFeeSplit
+            .mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
+            .div(DECIMAL_PRECISION)
+            .add(stFeePerUnitgError);
+        uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
+        uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
+        return (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError);
+    }
+
+    // Take the cut from staking reward
+    // and update global fee-per-unit accumulator
+    function _takeSplitAndUpdateFeePerUnit(
+        ContractsCache memory _cachedContracts,
+        uint256 _deltaFeeSplitShare,
+        uint256 _deltaPerUnit,
+        uint256 _newErrorPerUnit
+    ) internal {
+        uint _oldPerUnit = stFeePerUnitg;
+        stFeePerUnitg = stFeePerUnitg.add(_deltaPerUnit);
+        stFeePerUnitgError = _newErrorPerUnit;
+
+        uint _feeTaken = _deltaFeeSplitShare.div(DECIMAL_PRECISION);
+        require(
+            _cachedContracts.activePool.getETH() > _feeTaken,
+            "CDPManager: fee split is too big"
+        );
+        address _feeRecipient = address(lqtyStaking); // TODO choose other fee recipient?
+        _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
+
+        emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
+    }
+
+    // Apply accumulated fee split distributed to the CDP
+    // and update its accumulator tracker accordingly
+    function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
+        uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
+        if (_oldPerUnitCdp == 0) {
+            stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
+            return;
+        } else if (_oldPerUnitCdp == stFeePerUnitg) {
+            return;
+        }
+
+        uint _oldStake = Cdps[_cdpId].stake;
+
+        uint _feeSplitDistributed = _oldStake.mul(stFeePerUnitg.sub(_oldPerUnitCdp)).add(
+            _oldStake.mul(stFeePerUnitgError).div(totalStakes)
+        );
+        uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
+        require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");
+
+        Cdps[_cdpId].coll = _scaledCdpColl.sub(_feeSplitDistributed).div(DECIMAL_PRECISION);
+        stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
+        _updateStakeAndTotalStakes(_cdpId);
+
+        emit CdpFeeSplitApplied(
+            _cdpId,
+            _oldPerUnitCdp,
+            stFeePerUnitcdp[_cdpId],
+            _feeSplitDistributed,
+            Cdps[_cdpId].coll
+        );
+    }
+
     // --- 'require' wrapper functions ---
 
     function _requireCallerIsBorrowerOperations() internal view {
@@ -2503,6 +2621,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         require(
             (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _price)) <= _entireDebt,
             "!maxDebtByPartialLiq"
+        );
+    }
+
+    function _requireValidUpdateInterval() internal {
+        require(
+            block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
+            "CdpManager: update index too frequent"
         );
     }
 

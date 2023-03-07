@@ -102,7 +102,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
 
-        bool success = collateral.transfer(_account, _amount); //_account.call{value: _amount}("");
+        bool success = collateral.transfer(_account, collateral.getPooledEthByShares(_amount)); //_account.call{value: _amount}("");
         require(success, "ActivePool: sending ETH failed");
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);

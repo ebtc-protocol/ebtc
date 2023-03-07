@@ -80,7 +80,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit EtherSent(activePool, _amount);
 
-        bool success = collateral.transfer(activePool, _amount); //activePool.call{value: _amount}("");
+        bool success = collateral.transfer(activePool, collateral.getPooledEthByShares(_amount)); //activePool.call{value: _amount}("");
         require(success, "DefaultPool: sending ETH failed");
         IActivePool(activePool).receiveColl(_amount);
     }

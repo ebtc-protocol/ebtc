@@ -15,7 +15,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
         uint _debtChange,
         bool isDebtIncrease,
         uint _price
-    ) external pure returns (uint) {
+    ) external view returns (uint) {
         return
             _getNewICRFromCdpChange(
                 _coll,

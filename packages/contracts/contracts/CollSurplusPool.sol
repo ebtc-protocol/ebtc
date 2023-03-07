@@ -93,7 +93,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         ETH = ETH.sub(claimableColl);
         emit EtherSent(_account, claimableColl);
 
-        bool success = collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
+        bool success = collateral.transfer(_account, collateral.getPooledEthByShares(claimableColl)); //_account.call{value: claimableColl}("");
         require(success, "CollSurplusPool: sending ETH failed");
     }
 
