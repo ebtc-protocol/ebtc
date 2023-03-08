@@ -115,7 +115,7 @@ interface ICdpManager is ILiquityBase {
     function addCdpIdToArray(bytes32 _cdpId) external returns (uint index);
 
     function applyPendingRewards(bytes32 _cdpId) external;
-	
+
     function claimStakingSplitFee() external;
 
     function getPendingETHReward(bytes32 _cdpId) external view returns (uint);

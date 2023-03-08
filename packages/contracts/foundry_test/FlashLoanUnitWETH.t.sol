@@ -52,11 +52,11 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // Cannot deal if not enough
         vm.assume(fee > 1800e18);
 
-        deal(address(collateral), address(wethReceiver), fee);
+        dealCollateral(address(wethReceiver), fee);
 
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
         uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
-        deal(address(collateral), address(activePool), _suggar);
+        dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
         uint256 prevFeeBalance = collateral.balanceOf(activePool.FEE_RECIPIENT());
@@ -101,9 +101,9 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     /// @dev Amount too high, we overflow when computing fees
     function testOverflowCaseWETH() public {
         // Zero Overflow Case
-        uint256 loanAmount = type(uint256).max;
+        uint256 loanAmount = type(uint256).max / 1e18;
 
-        deal(address(collateral), address(activePool), loanAmount);
+        dealCollateral(address(activePool), loanAmount);
 
         vm.expectRevert("SafeMath: multiplication overflow");
         activePool.flashLoan(
@@ -143,7 +143,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         vm.assume(amount > 0);
 
         // NOTE: Send funds for flashloan to be doable
-        deal(address(collateral), address(activePool), amount);
+        dealCollateral(address(activePool), amount);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
         // In this case the balance of the pool
@@ -170,7 +170,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         activePool.flashLoan(specReceiver, randomToken, amount, abi.encodePacked(uint256(0)));
 
         if (fee > 0) {
-            deal(address(collateral), address(specReceiver), fee);
+            dealCollateral(address(specReceiver), fee);
         }
 
         // Set amount already there to ensure delta is amount received
@@ -213,7 +213,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
     function testWETHReturnValue() public {
         // NOTE: Send funds for spec
-        deal(address(collateral), address(activePool), 123);
+        dealCollateral(address(activePool), 123);
 
         vm.expectRevert("ActivePool: IERC3156: Callback failed");
         activePool.flashLoan(

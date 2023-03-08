@@ -125,7 +125,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", amountToDepositInCDP);
         vm.stopPrank();
 
-        deal(address(collateral), address(macroContract), fee);
+        dealCollateral(address(macroContract), fee);
         vm.deal(address(macroContract), amountToDepositInCDP);
 
         // Ensure Delta between ETH and balance is marginal
