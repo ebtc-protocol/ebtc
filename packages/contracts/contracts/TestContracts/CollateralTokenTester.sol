@@ -9,33 +9,38 @@ contract CollateralTokenTester is ICollateralToken {
     uint8 public override decimals = 18;
 
     event Approval(address indexed src, address indexed guy, uint wad);
-    event Transfer(address indexed src, address indexed dst, uint wad);
-    event Deposit(address indexed dst, uint wad);
-    event Withdrawal(address indexed src, uint wad);
+    event Transfer(address indexed src, address indexed dst, uint wad, uint _share);
+    event Deposit(address indexed dst, uint wad, uint _share);
+    event Withdrawal(address indexed src, uint wad, uint _share);
 
-    mapping(address => uint) public override balanceOf;
+    mapping(address => uint) private balances;
     mapping(address => mapping(address => uint)) public override allowance;
 
     uint private _ethPerShare = 1e18;
+    uint private _totalBalance;
 
     receive() external payable {
         deposit();
     }
 
     function deposit() public payable {
-        balanceOf[msg.sender] += msg.value;
-        Deposit(msg.sender, msg.value);
+        uint _share = getSharesByPooledEth(msg.value);
+        balances[msg.sender] += _share;
+        _totalBalance += _share;
+        Deposit(msg.sender, msg.value, _share);
     }
 
     function withdraw(uint wad) public {
-        require(balanceOf[msg.sender] >= wad);
-        balanceOf[msg.sender] -= wad;
+        uint _share = getSharesByPooledEth(wad);
+        require(balances[msg.sender] >= _share);
+        balances[msg.sender] -= _share;
+        _totalBalance -= _share;
         msg.sender.transfer(wad);
-        Withdrawal(msg.sender, wad);
+        Withdrawal(msg.sender, wad, _share);
     }
 
     function totalSupply() public view override returns (uint) {
-        return address(this).balance;
+        return _totalBalance;
     }
 
     // helper to set allowance in test
@@ -56,17 +61,18 @@ contract CollateralTokenTester is ICollateralToken {
     }
 
     function transferFrom(address src, address dst, uint wad) public override returns (bool) {
-        require(balanceOf[src] >= wad, "ERC20: transfer amount exceeds balance");
+        uint _share = getSharesByPooledEth(wad);
+        require(balances[src] >= _share, "ERC20: transfer amount exceeds balance");
 
         if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }
 
-        balanceOf[src] -= wad;
-        balanceOf[dst] += wad;
+        balances[src] -= _share;
+        balances[dst] += _share;
 
-        Transfer(src, dst, wad);
+        Transfer(src, dst, wad, _share);
 
         return true;
     }
@@ -76,12 +82,12 @@ contract CollateralTokenTester is ICollateralToken {
         _ethPerShare = _ePerS;
     }
 
-    function getSharesByPooledEth(uint256 _ethAmount) external view override returns (uint256) {
+    function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
         uint _tmp = _mul(1e18, _ethAmount);
         return _div(_tmp, _ethPerShare);
     }
 
-    function getPooledEthByShares(uint256 _sharesAmount) external view override returns (uint256) {
+    function getPooledEthByShares(uint256 _sharesAmount) public view override returns (uint256) {
         uint _tmp = _mul(_ethPerShare, _sharesAmount);
         return _div(_tmp, 1e18);
     }
@@ -92,6 +98,11 @@ contract CollateralTokenTester is ICollateralToken {
     ) external override returns (bool) {
         approve(spender, allowance[msg.sender][spender] - subtractedValue);
         return true;
+    }
+
+    function balanceOf(address _usr) external view override returns (uint256) {
+        uint _tmp = _mul(_ethPerShare, balances[_usr]);
+        return _div(_tmp, 1e18);
     }
 
     function increaseAllowance(

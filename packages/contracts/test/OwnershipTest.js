@@ -3,6 +3,7 @@ const { TestHelper: th, MoneyValues: mv } = require("../utils/testHelpers.js")
 
 const GasPool = artifacts.require("./GasPool.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
+const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 
 contract('All Liquity functions with onlyOwner modifier', async accounts => {
 
@@ -57,7 +58,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
   }
 
   const testSetAddresses = async (contract, numberOfAddresses) => {
-    const dumbContract = await GasPool.new()
+    const dumbContract = await CollateralTokenTester.new()
     const params = Array(numberOfAddresses).fill(dumbContract.address)
 
     // Attempt call from alice

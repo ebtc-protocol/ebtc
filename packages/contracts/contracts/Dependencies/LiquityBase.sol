@@ -118,7 +118,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint entireSystemColl = getEntireSystemColl();
         uint entireSystemDebt = _getEntireSystemDebt(_lastInterestRateUpdateTime);
 
-        TCR = LiquityMath._computeCR(entireSystemColl, entireSystemDebt, _price);
+        uint _underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
+        TCR = LiquityMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);
 
         return (TCR, entireSystemColl, entireSystemDebt);
     }
