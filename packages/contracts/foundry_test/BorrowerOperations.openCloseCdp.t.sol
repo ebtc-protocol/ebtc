@@ -236,13 +236,7 @@ contract CDPTest is eBTCBaseFixture {
                 COLLATERAL_RATIO
             );
             for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-                borrowerOperations.openCdp(
-                    FEE,
-                    borrowedAmount,
-                    "hint",
-                    "hint",
-                    collAmountChunk
-                );
+                borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", collAmountChunk);
                 // Get User's CDP and check it for uniqueness
                 bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
                 assertEq(_cdpIdsExist[cdpId], false);
