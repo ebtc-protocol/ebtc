@@ -149,9 +149,21 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         vm.deal(address(this), type(uint256).max);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 1000000000000 ether}();
-        bytes32 cdp0Id = borrowerOperations.openCdp(FEE, cdp0Debt, bytes32(0), bytes32(0), _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE));
+        bytes32 cdp0Id = borrowerOperations.openCdp(
+            FEE,
+            cdp0Debt,
+            bytes32(0),
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        );
 
-        bytes32 cdp1Id = borrowerOperations.openCdp(FEE, cdp1Debt, bytes32(0), bytes32(0), _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE));
+        bytes32 cdp1Id = borrowerOperations.openCdp(
+            FEE,
+            cdp1Debt,
+            bytes32(0),
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        );
 
         skip(365 days);
 
