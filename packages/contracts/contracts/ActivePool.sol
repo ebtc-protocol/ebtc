@@ -204,7 +204,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
-        require(collateral.balanceOf(address(this)) >= ETH, "ActivePool: Must repay Balance");
+        require(
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            "ActivePool: Must repay Balance"
+        );
 
         return true;
     }
