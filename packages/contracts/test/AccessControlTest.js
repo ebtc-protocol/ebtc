@@ -250,8 +250,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
         const txAlice = await web3.eth.sendTransaction({ from: alice, to: activePool.address, value: 100 })
         
       } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "ActivePool: Caller is neither BO nor Default Pool")
+        assert.include(err.message, "revert")// no receive or fallback function
       }
     })
   })
@@ -300,8 +299,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
         const txAlice = await web3.eth.sendTransaction({ from: alice, to: defaultPool.address, value: 100 })
         
       } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "DefaultPool: Caller is not the ActivePool")
+        assert.include(err.message, "revert")// no receive or fallback function
       }
     })
   })
