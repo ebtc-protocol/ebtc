@@ -406,8 +406,8 @@ contract BorrowerOperations is
             _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
             _requireNonZeroDebtChange(_EBTCChange);
         }
-        _requireSingularCollChange(_collWithdrawal, _collAddAmount);
-        _requireNonZeroAdjustment(_collWithdrawal, _EBTCChange, _collAddAmount);
+        _requireSingularCollChange(_collAddAmount, _collWithdrawal);
+        _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
 
         // Confirm the operation is either a borrower adjusting their own cdp,
         // or a pure ETH transfer from the Stability Pool to a cdp
@@ -667,7 +667,7 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collWithdrawal, uint _collAdd) internal view {
+    function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal view {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot withdraw and add coll"
@@ -682,9 +682,9 @@ contract BorrowerOperations is
     }
 
     function _requireNonZeroAdjustment(
-        uint _collWithdrawal,
+        uint _collAddAmount,
         uint _EBTCChange,
-        uint _collAddAmount
+        uint _collWithdrawal
     ) internal view {
         require(
             _collAddAmount != 0 || _collWithdrawal != 0 || _EBTCChange != 0,
