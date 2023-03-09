@@ -102,8 +102,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
 
-        bool success = collateral.transfer(_account, _amount); //_account.call{value: _amount}("");
-        require(success, "ActivePool: sending ETH failed");
+        // NOTE: No need for safe transfer, stETH is standard
+        collateral.transfer(_account, _amount); //_account.call{value: _amount}("");
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);
         } else if (_account == collSurplusPoolAddress) {
@@ -143,21 +143,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
         ETH = ETH.add(_value);
         emit ActivePoolETHBalanceUpdated(ETH);
-    }
-
-    // --- Fallback function ---
-
-    receive() external payable {
-        // NOTE: Changed to allow WETH
-        if (msg.sender == address(WETH)) {
-            // Notice: WETH at the top to save gas and allow ETH.transfer to work
-            return;
-        }
-
-        // Previous code
-        // NOTE: You cannot `transfer` to this contract, you must `call` because we're using 2 SLOADs
-        _requireCallerIsBorrowerOperationsOrDefaultPool();
-        revert("no more ETH");
     }
 
     // === Flashloans === //

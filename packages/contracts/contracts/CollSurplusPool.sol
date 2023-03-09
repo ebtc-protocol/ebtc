@@ -93,8 +93,8 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         ETH = ETH.sub(claimableColl);
         emit EtherSent(_account, claimableColl);
 
-        bool success = collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
-        require(success, "CollSurplusPool: sending ETH failed");
+        // NOTE: No need for safe transfer, stETH is standard
+        collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
     }
 
     // --- 'require' functions ---
@@ -117,12 +117,5 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
         ETH = ETH.add(_value);
-    }
-
-    // --- Fallback function ---
-
-    receive() external payable {
-        _requireCallerIsActivePool();
-        revert("no more ETH");
     }
 }
