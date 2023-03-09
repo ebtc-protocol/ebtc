@@ -1,10 +1,18 @@
 pragma solidity 0.6.11;
 
+import {IERC3156FlashBorrower} from "../Interfaces/IERC3156FlashBorrower.sol";
+import {IERC3156FlashLender} from "../Interfaces/IERC3156FlashLender.sol";
+import {IERC20} from "../Dependencies/IERC20.sol";
+
 interface ICdpManager {
     function liquidate(bytes32 _cdpId) external;
 }
 
-contract SimpleLiquidationTester {
+interface IRebasableTokenTester {
+    function setEthPerShare(uint _ePerS) external;
+}
+
+contract SimpleLiquidationTester is IERC3156FlashBorrower {
     uint public _onReceiveType; //0-nothing, 1-reenter, 2-revert
     ICdpManager public _cdpManager;
     bytes32 public _reEnterLiqCdpId = bytes32(0); // only for _onReceiveType == 1
@@ -35,5 +43,28 @@ contract SimpleLiquidationTester {
         } else if (_onReceiveType == 2) {
             revert("revert on receive");
         }
+    }
+
+    function initFlashLoan(address lender, address token, uint256 amount, uint256 _ppfs) external {
+        IERC3156FlashLender(lender).flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            token,
+            amount,
+            abi.encodePacked(_ppfs)
+        );
+    }
+
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
+        uint256 _ppfs = abi.decode(data, (uint256));
+        IRebasableTokenTester(token).setEthPerShare(_ppfs);
+
+        IERC20(token).approve(msg.sender, amount + fee);
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
