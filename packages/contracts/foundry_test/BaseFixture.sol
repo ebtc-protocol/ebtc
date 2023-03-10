@@ -173,4 +173,15 @@ contract eBTCBaseFixture is Test {
             address(collateral)
         );
     }
+
+    function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {
+        vm.deal(_recipient, _amount);
+        uint _balBefore = collateral.balanceOf(_recipient);
+
+        vm.prank(_recipient);
+        collateral.deposit{value: _amount}();
+
+        uint _balAfter = collateral.balanceOf(_recipient);
+        return _balAfter - _balBefore;
+    }
 }
