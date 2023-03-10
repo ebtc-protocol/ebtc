@@ -4,6 +4,7 @@ const NonPayable = artifacts.require("./NonPayable.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
+const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -95,6 +96,30 @@ contract('ActivePool', async accounts => {
     const pool_BalanceChange = activePool_BalanceAfterTx.sub(activePool_BalanceBeforeTx)
     assert.equal(alice_BalanceChange, dec(1, 'ether'))
     assert.equal(pool_BalanceChange, _minus_1_Ether)
+  })
+  
+  it('flashloan(): should work', async () => {
+    let _amount = "123456789";
+    let _flashBorrower = await SimpleLiquidationTester.new();
+    let _fee = await activePool.flashFee(collToken.address, _amount);
+	  
+    await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
+    await collToken.transfer(activePool.address, _amount, {from: alice});
+    await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
+	
+    let _newPPFS = web3.utils.toBN('1000000000000000000');
+    let _collTokenBalBefore = await collToken.balanceOf(activePool.address); 
+    await _flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _newPPFS);
+    let _collTokenBalAfter = await collToken.balanceOf(activePool.address); 
+    assert.isTrue(web3.utils.toBN(_collTokenBalBefore.toString()).eq(web3.utils.toBN(_collTokenBalAfter.toString())));
+	
+    // test edge cases
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, activePool.address, _amount, _newPPFS), 'ActivePool: collateral Only');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, 0, _newPPFS), 'ActivePool: 0 Amount');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _newPPFS, _newPPFS), 'ActivePool: Too much');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, 0), 'ActivePool: IERC3156: Callback failed');
+    await th.assertRevert(activePool.flashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
+    assert.isTrue(web3.utils.toBN("0").eq(web3.utils.toBN((await activePool.maxFlashLoan(activePool.address)).toString())));
   })
 })
 

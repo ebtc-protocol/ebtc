@@ -79,9 +79,9 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit EtherSent(activePool, _amount);
-
-        bool success = collateral.transfer(activePool, collateral.getPooledEthByShares(_amount)); //activePool.call{value: _amount}("");
-        require(success, "DefaultPool: sending ETH failed");
+		
+        // NOTE: No need for safe transfer, stETH is standard
+        collateral.transfer(activePool, _amount); //activePool.call{value: _amount}("");
         IActivePool(activePool).receiveColl(_amount);
     }
 
@@ -111,12 +111,5 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         _requireCallerIsActivePool();
         ETH = ETH.add(_value);
         emit DefaultPoolETHBalanceUpdated(ETH);
-    }
-
-    // --- Fallback function ---
-
-    receive() external payable {
-        _requireCallerIsActivePool();
-        revert("no more ETH");
     }
 }

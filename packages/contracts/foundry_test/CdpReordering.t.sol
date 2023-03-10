@@ -61,20 +61,24 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     function testCdpOrderingSanityCheck() public {
         uint256 cdp0Debt = 2000e18;
         uint256 cdp1Debt = 2001e18;
-
-        bytes32 cdp0Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
+        bytes32 cdp0Id = borrowerOperations.openCdp(
             5e17,
             cdp0Debt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, 200e16)
         );
 
         // Insert a second CDP with a lower CR immediately. We expect it to be later in the LL.
-        bytes32 cdp1Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+        bytes32 cdp1Id = borrowerOperations.openCdp(
             5e17,
             cdp1Debt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, 200e16)
         );
 
         bytes32 first = sortedCdps.getFirst();
@@ -93,12 +97,15 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     function testPendingInterestShouldBeConsideredWhenInsertingNewCdp() public {
         uint256 cdp0Debt = 2000e18;
         uint256 cdp1Debt = 2001e18;
-
-        bytes32 cdp0Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
+        bytes32 cdp0Id = borrowerOperations.openCdp(
             5e17,
             cdp0Debt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, 200e16)
         );
 
         if (DEBUG) {
@@ -109,11 +116,12 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         skip(365 days);
 
         // Insert a second CDP with a lower CR than the first one originally, but with a higher CR due to the interest. It should be earlier in the list given the higher CR
-        bytes32 cdp1Id = borrowerOperations.openCdp{value: _calculateCollAmount(cdp0Debt, 200e16)}(
+        bytes32 cdp1Id = borrowerOperations.openCdp(
             5e17,
             cdp1Debt,
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, 200e16)
         );
 
         bytes32 first = sortedCdps.getFirst();
@@ -138,14 +146,24 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     function testPendingInterestShouldBeConsideredWhenReinsertingExistingCdp() public {
         uint256 cdp0Debt = 2000e18;
         uint256 cdp1Debt = 2001e18;
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
+        bytes32 cdp0Id = borrowerOperations.openCdp(
+            FEE,
+            cdp0Debt,
+            bytes32(0),
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        );
 
-        bytes32 cdp0Id = borrowerOperations.openCdp{
-            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
-        }(FEE, cdp0Debt, bytes32(0), bytes32(0));
-
-        bytes32 cdp1Id = borrowerOperations.openCdp{
-            value: _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
-        }(FEE, cdp1Debt, bytes32(0), bytes32(0));
+        bytes32 cdp1Id = borrowerOperations.openCdp(
+            FEE,
+            cdp1Debt,
+            bytes32(0),
+            bytes32(0),
+            _calculateCollAmount(cdp0Debt, COLLATERAL_RATIO_DEFENSIVE)
+        );
 
         skip(365 days);
 
@@ -165,7 +183,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         // Update Operation on one that should cause a reorder
         // We will make CDP 1 have more collateral, raising it's CR above that of CDP 0
-        borrowerOperations.addColl{value: 10000e18}(cdp1Id, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdp1Id, bytes32(0), bytes32(0), 10000e18);
 
         // They should have switched (1 -> 0)
         first = sortedCdps.getFirst();
@@ -180,7 +198,9 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     */
     function testCdpReorderingFromCompoundingInterest() public {
         uint256 numCdps = 2;
-
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
         uint256[] memory cdpColl = new uint256[](numCdps);
         uint256[] memory cdpDebt = new uint256[](numCdps);
         bytes32[] memory cdpIds = new bytes32[](numCdps);
@@ -193,11 +213,12 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         // Open all CDPs
         for (uint256 i = 0; i < numCdps; i++) {
-            bytes32 cdpId = borrowerOperations.openCdp{value: cdpColl[i]}(
+            bytes32 cdpId = borrowerOperations.openCdp(
                 5e17,
                 cdpDebt[i],
                 bytes32(0),
-                bytes32(0)
+                bytes32(0),
+                cdpColl[i]
             );
 
             cdpIds[i] = cdpId;
@@ -296,11 +317,12 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         vm.startPrank(owner);
         for (uint256 i = 0; i < debts.length; i++) {
-            bytes32 cdpId = borrowerOperations.openCdp{value: colls[i]}(
+            bytes32 cdpId = borrowerOperations.openCdp(
                 5e17,
                 debts[i],
                 bytes32(0),
-                bytes32(0)
+                bytes32(0),
+                colls[i]
             );
 
             cdpIds[i] = cdpId;

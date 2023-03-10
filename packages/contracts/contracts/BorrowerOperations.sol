@@ -178,8 +178,7 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAmount
     ) external override returns (bytes32) {
-        // get collateral
-        _transferCollFromUser(_collAmount);
+        require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
 
         ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_openCdp memory vars;
@@ -241,9 +240,8 @@ contract BorrowerOperations is
 
         vars.arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
         emit CdpCreated(_cdpId, msg.sender, vars.arrayIndex);
-
-        // Move the ether to the Active Pool, and mint the EBTCAmount to the borrower
-        _activePoolAddColl(contractsCache.activePool, _collAmount, _collShareAmt);
+		
+        // Mint the EBTCAmount to the borrower
         _withdrawEBTC(
             contractsCache.activePool,
             contractsCache.ebtcToken,
@@ -270,6 +268,9 @@ contract BorrowerOperations is
         );
         emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
 
+        // CEI: Move the collateral to the Active Pool
+        _activePoolAddColl(contractsCache.activePool, _collAmount);
+
         return _cdpId;
     }
 
@@ -280,8 +281,6 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAmount
     ) external override {
-        // get collateral
-        _transferCollFromUser(_collAmount);
         _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0, _collAmount);
     }
 
@@ -337,6 +336,7 @@ contract BorrowerOperations is
         );
     }
 
+    // TODO optimization candidate
     function adjustCdpWithColl(
         bytes32 _cdpId,
         uint _maxFeePercentage,
@@ -347,11 +347,6 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) external override {
-        if (_collAddAmount > 0) {
-            // get collateral
-            _transferCollFromUser(_collAddAmount);
-        }
-
         _adjustCdp(
             _cdpId,
             _collWithdrawal,
@@ -421,8 +416,8 @@ contract BorrowerOperations is
             _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
             _requireNonZeroDebtChange(_EBTCChange);
         }
-        _requireSingularCollChange(_collWithdrawal, _collAddAmount);
-        _requireNonZeroAdjustment(_collWithdrawal, _EBTCChange, _collAddAmount);
+        _requireSingularCollChange(_collAddAmount, _collWithdrawal);
+        _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
 
         // Confirm the operation is either a borrower adjusting their own cdp,
         // or a pure ETH transfer from the Stability Pool to a cdp
@@ -569,11 +564,6 @@ contract BorrowerOperations is
 
     // --- Helper functions ---
 
-    function _transferCollFromUser(uint _collAmount) internal {
-        bool _success = collateral.transferFrom(msg.sender, address(this), _collAmount);
-        require(_success, "BorrowerOperations: Cannot transfer coll from user");
-    }
-
     function _triggerBorrowingFee(
         ICdpManager _cdpManager,
         IEBTCToken _ebtcToken,
@@ -658,10 +648,10 @@ contract BorrowerOperations is
     }
 
     // Send ETH to Active Pool and increase its recorded ETH balance
-    function _activePoolAddColl(IActivePool _activePool, uint _amount, uint _shareAmt) internal {
-        bool success = collateral.transfer(address(_activePool), _amount); //address(_activePool).call{value: _amount}("");
-        require(success, "BorrowerOps: Sending ETH to ActivePool failed");
-        _activePool.receiveColl(_shareAmt);
+    function _activePoolAddColl(IActivePool _activePool, uint _amount) internal {
+        // NOTE: No need for safe transfer, stETH is standard
+        collateral.transferFrom(msg.sender, address(_activePool), _amount); //address(_activePool).call{value: _amount}("");
+        _activePool.receiveColl(_amount);
     }
 
     // Issue the specified amount of EBTC to _account and increases
@@ -695,7 +685,7 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collWithdrawal, uint _collAdd) internal view {
+    function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal view {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot withdraw and add coll"
@@ -710,9 +700,9 @@ contract BorrowerOperations is
     }
 
     function _requireNonZeroAdjustment(
-        uint _collWithdrawal,
+        uint _collAddAmount,
         uint _EBTCChange,
-        uint _collAddAmount
+        uint _collWithdrawal
     ) internal view {
         require(
             _collAddAmount != 0 || _collWithdrawal != 0 || _EBTCChange != 0,

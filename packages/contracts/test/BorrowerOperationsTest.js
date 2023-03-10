@@ -162,6 +162,10 @@ contract('BorrowerOperations', async accounts => {
 	  }
 	  //console.log(_openedCdpEvts[_openedCdpEvts.length - 1].args[0]);
     })
+	
+    it("openCdp(): should NOT allow open with zero collateral", async () => {	
+	  await assertRevert(borrowerOperations.openCdp(th._100pct, 123, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, { from: bob }), "BorrowerOps: collateral for CDP is zero");	  
+    })
 
     it("openCdp(): mutiple Cdp per user", async () => {		  
 	  // first Cdp
