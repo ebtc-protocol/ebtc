@@ -107,10 +107,19 @@ contract('ActivePool', async accounts => {
     await collToken.transfer(activePool.address, _amount, {from: alice});
     await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
 	
+    let _newPPFS = web3.utils.toBN('1000000000000000000');
     let _collTokenBalBefore = await collToken.balanceOf(activePool.address); 
-    await _flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, web3.utils.toBN('1000000000000000000'));
+    await _flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _newPPFS);
     let _collTokenBalAfter = await collToken.balanceOf(activePool.address); 
     assert.isTrue(web3.utils.toBN(_collTokenBalBefore.toString()).eq(web3.utils.toBN(_collTokenBalAfter.toString())));
+	
+    // test edge cases
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, activePool.address, _amount, _newPPFS), 'ActivePool: collateral Only');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, 0, _newPPFS), 'ActivePool: 0 Amount');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _newPPFS, _newPPFS), 'ActivePool: Too much');
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, 0), 'ActivePool: IERC3156: Callback failed');
+    await th.assertRevert(activePool.flashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
+    assert.isTrue(web3.utils.toBN("0").eq(web3.utils.toBN((await activePool.maxFlashLoan(activePool.address)).toString())));
   })
 })
 

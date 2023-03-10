@@ -62,6 +62,10 @@ contract SimpleLiquidationTester is IERC3156FlashBorrower {
         bytes calldata data
     ) external override returns (bytes32) {
         uint256 _ppfs = abi.decode(data, (uint256));
+        if (_ppfs == 0) {
+            return keccak256("ERC3156FlashBorrower.onFlashLoanRevert");
+        }
+
         IRebasableTokenTester(token).setEthPerShare(_ppfs);
 
         IERC20(token).approve(msg.sender, amount + fee);
