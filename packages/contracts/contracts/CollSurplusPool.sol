@@ -92,9 +92,9 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         require(ETH >= claimableColl, "!CollSurplusPoolBal");
         ETH = ETH.sub(claimableColl);
         emit EtherSent(_account, claimableColl);
-		
+
         // NOTE: No need for safe transfer, stETH is standard
-        collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
+        collateral.transferShares(_account, claimableColl); //_account.call{value: claimableColl}("");
     }
 
     // --- 'require' functions ---

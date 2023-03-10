@@ -52,6 +52,21 @@ interface ICdpManager is ILiquityBase {
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
     event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
     event CdpIndexUpdated(bytes32 _borrower, uint _newIndex);
+    event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
+    event CollateralFeePerUnitUpdated(
+        uint _oldPerUnit,
+        uint _newPerUnit,
+        address _feeRecipient,
+        uint _feeTaken
+    );
+    event CdpFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _oldPerUnitCdp,
+        uint _newPerUnitCdp,
+        uint _collReduced,
+        uint collLeft
+    );
 
     // --- Functions ---
 
@@ -117,6 +132,8 @@ interface ICdpManager is ILiquityBase {
     function applyPendingRewards(bytes32 _cdpId) external;
 
     function claimStakingSplitFee() external;
+
+    function syncUpdateIndexInterval() external returns (uint);
 
     function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
 

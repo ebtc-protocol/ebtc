@@ -70,14 +70,14 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _price);
       let _tcrBefore = await cdpManager.getTCR(_price);
 	  
+      let _newIndex = mv._1_5e18BN;
+      await collToken.setEthPerShare(_newIndex); 
       await assertRevert(cdpManager.claimStakingSplitFee(), "CdpManager: update index too frequent");
 	  
       await ethers.provider.send("evm_increaseTime", [86400]);
       await ethers.provider.send("evm_mine");	  
 	  
       // sugardaddy some collateral staking reward by increasing its PPFS from 1 to 1.05
-      let _newIndex = mv._1_5e18BN;
-      await collToken.setEthPerShare(_newIndex); 
       let _expectedFee = _newIndex.sub(_oldIndex).mul(_aliceColl).mul(feeSplit).div(toBN("10000"));
       
       let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
@@ -104,5 +104,17 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_icrAfter.toString()).gt(toBN(_icrBefore.toString())));
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
   })
+  
+  it("Sync update interval", async() => {	  
+      let _oldInterval = await cdpManager.INDEX_UPD_INTERVAL();
+      assert.isTrue(toBN(_oldInterval.toString()).eq(toBN("43200")));	  
+	  
+      await collToken.setBeaconSpec(2, 1, 1);
+	  
+      await cdpManager.syncUpdateIndexInterval(); 
+      let _newInterval = await cdpManager.INDEX_UPD_INTERVAL();
+      assert.isTrue(toBN(_newInterval.toString()).eq(toBN("1")));// = (2*1*1) / 2
+  })
+  
   
 })

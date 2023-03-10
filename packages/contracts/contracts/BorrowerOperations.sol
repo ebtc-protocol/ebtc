@@ -210,8 +210,9 @@ contract BorrowerOperations is
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
         assert(vars.compositeDebt > 0);
 
+        uint _collShareAmt = collateral.getSharesByPooledEth(_collAmount);
         vars.ICR = LiquityMath._computeCR(_collAmount, vars.compositeDebt, vars.price);
-        vars.NICR = LiquityMath._computeNominalCR(_collAmount, vars.compositeDebt);
+        vars.NICR = LiquityMath._computeNominalCR(_collShareAmt, vars.compositeDebt);
 
         if (isRecoveryMode) {
             _requireICRisAboveCCR(vars.ICR);
@@ -229,7 +230,6 @@ contract BorrowerOperations is
 
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
-        uint _collShareAmt = collateral.getSharesByPooledEth(_collAmount);
 
         contractsCache.cdpManager.setCdpStatus(_cdpId, 1);
         contractsCache.cdpManager.increaseCdpColl(_cdpId, _collShareAmt);
@@ -240,7 +240,7 @@ contract BorrowerOperations is
 
         vars.arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
         emit CdpCreated(_cdpId, msg.sender, vars.arrayIndex);
-		
+
         // Mint the EBTCAmount to the borrower
         _withdrawEBTC(
             contractsCache.activePool,
@@ -639,8 +639,7 @@ contract BorrowerOperations is
         if (_varMvTokens.isCollIncrease) {
             _activePoolAddColl(
                 _activePool,
-                collateral.getPooledEthByShares(_varMvTokens.collChange),
-                _varMvTokens.collChange
+                collateral.getPooledEthByShares(_varMvTokens.collChange)
             );
         } else {
             _activePool.sendETH(_varMvTokens.user, _varMvTokens.collChange);
@@ -858,10 +857,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint newNICR = LiquityMath._computeNominalCR(
-            collateral.getPooledEthByShares(newColl),
-            newDebt
-        );
+        uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
         return newNICR;
     }
 

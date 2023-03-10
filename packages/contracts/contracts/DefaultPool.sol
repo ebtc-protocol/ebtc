@@ -79,9 +79,9 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit EtherSent(activePool, _amount);
-		
+
         // NOTE: No need for safe transfer, stETH is standard
-        collateral.transfer(activePool, _amount); //activePool.call{value: _amount}("");
+        collateral.transferShares(activePool, _amount); //activePool.call{value: _amount}("");
         IActivePool(activePool).receiveColl(_amount);
     }
 

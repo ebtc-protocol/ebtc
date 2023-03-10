@@ -12,6 +12,7 @@ import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/ICollateralTokenOracle.sol";
 
 contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     string public constant NAME = "CdpManager";
@@ -113,7 +114,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     /* Global Index update minimal interval, typically it is updated once per day  */
-    uint256 public constant INDEX_UPD_INTERVAL = 43200; // 12 hours
+    uint256 public INDEX_UPD_INTERVAL;
 
     /*
      * L_EBTCInterest tracks the interest accumulated on a unit debt position over time. During its lifetime, each cdp earns:
@@ -312,6 +313,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
     event CollateralFeePerUnitUpdated(
         uint _oldPerUnit,
         uint _newPerUnit,
@@ -393,6 +395,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         _syncIndex();
         stFeePerUnitg = 1e18;
+        INDEX_UPD_INTERVAL = 43200; // 12 hours
 
         _renounceOwnership();
     }
@@ -759,7 +762,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _reInsertPartialLiquidation(
                 _contractsCache,
                 _partialState,
-                LiquityMath._computeNominalCR(collateral.getPooledEthByShares(newColl), newDebt)
+                LiquityMath._computeNominalCR(newColl, newDebt)
             );
             emit CdpPartiallyLiquidated(
                 _cdpId,
@@ -1652,8 +1655,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 CdpManagerOperation.redeemCollateral
             );
         } else {
-            uint _newUnderlyingColl = collateral.getPooledEthByShares(newColl);
-            uint newNICR = LiquityMath._computeNominalCR(_newUnderlyingColl, newDebt);
+            uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
 
             /*
              * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost
@@ -1895,8 +1897,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
         (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
 
-        uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
-        uint NICR = LiquityMath._computeNominalCR(_underlyingCollateral, currentEBTCDebt);
+        uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
     }
 
@@ -2371,8 +2372,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
     function claimStakingSplitFee() public override {
-        _requireValidUpdateInterval();
-
         (uint _oldIndex, uint _newIndex) = _syncIndex();
         if (_newIndex > _oldIndex) {
             (
@@ -2396,6 +2395,19 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _perUnitError
             );
         }
+    }
+
+    function syncUpdateIndexInterval() public override returns (uint) {
+        ICollateralTokenOracle _oracle = ICollateralTokenOracle(collateral.getOracle());
+        (uint256 epochsPerFrame, uint256 slotsPerEpoch, uint256 secondsPerSlot, ) = _oracle
+            .getBeaconSpec();
+        uint256 _newInterval = epochsPerFrame.mul(slotsPerEpoch).mul(secondsPerSlot).div(2);
+        if (_newInterval != INDEX_UPD_INTERVAL) {
+            emit CollateralIndexUpdateIntervalUpdated(INDEX_UPD_INTERVAL, _newInterval);
+            INDEX_UPD_INTERVAL = _newInterval;
+            _syncIndex();
+        }
+        return INDEX_UPD_INTERVAL;
     }
 
     // --- Redemption fee functions ---
@@ -2524,6 +2536,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _oldIndex = stFPPSg;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
+            _requireValidUpdateInterval();
             stFPPSg = _newIndex;
             lastIndexTimestamp = block.timestamp;
             emit CollateralGlobalIndexUpdated(_oldIndex, stFPPSg, lastIndexTimestamp);

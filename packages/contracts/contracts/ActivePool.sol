@@ -101,9 +101,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
         emit EtherSent(_account, _amount);
-		
+
         // NOTE: No need for safe transfer, stETH is standard
-        collateral.transfer(_account, _amount); //_account.call{value: _amount}("");
+        collateral.transferShares(_account, _amount); //_account.call{value: _amount}("");
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);
         } else if (_account == collSurplusPoolAddress) {
@@ -159,6 +159,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
         uint256 amountWithFee = amount.add(fee);
+        uint256 _tokenExpected = collateral.getPooledEthByShares(ETH);
 
         // Deposit Eth into WETH
         // Send WETH to receiver
@@ -190,9 +191,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
         require(
-            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            collateral.balanceOf(address(this)) >= _tokenExpected,
             "ActivePool: Must repay Balance"
         );
+        require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
 
         return true;
     }
