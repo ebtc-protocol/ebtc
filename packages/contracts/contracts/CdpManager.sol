@@ -1895,7 +1895,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
-        (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, , , ) = getEntireDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -1904,21 +1904,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getCurrentICR(bytes32 _cdpId, uint _price) public view override returns (uint) {
-        (uint currentETH, uint currentEBTCDebt) = _getCurrentCdpAmounts(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, , , ) = getEntireDebtAndColl(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
         return ICR;
-    }
-
-    function _getCurrentCdpAmounts(bytes32 _cdpId) internal view returns (uint, uint) {
-        uint pendingETHReward = getPendingETHReward(_cdpId);
-        (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
-
-        uint currentETH = Cdps[_cdpId].coll.add(pendingETHReward);
-        uint currentEBTCDebt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward).add(pendingEBTCInterest);
-
-        return (currentETH, currentEBTCDebt);
     }
 
     function applyPendingRewards(bytes32 _cdpId) external override {
@@ -2092,7 +2082,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             );
     }
 
-    // Return the Cdps entire debt and coll, including pending rewards from redistributions.
+    // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     function getEntireDebtAndColl(
         bytes32 _cdpId
     )
@@ -2108,7 +2098,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         )
     {
         debt = Cdps[_cdpId].debt;
-        coll = Cdps[_cdpId].coll;
+        (uint _feeSplitDistributed, uint _newColl) = _getAccumulatedFeeSplitApplied(_cdpId);
+        coll = _newColl;
 
         (pendingEBTCDebtReward, pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
         pendingETHReward = getPendingETHReward(_cdpId);
@@ -2603,15 +2594,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             return;
         }
 
-        uint _oldStake = Cdps[_cdpId].stake;
-
-        uint _feeSplitDistributed = _oldStake.mul(stFeePerUnitg.sub(_oldPerUnitCdp)).add(
-            _oldStake.mul(stFeePerUnitgError).div(totalStakes)
-        );
-        uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
-        require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");
-
-        Cdps[_cdpId].coll = _scaledCdpColl.sub(_feeSplitDistributed).div(DECIMAL_PRECISION);
+        (uint _feeSplitDistributed, uint _newColl) = _getAccumulatedFeeSplitApplied(_cdpId);
+        Cdps[_cdpId].coll = _newColl;
         stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
         _updateStakeAndTotalStakes(_cdpId);
 
@@ -2621,6 +2605,26 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             stFeePerUnitcdp[_cdpId],
             _feeSplitDistributed,
             Cdps[_cdpId].coll
+        );
+    }
+
+    // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
+    function _getAccumulatedFeeSplitApplied(bytes32 _cdpId) internal view returns (uint, uint) {
+        uint _oldStake = Cdps[_cdpId].stake;
+
+        if (stFeePerUnitcdp[_cdpId] == 0 || Cdps[_cdpId].coll == 0) {
+            return (0, Cdps[_cdpId].coll);
+        }
+
+        uint _feeSplitDistributed = _oldStake.mul(stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId])).add(
+            _oldStake.mul(stFeePerUnitgError).div(totalStakes)
+        );
+        uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
+        require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");
+
+        return (
+            _feeSplitDistributed,
+            _scaledCdpColl.sub(_feeSplitDistributed).div(DECIMAL_PRECISION)
         );
     }
 
