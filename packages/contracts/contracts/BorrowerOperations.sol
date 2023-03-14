@@ -650,7 +650,7 @@ contract BorrowerOperations is
     function _activePoolAddColl(IActivePool _activePool, uint _amount) internal {
         // NOTE: No need for safe transfer, stETH is standard
         collateral.transferFrom(msg.sender, address(_activePool), _amount); //address(_activePool).call{value: _amount}("");
-        _activePool.receiveColl(_amount);
+        _activePool.receiveColl(collateral.getSharesByPooledEth(_amount));
     }
 
     // Issue the specified amount of EBTC to _account and increases

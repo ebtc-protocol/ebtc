@@ -2369,7 +2369,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 uint _deltaFeeSplitShare,
                 uint _deltaFeePerUnit,
                 uint _perUnitError
-            ) = _calcFeeUponStakingReward(_newIndex, _oldIndex);
+            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
             ContractsCache memory _contractsCache = ContractsCache(
                 activePool,
                 defaultPool,
@@ -2539,10 +2539,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // - fee split in collateral token which will be deduced from current total system collateral
     // - fee split increase per unit, used to update stFeePerUnitg
     // - fee split calculation error, used to update stFeePerUnitgError
-    function _calcFeeUponStakingReward(
+    function calcFeeUponStakingReward(
         uint256 _newIndex,
         uint256 _prevIndex
-    ) internal view returns (uint256, uint256, uint256) {
+    ) public view override returns (uint256, uint256, uint256) {
         require(_newIndex > _prevIndex, "CdpManager: only take fee with bigger new index");
         uint256 deltaIndex = _newIndex.sub(_prevIndex);
         uint256 deltaIndexFees = deltaIndex.mul(STAKING_REWARD_SPLIT).div(MAX_REWARD_SPLIT);
@@ -2572,7 +2572,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         stFeePerUnitg = stFeePerUnitg.add(_deltaPerUnit);
         stFeePerUnitgError = _newErrorPerUnit;
 
-        uint _feeTaken = _deltaFeeSplitShare.div(DECIMAL_PRECISION);
+        uint _feeTaken = (_deltaFeeSplitShare.div(DECIMAL_PRECISION));
+        if (_deltaFeeSplitShare > _feeTaken.mul(DECIMAL_PRECISION)) {
+            _feeTaken = _feeTaken.add(1);
+        }
         require(
             _cachedContracts.activePool.getETH() > _feeTaken,
             "CDPManager: fee split is too big"
@@ -2616,9 +2619,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             return (0, Cdps[_cdpId].coll);
         }
 
-        uint _feeSplitDistributed = _oldStake.mul(stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId])).add(
-            _oldStake.mul(stFeePerUnitgError).div(totalStakes)
-        );
+        uint _diffPerUnit = stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
+        uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;
+        _feeSplitDistributed = stFeePerUnitgError > 0
+            ? _feeSplitDistributed.add(_oldStake.mul(stFeePerUnitgError).div(totalStakes))
+            : _feeSplitDistributed;
+
         uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
         require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");
 

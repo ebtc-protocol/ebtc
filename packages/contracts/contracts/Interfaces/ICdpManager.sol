@@ -133,6 +133,11 @@ interface ICdpManager is ILiquityBase {
 
     function claimStakingSplitFee() external;
 
+    function calcFeeUponStakingReward(
+        uint256 _newIndex,
+        uint256 _prevIndex
+    ) external view returns (uint256, uint256, uint256);
+
     function syncUpdateIndexInterval() external returns (uint);
 
     function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
