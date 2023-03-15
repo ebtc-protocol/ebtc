@@ -74,7 +74,8 @@ class MainnetDeploymentHelper {
     const borrowerOperationsFactory = await this.getFactory("BorrowerOperations")
     const hintHelpersFactory = await this.getFactory("HintHelpers")
     const ebtcTokenFactory = await this.getFactory("EBTCToken")
-    const tellorCallerFactory = await this.getFactory("TellorCaller")
+    // TODO: Use TellorCaller instead of TellorCallerMock
+    const tellorCallerFactory = await this.getFactory("TellorCallerMock")
 
     // Deploy txs
     const priceFeed = await this.loadOrDeploy(priceFeedFactory, 'priceFeed', deploymentState)
