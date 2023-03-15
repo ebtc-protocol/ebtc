@@ -8,8 +8,7 @@ contract MockTellor {
     // --- Mock price data ---
 
     bool didRetrieve = true; // default to a positive retrieval
-    uint private ethPrice;
-    uint private btcPrice;
+    uint private price;
     uint private updateTime;
 
     bool private revertRequest;
@@ -17,12 +16,8 @@ contract MockTellor {
 
     // --- Setters for mock price data ---
 
-    function setEthPrice(uint _price) external {
-        ethPrice = _price;
-    }
-
-    function setBtcPrice(uint _price) external {
-        btcPrice = _price;
+    function setPrice(uint _price) external {
+        price = _price;
     }
 
     function setDidRetrieve(bool _didRetrieve) external {
@@ -48,30 +43,23 @@ contract MockTellor {
     }
 
     function retrieveData(uint256, uint256) external view returns (uint256) {
-        return ethPrice;
+        return price;
     }
 
     function getDataBefore(
         bytes32 _queryId,
         uint256 _timestamp
-    ) external returns (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved) {
+    ) external view returns (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved) {
         if (revertRequest) {
             require(1 == 0, "Tellor request reverted");
-        }
-        uint statefulPrice;
-        // Return price based on queryId:
-        if (_queryId == 0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992) {
-            statefulPrice = ethPrice;
-        } else if (_queryId == 0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac) {
-            statefulPrice = btcPrice;
         }
         return
             invalidRequest > 0
                 ? (
                     false,
-                    invalidRequest == 1 ? abi.encode(0) : abi.encode(statefulPrice),
+                    invalidRequest == 1 ? abi.encode(0) : abi.encode(price),
                     invalidRequest == 2 ? 0 : updateTime
                 )
-                : (true, abi.encode(statefulPrice), updateTime);
+                : (true, abi.encode(price), updateTime);
     }
 }

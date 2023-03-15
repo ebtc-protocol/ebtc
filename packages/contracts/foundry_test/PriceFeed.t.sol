@@ -52,8 +52,7 @@ contract PriceFeedTest is eBTCBaseFixture {
         _mockChainlink.setPrevRoundId(2);
         _mockChainlink.setPrice(7018000);
         _mockChainlink.setPrevPrice(7018000);
-        _mockTellor.setEthPrice(1500e18);
-        _mockTellor.setEthPrice(20000e18);
+        _mockTellor.setPrice(7432e13);
 
         _mockChainlink.setUpdateTime(block.timestamp);
         _mockTellor.setUpdateTime(block.timestamp);
