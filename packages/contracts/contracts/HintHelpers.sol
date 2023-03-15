@@ -18,6 +18,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event CdpManagerAddressChanged(address _cdpManagerAddress);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     struct LocalVariables_getRedemptionHints {
         uint remainingEBTC;
@@ -29,16 +30,20 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     // --- Dependency setters ---
     function setAddresses(
         address _sortedCdpsAddress,
-        address _cdpManagerAddress
+        address _cdpManagerAddress,
+        address _collateralAddress
     ) external onlyOwner {
         checkContract(_sortedCdpsAddress);
         checkContract(_cdpManagerAddress);
+        checkContract(_collateralAddress);
 
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
+        collateral = ICollateralToken(_collateralAddress);
 
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
+        emit CollateralAddressChanged(_collateralAddress);
 
         _renounceOwnership();
     }
@@ -115,11 +120,13 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
                         netEBTCDebt.sub(vars.minNetDebtInBTC)
                     );
 
-                    uint ETH = cdpManager.getCdpColl(vars.currentCdpId).add(
-                        cdpManager.getPendingETHReward(vars.currentCdpId)
-                    );
+                    (, uint ETH, , , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
 
-                    uint newColl = ETH.sub(maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price));
+                    uint newColl = ETH.sub(
+                        collateral.getSharesByPooledEth(
+                            maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price)
+                        )
+                    );
                     uint newDebt = netEBTCDebt.sub(maxRedeemableEBTC);
 
                     uint compositeDebt = _getCompositeDebt(newDebt);

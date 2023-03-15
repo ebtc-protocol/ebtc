@@ -845,15 +845,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _price,
         uint _totalDebtToBurn,
         uint _totalColToSend
-    ) private pure returns (uint cappedColPortion, uint collSurplus) {
+    ) private view returns (uint cappedColPortion, uint collSurplus) {
         // Calculate liquidation incentive for liquidator:
         // If ICR is less than 100%: give away entire collateral to liquidator
         // If ICR is between 100% and 105%: give away entire collateral as is totalDebt.mul(ICR).div(price)
         // If ICR is more than 105%: give away 100% + 5% worth of collateral to liquidator
         // Add LIQUIDATOR_REWARD in case not giving entire collateral away
         if (_ICR > _105pct) {
-            cappedColPortion = _totalDebtToBurn.mul(_105pct).div(_price);
-            cappedColPortion = cappedColPortion.add(LIQUIDATOR_REWARD);
+            cappedColPortion = collateral.getSharesByPooledEth(
+                _totalDebtToBurn.mul(_105pct).div(_price).add(LIQUIDATOR_REWARD)
+            );
         } else {
             cappedColPortion = _totalColToSend;
         }
@@ -1084,6 +1085,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     /* In a full liquidation, returns the values for a cdp's coll and debt to be offset, and coll and debt to be
      * redistributed to active cdps.
      */
+    // TODO @deprecated, to remove later when all tests is adapted to new liquidation logic
     function _getOffsetAndRedistributionVals(
         uint _debt,
         uint _coll,
@@ -1125,6 +1127,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     /*
      *  Get its offset coll/debt and ETH gas comp, and close the cdp.
      */
+    // TODO @deprecated, to remove later when all tests is adapted to new liquidation logic
     function _getCappedOffsetVals(
         uint _entireCdpDebt,
         uint _entireCdpColl,
@@ -2418,7 +2421,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         /* Convert the drawn ETH back to EBTC at face value rate (1 EBTC:1 USD), in order to get
          * the fraction of total supply that was redeemed at face value. */
-        uint redeemedEBTCFraction = _ETHDrawn.mul(_price).div(_totalEBTCSupply);
+        uint redeemedEBTCFraction = collateral.getPooledEthByShares(_ETHDrawn).mul(_price).div(
+            _totalEBTCSupply
+        );
 
         uint newBaseRate = decayedBaseRate.add(redeemedEBTCFraction.div(BETA));
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%

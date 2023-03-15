@@ -50,6 +50,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
+    hintHelpers = contracts.hintHelpers;
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -215,6 +216,99 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           _oldIndex = _newIndex;
           _newIndex = _newIndex.add((mv._1_5e18BN.sub(mv._1e18BN)));// increase by 0.05 for next
       }
+  })  
+  
+  it("Claim split fee when there is staking reward coming after liquidation and redemption", async() => {
+      	  
+      let _oldIndex = mv._1e18BN;
+      let _deltaIndex = mv._1_5e18BN.sub(_oldIndex);
+      let _newIndex = _oldIndex.add(_deltaIndex);
+	  
+      let _errorTolerance = 1000;// compared to decimal of 1e18
+	  
+      // sugardaddy some collateral staking reward by increasing its PPFS
+      // to verify we get the collateral accounting correctly
+      await collToken.setEthPerShare(_newIndex);
+	  
+      await openCdp({ ICR: toBN(dec(299, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10")), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(499, 16)), extraParams: { from: bob } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _sugarDebt = await debtToken.balanceOf(alice); 
+      await debtToken.transfer(owner, _sugarDebt, {from : alice});
+	  
+      let _aliceColl = await cdpManager.getCdpColl(_aliceCdpId);
+      let _bobColl = await cdpManager.getCdpColl(_bobCdpId);
+      assert.isTrue((await sortedCdps.getFirst()) == _bobCdpId);
+	  
+      // partially liquidate the CDP	  
+      let _newPrice = dec(2800, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      let _tcrBefore = await cdpManager.getTCR(_newPrice);	 
+      assert.isTrue(toBN(_icrBefore.toString()).gt(toBN(LICR.toString())));
+      let _partialDebtRepaid = minDebt;
+      let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(toBN(LICR.toString())).div(toBN(_newPrice));
+      let _expectedLiquidatedColl = _expectedSeizedColl.mul(mv._1e18BN).div(_newIndex);
+      let _collBeforeLiquidator = await collToken.balanceOf(owner);
+      await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
+      let _collAfterLiquidator = await collToken.balanceOf(owner);	
+      let _aliceCollAfterLiq = await cdpManager.getCdpColl(_aliceCdpId);  
+      th.assertIsApproximatelyEqual(_collAfterLiquidator.sub(_collBeforeLiquidator), _expectedSeizedColl, _errorTolerance);
+      th.assertIsApproximatelyEqual(_aliceColl.sub(_aliceCollAfterLiq), _expectedLiquidatedColl, _errorTolerance);
+      _aliceColl = _aliceCollAfterLiq;	   
+	  
+      // sugardaddy some collateral staking reward by increasing its PPFS again
+      _newIndex = _newIndex.add(_deltaIndex);
+      await collToken.setEthPerShare(_newIndex);  
+	  
+      // redeem alice CDP
+      // skip bootstrapping phase	  
+      await ethers.provider.send("evm_increaseTime", [86400 * 15]);
+      await ethers.provider.send("evm_mine");
+	  
+      let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));
+      let _expectedColl = toBN(_redeemDebt.toString()).mul(mv._1e18BN).div(toBN(_newPrice));
+      let _expectedRedeemedColl = _expectedColl.mul(mv._1e18BN).div(_newIndex);
+      let _expectedRedeemFee = await cdpManager.getRedemptionRate();
+      let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFee).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
+      const {firstRedemptionHint, partialRedemptionHintNICR} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);	  
+      let _collBeforeRedeemer = await collToken.balanceOf(owner);
+      await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  
+      let _collAfterRedeemer = await collToken.balanceOf(owner);	
+      let _aliceCollAfterRedeem = await cdpManager.getCdpColl(_aliceCdpId);  
+      th.assertIsApproximatelyEqual(_collAfterRedeemer.sub(_collBeforeRedeemer), _expectedCollAfterFee, _errorTolerance);
+      th.assertIsApproximatelyEqual(_aliceColl.sub(_aliceCollAfterRedeem), _expectedRedeemedColl, _errorTolerance);
+      _aliceColl = _aliceCollAfterRedeem;
+      let _icrAfter = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      let _icrBobAfter = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
+      assert.isTrue((await sortedCdps.getFirst()) == _aliceCdpId);// reinsertion after redemption 
+	  
+      // sugardaddy some collateral staking reward by increasing its PPFS one more time
+      _newIndex = _newIndex.add(_deltaIndex);
+      await collToken.setEthPerShare(_newIndex);
+	  
+      await ethers.provider.send("evm_increaseTime", [86400]);
+      await ethers.provider.send("evm_mine");
+	  
+      let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
+      let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN).div(mv._1e18BN);
+      
+      let _aliceStake = await cdpManager.getCdpStake(_aliceCdpId);
+      let _bobStake = await cdpManager.getCdpStake(_bobCdpId);
+      let _totalStake = await cdpManager.totalStakes();
+      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
+      await cdpManager.claimStakingSplitFee();  
+      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+	  
+      th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee, _errorTolerance);
+	  
+      // check after accumulated fee split applied to CDPs
+      let _expectedFeeShare = _fees[0].div(mv._1e18BN);
+      let _aliceCollAfter = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1];
+      th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare.mul(_aliceStake).div(_totalStake)), _errorTolerance);
+      let _bobCollAfter = (await cdpManager.getEntireDebtAndColl(_bobCdpId))[1];
+      th.assertIsApproximatelyEqual(_bobCollAfter, _bobColl.sub(_expectedFeeShare.mul(_bobStake).div(_totalStake)), _errorTolerance);
   })
   
   
