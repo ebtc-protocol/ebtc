@@ -152,7 +152,7 @@ contract eBTCBaseFixture is Test {
         );
 
         // set contracts in HintHelpers
-        hintHelpers.setAddresses(address(sortedCdps), address(cdpManager));
+        hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
     }
 
     /* connectLQTYContracts() - wire up necessary liquity contracts
