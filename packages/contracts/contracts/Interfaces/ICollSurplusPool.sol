@@ -11,7 +11,7 @@ interface ICollSurplusPool {
     event CollateralAddressChanged(address _collTokenAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
-    event EtherSent(address _to, uint _amount);
+    event CollateralSent(address _to, uint _amount);
 
     // --- Contract setters ---
 

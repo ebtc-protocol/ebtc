@@ -157,11 +157,11 @@ contract('CdpManager', async accounts => {
 
     // check ActivePool ETH and EBTC debt before
     const activePool_ETH_Before = (await activePool.getETH()).toString()
-    const activePool_stEth_Before = (await contracts.collateral.balanceOf(activePool.address)).toString()
+    const activePool_collateral_Before = (await contracts.collateral.balanceOf(activePool.address)).toString()
     const activePool_EBTCDebt_Before = (await activePool.getEBTCDebt()).toString()
 
     assert.equal(activePool_ETH_Before, A_collateral.add(B_collateral))
-    assert.equal(activePool_stEth_Before, A_collateral.add(B_collateral))
+    assert.equal(activePool_collateral_Before, A_collateral.add(B_collateral))
     th.assertIsApproximatelyEqual(activePool_EBTCDebt_Before, A_totalDebt.add(B_totalDebt))
 
     // price drops to 1ETH:100EBTC, reducing Bob's ICR below MCR
@@ -2427,15 +2427,15 @@ contract('CdpManager', async accounts => {
     const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
-    const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
+    const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
     
     // console.log("*********************************************************************************")
     // console.log("ETHFee: " + ETHFee)
     // console.log("dennis_ETHBalance_Before: " + dennis_ETHBalance_Before)
     // console.log("GAS_USED: " + th.gasUsed(redemptionTx))
     // console.log("dennis_ETHBalance_After: " + dennis_ETHBalance_After)
-    // console.log("expectedTotalETHDrawn: " + expectedTotalETHDrawn)
+    // console.log("expectedTotalCollDrawn: " + expectedTotalCollDrawn)
     // console.log("recived  : " + receivedETH)
     // console.log("expected : " + expectedReceivedETH)
     // console.log("wanted :   " + expectedReceivedETH.sub(toBN(GAS_PRICE)))
@@ -2521,8 +2521,8 @@ contract('CdpManager', async accounts => {
     const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
-    const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
+    const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2605,8 +2605,8 @@ contract('CdpManager', async accounts => {
     const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
-    const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
+    const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2696,8 +2696,8 @@ contract('CdpManager', async accounts => {
     const dennis_ETHBalance_After = toBN(await contracts.collateral.balanceOf(dennis))
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
-    const expectedTotalETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(toBN(ETHFee))
+    const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2964,7 +2964,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const redeemFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     // Since Alice already redeemed 1 EBTC from Carol's Cdp, Dennis was  able to redeem:
     //  - 9 EBTC from Carol's
@@ -2979,8 +2979,8 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     // Expect only 17 worth of ETH drawn
-    const expectedTotalETHDrawn = fullfilledRedemptionAmount.sub(frontRunRedepmtion).mul(mv._1e18BN).div(price) // redempted EBTC converted to ETH, at ETH:USD price 200
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee)
+    const expectedTotalCollDrawn = fullfilledRedemptionAmount.sub(frontRunRedepmtion).mul(mv._1e18BN).div(price) // redempted EBTC converted to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(redeemFee)
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -3030,8 +3030,8 @@ contract('CdpManager', async accounts => {
 
     const carol_ETHBalance_After = toBN(await web3.eth.getBalance(carol))
 
-    const expectedTotalETHDrawn = toBN(amount).div(price) // convert 100 EBTC to ETH at ETH:USD price of 100
-    const expectedReceivedETH = expectedTotalETHDrawn.sub(ETHFee)
+    const expectedTotalCollDrawn = toBN(amount).div(price) // convert 100 EBTC to collateral at given price
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(ETHFee)
 
     const receivedETH = carol_ETHBalance_After.sub(carol_ETHBalance_Before)
     assert.isTrue(expectedReceivedETH.eq(receivedETH))

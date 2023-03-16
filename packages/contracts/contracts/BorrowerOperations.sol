@@ -631,8 +631,8 @@ contract BorrowerOperations is
 
     // Send ETH to Active Pool and increase its recorded ETH balance
     function _activePoolAddColl(IActivePool _activePool, uint _amount) internal {
-        // NOTE: No need for safe transfer, stETH is standard
-        collateral.transferFrom(msg.sender, address(_activePool), _amount); //address(_activePool).call{value: _amount}("");
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transferFrom(msg.sender, address(_activePool), _amount);
         _activePool.receiveColl(_amount);
     }
 

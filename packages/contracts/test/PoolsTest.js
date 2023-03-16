@@ -18,7 +18,7 @@ contract('ActivePool', async accounts => {
   const [owner, alice] = accounts;
   beforeEach(async () => {
     const weth9 = await WETH9.new()
-    activePool = await ActivePool.new(weth9.address)
+    activePool = await ActivePool.new()
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     collToken = await CollateralTokenTester.new()
@@ -133,7 +133,7 @@ contract('DefaultPool', async accounts => {
     defaultPool = await DefaultPool.new()
     mockCdpManager = await NonPayable.new()
     
-    activePool = await ActivePool.new(weth9.address)
+    activePool = await ActivePool.new()
     const dumbContractAddress = (await NonPayable.new()).address	  
     collToken = await CollateralTokenTester.new()
 	  

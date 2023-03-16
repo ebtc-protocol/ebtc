@@ -32,7 +32,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     event CollateralAddressChanged(address _collTokenAddress);
 
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
-    event EtherSent(address _to, uint _amount);
+    event CollateralSent(address _to, uint _amount);
 
     // --- Contract setters ---
 
@@ -91,10 +91,10 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
 
         require(ETH >= claimableColl, "!CollSurplusPoolBal");
         ETH = ETH.sub(claimableColl);
-        emit EtherSent(_account, claimableColl);
+        emit CollateralSent(_account, claimableColl);
 
-        // NOTE: No need for safe transfer, stETH is standard
-        collateral.transfer(_account, claimableColl); //_account.call{value: claimableColl}("");
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transfer(_account, claimableColl);
     }
 
     // --- 'require' functions ---

@@ -72,7 +72,7 @@ contract eBTCBaseFixture is Test {
         sortedCdps = new SortedCdps();
         cdpManager = new CdpManager();
         weth = new WETH9();
-        activePool = new ActivePool(address(weth));
+        activePool = new ActivePool();
         gasPool = new GasPool();
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
