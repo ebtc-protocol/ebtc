@@ -39,7 +39,8 @@ contract FlashAttack {
             ++counter;
 
             // Perform a second loan
-            lender.flashLoan(IERC3156FlashBorrower(address(this)), address(want), amount, data);
+            uint256 _amt = (amount + abi.decode(data, (uint256)));
+            lender.flashLoan(IERC3156FlashBorrower(address(this)), address(want), _amt, data);
         }
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -68,8 +69,11 @@ contract FlashLoanAttack is eBTCBaseFixture {
         );
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
-        vm.prank(user);
-        borrowerOperations.openCdp{value: 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
     }
 
     function testEBTCAttack(uint128 amount) public {
@@ -119,36 +123,39 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint128 amount) public {
-        uint256 fee = activePool.flashFee(address(weth), amount);
+        uint256 _maxAvailable = activePool.getETH();
+        vm.assume(amount * 2 < _maxAvailable);
+
+        uint256 fee = activePool.flashFee(address(collateral), amount);
 
         vm.assume(fee > 0);
 
         FlashAttack attacker = new FlashAttack(
-            IERC20(address(weth)),
+            IERC20(address(collateral)),
             IERC3156FlashLender(address(activePool))
         );
 
         // Deal only fee for one, will revert
         vm.deal(address(activePool), amount);
-        deal(address(weth), address(attacker), fee);
+        dealCollateral(address(attacker), fee);
 
         vm.expectRevert("ActivePool: Too much");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),
-            address(weth),
+            address(collateral),
             amount,
-            abi.encodePacked(uint256(0))
+            abi.encodePacked(_maxAvailable)
         );
 
         vm.deal(address(activePool), amount * 2);
-        deal(address(weth), address(attacker), fee * 2);
+        dealCollateral(address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
-        vm.assume(address(activePool).balance - amount < activePool.getETH());
+        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getETH());
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),
-            address(weth),
+            address(collateral),
             amount,
             abi.encodePacked(uint256(0))
         );

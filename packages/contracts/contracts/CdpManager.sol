@@ -258,6 +258,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     event Liquidation(
         uint _liquidatedDebt,
@@ -322,7 +323,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address _ebtcTokenAddress,
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
-        address _lqtyStakingAddress
+        address _lqtyStakingAddress,
+        address _collTokenAddress
     ) external override onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
@@ -334,6 +336,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         checkContract(_sortedCdpsAddress);
         checkContract(_lqtyTokenAddress);
         checkContract(_lqtyStakingAddress);
+        checkContract(_collTokenAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);
@@ -345,6 +348,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
         lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
+        collateral = ICollateralToken(_collTokenAddress);
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -356,6 +360,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit LQTYTokenAddressChanged(_lqtyTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
+        emit CollateralAddressChanged(_collTokenAddress);
 
         _renounceOwnership();
     }

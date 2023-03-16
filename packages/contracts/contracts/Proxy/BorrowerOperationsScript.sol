@@ -17,13 +17,19 @@ contract BorrowerOperationsScript is CheckContract {
         uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
-        bytes32 _lowerHint
-    ) external payable {
-        borrowerOperations.openCdp{value: msg.value}(_maxFee, _EBTCAmount, _upperHint, _lowerHint);
+        bytes32 _lowerHint,
+        uint _collAmount
+    ) external {
+        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, _collAmount);
     }
 
-    function addColl(bytes32 _cdpId, bytes32 _upperHint, bytes32 _lowerHint) external payable {
-        borrowerOperations.addColl{value: msg.value}(_cdpId, _upperHint, _lowerHint);
+    function addColl(
+        bytes32 _cdpId,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount
+    ) external {
+        borrowerOperations.addColl(_cdpId, _upperHint, _lowerHint, _collAmount);
     }
 
     function withdrawColl(
@@ -66,8 +72,8 @@ contract BorrowerOperationsScript is CheckContract {
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external payable {
-        borrowerOperations.adjustCdp{value: msg.value}(
+    ) external {
+        borrowerOperations.adjustCdp(
             _cdpId,
             _maxFee,
             _collWithdrawal,
@@ -75,6 +81,28 @@ contract BorrowerOperationsScript is CheckContract {
             isDebtIncrease,
             _upperHint,
             _lowerHint
+        );
+    }
+
+    function adjustCdpWithColl(
+        bytes32 _cdpId,
+        uint _maxFee,
+        uint _collWithdrawal,
+        uint _debtChange,
+        bool isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount
+    ) external {
+        borrowerOperations.adjustCdpWithColl(
+            _cdpId,
+            _maxFee,
+            _collWithdrawal,
+            _debtChange,
+            isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            _collAmount
         );
     }
 

@@ -64,6 +64,11 @@ contract InterestRateTest is eBTCBaseFixture {
         _utils = new Utilities();
         users = _utils.createUsers(3);
         _liquityTester = new LiquityTester();
+        vm.deal(users[0], type(uint256).max);
+        vm.startPrank(users[0]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000000000000000000000000000 ether}();
+        vm.stopPrank();
     }
 
     /**
@@ -86,7 +91,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
 
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId0 = borrowerOperations.openCdp(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
@@ -94,7 +99,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
@@ -137,7 +143,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
         emit LTermsUpdated(0, 0, 1019986589312086194);
         // Apply pending interest
-        borrowerOperations.addColl{value: 2000e18}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdpId0, bytes32(0), bytes32(0), 2000e18);
         // Make sure that NICR increased after user added more collateral
         assertLt(nicrBefore, cdpManager.getNominalICR(cdpId0));
 
@@ -168,7 +174,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId0 = borrowerOperations.openCdp(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
@@ -176,7 +182,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -252,7 +259,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -260,7 +267,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -318,7 +326,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -326,10 +334,11 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         // Borrow for the second time so user has enough eBTC to close their first CDP
-        bytes32 cdpId2 = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId2 = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -337,10 +346,11 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         // Make balance snapshot to make sure that user's balance increased after closing CDP
-        uint ethSnapshot = address(users[0]).balance;
+        uint ethSnapshot = collateral.balanceOf((users[0]));
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -378,7 +388,7 @@ contract InterestRateTest is eBTCBaseFixture {
             0.001e18
         ); // Error is <0.1% of the expected value
         // Check that user ETH balance increased specifically by CDP.eth withdrawn value
-        assertEq(ethSnapshot.add(coll), address(users[0]).balance);
+        assertEq(ethSnapshot.add(coll), collateral.balanceOf((users[0])));
     }
 
     /**
@@ -397,15 +407,13 @@ contract InterestRateTest is eBTCBaseFixture {
         // Open N identical CDPs
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
-            vm.deal(user, 10000000 ether);
-            vm.prank(user);
-            bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
-                FEE,
-                debt,
-                bytes32(0),
-                bytes32(0)
-            );
+            vm.deal(user, type(uint256).max);
+            vm.startPrank(user);
+            collateral.approve(address(borrowerOperations), type(uint256).max);
+            collateral.deposit{value: 10000000000000000000000000000 ether}();
+            bytes32 cdpId = borrowerOperations.openCdp(FEE, debt, bytes32(0), bytes32(0), coll);
             cdpIds.push(cdpId);
+            vm.stopPrank();
         }
         bytes32 benchmarkCdpId = cdpIds[0];
         bytes32 triggerCdpId = cdpIds[1];
@@ -453,7 +461,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -461,7 +469,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -505,18 +514,11 @@ contract InterestRateTest is eBTCBaseFixture {
         - Advance time and ensure the pending interest is the same across both CDPS
      */
     function testInterestIsSameForInteractingAndNonInteractingUsers() public {
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: 100 ether}(
-            FEE,
-            2e18,
-            bytes32(0),
-            bytes32(0)
-        );
-        bytes32 cdpId1 = borrowerOperations.openCdp{value: 100 ether}(
-            FEE,
-            2e18,
-            bytes32(0),
-            bytes32(0)
-        );
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
+        bytes32 cdpId0 = borrowerOperations.openCdp(FEE, 2e18, bytes32(0), bytes32(0), 100 ether);
+        bytes32 cdpId1 = borrowerOperations.openCdp(FEE, 2e18, bytes32(0), bytes32(0), 100 ether);
         assertEq(cdpManager.getCdpIdsCount(), 2);
 
         uint256 debt0;
@@ -545,7 +547,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(debt0, debt1);
 
         // Realize pending debt
-        borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdpId0, bytes32(0), bytes32(0), 1);
 
         (debt0, , , pendingInterest0, ) = cdpManager.getEntireDebtAndColl(cdpId0);
         assertEq(pendingInterest0, 0);
@@ -561,7 +563,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertApproxEqAbs(debt0, debt1, 1);
 
         // Realize pending debt
-        borrowerOperations.addColl{value: 1}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdpId0, bytes32(0), bytes32(0), 1);
 
         (debt0, , , pendingInterest0, ) = cdpManager.getEntireDebtAndColl(cdpId0);
         assertEq(pendingInterest0, 0);
@@ -571,6 +573,9 @@ contract InterestRateTest is eBTCBaseFixture {
 
     // TODO since liquidation is changed to external liquidator, this test might need some adaptation
     function testInterestIsAppliedOnRedistributedDebt() public {
+        vm.deal(address(this), type(uint256).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 1000000000000 ether}();
         uint256 coll0 = _utils.calculateCollAmount(4000e18, priceFeedMock.getPrice(), 300e16);
         uint256 coll1 = _utils.calculateCollAmount(
             2000e18,
@@ -578,7 +583,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
 
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll0}(
+        bytes32 cdpId0 = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 4000e18,
@@ -586,9 +591,10 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll0
         );
-        bytes32 cdpId1 = borrowerOperations.openCdp{value: coll1}(
+        bytes32 cdpId1 = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
@@ -596,7 +602,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll1
         );
 
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
@@ -665,7 +672,7 @@ contract InterestRateTest is eBTCBaseFixture {
         uint256 debtOld = cdpState.debt;
 
         // Apply pending interest
-        borrowerOperations.addColl{value: 100e18}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdpId0, bytes32(0), bytes32(0), 100e18);
 
         assertFalse(cdpManager.hasPendingRewards(cdpId0));
 
@@ -706,7 +713,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -714,7 +721,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -773,7 +781,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -781,10 +789,11 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         // Borrow for the second time so user has enough eBTC to close their first CDP
-        borrowerOperations.openCdp{value: coll}(
+        borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -792,7 +801,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -839,7 +849,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId = borrowerOperations.openCdp(
             FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -847,7 +857,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);
@@ -908,7 +919,7 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
 
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId0 = borrowerOperations.openCdp(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -916,7 +927,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
 
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
@@ -951,7 +963,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
         // Apply pending interest
-        borrowerOperations.addColl{value: 1000e18}(cdpId0, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(cdpId0, bytes32(0), bytes32(0), 1000e18);
         // Make sure ICR increased as user added collateral
         assertGt(
             cdpManager.getCurrentICR(cdpId0, priceFeedMock.getPrice()),
@@ -988,7 +1000,7 @@ contract InterestRateTest is eBTCBaseFixture {
             priceFeedMock.getPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        bytes32 cdpId0 = borrowerOperations.openCdp{value: coll}(
+        bytes32 cdpId0 = borrowerOperations.openCdp(
             5e17,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
@@ -996,7 +1008,8 @@ contract InterestRateTest is eBTCBaseFixture {
                 cdpManager.getBorrowingRateWithDecay()
             ),
             bytes32(0),
-            bytes32(0)
+            bytes32(0),
+            coll
         );
         uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
         assertEq(lqtyStakingBalanceOld, 0);

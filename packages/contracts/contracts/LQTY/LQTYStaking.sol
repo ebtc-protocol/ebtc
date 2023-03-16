@@ -11,6 +11,7 @@ import "../Interfaces/ILQTYToken.sol";
 import "../Interfaces/ILQTYStaking.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Interfaces/IEBTCToken.sol";
+import "../Dependencies/ICollateralToken.sol";
 
 contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     using SafeMath for uint;
@@ -34,6 +35,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
 
     ILQTYToken public lqtyToken;
     IEBTCToken public ebtcToken;
+    ICollateralToken public collateral;
 
     address public cdpManagerAddress;
     address public borrowerOperationsAddress;
@@ -46,13 +48,14 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     event CdpManagerAddressSet(address _cdpManager);
     event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
     event ActivePoolAddressSet(address _activePoolAddress);
+    event CollateralAddressSet(address _collTokenAddress);
 
     event StakeChanged(address indexed staker, uint newStake);
     event StakingGainsWithdrawn(address indexed staker, uint EBTCGain, uint ETHGain);
     event F_ETHUpdated(uint _F_ETH);
     event F_EBTCUpdated(uint _F_EBTC);
     event TotalLQTYStakedUpdated(uint _totalLQTYStaked);
-    event EtherSent(address _account, uint _amount);
+    event CollateralSent(address _account, uint _amount);
     event StakerSnapshotsUpdated(address _staker, uint _F_ETH, uint _F_EBTC);
 
     // --- Functions ---
@@ -62,25 +65,29 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
         address _ebtcTokenAddress,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
-        address _activePoolAddress
+        address _activePoolAddress,
+        address _collTokenAddress
     ) external override onlyOwner {
         checkContract(_lqtyTokenAddress);
         checkContract(_ebtcTokenAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
+        checkContract(_collTokenAddress);
 
         lqtyToken = ILQTYToken(_lqtyTokenAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         cdpManagerAddress = _cdpManagerAddress;
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePoolAddress = _activePoolAddress;
+        collateral = ICollateralToken(_collTokenAddress);
 
         emit LQTYTokenAddressSet(_lqtyTokenAddress);
         emit LQTYTokenAddressSet(_ebtcTokenAddress);
         emit CdpManagerAddressSet(_cdpManagerAddress);
         emit BorrowerOperationsAddressSet(_borrowerOperationsAddress);
         emit ActivePoolAddressSet(_activePoolAddress);
+        emit CollateralAddressSet(_collTokenAddress);
 
         _renounceOwnership();
     }
@@ -213,9 +220,9 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     }
 
     function _sendETHGainToUser(uint ETHGain) internal {
-        emit EtherSent(msg.sender, ETHGain);
-        (bool success, ) = msg.sender.call{value: ETHGain}("");
-        require(success, "LQTYStaking: Failed to send accumulated ETHGain");
+        emit CollateralSent(msg.sender, ETHGain);
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transfer(msg.sender, ETHGain);
     }
 
     // --- 'require' functions ---

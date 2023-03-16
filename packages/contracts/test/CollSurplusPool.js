@@ -23,6 +23,7 @@ contract('CollSurplusPool', async accounts => {
   let collSurplusPool
 
   let contracts
+  let collToken;
 
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const openCdp = async (params) => th.openCdp(contracts, params)
@@ -39,6 +40,7 @@ contract('CollSurplusPool', async accounts => {
     priceFeed = contracts.priceFeedTestnet
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
+    collToken = contracts.collateral;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
@@ -83,8 +85,13 @@ contract('CollSurplusPool', async accounts => {
     const B_coll = toBN(dec(60, 18))
     const B_ebtcAmount = toBN(dec(3000, 18))
     const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)
-    const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32])
-    await nonPayable.forward(borrowerOperations.address, openCdpData, { value: B_coll })
+    const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32,uint256)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32, B_coll])
+    await collToken.nonStandardSetApproval(nonPayable.address, borrowerOperations.address, mv._1Be18BN);
+    await collToken.approve(borrowerOperations.address, mv._1Be18BN);
+    await collToken.deposit({value: B_coll});
+    await collToken.transfer(nonPayable.address, B_coll);
+	  
+    await nonPayable.forward(borrowerOperations.address, openCdpData, { value: 0 })
     await openCdp({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
 
     // skip bootstrapping phase
@@ -96,8 +103,11 @@ contract('CollSurplusPool', async accounts => {
     const ETH_2 = await collSurplusPool.getETH()
     th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
 
+    let _collBefore = await collToken.balanceOf(nonPayable.address);
     const claimCollateralData = th.getTransactionData('claimCollateral()', [])
-    await th.assertRevert(nonPayable.forward(borrowerOperations.address, claimCollateralData), 'CollSurplusPool: sending ETH failed')
+    await nonPayable.forward(borrowerOperations.address, claimCollateralData)
+    let _collAfter = await collToken.balanceOf(nonPayable.address);
+    assert.isTrue(toBN(_collAfter.toString()).gt(toBN(_collBefore.toString())));
   })
 
   it('CollSurplusPool: reverts trying to send ETH to it', async () => {

@@ -92,11 +92,11 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async openCdp(...params) {
-    return this.forwardFunction(params, 'openCdp(uint256,uint256,bytes32,bytes32)')
+    return this.forwardFunction(params, 'openCdp(uint256,uint256,bytes32,bytes32,uint256)')
   }
 
   async addColl(...params) {
-    return this.forwardFunction(params, 'addColl(address,address)')
+    return this.forwardFunction(params, 'addColl(address,address,uint256)')
   }
 
   async withdrawColl(...params) {
@@ -117,6 +117,10 @@ class BorrowerOperationsProxy extends Proxy {
 
   async adjustCdp(...params) {
     return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,address,address)')
+  }
+
+  async adjustCdpWithColl(...params) {
+    return this.forwardFunction(params, 'adjustCdpWithColl(uint256,uint256,uint256,bool,address,address,uint256)')
   }
 
   async claimRedeemedCollateral(...params) {
@@ -154,7 +158,7 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimCollateralAndOpenCdp(...params) {
-    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,uint256,bytes32,bytes32)')
+    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,uint256,bytes32,bytes32,uint256)')
   }
 
   async claimSPRewardsAndRecycle(...params) {

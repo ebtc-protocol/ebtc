@@ -3,10 +3,12 @@
 pragma solidity 0.6.11;
 
 import "./Interfaces/IDefaultPool.sol";
+import "./Interfaces/IActivePool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/ICollateralToken.sol";
 
 /*
  * The Default Pool holds the ETH and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
@@ -24,25 +26,31 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     address public activePoolAddress;
     uint256 internal ETH; // deposited ETH tracker
     uint256 internal EBTCDebt; // debt
+    ICollateralToken public collateral;
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event DefaultPoolEBTCDebtUpdated(uint _EBTCDebt);
     event DefaultPoolETHBalanceUpdated(uint _ETH);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     // --- Dependency setters ---
 
     function setAddresses(
         address _cdpManagerAddress,
-        address _activePoolAddress
+        address _activePoolAddress,
+        address _collTokenAddress
     ) external onlyOwner {
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);
+        checkContract(_collTokenAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
+        collateral = ICollateralToken(_collTokenAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
+        emit CollateralAddressChanged(_collTokenAddress);
 
         _renounceOwnership();
     }
@@ -67,12 +75,14 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     function sendETHToActivePool(uint _amount) external override {
         _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
+        require(ETH >= _amount, "!DefaultPoolBal");
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
-        emit EtherSent(activePool, _amount);
+        emit CollateralSent(activePool, _amount);
 
-        (bool success, ) = activePool.call{value: _amount}("");
-        require(success, "DefaultPool: sending ETH failed");
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transfer(activePool, _amount);
+        IActivePool(activePool).receiveColl(_amount);
     }
 
     function increaseEBTCDebt(uint _amount) external override {
@@ -97,11 +107,9 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the CdpManager");
     }
 
-    // --- Fallback function ---
-
-    receive() external payable {
+    function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        ETH = ETH.add(msg.value);
+        ETH = ETH.add(_value);
         emit DefaultPoolETHBalanceUpdated(ETH);
     }
 }

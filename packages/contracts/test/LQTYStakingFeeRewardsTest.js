@@ -43,6 +43,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
   let lqtyToken
 
   let contracts
+  let collToken;
 
   const openCdp = async (params) => th.openCdp(contracts, params)
 
@@ -68,6 +69,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
 
     lqtyToken = LQTYContracts.lqtyToken
     lqtyStaking = LQTYContracts.lqtyStaking
+    collToken = contracts.collateral
   })
 
   it('stake(): reverts if amount is zero', async () => {
@@ -307,17 +309,17 @@ contract('LQTYStaking revenue share tests', async accounts => {
     const expectedTotalETHGain = emittedETHFee_1.add(emittedETHFee_2)
     const expectedTotalEBTCGain = emittedEBTCFee_1.add(emittedEBTCFee_2)
 
-    const A_ETHBalance_Before = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_Before = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(A))
 
     // A un-stakes
     const GAS_Used = th.gasUsed(await lqtyStaking.unstake(dec(100, 18), {from: A, gasPrice: GAS_PRICE }))
 
-    const A_ETHBalance_After = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_After = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_After = toBN(await ebtcToken.balanceOf(A))
 
 
-    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before).add(toBN(GAS_Used * GAS_PRICE))
+    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before);//.add(toBN(GAS_Used * GAS_PRICE))
     const A_EBTCGain = A_EBTCBalance_After.sub(A_EBTCBalance_Before)
 
     assert.isAtMost(th.getDifference(expectedTotalETHGain, A_ETHGain), 1000)
@@ -382,16 +384,16 @@ contract('LQTYStaking revenue share tests', async accounts => {
     const expectedTotalETHGain = emittedETHFee_1.add(emittedETHFee_2)
     const expectedTotalEBTCGain = emittedEBTCFee_1.add(emittedEBTCFee_2)
 
-    const A_ETHBalance_Before = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_Before = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(A))
 
     // A tops up
     const GAS_Used = th.gasUsed(await lqtyStaking.stake(dec(50, 18), {from: A, gasPrice: GAS_PRICE }))
 
-    const A_ETHBalance_After = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_After = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_After = toBN(await ebtcToken.balanceOf(A))
 
-    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before).add(toBN(GAS_Used * GAS_PRICE))
+    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before);//.add(toBN(GAS_Used * GAS_PRICE))
     const A_EBTCGain = A_EBTCBalance_After.sub(A_EBTCBalance_Before)
 
     assert.isAtMost(th.getDifference(expectedTotalETHGain, A_ETHGain), 1000)
@@ -623,13 +625,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
     const expectedEBTCGain_D = toBN('50').mul(emittedEBTCFee_3).div( toBN('650'))
 
 
-    const A_ETHBalance_Before = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_Before = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(A))
-    const B_ETHBalance_Before = toBN(await web3.eth.getBalance(B))
+    const B_ETHBalance_Before = toBN(await collToken.balanceOf(B))
     const B_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(B))
-    const C_ETHBalance_Before = toBN(await web3.eth.getBalance(C))
+    const C_ETHBalance_Before = toBN(await collToken.balanceOf(C))
     const C_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(C))
-    const D_ETHBalance_Before = toBN(await web3.eth.getBalance(D))
+    const D_ETHBalance_Before = toBN(await collToken.balanceOf(D))
     const D_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(D))
 
     // A-D un-stake
@@ -645,23 +647,23 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.equal((await lqtyStaking.totalLQTYStaked()), '0')
 
     // Get A-D ETH and EBTC balances
-    const A_ETHBalance_After = toBN(await web3.eth.getBalance(A))
+    const A_ETHBalance_After = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_After = toBN(await ebtcToken.balanceOf(A))
-    const B_ETHBalance_After = toBN(await web3.eth.getBalance(B))
+    const B_ETHBalance_After = toBN(await collToken.balanceOf(B))
     const B_EBTCBalance_After = toBN(await ebtcToken.balanceOf(B))
-    const C_ETHBalance_After = toBN(await web3.eth.getBalance(C))
+    const C_ETHBalance_After = toBN(await collToken.balanceOf(C))
     const C_EBTCBalance_After = toBN(await ebtcToken.balanceOf(C))
-    const D_ETHBalance_After = toBN(await web3.eth.getBalance(D))
+    const D_ETHBalance_After = toBN(await collToken.balanceOf(D))
     const D_EBTCBalance_After = toBN(await ebtcToken.balanceOf(D))
 
     // Get ETH and EBTC gains
-    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before).add(toBN(A_GAS_Used * GAS_PRICE))
+    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before);
     const A_EBTCGain = A_EBTCBalance_After.sub(A_EBTCBalance_Before)
-    const B_ETHGain = B_ETHBalance_After.sub(B_ETHBalance_Before).add(toBN(B_GAS_Used * GAS_PRICE))
+    const B_ETHGain = B_ETHBalance_After.sub(B_ETHBalance_Before);
     const B_EBTCGain = B_EBTCBalance_After.sub(B_EBTCBalance_Before)
-    const C_ETHGain = C_ETHBalance_After.sub(C_ETHBalance_Before).add(toBN(C_GAS_Used * GAS_PRICE))
+    const C_ETHGain = C_ETHBalance_After.sub(C_ETHBalance_Before);
     const C_EBTCGain = C_EBTCBalance_After.sub(C_EBTCBalance_Before)
-    const D_ETHGain = D_ETHBalance_After.sub(D_ETHBalance_Before).add(toBN(D_GAS_Used * GAS_PRICE))
+    const D_ETHGain = D_ETHBalance_After.sub(D_ETHBalance_Before);
     const D_EBTCGain = D_EBTCBalance_After.sub(D_EBTCBalance_Before)
 
     // Check gains match expected amounts
@@ -706,10 +708,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
     // Expect this tx to revert: stake() tries to send nonPayable proxy's accumulated ETH gain (albeit 0),
     //  A tells proxy to unstake
     const proxyUnStakeTxData = await th.getTransactionData('unstake(uint256)', ['0x56bc75e2d63100000'])  // proxy stakes 100 LQTY
+    let _collBefore = await collToken.balanceOf(nonPayable.address);
     const proxyUnstakeTxPromise = nonPayable.forward(lqtyStaking.address, proxyUnStakeTxData, {from: A})
+    let _collAfter = await collToken.balanceOf(nonPayable.address);
    
     // but nonPayable proxy can not accept ETH - therefore stake() reverts.
-    await assertRevert(proxyUnstakeTxPromise)
+    await proxyUnstakeTxPromise
+    assert.isTrue(toBN(_collAfter.toString()).eq(toBN(_collBefore.toString())));
   })
 
   it("receive(): reverts when it receives ETH from an address that is not the Active Pool",  async () => { 

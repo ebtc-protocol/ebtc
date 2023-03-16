@@ -41,8 +41,11 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         );
         // Make sure there is no CDPs in the system yet
         assert(sortedCdps.getLast() == "");
-        vm.prank(user);
-        borrowerOperations.openCdp{value: 30 ether}(FEE, borrowedAmount, "hint", "hint");
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
 
         uselessReceiver = new UselessFlashReceiver();
         ebtcReceiver = new eBTCFlashReceiver();

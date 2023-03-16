@@ -21,6 +21,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
@@ -28,7 +30,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-            borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
+            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
@@ -53,6 +55,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
         uint borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
@@ -60,7 +64,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
-            borrowerOperations.openCdp{value: collAmount}(FEE, borrowedAmount, HINT, HINT);
+            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
