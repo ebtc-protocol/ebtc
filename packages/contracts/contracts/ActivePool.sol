@@ -97,9 +97,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
         emit CollateralSent(_account, _amount);
-		
+
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transfer(_account, _amount);
+        collateral.transferShares(_account, _amount);
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);
         } else if (_account == collSurplusPoolAddress) {

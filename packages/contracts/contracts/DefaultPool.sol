@@ -79,9 +79,9 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         ETH = ETH.sub(_amount);
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit CollateralSent(activePool, _amount);
-		
+
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transfer(activePool, _amount);
+        collateral.transferShares(activePool, _amount);
         IActivePool(activePool).receiveColl(_amount);
     }
 

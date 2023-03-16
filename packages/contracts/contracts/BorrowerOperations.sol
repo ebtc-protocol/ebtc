@@ -75,6 +75,7 @@ contract BorrowerOperations is
     struct LocalVariables_moveTokens {
         address user;
         uint collChange;
+        uint collAddUnderlying; // ONLY for isCollIncrease=true
         bool isCollIncrease;
         uint EBTCChange;
         bool isDebtIncrease;
@@ -269,7 +270,7 @@ contract BorrowerOperations is
         emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
 
         // CEI: Move the collateral to the Active Pool
-        _activePoolAddColl(contractsCache.activePool, _collAmount);
+        _activePoolAddColl(contractsCache.activePool, _collAmount, _collShareAmt);
 
         return _cdpId;
     }
@@ -500,6 +501,7 @@ contract BorrowerOperations is
             LocalVariables_moveTokens memory _varMvTokens = LocalVariables_moveTokens(
                 msg.sender,
                 vars.collChange,
+                (vars.isCollIncrease ? _collAddAmount : 0),
                 vars.isCollIncrease,
                 _EBTCChange,
                 _isDebtIncrease,
@@ -637,20 +639,17 @@ contract BorrowerOperations is
         }
 
         if (_varMvTokens.isCollIncrease) {
-            _activePoolAddColl(
-                _activePool,
-                collateral.getPooledEthByShares(_varMvTokens.collChange)
-            );
+            _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
             _activePool.sendETH(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 
     // Send ETH to Active Pool and increase its recorded ETH balance
-    function _activePoolAddColl(IActivePool _activePool, uint _amount) internal {
+    function _activePoolAddColl(IActivePool _activePool, uint _amount, uint _shareAmt) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(_activePool), _amount);
-        _activePool.receiveColl(_amount);
+        _activePool.receiveColl(_shareAmt);
     }
 
     // Issue the specified amount of EBTC to _account and increases
