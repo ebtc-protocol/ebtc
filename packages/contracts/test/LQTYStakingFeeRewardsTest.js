@@ -657,13 +657,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
     const D_EBTCBalance_After = toBN(await ebtcToken.balanceOf(D))
 
     // Get ETH and EBTC gains
-    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before);//.add(toBN(A_GAS_Used * GAS_PRICE))
+    const A_ETHGain = A_ETHBalance_After.sub(A_ETHBalance_Before);
     const A_EBTCGain = A_EBTCBalance_After.sub(A_EBTCBalance_Before)
-    const B_ETHGain = B_ETHBalance_After.sub(B_ETHBalance_Before);//.add(toBN(B_GAS_Used * GAS_PRICE))
+    const B_ETHGain = B_ETHBalance_After.sub(B_ETHBalance_Before);
     const B_EBTCGain = B_EBTCBalance_After.sub(B_EBTCBalance_Before)
-    const C_ETHGain = C_ETHBalance_After.sub(C_ETHBalance_Before);//.add(toBN(C_GAS_Used * GAS_PRICE))
+    const C_ETHGain = C_ETHBalance_After.sub(C_ETHBalance_Before);
     const C_EBTCGain = C_EBTCBalance_After.sub(C_EBTCBalance_Before)
-    const D_ETHGain = D_ETHBalance_After.sub(D_ETHBalance_Before);//.add(toBN(D_GAS_Used * GAS_PRICE))
+    const D_ETHGain = D_ETHBalance_After.sub(D_ETHBalance_Before);
     const D_EBTCGain = D_EBTCBalance_After.sub(D_EBTCBalance_Before)
 
     // Check gains match expected amounts

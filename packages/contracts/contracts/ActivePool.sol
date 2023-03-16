@@ -14,9 +14,9 @@ import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
 /*
- * The Active Pool holds the ETH collateral and EBTC debt (but not EBTC tokens) for all active cdps.
+ * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
  *
- * When a cdp is liquidated, it's ETH and EBTC debt are transferred from the Active Pool, to either the
+ * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
@@ -24,8 +24,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     using SafeMath for uint256;
 
     string public constant NAME = "ActivePool";
-
-    IWETH public immutable WETH;
 
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
@@ -44,9 +42,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     event CollateralAddressChanged(address _collTokenAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
 
-    constructor(address _weth) public {
-        WETH = IWETH(_weth);
-    }
+    constructor() public {}
 
     // --- Contract setters ---
 
@@ -100,10 +96,10 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(ETH >= _amount, "!ActivePoolBal");
         ETH = ETH.sub(_amount);
         emit ActivePoolETHBalanceUpdated(ETH);
-        emit EtherSent(_account, _amount);
-
-        // NOTE: No need for safe transfer, stETH is standard
-        collateral.transferShares(_account, _amount); //_account.call{value: _amount}("");
+        emit CollateralSent(_account, _amount);
+		
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transfer(_account, _amount);
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);
         } else if (_account == collSurplusPoolAddress) {
@@ -161,10 +157,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         uint256 amountWithFee = amount.add(fee);
         uint256 _tokenExpected = collateral.getPooledEthByShares(ETH);
 
-        // Deposit Eth into WETH
-        // Send WETH to receiver
-        //        WETH.deposit{value: amount}();
-
         collateral.transfer(address(receiver), amount);
 
         // Callback
@@ -173,15 +165,11 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
             "ActivePool: IERC3156: Callback failed"
         );
 
-        // Transfer of WETH to Fee recipient
+        // Transfer of (principal + Fee) from flashloan receiver
         collateral.transferFrom(address(receiver), address(this), amountWithFee);
 
-        // Send weth to fee recipient
+        // Send earned fee to designated recipient
         collateral.transfer(FEE_RECIPIENT, fee);
-
-        // Withdraw principal to this
-        // NOTE: Could withdraw all to avoid stuck WETH
-        //        WETH.withdraw(amount);
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it

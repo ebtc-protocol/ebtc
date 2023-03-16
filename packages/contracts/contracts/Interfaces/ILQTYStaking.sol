@@ -17,7 +17,7 @@ interface ILQTYStaking {
     event F_ETHUpdated(uint _F_ETH);
     event F_EBTCUpdated(uint _F_EBTC);
     event TotalLQTYStakedUpdated(uint _totalLQTYStaked);
-    event EtherSent(address _account, uint _amount);
+    event CollateralSent(address _account, uint _amount);
     event StakerSnapshotsUpdated(address _staker, uint _F_ETH, uint _F_EBTC);
 
     // --- Functions ---

@@ -21,7 +21,7 @@ contract('DefaultPool', async accounts => {
     defaultPool = await DefaultPool.new()
     nonPayable = await NonPayable.new()
     mockCdpManager = await NonPayable.new()
-    activePool = await ActivePool.new(nonPayable.address)
+    activePool = await ActivePool.new()
     collToken = await CollateralTokenTester.new();
 	
     await activePool.setAddresses(nonPayable.address, mockCdpManager.address, defaultPool.address, collToken.address, nonPayable.address);
