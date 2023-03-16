@@ -8,6 +8,7 @@ const externalAddrs  = {
   UNISWAP_V2_ROUTER02: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
   // https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
   WETH_ERC20: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  STETH_ERC20: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
 }
 
 const ebtcAddrs = {

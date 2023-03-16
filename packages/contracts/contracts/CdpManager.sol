@@ -394,7 +394,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // -----------------------------------------------------------------
 
     // Single CDP liquidation function (fully).
-    function liquidate(bytes32 _cdpId) external override {
+   function liquidate(bytes32 _cdpId) external override {
     }
 
     // Single CDP liquidation function (partially).
@@ -411,7 +411,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      }
 
      function liquidateCdps(uint _n) external override {
-        
+
      }
 
 
