@@ -60,7 +60,7 @@ contract CDPOpsTest is eBTCBaseFixture {
     function testIncreaseCRWithZeroAmount() public {
         uint collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
-        vm.deal(user, type(uint96).max);		
+        vm.deal(user, type(uint96).max);
         dealCollateral(user, 100000000 ether);
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
