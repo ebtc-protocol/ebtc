@@ -29,7 +29,7 @@ contract('TellorCaller', async accounts => {
     dummyPriceFeed = await PriceFeed.new();
     PriceFeed.setAsDeployed(dummyPriceFeed)
 	
-    qID = await dummyPriceFeed.ETHUSD_TELLOR_QUERY_ID();
+    qID = await dummyPriceFeed.STETH_BTC_TELLOR_QUERY_ID();
     qBuffer = await dummyPriceFeed.tellorQueryBufferSeconds();
     await mockTellor.setPrice(dec(3714, 13))
     const now = await th.getLatestBlockTimestamp(web3)	
