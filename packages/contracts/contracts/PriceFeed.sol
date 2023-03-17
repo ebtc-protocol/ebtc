@@ -34,8 +34,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
 
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
     // TODO: Use new Tellor query ID for stETH/BTC when available
-    bytes32 public constant ETHUSD_TELLOR_QUERY_ID =
-        0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992; // keccak256(abi.encode("SpotPrice", abi.encode("eth", "usd")))
+    bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =
+        0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
     uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes, soft governance might help to change this default configuration if required
 
     // Use to convert a price answer to an 18-digit precision uint
@@ -65,7 +65,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
     }
 
     struct TellorResponse {
-        bool ifRetrieve;
+        bool retrieved;
         uint256 value;
         uint256 timestamp;
         bool success;
@@ -556,18 +556,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
         view
         returns (TellorResponse memory tellorResponse)
     {
-        uint ethUsdValue;
-        uint ethUsdTimestamp;
-        uint btcUsdValue;
-        uint btcUsdTimestamp;
-        bool ethUsdRetrieved;
-        bool btcUsdRetrieved;
-
-        // First, fetch ETH/USD price from tellor. If it fails, return the TellorResponse struct with success = false.
         try
-            tellorCaller.getTellorBufferValue(ETHUSD_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+            tellorCaller.getTellorBufferValue(STETH_BTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
         returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
-            tellorResponse.ifRetrieve = ifRetrieved;
+            tellorResponse.retrieved = ifRetrieved;
             tellorResponse.value = value;
             tellorResponse.timestamp = timestampRetrieved;
             tellorResponse.success = true;
