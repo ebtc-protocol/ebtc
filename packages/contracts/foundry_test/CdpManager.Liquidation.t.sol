@@ -3,110 +3,45 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
-contract CdpManagerLiquidationTest is eBTCBaseFixture {
-    struct CdpState {
-        uint256 debt;
-        uint256 coll;
-        uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
-        uint256 pendingETHReward;
-    }
-
+contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
-
-    Utilities internal _utils;
 
     uint public constant DECIMAL_PRECISION = 1e18;
 
     ////////////////////////////////////////////////////////////////////////////
-    // Helper functions
+    // Liquidation Invariants for ebtc system
+    // - cdp_manager_liq1： total collateral snapshot is equal to whatever in active pool & default pool
+    // - cdp_manager_liq2： total collateral snapshot is equal to sum of individual CDP accounting number
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Invariants for ebtc system
-    // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
-    // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
-    // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
-    // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
-    // - cdp_manager_2： total collateral snapshot is equal to whatever in active pool & default pool
-    // - cdp_manager_3： total collateral snapshot is equal to sum of individual CDP accounting number
-    ////////////////////////////////////////////////////////////////////////////
-
-    function _assert_active_pool_invariant_1() internal {
-        assertGe(
-            collateral.balanceOf(address(activePool)),
-            activePool.getETH(),
-            "System Invariant: active_pool_1"
-        );
-    }
-
-    function _assert_active_pool_invariant_2() internal {
-        assertGe(
-            eBTCToken.totalSupply(),
-            activePool.getEBTCDebt(),
-            "System Invariant: active_pool_2"
-        );
-    }
-
-    function _assert_active_pool_invariant_3() internal {
-        assertEq(
-            eBTCToken.totalSupply(),
-            activePool.getEBTCDebt().add(defaultPool.getEBTCDebt()),
-            "System Invariant: active_pool_3"
-        );
-    }
-
-    function _assert_cdp_manager_invariant_1() internal {
-        assertEq(
-            cdpManager.getCdpIdsCount(),
-            sortedCdps.getSize(),
-            "System Invariant: cdp_manager_1"
-        );
-    }
-
-    function _assert_cdp_manager_invariant_2() internal {
+    function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
             activePool.getETH().add(defaultPool.getETH()),
-            "System Invariant: cdp_manager_2"
+            "System Invariant: cdp_manager_liq1"
         );
     }
 
-    function _assert_cdp_manager_invariant_3() internal {
+    function _assert_cdp_manager_invariant_liq2() internal {
         uint _sumColl;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
             (uint _debt, uint _coll, , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl.add(_coll);
         }
-        assertEq(cdpManager.totalCollateralSnapshot(), _sumColl, "System Invariant: cdp_manager_3");
-    }
-
-    function _ensureSystemInvariants() internal {
-        _assert_active_pool_invariant_1();
-        _assert_active_pool_invariant_2();
-        _assert_active_pool_invariant_3();
-        _assert_cdp_manager_invariant_1();
+        assertEq(
+            cdpManager.totalCollateralSnapshot(),
+            _sumColl,
+            "System Invariant: cdp_manager_liq2"
+        );
     }
 
     function _ensureSystemInvariants_Liquidation() internal {
-        _assert_cdp_manager_invariant_2();
-        _assert_cdp_manager_invariant_3();
+        _assert_cdp_manager_invariant_liq1();
+        _assert_cdp_manager_invariant_liq2();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -114,11 +49,11 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
     ////////////////////////////////////////////////////////////////////////////
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
+        super.setUp();
 
-        eBTCBaseFixture.connectLQTYContracts();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        connectLQTYContracts();
+        connectCoreContracts();
+        connectLQTYContractsToCore();
 
         _utils = new Utilities();
         users = _utils.createUsers(1);

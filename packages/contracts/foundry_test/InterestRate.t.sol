@@ -18,13 +18,6 @@ contract InterestRateTest is eBTCBaseFixture {
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
 
     bytes32[] cdpIds;
-    struct CdpState {
-        uint256 debt;
-        uint256 coll;
-        uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
-        uint256 pendingETHReward;
-    }
 
     uint256 private testNumber;
     address payable[] users;
@@ -33,22 +26,6 @@ contract InterestRateTest is eBTCBaseFixture {
     LiquityTester internal _liquityTester;
 
     uint public constant DECIMAL_PRECISION = 1e18;
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Helper functions
-    ////////////////////////////////////////////////////////////////////////////
-
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Tests

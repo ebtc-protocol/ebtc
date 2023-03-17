@@ -115,4 +115,16 @@ contract Utilities is Test {
                 DECIMAL_PRECISION.add(borrowingRate)
             );
     }
+
+    function assertApproximateEq(
+        uint _num1,
+        uint _num2,
+        uint _tolerance
+    ) public pure returns (bool) {
+        if (_num1 > _num2) {
+            return _tolerance >= _num1.sub(_num2);
+        } else {
+            return _tolerance >= _num2.sub(_num1);
+        }
+    }
 }

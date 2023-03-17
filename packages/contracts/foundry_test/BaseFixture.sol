@@ -61,6 +61,17 @@ contract eBTCBaseFixture is Test {
     LockupContractFactory lockupContractFactory;
     CommunityIssuance communityIssuance;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Structs
+    ////////////////////////////////////////////////////////////////////////////
+    struct CdpState {
+        uint256 debt;
+        uint256 coll;
+        uint256 pendingEBTCDebtReward;
+        uint256 pendingEBTCInterest;
+        uint256 pendingETHReward;
+    }
+
     /* setUp() - basic function to call when setting up new Foundry test suite
     Use in pair with connectCoreContracts to wire up infrastructure
 
@@ -172,6 +183,22 @@ contract eBTCBaseFixture is Test {
             address(activePool),
             address(collateral)
         );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Helper functions
+    ////////////////////////////////////////////////////////////////////////////
+
+    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
+        (
+            uint256 debt,
+            uint256 coll,
+            uint256 pendingEBTCDebtReward,
+            uint256 pendingEBTCDebtInterest,
+            uint256 pendingETHReward
+        ) = cdpManager.getEntireDebtAndColl(cdpId);
+        return
+            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
     }
 
     function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {

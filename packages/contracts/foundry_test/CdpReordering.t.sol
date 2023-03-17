@@ -9,14 +9,6 @@ import {LogUtils} from "./utils/LogUtils.sol";
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
 contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
-    struct CdpState {
-        uint256 debt;
-        uint256 coll;
-        uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
-        uint256 pendingETHReward;
-    }
-
     struct RunParams {
         uint256 duration;
         uint256 maxColl;
@@ -289,18 +281,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         uint256 collateralRatio
     ) internal view returns (uint256) {
         return _utils.calculateCollAmount(debt, priceFeedMock.getPrice(), collateralRatio);
-    }
-
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
     }
 
     function _getAndPrintCdpState(bytes32 cdpId) internal {
