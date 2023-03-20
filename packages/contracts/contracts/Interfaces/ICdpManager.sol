@@ -133,6 +133,23 @@ interface ICdpManager is ILiquityBase {
 
     function claimStakingSplitFee() external;
 
+    function getAccumulatedFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _stFeePerUnitg,
+        uint _stFeePerUnitgError,
+        uint _totalStakes
+    ) external view returns (uint, uint);
+
+    function standardizeTakenFee(uint _scaledFeeTaken) external view returns (uint);
+
+    function stFeePerUnitg() external view returns (uint);
+
+    function stFeePerUnitgError() external view returns (uint);
+
+    function stFPPSg() external view returns (uint);
+
+    function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
+
     function calcFeeUponStakingReward(
         uint256 _newIndex,
         uint256 _prevIndex

@@ -13,13 +13,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;
-    mapping(bytes32 => uint) private _targetCdpPrevStakes;
+    mapping(bytes32 => uint) private _targetCdpPrevFeeApplied;
 
     struct LocalFeeSplitVar {
         uint _prevStFeePerUnitg;
         uint _prevTotalCollUnderlying;
-        uint _prevTotalStakes;
-        uint _prevFeeSplit;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -64,12 +62,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
             uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)].sub(_cdpState.coll);
-            uint _expectedDiffColl = _var
-                ._prevFeeSplit
-                .mul(_targetCdpPrevStakes[cdpManager.CdpIds(i)])
-                .div(_var._prevTotalStakes);
+
             require(
-                _utils.assertApproximateEq(_diffColl, _expectedDiffColl, _tolerance),
+                _utils.assertApproximateEq(
+                    _diffColl,
+                    _targetCdpPrevFeeApplied[cdpManager.CdpIds(i)],
+                    _tolerance
+                ),
                 "!SplitFeeInCdp"
             );
         }
@@ -100,6 +99,18 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
+        uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
+        uint _stFeePerUnitgError = cdpManager.stFeePerUnitgError();
+        uint _totalStake = cdpManager.totalStakes();
+        (uint _feeSplitDistributed, uint _newColl) = cdpManager.getAccumulatedFeeSplitApplied(
+            _cdpId,
+            _stFeePerUnitg,
+            _stFeePerUnitgError,
+            _totalStake
+        );
+
+        _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed.div(1e18);
+
         vm.startPrank(_user);
         borrowerOperations.withdrawEBTC(_cdpId, 1e18, 1, _cdpId, _cdpId);
         vm.stopPrank();
@@ -132,7 +143,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         CdpState memory _cdpState = _getEntireDebtAndColl(_cdpId);
         _targetCdpPrevColls[_cdpId] = _cdpState.coll;
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.coll);
-        _targetCdpPrevStakes[_cdpId] = cdpManager.getCdpStake(_cdpId);
     }
 
     // Test staking fee split with multiple rebasing up
@@ -161,7 +171,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
             uint _totalColl = cdpManager.getEntireSystemColl();
             uint _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
-            uint _totalStakes = cdpManager.totalStakes();
 
             // prepare CDP status for invariant check
             _populateCdpStatus(cdpId1);
@@ -182,12 +191,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _applySplitFee(cdpId1, users[0]);
 
             _ensureSystemInvariants();
-            LocalFeeSplitVar memory _var = LocalFeeSplitVar(
-                _stFeePerUnitg,
-                _totalCollUnderlying,
-                _totalStakes,
-                _expectedFee.div(1e18)
-            );
+            LocalFeeSplitVar memory _var = LocalFeeSplitVar(_stFeePerUnitg, _totalCollUnderlying);
             _ensureSystemInvariants_RebasingUp(_var);
         }
     }

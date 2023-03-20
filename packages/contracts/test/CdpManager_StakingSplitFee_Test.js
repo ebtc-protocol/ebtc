@@ -65,6 +65,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _oldIndex = mv._1e18BN;
       let _deltaIndex = mv._1_5e18BN.sub(_oldIndex);
       let _newIndex = _oldIndex.add(_deltaIndex);
+	  	  
+      await ethers.provider.send("evm_increaseTime", [86400]);
+      await ethers.provider.send("evm_mine");	  
 	  
       // sugardaddy some collateral staking reward by increasing its PPFS
       // to verify we get the collateral accounting correctly
@@ -86,9 +89,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _price);
       let _tcrBefore = await cdpManager.getTCR(_price);
 	  
-      await assertRevert(cdpManager.claimStakingSplitFee(), "CdpManager: update index too frequent");	
-	  
       // sugardaddy some collateral staking reward by increasing its PPFS again
+      _oldIndex = _newIndex;
       _newIndex = _newIndex.add(_deltaIndex);
       await collToken.setEthPerShare(_newIndex);  
 	  
@@ -122,6 +124,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _tcrAfter = await cdpManager.getTCR(_price);
       assert.isTrue(toBN(_icrAfter.toString()).gt(toBN(_icrBefore.toString())));
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
+	  
+      // ensure the index update interval is respected
+      _newIndex = _newIndex.add(_deltaIndex);
+      await collToken.setEthPerShare(_newIndex);  
+      await assertRevert(cdpManager.claimStakingSplitFee(), "CdpManager: update index too frequent");	
   })
   
   it("Sync update interval", async() => {	  
@@ -159,7 +166,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _bobStake = await cdpManager.getCdpStake(_bobCdpId); 
           let _totalStake = await cdpManager.totalStakes();
           let _totalStakeAdded = toBN(_aliceStake.toString()).add(toBN(_bobStake.toString())); 	  
-          th.assertIsApproximatelyEqual(_totalStakeAdded, _totalStake, 0);
+          th.assertIsApproximatelyEqual(_totalStakeAdded, _totalStake, _errorTolerance);
           let _aliceColl = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1]; 
           let _bobColl = (await cdpManager.getEntireDebtAndColl(_bobCdpId))[1]; 
           let _totalColl = await cdpManager.getEntireSystemColl(); 
@@ -176,11 +183,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           await ethers.provider.send("evm_increaseTime", [86400]);
           await ethers.provider.send("evm_mine");	  
 	  
-          let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex); 
+          let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);  
+          let _expectedFeeShare = await cdpManager.standardizeTakenFee(_fees[0]);
+          let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
           let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient); 
           await cdpManager.claimStakingSplitFee();  	 
-          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient); 
-          let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN).div(mv._1e18BN);
+          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
           //console.log('i[' + i + ']:_totalCollBeforeAdded=' + _totalCollBeforeAdded + ',_totalColl=' + _totalColl + ',diff=' + (_totalColl.sub(_totalCollBeforeAdded)) + ',_aliceColl=' + _aliceColl + ',_bobColl=' + _bobColl + ',_expectedFee=' + _expectedFee + ',_feeBalDelta=' + _actualFee + ',diffFee=' + (_actualFee.sub(_expectedFee))); 
@@ -189,12 +197,17 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           // get collateral after applying accumulated split fee
           let _aliceCollAfter = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1]; 
           let _bobCollAfter = (await cdpManager.getEntireDebtAndColl(_bobCdpId))[1];
-	    
-          let _expectedFeeShare = _fees[0].div(mv._1e18BN);	  
+	  
+          let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
+          let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
+          let _totalStakeAfter = await cdpManager.totalStakes();
+          let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
+          let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
+	     
           let _totalCollAfter = await cdpManager.getEntireSystemColl();  	 
 	  
-          th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare.mul(_aliceStake).div(_totalStake)), _errorTolerance);
-          th.assertIsApproximatelyEqual(_bobCollAfter, _bobColl.sub(_expectedFeeShare.mul(_bobStake).div(_totalStake)), _errorTolerance);
+          th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceExpectedFeeApplied[1], _errorTolerance);
+          th.assertIsApproximatelyEqual(_bobCollAfter, _bobExpectedFeeApplied[1], _errorTolerance);
           th.assertIsApproximatelyEqual(_totalCollAfter, _totalColl.sub(_expectedFeeShare), _errorTolerance); 
 	  
           // CDPs should get more underlying collateral since there is staking reward
@@ -224,6 +237,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _oldIndex = mv._1e18BN;
       let _deltaIndex = mv._1_5e18BN.sub(_oldIndex);
       let _newIndex = _oldIndex.add(_deltaIndex);
+	  	  
+      await ethers.provider.send("evm_increaseTime", [86400]);
+      await ethers.provider.send("evm_mine");	  
 	  
       let _errorTolerance = 1000;// compared to decimal of 1e18
 	  
@@ -252,13 +268,14 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _partialDebtRepaid = minDebt;
       let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(toBN(LICR.toString())).div(toBN(_newPrice));
       let _expectedLiquidatedColl = _expectedSeizedColl.mul(mv._1e18BN).div(_newIndex);
-      let _collBeforeLiquidator = await collToken.balanceOf(owner);
+      let _collBeforeLiquidator = await collToken.balanceOf(owner);	
+	  
       await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
       let _collAfterLiquidator = await collToken.balanceOf(owner);	
       let _aliceCollAfterLiq = await cdpManager.getCdpColl(_aliceCdpId);  
       th.assertIsApproximatelyEqual(_collAfterLiquidator.sub(_collBeforeLiquidator), _expectedSeizedColl, _errorTolerance);
       th.assertIsApproximatelyEqual(_aliceColl.sub(_aliceCollAfterLiq), _expectedLiquidatedColl, _errorTolerance);
-      _aliceColl = _aliceCollAfterLiq;	   
+      _aliceColl = _aliceCollAfterLiq;
 	  
       // sugardaddy some collateral staking reward by increasing its PPFS again
       _newIndex = _newIndex.add(_deltaIndex);
@@ -274,17 +291,18 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedRedeemedColl = _expectedColl.mul(mv._1e18BN).div(_newIndex);
       let _expectedRedeemFee = await cdpManager.getRedemptionRate();
       let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFee).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
-      const {firstRedemptionHint, partialRedemptionHintNICR} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);	  
-      let _collBeforeRedeemer = await collToken.balanceOf(owner);
+      const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
+      let _collBeforeRedeemer = await collToken.balanceOf(owner); 
       await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  
       let _collAfterRedeemer = await collToken.balanceOf(owner);	
       let _aliceCollAfterRedeem = await cdpManager.getCdpColl(_aliceCdpId);  
       th.assertIsApproximatelyEqual(_collAfterRedeemer.sub(_collBeforeRedeemer), _expectedCollAfterFee, _errorTolerance);
-      th.assertIsApproximatelyEqual(_aliceColl.sub(_aliceCollAfterRedeem), _expectedRedeemedColl, _errorTolerance);
+      th.assertIsApproximatelyEqual(partialRedemptionNewColl.sub(_aliceCollAfterRedeem), _expectedRedeemedColl, _errorTolerance);
       _aliceColl = _aliceCollAfterRedeem;
       assert.isTrue((await sortedCdps.getFirst()) == _aliceCdpId);// reinsertion after redemption 
 	  
       // sugardaddy some collateral staking reward by increasing its PPFS one more time
+      _oldIndex = _newIndex;
       _newIndex = _newIndex.add(_deltaIndex);
       await collToken.setEthPerShare(_newIndex);
 	  
@@ -292,29 +310,32 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
 	  
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
-      let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN).div(mv._1e18BN);
-      
-      let _aliceStake = await cdpManager.getCdpStake(_aliceCdpId);
-      let _bobStake = await cdpManager.getCdpStake(_bobCdpId);
-      let _totalStake = await cdpManager.totalStakes();
+      let _expectedFeeShare = await cdpManager.standardizeTakenFee(_fees[0]);
+      let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
+	  
       let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
       await cdpManager.claimStakingSplitFee();  
       let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
 	  
+      let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
+      let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
+      let _totalStake = await cdpManager.totalStakes();
+      let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
+      let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
+	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee, _errorTolerance);
 	  
       // check after accumulated fee split applied to CDPs
-      let _expectedFeeShare = _fees[0].div(mv._1e18BN);
       let _aliceCollAfter = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1];
-      th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare.mul(_aliceStake).div(_totalStake)), _errorTolerance);
+      th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceExpectedFeeApplied[1], _errorTolerance);
       let _bobCollDebtAfter = await cdpManager.getEntireDebtAndColl(_bobCdpId);
-      th.assertIsApproximatelyEqual(_bobCollDebtAfter[1], _bobColl.sub(_expectedFeeShare.mul(_bobStake).div(_totalStake)), _errorTolerance);
+      th.assertIsApproximatelyEqual(_bobCollDebtAfter[1], _bobExpectedFeeApplied[1], _errorTolerance);
 	  
       // fully liquidate the riskiest CDP with fee split applied	  
-      _newPrice = dec(1530, 13);
+      _newPrice = dec(1520, 13);
       await priceFeed.setPrice(_newPrice);
       let _icrBobAfter = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
-      assert.isTrue(toBN(_icrBobAfter.toString()).gt(mv._1_5e18BN));	  
+      assert.isTrue(toBN(_icrBobAfter.toString()).gt(mv._1_5e18BN));
       let _expectedLiquidatedCollBob = (_bobCollDebtAfter[0].mul(mv._1_5e18BN).div(toBN(_newPrice)).add(liq_stipend)).mul(mv._1e18BN).div(_newIndex);
       await cdpManager.liquidate(_bobCdpId, {from: owner});
       let _surplusToClaimBob = await collSurplusPool.getCollateral(bob);

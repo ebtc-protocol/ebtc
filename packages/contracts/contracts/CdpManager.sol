@@ -84,10 +84,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     uint public totalStakes;
 
-    // Snapshot of the value of totalStakes, taken immediately after the latest liquidation
+    // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
     uint public totalStakesSnapshot;
 
-    // Snapshot of the total collateral across the ActivePool and DefaultPool, immediately after the latest liquidation.
+    // Snapshot of the total collateral across the ActivePool and DefaultPool, immediately after the latest liquidation and split fee claim
     uint public totalCollateralSnapshot;
 
     /*
@@ -104,11 +104,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public L_EBTCDebt;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
-    uint256 public stFPPSg;
+    uint256 public override stFPPSg;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_ETH & L_EBTCdebt */
-    uint256 public stFeePerUnitg = 1e18;
+    uint256 public override stFeePerUnitg = 1e18;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
-    uint256 public stFeePerUnitgError;
+    uint256 public override stFeePerUnitgError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
     mapping(bytes32 => uint256) public stFeePerUnitcdp;
     /* Update timestamp for global index */
@@ -820,12 +820,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 totalColToSend
     ) internal {
         // update the staking and collateral snapshots
-        totalStakesSnapshot = totalStakes;
-        totalCollateralSnapshot = _contractsCache
-            .activePool
-            .getETH()
-            .add(_contractsCache.defaultPool.getETH())
-            .sub(totalColToSend);
+        _updateSystemSnapshots_excludeCollRemainder(
+            _contractsCache.activePool,
+            _contractsCache.defaultPool,
+            totalColToSend
+        );
 
         emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
 
@@ -1208,6 +1207,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // Update system snapshots
         _updateSystemSnapshots_excludeCollRemainder(
             contractsCache.activePool,
+            contractsCache.defaultPool,
             totals.totalCollGasCompensation
         );
 
@@ -1401,6 +1401,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // Update system snapshots
         _updateSystemSnapshots_excludeCollRemainder(
             activePoolCached,
+            defaultPoolCached,
             totals.totalCollGasCompensation
         );
 
@@ -2101,7 +2102,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         )
     {
         debt = Cdps[_cdpId].debt;
-        (uint _feeSplitDistributed, uint _newColl) = _getAccumulatedFeeSplitApplied(_cdpId);
+        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
+            _cdpId,
+            stFeePerUnitg,
+            stFeePerUnitgError,
+            totalStakes
+        );
         coll = _newColl;
 
         (pendingEBTCDebtReward, pendingEBTCInterest) = getPendingEBTCDebtReward(_cdpId);
@@ -2121,6 +2127,21 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint stake = Cdps[_cdpId].stake;
         totalStakes = totalStakes.sub(stake);
         Cdps[_cdpId].stake = 0;
+        emit TotalStakesUpdated(totalStakes);
+    }
+
+    // Remove stake from the totalStakes sum according to split fee taken
+    function _removeTotalStakeForFeeTaken(uint _feeTaken) internal {
+        (uint _newTotalStakes, uint stake) = getTotalStakeForFeeTaken(_feeTaken);
+        totalStakes = _newTotalStakes;
+        emit TotalStakesUpdated(_newTotalStakes);
+    }
+
+    // get totalStakes after split fee taken removed
+    function getTotalStakeForFeeTaken(uint _feeTaken) public view override returns (uint, uint) {
+        uint stake = _computeNewStake(_feeTaken);
+        uint _newTotalStakes = totalStakes.sub(stake);
+        return (_newTotalStakes, stake);
     }
 
     function updateStakeAndTotalStakes(bytes32 _cdpId) external override returns (uint) {
@@ -2129,15 +2150,23 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // Update borrower's stake based on their latest collateral value
+    // and update otalStakes accordingly as well
     function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
+        (uint newStake, uint oldStake) = _updateStakeForCdp(_cdpId);
+
+        totalStakes = totalStakes.add(newStake).sub(oldStake);
+        emit TotalStakesUpdated(totalStakes);
+
+        return newStake;
+    }
+
+    // Update borrower's stake based on their latest collateral value
+    function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
         uint newStake = _computeNewStake(Cdps[_cdpId].coll);
         uint oldStake = Cdps[_cdpId].stake;
         Cdps[_cdpId].stake = newStake;
 
-        totalStakes = totalStakes.sub(oldStake).add(newStake);
-        emit TotalStakesUpdated(totalStakes);
-
-        return newStake;
+        return (newStake, oldStake);
     }
 
     // Calculate a new stake based on the snapshots of the totalStakes and totalCollateral taken at the last liquidation
@@ -2278,12 +2307,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      */
     function _updateSystemSnapshots_excludeCollRemainder(
         IActivePool _activePool,
+        IDefaultPool _defaultPool,
         uint _collRemainder
     ) internal {
         totalStakesSnapshot = totalStakes;
 
         uint activeColl = _activePool.getETH();
-        uint liquidatedColl = defaultPool.getETH();
+        uint liquidatedColl = _defaultPool.getETH();
         totalCollateralSnapshot = activeColl.sub(_collRemainder).add(liquidatedColl);
 
         emit SystemSnapshotsUpdated(totalStakesSnapshot, totalCollateralSnapshot);
@@ -2367,7 +2397,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // and update global index & fee-per-unit variables
     function claimStakingSplitFee() public override {
         (uint _oldIndex, uint _newIndex) = _syncIndex();
-        if (_newIndex > _oldIndex) {
+        if (_newIndex > _oldIndex && totalStakes > 0) {
             (
                 uint _deltaFeeSplitShare,
                 uint _deltaFeePerUnit,
@@ -2382,11 +2412,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 collSurplusPool,
                 gasPoolAddress
             );
-            _takeSplitAndUpdateFeePerUnit(
+            uint _feeTaken = _takeSplitAndUpdateFeePerUnit(
                 _contractsCache,
                 _deltaFeeSplitShare,
                 _deltaFeePerUnit,
                 _perUnitError
+            );
+            // update the total staking and collateral snapshots
+            _removeTotalStakeForFeeTaken(_feeTaken);
+            _updateSystemSnapshots_excludeCollRemainder(
+                _contractsCache.activePool,
+                _contractsCache.defaultPool,
+                0
             );
         }
     }
@@ -2399,7 +2436,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         if (_newInterval != INDEX_UPD_INTERVAL) {
             emit CollateralIndexUpdateIntervalUpdated(INDEX_UPD_INTERVAL, _newInterval);
             INDEX_UPD_INTERVAL = _newInterval;
-            _syncIndex();
+            // Ensure growth of index from last update to the time this function gets called will be charged
+            claimStakingSplitFee();
         }
         return INDEX_UPD_INTERVAL;
     }
@@ -2535,7 +2573,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _requireValidUpdateInterval();
             stFPPSg = _newIndex;
             lastIndexTimestamp = block.timestamp;
-            emit CollateralGlobalIndexUpdated(_oldIndex, stFPPSg, lastIndexTimestamp);
+            emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
         return (_oldIndex, _newIndex);
     }
@@ -2572,15 +2610,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 _deltaFeeSplitShare,
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
-    ) internal {
+    ) internal returns (uint) {
         uint _oldPerUnit = stFeePerUnitg;
         stFeePerUnitg = stFeePerUnitg.add(_deltaPerUnit);
         stFeePerUnitgError = _newErrorPerUnit;
 
-        uint _feeTaken = (_deltaFeeSplitShare.div(DECIMAL_PRECISION));
-        if (_deltaFeeSplitShare > _feeTaken.mul(DECIMAL_PRECISION)) {
-            _feeTaken = _feeTaken.add(1);
-        }
+        uint _feeTaken = standardizeTakenFee(_deltaFeeSplitShare);
         require(
             _cachedContracts.activePool.getETH() > _feeTaken,
             "CDPManager: fee split is too big"
@@ -2589,11 +2624,26 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
+        return _feeTaken;
+    }
+
+    function standardizeTakenFee(uint _scaledFeeTaken) public view override returns (uint) {
+        uint _feeTaken = (_scaledFeeTaken.div(DECIMAL_PRECISION));
+        if (_scaledFeeTaken > _feeTaken.mul(DECIMAL_PRECISION)) {
+            _feeTaken = _feeTaken.add(1);
+        }
+        return _feeTaken;
     }
 
     // Apply accumulated fee split distributed to the CDP
     // and update its accumulator tracker accordingly
     function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
+        // TODO Ensure global states like stFeePerUnitg get timely updated
+        // whenever there is a CDP modification operation,
+        // such as opening, closing, adding collateral, repaying debt, or liquidating
+        // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
+        claimStakingSplitFee();
+
         uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
         if (_oldPerUnitCdp == 0) {
             stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
@@ -2602,10 +2652,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             return;
         }
 
-        (uint _feeSplitDistributed, uint _newColl) = _getAccumulatedFeeSplitApplied(_cdpId);
+        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
+            _cdpId,
+            stFeePerUnitg,
+            stFeePerUnitgError,
+            totalStakes
+        );
         Cdps[_cdpId].coll = _newColl;
         stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
-        _updateStakeAndTotalStakes(_cdpId);
+        // ONLY update for given CDP since totalStakes should have been updated already
+        _updateStakeForCdp(_cdpId);
 
         emit CdpFeeSplitApplied(
             _cdpId,
@@ -2617,17 +2673,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
-    function _getAccumulatedFeeSplitApplied(bytes32 _cdpId) internal view returns (uint, uint) {
+    function getAccumulatedFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _stFeePerUnitg,
+        uint _stFeePerUnitgError,
+        uint _totalStakes
+    ) public view override returns (uint, uint) {
         uint _oldStake = Cdps[_cdpId].stake;
 
         if (stFeePerUnitcdp[_cdpId] == 0 || Cdps[_cdpId].coll == 0) {
             return (0, Cdps[_cdpId].coll);
         }
 
-        uint _diffPerUnit = stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
+        uint _diffPerUnit = _stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;
-        _feeSplitDistributed = stFeePerUnitgError > 0
-            ? _feeSplitDistributed.add(_oldStake.mul(stFeePerUnitgError).div(totalStakes))
+        _feeSplitDistributed = _stFeePerUnitgError > 0
+            ? _feeSplitDistributed.add(_oldStake.mul(_stFeePerUnitgError).div(_totalStakes))
             : _feeSplitDistributed;
 
         uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
