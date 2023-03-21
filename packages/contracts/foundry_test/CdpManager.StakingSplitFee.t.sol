@@ -93,7 +93,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         connectLQTYContractsToCore();
 
         _utils = new Utilities();
-        users = _utils.createUsers(1);
+        users = _utils.createUsers(3);
 
         splitFeeRecipient = address(lqtyStaking);
     }
@@ -121,10 +121,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.claimStakingSplitFee();
         uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
+        uint _feeBalDiff = _feeBalAfter.sub(_feeBalBefore);
         require(
             _utils.assertApproximateEq(
                 collateral.getPooledEthByShares(_totalColl.sub(_totalCollAfter)),
-                _feeBalAfter.sub(_feeBalBefore),
+                _feeBalDiff,
                 _tolerance
             ),
             "!SplitFeeInRecipient"
@@ -132,7 +133,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         require(
             _utils.assertApproximateEq(
                 collateral.getPooledEthByShares(_expectedFee),
-                _feeBalAfter.sub(_feeBalBefore),
+                _feeBalDiff,
                 _tolerance
             ),
             "!ExpectedSplitFee"
@@ -145,25 +146,34 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.coll);
     }
 
+    function _ensureDebtAmountValidity(uint _debtAmt) internal {
+        vm.assume(_debtAmt > 1e18);
+        vm.assume(_debtAmt < 10000e18);
+    }
+
+    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+        dealCollateral(_user, _coll);
+        vm.startPrank(_user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        bytes32 _cdpId = borrowerOperations.openCdp(
+            DECIMAL_PRECISION,
+            _debt,
+            bytes32(0),
+            bytes32(0),
+            _coll
+        );
+        vm.stopPrank();
+        return _cdpId;
+    }
+
     // Test staking fee split with multiple rebasing up
     function testRebasingUps(uint256 debtAmt) public {
-        vm.assume(debtAmt > 1e18);
-        vm.assume(debtAmt < 10000e18);
+        _ensureDebtAmountValidity(debtAmt);
 
         uint _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
-        dealCollateral(users[0], coll1);
-        vm.startPrank(users[0]);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            debtAmt,
-            bytes32(0),
-            bytes32(0),
-            coll1
-        );
-        vm.stopPrank();
+        bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         uint _loop = 10;
         for (uint i = 0; i < _loop; ++i) {
@@ -189,6 +199,60 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             // apply split fee upon user operations
             _applySplitFee(cdpId1, users[0]);
+
+            _ensureSystemInvariants();
+            LocalFeeSplitVar memory _var = LocalFeeSplitVar(_stFeePerUnitg, _totalCollUnderlying);
+            _ensureSystemInvariants_RebasingUp(_var);
+        }
+    }
+
+    // Test staking fee split with multiple rebasing up for multiple CDPs
+    function testRebasingUpsWithMultipleCDPs(
+        uint256 debtAmt1,
+        uint256 debtAmt2,
+        uint256 debtAmt3
+    ) public {
+        _ensureDebtAmountValidity(debtAmt1);
+        _ensureDebtAmountValidity(debtAmt2);
+        _ensureDebtAmountValidity(debtAmt3);
+
+        uint _curPrice = priceFeedMock.getPrice();
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
+        uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
+        uint256 coll3 = _utils.calculateCollAmount(debtAmt3, _curPrice, 297e16);
+
+        bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt1);
+        bytes32 cdpId2 = _openTestCDP(users[1], coll2, debtAmt2);
+        bytes32 cdpId3 = _openTestCDP(users[2], coll3, debtAmt3);
+
+        uint _loop = 10;
+        for (uint i = 0; i < _loop; ++i) {
+            // get original status for the system
+            uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
+            uint _totalColl = cdpManager.getEntireSystemColl();
+            uint _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
+
+            // prepare CDP status for invariant check
+            _populateCdpStatus(cdpId1);
+            _populateCdpStatus(cdpId2);
+            _populateCdpStatus(cdpId3);
+
+            // ensure index sync interval
+            skip(1 days);
+
+            // Rebasing up
+            uint _curIndex = collateral.getPooledEthByShares(1e18);
+            uint _newIndex = _curIndex.add(5e16);
+            collateral.setEthPerShare(_newIndex);
+            (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
+
+            // take fee split
+            _takeSplitFee(_totalColl, _expectedFee.div(1e18));
+
+            // apply split fee upon user operations
+            _applySplitFee(cdpId1, users[0]);
+            _applySplitFee(cdpId2, users[1]);
+            _applySplitFee(cdpId3, users[2]);
 
             _ensureSystemInvariants();
             LocalFeeSplitVar memory _var = LocalFeeSplitVar(_stFeePerUnitg, _totalCollUnderlying);
