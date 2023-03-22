@@ -84,12 +84,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             (10000 ether)
         );
         collateral.deposit{value: coll1}();
-        bytes32 cdpId1 = borrowerOperations.openCdp(
-            debtAmt,
-            bytes32(0),
-            bytes32(0),
-            coll1
-        );
+        bytes32 cdpId1 = borrowerOperations.openCdp(debtAmt, bytes32(0), bytes32(0), coll1);
         vm.stopPrank();
 
         // get original debt upon CDP open
@@ -175,12 +170,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             (10000 ether)
         );
         collateral.deposit{value: coll1}();
-        bytes32 cdpId1 = borrowerOperations.openCdp(
-            debtAmt,
-            bytes32(0),
-            bytes32(0),
-            coll1
-        );
+        bytes32 cdpId1 = borrowerOperations.openCdp(debtAmt, bytes32(0), bytes32(0), coll1);
         vm.stopPrank();
 
         // get original debt upon CDP open

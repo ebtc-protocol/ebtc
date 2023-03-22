@@ -306,15 +306,7 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override {
-        _adjustCdp(
-            _cdpId,
-            _collWithdrawal,
-            _EBTCChange,
-            _isDebtIncrease,
-            _upperHint,
-            _lowerHint,
-            0
-        );
+        _adjustCdp(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
     // TODO optimization candidate

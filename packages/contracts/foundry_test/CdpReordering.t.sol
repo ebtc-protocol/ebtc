@@ -290,12 +290,7 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         vm.startPrank(owner);
         for (uint256 i = 0; i < debts.length; i++) {
-            bytes32 cdpId = borrowerOperations.openCdp(
-                debts[i],
-                bytes32(0),
-                bytes32(0),
-                colls[i]
-            );
+            bytes32 cdpId = borrowerOperations.openCdp(debts[i], bytes32(0), bytes32(0), colls[i]);
 
             cdpIds[i] = cdpId;
         }
