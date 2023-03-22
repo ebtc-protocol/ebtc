@@ -55,7 +55,6 @@ contract BorrowerOperations is
         uint oldICR;
         uint newICR;
         uint newTCR;
-        uint EBTCFee;
         uint newDebt;
         uint newColl;
         uint stake;
@@ -63,7 +62,6 @@ contract BorrowerOperations is
 
     struct LocalVariables_openCdp {
         uint price;
-        uint EBTCFee;
         uint netDebt;
         uint compositeDebt;
         uint ICR;
@@ -114,7 +112,6 @@ contract BorrowerOperations is
         uint stake,
         BorrowerOperation operation
     );
-    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
 
     // --- Dependency setters ---
 
@@ -173,7 +170,6 @@ contract BorrowerOperations is
     // --- Borrower Cdp Operations ---
 
     function openCdp(
-        uint _maxFeePercentage,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -191,23 +187,11 @@ contract BorrowerOperations is
             cdpManager.lastInterestRateUpdateTime()
         );
 
-        _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
-
-        vars.EBTCFee;
         vars.netDebt = _EBTCAmount;
 
-        if (!isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(
-                contractsCache.cdpManager,
-                contractsCache.ebtcToken,
-                _EBTCAmount,
-                _maxFeePercentage
-            );
-            vars.netDebt = vars.netDebt.add(vars.EBTCFee);
-        }
         _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(vars.netDebt, vars.price));
 
-        // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC borrowing fee + EBTC gas comp.
+        // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC gas comp.
         vars.compositeDebt = _getCompositeDebt(vars.netDebt);
         assert(vars.compositeDebt > 0);
 
@@ -267,7 +251,6 @@ contract BorrowerOperations is
             vars.stake,
             BorrowerOperation.openCdp
         );
-        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
 
         // CEI: Move the collateral to the Active Pool
         _activePoolAddColl(contractsCache.activePool, _collAmount, _collShareAmt);
@@ -282,7 +265,7 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAmount
     ) external override {
-        _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, 0, _collAmount);
+        _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, _collAmount);
     }
 
     // Withdraw ETH collateral from a cdp
@@ -292,18 +275,17 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override {
-        _adjustCdp(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0, 0);
+        _adjustCdp(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
     }
 
     // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _maxFeePercentage,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override {
-        _adjustCdp(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, _maxFeePercentage, 0);
+        _adjustCdp(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, 0);
     }
 
     // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
@@ -313,12 +295,11 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override {
-        _adjustCdp(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0, 0);
+        _adjustCdp(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
     }
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _maxFeePercentage,
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease,
@@ -332,7 +313,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             _upperHint,
             _lowerHint,
-            _maxFeePercentage,
             0
         );
     }
@@ -340,7 +320,6 @@ contract BorrowerOperations is
     // TODO optimization candidate
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _maxFeePercentage,
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease,
@@ -355,7 +334,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             _upperHint,
             _lowerHint,
-            _maxFeePercentage,
             _collAddAmount
         );
     }
@@ -367,7 +345,6 @@ contract BorrowerOperations is
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _maxFeePercentage,
         uint _collAddAmount
     ) internal {
         _requireCdpOwner(_cdpId);
@@ -378,7 +355,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             _upperHint,
             _lowerHint,
-            _maxFeePercentage,
             _collAddAmount
         );
     }
@@ -398,7 +374,6 @@ contract BorrowerOperations is
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _maxFeePercentage,
         uint _collAddAmount
     ) internal {
         ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
@@ -414,7 +389,6 @@ contract BorrowerOperations is
         );
 
         if (_isDebtIncrease) {
-            _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
             _requireNonZeroDebtChange(_EBTCChange);
         }
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
@@ -432,16 +406,6 @@ contract BorrowerOperations is
 
         vars.netDebtChange = _EBTCChange;
 
-        // If the adjustment incorporates a debt increase and system is in Normal Mode, then trigger a borrowing fee
-        if (_isDebtIncrease && !isRecoveryMode) {
-            vars.EBTCFee = _triggerBorrowingFee(
-                contractsCache.cdpManager,
-                contractsCache.ebtcToken,
-                _EBTCChange,
-                _maxFeePercentage
-            );
-            vars.netDebtChange = vars.netDebtChange.add(vars.EBTCFee); // The raw debt change includes the fee
-        }
         vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
         vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
 
@@ -494,7 +458,6 @@ contract BorrowerOperations is
             vars.stake,
             BorrowerOperation.adjustCdp
         );
-        emit EBTCBorrowingFeePaid(_cdpId, vars.EBTCFee);
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         {
@@ -566,24 +529,6 @@ contract BorrowerOperations is
 
     // --- Helper functions ---
 
-    function _triggerBorrowingFee(
-        ICdpManager _cdpManager,
-        IEBTCToken _ebtcToken,
-        uint _EBTCAmount,
-        uint _maxFeePercentage
-    ) internal returns (uint) {
-        _cdpManager.decayBaseRateFromBorrowing(); // decay the baseRate state variable
-        uint EBTCFee = _cdpManager.getBorrowingFee(_EBTCAmount);
-
-        _requireUserAcceptsFee(EBTCFee, _EBTCAmount, _maxFeePercentage);
-
-        // Send fee to LQTY staking contract
-        lqtyStaking.increaseF_EBTC(EBTCFee);
-        _ebtcToken.mint(lqtyStakingAddress, EBTCFee);
-
-        return EBTCFee;
-    }
-
     function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
         uint usdValue = _price.mul(_coll).div(DECIMAL_PRECISION);
 
@@ -653,7 +598,7 @@ contract BorrowerOperations is
     }
 
     // Issue the specified amount of EBTC to _account and increases
-    // the total active debt (_netDebtIncrease potentially includes a EBTCFee)
+    // the total active debt
     function _withdrawEBTC(
         IActivePool _activePool,
         IEBTCToken _ebtcToken,
@@ -821,23 +766,6 @@ contract BorrowerOperations is
             _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
             "BorrowerOps: Caller doesnt have enough EBTC to make repayment"
         );
-    }
-
-    function _requireValidMaxFeePercentage(
-        uint _maxFeePercentage,
-        bool _isRecoveryMode
-    ) internal pure {
-        if (_isRecoveryMode) {
-            require(
-                _maxFeePercentage <= DECIMAL_PRECISION,
-                "Max fee percentage must less than or equal to 100%"
-            );
-        } else {
-            require(
-                _maxFeePercentage >= BORROWING_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
-                "Max fee percentage must be between 0% and 100%"
-            );
-        }
     }
 
     // --- ICR and TCR getters ---

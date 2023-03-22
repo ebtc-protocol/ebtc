@@ -92,7 +92,7 @@ contract('CdpManager', async accounts => {
     let _aDebtAmt = dec(1, 22);
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
     await contracts.collateral.deposit({from: A, value: _aColAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _aColAmt, { from: A, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_aDebtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _aColAmt, { from: A, value: 0 })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     
     // Make 5 large cdps B, C, D, E, F at ~10% total collateral
@@ -100,20 +100,20 @@ contract('CdpManager', async accounts => {
     let _debtAmt = dec(1, 22);
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
     await contracts.collateral.deposit({from: B, value: _colAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: B, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: B, value: 0 })
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
     await contracts.collateral.deposit({from: C, value: _colAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: C, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: C, value: 0 })
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: D});
     await contracts.collateral.deposit({from: D, value: _colAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: D, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: D, value: 0 })
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: E});
     await contracts.collateral.deposit({from: E, value: _colAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: E, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: E, value: 0 })
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: F});
     await contracts.collateral.deposit({from: F, value: _colAmt});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: F, value: 0 })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(_debtAmt), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: F, value: 0 })
   
     // Make 10 tiny cdps at relatively negligible collateral (~1e-9 of total)
     const tinyCdps = accounts.slice(10, 20)
@@ -121,7 +121,7 @@ contract('CdpManager', async accounts => {
     for (account of tinyCdps) {
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: account});
       await contracts.collateral.deposit({from: account, value: dec(2, 20)});
-      await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2, 20), { from: account, value: 0 })
+      await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(1, 22)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(2, 20), { from: account, value: 0 })
       _tinyCdpIds[account] = await sortedCdps.cdpOfOwnerByIndex(account, 0);
       await debtToken.transfer(owner, (await debtToken.balanceOf(account)).sub(toBN('2')), {from: account});	  
     }
@@ -142,7 +142,7 @@ contract('CdpManager', async accounts => {
     console.log(`B stake after L1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
 
     // adjust cdp B 1 wei: apply rewards
-    await borrowerOperations.adjustCdp(_bCdpId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // B repays 1 wei
+    await borrowerOperations.adjustCdp(_bCdpId, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // B repays 1 wei
     console.log(`B stake after A1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     console.log(`Snapshots ratio after A1: ${await getSnapshotsRatio()}`)
 
@@ -153,7 +153,7 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(_tinyCdpIds[cdp], {from: owner})
       console.log(`B stake after L${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
       console.log(`Snapshots ratio after L${idx + 2}: ${await getSnapshotsRatio()}`)
-      await borrowerOperations.adjustCdp(_bCdpId, th._100pct, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei
+      await borrowerOperations.adjustCdp(_bCdpId, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei
       console.log(`B stake after A${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     }
   })

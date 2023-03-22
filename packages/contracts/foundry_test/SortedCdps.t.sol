@@ -30,7 +30,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
@@ -64,7 +64,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
-            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);

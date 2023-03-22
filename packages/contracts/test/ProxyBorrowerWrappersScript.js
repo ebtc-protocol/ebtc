@@ -161,7 +161,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // alice claims collateral and re-opens the cdp
     await assertRevert(
-      borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, { from: alice }),
+      borrowerWrappers.claimCollateralAndOpenCdp(ebtcAmount, alice, alice, { from: alice }),
       'CollSurplusPool: No collateral available to claim'
     )
 
@@ -197,7 +197,7 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
-    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, 0, { from: alice })
+    await borrowerWrappers.claimCollateralAndOpenCdp(ebtcAmount, alice, alice, 0, { from: alice })
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -232,7 +232,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // alice claims collateral and re-opens the cdp
     await collToken.transfer(borrowerWrappers.getProxyAddressFromUser(alice), collateral, {from: alice});
-    await borrowerWrappers.claimCollateralAndOpenCdp(th._100pct, ebtcAmount, alice, alice, collateral, { from: alice, value: 0 })
+    await borrowerWrappers.claimCollateralAndOpenCdp(ebtcAmount, alice, alice, collateral, { from: alice, value: 0 })
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
@@ -373,7 +373,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // Bob tries to claims staking gains in behalf of Alice
     const proxy = borrowerWrappers.getProxyFromUser(alice)
-    const signature = 'claimStakingGainsAndRecycle(uint256,address,address)'
+  const signature = 'claimStakingGainsAndRecycle(bytes32,bytes32,bytes32)'
     const calldata = th.getTransactionData(signature, [th._100pct, alice, alice])
     await assertRevert(proxy.methods["execute(address,bytes)"](borrowerWrappers.scriptAddress, calldata, { from: bob }), 'ds-auth-unauthorized')
   })
@@ -416,7 +416,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // Alice claims staking rewards and puts them back in the system through the proxy
     await assertRevert(
-      borrowerWrappers.claimStakingGainsAndRecycle(th.DUMMY_BYTES32, th._100pct, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice }),
+      borrowerWrappers.claimStakingGainsAndRecycle(th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice }),
       'BorrowerWrappersScript: caller must have an active cdp'
     )
 
@@ -485,7 +485,7 @@ contract('BorrowerWrappers', async accounts => {
     const netDebtChange = proportionalEBTC.mul(toBN(dec(1, 18))).div(toBN(dec(1, 18)).add(borrowingRate))
 
     // Alice claims staking rewards and puts them back in the system through the proxy
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Alice new EBTC gain due to her own Cdp adjustment: ((150/2000) * (borrowing fee over netDebtChange))
     const newBorrowingFee = await cdpManagerOriginal.getBorrowingFeeWithDecay(netDebtChange)
@@ -551,7 +551,7 @@ contract('BorrowerWrappers', async accounts => {
     const borrowingRate = await cdpManagerOriginal.getBorrowingRateWithDecay()
 
     // Alice claims staking rewards and puts them back in the system through the proxy
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
     await lqtyStaking.unstake(0, {from: alice});// to trigger claim
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
@@ -630,7 +630,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // Alice claims staking rewards and puts them back in the system through the proxy
     let _ebtcBalBefore = await ebtcToken.balanceOf(dummyAddrs)
-    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, th._100pct, _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerWrappers.claimStakingGainsAndRecycle(_aliceCdpId, _aliceCdpId, _aliceCdpId, { from: alice })
     let _ebtcBalAfter = await ebtcToken.balanceOf(dummyAddrs)	
     let _ebtcDelta = toBN(_ebtcBalAfter.toString()).sub(toBN(_ebtcBalBefore.toString()));
     assert.isTrue(_ebtcDelta.gt(toBN('0')));

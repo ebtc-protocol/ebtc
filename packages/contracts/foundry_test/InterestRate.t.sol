@@ -69,7 +69,6 @@ contract InterestRateTest is eBTCBaseFixture {
         );
 
         bytes32 cdpId0 = borrowerOperations.openCdp(
-            5e17,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -152,7 +151,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId0 = borrowerOperations.openCdp(
-            5e17,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -237,7 +235,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -304,7 +301,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -316,7 +312,6 @@ contract InterestRateTest is eBTCBaseFixture {
         );
         // Borrow for the second time so user has enough eBTC to close their first CDP
         bytes32 cdpId2 = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -388,7 +383,7 @@ contract InterestRateTest is eBTCBaseFixture {
             vm.startPrank(user);
             collateral.approve(address(borrowerOperations), type(uint256).max);
             collateral.deposit{value: 10000000000000000000000000000 ether}();
-            bytes32 cdpId = borrowerOperations.openCdp(FEE, debt, bytes32(0), bytes32(0), coll);
+            bytes32 cdpId = borrowerOperations.openCdp(debt, bytes32(0), bytes32(0), coll);
             cdpIds.push(cdpId);
             vm.stopPrank();
         }
@@ -398,7 +393,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Withdraw some eBTC to make sure it won't revert:
         address user0 = sortedCdps.getOwnerAddress(cdpIds[0]);
         vm.prank(user0);
-        borrowerOperations.withdrawEBTC(benchmarkCdpId, FEE, sweetSpotDebt, "hint", "hint");
+        borrowerOperations.withdrawEBTC(benchmarkCdpId, sweetSpotDebt, "hint", "hint");
         uint icrSnapshot = cdpManager.getCurrentICR(testedCdpId, priceFeedMock.getPrice());
         // Fast-forward 1 year
         skip(365 days);
@@ -422,7 +417,7 @@ contract InterestRateTest is eBTCBaseFixture {
         vm.expectRevert(
             bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
         );
-        borrowerOperations.withdrawEBTC(testedCdpId, FEE, sweetSpotDebt, "hint", "hint");
+        borrowerOperations.withdrawEBTC(testedCdpId, sweetSpotDebt, "hint", "hint");
     }
 
     /**
@@ -439,7 +434,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -462,7 +456,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
         emit LTermsUpdated(0, 0, 1019986589312086194);
         // Withdraw 1 eBTC after 1 year. This should apply pending interest
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e18, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, 1e18, "hint", "hint");
         // Make sure eBTC balance increased by 1eBTC
         assertEq(balanceSnapshot.add(1e18), eBTCToken.balanceOf(users[0]));
         // Make sure that NICR decreased after user withdrew eBTC
@@ -494,8 +488,8 @@ contract InterestRateTest is eBTCBaseFixture {
         vm.deal(address(this), type(uint256).max);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 1000000000000 ether}();
-        bytes32 cdpId0 = borrowerOperations.openCdp(FEE, 2e18, bytes32(0), bytes32(0), 100 ether);
-        bytes32 cdpId1 = borrowerOperations.openCdp(FEE, 2e18, bytes32(0), bytes32(0), 100 ether);
+        bytes32 cdpId0 = borrowerOperations.openCdp(2e18, bytes32(0), bytes32(0), 100 ether);
+        bytes32 cdpId1 = borrowerOperations.openCdp(2e18, bytes32(0), bytes32(0), 100 ether);
         assertEq(cdpManager.getCdpIdsCount(), 2);
 
         uint256 debt0;
@@ -561,7 +555,6 @@ contract InterestRateTest is eBTCBaseFixture {
         );
 
         bytes32 cdpId0 = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 4000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -572,7 +565,6 @@ contract InterestRateTest is eBTCBaseFixture {
             coll0
         );
         bytes32 cdpId1 = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 2000e18,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -691,7 +683,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -717,7 +708,7 @@ contract InterestRateTest is eBTCBaseFixture {
         skip(amntOfDays);
 
         // Withdraw 1 eBTC after N amnt of time. This should apply pending interest
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e16, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, 1e16, "hint", "hint");
         // Make sure ICR decreased as withdrew more eBTC
         assertLt(
             cdpManager.getCurrentICR(cdpId, priceFeedMock.getPrice()),
@@ -759,7 +750,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -771,7 +761,6 @@ contract InterestRateTest is eBTCBaseFixture {
         );
         // Borrow for the second time so user has enough eBTC to close their first CDP
         borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -827,7 +816,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId = borrowerOperations.openCdp(
-            FEE,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -897,7 +885,6 @@ contract InterestRateTest is eBTCBaseFixture {
         );
 
         bytes32 cdpId0 = borrowerOperations.openCdp(
-            5e17,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -978,7 +965,6 @@ contract InterestRateTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         bytes32 cdpId0 = borrowerOperations.openCdp(
-            5e17,
             _utils.calculateBorrowAmountFromDebt(
                 debt,
                 cdpManager.EBTC_GAS_COMPENSATION(),

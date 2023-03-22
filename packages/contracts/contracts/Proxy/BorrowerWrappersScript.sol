@@ -65,7 +65,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     }
 
     function claimCollateralAndOpenCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -85,12 +84,11 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         // Open cdp with obtained collateral, plus collateral sent by user
         collToken.approve(address(borrowerOperations), type(uint256).max);
-        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, totalCollateral);
+        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, totalCollateral);
     }
 
     function claimStakingGainsAndRecycle(
         bytes32 _cdpId,
-        uint _maxFee,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -112,7 +110,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
             netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
             borrowerOperations.adjustCdpWithColl(
                 _cdpId,
-                _maxFee,
                 0,
                 netEBTCAmount,
                 true,

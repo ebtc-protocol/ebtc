@@ -52,7 +52,7 @@ contract FlashWithDeposit {
         // Run an operation with BorrowerOperations
         // W/e we got send as value
         IWETH(collToken).deposit{value: amount}();
-        borrowerOperations.openCdp(FEE, MIN_NET_DEBT, "hint", "hint", amount);
+        borrowerOperations.openCdp(MIN_NET_DEBT, "hint", "hint", amount);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
@@ -85,7 +85,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
 
@@ -122,7 +122,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: amountToDepositInCDP}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", amountToDepositInCDP);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", amountToDepositInCDP);
         vm.stopPrank();
 
         dealCollateral(address(macroContract), fee);

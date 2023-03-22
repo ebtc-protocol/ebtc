@@ -74,7 +74,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 10000 ether}();
         borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
             _utils.calculateBorrowAmountFromDebt(
                 2e17,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -86,7 +85,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
         collateral.deposit{value: coll1}();
         bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
             debtAmt,
             bytes32(0),
             bytes32(0),
@@ -167,7 +165,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 10000 ether}();
         borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
             _utils.calculateBorrowAmountFromDebt(
                 2e17,
                 cdpManager.EBTC_GAS_COMPENSATION(),
@@ -179,7 +176,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
         collateral.deposit{value: coll1}();
         bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
             debtAmt,
             bytes32(0),
             bytes32(0),

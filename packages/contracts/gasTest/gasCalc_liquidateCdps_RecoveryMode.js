@@ -76,7 +76,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _1_Defaulter) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500], ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500], ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -123,7 +123,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _2_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -169,7 +169,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _3_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -215,7 +215,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _5_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -261,7 +261,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _10_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -307,7 +307,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _20_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -353,7 +353,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _30_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -399,7 +399,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _40_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 100 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(60, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -445,7 +445,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _45_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens Cdp
-    await borrowerOperations.openCdp(_100pct, dec(9500, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(9500, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Price drops, defaulters' cdps fall below MCR
@@ -487,7 +487,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -550,7 +550,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -611,7 +611,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -671,7 +671,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -732,7 +732,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -792,7 +792,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -853,7 +853,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -913,7 +913,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale, ZERO_ADDRESS,{ from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale, ZERO_ADDRESS,{ from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -973,7 +973,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1041,7 +1041,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _1_Defaulter) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1055,7 +1055,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale, ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale, ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28),ZERO_ADDRESS,  { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1114,7 +1114,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _2_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1128,7 +1128,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale, ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale, ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS,  { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1188,7 +1188,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _3_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1202,7 +1202,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1261,7 +1261,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _5_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1275,7 +1275,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1334,7 +1334,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _10_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1348,7 +1348,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1407,7 +1407,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _20_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1421,7 +1421,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1480,7 +1480,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _30_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1494,7 +1494,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1553,7 +1553,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _40_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens with 1 ether and withdraws 110 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
+    await borrowerOperations.openCdp(dec(110, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(1, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1567,7 +1567,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1626,7 +1626,7 @@ contract('Gas cost tests', async accounts => {
     for (account of _45_Defaulters) { assert.isTrue(await sortedCdps.contains(account)) }
 
     // Account 500 opens
-    await borrowerOperations.openCdp(_100pct, dec(11000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(11000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
     assert.isTrue(await sortedCdps.contains(accounts[500]))
 
     // Account 500 is liquidated, creates pending distribution rewards for all
@@ -1640,7 +1640,7 @@ contract('Gas cost tests', async accounts => {
 
     // Whale opens cdp and fills SP with 1 billion EBTC
     const whale = accounts[999]
-    await borrowerOperations.openCdp(_100pct, dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(9, 28), whale,ZERO_ADDRESS, { from: whale, value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(9, 28), ZERO_ADDRESS, { from: whale })
 
     // Check SP has 9e28 EBTC
@@ -1696,7 +1696,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(1000, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     const _10_defaulters = accounts.slice(1, 11)
     // --- Accounts to be liquidated in the test tx ---
@@ -1732,7 +1732,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(100, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
 
 
     // --- Accounts to be liquidated in the test tx ---
@@ -1769,7 +1769,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(1000, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     // --- Accounts to be liquidated in the test tx ---
     const _45_defaulters = accounts.slice(1, 46)
@@ -1806,7 +1806,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(100, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     // --- Accounts to be liquidated in the test tx ---
     const _50_defaulters = accounts.slice(1, 51)
@@ -1845,7 +1845,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(1000, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     const _10_defaulters = accounts.slice(1, 11)
     // --- Accounts to be liquidated in the test tx ---
@@ -1860,7 +1860,7 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(200, 18))
 
     // Whale opens cdp and fills SP with 1 billion EBTC
-    await borrowerOperations.openCdp(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
     // Price drops, account[1]'s ICR falls below MCR
@@ -1888,7 +1888,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(100, 'ether'), dec(10000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500], ZERO_ADDRESS,{ from: accounts[500], value: dec(100, 'ether') })
 
 
     // --- Accounts to be liquidated in the test tx ---
@@ -1904,7 +1904,7 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(200, 18))
 
     // Whale opens cdp and fills SP with 1 billion EBTC
-    await borrowerOperations.openCdp(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
 
@@ -1932,7 +1932,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(100, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     // --- Accounts to be liquidated in the test tx ---
     const _45_defaulters = accounts.slice(1, 46)
@@ -1947,7 +1947,7 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(200, 18))
 
     // Whale opens cdp and fills SP with 1 billion EBTC
-    await borrowerOperations.openCdp(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
 
@@ -1975,7 +1975,7 @@ contract('Gas cost tests', async accounts => {
     await th.openCdp_allAccounts(accounts.slice(101, 111), contracts, dec(100, 'ether'), dec(13000, 18))
 
     // Account 500 opens with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(_100pct, dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
+    await borrowerOperations.openCdp(dec(13000, 18), accounts[500],ZERO_ADDRESS, { from: accounts[500], value: dec(100, 'ether') })
 
     // --- Accounts to be liquidated in the test tx ---
     const _50_defaulters = accounts.slice(1, 51)
@@ -1990,7 +1990,7 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(200, 18))
 
     // Whale opens cdp and fills SP with 1 billion EBTC
-    await borrowerOperations.openCdp(_100pct, dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
+    await borrowerOperations.openCdp(dec(1, 27), accounts[999],ZERO_ADDRESS, { from: accounts[999], value: dec(1, 27) })
     await stabilityPool.provideToSP(dec(1, 27), ZERO_ADDRESS, { from: accounts[999] })
 
 

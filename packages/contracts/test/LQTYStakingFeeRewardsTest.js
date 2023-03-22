@@ -195,17 +195,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
-    
-    // Check EBTC fee value in event is zero
-    const emittedEBTCFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(tx))
-    assert.isTrue(emittedEBTCFee.eq(toBN('0')))
+    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee per unit staked has increased by correct amount
     const F_EBTC_After = await lqtyStaking.F_EBTC()
 
     // Expect fee per unit staked = fee/100, since there is 100 EBTC totalStaked
-    const expected_F_EBTC_After = emittedEBTCFee.div(toBN('100')) 
+    const expected_F_EBTC_After = toBN('0')
 
     assert.isTrue(expected_F_EBTC_After.eq(F_EBTC_After))
   })
@@ -240,11 +236,7 @@ contract('LQTYStaking revenue share tests', async accounts => {
     assert.isTrue(baseRate.gt(toBN('0')))
 
     // D draws debt
-    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
-    
-    // Check EBTC fee value in event is zero
-    const emittedEBTCFee = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(tx))
-    assert.isTrue(emittedEBTCFee.eq(toBN('0')))
+    const tx = await borrowerOperations.withdrawEBTC(_dCdpId, dec(27, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
     // Check EBTC fee per unit staked did not increase, is still zero
     const F_EBTC_After = await lqtyStaking.F_EBTC()
@@ -293,21 +285,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
-    // Check EBTC fee value in event is zero
-    const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
-    assert.isTrue(emittedEBTCFee_1.eq(toBN('0')))
-
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
-    
-    // Check EBTC fee value in event is zero
-    const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
-    assert.isTrue(emittedEBTCFee_2.eq(toBN('0')))
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
 
     const expectedTotalETHGain = emittedETHFee_1.add(emittedETHFee_2)
-    const expectedTotalEBTCGain = emittedEBTCFee_1.add(emittedEBTCFee_2)
+    const expectedTotalEBTCGain = toBN('0') // No eBTC fees taken on withdrawEBTC operations
 
     const A_ETHBalance_Before = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(A))
@@ -368,21 +352,13 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
-    // Check EBTC fee value in event is zero
-    const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
-    assert.isTrue(emittedEBTCFee_1.eq(toBN('0')))
-
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
     
-    // Check EBTC fee value in event is non-zero
-    const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
-    assert.isTrue(emittedEBTCFee_2.eq(toBN('0')))
-
     const expectedTotalETHGain = emittedETHFee_1.add(emittedETHFee_2)
-    const expectedTotalEBTCGain = emittedEBTCFee_1.add(emittedEBTCFee_2)
+    const expectedTotalEBTCGain = toBN('0')
 
     const A_ETHBalance_Before = toBN(await collToken.balanceOf(A))
     const A_EBTCBalance_Before = toBN(await ebtcToken.balanceOf(A))
@@ -488,20 +464,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // D draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_dCdpId, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: D})
     
-    // Check EBTC fee value in event is non-zero
-    const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
-    assert.isTrue(emittedEBTCFee_1.eq(toBN('0')))
-
     // B draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
-    
-    // Check EBTC fee value in event is non-zero
-    const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
-    assert.isTrue(emittedEBTCFee_2.eq(toBN('0')))
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_bCdpId, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})
 
-    const expectedTotalEBTCGain = emittedEBTCFee_1.add(emittedEBTCFee_2)
+    const expectedTotalEBTCGain = toBN('0')
     const A_EBTCGain = await lqtyStaking.getPendingEBTCGain(A)
 
     assert.isAtMost(th.getDifference(expectedTotalEBTCGain, A_EBTCGain), 1000)
@@ -552,14 +520,10 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_2.gt(toBN('0')))
 
     // F draws debt
-    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_fCdpId, th._100pct, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: F})
-    const emittedEBTCFee_1 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_1))
-    assert.isTrue(emittedEBTCFee_1.eq(toBN('0')))
+    const borrowingTx_1 = await borrowerOperations.withdrawEBTC(_fCdpId, dec(104, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: F})
 
     // G draws debt
-    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_gCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
-    const emittedEBTCFee_2 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_2))
-    assert.isTrue(emittedEBTCFee_2.eq(toBN('0')))
+    const borrowingTx_2 = await borrowerOperations.withdrawEBTC(_gCdpId, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
 
     // D obtains LQTY from owner and makes a stake
     await lqtyToken.transfer(D, dec(50, 18), {from: multisig})
@@ -576,9 +540,12 @@ contract('LQTYStaking revenue share tests', async accounts => {
      assert.isTrue(emittedETHFee_3.gt(toBN('0')))
 
      // G draws debt
-    const borrowingTx_3 = await borrowerOperations.withdrawEBTC(_gCdpId, th._100pct, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
-    const emittedEBTCFee_3 = toBN(th.getEBTCFeeFromEBTCBorrowingEvent(borrowingTx_3))
-    assert.isTrue(emittedEBTCFee_3.eq(toBN('0')))
+    const borrowingTx_3 = await borrowerOperations.withdrawEBTC(_gCdpId, dec(17, 18), th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: G})
+
+    // No fees
+    const emittedEBTCFee_1 = toBN('0')
+    const emittedEBTCFee_2 = toBN('0')
+    const emittedEBTCFee_3 = toBN('0')
      
     /*  
     Expected rewards:

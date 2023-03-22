@@ -38,7 +38,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         uint coll = cdpManager.getCdpColl(cdpId);
@@ -69,7 +69,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(
             bytes("BorrowerOps: There must be either a collateral change or a debt change")
@@ -96,10 +96,10 @@ contract CDPOpsTest is eBTCBaseFixture {
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (borrowedAmount < MIN_NET_DEBT) {
             vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
-            borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", collAmount);
+            borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             return;
         }
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Make TCR snapshot before increasing collateral
         uint initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         // Get new CDP id
@@ -145,10 +145,10 @@ contract CDPOpsTest is eBTCBaseFixture {
                     vm.expectRevert(
                         bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
                     );
-                    borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                    borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
                 }
-                borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
             vm.stopPrank();
@@ -192,7 +192,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
@@ -229,10 +229,10 @@ contract CDPOpsTest is eBTCBaseFixture {
                     vm.expectRevert(
                         bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
                     );
-                    borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                    borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
                 }
-                borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
             vm.stopPrank();
@@ -277,7 +277,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(
             bytes("BorrowerOps: There must be either a collateral change or a debt change")
@@ -303,7 +303,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Withdraw collateral and make sure operation reverts with ICR < MCR

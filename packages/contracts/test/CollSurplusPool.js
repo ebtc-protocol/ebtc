@@ -85,7 +85,7 @@ contract('CollSurplusPool', async accounts => {
     const B_coll = toBN(dec(60, 18))
     const B_ebtcAmount = toBN(dec(3000, 18))
     const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)
-    const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32,uint256)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32, B_coll])
+    const openCdpData = th.getTransactionData('openCdp(uint256,bytes32,bytes32,uint256)', [web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32, B_coll])
     await collToken.nonStandardSetApproval(nonPayable.address, borrowerOperations.address, mv._1Be18BN);
     await collToken.approve(borrowerOperations.address, mv._1Be18BN);
     await collToken.deposit({value: B_coll});

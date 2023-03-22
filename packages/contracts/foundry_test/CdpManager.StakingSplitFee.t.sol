@@ -112,7 +112,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed.div(1e18);
 
         vm.startPrank(_user);
-        borrowerOperations.withdrawEBTC(_cdpId, 1e18, 1, _cdpId, _cdpId);
+        borrowerOperations.withdrawEBTC(_cdpId, 1, _cdpId, _cdpId);
         vm.stopPrank();
     }
 
@@ -157,7 +157,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.startPrank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
             debtAmt,
             bytes32(0),
             bytes32(0),

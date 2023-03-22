@@ -26,7 +26,6 @@ interface IBorrowerOperations {
         uint stake,
         uint8 operation
     );
-    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
 
     // --- Functions ---
 
@@ -44,7 +43,6 @@ interface IBorrowerOperations {
     ) external;
 
     function openCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -67,7 +65,6 @@ interface IBorrowerOperations {
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -84,7 +81,6 @@ interface IBorrowerOperations {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -94,7 +90,6 @@ interface IBorrowerOperations {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,

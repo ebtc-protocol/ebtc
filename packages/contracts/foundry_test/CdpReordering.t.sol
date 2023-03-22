@@ -57,7 +57,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 1000000000000 ether}();
         bytes32 cdp0Id = borrowerOperations.openCdp(
-            5e17,
             cdp0Debt,
             bytes32(0),
             bytes32(0),
@@ -66,7 +65,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         // Insert a second CDP with a lower CR immediately. We expect it to be later in the LL.
         bytes32 cdp1Id = borrowerOperations.openCdp(
-            5e17,
             cdp1Debt,
             bytes32(0),
             bytes32(0),
@@ -93,7 +91,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 1000000000000 ether}();
         bytes32 cdp0Id = borrowerOperations.openCdp(
-            5e17,
             cdp0Debt,
             bytes32(0),
             bytes32(0),
@@ -109,7 +106,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
 
         // Insert a second CDP with a lower CR than the first one originally, but with a higher CR due to the interest. It should be earlier in the list given the higher CR
         bytes32 cdp1Id = borrowerOperations.openCdp(
-            5e17,
             cdp1Debt,
             bytes32(0),
             bytes32(0),
@@ -142,7 +138,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 1000000000000 ether}();
         bytes32 cdp0Id = borrowerOperations.openCdp(
-            FEE,
             cdp0Debt,
             bytes32(0),
             bytes32(0),
@@ -150,7 +145,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         );
 
         bytes32 cdp1Id = borrowerOperations.openCdp(
-            FEE,
             cdp1Debt,
             bytes32(0),
             bytes32(0),
@@ -206,7 +200,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         // Open all CDPs
         for (uint256 i = 0; i < numCdps; i++) {
             bytes32 cdpId = borrowerOperations.openCdp(
-                5e17,
                 cdpDebt[i],
                 bytes32(0),
                 bytes32(0),
@@ -298,7 +291,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         vm.startPrank(owner);
         for (uint256 i = 0; i < debts.length; i++) {
             bytes32 cdpId = borrowerOperations.openCdp(
-                5e17,
                 debts[i],
                 bytes32(0),
                 bytes32(0),

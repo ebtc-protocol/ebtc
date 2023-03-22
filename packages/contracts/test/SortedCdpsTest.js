@@ -330,26 +330,26 @@ contract('SortedCdps', async accounts => {
     it.skip("stays ordered after cdps with 'infinite' ICR receive a redistribution", async () => {
 
       // make several cdps with 0 debt and collateral, in random order
-      await borrowerOperations.openCdp(th._100pct, 0, whale, whale, { from: whale, value: dec(50, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, 0, A, A, { from: A, value: dec(1, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, 0, B, B, { from: B, value: dec(37, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, 0, C, C, { from: C, value: dec(5, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, 0, D, D, { from: D, value: dec(4, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, 0, E, E, { from: E, value: dec(19, 'ether') })
+      await borrowerOperations.openCdp(0, whale, whale, { from: whale, value: dec(50, 'ether') })
+      await borrowerOperations.openCdp(0, A, A, { from: A, value: dec(1, 'ether') })
+      await borrowerOperations.openCdp(0, B, B, { from: B, value: dec(37, 'ether') })
+      await borrowerOperations.openCdp(0, C, C, { from: C, value: dec(5, 'ether') })
+      await borrowerOperations.openCdp(0, D, D, { from: D, value: dec(4, 'ether') })
+      await borrowerOperations.openCdp(0, E, E, { from: E, value: dec(19, 'ether') })
 
       // Make some cdps with non-zero debt, in random order
-      await borrowerOperations.openCdp(th._100pct, dec(5, 19), F, F, { from: F, value: dec(1, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, dec(3, 18), G, G, { from: G, value: dec(37, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, dec(2, 20), H, H, { from: H, value: dec(5, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, dec(17, 18), I, I, { from: I, value: dec(4, 'ether') })
-      await borrowerOperations.openCdp(th._100pct, dec(5, 21), J, J, { from: J, value: dec(1345, 'ether') })
+      await borrowerOperations.openCdp(dec(5, 19), F, F, { from: F, value: dec(1, 'ether') })
+      await borrowerOperations.openCdp(dec(3, 18), G, G, { from: G, value: dec(37, 'ether') })
+      await borrowerOperations.openCdp(dec(2, 20), H, H, { from: H, value: dec(5, 'ether') })
+      await borrowerOperations.openCdp(dec(17, 18), I, I, { from: I, value: dec(4, 'ether') })
+      await borrowerOperations.openCdp(dec(5, 21), J, J, { from: J, value: dec(1345, 'ether') })
 
       const price_1 = await priceFeed.getPrice()
       
       // Check cdps are ordered
       await assertSortedListIsOrdered(contracts)
 
-      await borrowerOperations.openCdp(th._100pct, dec(100, 18), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(1, 'ether') })
+      await borrowerOperations.openCdp(dec(100, 18), defaulter_1, defaulter_1, { from: defaulter_1, value: dec(1, 'ether') })
       assert.isTrue(await sortedCdps.contains(defaulter_1))
 
       // Price drops
