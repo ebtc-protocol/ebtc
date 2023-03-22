@@ -33,6 +33,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
+    debtToken = contracts.ebtcToken;
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -81,6 +82,8 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     it('First cdp only doesn’t get out of Recovery Mode', async () => {
       await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId])
 
       const TCR = await th.getTCR(contracts)
@@ -92,6 +95,10 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
       const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId, _bobCdpId, _carolCdpId])
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
@@ -137,6 +144,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
       assert.isTrue(ICR_C.lt(mv._ICR100))
 
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
       const tx = await cdpManager.batchLiquidateCdps([_bobCdpId, _aliceCdpId])
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
@@ -191,6 +201,8 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
     it('First cdp only doesn’t get out of Recovery Mode', async () => {
       await setup()
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       const tx = await cdpManager.liquidateCdps(1)
 
       const TCR = await th.getTCR(contracts)
@@ -201,6 +213,10 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+		
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
       const tx = await cdpManager.liquidateCdps(10)
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')

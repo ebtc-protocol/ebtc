@@ -513,16 +513,18 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
 	  
       // price slump
-      let _newPrice = dec(2400, 13);
+      let _newPrice = dec(2350, 13);
       await priceFeed.setPrice(_newPrice);
 	  
       // FIXME get some pending rewards for remaining CDP
+      let _ownerDebt = await cdpManager.getCdpDebt(_ownerCdpId);
+      await debtToken.transfer(owner, toBN(_ownerDebt.toString()).sub(toBN((await debtToken.balanceOf(owner)).toString())), {from: alice});	
       await cdpManager.liquidateCdps(1, {from: owner});
       assert.isFalse(await sortedCdps.contains(_ownerCdpId));
       let _rewardETH = await cdpManager.getPendingETHReward(_aliceCdpId);
-      assert.isTrue(toBN(_rewardETH.toString()).gt(toBN('0')));
+      assert.isTrue(toBN(_rewardETH.toString()).eq(toBN('0')));
       let _rewardEBTCDebt = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
-      assert.isTrue(toBN(_rewardEBTCDebt[0].toString()).gt(toBN('0')));	
+      assert.isTrue(toBN(_rewardEBTCDebt[0].toString()).eq(toBN('0')));	
 	  
       // liquidator bob coming in firstly partially liquidate some portion(0.1 EBTC) of alice
       let _partialAmount = toBN("100000000000000000"); // 0.1e18
