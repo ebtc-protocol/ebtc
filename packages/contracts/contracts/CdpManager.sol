@@ -904,14 +904,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
-        // socialized distribution
-        _redistributeDebtAndColl(
-            contractsCache.activePool,
-            contractsCache.defaultPool,
-            totals.totalDebtToRedistribute,
-            totals.totalCollToRedistribute
-        );
-
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
             contractsCache.activePool.sendETH(
@@ -956,6 +948,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
                 vars.price = _price;
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
                     _contractsCache,
                     _price,
@@ -982,6 +975,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                     _price
                 );
             } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1013,6 +1007,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1152,14 +1147,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         require(totals.totalDebtInSequence > 0, "CdpManager: nothing to liquidate");
 
-        // socialized distribution
-        _redistributeDebtAndColl(
-            contractsCache.activePool,
-            contractsCache.defaultPool,
-            totals.totalDebtToRedistribute,
-            totals.totalCollToRedistribute
-        );
-
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
             contractsCache.activePool.sendETH(
@@ -1204,6 +1191,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
             if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
                 vars.price = _price;
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
                     _contractsCache,
                     _price,
@@ -1230,6 +1218,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                     _price
                 );
             } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1258,6 +1247,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
+                _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
