@@ -90,8 +90,6 @@ interface ICdpManager is ILiquityBase {
 
     function lqtyStaking() external view returns (ILQTYStaking);
 
-    function lastInterestRateUpdateTime() external view returns (uint);
-
     function getCdpIdsCount() external view returns (uint);
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
@@ -159,7 +157,7 @@ interface ICdpManager is ILiquityBase {
 
     function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
 
-    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint, uint);
+    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
@@ -168,13 +166,7 @@ interface ICdpManager is ILiquityBase {
     )
         external
         view
-        returns (
-            uint debt,
-            uint coll,
-            uint pendingEBTCDebtReward,
-            uint pendingEBTCInterest,
-            uint pendingETHReward
-        );
+        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward);
 
     function closeCdp(bytes32 _cdpId) external;
 

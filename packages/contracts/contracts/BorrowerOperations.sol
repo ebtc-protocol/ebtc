@@ -182,10 +182,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         // Reverse ETH/BTC price to BTC/ETH
-        bool isRecoveryMode = _checkRecoveryMode(
-            vars.price,
-            cdpManager.lastInterestRateUpdateTime()
-        );
+        bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         vars.netDebt = _EBTCAmount;
 
@@ -375,10 +372,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         // Reversed BTC/ETH price
-        bool isRecoveryMode = _checkRecoveryMode(
-            vars.price,
-            cdpManager.lastInterestRateUpdateTime()
-        );
+        bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -661,7 +655,7 @@ contract BorrowerOperations is
 
     function _requireNotInRecoveryMode(uint _price) internal view {
         require(
-            !_checkRecoveryMode(_price, cdpManager.lastInterestRateUpdateTime()),
+            !_checkRecoveryMode(_price),
             "BorrowerOps: Operation not permitted during Recovery Mode"
         );
     }
@@ -833,7 +827,7 @@ contract BorrowerOperations is
     ) internal view returns (uint) {
         uint _shareColl = getEntireSystemColl();
         uint totalColl = collateral.getPooledEthByShares(_shareColl);
-        uint totalDebt = _getEntireSystemDebt(cdpManager.lastInterestRateUpdateTime());
+        uint totalDebt = _getEntireSystemDebt();
 
         totalColl = _isCollIncrease ? totalColl.add(_collChange) : totalColl.sub(_collChange);
         totalDebt = _isDebtIncrease ? totalDebt.add(_debtChange) : totalDebt.sub(_debtChange);

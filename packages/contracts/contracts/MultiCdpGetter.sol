@@ -84,11 +84,9 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (
-                _cdps[idx].snapshotETH,
-                _cdps[idx].snapshotEBTCDebt,
-                _cdps[idx].snapshotEBTCInterest
-            ) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+                currentCdpId
+            );
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
@@ -118,11 +116,9 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (
-                _cdps[idx].snapshotETH,
-                _cdps[idx].snapshotEBTCDebt,
-                _cdps[idx].snapshotEBTCInterest
-            ) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+                currentCdpId
+            );
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }
