@@ -75,6 +75,7 @@ contract('Gas compensation tests', async accounts => {
     borrowerOperations = contracts.borrowerOperations	
     debtToken = ebtcToken;
     collToken = contracts.collateral;
+    LICR = await cdpManager.LICR();
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
@@ -710,7 +711,7 @@ contract('Gas compensation tests', async accounts => {
 
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
-    const expectedLiquidatedDebt_A =  aliceDebt
+    const expectedLiquidatedDebt_A =  aliceColl.mul(price_1).div(LICR)
 
     const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
 
@@ -747,7 +748,7 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
     const expectedGasComp_B = _0pt5percent_bobColl
     const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
-    const expectedLiquidatedDebt_B =  bobDebt
+    const expectedLiquidatedDebt_B = bobColl.mul(price_2).div(LICR)
 
     const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
 
@@ -791,7 +792,7 @@ contract('Gas compensation tests', async accounts => {
     
     const expectedGasComp_A = _0pt5percent_aliceColl
     const expectedLiquidatedColl_A = aliceColl.sub(_0pt5percent_aliceColl)
-    const expectedLiquidatedDebt_A =  aliceDebt
+    const expectedLiquidatedDebt_A =  aliceColl.mul(price_1).div(LICR)
 
     const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
 
@@ -824,7 +825,7 @@ contract('Gas compensation tests', async accounts => {
     
     const expectedGasComp_B = _0pt5percent_bobColl
     const expectedLiquidatedColl_B = bobColl.sub(_0pt5percent_bobColl)
-    const expectedLiquidatedDebt_B =  bobDebt
+    const expectedLiquidatedDebt_B =  bobColl.mul(price_1).div(LICR)
 
     const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
 
@@ -1070,7 +1071,7 @@ contract('Gas compensation tests', async accounts => {
           .add(dennisColl)
 
     // Expect liquidatedDebt = 51 + 190 + 1025 + 13510 = 14646 EBTC
-    const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
+    const expectedLiquidatedDebt = expectedLiquidatedColl.mul(price).div(LICR)
 
     // Liquidate cdps A-D
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -1148,7 +1149,7 @@ contract('Gas compensation tests', async accounts => {
       .add(dennisColl)
 
     // Expect liquidatedDebt = 51 + 190 + 1025 + 13510 = 14646 EBTC
-    const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
+    const expectedLiquidatedDebt = expectedLiquidatedColl.mul(price).div(LICR)
 
     // Liquidate cdps A-D
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
