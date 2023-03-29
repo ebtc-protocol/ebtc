@@ -104,6 +104,7 @@ contract('BorrowerOperations', async accounts => {
       borrowerOperations = contracts.borrowerOperations
       hintHelpers = contracts.hintHelpers
       debtToken = ebtcToken;
+      LICR = await cdpManager.LICR()
 
       lqtyStaking = LQTYContracts.lqtyStaking
       lqtyToken = LQTYContracts.lqtyToken
@@ -367,8 +368,11 @@ contract('BorrowerOperations', async accounts => {
       const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
       const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
       const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
-      for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
+      for (reward of [alicePendingETHReward, bobPendingETHReward]) {
         assert.isTrue(reward.eq(toBN('0')))
+      }
+      for (reward of [alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
+        assert.isTrue(reward.gt(toBN('0')))
       }
 
       // Alice and Bob top up their Cdps
@@ -814,8 +818,11 @@ contract('BorrowerOperations', async accounts => {
       const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
       const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
-      for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
+      for (reward of [pendingCollReward_A, pendingCollReward_B]) {
         assert.isTrue(reward.eq(toBN('0')))
+      }
+      for (reward of [pendingDebtReward_A, pendingDebtReward_B]) {
+        assert.isTrue(reward.gt(toBN('0')))
       }
 
       // Alice and Bob withdraw from their Cdps
@@ -2370,7 +2377,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await priceFeed.setPrice(dec(4200, 13)) // trigger drop in ETH price
+      await priceFeed.setPrice(dec(3200, 13)) // trigger drop in ETH price
       const price = await priceFeed.getPrice()
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -2389,13 +2396,13 @@ contract('BorrowerOperations', async accounts => {
 
       const newICR_A = await cdpManager.computeICR(aliceColl.add(aliceCollIncrease), aliceDebt.add(aliceDebtIncrease), price)
 
-      // Check Alice's new ICR would reduce but still be greater than 150%
+      // Check Alice's new ICR would reduce but still be greater than CCR
       assert.isTrue(newICR_A.lt(ICR_A) && newICR_A.gt(CCR))
 
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, th._100pct, 0, aliceDebtIncrease, true, aliceIndex, aliceIndex, { from: alice, value: aliceCollIncrease }),
         "BorrowerOps: Cannot decrease your Cdp's ICR in Recovery Mode")
 
-      //--- Bob with ICR < 150% tries to reduce his ICR ---
+      //--- Bob with ICR < CCR tries to reduce his ICR ---
 
       const ICR_B = await cdpManager.getCurrentICR(bobIndex, price)
 
@@ -2460,13 +2467,13 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
-      await priceFeed.setPrice(dec(4200, 13)) // trigger drop in ETH price
+      await priceFeed.setPrice(dec(3200, 13)) // trigger drop in ETH price
       const price = await priceFeed.getPrice()
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       const initialICR = await cdpManager.getCurrentICR(aliceIndex, price)
-      // Check initial ICR is above 150%
+      // Check initial ICR is above CCR
       assert.isTrue(initialICR.gt(CCR))
 
       const aliceDebt = await getCdpEntireDebt(aliceIndex)
@@ -3221,7 +3228,7 @@ contract('BorrowerOperations', async accounts => {
       const L_ETH_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[0]
       const L_EBTCDebt_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[1]
       assert.isTrue(L_ETH_A_Snapshot.eq(toBN('0')))
-      assert.isTrue(L_EBTCDebt_A_Snapshot.eq(toBN('0')))
+      assert.isTrue(L_EBTCDebt_A_Snapshot.gt(toBN('0')))
 
       // Liquidate Carol
       await cdpManager.liquidate(carolIndex)
@@ -3232,7 +3239,7 @@ contract('BorrowerOperations', async accounts => {
       const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[1]
 
       assert.isTrue(L_ETH_Snapshot_A_AfterLiquidation.eq(toBN('0')))
-      assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.eq(toBN('0')))
+      assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
 
       // to compensate borrowing fees
       await ebtcToken.transfer(alice, await ebtcToken.balanceOf(dennis), { from: dennis })
@@ -3443,6 +3450,10 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
       const carolIndex = await sortedCdps.cdpOfOwnerByIndex(carol,0)
+	  
+      let _carolDebtColl = await cdpManager.getEntireDebtAndColl(carolIndex)
+      let _carolDebt = _carolDebtColl[0]
+      let _carolColl = _carolDebtColl[1]
 
       // Whale transfers to A and B to cover their fees
       await ebtcToken.transfer(alice, dec(100, 18), { from: whale })
@@ -3460,7 +3471,7 @@ contract('BorrowerOperations', async accounts => {
       const liquidationTx = await cdpManager.liquidate(carolIndex, { from: owner });
       const [liquidatedDebt_C, liquidatedColl_C, gasComp_C] = th.getEmittedLiquidationValues(liquidationTx)
 
-      // Dennis opens a new Cdp (Carol?)
+      // Carol opens a new Cdp
       await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("20000")});
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: carol } })
 
@@ -3486,14 +3497,14 @@ contract('BorrowerOperations', async accounts => {
       const defaultPool_ETH = await defaultPool.getETH()
       const defaultPool_EBTCDebt = await defaultPool.getEBTCDebt()
 
-      // Carol's liquidated coll (1 ETH) and drawn debt should have entered the Default Pool
+      // Carol's liquidated debt should have entered the Default Pool
       assert.isAtMost(th.getDifference(defaultPool_ETH, toBN('0')), 100)
-      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, toBN('0')), 100)
+      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, _carolDebt.sub(_carolColl.mul(price).div(LICR))), 100)
 
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
       const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
-      assert.isTrue(pendingCollReward_A.gt('0'))
-      assert.isTrue(pendingDebtReward_A.gt('0'))
+      assert.equal(pendingCollReward_A.toString(), '0')
+      assert.isTrue(pendingDebtReward_A.gt(toBN('0')))
 
       // Close Alice's cdp. Alice's pending rewards should be removed from the DefaultPool when she close.
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
@@ -3510,14 +3521,14 @@ contract('BorrowerOperations', async accounts => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("10000")});
       await borrowerOperations.adjustCdp(whaleIndex, th._100pct, 0, dec(1, 18), true, whaleIndex, whaleIndex, { from: whale })
 
-      // Close Bob's cdp. Expect DefaultPool coll and debt to drop to 0, since closing pulls his rewards out.
+      // Close Bob's cdp. Expect DefaultPool debt still exist since some other CDP not pulls rewards yet.
       await borrowerOperations.closeCdp(bobIndex, { from: bob })
 
       const defaultPool_ETH_afterBobCloses = await defaultPool.getETH()
       const defaultPool_EBTCDebt_afterBobCloses = await defaultPool.getEBTCDebt()
 
       assert.isAtMost(th.getDifference(defaultPool_ETH_afterBobCloses, 0), 100000)
-      assert.isAtMost(th.getDifference(defaultPool_EBTCDebt_afterBobCloses, 0), 100000)
+      assert.isTrue(defaultPool_EBTCDebt_afterBobCloses.gt(toBN('0')))
     })
 
     it("closeCdp(): reverts if borrower has insufficient EBTC balance to repay his entire debt", async () => {
@@ -4142,9 +4153,9 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      // Bob tries to open a cdp with 149% ICR during Recovery Mode
+      // Bob tries to open a cdp with ICR below CCR during Recovery Mode
       try {
-        const txBob = await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(149, 16)), extraParams: { from: alice } })
+        const txBob = await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(124, 16)), extraParams: { from: alice } })
         assert.isFalse(txBob.receipt.status)
       } catch (err) {
         assert.include(err.message, "revert")
@@ -4183,14 +4194,13 @@ contract('BorrowerOperations', async accounts => {
 
     it("openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the CCR", async () => {
       await priceFeed.setPrice(dec(3800, 13))
-      await openCdp({ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+      await openCdp({ICR: toBN(dec(126, 16)), extraParams: { from: alice } })
 
       const TCR = await th.getTCR(contracts)
 
-      // Bob attempts to open a cdp with ICR = 149% 
-      // System TCR would fall below 150%
+      // Bob attempts to open a cdp with ICR to make System TCR would fall below CCR
       try {
-        const txBob = await openCdp({ extraEBTCAmount: toBN(dec(1, 17)), ICR: toBN(dec(149, 16)), extraParams: { from: bob } })
+        const txBob = await openCdp({ extraEBTCAmount: toBN(dec(1, 17)), ICR: toBN(dec(124, 16)), extraParams: { from: bob } })
         assert.isFalse(txBob.receipt.status)
       } catch (err) {
         assert.include(err.message, "revert")
@@ -4386,7 +4396,8 @@ contract('BorrowerOperations', async accounts => {
       // --- TEST ---
 
       // price drops to 1ETH:100EBTC, reducing Carol's ICR below MCR
-      await priceFeed.setPrice(dec(3000, 13))
+      let _newPrice = dec(3000, 13);
+      await priceFeed.setPrice(_newPrice)
 
       // close Carol's Cdp, liquidating her 1 ether and 180EBTC.
       const liquidationTx = await cdpManager.liquidate(carolIndex, { from: owner });
@@ -4399,7 +4410,7 @@ contract('BorrowerOperations', async accounts => {
       const L_EBTC = await cdpManager.L_EBTCDebt()
 
       assert.isTrue(L_ETH.eq(toBN('0')))
-      assert.isTrue(L_EBTC.eq(toBN('0')))
+      assert.isTrue(L_EBTC.gt(toBN('0')))
 
       // Bob opens cdp
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("5000")});
@@ -4647,14 +4658,23 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
-        await priceFeed.setPrice(dec(1000, 13))
+        let _newPrice = dec(1000, 13);
+        await priceFeed.setPrice(_newPrice)
 
-        const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebt = _aliceDebtAndColl[0];
+        let _aliceColl = _aliceDebtAndColl[1];
+        let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebt = _bobDebtAndColl[0];
+        let _bobColl = _bobDebtAndColl[1];
+		
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
 
-        const liquidationTx = await cdpManager.liquidate(bobIndex, {from: owner})
-        assert.isFalse(await sortedCdps.contains(bobIndex))
+        const liquidationTx = await cdpManager.liquidate(_bobCdpId, {from: owner})
+        assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
@@ -4666,10 +4686,9 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, true, price)
 
-        const expectedTCR = (cdpColl.add(liquidatedColl)).mul(price)
-          .div(cdpTotalDebt.add(liquidatedDebt))
+        const expectedTCR = _aliceColl.mul(price).div(_aliceDebt.add(_bobDebt.sub(_bobColl.mul(toBN(_newPrice)).div(LICR))))
 
-        assert.isTrue(newTCR.eq(expectedTCR))
+        th.assertIsApproximatelyEqual(newTCR.toString(), expectedTCR.toString())
       })
 
       // 0, +ve
@@ -4686,14 +4705,23 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
-        const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebt = _aliceDebtAndColl[0];
+        let _aliceColl = _aliceDebtAndColl[1];
+        let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebt = _bobDebtAndColl[0];
+        let _bobColl = _bobDebtAndColl[1];
+		
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
 
-        await priceFeed.setPrice(dec(150, 13))
+        let _newPrice = dec(150, 13);
+        await priceFeed.setPrice(_newPrice)
 
-        const liquidationTx = await cdpManager.liquidate(bobIndex, {from: owner})
-        assert.isFalse(await sortedCdps.contains(bobIndex))
+        const liquidationTx = await cdpManager.liquidate(_bobCdpId, {from: owner})
+        assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
         th.getEmittedLiquidationValues(liquidationTx)
 
@@ -4705,8 +4733,7 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(2, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (cdpColl.add(toBN('0'))).mul(price)
-          .div(cdpTotalDebt.add(toBN('0')).add(toBN(debtChange)))
+        const expectedTCR = _aliceColl.mul(price).div(_aliceDebt.add(toBN(debtChange)).add(_bobDebt.sub(_bobColl.mul(toBN(_newPrice)).div(LICR))))
 
         th.assertIsApproximatelyEqual(newTCR, expectedTCR, 1)
       })
@@ -4724,14 +4751,23 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
-        const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebt = _aliceDebtAndColl[0];
+        let _aliceColl = _aliceDebtAndColl[1];
+        let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebt = _bobDebtAndColl[0];
+        let _bobColl = _bobDebtAndColl[1];
+		
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
 
-        await priceFeed.setPrice(dec(1000, 13))
+        let _newPrice = dec(1000, 13);
+        await priceFeed.setPrice(_newPrice)
 
-        const liquidationTx = await cdpManager.liquidate(bobIndex, {from: owner})
-        assert.isFalse(await sortedCdps.contains(bobIndex))
+        const liquidationTx = await cdpManager.liquidate(_bobCdpId, {from: owner})
+        assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
@@ -4742,8 +4778,7 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(15, 16)
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, false, price))
 
-        const expectedTCR = (cdpColl.add(toBN('0'))).mul(price)
-          .div(cdpTotalDebt.add(toBN('0')).sub(toBN(debtChange)))
+        const expectedTCR = _aliceColl.mul(price).div(_aliceDebt.sub(toBN(debtChange)).add(_bobDebt.sub(_bobColl.mul(toBN(_newPrice)).div(LICR))))
 
         th.assertIsApproximatelyEqual(newTCR, expectedTCR, 10)
       })
@@ -4761,14 +4796,23 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
-        const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebt = _aliceDebtAndColl[0];
+        let _aliceColl = _aliceDebtAndColl[1];
+        let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebt = _bobDebtAndColl[0];
+        let _bobColl = _bobDebtAndColl[1];
+		
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
 
-        await priceFeed.setPrice(dec(150, 13))
+        let _newPrice = dec(150, 13);
+        await priceFeed.setPrice(_newPrice)
 
-        const liquidationTx = await cdpManager.liquidate(bobIndex)
-        assert.isFalse(await sortedCdps.contains(bobIndex))
+        const liquidationTx = await cdpManager.liquidate(_bobCdpId)
+        assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
@@ -4779,8 +4823,7 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, true, price))
 
-        const expectedTCR = (cdpColl.add(toBN('0')).add(toBN(collChange))).mul(price)
-          .div(cdpTotalDebt.add(toBN('0')))
+        const expectedTCR = _aliceColl.add(toBN(collChange)).mul(price).div(_aliceDebt.add(_bobDebt.sub(_bobColl.mul(toBN(_newPrice)).div(LICR))));
 
         th.assertIsApproximatelyEqual(newTCR, expectedTCR, 10)
       })
@@ -4797,15 +4840,23 @@ contract('BorrowerOperations', async accounts => {
         await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
+        let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebt = _aliceDebtAndColl[0];
+        let _aliceColl = _aliceDebtAndColl[1];
+        let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebt = _bobDebtAndColl[0];
+        let _bobColl = _bobDebtAndColl[1];
 
-        const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
 
-        await priceFeed.setPrice(dec(150, 13))
+        let _newPrice = dec(150, 13);
+        await priceFeed.setPrice(_newPrice)
 
-        const liquidationTx = await cdpManager.liquidate(bobIndex, {from: owner})
-        assert.isFalse(await sortedCdps.contains(bobIndex))
+        const liquidationTx = await cdpManager.liquidate(_bobCdpId, {from: owner})
+        assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
         const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
@@ -4817,10 +4868,9 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = 0
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, false, debtChange, true, price))
 
-        const expectedTCR = (cdpColl.add(toBN('0')).sub(toBN(dec(1, 'ether')))).mul(price)
-          .div(cdpTotalDebt.add(toBN('0')))
+        const expectedTCR = _aliceColl.sub(toBN(collChange)).mul(price).div(_aliceDebt.add(_bobDebt.sub(_bobColl.mul(toBN(_newPrice)).div(LICR))))
 
-        assert.isTrue(newTCR.eq(expectedTCR))
+        th.assertIsApproximatelyEqual(newTCR.toString(), expectedTCR.toString())
       })
 
       // -ve, -ve
