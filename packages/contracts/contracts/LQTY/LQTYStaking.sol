@@ -222,7 +222,7 @@ contract LQTYStaking is ILQTYStaking, Ownable, CheckContract, BaseMath {
     function _sendETHGainToUser(uint ETHGain) internal {
         emit CollateralSent(msg.sender, ETHGain);
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transfer(msg.sender, ETHGain);
+        collateral.transferShares(msg.sender, ETHGain);
     }
 
     // --- 'require' functions ---

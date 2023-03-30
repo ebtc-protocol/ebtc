@@ -82,7 +82,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     mapping(bytes32 => Cdp) public Cdps;
 
-    uint public totalStakes;
+    uint public override totalStakes;
 
     // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
     uint public totalStakesSnapshot;
@@ -2421,8 +2421,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _deltaFeePerUnit,
                 _perUnitError
             );
-            // update the total staking and collateral snapshots
-            _removeTotalStakeForFeeTaken(_feeTaken);
             _updateSystemSnapshots_excludeCollRemainder(
                 _contractsCache.activePool,
                 _contractsCache.defaultPool,
@@ -2602,10 +2600,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
-        uint256 _deltaFeeSplitShare = _deltaFeeSplit
-            .mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
-            .div(DECIMAL_PRECISION)
-            .add(stFeePerUnitgError);
+        uint256 _deltaFeeSplitShare = collateral.getSharesByPooledEth(_deltaFeeSplit).add(
+            stFeePerUnitgError
+        );
+        //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
+        //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
         uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
         return (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError);
@@ -2668,8 +2667,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         );
         Cdps[_cdpId].coll = _newColl;
         stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
-        // ONLY update for given CDP since totalStakes should have been updated already
-        _updateStakeForCdp(_cdpId);
 
         emit CdpFeeSplitApplied(
             _cdpId,

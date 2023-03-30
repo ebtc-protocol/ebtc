@@ -23,6 +23,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
     // - active_pool_4： total collateral in active pool should be equal to the sum of all individual CDP collateral
     // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
+    // - cdp_manager_2： sum of active CDPs stake is equal to totalStakes
     // - default_pool_1： collateral balance in default pool is greater than or equal to its accounting number
     // - coll_surplus_pool_1： collateral balance in collSurplus pool is greater than or equal to its accounting number
     ////////////////////////////////////////////////////////////////////////////
@@ -72,9 +73,18 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         );
     }
 
+    function _assert_cdp_manager_invariant_2() internal {
+        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _sum;
+        for (uint i = 0; i < _cdpCount; ++i) {
+            _sum = _sum.add(cdpManager.getCdpStake(cdpManager.CdpIds(i)));
+        }
+        assertEq(_sum, cdpManager.totalStakes(), "System Invariant: cdp_manager_2");
+    }
+
     function _assert_default_pool_invariant_1() internal {
         assertGe(
-            collateral.balanceOf(address(defaultPool)),
+            collateral.sharesOf(address(defaultPool)),
             defaultPool.getETH(),
             "System Invariant: default_pool_1"
         );
@@ -82,7 +92,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
 
     function _assert_coll_surplus_pool_invariant_1() internal {
         assertGe(
-            collateral.balanceOf(address(collSurplusPool)),
+            collateral.sharesOf(address(collSurplusPool)),
             collSurplusPool.getETH(),
             "System Invariant: coll_surplus_pool_1"
         );
@@ -94,6 +104,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         _assert_active_pool_invariant_3();
         _assert_active_pool_invariant_4();
         _assert_cdp_manager_invariant_1();
+        _assert_cdp_manager_invariant_2();
         _assert_default_pool_invariant_1();
         _assert_coll_surplus_pool_invariant_1();
     }
