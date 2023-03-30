@@ -106,7 +106,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_ETH & L_EBTCdebt */
-    uint256 public override stFeePerUnitg = 1e18;
+    uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
@@ -393,9 +393,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _syncIndex();
+        syncUpdateIndexInterval();
         stFeePerUnitg = 1e18;
-        INDEX_UPD_INTERVAL = 43200; // 12 hours
 
         _renounceOwnership();
     }
