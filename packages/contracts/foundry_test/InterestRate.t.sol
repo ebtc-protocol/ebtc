@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {LiquityBase} from "../contracts/Dependencies/LiquityBase.sol";
 
 contract LiquityTester is LiquityBase {
@@ -22,7 +21,6 @@ contract InterestRateTest is eBTCBaseFixture {
     uint256 private testNumber;
     address payable[] users;
 
-    Utilities internal _utils;
     LiquityTester internal _liquityTester;
 
     uint public constant DECIMAL_PRECISION = 1e18;
@@ -38,7 +36,6 @@ contract InterestRateTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(3);
         _liquityTester = new LiquityTester();
         vm.deal(users[0], type(uint256).max);

@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {LogUtils} from "./utils/LogUtils.sol";
 
 // TODO: Do an invariant test that total interest minted is equal to sum of all borrowers' interest
@@ -19,8 +18,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     uint256 private testNumber;
     address payable[] users;
 
-    // TODO: Move to base fixture
-    Utilities internal _utils;
     // TODO: Inherit base fixture from LiquityBase
     uint256 EBTC_GAS_COMPENSATION;
     uint256 public constant DECIMAL_PRECISION = 1e18;
@@ -39,7 +36,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(3);
 
         EBTC_GAS_COMPENSATION = cdpManager.EBTC_GAS_COMPENSATION();

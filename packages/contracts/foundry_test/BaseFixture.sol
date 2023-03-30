@@ -22,6 +22,7 @@ import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
+import {Utilities} from "./utils/Utilities.sol";
 
 contract eBTCBaseFixture is Test {
     uint internal constant FEE = 5e15; // 0.5%
@@ -33,6 +34,14 @@ contract eBTCBaseFixture is Test {
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
     uint internal constant AMOUNT_OF_CDPS = 3;
+
+    // -- Permissioned Function Signatures for Authority --
+    // CDPManager
+    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG = bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+
+    // EBTCToken
+    bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 private constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
     using SafeMath for uint256;
     using SafeMath for uint96;
@@ -56,6 +65,9 @@ contract eBTCBaseFixture is Test {
     EBTCToken eBTCToken;
     CollateralTokenTester collateral;
     Governor authority;
+    address defaultGovernance;
+
+    Utilities internal _utils;
 
     // LQTY Stuff
     LQTYToken lqtyToken;
@@ -80,6 +92,11 @@ contract eBTCBaseFixture is Test {
     Consider overriding this function if in need of custom setup
     */
     function setUp() public virtual {
+        _utils = new Utilities();
+        defaultGovernance = _utils.getNextSpecialAddress();
+
+        authority = new Governor(defaultGovernance);
+        
         borrowerOperations = new BorrowerOperations();
         priceFeedMock = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
@@ -91,9 +108,8 @@ contract eBTCBaseFixture is Test {
         collSurplusPool = new CollSurplusPool();
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
+        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations), address(authority));
         collateral = new CollateralTokenTester();
-        authority = new Governor();
 
         // Liquity Stuff
         lqtyStaking = new LQTYStaking();
@@ -108,6 +124,25 @@ contract eBTCBaseFixture is Test {
             address(this),
             address(this)
         );
+
+        // Set up initial permissions and then renounce global owner role
+        vm.startPrank(defaultGovernance);
+        
+        authority.setRoleName(0, "Admin");
+        authority.setRoleName(1, "eBTCToken: mint");
+        authority.setRoleName(2, "eBTCToken: burn");
+        authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+
+        authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+        authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+
+        authority.setUserRole(defaultGovernance, 0, true);
+        authority.setUserRole(defaultGovernance, 1, true);
+        authority.setUserRole(defaultGovernance, 2, true);
+        authority.setUserRole(defaultGovernance, 3, true);
+
+        vm.stopPrank();
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure

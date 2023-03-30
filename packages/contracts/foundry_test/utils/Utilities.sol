@@ -14,6 +14,15 @@ contract Utilities is Test {
     uint internal constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
+    bytes32 internal nextSpecial = keccak256(abi.encodePacked("special address"));
+
+    function getNextSpecialAddress() public returns (address payable) {
+        //bytes32 to address conversion
+        address payable user = payable(address(uint160(uint256(nextSpecial))));
+        nextSpecial = keccak256(abi.encodePacked(nextSpecial));
+        return user;
+    }
+
 
     function getNextUserAddress() public returns (address payable) {
         //bytes32 to address conversion

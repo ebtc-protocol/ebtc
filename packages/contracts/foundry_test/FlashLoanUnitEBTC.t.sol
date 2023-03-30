@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 
 /*
@@ -14,7 +13,6 @@ import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoa
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitEBTC is eBTCBaseFixture {
-    Utilities internal _utils;
 
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
@@ -28,7 +26,6 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;

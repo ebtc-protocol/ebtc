@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
@@ -55,7 +54,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         connectCoreContracts();
         connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(1);
     }
 

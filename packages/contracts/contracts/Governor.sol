@@ -8,7 +8,7 @@ import {RolesAuthority} from "./Dependencies/RolesAuthority.sol";
 
 /// @notice Role based Authority that supports up to 256 roles.
 /// @notice We have taken the tradeoff of additional storage usage for easier readabiliy without using off-chain / indexing services.
-/// @author BadgerDAO
+/// @author BadgerDAO Expanded from Solmate RolesAuthority
 /// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-roles/blob/master/src/roles.sol)
 contract Governor is RolesAuthority {
@@ -43,7 +43,7 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor() RolesAuthority(address(this), Authority(address(this))) public {}
+    constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) public {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS

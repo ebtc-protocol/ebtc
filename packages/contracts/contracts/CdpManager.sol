@@ -376,6 +376,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         checkContract(_lqtyTokenAddress);
         checkContract(_lqtyStakingAddress);
         checkContract(_collTokenAddress);
+        checkContract(_authorityAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);

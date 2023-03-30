@@ -3,7 +3,6 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
@@ -12,14 +11,11 @@ import {Utilities} from "./utils/Utilities.sol";
 contract CDPTest is eBTCBaseFixture {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
-    Utilities internal _utils;
-
     function setUp() public override {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
     }
 
     // Generic test for happy case when 1 user open CDP

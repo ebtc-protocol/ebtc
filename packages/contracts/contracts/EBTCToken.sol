@@ -6,6 +6,7 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/Authv06.sol";
 
 /*
  *
@@ -25,7 +26,7 @@ import "./Dependencies/console.sol";
  * 2) sendToPool() and returnFromPool(): functions callable only Liquity core contracts, which move EBTC tokens between Liquity <-> user.
  */
 
-contract EBTCToken is CheckContract, IEBTCToken {
+contract EBTCToken is CheckContract, IEBTCToken, Auth {
     using SafeMath for uint256;
 
     uint256 private _totalSupply;
@@ -42,6 +43,10 @@ contract EBTCToken is CheckContract, IEBTCToken {
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant _TYPE_HASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 private constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
     // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
     // invalidate the cached domain separator if the chain id changes.
@@ -65,15 +70,18 @@ contract EBTCToken is CheckContract, IEBTCToken {
     event CdpManagerAddressChanged(address _cdpManagerAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
-    constructor(address _cdpManagerAddress, address _borrowerOperationsAddress) public {
+    constructor(address _cdpManagerAddress, address _borrowerOperationsAddress, address _authorityAddress) public {
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
+        checkContract(_authorityAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
         emit CdpManagerAddressChanged(_cdpManagerAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
+
+        _initializeAuthority(Authority(_authorityAddress));
 
         bytes32 hashedName = keccak256(bytes(_NAME));
         bytes32 hashedVersion = keccak256(bytes(_VERSION));
@@ -87,12 +95,12 @@ contract EBTCToken is CheckContract, IEBTCToken {
     // --- Functions for intra-Liquity calls ---
 
     function mint(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorCdpM();
+        _requireCallerIsBOorCdpMOrAuth(MINT_SIG);
         _mint(_account, _amount);
     }
 
     function burn(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorCdpM();
+        _requireCallerIsBOorCdpMOrAuth(BURN_SIG);
         _burn(_account, _amount);
     }
 
@@ -279,9 +287,10 @@ contract EBTCToken is CheckContract, IEBTCToken {
         );
     }
 
-    function _requireCallerIsBOorCdpM() internal view {
+    /// @dev authority check last to short-circuit in the case of use by usual immutable addresses 
+    function _requireCallerIsBOorCdpMOrAuth(bytes4 sig) internal view {
         require(
-            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
+            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress || isAuthorized(msg.sender, sig),
             "EBTC: Caller is neither BorrowerOperations nor CdpManager"
         );
     }
