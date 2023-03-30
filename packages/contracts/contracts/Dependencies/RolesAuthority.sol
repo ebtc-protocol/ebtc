@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity >=0.6.0;
 
 import {Auth, Authority} from "./Auth.sol";
 import "./EnumerableSet.sol";
@@ -27,7 +27,7 @@ contract RolesAuthority is Auth, Authority {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, Authority _authority) Auth(_owner, _authority) {}
+    constructor(address _owner, Authority _authority) Auth(_owner, _authority) public {}
 
     /*//////////////////////////////////////////////////////////////
                             ROLE/USER STORAGE
@@ -92,7 +92,7 @@ contract RolesAuthority is Auth, Authority {
         bool enabled
     ) public virtual requiresAuth {
         if (enabled) {
-            getRolesWithCapability[target][functionSig] |= bytes32(1 << role);
+            getRolesWithCapability[target][functionSig] |= bytes32(1 << uint(role));
             enabledFunctionSigsByTarget[target].add(bytes32(functionSig));
 
             if (!targets.contains(target)) {
@@ -100,7 +100,7 @@ contract RolesAuthority is Auth, Authority {
             }
 
         } else {
-            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << role);enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
+            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << uint(role));enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
 
             // If no enabled function signatures exist for this target, remove target
             if (enabledFunctionSigsByTarget[target].length() == 0) {
@@ -121,13 +121,13 @@ contract RolesAuthority is Auth, Authority {
         bool enabled
     ) public virtual requiresAuth {
         if (enabled) {
-            getUserRoles[user] |= bytes32(1 << role);
+            getUserRoles[user] |= bytes32(1 << uint(role));
 
             if (!users.contains(user)) {
                 users.add(user);
             }
         } else {
-            getUserRoles[user] &= ~bytes32(1 << role);
+            getUserRoles[user] &= ~bytes32(1 << uint(role));
 
             // Remove user if no more roles
             if (getUserRoles[user] == bytes32(0)) {

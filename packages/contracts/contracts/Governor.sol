@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity >=0.6.0;
+pragma experimental ABIEncoderV2;
 
 import {EnumerableSet} from "./Dependencies/EnumerableSet.sol";
 import {Authority} from "./Dependencies/Auth.sol";
@@ -42,7 +43,7 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _owner, Authority _authority) RolesAuthority(_owner, _authority) {}
+    constructor() RolesAuthority(address(this), Authority(address(this))) public {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS
