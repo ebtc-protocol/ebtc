@@ -888,7 +888,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.price,
                 systemColl,
                 systemDebt,
-                _TCR,
                 _n
             );
         } else {
@@ -927,7 +926,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _price,
         uint _systemColl,
         uint _systemDebt,
-        uint _TCR,
         uint _n
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
@@ -944,8 +942,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             bytes32 nextUser = _contractsCache.sortedCdps.getPrev(vars.user);
 
             vars.ICR = getCurrentICR(vars.user, _price);
+            uint _totalColl = collateral.getPooledEthByShares(vars.entireSystemColl);
+            uint _TCR = LiquityMath._computeCR(_totalColl, vars.entireSystemDebt, _price);
 
-            if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
+            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
                 _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
@@ -1188,7 +1188,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             }
             vars.ICR = getCurrentICR(vars.user, _price);
 
-            if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
+            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
                 _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
@@ -1243,6 +1243,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
             vars.user = _cdpArray[vars.i];
+            // Skip non-active cdps
+            if (Cdps[vars.user].status != Status.active) {
+                continue;
+            }
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {

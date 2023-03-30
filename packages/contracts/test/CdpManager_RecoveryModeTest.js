@@ -2568,7 +2568,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).gte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).gte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).gte(mv._MCR))
-
+	
     // Attempt liqudation sequence
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
@@ -2587,18 +2587,20 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check whale and A-D remain active
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
-    assert.isTrue(await sortedCdps.contains(_carolCdpId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
     assert.isTrue(await sortedCdps.contains(_dennisCdpId))
-    assert.isTrue(await sortedCdps.contains(_whaleCdpId))
+    assert.isFalse(await sortedCdps.contains(_whaleCdpId))
 
     // Liquidation event emits coll = (F_debt + G_debt)/price*1.1*0.995, and debt = (F_debt + G_debt)
-    let _liqDebts = F_totalDebt.add(G_totalDebt).add(A_totalDebt).add(B_totalDebt)
+    let _liqDebts = F_totalDebt.add(G_totalDebt).add(A_totalDebt).add(B_totalDebt).add(C_totalDebt).add(W_totalDebt)
     th.assertIsApproximatelyEqual(liquidatedDebt, _liqDebts)
     const equivalentCollA = A_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollB = B_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollF = F_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollG = G_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
-    th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollF).add(equivalentCollG))
+    const equivalentCollC = C_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
+    const equivalentCollW = W_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
+    th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollF).add(equivalentCollG).add(equivalentCollC).add(equivalentCollW))
 
     // check collateral surplus
     const freddy_remainingCollateral = F_coll.sub(equivalentCollF)
@@ -2659,7 +2661,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).gte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).gte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).gte(mv._MCR))
-
+	
     // Attempt liqudation sequence
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
@@ -2675,12 +2677,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(await sortedCdps.contains(_freddyCdpId))
     assert.isFalse(await sortedCdps.contains(_gretaCdpId))
 
-    // Check whale and A-D remain active
+    // Check CDP status
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
-    assert.isTrue(await sortedCdps.contains(_carolCdpId))
+    assert.isFalse(await sortedCdps.contains(_carolCdpId))
     assert.isTrue(await sortedCdps.contains(_dennisCdpId))
-    assert.isTrue(await sortedCdps.contains(_whaleCdpId))
+    assert.isFalse(await sortedCdps.contains(_whaleCdpId))
 
     // Check A's collateral and debt remain the same
     const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1].add(await cdpManager.getPendingETHReward(_aliceCdpId))
@@ -2692,13 +2694,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     /* Liquidation event emits:
     coll = (F_debt + G_debt)/price*1.1*0.995
     debt = (F_debt + G_debt) */
-    let _liqDebts = F_totalDebt.add(G_totalDebt).add(A_totalDebt).add(B_totalDebt)
+    let _liqDebts = F_totalDebt.add(G_totalDebt).add(A_totalDebt).add(B_totalDebt).add(C_totalDebt).add(W_totalDebt)
     th.assertIsApproximatelyEqual(liquidatedDebt, _liqDebts)
     const equivalentCollA = A_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollB = B_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollF = F_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
     const equivalentCollG = G_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
-    th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollF).add(equivalentCollG))
+    const equivalentCollC = C_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
+    const equivalentCollW = W_totalDebt.mul(toBN(dec(105, 16))).div(price).add(liqStipend)
+    th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollF).add(equivalentCollG).add(equivalentCollC).add(equivalentCollW))
 
     // check collateral surplus
     const freddy_remainingCollateral = F_coll.sub(equivalentCollF)

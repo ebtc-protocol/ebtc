@@ -1868,7 +1868,7 @@ contract('CdpManager', async accounts => {
 
   it('batchLiquidateCdps(): liquidates a Cdp that a) was skipped in a previous liquidation and b) has pending rewards', async () => {
     // A, B, C, D, E open cdps 
-    await openCdp({ ICR: toBN(dec(300, 16)), extraParams: { from: C } })
+    await openCdp({ ICR: toBN(dec(303, 16)), extraParams: { from: C } })
     await openCdp({ ICR: toBN(dec(304, 16)), extraParams: { from: D } })
     await openCdp({ ICR: toBN(dec(304, 16)), extraParams: { from: E } })
     await openCdp({ ICR: toBN(dec(120, 16)), extraParams: { from: A } })
@@ -1894,7 +1894,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await sortedCdps.contains(_aCdpId))
 
     // Price drops
-    await priceFeed.setPrice(dec(3654, 13))
+    await priceFeed.setPrice(dec(3674, 13))
     price = await priceFeed.getPrice()
     // Confirm system is now in Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -1907,6 +1907,7 @@ contract('CdpManager', async accounts => {
 
     // Attempt to liquidate B and C, which skips C in the liquidation since it is immune
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(B)).toString()), {from: B});
+    await debtToken.transfer(owner, toBN((await debtToken.balanceOf(C)).toString()), {from: C});
     const liqTxBC = await cdpManager.liquidateCdps(2)
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_bCdpId))
@@ -1935,8 +1936,8 @@ contract('CdpManager', async accounts => {
     assert.isAtMost(th.getDifference(pendingETH_C, defaultPoolETH), 1000)
     assert.isAtMost(th.getDifference(pendingEBTCDebt_C, defaultPoolEBTCDebt), 1000)
 
-    // Confirm system is still in Recovery Mode
-    assert.isTrue(await th.checkRecoveryMode(contracts))
+    // Confirm system is not in Recovery Mode
+    assert.isFalse(await th.checkRecoveryMode(contracts))
 
     await priceFeed.setPrice(dec(1000, 13))
 
