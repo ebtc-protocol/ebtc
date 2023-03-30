@@ -15,7 +15,6 @@ contract MultiCdpGetter {
         uint stake;
         uint snapshotETH;
         uint snapshotEBTCDebt;
-        uint snapshotEBTCInterest;
     }
 
     CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
