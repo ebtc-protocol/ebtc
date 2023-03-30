@@ -44,7 +44,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     const setup = async () => {
       const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(296, 16)), extraParams: { from: alice } })
       const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(280, 16)), extraParams: { from: bob } })
-      const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: carol } })
+      const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
@@ -95,6 +95,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
@@ -103,6 +104,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
+      assert.equal(liquidationEvents[0].args[4].toString(), '2');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[1].args[4].toString(), '2');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[2].args[4].toString(), '1');//liquidateInNormalMode
 
       // Confirm all cdps removed
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
