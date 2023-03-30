@@ -291,7 +291,7 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
     function _requireCallerIsBOorCdpMOrAuth(bytes4 sig) internal view {
         require(
             msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress || isAuthorized(msg.sender, sig),
-            "EBTC: Caller is neither BorrowerOperations nor CdpManager"
+            "EBTC: Caller is neither BorrowerOperations nor CdpManager nor authorized"
         );
     }
 
