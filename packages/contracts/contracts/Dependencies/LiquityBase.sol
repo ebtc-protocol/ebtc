@@ -88,7 +88,9 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
 
-        uint timeElapsed = block.timestamp.sub(_lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp > _lastInterestRateUpdateTime
+            ? block.timestamp.sub(_lastInterestRateUpdateTime)
+            : 0;
         if (timeElapsed > 0) {
             uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
 
