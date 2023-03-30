@@ -2011,7 +2011,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp > lastInterestRateUpdateTime
+            ? block.timestamp.sub(lastInterestRateUpdateTime)
+            : 0;
         if (timeElapsed > 0) {
             uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
 
@@ -2237,7 +2239,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //       1. Interest is ticked *before* any new debt is added in any operation.
     //       2. Interest is ticked before all operations.
     function _tickInterest() internal {
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp > lastInterestRateUpdateTime
+            ? block.timestamp.sub(lastInterestRateUpdateTime)
+            : 0;
         if (timeElapsed > 0) {
             // timeElapsed >= interestTimeWindow
             lastInterestRateUpdateTime = block.timestamp;
@@ -2545,7 +2549,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // Update the last fee operation time only if time passed >= decay interval. This prevents base rate griefing.
     function _updateLastFeeOpTime() internal {
-        uint timePassed = block.timestamp.sub(lastFeeOperationTime);
+        uint timePassed = block.timestamp > lastFeeOperationTime
+            ? block.timestamp.sub(lastFeeOperationTime)
+            : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
             lastFeeOperationTime = block.timestamp;
@@ -2561,7 +2567,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
-        return (block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE);
+        return
+            block.timestamp > lastFeeOperationTime
+                ? ((block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE))
+                : 0;
     }
 
     // Update the global index via collateral token
