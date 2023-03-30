@@ -82,7 +82,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     mapping(bytes32 => Cdp) public Cdps;
 
-    uint public totalStakes;
+    uint public override totalStakes;
 
     // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
     uint public totalStakesSnapshot;
@@ -106,7 +106,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_ETH & L_EBTCdebt */
-    uint256 public override stFeePerUnitg = 1e18;
+    uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
@@ -386,9 +386,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _syncIndex();
+        syncUpdateIndexInterval();
         stFeePerUnitg = 1e18;
-        INDEX_UPD_INTERVAL = 43200; // 12 hours
 
         _renounceOwnership();
     }
@@ -965,7 +964,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.price,
                 systemColl,
                 systemDebt,
-                _TCR,
                 _n
             );
         } else {
@@ -1005,7 +1003,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _price,
         uint _systemColl,
         uint _systemDebt,
-        uint _TCR,
         uint _n
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
@@ -1022,8 +1019,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             bytes32 nextUser = _contractsCache.sortedCdps.getPrev(vars.user);
 
             vars.ICR = getCurrentICR(vars.user, _price);
+            uint _totalColl = collateral.getPooledEthByShares(vars.entireSystemColl);
+            uint _TCR = LiquityMath._computeCR(_totalColl, vars.entireSystemDebt, _price);
 
-            if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
+            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
                 _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
@@ -1271,7 +1270,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             }
             vars.ICR = getCurrentICR(vars.user, _price);
 
-            if (!vars.backToNormalMode && (vars.ICR < _TCR || vars.ICR < MCR)) {
+            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
                 _applyAccumulatedFeeSplit(vars.user);
                 _getLiquidationValuesRecoveryMode(
@@ -1326,6 +1325,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
             vars.user = _cdpArray[vars.i];
+            // Skip non-active cdps
+            if (Cdps[vars.user].status != Status.active) {
+                continue;
+            }
             vars.ICR = getCurrentICR(vars.user, _price);
 
             if (vars.ICR < MCR) {
@@ -1807,7 +1810,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint L_EBTCDebt_new = L_EBTCDebt;
         uint L_EBTCInterest_new = L_EBTCInterest;
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp > lastInterestRateUpdateTime
+            ? block.timestamp.sub(lastInterestRateUpdateTime)
+            : 0;
         if (timeElapsed > 0) {
             uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
 
@@ -2036,7 +2041,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //       1. Interest is ticked *before* any new debt is added in any operation.
     //       2. Interest is ticked before all operations.
     function _tickInterest() internal {
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
+        uint timeElapsed = block.timestamp > lastInterestRateUpdateTime
+            ? block.timestamp.sub(lastInterestRateUpdateTime)
+            : 0;
         if (timeElapsed > 0) {
             // timeElapsed >= interestTimeWindow
             lastInterestRateUpdateTime = block.timestamp;
@@ -2216,8 +2223,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _deltaFeePerUnit,
                 _perUnitError
             );
-            // update the total staking and collateral snapshots
-            _removeTotalStakeForFeeTaken(_feeTaken);
             _updateSystemSnapshots_excludeCollRemainder(
                 _contractsCache.activePool,
                 _contractsCache.defaultPool,
@@ -2344,7 +2349,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     // Update the last fee operation time only if time passed >= decay interval. This prevents base rate griefing.
     function _updateLastFeeOpTime() internal {
-        uint timePassed = block.timestamp.sub(lastFeeOperationTime);
+        uint timePassed = block.timestamp > lastFeeOperationTime
+            ? block.timestamp.sub(lastFeeOperationTime)
+            : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
             lastFeeOperationTime = block.timestamp;
@@ -2360,7 +2367,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
-        return (block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE);
+        return
+            block.timestamp > lastFeeOperationTime
+                ? ((block.timestamp.sub(lastFeeOperationTime)).div(SECONDS_IN_ONE_MINUTE))
+                : 0;
     }
 
     // Update the global index via collateral token
@@ -2392,10 +2402,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
-        uint256 _deltaFeeSplitShare = _deltaFeeSplit
-            .mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
-            .div(DECIMAL_PRECISION)
-            .add(stFeePerUnitgError);
+        uint256 _deltaFeeSplitShare = collateral.getSharesByPooledEth(_deltaFeeSplit).add(
+            stFeePerUnitgError
+        );
+        //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
+        //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
         uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
         return (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError);
@@ -2458,8 +2469,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         );
         Cdps[_cdpId].coll = _newColl;
         stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
-        // ONLY update for given CDP since totalStakes should have been updated already
-        _updateStakeForCdp(_cdpId);
 
         emit CdpFeeSplitApplied(
             _cdpId,

@@ -113,6 +113,8 @@ contract eBTCBaseFixture is Test {
         // set CdpManager addr in SortedCdps
         sortedCdps.setParams(maxBytes32, address(cdpManager), address(borrowerOperations));
 
+        skip(86400);
+
         // set contracts in the Cdp Manager
         cdpManager.setAddresses(
             address(borrowerOperations),

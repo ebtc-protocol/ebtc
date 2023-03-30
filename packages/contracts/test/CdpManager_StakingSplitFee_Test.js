@@ -145,7 +145,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   it("Fee would be applied to all CDPs when there is staking reward coming", async() => {
       // try some big numbers here:
       // with current ETH/BTC exchange rate (0.07428 BTC/ETH)
-      // the collateral require is around 350K for each CDP
+      // the collateral require is around 800K for each CDP
       await openCdp({ ICR: toBN(dec(299, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10000")), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
 	  

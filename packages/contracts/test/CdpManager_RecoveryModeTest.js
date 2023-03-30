@@ -85,6 +85,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     collToken = contracts.collateral;
     liqStipend = await cdpManager.LIQUIDATOR_REWARD();
     LICR = await cdpManager.LICR()
+    MCR = await cdpManager.MCR()
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
@@ -2525,7 +2526,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).gte(mv._MCR))
-
+	
     // Attempt liqudation sequence
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
@@ -2599,7 +2600,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lte(mv._MCR))
     assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).gte(mv._MCR))
-
+	
     // Attempt liqudation sequence
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
@@ -2615,7 +2616,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(await sortedCdps.contains(_freddyCdpId))
     assert.isFalse(await sortedCdps.contains(_gretaCdpId))
 
-    // Check whale and A-D remain active
+    // Check CDP status
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
     assert.isTrue(await sortedCdps.contains(_carolCdpId))

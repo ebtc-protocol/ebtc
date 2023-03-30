@@ -155,7 +155,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
         uint256 amountWithFee = amount.add(fee);
-        uint256 _tokenExpected = collateral.getPooledEthByShares(ETH);
+        uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
         collateral.transfer(address(receiver), amount);
 
@@ -179,10 +179,14 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
         require(
-            collateral.balanceOf(address(this)) >= _tokenExpected,
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
             "ActivePool: Must repay Balance"
         );
         require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
+        require(
+            collateral.getPooledEthByShares(1e18) == oldRate,
+            "ActivePool: Should keep same collateral share rate"
+        );
 
         return true;
     }
