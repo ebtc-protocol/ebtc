@@ -2860,7 +2860,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     }
 
     function setStakingRewardSplit(uint _stakingRewardSplit) external {
-        require(isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG));
+        require(isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG), "CDPManager: sender not authorized for setStakingRewardSplit(uint256)");
+        require(_stakingRewardSplit <= MAX_REWARD_SPLIT, "CDPManager: new staking reward split exceeds max");
+
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
