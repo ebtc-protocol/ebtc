@@ -46,8 +46,6 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant INTEREST_RATE_PER_SECOND = 627520278; // 2% per year
 
-    uint public constant STAKING_REWARD_SPLIT = 2_500; // taking 25% cut from staking reward
-
     uint public constant MAX_REWARD_SPLIT = 10_000;
 
     IActivePool public activePool;

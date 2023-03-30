@@ -21,6 +21,7 @@ import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
+import {Governor} from "../contracts/Governor.sol";
 
 contract eBTCBaseFixture is Test {
     uint internal constant FEE = 5e15; // 0.5%
@@ -54,6 +55,7 @@ contract eBTCBaseFixture is Test {
     HintHelpers hintHelpers;
     EBTCToken eBTCToken;
     CollateralTokenTester collateral;
+    Governor authority;
 
     // LQTY Stuff
     LQTYToken lqtyToken;
@@ -91,6 +93,7 @@ contract eBTCBaseFixture is Test {
         hintHelpers = new HintHelpers();
         eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
         collateral = new CollateralTokenTester();
+        authority = new Governor();
 
         // Liquity Stuff
         lqtyStaking = new LQTYStaking();
@@ -125,7 +128,8 @@ contract eBTCBaseFixture is Test {
             address(sortedCdps),
             address(lqtyToken),
             address(lqtyStaking),
-            address(collateral)
+            address(collateral),
+            address(authority)
         );
 
         // set contracts in BorrowerOperations

@@ -81,7 +81,8 @@ interface ICdpManager is ILiquityBase {
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress,
-        address _collTokenAddress
+        address _collTokenAddress,
+        address _authorityAddress
     ) external;
 
     function ebtcToken() external view returns (IEBTCToken);

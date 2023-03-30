@@ -13,8 +13,9 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
+import "./Dependencies/Authv06.sol";
 
-contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
+contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
@@ -45,6 +46,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
     uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG = bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
 
@@ -56,6 +60,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     uint public constant BETA = 2;
 
     uint public baseRate;
+
+    uint public stakingRewardSplit;
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
     uint public lastFeeOperationTime;
@@ -275,6 +281,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
     event CollateralAddressChanged(address _collTokenAddress);
+    event StakingRewardSplitSet(uint256 _stakingRewardSplit);
 
     event Liquidation(
         uint _liquidatedDebt,
@@ -355,7 +362,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         address _sortedCdpsAddress,
         address _lqtyTokenAddress,
         address _lqtyStakingAddress,
-        address _collTokenAddress
+        address _collTokenAddress,
+        address _authorityAddress
     ) external override onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_activePoolAddress);
@@ -392,6 +400,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         emit LQTYTokenAddressChanged(_lqtyTokenAddress);
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
         emit CollateralAddressChanged(_collTokenAddress);
+
+        _initializeAuthority(Authority(_authorityAddress));
+
+        stakingRewardSplit = 2500;
+        // Emit initial value for analytics
+        emit StakingRewardSplitSet(stakingRewardSplit);
 
         _syncIndex();
         stFeePerUnitg = 1e18;
@@ -2588,7 +2602,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     ) public view override returns (uint256, uint256, uint256) {
         require(_newIndex > _prevIndex, "CdpManager: only take fee with bigger new index");
         uint256 deltaIndex = _newIndex.sub(_prevIndex);
-        uint256 deltaIndexFees = deltaIndex.mul(STAKING_REWARD_SPLIT).div(MAX_REWARD_SPLIT);
+        uint256 deltaIndexFees = deltaIndex.mul(stakingRewardSplit).div(MAX_REWARD_SPLIT);
 
         // we take the fee for all CDPs immediately which is scaled by index precision
         uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
@@ -2842,5 +2856,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // Dummy temporary function before liquidation rewrite code kick-in. Should be removed afterwards
     function _tmpGetReserveInLiquidation() internal returns (uint) {
         return type(uint256).max;
+    }
+
+    function setStakingRewardSplit(uint _stakingRewardSplit) external {
+        require(isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG));
+        stakingRewardSplit = _stakingRewardSplit;
+        emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 }
