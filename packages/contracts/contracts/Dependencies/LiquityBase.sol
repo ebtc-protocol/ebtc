@@ -4,7 +4,6 @@ pragma solidity 0.6.11;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
-import "./FixedPointMathLib.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
