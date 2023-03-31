@@ -25,8 +25,8 @@ const alchemyUrl = () => {
   return `https://eth-mainnet.alchemyapi.io/v2/${getSecret("alchemyAPIKey")}`;
 };
 
-const alchemyUrlRinkeby = () => {
-  return `https://eth-rinkeby.alchemyapi.io/v2/${getSecret("alchemyAPIKeyRinkeby")}`;
+const alchemyUrlGoerli = () => {
+  return `https://eth-goerli.g.alchemy.com/v2/${getSecret("alchemyAPIKeyGoerli")}`;
 };
 
 module.exports = {
@@ -88,12 +88,12 @@ module.exports = {
         )
       ]
     },
-    rinkeby: {
-      url: alchemyUrlRinkeby(),
+    goerli: {
+      url: alchemyUrlGoerli(),
       gas: 10000000, // tx gas limit
       accounts: [
         getSecret(
-          "RINKEBY_DEPLOYER_PRIVATEKEY",
+          "GOERLI_DEPLOYER_PRIVATEKEY",
           "0x60ddfe7f579ab6867cbe7a2dc03853dc141d7a4ab6dbefc0dae2d2b1bd4e487f"
         )
       ]
