@@ -92,7 +92,6 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         uint balanceOfUser0 = eBTCToken.balanceOf(user);
 
         vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
 
         // Attempt to burn fails
         vm.expectRevert("EBTC: Caller is neither BorrowerOperations nor CdpManager nor authorized");
@@ -120,7 +119,6 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         uint balanceOfUser0 = eBTCToken.balanceOf(user);
 
         vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
 
         // Burn succeeds
         eBTCToken.burn(user, mintAmount);
@@ -129,6 +127,55 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         uint totalSupply1 = eBTCToken.totalSupply();
         uint balanceOfUser1 = eBTCToken.balanceOf(user);
+
+        assertEq(totalSupply0 - totalSupply1, mintAmount);
+        assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
+    }
+
+    /// @dev Normal minting via CDP opening should work even when authority is bricked
+    function testCdpManagerMintWorksWhenAuthorityBricked() public {
+        // TODO
+    }
+
+    /// @dev Normal burning via CDP closing should work even when authority is bricked
+    function testCdpManagerBurnWorksWhenAuthorityBricked() public {
+        // TODO
+    }
+
+    // TODO: Remove minting and burning rights from CDPManager when cont. interest is removed.
+
+
+    /// @dev ensure mint invariants are maintained on successful mint operation
+    /// @dev totalSupply changes as expected
+    /// @dev mint recipient balance changes as expected
+    function _mintMacro(address minter, address recipient, uint amount) internal {
+        uint totalSupply0 = eBTCToken.totalSupply();
+        uint balanceOfUser0 = eBTCToken.balanceOf(recipient);
+
+        vm.startPrank(minter);
+        eBTCToken.mint(recipient, amount);
+        vm.stopPrank();
+
+        uint totalSupply1 = eBTCToken.totalSupply();
+        uint balanceOfUser1 = eBTCToken.balanceOf(recipient);
+
+        assertEq(totalSupply1 - totalSupply0, amount);
+        assertEq(balanceOfUser1 - balanceOfUser0, amount);
+    }
+
+    /// @dev ensure burn invariants are maintained on successful burn operation
+    /// @dev totalSupply changes as expected
+    /// @dev mint recipient balance changes as expected
+    function _burnMacro(address minter, address recipient, uint amount) internal {
+        uint totalSupply0 = eBTCToken.totalSupply();
+        uint balanceOfUser0 = eBTCToken.balanceOf(recipient);
+
+        vm.startPrank(minter);
+        eBTCToken.mint(recipient, amount);
+        vm.stopPrank();
+
+        uint totalSupply1 = eBTCToken.totalSupply();
+        uint balanceOfUser1 = eBTCToken.balanceOf(recipient);
 
         assertEq(totalSupply0 - totalSupply1, mintAmount);
         assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
