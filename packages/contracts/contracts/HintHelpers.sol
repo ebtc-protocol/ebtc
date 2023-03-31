@@ -177,9 +177,9 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         uint _deltaFeePerUnit;
         uint _newStFeePerUnit;
         uint _perUnitError;
-        uint _deltaFeeSplitShare;
+        uint _feeTaken;
 
-        (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
+        (_feeTaken, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
             _newIndex,
             _oldIndex
         );
