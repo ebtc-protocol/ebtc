@@ -9,7 +9,8 @@ import "./../../Dependencies/CheckContract.sol";
 
 /*
  * PriceFeed placeholder for testnet and development. The price can be manually input or fetched from
-   Tellor's TestNet implementation.
+   Tellor's TestNet implementation. Backwards compatible with local test environment as it defaults to use
+   the manual price.
  */
 contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract {
     // --- Constants ---
@@ -17,7 +18,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract {
     uint256 public constant tellorQueryBufferSeconds = 901;
     bytes32 public constant STETHBTC_TELLOR_QUERY_ID =
         0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
-
 
     // --- variables ---
 
@@ -59,9 +59,9 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract {
             if (tellorResponse.success) {
                 _price = tellorResponse.value;
             }
+        }
         emit LastGoodPriceUpdated(_price);
         return _price;
-        }
     }
 
     // Manual external price setter.
