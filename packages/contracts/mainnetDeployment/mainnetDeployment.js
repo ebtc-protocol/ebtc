@@ -80,7 +80,7 @@ async function mainnetDeploy(configParams) {
   console.log(`deployer's ETH balance before deployments: ${deployerETHBalance}`)
 
   // Deploy core logic contracts
-  const ebtcCore = await mdh.deployLiquityCoreMainnet(configParams, deploymentState)
+  const ebtcCore = await mdh.deployEbtcCoreMainnet(configParams, deploymentState, chainId)
   await mdh.logContractObjects(ebtcCore)
 
   // Check Uniswap Pair EBTC-ETH pair before pair creation

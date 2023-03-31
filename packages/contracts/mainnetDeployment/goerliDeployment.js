@@ -1,8 +1,8 @@
-const { mainnetDeploy } = require('./mainnetDeployment.js')
+const { mainnetDeploy } = require('./testnetDeployment.js')
 const configParams = require("./deploymentParams.goerli.js")
 
 async function main() {
-  await mainnetDeploy(configParams)
+  await testnetDeploy(configParams)
 }
 
 main()

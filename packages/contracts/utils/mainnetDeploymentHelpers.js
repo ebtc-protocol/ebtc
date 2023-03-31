@@ -64,9 +64,14 @@ class MainnetDeploymentHelper {
     return contract
   }
 
-  async deployLiquityCoreMainnet(configParams, deploymentState) {
+  async deployEbtcCoreMainnet(configParams, deploymentState, chainId) {
     // Get contract factories
-    const priceFeedFactory = await this.getFactory("PriceFeed")
+    // Testnet exceptions
+    if (chainId == 5) {
+      const priceFeedFactory = await this.getFactory("PriceFeedTestnet")
+    } else {
+      const priceFeedFactory = await this.getFactory("PriceFeed")
+    }
     const sortedCdpsFactory = await this.getFactory("SortedCdps")
     const cdpManagerFactory = await this.getFactory("CdpManager")
     const activePoolFactory = await this.getFactory("ActivePool")

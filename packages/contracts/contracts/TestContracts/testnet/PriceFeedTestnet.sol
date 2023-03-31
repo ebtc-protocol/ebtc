@@ -35,6 +35,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract {
     // --- Dependency setters ---
 
     function setAddresses(
+        address _priceAggregatorAddress, // Not used but kept for compatibility with deployment script
         address _tellorCallerAddress
     ) external onlyOwner {
         checkContract(_tellorCallerAddress);
