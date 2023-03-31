@@ -402,7 +402,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         emit LQTYStakingAddressChanged(_lqtyStakingAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _initializeAuthority(Authority(_authorityAddress));
+        _initializeAuthority(_authorityAddress);
 
         stakingRewardSplit = 2500;
         // Emit initial value for analytics

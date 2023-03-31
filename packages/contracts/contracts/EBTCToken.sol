@@ -81,7 +81,7 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
-        _initializeAuthority(Authority(_authorityAddress));
+        _initializeAuthority(_authorityAddress);
 
         bytes32 hashedName = keccak256(bytes(_NAME));
         bytes32 hashedVersion = keccak256(bytes(_VERSION));
