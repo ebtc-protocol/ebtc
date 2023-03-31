@@ -32,7 +32,9 @@ abstract contract Auth {
 
         // Checking if the caller is the owner only after calling the authority saves gas in most cases, but be
         // aware that this makes protected functions uncallable even to the owner if the authority is out of order.
-        return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig)) || user == owner;
+        return
+            (address(auth) != address(0) && auth.canCall(user, address(this), functionSig)) ||
+            user == owner;
     }
 
     function setAuthority(Authority newAuthority) public virtual {
@@ -56,9 +58,5 @@ abstract contract Auth {
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/Auth.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-auth/blob/master/src/auth.sol)
 interface Authority {
-    function canCall(
-        address user,
-        address target,
-        bytes4 functionSig
-    ) external view returns (bool);
+    function canCall(address user, address target, bytes4 functionSig) external view returns (bool);
 }

@@ -47,7 +47,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
     // -- Permissioned Function Signatures --
-    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG = bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
+        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
@@ -2860,8 +2861,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     }
 
     function setStakingRewardSplit(uint _stakingRewardSplit) external {
-        require(isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG), "CDPManager: sender not authorized for setStakingRewardSplit(uint256)");
-        require(_stakingRewardSplit <= MAX_REWARD_SPLIT, "CDPManager: new staking reward split exceeds max");
+        require(
+            isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG),
+            "CDPManager: sender not authorized for setStakingRewardSplit(uint256)"
+        );
+        require(
+            _stakingRewardSplit <= MAX_REWARD_SPLIT,
+            "CDPManager: new staking reward split exceeds max"
+        );
 
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);

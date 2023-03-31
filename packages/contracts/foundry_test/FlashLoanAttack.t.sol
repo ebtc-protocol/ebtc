@@ -47,7 +47,6 @@ contract FlashAttack {
 }
 
 contract FlashLoanAttack is eBTCBaseFixture {
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();

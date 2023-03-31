@@ -43,7 +43,7 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) public {}
+    constructor(address _owner) public RolesAuthority(_owner, Authority(address(this))) {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS

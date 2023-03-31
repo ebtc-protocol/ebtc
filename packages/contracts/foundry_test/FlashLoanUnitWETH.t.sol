@@ -13,7 +13,6 @@ import {UselessFlashReceiver, WETHFlashReceiver, FlashLoanSpecReceiver, FlashLoa
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitWETH is eBTCBaseFixture {
-
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
     WETHFlashReceiver internal wethReceiver;

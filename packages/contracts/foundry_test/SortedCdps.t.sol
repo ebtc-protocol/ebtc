@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 contract CDPOpsTest is eBTCBaseFixture {
-
     function setUp() public override {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectLQTYContracts();

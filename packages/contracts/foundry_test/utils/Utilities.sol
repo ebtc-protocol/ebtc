@@ -23,7 +23,6 @@ contract Utilities is Test {
         return user;
     }
 
-
     function getNextUserAddress() public returns (address payable) {
         //bytes32 to address conversion
         address payable user = payable(address(uint160(uint256(nextUser))));

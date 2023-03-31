@@ -37,7 +37,8 @@ contract eBTCBaseFixture is Test {
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
-    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG = bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
+        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
 
     // EBTCToken
     bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -96,7 +97,7 @@ contract eBTCBaseFixture is Test {
         defaultGovernance = _utils.getNextSpecialAddress();
 
         authority = new Governor(defaultGovernance);
-        
+
         borrowerOperations = new BorrowerOperations();
         priceFeedMock = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
@@ -108,7 +109,11 @@ contract eBTCBaseFixture is Test {
         collSurplusPool = new CollSurplusPool();
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations), address(authority));
+        eBTCToken = new EBTCToken(
+            address(cdpManager),
+            address(borrowerOperations),
+            address(authority)
+        );
         collateral = new CollateralTokenTester();
 
         // Liquity Stuff
@@ -127,7 +132,7 @@ contract eBTCBaseFixture is Test {
 
         // Set up initial permissions and then renounce global owner role
         vm.startPrank(defaultGovernance);
-        
+
         authority.setRoleName(0, "Admin");
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");

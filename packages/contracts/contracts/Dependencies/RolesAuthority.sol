@@ -12,7 +12,6 @@ contract RolesAuthority is Auth, Authority {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -21,13 +20,18 @@ contract RolesAuthority is Auth, Authority {
 
     event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
 
-    event RoleCapabilityUpdated(uint8 indexed role, address indexed target, bytes4 indexed functionSig, bool enabled);
+    event RoleCapabilityUpdated(
+        uint8 indexed role,
+        address indexed target,
+        bytes4 indexed functionSig,
+        bool enabled
+    );
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, Authority _authority) Auth(_owner, _authority) public {}
+    constructor(address _owner, Authority _authority) public Auth(_owner, _authority) {}
 
     /*//////////////////////////////////////////////////////////////
                             ROLE/USER STORAGE
@@ -40,7 +44,7 @@ contract RolesAuthority is Auth, Authority {
     EnumerableSet.Bytes32Set internal enabledFunctionSigsPublic;
 
     mapping(address => bytes32) public getUserRoles;
-    
+
     mapping(address => mapping(bytes4 => bool)) public isCapabilityPublic;
 
     mapping(address => mapping(bytes4 => bytes32)) public getRolesWithCapability;
@@ -98,9 +102,9 @@ contract RolesAuthority is Auth, Authority {
             if (!targets.contains(target)) {
                 targets.add(target);
             }
-
         } else {
-            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << uint(role));enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
+            getRolesWithCapability[target][functionSig] &= ~bytes32(1 << uint(role));
+            enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
 
             // If no enabled function signatures exist for this target, remove target
             if (enabledFunctionSigsByTarget[target].length() == 0) {
@@ -115,11 +119,7 @@ contract RolesAuthority is Auth, Authority {
                        USER ROLE ASSIGNMENT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function setUserRole(
-        address user,
-        uint8 role,
-        bool enabled
-    ) public virtual requiresAuth {
+    function setUserRole(address user, uint8 role, bool enabled) public virtual requiresAuth {
         if (enabled) {
             getUserRoles[user] |= bytes32(1 << uint(role));
 
@@ -132,7 +132,7 @@ contract RolesAuthority is Auth, Authority {
             // Remove user if no more roles
             if (getUserRoles[user] == bytes32(0)) {
                 users.remove(user);
-            } 
+            }
         }
 
         emit UserRoleUpdated(user, role, enabled);

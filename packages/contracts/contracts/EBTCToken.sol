@@ -70,7 +70,11 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
     event CdpManagerAddressChanged(address _cdpManagerAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
-    constructor(address _cdpManagerAddress, address _borrowerOperationsAddress, address _authorityAddress) public {
+    constructor(
+        address _cdpManagerAddress,
+        address _borrowerOperationsAddress,
+        address _authorityAddress
+    ) public {
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
         checkContract(_authorityAddress);
@@ -287,10 +291,12 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
         );
     }
 
-    /// @dev authority check last to short-circuit in the case of use by usual immutable addresses 
+    /// @dev authority check last to short-circuit in the case of use by usual immutable addresses
     function _requireCallerIsBOorCdpMOrAuth(bytes4 sig) internal view {
         require(
-            msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress || isAuthorized(msg.sender, sig),
+            msg.sender == borrowerOperationsAddress ||
+                msg.sender == cdpManagerAddress ||
+                isAuthorized(msg.sender, sig),
             "EBTC: Caller is neither BorrowerOperations nor CdpManager nor authorized"
         );
     }

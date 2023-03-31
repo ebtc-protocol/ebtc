@@ -64,7 +64,7 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         vm.startPrank(secondUser);
         vm.deal(secondUser, type(uint96).max);
-        
+
         vm.expectRevert("EBTC: Caller is neither BorrowerOperations nor CdpManager nor authorized");
         eBTCToken.mint(secondUser, mintAmount);
 
@@ -143,7 +143,6 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
     }
 
     // TODO: Remove minting and burning rights from CDPManager when cont. interest is removed.
-
 
     /// @dev ensure mint invariants are maintained on successful mint operation
     /// @dev totalSupply changes as expected

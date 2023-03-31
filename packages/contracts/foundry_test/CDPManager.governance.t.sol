@@ -53,7 +53,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertEq(cdpManager.stakingRewardSplit(), newStakingRewardSplit);
     }
 
-    function testCDPManagerSetStakingRewardSplitValueLimits(uint newInvalidStakingRewardSplit) public {
+    function testCDPManagerSetStakingRewardSplitValueLimits(
+        uint newInvalidStakingRewardSplit
+    ) public {
         vm.assume(newInvalidStakingRewardSplit > cdpManager.MAX_REWARD_SPLIT());
 
         address user = _utils.getNextUserAddress();
@@ -67,5 +69,4 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         cdpManager.setStakingRewardSplit(newInvalidStakingRewardSplit);
         vm.stopPrank();
     }
-    
 }

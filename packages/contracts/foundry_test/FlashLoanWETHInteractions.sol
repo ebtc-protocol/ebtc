@@ -60,7 +60,6 @@ contract FlashWithDeposit {
 }
 
 contract FlashLoanWETHInteractions is eBTCBaseFixture {
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
