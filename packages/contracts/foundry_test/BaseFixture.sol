@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "../contracts/Dependencies/SafeMath.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
-import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol";
+import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
