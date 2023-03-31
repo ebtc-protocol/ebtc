@@ -24,14 +24,14 @@ contract Auth {
         return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig));
     }
 
-    function setAuthority(Authority newAuthority) public virtual {
+    function setAuthority(address newAuthority) public virtual {
         // We check if the caller is the owner first because we want to ensure they can
         // always swap out the authority even if it's reverting or using up a lot of gas.
         require(authority.canCall(msg.sender, address(this), msg.sig));
 
-        authority = newAuthority;
+        authority = Authority(newAuthority);
 
-        emit AuthorityUpdated(msg.sender, newAuthority);
+        emit AuthorityUpdated(msg.sender, Authority(newAuthority));
     }
 
     function _initializeAuthority(Authority newAuthority) internal {
