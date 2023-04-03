@@ -90,9 +90,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
 
-        // accrue some interest before liquidation
-        skip(365 days);
-
         // Price falls
         priceFeedMock.setPrice(price);
 
@@ -104,7 +101,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _recoveryMode = _TCR < cdpManager.CCR();
         if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
@@ -176,9 +173,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
 
-        // accrue some interest before liquidation
-        skip(365 days);
-
         // Price falls
         uint _newPrice = _curPrice / 2;
         priceFeedMock.setPrice(_newPrice);
@@ -191,7 +185,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _recoveryMode = _TCR < cdpManager.CCR();
         if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
             _partialLiq._ratio = _icrGtLICR ? cdpManager.LICR() : _ICR;
