@@ -195,7 +195,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     struct LocalVariables_LiquidationSequence {
         uint i;
         uint ICR;
-        bytes32 user;
+        bytes32 cdpId;
         bool backToNormalMode;
         uint entireSystemDebt;
         uint entireSystemColl;
@@ -207,7 +207,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint entireCdpDebt;
         uint entireCdpColl;
         uint collGasCompensation;
-        uint EBTCGasCompensation;
         uint debtToOffset;
         uint totalCollToSendToLiquidator;
         uint debtToRedistribute;
@@ -219,7 +218,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint totalCollInSequence;
         uint totalDebtInSequence;
         uint totalCollGasCompensation;
-        uint totalEBTCGasCompensation;
         uint totalDebtToOffset;
         uint totalCollToSendToLiquidator;
         uint totalDebtToRedistribute;
@@ -269,12 +267,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event Liquidation(
-        uint _liquidatedDebt,
-        uint _liquidatedColl,
-        uint _collGasCompensation,
-        uint _EBTCGasCompensation
-    );
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -932,7 +925,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Batch/Sequence liquidation functions ---
 
     /*
-     * Liquidate a sequence of cdps. Closes a maximum number of n under-collateralized Cdps,
+     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR,
      * starting from the one with the lowest collateral ratio in the system, and moving upwards
      */
     function liquidateCdps(uint _n) external override {
@@ -1012,19 +1005,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         vars.entireSystemDebt = _systemDebt;
         vars.entireSystemColl = _systemColl;
 
-        vars.user = _contractsCache.sortedCdps.getLast();
+        vars.cdpId = _contractsCache.sortedCdps.getLast();
         bytes32 firstId = _contractsCache.sortedCdps.getFirst();
-        for (vars.i = 0; vars.i < _n && vars.user != firstId; vars.i++) {
-            // we need to cache it, because current user is likely going to be deleted
-            bytes32 nextUser = _contractsCache.sortedCdps.getPrev(vars.user);
+        uint _TCR = _computeTCRWithGivenSystemValues(
+            vars.entireSystemColl,
+            vars.entireSystemDebt,
+            _price
+        );
+        for (vars.i = 0; vars.i < _n && vars.cdpId != firstId; ++vars.i) {
+            // we need to cache it, because current CDP is likely going to be deleted
+            bytes32 nextCdp = _contractsCache.sortedCdps.getPrev(vars.cdpId);
 
-            vars.ICR = getCurrentICR(vars.user, _price);
-            uint _totalColl = collateral.getPooledEthByShares(vars.entireSystemColl);
-            uint _TCR = LiquityMath._computeCR(_totalColl, vars.entireSystemDebt, _price);
+            vars.ICR = getCurrentICR(vars.cdpId, _price);
 
             if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesRecoveryMode(
                     _contractsCache,
                     _price,
@@ -1045,13 +1041,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
 
-                vars.backToNormalMode = !_checkPotentialRecoveryMode(
+                _TCR = _computeTCRWithGivenSystemValues(
                     vars.entireSystemColl,
                     vars.entireSystemDebt,
                     _price
                 );
+                vars.backToNormalMode = _TCR < CCR ? false : true;
             } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1064,7 +1061,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
             } else break; // break if the loop reaches a Cdp with ICR >= MCR
 
-            vars.user = nextUser;
+            vars.cdpId = nextCdp;
         }
     }
 
@@ -1078,12 +1075,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation;
         ISortedCdps sortedCdpsCached = _contractsCache.sortedCdps;
 
-        for (vars.i = 0; vars.i < _n; vars.i++) {
-            vars.user = sortedCdpsCached.getLast();
-            vars.ICR = getCurrentICR(vars.user, _price);
+        for (vars.i = 0; vars.i < _n; ++vars.i) {
+            vars.cdpId = sortedCdpsCached.getLast();
+            vars.ICR = getCurrentICR(vars.cdpId, _price);
 
             if (vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1106,12 +1103,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation
     ) internal {
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
-            vars.user,
+            vars.cdpId,
             0,
             _price,
             vars.ICR,
-            vars.user,
-            vars.user,
+            vars.cdpId,
+            vars.cdpId,
             (false),
             _TCR,
             0,
@@ -1126,7 +1123,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             ,
             ,
 
-        ) = getEntireDebtAndColl(vars.user);
+        ) = getEntireDebtAndColl(vars.cdpId);
 
         LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
             _contractsCache,
@@ -1147,14 +1144,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LocalVariables_LiquidationSequence memory vars,
         LiquidationValues memory singleLiquidation
     ) internal {
-        LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
+        LocalVar_RecoveryLiquidate memory _recState = LocalVar_RecoveryLiquidate(
             (false),
             _systemDebt,
             _systemColl,
             0,
             0,
             0,
-            vars.user,
+            vars.cdpId,
             _price,
             vars.ICR,
             0
@@ -1166,11 +1163,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             ,
             ,
 
-        ) = getEntireDebtAndColl(vars.user);
+        ) = getEntireDebtAndColl(vars.cdpId);
 
         LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
             _contractsCache,
-            _rs
+            _recState
         );
 
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
@@ -1212,7 +1209,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.price,
                 systemColl,
                 systemDebt,
-                _TCR,
                 _cdpArray
             );
         } else {
@@ -1252,7 +1248,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _price,
         uint _systemColl,
         uint _systemDebt,
-        uint _TCR,
         bytes32[] memory _cdpArray
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
@@ -1261,18 +1256,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         vars.backToNormalMode = false;
         vars.entireSystemDebt = _systemDebt;
         vars.entireSystemColl = _systemColl;
-
-        for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
-            vars.user = _cdpArray[vars.i];
+        uint _TCR = _computeTCRWithGivenSystemValues(
+            vars.entireSystemColl,
+            vars.entireSystemDebt,
+            _price
+        );
+        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+            vars.cdpId = _cdpArray[vars.i];
             // Skip non-active cdps
-            if (Cdps[vars.user].status != Status.active) {
+            if (Cdps[vars.cdpId].status != Status.active) {
                 continue;
             }
-            vars.ICR = getCurrentICR(vars.user, _price);
+            vars.ICR = getCurrentICR(vars.cdpId, _price);
 
             if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                 vars.price = _price;
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesRecoveryMode(
                     _contractsCache,
                     _price,
@@ -1293,13 +1292,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
 
-                vars.backToNormalMode = !_checkPotentialRecoveryMode(
+                _TCR = _computeTCRWithGivenSystemValues(
                     vars.entireSystemColl,
                     vars.entireSystemDebt,
                     _price
                 );
+                vars.backToNormalMode = _TCR < CCR ? false : true;
             } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1323,16 +1323,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
 
-        for (vars.i = 0; vars.i < _cdpArray.length; vars.i++) {
-            vars.user = _cdpArray[vars.i];
+        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+            vars.cdpId = _cdpArray[vars.i];
             // Skip non-active cdps
-            if (Cdps[vars.user].status != Status.active) {
+            if (Cdps[vars.cdpId].status != Status.active) {
                 continue;
             }
-            vars.ICR = getCurrentICR(vars.user, _price);
+            vars.ICR = getCurrentICR(vars.cdpId, _price);
 
             if (vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.user);
+                _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesNormalMode(
                     _contractsCache,
                     _price,
@@ -1356,9 +1356,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // Tally all the values with their respective running totals
         newTotals.totalCollGasCompensation = oldTotals.totalCollGasCompensation.add(
             singleLiquidation.collGasCompensation
-        );
-        newTotals.totalEBTCGasCompensation = oldTotals.totalEBTCGasCompensation.add(
-            singleLiquidation.EBTCGasCompensation
         );
         newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence.add(
             singleLiquidation.entireCdpDebt
@@ -2190,10 +2187,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _entireSystemDebt,
         uint _price
     ) internal view returns (bool) {
-        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
-        uint TCR = LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
-
+        uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
         return TCR < CCR;
+    }
+
+    // Calculate TCR given an price, and the entire system coll and debt.
+    function _computeTCRWithGivenSystemValues(
+        uint _entireSystemColl,
+        uint _entireSystemDebt,
+        uint _price
+    ) internal view returns (uint) {
+        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
+        return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
     }
 
     // --- Staking-Reward Fee split functions ---
@@ -2203,11 +2208,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function claimStakingSplitFee() public override {
         (uint _oldIndex, uint _newIndex) = _syncIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
-            (
-                uint _deltaFeeSplitShare,
-                uint _deltaFeePerUnit,
-                uint _perUnitError
-            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
+            (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
+                _newIndex,
+                _oldIndex
+            );
             ContractsCache memory _contractsCache = ContractsCache(
                 activePool,
                 defaultPool,
@@ -2217,9 +2221,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 collSurplusPool,
                 gasPoolAddress
             );
-            uint _feeTaken = _takeSplitAndUpdateFeePerUnit(
+            _takeSplitAndUpdateFeePerUnit(
                 _contractsCache,
-                _deltaFeeSplitShare,
+                _feeTaken,
                 _deltaFeePerUnit,
                 _perUnitError
             );
@@ -2402,29 +2406,27 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
-        uint256 _deltaFeeSplitShare = collateral.getSharesByPooledEth(_deltaFeeSplit).add(
-            stFeePerUnitgError
-        );
+        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit).div(DECIMAL_PRECISION);
+        uint256 _deltaFeeSplitShare = _feeTaken.mul(DECIMAL_PRECISION).add(stFeePerUnitgError);
         //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
         //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
         uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
-        return (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError);
+        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
     }
 
     // Take the cut from staking reward
     // and update global fee-per-unit accumulator
     function _takeSplitAndUpdateFeePerUnit(
         ContractsCache memory _cachedContracts,
-        uint256 _deltaFeeSplitShare,
+        uint256 _feeTaken,
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
-    ) internal returns (uint) {
+    ) internal {
         uint _oldPerUnit = stFeePerUnitg;
         stFeePerUnitg = stFeePerUnitg.add(_deltaPerUnit);
         stFeePerUnitgError = _newErrorPerUnit;
 
-        uint _feeTaken = standardizeTakenFee(_deltaFeeSplitShare);
         require(
             _cachedContracts.activePool.getETH() > _feeTaken,
             "CDPManager: fee split is too big"
@@ -2433,15 +2435,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
-        return _feeTaken;
-    }
-
-    function standardizeTakenFee(uint _scaledFeeTaken) public view override returns (uint) {
-        uint _feeTaken = (_scaledFeeTaken.div(DECIMAL_PRECISION));
-        if (_scaledFeeTaken > _feeTaken.mul(DECIMAL_PRECISION)) {
-            _feeTaken = _feeTaken.add(1);
-        }
-        return _feeTaken;
     }
 
     // Apply accumulated fee split distributed to the CDP
@@ -2494,9 +2487,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint _diffPerUnit = _stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;
-        _feeSplitDistributed = _stFeePerUnitgError > 0
-            ? _feeSplitDistributed.add(_oldStake.mul(_stFeePerUnitgError).div(_totalStakes))
-            : _feeSplitDistributed;
 
         uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
         require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");

@@ -99,7 +99,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _errorTolerance = 1000;// compared to decimal of 1e18
 	  
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
-      let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN).div(mv._1e18BN);
+      let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
       let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
       await cdpManager.claimStakingSplitFee();  
@@ -108,7 +108,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee);
 	  
       // apply accumulated fee split to CDP	upon user operations  	  
-      let _expectedFeeShare = _fees[0].div(mv._1e18BN);
+      let _expectedFeeShare = _fees[0];
       await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
       let _aliceCollAfter = await cdpManager.getCdpColl(_aliceCdpId); 
       let _totalCollAfter = await cdpManager.getEntireSystemColl(); 
@@ -172,6 +172,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _totalColl = await cdpManager.getEntireSystemColl(); 
           let _totalCollBeforeAdded = toBN(_aliceColl.toString()).add(toBN(_bobColl.toString()));
           th.assertIsApproximatelyEqual(_totalCollBeforeAdded, _totalColl, _errorTolerance);
+          
+          let difference = _totalCollBeforeAdded.sub(_totalColl);
+          console.log(`[loop${i}] _totalCollBeforeAdded - _totalColl: ${difference}`)
+          let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
+          console.log(`[loop${i}] stFeePerUnitgError: ${_stFeePerUnitgError}`);
+          console.log(`[loop${i}] stFeePerUnitgError/1e18: ${_stFeePerUnitgError / 1e18}`);
+          let differenceToError = difference.mul(mv._1e18BN).sub(_stFeePerUnitgError);
+          console.log(`[loop${i}] differenceToError: ${differenceToError}`)
+          console.log(`[loop${i}] differenceToError/1e18: ${differenceToError / 1e18}`)
 		  
           let _underlyingBalBefore = _totalCollBeforeAdded.mul(_oldIndex).div(mv._1e18BN);
           let _aliceIcrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _price);
@@ -184,7 +193,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           await ethers.provider.send("evm_mine");	  
 	  
           let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);  
-          let _expectedFeeShare = await cdpManager.standardizeTakenFee(_fees[0]);
+          let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
           let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient); 
           await cdpManager.claimStakingSplitFee();  	 
@@ -199,7 +208,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _bobCollAfter = (await cdpManager.getEntireDebtAndColl(_bobCdpId))[1];
 	  
           let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
-          let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
+          _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
           let _totalStakeAfter = await cdpManager.totalStakes();
           let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
           let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
@@ -311,7 +320,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
 	  
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
-      let _expectedFeeShare = await cdpManager.standardizeTakenFee(_fees[0]);
+      let _expectedFeeShare = _fees[0];
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
 	  
       let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);

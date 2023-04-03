@@ -195,7 +195,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 
             // take fee split
-            _takeSplitFee(_totalColl, _expectedFee.div(1e18));
+            _takeSplitFee(_totalColl, _expectedFee);
 
             // apply split fee upon user operations
             _applySplitFee(cdpId1, users[0]);
@@ -247,7 +247,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 
             // take fee split
-            _takeSplitFee(_totalColl, _expectedFee.div(1e18));
+            _takeSplitFee(_totalColl, _expectedFee);
 
             // apply split fee upon user operations
             _applySplitFee(cdpId1, users[0]);
