@@ -67,10 +67,13 @@ class MainnetDeploymentHelper {
   async deployEbtcCoreMainnet(configParams, deploymentState, chainId) {
     // Get contract factories
     // Testnet exceptions
-    if (chainId == 5) {
-      const priceFeedFactory = await this.getFactory("PriceFeedTestnet")
+    let priceFeedFactory
+    if (configParams.TESTNET) {
+      console.log("Testnet Mode: Using PriceFeedTestnet contract for priceFeed")
+      priceFeedFactory = await this.getFactory("PriceFeedTestnet")
     } else {
-      const priceFeedFactory = await this.getFactory("PriceFeed")
+      console.log("Fork Mode: Using PriceFeed contract for priceFeed")
+      priceFeedFactory = await this.getFactory("PriceFeed")
     }
     const sortedCdpsFactory = await this.getFactory("SortedCdps")
     const cdpManagerFactory = await this.getFactory("CdpManager")

@@ -1,5 +1,5 @@
 const { testnetDeploy } = require('./testnetDeployment.js')
-const configParams = require("./deploymentParams.goerli.js")
+const configParams = require("./deploymentParams.localFork.js")
 
 async function main() {
   await testnetDeploy(configParams)

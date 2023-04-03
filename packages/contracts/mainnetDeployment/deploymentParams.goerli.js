@@ -9,6 +9,12 @@ const externalAddrs  = {
   WETH_ERC20: "0xcd48a86666D2a79e027D82cA6Adf853357c70d02",
 }
 
+const ebtcAddrs = {
+  EBTC_SAFE:"0x419b6ed40D8A7AF57D571d789d77aD2Fd9Ff761E",  //  Test safe address
+}
+
+const testAccounts = ["0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128", "0xc2E345f74B18187E5489822f9601c028ED1915a2"]
+
 const OUTPUT_FILE = './mainnetDeployment/goerliDeploymentOutput.json'
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
@@ -28,4 +34,5 @@ module.exports = {
   GAS_PRICE,
   TX_CONFIRMATIONS,
   ETHERSCAN_BASE_URL,
+  testAccounts
 };
