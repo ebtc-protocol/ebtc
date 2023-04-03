@@ -172,7 +172,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     struct LocalVar_RecoveryLiquidate {
-        bool backToNormalMode;
         uint256 entireSystemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
@@ -466,7 +465,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         );
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
-            (!_recoveryModeAtStart),
             systemDebt,
             systemColl,
             0,
@@ -634,11 +632,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _recoveryState.entireSystemColl = _recoveryState.entireSystemColl > _totalColToSend
             ? _recoveryState.entireSystemColl.sub(_totalColToSend)
             : 0;
-        _recoveryState.backToNormalMode = !_checkPotentialRecoveryMode(
-            _recoveryState.entireSystemColl,
-            _recoveryState.entireSystemDebt,
-            _recoveryState._price
-        );
 
         emit CdpLiquidated(
             _recoveryState._cdpId,
@@ -867,6 +860,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         LiquidationTotals memory totals;
 
+        // taking fee to avoid accounted for the calculation of the TCR
+        claimStakingSplitFee();
+
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
             vars.price,
@@ -1066,7 +1062,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation
     ) internal {
         LocalVar_RecoveryLiquidate memory _recState = LocalVar_RecoveryLiquidate(
-            (false),
             _systemDebt,
             _systemColl,
             0,
@@ -1113,6 +1108,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         LocalVariables_OuterLiquidationFunction memory vars;
         LiquidationTotals memory totals;
+
+        // taking fee to avoid accounted for the calculation of the TCR
+        claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
@@ -2394,11 +2392,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _stFeePerUnitgError,
         uint _totalStakes
     ) public view override returns (uint, uint) {
-        uint _oldStake = Cdps[_cdpId].stake;
-
-        if (stFeePerUnitcdp[_cdpId] == 0 || Cdps[_cdpId].coll == 0) {
+        if (
+            stFeePerUnitcdp[_cdpId] == 0 ||
+            Cdps[_cdpId].coll == 0 ||
+            stFeePerUnitcdp[_cdpId] == _stFeePerUnitg
+        ) {
             return (0, Cdps[_cdpId].coll);
         }
+
+        uint _oldStake = Cdps[_cdpId].stake;
 
         uint _diffPerUnit = _stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;
