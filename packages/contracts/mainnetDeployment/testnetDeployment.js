@@ -15,6 +15,7 @@ async function testnetDeploy(configParams) {
   const deployerWallet = (await ethers.getSigners())[0]
   const mdh = new MainnetDeploymentHelper(configParams, deployerWallet)
   const gasPrice = configParams.GAS_PRICE
+  const maxFeePerGas = configParams.MAX_FEE_PER_GAS
 
   let latestBlock = await ethers.provider.getBlockNumber()
   console.log('block number:', latestBlock)
@@ -119,11 +120,11 @@ async function testnetDeploy(configParams) {
     const numAccounts = configParams.testAccounts.length
     const mintAmountTotal = mintAmountPerTestAccount.mul(toBigNum(numAccounts))
 
-    await mdh.sendAndWaitForTransaction(wethToken.deposit(mintAmountTotal.mul(2), {gasPrice}))
+    await mdh.sendAndWaitForTransaction(wethToken.deposit(mintAmountTotal.mul(2), {maxFeePerGas}))
 
-    await mdh.sendAndWaitForTransaction(wethToken.approve(collateralToken.address, mintAmountTotal, {gasPrice}))
+    await mdh.sendAndWaitForTransaction(wethToken.approve(collateralToken.address, mintAmountTotal, {maxFeePerGas}))
 
-    await mdh.sendAndWaitForTransaction(collateralToken.deposit(mintAmountTotal, {gasPrice}))
+    await mdh.sendAndWaitForTransaction(collateralToken.deposit(mintAmountTotal, {maxFeePerGas}))
 
     const wethBalance = await wethToken.balanceOf(deployerWallet.address)
     const collBalance = await collateralToken.balanceOf(deployerWallet.address)
@@ -135,8 +136,8 @@ async function testnetDeploy(configParams) {
     console.log("Seed test accounts with mock wETH and collateral")
     for (account of configParams.testAccounts) {
       console.log("Funding ", account)
-      await mdh.sendAndWaitForTransaction(wethToken.transfer(account, mintAmountPerTestAccount, {gasPrice}))
-      await mdh.sendAndWaitForTransaction(collateralToken.transfer(account, mintAmountPerTestAccount, {gasPrice}))
+      await mdh.sendAndWaitForTransaction(wethToken.transfer(account, mintAmountPerTestAccount, {maxFeePerGas}))
+      await mdh.sendAndWaitForTransaction(collateralToken.transfer(account, mintAmountPerTestAccount, {maxFeePerGas}))
 
       const wethBalance = await wethToken.balanceOf(account)
       const collBalance = await collateralToken.balanceOf(account)

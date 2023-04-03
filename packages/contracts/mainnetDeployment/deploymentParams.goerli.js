@@ -23,6 +23,7 @@ const waitFunction = async () => {
 }
 
 const GAS_PRICE = 1000000000 // 1 Gwei
+const MAX_FEE_PER_GAS = 100833966421
 const TX_CONFIRMATIONS = 1
 
 const ETHERSCAN_BASE_URL = 'https://goerli.etherscan.io/address'
@@ -32,6 +33,7 @@ module.exports = {
   OUTPUT_FILE,
   waitFunction,
   GAS_PRICE,
+  MAX_FEE_PER_GAS,
   TX_CONFIRMATIONS,
   ETHERSCAN_BASE_URL,
   testAccounts

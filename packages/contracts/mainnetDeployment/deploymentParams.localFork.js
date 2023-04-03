@@ -37,6 +37,7 @@ const waitFunction = async () => {
 }
 
 const GAS_PRICE = 1000
+const MAX_FEE_PER_GAS = 1000000000
 const TX_CONFIRMATIONS = 1 // for local fork test
 
 module.exports = {
@@ -47,5 +48,6 @@ module.exports = {
   waitFunction,
   GAS_PRICE,
   TX_CONFIRMATIONS,
+  MAX_FEE_PER_GAS,
   testAccounts
 };

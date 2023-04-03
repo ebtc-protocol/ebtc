@@ -50,7 +50,7 @@ class MainnetDeploymentHelper {
       );
     }
 
-    const contract = await factory.deploy(...params, {gasPrice: this.configParams.GAS_PRICE})
+    const contract = await factory.deploy(...params, {maxFeePerGas: this.configParams.MAX_FEE_PER_GAS})
     console.log(`Deployed new ${name} contract at address ${contract.address}`)
     await this.deployerWallet.provider.waitForTransaction(contract.deployTransaction.hash, this.configParams.TX_CONFIRMATIONS)
 
@@ -236,10 +236,12 @@ class MainnetDeploymentHelper {
     const stEthAddress = configParams.externalAddrs.STETH_ERC20
 
     const gasPrice = this.configParams.GAS_PRICE
+    const maxFeePerGas = this.configParams.MAX_FEE_PER_GAS
+
     // Set ChainlinkAggregatorProxy and TellorCaller in the PriceFeed
     console.log("Set ChainlinkAggregatorProxy and TellorCaller in the PriceFeed")
     await this.isOwnershipRenounced(contracts.priceFeed) ||
-      await this.sendAndWaitForTransaction(contracts.priceFeed.setAddresses(chainlinkProxyAddress, contracts.tellorCaller.address, {gasPrice}))
+      await this.sendAndWaitForTransaction(contracts.priceFeed.setAddresses(chainlinkProxyAddress, contracts.tellorCaller.address, {maxFeePerGas}))
 
     // set CdpManager addr in SortedCdps
     console.log("set CdpManager addr in SortedCdps")
@@ -248,7 +250,7 @@ class MainnetDeploymentHelper {
         maxBytes32,
         contracts.cdpManager.address,
         contracts.borrowerOperations.address, 
-	{gasPrice}
+	{maxFeePerGas}
       ))
 
     // set contracts in the Cdp Manager
@@ -266,7 +268,7 @@ class MainnetDeploymentHelper {
         EBTCContracts.lqtyToken.address,
         EBTCContracts.lqtyStaking.address,
         stEthAddress,
-	{gasPrice}
+	{maxFeePerGas}
       ))
 
     // set contracts in BorrowerOperations 
@@ -283,7 +285,7 @@ class MainnetDeploymentHelper {
         contracts.ebtcToken.address,
         EBTCContracts.lqtyStaking.address,
         stEthAddress,
-	{gasPrice}
+	{maxFeePerGas}
       ))
 
     // set contracts in the Pools
@@ -295,7 +297,7 @@ class MainnetDeploymentHelper {
         contracts.defaultPool.address,
         stEthAddress,
         contracts.collSurplusPool.address,
-	{gasPrice}
+	{maxFeePerGas}
       ))
     
       console.log("set contracts in the DefaultPool")
@@ -304,7 +306,7 @@ class MainnetDeploymentHelper {
         contracts.cdpManager.address,
         contracts.activePool.address,
         stEthAddress,
-	{gasPrice}
+	{maxFeePerGas}
       ))
     
     console.log("set contracts in the CollSurplusPool")
@@ -314,7 +316,7 @@ class MainnetDeploymentHelper {
         contracts.cdpManager.address,
         contracts.activePool.address,
         stEthAddress,
-	{gasPrice}
+	{maxFeePerGas}
       ))
 
     // set contracts in HintHelpers
@@ -323,22 +325,24 @@ class MainnetDeploymentHelper {
       await this.sendAndWaitForTransaction(contracts.hintHelpers.setAddresses(
         contracts.sortedCdps.address,
         contracts.cdpManager.address,
-	{gasPrice}
+	{maxFeePerGas}
       ))
   }
 
   async connectEBTCContractsMainnet(EBTCContracts) {
     const gasPrice = this.configParams.GAS_PRICE
+    const maxFeePerGas = this.configParams.MAX_FEE_PER_GAS
     // Set LQTYToken address in LCF
     console.log("Set LQTYToken address in LCF")
     const owner = await EBTCContracts.lockupContractFactory.owner()
     console.log("lockupContractFactory owner: ", owner)
     await this.isOwnershipRenounced(EBTCContracts.lockupContractFactory) ||
-    await this.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.setLQTYTokenAddress(EBTCContracts.lqtyToken.address, {gasPrice}))
+    await this.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.setLQTYTokenAddress(EBTCContracts.lqtyToken.address, {maxFeePerGas}))
   }
 
   async connectEBTCContractsToCoreMainnet(EBTCContracts, coreContracts, configParams) {
     const gasPrice = this.configParams.GAS_PRICE
+    const maxFeePerGas = this.configParams.MAX_FEE_PER_GAS
     const stEthAddress = configParams.externalAddrs.STETH_ERC20
 
     console.log("Set contracts in LqtyStaking")
@@ -350,21 +354,22 @@ class MainnetDeploymentHelper {
         coreContracts.borrowerOperations.address,
         coreContracts.activePool.address,
         stEthAddress,
-	{gasPrice}
+	{maxFeePerGas}
       ))
 
     console.log("Set contracts in CommunityIssuance")
     await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
       await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
         EBTCContracts.lqtyToken.address,
-	{gasPrice}
+	{maxFeePerGas}
       ))
   }
 
   async connectUnipoolMainnet(uniPool, EBTCContracts, EBTCWETHPairAddr, duration) {
     const gasPrice = this.configParams.GAS_PRICE
+    const maxFeePerGas = this.configParams.MAX_FEE_PER_GAS
     await this.isOwnershipRenounced(uniPool) ||
-      await this.sendAndWaitForTransaction(uniPool.setParams(EBTCContracts.lqtyToken.address, EBTCWETHPairAddr, duration, {gasPrice}))
+      await this.sendAndWaitForTransaction(uniPool.setParams(EBTCContracts.lqtyToken.address, EBTCWETHPairAddr, duration, {maxFeePerGas}))
   }
 
   // --- Verify on Ethrescan ---
