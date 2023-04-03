@@ -2123,11 +2123,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function claimStakingSplitFee() public override {
         (uint _oldIndex, uint _newIndex) = _syncIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
-            (
-                uint _deltaFeeSplitShare,
-                uint _deltaFeePerUnit,
-                uint _perUnitError
-            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
+            (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
+                _newIndex,
+                _oldIndex
+            );
             ContractsCache memory _contractsCache = ContractsCache(
                 activePool,
                 defaultPool,
@@ -2137,9 +2136,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 collSurplusPool,
                 gasPoolAddress
             );
-            uint _feeTaken = _takeSplitAndUpdateFeePerUnit(
+            _takeSplitAndUpdateFeePerUnit(
                 _contractsCache,
-                _deltaFeeSplitShare,
+                _feeTaken,
                 _deltaFeePerUnit,
                 _perUnitError
             );
@@ -2322,29 +2321,27 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 _deltaFeeSplit = deltaIndexFees.mul(getEntireSystemColl());
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
-        uint256 _deltaFeeSplitShare = collateral.getSharesByPooledEth(_deltaFeeSplit).add(
-            stFeePerUnitgError
-        );
+        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit).div(DECIMAL_PRECISION);
+        uint256 _deltaFeeSplitShare = _feeTaken.mul(DECIMAL_PRECISION).add(stFeePerUnitgError);
         //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
         //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
         uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
-        return (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError);
+        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
     }
 
     // Take the cut from staking reward
     // and update global fee-per-unit accumulator
     function _takeSplitAndUpdateFeePerUnit(
         ContractsCache memory _cachedContracts,
-        uint256 _deltaFeeSplitShare,
+        uint256 _feeTaken,
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
-    ) internal returns (uint) {
+    ) internal {
         uint _oldPerUnit = stFeePerUnitg;
         stFeePerUnitg = stFeePerUnitg.add(_deltaPerUnit);
         stFeePerUnitgError = _newErrorPerUnit;
 
-        uint _feeTaken = standardizeTakenFee(_deltaFeeSplitShare);
         require(
             _cachedContracts.activePool.getETH() > _feeTaken,
             "CDPManager: fee split is too big"
@@ -2353,15 +2350,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
-        return _feeTaken;
-    }
-
-    function standardizeTakenFee(uint _scaledFeeTaken) public view override returns (uint) {
-        uint _feeTaken = (_scaledFeeTaken.div(DECIMAL_PRECISION));
-        if (_scaledFeeTaken > _feeTaken.mul(DECIMAL_PRECISION)) {
-            _feeTaken = _feeTaken.add(1);
-        }
-        return _feeTaken;
     }
 
     // Apply accumulated fee split distributed to the CDP
@@ -2414,9 +2402,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         uint _diffPerUnit = _stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;
-        _feeSplitDistributed = _stFeePerUnitgError > 0
-            ? _feeSplitDistributed.add(_oldStake.mul(_stFeePerUnitgError).div(_totalStakes))
-            : _feeSplitDistributed;
 
         uint _scaledCdpColl = Cdps[_cdpId].coll.mul(DECIMAL_PRECISION);
         require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");

@@ -142,8 +142,6 @@ interface ICdpManager is ILiquityBase {
         uint _totalStakes
     ) external view returns (uint, uint);
 
-    function standardizeTakenFee(uint _scaledFeeTaken) external view returns (uint);
-
     function stFeePerUnitg() external view returns (uint);
 
     function stFeePerUnitgError() external view returns (uint);
