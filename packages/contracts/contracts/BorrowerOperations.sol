@@ -683,7 +683,7 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal view {
+    function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot withdraw and add coll"
@@ -701,7 +701,7 @@ contract BorrowerOperations is
         uint _collAddAmount,
         uint _EBTCChange,
         uint _collWithdrawal
-    ) internal view {
+    ) internal pure {
         require(
             _collAddAmount != 0 || _collWithdrawal != 0 || _EBTCChange != 0,
             "BorrowerOps: There must be either a collateral change or a debt change"
@@ -846,7 +846,7 @@ contract BorrowerOperations is
     function _getNewNominalICRFromCdpChange(
         LocalVariables_adjustCdp memory vars,
         bool _isDebtIncrease
-    ) internal view returns (uint) {
+    ) internal pure returns (uint) {
         (uint newColl, uint newDebt) = _getNewCdpAmounts(
             vars.coll,
             vars.debt,
