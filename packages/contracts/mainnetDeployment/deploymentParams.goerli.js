@@ -36,5 +36,6 @@ module.exports = {
   MAX_FEE_PER_GAS,
   TX_CONFIRMATIONS,
   ETHERSCAN_BASE_URL,
-  testAccounts
+  testAccounts,
+  ebtcAddrs
 };

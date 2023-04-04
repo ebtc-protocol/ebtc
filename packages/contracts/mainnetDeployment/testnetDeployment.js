@@ -163,7 +163,6 @@ async function testnetDeploy(configParams) {
 
   th.logBN('system liquidation reserve', liqReserve)
   th.logBN('system min net debt      ', minNetDebt)
-
 }
 
 module.exports = {
