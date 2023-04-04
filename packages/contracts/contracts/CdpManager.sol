@@ -846,6 +846,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
      * starting from the one with the lowest collateral ratio in the system, and moving upwards
      */
     function liquidateCdps(uint _n) external override {
+        require(_n > 0, "CdpManager: can't liquidate zero CDP in sequence");
+
         ContractsCache memory contractsCache = ContractsCache(
             activePool,
             defaultPool,
