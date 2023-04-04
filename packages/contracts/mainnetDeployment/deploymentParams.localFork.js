@@ -26,7 +26,7 @@ const beneficiaries = {
   TEST_INVESTOR_E: "0x89ff871dbcd0a456fe92db98d190c38bc10d1cc1"
 }
 
-const testAccounts = ["0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128", "0xc2E345f74B18187E5489822f9601c028ED1915a2"]
+const testAccounts = ["0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128", "0xc2E345f74B18187E5489822f9601c028ED1915a2", "0x31c57298578f7508B5982062cfEc5ec8BD346247"]
 
 const OUTPUT_FILE = './mainnetDeployment/localForkDeploymentOutput.json'
 

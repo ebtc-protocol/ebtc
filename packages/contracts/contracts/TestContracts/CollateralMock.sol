@@ -35,14 +35,14 @@ contract CollateralMock is ICollateralToken {
     function deposit(uint256 wad) public {
         require(wETH.transferFrom(msg.sender, address(this), wad));
         balanceOf[msg.sender] += wad;
-        Deposit(msg.sender, wad);
+        emit Deposit(msg.sender, wad);
     }
 
     function withdraw(uint wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
         require(wETH.transfer(msg.sender, wad));
-        Withdrawal(msg.sender, wad);
+        emit Withdrawal(msg.sender, wad);
     }
 
     function totalSupply() public view override returns (uint) {
@@ -52,13 +52,13 @@ contract CollateralMock is ICollateralToken {
     // helper to set allowance in test
     function nonStandardSetApproval(address owner, address guy, uint wad) external returns (bool) {
         allowance[owner][guy] = wad;
-        Approval(owner, guy, wad);
+        emit Approval(owner, guy, wad);
         return true;
     }
 
     function approve(address guy, uint wad) public override returns (bool) {
         allowance[msg.sender][guy] = wad;
-        Approval(msg.sender, guy, wad);
+        emit Approval(msg.sender, guy, wad);
         return true;
     }
 
@@ -77,7 +77,7 @@ contract CollateralMock is ICollateralToken {
         balanceOf[src] -= wad;
         balanceOf[dst] += wad;
 
-        Transfer(src, dst, wad);
+        emit Transfer(src, dst, wad);
 
         return true;
     }

@@ -6,7 +6,8 @@
   },
   "collateralToken": {
     "address": "0x2Fe9bF640ea2c33219AE5C6E21257a1fF7ad1417",
-    "txHash": "0x44e839ef86ab5b78560e9d98b8fd33b8a96c5efc0c7f66b18ccf82bd59c4b819"
+    "txHash": "0x44e839ef86ab5b78560e9d98b8fd33b8a96c5efc0c7f66b18ccf82bd59c4b819",
+    "verification": "https://goerli.etherscan.io/address/0x2Fe9bF640ea2c33219AE5C6E21257a1fF7ad1417#code"
   },
   "priceFeed": {
     "address": "0xD89AE35cCC177A1C63fdF028f75274C25a00e3c9",
