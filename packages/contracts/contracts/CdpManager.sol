@@ -561,13 +561,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _contractsCache,
                 _liqState
             );
-            // housekeeping leftover collateral for liquidated CDP
-            //            if (_outputState.totalColSurplus > 0) {
-            //                _contractsCache.activePool.sendETH(
-            //                    address(_contractsCache.collSurplusPool),
-            //                    _outputState.totalColSurplus
-            //                );
-            //            }
             return (
                 _outputState.totalDebtToBurn,
                 _outputState.totalColToSend,
@@ -597,10 +590,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 _totalColToSend,
                 true
             );
-            //            if (_collSurplus > 0) {
-            //                _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
-            //                _liqState.totalColSurplus = _liqState.totalColSurplus.add(_collSurplus);
-            //            }
             if (_debtToRedistribute > 0) {
                 _totalDebtToBurn = _totalDebtToBurn.sub(_debtToRedistribute);
             }
