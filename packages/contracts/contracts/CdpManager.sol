@@ -202,8 +202,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     struct LiquidationValues {
         uint entireCdpDebt;
-        uint entireCdpColl;
-        uint collGasCompensation;
         uint debtToOffset;
         uint totalCollToSendToLiquidator;
         uint debtToRedistribute;
@@ -212,9 +210,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     struct LiquidationTotals {
-        uint totalCollInSequence;
         uint totalDebtInSequence;
-        uint totalCollGasCompensation;
         uint totalDebtToOffset;
         uint totalCollToSendToLiquidator;
         uint totalDebtToRedistribute;
@@ -264,7 +260,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation);
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -802,7 +798,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             totalColToSend
         );
 
-        emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
+        emit Liquidation(totalDebtToBurn, totalColToSend);
 
         // burn the debt from liquidator
         _contractsCache.ebtcToken.burn(msg.sender, totalDebtToBurn);
@@ -842,7 +838,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Batch/Sequence liquidation functions ---
 
     /*
-     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR,
+     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR or CR < TCR in reocvery mode,
      * starting from the one with the lowest collateral ratio in the system, and moving upwards
      */
     function liquidateCdps(uint _n) external override {
@@ -956,7 +952,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.entireSystemColl = vars
                     .entireSystemColl
                     .sub(singleLiquidation.totalCollToSendToLiquidator)
-                    .sub(singleLiquidation.collGasCompensation)
                     .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
@@ -1037,19 +1032,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             0
         );
 
-        (
-            singleLiquidation.entireCdpDebt,
-            singleLiquidation.entireCdpColl,
-            ,
-            ,
-
-        ) = getEntireDebtAndColl(vars.cdpId);
-
         LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
             _contractsCache,
             _liqState
         );
 
+        singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
@@ -1074,19 +1062,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             vars.ICR
         );
 
-        (
-            singleLiquidation.entireCdpDebt,
-            singleLiquidation.entireCdpColl,
-            ,
-            ,
-
-        ) = getEntireDebtAndColl(vars.cdpId);
-
         LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
             _contractsCache,
             _recState
         );
 
+        singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
@@ -1204,7 +1185,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.entireSystemColl = vars
                     .entireSystemColl
                     .sub(singleLiquidation.totalCollToSendToLiquidator)
-                    .sub(singleLiquidation.collGasCompensation)
                     .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
@@ -1272,14 +1252,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation
     ) internal pure returns (LiquidationTotals memory newTotals) {
         // Tally all the values with their respective running totals
-        newTotals.totalCollGasCompensation = oldTotals.totalCollGasCompensation.add(
-            singleLiquidation.collGasCompensation
-        );
         newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence.add(
             singleLiquidation.entireCdpDebt
-        );
-        newTotals.totalCollInSequence = oldTotals.totalCollInSequence.add(
-            singleLiquidation.entireCdpColl
         );
         newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset.add(
             singleLiquidation.debtToOffset
