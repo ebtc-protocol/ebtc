@@ -696,9 +696,6 @@ contract('Gas compensation tests', async accounts => {
     const aliceCollValueInUSD = (await borrowerOperationsTester.getUSDValue(aliceColl, price_1))
     assert.isTrue(aliceCollValueInUSD.gt(th.toBN(dec(10, 18))))
 
-    // Check value of 0.5% of collateral in USD is < $10
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
-
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
@@ -709,15 +706,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const expectedGasComp_A = _0pt5percent_aliceColl
-    const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
-    const expectedLiquidatedDebt_A =  aliceColl.mul(price_1).div(LICR)
+    const expectedLiquidatedColl_A = aliceColl
+    const expectedLiquidatedDebt_A =  aliceDebt
 
-    const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
+    const [loggedDebt_A, loggedColl_A] = th.getEmittedLiquidationValues(liquidationTxA)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_A, loggedDebt_A), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_A, loggedColl_A), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_A, loggedGasComp_A), 1000)
 
       // --- Price drops to 15 ---
       await priceFeed.setPrice(dec(15, 18))
@@ -745,16 +740,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
-    const expectedGasComp_B = _0pt5percent_bobColl
-    const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
-    const expectedLiquidatedDebt_B = bobColl.mul(price_2).div(LICR)
+    const expectedLiquidatedColl_B = bobColl
+    const expectedLiquidatedDebt_B =  bobDebt
 
-    const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
+    const [loggedDebt_B, loggedColl_B] = th.getEmittedLiquidationValues(liquidationTxB)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_B, loggedDebt_B), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_B, loggedColl_B), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_B, loggedGasComp_B), 1000)
   })
 
 
@@ -778,7 +770,6 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
     const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -790,15 +781,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
-    const expectedGasComp_A = _0pt5percent_aliceColl
-    const expectedLiquidatedColl_A = aliceColl.sub(_0pt5percent_aliceColl)
-    const expectedLiquidatedDebt_A =  aliceColl.mul(price_1).div(LICR)
+    const expectedLiquidatedColl_A = aliceColl
+    const expectedLiquidatedDebt_A =  aliceDebt
 
-    const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
+    const [loggedDebt_A, loggedColl_A] = th.getEmittedLiquidationValues(liquidationTxA)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_A, loggedDebt_A), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_A, loggedColl_A), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_A, loggedGasComp_A), 1000)
 
 
     /* 
@@ -812,7 +801,6 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
     const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -823,15 +811,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
-    const expectedGasComp_B = _0pt5percent_bobColl
-    const expectedLiquidatedColl_B = bobColl.sub(_0pt5percent_bobColl)
-    const expectedLiquidatedDebt_B =  bobColl.mul(price_1).div(LICR)
+    const expectedLiquidatedColl_B = bobColl
+    const expectedLiquidatedDebt_B = bobDebt
 
-    const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
+    const [loggedDebt_B, loggedColl_B] = th.getEmittedLiquidationValues(liquidationTxB)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_B, loggedDebt_B), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_B, loggedColl_B), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_B, loggedGasComp_B), 1000)
   })
 
 
@@ -1082,11 +1068,10 @@ contract('Gas compensation tests', async accounts => {
     const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
-    const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
+    const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)
     
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt, loggedDebt), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl, loggedColl), 1000)
-    assert.isAtMost(th.getDifference(loggedGasComp, '0'), 1000)
   })
 
   it('liquidateCdps(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
@@ -1160,11 +1145,10 @@ contract('Gas compensation tests', async accounts => {
     const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
-    const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
+    const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt, loggedDebt), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl, loggedColl), 1000)
-    assert.isAtMost(th.getDifference(loggedGasComp, '0'), 1000)
   })
 
   // --- Cdp ordering by ICR tests ---
