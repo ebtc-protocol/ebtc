@@ -400,10 +400,8 @@ class TestHelper {
       if (liquidationTx.logs[i].event === "Liquidation") {
         const liquidatedDebt = liquidationTx.logs[i].args[0]
         const liquidatedColl = liquidationTx.logs[i].args[1]
-        const collGasComp = liquidationTx.logs[i].args[2]
-        const ebtcGasComp = liquidationTx.logs[i].args[3]
 
-        return [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp]
+        return [liquidatedDebt, liquidatedColl]
       }
     }
     throw ("The transaction logs do not contain a liquidation event")

@@ -173,7 +173,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     struct LocalVar_RecoveryLiquidate {
-        bool backToNormalMode;
         uint256 entireSystemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
@@ -205,8 +204,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
     struct LiquidationValues {
         uint entireCdpDebt;
-        uint entireCdpColl;
-        uint collGasCompensation;
         uint debtToOffset;
         uint totalCollToSendToLiquidator;
         uint debtToRedistribute;
@@ -215,9 +212,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     }
 
     struct LiquidationTotals {
-        uint totalCollInSequence;
         uint totalDebtInSequence;
-        uint totalCollGasCompensation;
         uint totalDebtToOffset;
         uint totalCollToSendToLiquidator;
         uint totalDebtToRedistribute;
@@ -267,7 +262,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     event LQTYStakingAddressChanged(address _lqtyStakingAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _collGasCompensation);
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -469,7 +464,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         );
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
-            (!_recoveryModeAtStart),
             systemDebt,
             systemColl,
             0,
@@ -664,11 +658,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _recoveryState.entireSystemColl = _recoveryState.entireSystemColl > _totalColToSend
             ? _recoveryState.entireSystemColl.sub(_totalColToSend)
             : 0;
-        _recoveryState.backToNormalMode = !_checkPotentialRecoveryMode(
-            _recoveryState.entireSystemColl,
-            _recoveryState.entireSystemDebt,
-            _recoveryState._price
-        );
 
         emit CdpLiquidated(
             _recoveryState._cdpId,
@@ -852,7 +841,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             totalColToSend
         );
 
-        emit Liquidation(totalDebtToBurn, totalColToSend, 0, 0);
+        emit Liquidation(totalDebtToBurn, totalColToSend);
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
@@ -914,10 +903,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     // --- Batch/Sequence liquidation functions ---
 
     /*
-     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR,
+     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR or CR < TCR in reocvery mode,
      * starting from the one with the lowest collateral ratio in the system, and moving upwards
      */
     function liquidateCdps(uint _n) external override {
+        require(_n > 0, "CdpManager: can't liquidate zero CDP in sequence");
+
         ContractsCache memory contractsCache = ContractsCache(
             activePool,
             defaultPool,
@@ -931,6 +922,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LocalVariables_OuterLiquidationFunction memory vars;
 
         LiquidationTotals memory totals;
+
+        // taking fee to avoid accounted for the calculation of the TCR
+        claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
@@ -1024,7 +1018,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.entireSystemColl = vars
                     .entireSystemColl
                     .sub(singleLiquidation.totalCollToSendToLiquidator)
-                    .sub(singleLiquidation.collGasCompensation)
                     .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
@@ -1106,19 +1099,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             0
         );
 
-        (
-            singleLiquidation.entireCdpDebt,
-            singleLiquidation.entireCdpColl,
-            ,
-            ,
-
-        ) = getEntireDebtAndColl(vars.cdpId);
-
         LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
             _contractsCache,
             _liqState
         );
 
+        singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
@@ -1134,7 +1120,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation
     ) internal {
         LocalVar_RecoveryLiquidate memory _recState = LocalVar_RecoveryLiquidate(
-            (false),
             _systemDebt,
             _systemColl,
             0,
@@ -1146,19 +1131,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             0
         );
 
-        (
-            singleLiquidation.entireCdpDebt,
-            singleLiquidation.entireCdpColl,
-            ,
-            ,
-
-        ) = getEntireDebtAndColl(vars.cdpId);
-
         LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
             _contractsCache,
             _recState
         );
 
+        singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
@@ -1183,6 +1161,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         LocalVariables_OuterLiquidationFunction memory vars;
         LiquidationTotals memory totals;
+
+        // taking fee to avoid accounted for the calculation of the TCR
+        claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
@@ -1275,7 +1256,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 vars.entireSystemColl = vars
                     .entireSystemColl
                     .sub(singleLiquidation.totalCollToSendToLiquidator)
-                    .sub(singleLiquidation.collGasCompensation)
                     .sub(singleLiquidation.collSurplus);
 
                 // Add liquidation values to their respective running totals
@@ -1343,14 +1323,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         LiquidationValues memory singleLiquidation
     ) internal pure returns (LiquidationTotals memory newTotals) {
         // Tally all the values with their respective running totals
-        newTotals.totalCollGasCompensation = oldTotals.totalCollGasCompensation.add(
-            singleLiquidation.collGasCompensation
-        );
         newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence.add(
             singleLiquidation.entireCdpDebt
-        );
-        newTotals.totalCollInSequence = oldTotals.totalCollInSequence.add(
-            singleLiquidation.entireCdpColl
         );
         newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset.add(
             singleLiquidation.debtToOffset
@@ -2468,11 +2442,15 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _stFeePerUnitgError,
         uint _totalStakes
     ) public view override returns (uint, uint) {
-        uint _oldStake = Cdps[_cdpId].stake;
-
-        if (stFeePerUnitcdp[_cdpId] == 0 || Cdps[_cdpId].coll == 0) {
+        if (
+            stFeePerUnitcdp[_cdpId] == 0 ||
+            Cdps[_cdpId].coll == 0 ||
+            stFeePerUnitcdp[_cdpId] == _stFeePerUnitg
+        ) {
             return (0, Cdps[_cdpId].coll);
         }
+
+        uint _oldStake = Cdps[_cdpId].stake;
 
         uint _diffPerUnit = _stFeePerUnitg.sub(stFeePerUnitcdp[_cdpId]);
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake.mul(_diffPerUnit) : 0;

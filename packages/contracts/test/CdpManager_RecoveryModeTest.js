@@ -3119,7 +3119,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     const liquidationTx = await cdpManager.liquidateCdps(10)
 
-    const [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp] = th.getEmittedLiquidationValues(liquidationTx)
+    const [liquidatedDebt, liquidatedColl] = th.getEmittedLiquidationValues(liquidationTx)
 
     let _liqDebts = (A_coll).add(B_coll).add(C_coll).add(D_coll).add(E_coll).mul(price).div(LICR)
     th.assertIsApproximatelyEqual(liquidatedDebt, _liqDebts)
@@ -3129,8 +3129,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const equivalentCollD = D_coll
     const equivalentCollE = E_coll
     th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollC).add(equivalentCollD).add(equivalentCollE))
-    th.assertIsApproximatelyEqual(collGasComp, 0)
-    assert.equal(ebtcGasComp.toString(), '0')
 
     // check collateral surplus
     const alice_remainingCollateral = A_coll.sub(equivalentCollA)
@@ -3829,7 +3827,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     const liquidationTx = await cdpManager.batchLiquidateCdps(cdpsToLiquidate)
 
-    const [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp] = th.getEmittedLiquidationValues(liquidationTx)
+    const [liquidatedDebt, liquidatedColl] = th.getEmittedLiquidationValues(liquidationTx)
 
     let _liqDebts = A_totalDebt.add(B_totalDebt).add(C_totalDebt)
     th.assertIsApproximatelyEqual(liquidatedDebt, _liqDebts)	
@@ -3837,8 +3835,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const equivalentCollB = B_totalDebt.mul(toBN(dec(110, 16))).div(price).add(liqStipend)
     const equivalentCollC = C_totalDebt.mul(toBN(dec(110, 16))).div(price).add(liqStipend)
     th.assertIsApproximatelyEqual(liquidatedColl, equivalentCollA.add(equivalentCollB).add(equivalentCollC))
-    th.assertIsApproximatelyEqual(collGasComp, 0)
-    assert.equal(ebtcGasComp.toString(), '0')
 
     // check collateral surplus
     const alice_remainingCollateral = A_coll.sub(equivalentCollA)
