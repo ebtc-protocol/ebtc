@@ -15,7 +15,7 @@ import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/Authv06.sol";
 
 contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
-    string public 1ant NAME = "CdpManager";
+    string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
 
@@ -1578,16 +1578,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         _defaultPool.decreaseEBTCDebt(_EBTC);
         _activePool.increaseEBTCDebt(_EBTC);
         _defaultPool.sendETHToActivePool(_ETH);
-    }
-
-    function _mintPendingEBTCInterest(
-        ILQTYStaking _lqtyStaking,
-        IEBTCToken _ebtcToken,
-        uint _EBTCInterest
-    ) internal {
-        // Send interest to LQTY staking contract
-        _lqtyStaking.increaseF_EBTC(_EBTCInterest);
-        _ebtcToken.mint(address(_lqtyStaking), _EBTCInterest);
     }
 
     // --- Redemption functions ---
