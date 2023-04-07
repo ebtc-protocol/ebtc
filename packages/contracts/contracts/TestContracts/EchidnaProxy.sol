@@ -36,6 +36,10 @@ contract EchidnaProxy {
         cdpManager.liquidate(_cdpId);
     }
 
+    function partialLiquidatePrx(bytes32 _cdpId, uint _partialAmount) external {
+        cdpManager.partiallyLiquidate(_cdpId, _partialAmount, _cdpId, _cdpId);
+    }
+
     function liquidateCdpsPrx(uint _n) external {
         cdpManager.liquidateCdps(_n);
     }
