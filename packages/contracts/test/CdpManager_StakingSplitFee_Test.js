@@ -273,9 +273,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await priceFeed.setPrice(_newPrice);
       let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
       let _tcrBefore = await cdpManager.getTCR(_newPrice);	 
-      assert.isTrue(toBN(_icrBefore.toString()).gt(toBN(LICR.toString())));
+      assert.isTrue(toBN(_icrBefore.toString()).gt(LICR));
+      assert.isTrue(toBN(_icrBefore.toString()).gt(_MCR));
       let _partialDebtRepaid = minDebt;
-      let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(toBN(LICR.toString())).div(toBN(_newPrice));
+      let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(_MCR).div(toBN(_newPrice));
       let _expectedLiquidatedColl = _expectedSeizedColl.mul(mv._1e18BN).div(_newIndex);
       let _collBeforeLiquidator = await collToken.balanceOf(owner);	
 	  
@@ -344,8 +345,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       _newPrice = dec(1520, 13);
       await priceFeed.setPrice(_newPrice);
       let _icrBobAfter = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
-      assert.isTrue(toBN(_icrBobAfter.toString()).gt(mv._1_5e18BN));
-      let _expectedLiquidatedCollBob = (_bobCollDebtAfter[0].mul(mv._1_5e18BN).div(toBN(_newPrice)).add(liq_stipend)).mul(mv._1e18BN).div(_newIndex);
+      assert.isTrue(toBN(_icrBobAfter.toString()).gt(LICR));
+      let _expectedLiquidatedCollBob = (_bobCollDebtAfter[0].mul(_icrBobAfter).div(toBN(_newPrice))).mul(mv._1e18BN).div(_newIndex);
       await cdpManager.liquidate(_bobCdpId, {from: owner});
       let _surplusToClaimBob = await collSurplusPool.getCollateral(bob);
       th.assertIsApproximatelyEqual(_surplusToClaimBob, _bobCollDebtAfter[1].sub(_expectedLiquidatedCollBob), _errorTolerance);

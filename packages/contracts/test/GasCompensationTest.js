@@ -75,6 +75,7 @@ contract('Gas compensation tests', async accounts => {
     borrowerOperations = contracts.borrowerOperations	
     debtToken = ebtcToken;
     collToken = contracts.collateral;
+    LICR = await cdpManager.LICR();
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
@@ -695,9 +696,6 @@ contract('Gas compensation tests', async accounts => {
     const aliceCollValueInUSD = (await borrowerOperationsTester.getUSDValue(aliceColl, price_1))
     assert.isTrue(aliceCollValueInUSD.gt(th.toBN(dec(10, 18))))
 
-    // Check value of 0.5% of collateral in USD is < $10
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
-
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
@@ -708,19 +706,17 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const expectedGasComp_A = _0pt5percent_aliceColl
-    const expectedLiquidatedColl_A = aliceColl.sub(expectedGasComp_A)
-    const expectedLiquidatedDebt_A =  aliceDebt
+    const expectedLiquidatedColl_A = aliceColl
+    const expectedLiquidatedDebt_A = aliceColl.mul(price_1).div(LICR)
 
-    const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
+    const [loggedDebt_A, loggedColl_A] = th.getEmittedLiquidationValues(liquidationTxA)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_A, loggedDebt_A), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_A, loggedColl_A), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_A, loggedGasComp_A), 1000)
 
-      // --- Price drops to 15 ---
-      await priceFeed.setPrice(dec(15, 18))
-      const price_2 = await priceFeed.getPrice()
+    // --- Price drops to 15 ---
+    await priceFeed.setPrice(dec(15, 18))
+    const price_2 = await priceFeed.getPrice()
 
     /* 
     ETH:USD price = 15
@@ -744,16 +740,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
 
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
-    const expectedGasComp_B = _0pt5percent_bobColl
-    const expectedLiquidatedColl_B = bobColl.sub(expectedGasComp_B)
-    const expectedLiquidatedDebt_B =  bobDebt
+    const expectedLiquidatedColl_B = bobColl
+    const expectedLiquidatedDebt_B = bobColl.mul(price_2).div(LICR)
 
-    const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
+    const [loggedDebt_B, loggedColl_B] = th.getEmittedLiquidationValues(liquidationTxB)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_B, loggedDebt_B), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_B, loggedColl_B), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_B, loggedGasComp_B), 1000)
   })
 
 
@@ -777,7 +770,6 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
     const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -789,15 +781,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(carol)), {from: carol});
     const liquidationTxA = await cdpManager.liquidate(_aliceCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
-    const expectedGasComp_A = _0pt5percent_aliceColl
-    const expectedLiquidatedColl_A = aliceColl.sub(_0pt5percent_aliceColl)
-    const expectedLiquidatedDebt_A =  aliceDebt
+    const expectedLiquidatedColl_A = aliceColl
+    const expectedLiquidatedDebt_A = aliceColl.mul(price_1).div(LICR)
 
-    const [loggedDebt_A, loggedColl_A, loggedGasComp_A, ] = th.getEmittedLiquidationValues(liquidationTxA)
+    const [loggedDebt_A, loggedColl_A] = th.getEmittedLiquidationValues(liquidationTxA)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_A, loggedDebt_A), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_A, loggedColl_A), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_A, loggedGasComp_A), 1000)
 
 
     /* 
@@ -811,7 +801,6 @@ contract('Gas compensation tests', async accounts => {
     // Check value of 0.5% of collateral in USD is > $10
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
     const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -822,15 +811,13 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, (await debtToken.balanceOf(bob)), {from: bob});
     const liquidationTxB = await cdpManager.liquidate(_bobCdpId, { from: liquidator, gasPrice: GAS_PRICE })
     
-    const expectedGasComp_B = _0pt5percent_bobColl
-    const expectedLiquidatedColl_B = bobColl.sub(_0pt5percent_bobColl)
-    const expectedLiquidatedDebt_B =  bobDebt
+    const expectedLiquidatedColl_B = bobColl
+    const expectedLiquidatedDebt_B = bobColl.mul(price_1).div(LICR)
 
-    const [loggedDebt_B, loggedColl_B, loggedGasComp_B, ] = th.getEmittedLiquidationValues(liquidationTxB)
+    const [loggedDebt_B, loggedColl_B] = th.getEmittedLiquidationValues(liquidationTxB)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt_B, loggedDebt_B), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl_B, loggedColl_B), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp_B, loggedGasComp_B), 1000)
   })
 
 
@@ -843,11 +830,11 @@ contract('Gas compensation tests', async accounts => {
     // A-F open cdps
     await openCdp({ ICR: toBN(dec(160, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    await openCdp({ ICR: toBN(dec(506, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    await openCdp({ ICR: toBN(dec(515, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
     await openCdp({ ICR: toBN(dec(100, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
@@ -898,20 +885,25 @@ contract('Gas compensation tests', async accounts => {
     /* Expect liquidated coll = 
     0.95% of [A_coll + B_coll + C_coll + D_coll]
     */
-    const expectedLiquidatedColl = aliceColl.sub(_0pt5percent_aliceColl)
-      .add(bobColl.sub(_0pt5percent_bobColl))
-      .add(carolColl.sub(_0pt5percent_carolColl))
-      .add(dennisColl.sub(_0pt5percent_dennisColl))
+    const expectedLiquidatedColl = aliceColl
+      .add(bobColl)
+      .add(carolColl)
+      .add(dennisColl)
 
     // Liquidate cdps A-D
 
     const liquidatorBalance_before = web3.utils.toBN(await collToken.balanceOf(liquidator))
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE }))
     const liquidatorBalance_after = web3.utils.toBN(await collToken.balanceOf(liquidator))
 
     // Check liquidator's balance has increased by the expected compensation amount
     const compensationReceived = (liquidatorBalance_after.sub(liquidatorBalance_before)).toString() ;//.add(toBN(GAS_Used_Liquidator * GAS_PRICE))
-    assert.equal(expectedGasComp, compensationReceived)
+    assert.equal(expectedLiquidatedColl.toString(), compensationReceived)
   })
 
   // liquidateCdps - full redistribution
@@ -1004,11 +996,11 @@ contract('Gas compensation tests', async accounts => {
     // A-F open cdps
     const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(160, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(506, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(515, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
@@ -1059,23 +1051,27 @@ contract('Gas compensation tests', async accounts => {
     /* Expect liquidated coll = 
        0.95% of [A_coll + B_coll + C_coll + D_coll]
     */
-    const expectedLiquidatedColl = aliceColl.sub(_0pt5percent_aliceColl)
-          .add(bobColl.sub(_0pt5percent_bobColl))
-          .add(carolColl.sub(_0pt5percent_carolColl))
-          .add(dennisColl.sub(_0pt5percent_dennisColl))
+    const expectedLiquidatedColl = aliceColl
+          .add(bobColl)
+          .add(carolColl)
+          .add(dennisColl)
 
     // Expect liquidatedDebt = 51 + 190 + 1025 + 13510 = 14646 EBTC
-    const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
+    const expectedLiquidatedDebt = expectedLiquidatedColl.mul(price).div(LICR)
 
     // Liquidate cdps A-D
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
-    const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
+    const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)
     
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt, loggedDebt), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl, loggedColl), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp, loggedGasComp), 1000)
   })
 
   it('liquidateCdps(): full redistribution. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
@@ -1086,11 +1082,11 @@ contract('Gas compensation tests', async accounts => {
     // A-F open cdps
     const { totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(160, 16)), extraEBTCAmount: dec(2000, 18), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(526, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
+    const { totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(506, 16)), extraEBTCAmount: dec(8000, 18), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     const { totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(488, 16)), extraEBTCAmount: dec(600, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
+    const { totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(515, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
@@ -1132,23 +1128,27 @@ contract('Gas compensation tests', async accounts => {
     /* Expect liquidated coll = 
     0.95% of [A_coll + B_coll + C_coll + D_coll]
     */
-    const expectedLiquidatedColl = aliceColl.sub(_0pt5percent_aliceColl)
-      .add(bobColl.sub(_0pt5percent_bobColl))
-      .add(carolColl.sub(_0pt5percent_carolColl))
-      .add(dennisColl.sub(_0pt5percent_dennisColl))
+    const expectedLiquidatedColl = aliceColl
+      .add(bobColl)
+      .add(carolColl)
+      .add(dennisColl)
 
     // Expect liquidatedDebt = 51 + 190 + 1025 + 13510 = 14646 EBTC
-    const expectedLiquidatedDebt = A_totalDebt.add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
+    const expectedLiquidatedDebt = expectedLiquidatedColl.mul(price).div(LICR)
 
     // Liquidate cdps A-D
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
+    await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
 
     // Get data from the liquidation event logs
-    const [loggedDebt, loggedColl, loggedGasComp, ] = th.getEmittedLiquidationValues(liquidationTxData)
+    const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)
 
     assert.isAtMost(th.getDifference(expectedLiquidatedDebt, loggedDebt), 1000)
     assert.isAtMost(th.getDifference(expectedLiquidatedColl, loggedColl), 1000)
-    assert.isAtMost(th.getDifference(expectedGasComp, loggedGasComp), 1000)
   })
 
   // --- Cdp ordering by ICR tests ---
