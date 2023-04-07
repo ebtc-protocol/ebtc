@@ -32,7 +32,6 @@ contract CdpReorderingTest is eBTCBaseFixture, LogUtils {
     function setUp() public override {
         eBTCBaseFixture.setUp();
 
-        eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 

@@ -13,10 +13,7 @@ import {ActivePool} from "../contracts/ActivePool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
-import {LQTYStaking} from "../contracts/LQTY/LQTYStaking.sol";
-import {LQTYToken} from "../contracts/LQTY/LQTYToken.sol";
-import {LockupContractFactory} from "../contracts/LQTY/LockupContractFactory.sol";
-import {CommunityIssuance} from "../contracts/LQTY/CommunityIssuance.sol";
+import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
@@ -71,10 +68,7 @@ contract eBTCBaseFixture is Test {
     Utilities internal _utils;
 
     // LQTY Stuff
-    LQTYToken lqtyToken;
-    LQTYStaking lqtyStaking;
-    LockupContractFactory lockupContractFactory;
-    CommunityIssuance communityIssuance;
+    FeeRecipient feeRecipient;
 
     ////////////////////////////////////////////////////////////////////////////
     // Structs
@@ -117,18 +111,7 @@ contract eBTCBaseFixture is Test {
         collateral = new CollateralTokenTester();
 
         // Liquity Stuff
-        lqtyStaking = new LQTYStaking();
-        lockupContractFactory = new LockupContractFactory();
-        communityIssuance = new CommunityIssuance();
-        lqtyToken = new LQTYToken(
-            address(communityIssuance),
-            address(lqtyStaking),
-            address(lockupContractFactory),
-            // Set misc addresses to self
-            address(this),
-            address(this),
-            address(this)
-        );
+        feeRecipient = new FeeRecipient();
 
         // Set up initial permissions and then renounce global owner role
         vm.startPrank(defaultGovernance);
@@ -166,8 +149,7 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(eBTCToken),
             address(sortedCdps),
-            address(lqtyToken),
-            address(lqtyStaking),
+            address(feeRecipient),
             address(collateral),
             address(authority)
         );
@@ -182,7 +164,7 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
-            address(lqtyStaking),
+            address(feeRecipient),
             address(collateral)
         );
 
@@ -192,7 +174,8 @@ contract eBTCBaseFixture is Test {
             address(cdpManager),
             address(defaultPool),
             address(collateral),
-            address(collSurplusPool)
+            address(collSurplusPool),
+            address(feeRecipient)
         );
 
         // set contracts in defaultPool
@@ -210,17 +193,10 @@ contract eBTCBaseFixture is Test {
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
     }
 
-    /* connectLQTYContracts() - wire up necessary liquity contracts
-     */
-    function connectLQTYContracts() public virtual {
-        lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
-    }
-
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
     function connectLQTYContractsToCore() public virtual {
-        lqtyStaking.setAddresses(
-            address(lqtyToken),
+        feeRecipient.setAddresses(
             address(eBTCToken),
             address(cdpManager),
             address(borrowerOperations),
@@ -229,7 +205,7 @@ contract eBTCBaseFixture is Test {
         );
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 

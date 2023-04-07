@@ -3,6 +3,7 @@ const DefaultPool = artifacts.require("./DefaultPoolTester.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 const NonPayable = artifacts.require('NonPayable.sol')
+const FeeRecipient = artifacts.require('FeeRecipient.sol')
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -22,9 +23,10 @@ contract('DefaultPool', async accounts => {
     nonPayable = await NonPayable.new()
     mockCdpManager = await NonPayable.new()
     activePool = await ActivePool.new()
-    collToken = await CollateralTokenTester.new();
+    collToken = await CollateralTokenTester.new()
+    feeRecipient = await FeeRecipient.new()
 	
-    await activePool.setAddresses(nonPayable.address, mockCdpManager.address, defaultPool.address, collToken.address, nonPayable.address);
+    await activePool.setAddresses(nonPayable.address, mockCdpManager.address, defaultPool.address, collToken.address, nonPayable.address, feeRecipient.address);
     await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
   })
 

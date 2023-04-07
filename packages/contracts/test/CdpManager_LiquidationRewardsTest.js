@@ -53,7 +53,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -68,7 +69,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     borrowerOperations = contracts.borrowerOperations
     debtToken = ebtcToken;
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 

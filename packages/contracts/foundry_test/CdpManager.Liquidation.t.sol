@@ -50,7 +50,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function setUp() public override {
         super.setUp();
 
-        connectLQTYContracts();
         connectCoreContracts();
         connectLQTYContractsToCore();
 

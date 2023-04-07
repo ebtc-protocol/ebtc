@@ -63,7 +63,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 

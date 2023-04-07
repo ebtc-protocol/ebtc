@@ -87,13 +87,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function setUp() public override {
         super.setUp();
 
-        connectLQTYContracts();
         connectCoreContracts();
         connectLQTYContractsToCore();
 
         users = _utils.createUsers(1);
 
-        splitFeeRecipient = address(lqtyStaking);
+        splitFeeRecipient = address(feeRecipient);
     }
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {

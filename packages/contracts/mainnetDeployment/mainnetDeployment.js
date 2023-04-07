@@ -108,7 +108,6 @@ async function mainnetDeploy(configParams) {
 
   // Connect all core contracts up
   await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY)
-  await mdh.connectEBTCContractsMainnet(EBTCContracts)
   await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore)
 
   // Deploy a read-only multi-cdp getter
@@ -122,7 +121,7 @@ async function mainnetDeploy(configParams) {
   await mdh.logContractObjects(EBTCContracts)
   console.log(`Unipool address: ${unipool.address}`)
 
-  let deploymentStartTime = await EBTCContracts.lqtyToken.getDeploymentStartTime()
+  let deploymentStartTime = await EBTCContracts.cdpManager.getDeploymentStartTime()
 
   console.log(`deployment start time: ${deploymentStartTime}`)
   const oneYearFromDeployment = (Number(deploymentStartTime) + timeVals.SECONDS_IN_ONE_YEAR).toString()

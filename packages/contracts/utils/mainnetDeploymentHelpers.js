@@ -133,45 +133,18 @@ class MainnetDeploymentHelper {
   }
 
   async deployEBTCContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
-    const lqtyStakingFactory = await this.getFactory("LQTYStaking")
-    const lockupContractFactory_Factory = await this.getFactory("LockupContractFactory")
-    const communityIssuanceFactory = await this.getFactory("CommunityIssuance")
-    const lqtyTokenFactory = await this.getFactory("LQTYToken")
+    const lqtyStakingFactory = await this.getFactory("FeeRecipient")
 
-    const lqtyStaking = await this.loadOrDeploy(lqtyStakingFactory, 'lqtyStaking', deploymentState)
-    const lockupContractFactory = await this.loadOrDeploy(lockupContractFactory_Factory, 'lockupContractFactory', deploymentState)
-    const communityIssuance = await this.loadOrDeploy(communityIssuanceFactory, 'communityIssuance', deploymentState)
-
-    // Deploy LQTY Token, passing Community Issuance and Factory addresses to the constructor
-    const lqtyTokenParams = [
-      communityIssuance.address,
-      lqtyStaking.address,
-      lockupContractFactory.address,
-      bountyAddress,
-      lpRewardsAddress,
-      multisigAddress
-    ]
-    const lqtyToken = await this.loadOrDeploy(
-      lqtyTokenFactory,
-      'lqtyToken',
-      deploymentState,
-      lqtyTokenParams
-    )
+    const feeRecipient = await this.loadOrDeploy(lqtyStakingFactory, 'feeRecipient', deploymentState)
 
     if (!this.configParams.ETHERSCAN_BASE_URL) {
       console.log('No Etherscan Url defined, skipping verification')
     } else {
-      await this.verifyContract('lqtyStaking', deploymentState)
-      await this.verifyContract('lockupContractFactory', deploymentState)
-      await this.verifyContract('communityIssuance', deploymentState)
-      await this.verifyContract('lqtyToken', deploymentState, lqtyTokenParams)
+      await this.verifyContract('feeRecipient', deploymentState)
     }
 
     const EBTCContracts = {
-      lqtyStaking,
-      lockupContractFactory,
-      communityIssuance,
-      lqtyToken
+      feeRecipient
     }
     return EBTCContracts
   }
@@ -244,7 +217,7 @@ class MainnetDeploymentHelper {
         contracts.ebtcToken.address,
         contracts.sortedCdps.address,
         EBTCContracts.lqtyToken.address,
-        EBTCContracts.lqtyStaking.address,
+        EBTCContracts.feeRecipient.address,
 	{gasPrice}
       ))
 
@@ -259,7 +232,7 @@ class MainnetDeploymentHelper {
         contracts.priceFeed.address,
         contracts.sortedCdps.address,
         contracts.ebtcToken.address,
-        EBTCContracts.lqtyStaking.address,
+        EBTCContracts.feeRecipient.address,
 	{gasPrice}
       ))
 
@@ -296,28 +269,15 @@ class MainnetDeploymentHelper {
       ))
   }
 
-  async connectEBTCContractsMainnet(EBTCContracts) {
-    const gasPrice = this.configParams.GAS_PRICE
-    // Set LQTYToken address in LCF
-    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(EBTCContracts.lockupContractFactory.setLQTYTokenAddress(EBTCContracts.lqtyToken.address, {gasPrice}))
-  }
-
   async connectEBTCContractsToCoreMainnet(EBTCContracts, coreContracts) {
     const gasPrice = this.configParams.GAS_PRICE
-    await this.isOwnershipRenounced(EBTCContracts.lqtyStaking) ||
-      await this.sendAndWaitForTransaction(EBTCContracts.lqtyStaking.setAddresses(
+    await this.isOwnershipRenounced(EBTCContracts.feeRecipient) ||
+      await this.sendAndWaitForTransaction(EBTCContracts.feeRecipient.setAddresses(
         EBTCContracts.lqtyToken.address,
         coreContracts.ebtcToken.address,
         coreContracts.cdpManager.address, 
         coreContracts.borrowerOperations.address,
         coreContracts.activePool.address,
-	{gasPrice}
-      ))
-
-    await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
-      await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
-        EBTCContracts.lqtyToken.address,
 	{gasPrice}
       ))
   }
