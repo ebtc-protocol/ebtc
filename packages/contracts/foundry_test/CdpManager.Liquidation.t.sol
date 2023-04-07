@@ -128,6 +128,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
             assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
 
+            uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
+            uint _expectedLiqDebt = _ICR > cdpManager.LICR()
+                ? _cdpState.debt
+                : (_cdpState.coll.mul(price).div(cdpManager.LICR()));
+
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
             uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
@@ -136,12 +141,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
             uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
             assertEq(
-                _cdpState.debt,
+                _expectedLiqDebt,
                 _debtLiquidatorBefore.sub(_debtLiquidatorAfter),
                 "!liquidator repayment"
             );
             assertEq(
-                _cdpState.debt,
+                _expectedLiqDebt,
                 _debtSystemBefore.sub(_debtSystemAfter),
                 "!system debt reduction"
             );
@@ -166,7 +171,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     // Test single CDP partial liquidation with variable ratio for partial repayment:
     // - when its ICR is higher than LICR then the collateral to liquidator is (repaidDebt * LICR) / price
     // - when its ICR is lower than LICR then the collateral to liquidator is (repaidDebt * ICR) / price
-    function testPartiallyLiquidateSingleCDP(uint256 debtAmt, uint256 partialRatioBps) public {
+    function testPartiallyLiquidateSingleCDP(uint debtAmt, uint partialRatioBps) public {
         _ensureDebtAmountValidity(debtAmt);
         vm.assume(partialRatioBps < 10000);
         vm.assume(partialRatioBps > 0);
@@ -175,7 +180,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // in this test, simply use if debtAmt is a multiple of 2 to simulate two scenarios
         bool _icrGtLICR = (debtAmt % 2 == 0) ? true : false;
-        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, _icrGtLICR ? 297e16 : 206e16);
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, _icrGtLICR ? 249e16 : 205e16);
 
         vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
@@ -209,9 +214,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
-            _partialLiq._ratio = _icrGtLICR
-                ? cdpManager.LICR()
-                : cdpManager.getCurrentICR(cdpId1, _newPrice);
+            _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
                 (_cdpState.debt - _partialLiq._repaidDebt) <
@@ -228,6 +231,16 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 (_partialLiq._repaidDebt * _partialLiq._ratio) /
                 _newPrice;
 
+            // fully liquidate instead
+            uint _expectedLiqDebt = _partialLiq._repaidDebt;
+            bool _fully = _partialLiq._collToLiquidator >= _cdpState.coll;
+            if (_fully) {
+                _partialLiq._collToLiquidator = _cdpState.coll;
+                _expectedLiqDebt = _partialLiq._collToLiquidator.mul(_newPrice).div(
+                    cdpManager.LICR()
+                );
+            }
+
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             {
                 uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
@@ -239,12 +252,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
                 uint _collSystemAfter = cdpManager.getEntireSystemColl();
                 assertEq(
-                    _partialLiq._repaidDebt,
+                    _expectedLiqDebt,
                     _debtLiquidatorBefore.sub(_debtLiquidatorAfter),
                     "!liquidator repayment"
                 );
                 assertEq(
-                    _partialLiq._repaidDebt,
+                    _expectedLiqDebt,
                     _debtSystemBefore.sub(_debtSystemAfter),
                     "!system debt reduction"
                 );
@@ -256,10 +269,16 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             }
 
             // target CDP got partially liquidated but still active
-            assertTrue(sortedCdps.contains(cdpId1));
+            // OR target CDP got fully liquidated
+            if (_fully) {
+                assertFalse(sortedCdps.contains(cdpId1));
+                assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
+            } else {
+                assertTrue(sortedCdps.contains(cdpId1));
+                assertTrue(cdpManager.getCdpStatus(cdpId1) == 1);
+            }
 
-            // check state is active
-            assertTrue(cdpManager.getCdpStatus(cdpId1) == 1);
+            // check invariants
             _ensureSystemInvariants_Liquidation();
         }
 
@@ -292,6 +311,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _leftTotalDebt = _leftTotalDebt.add(cdpManager.getCdpDebt(cdpManager.CdpIds(i)));
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
+        _leftTotalDebt = _leftTotalDebt.add(defaultPool.getEBTCDebt());
         uint _liquidatedDebt = _debtSystemBefore.sub(_debtSystemAfter);
 
         assertEq(

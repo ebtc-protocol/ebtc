@@ -169,6 +169,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint256 totalColSurplus;
         uint256 totalColToSend;
         uint256 totalDebtToBurn;
+        uint256 totalDebtToRedistribute;
     }
 
     struct LocalVar_RecoveryLiquidate {
@@ -180,6 +181,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         bytes32 _cdpId;
         uint256 _price;
         uint256 _ICR;
+        uint256 totalDebtToRedistribute;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -395,7 +397,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
     //                |  OR debt could be partially repaid by liquidator and
-    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
+    //                |  liquidator could get collateral of (repaidDebt * max(LICR, min(ICR, MCR)) / price)
     //
     //  > MCR & < TCR |  only liquidatable in Recovery Mode (TCR < CCR)
     //                |  debt could be fully repaid by liquidator
@@ -403,7 +405,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     //                |  transferred to liquidator while the residue of collateral
     //                |  will be available in CollSurplusPool for owner to claim
     //                |  OR debt could be partially repaid by liquidator and
-    //                |  liquidator could get collateral of (repaidDebt * min(LICR, ICR) / price)
+    //                |  liquidator could get collateral of (repaidDebt * max(LICR, min(ICR, MCR)) / price)
     // -----------------------------------------------------------------
 
     // Single CDP liquidation function (fully).
@@ -457,6 +459,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _TCR,
             0,
             0,
+            0,
             0
         );
 
@@ -468,7 +471,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             0,
             _cdpId,
             _price,
-            _ICR
+            _ICR,
+            0
         );
 
         ContractsCache memory _contractsCache = ContractsCache(
@@ -492,18 +496,32 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     ) internal {
         uint256 totalDebtToBurn;
         uint256 totalColToSend;
+        uint256 totalDebtToRedistribute;
 
         if (_liqState._partialAmount == 0) {
-            (totalDebtToBurn, totalColToSend) = _liquidateCDPByExternalLiquidator(
-                _contractsCache,
-                _liqState,
-                _recoveryState
-            );
+            (
+                totalDebtToBurn,
+                totalColToSend,
+                totalDebtToRedistribute
+            ) = _liquidateCDPByExternalLiquidator(_contractsCache, _liqState, _recoveryState);
         } else {
             (totalDebtToBurn, totalColToSend) = _liquidateCDPPartially(_contractsCache, _liqState);
+            if (totalColToSend == 0 && totalDebtToBurn == 0) {
+                // retry with fully liquidation
+                (
+                    totalDebtToBurn,
+                    totalColToSend,
+                    totalDebtToRedistribute
+                ) = _liquidateCDPByExternalLiquidator(_contractsCache, _liqState, _recoveryState);
+            }
         }
 
-        _finalizeExternalLiquidation(_contractsCache, totalDebtToBurn, totalColToSend);
+        _finalizeExternalLiquidation(
+            _contractsCache,
+            totalDebtToBurn,
+            totalColToSend,
+            totalDebtToRedistribute
+        );
     }
 
     // liquidate (and close) the CDP from an external liquidator
@@ -512,7 +530,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         ContractsCache memory _contractsCache,
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
-    ) private returns (uint256, uint256) {
+    ) private returns (uint256, uint256, uint256) {
         if (_liqState._recoveryModeAtStart) {
             LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
                 _contractsCache,
@@ -527,20 +545,21 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
                 );
             }
 
-            return (_outputState.totalDebtToBurn, _outputState.totalColToSend);
+            return (
+                _outputState.totalDebtToBurn,
+                _outputState.totalColToSend,
+                _outputState.totalDebtToRedistribute
+            );
         } else {
             LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
                 _contractsCache,
                 _liqState
             );
-            // housekeeping leftover collateral for liquidated CDP
-            if (_outputState.totalColSurplus > 0) {
-                _contractsCache.activePool.sendETH(
-                    address(_contractsCache.collSurplusPool),
-                    _outputState.totalColSurplus
-                );
-            }
-            return (_outputState.totalDebtToBurn, _outputState.totalColToSend);
+            return (
+                _outputState.totalDebtToBurn,
+                _outputState.totalColToSend,
+                _outputState.totalDebtToRedistribute
+            );
         }
     }
 
@@ -555,22 +574,25 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_contractsCache, _liqState._cdpId);
         uint256 _cappedColPortion;
         uint256 _collSurplus;
+        uint256 _debtToRedistribute;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_liqState._cdpId);
         {
-            (_cappedColPortion, _collSurplus) = _calculateSurplusAndCap(
+            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
                 _liqState._ICR,
                 _liqState._price,
                 _totalDebtToBurn,
-                _totalColToSend
+                _totalColToSend,
+                true
             );
-            if (_collSurplus > 0) {
-                // Give back leftovers to the borrower if any
-                _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
-                _liqState.totalColSurplus = _liqState.totalColSurplus.add(_collSurplus);
+            if (_debtToRedistribute > 0) {
+                _totalDebtToBurn = _totalDebtToBurn.sub(_debtToRedistribute);
             }
         }
         _liqState.totalDebtToBurn = _liqState.totalDebtToBurn.add(_totalDebtToBurn);
         _liqState.totalColToSend = _liqState.totalColToSend.add(_cappedColPortion);
+        _liqState.totalDebtToRedistribute = _liqState.totalDebtToRedistribute.add(
+            _debtToRedistribute
+        );
         // Emit events
         emit CdpLiquidated(
             _liqState._cdpId,
@@ -603,23 +625,31 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
         uint256 _collSurplus;
+        uint256 _debtToRedistribute;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_recoveryState._cdpId);
 
         // avoid stack too deep
         {
-            (_cappedColPortion, _collSurplus) = _calculateSurplusAndCap(
+            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
                 _recoveryState._ICR,
                 _recoveryState._price,
                 _totalDebtToBurn,
-                _totalColToSend
+                _totalColToSend,
+                true
             );
             if (_collSurplus > 0) {
                 _contractsCache.collSurplusPool.accountSurplus(_borrower, _collSurplus);
                 _recoveryState.totalColSurplus = _recoveryState.totalColSurplus.add(_collSurplus);
             }
+            if (_debtToRedistribute > 0) {
+                _totalDebtToBurn = _totalDebtToBurn.sub(_debtToRedistribute);
+            }
         }
         _recoveryState.totalDebtToBurn = _recoveryState.totalDebtToBurn.add(_totalDebtToBurn);
         _recoveryState.totalColToSend = _recoveryState.totalColToSend.add(_cappedColPortion);
+        _recoveryState.totalDebtToRedistribute = _recoveryState.totalDebtToRedistribute.add(
+            _debtToRedistribute
+        );
 
         // check if system back to normal mode
         _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt > _totalDebtToBurn
@@ -696,12 +726,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint newDebt = _debtAndColl.entireDebt.sub(_partialDebt);
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
-        uint _colRatio = LICR > _partialState._ICR ? _partialState._ICR : LICR;
-        uint _partialUnderlyingColl = _partialDebt.mul(_colRatio).div(_partialState._price);
-        uint _partialColl = collateral.getSharesByPooledEth(_partialUnderlyingColl);
-        require(_partialColl < _debtAndColl.entireColl, "!maxCollByPartialLiq");
+        (uint _partialColl, uint newColl, ) = _calculateSurplusAndCap(
+            _partialState._ICR,
+            _partialState._price,
+            _partialDebt,
+            _debtAndColl.entireColl,
+            false
+        );
 
-        uint newColl = _debtAndColl.entireColl.sub(_partialColl);
+        // return early if new collateral is zero
+        if (newColl == 0) {
+            return (0, 0);
+        }
 
         // apply pending debt and collateral if any
         // and update CDP internal accounting for debt and collateral
@@ -767,7 +803,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         bytes32 _cdpId = _partialState._cdpId;
 
         // ensure new ICR does NOT decrease due to partial liquidation
-        require(getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
+        // if original ICR is above LICR
+        if (_partialState._ICR > LICR) {
+            require(
+                getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR,
+                "!_newICR>=_ICR"
+            );
+        }
 
         // reInsert into sorted CDP list
         _contractsCache.sortedCdps.reInsert(
@@ -789,7 +831,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
     function _finalizeExternalLiquidation(
         ContractsCache memory _contractsCache,
         uint256 totalDebtToBurn,
-        uint256 totalColToSend
+        uint256 totalColToSend,
+        uint256 totalDebtToRedistribute
     ) internal {
         // update the staking and collateral snapshots
         _updateSystemSnapshots_excludeCollRemainder(
@@ -799,6 +842,16 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         );
 
         emit Liquidation(totalDebtToBurn, totalColToSend);
+
+        // redistribute debt if any
+        if (totalDebtToRedistribute > 0) {
+            _redistributeDebtAndColl(
+                _contractsCache.activePool,
+                _contractsCache.defaultPool,
+                totalDebtToRedistribute,
+                0
+            );
+        }
 
         // burn the debt from liquidator
         _contractsCache.ebtcToken.burn(msg.sender, totalDebtToBurn);
@@ -815,20 +868,32 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         uint _ICR,
         uint _price,
         uint _totalDebtToBurn,
-        uint _totalColToSend
-    ) private view returns (uint cappedColPortion, uint collSurplus) {
+        uint _totalColToSend,
+        bool _fullLiquidation
+    ) private view returns (uint cappedColPortion, uint collSurplus, uint debtToRedistribute) {
         // Calculate liquidation incentive for liquidator:
-        // If ICR is less than 100%: give away entire collateral to liquidator
-        // If ICR is between 100% and 105%: give away entire collateral as is totalDebt.mul(ICR).div(price)
-        // If ICR is more than 105%: give away 100% + 5% worth of collateral to liquidator
+        // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt.mul(103%).div(price)
+        // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt.mul(min(ICR, 110%)).div(price)
         // Add LIQUIDATOR_REWARD in case not giving entire collateral away
-        if (_ICR > _105pct) {
-            cappedColPortion = collateral.getSharesByPooledEth(
-                _totalDebtToBurn.mul(_105pct).div(_price).add(LIQUIDATOR_REWARD)
-            );
+        uint _incentiveColl;
+        if (_ICR > LICR) {
+            _incentiveColl = _totalDebtToBurn.mul(_ICR > MCR ? MCR : _ICR).div(_price);
         } else {
-            cappedColPortion = _totalColToSend;
+            if (_fullLiquidation) {
+                // for full liquidation, there would be some bad debt to redistribute
+                _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
+                uint _debtToRepay = _incentiveColl.mul(_price).div(LICR);
+                debtToRedistribute = _debtToRepay < _totalDebtToBurn
+                    ? _totalDebtToBurn.sub(_debtToRepay)
+                    : 0;
+            } else {
+                // for partial liquidation, new ICR would deteriorate
+                // since we give more incentive (103%) than current _ICR allowed
+                _incentiveColl = _totalDebtToBurn.mul(LICR).div(_price);
+            }
         }
+        _incentiveColl = _incentiveColl.add(_fullLiquidation ? LIQUIDATOR_REWARD : 0);
+        cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
         cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
         collSurplus = (cappedColPortion == _totalColToSend)
             ? 0
@@ -900,7 +965,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _finalizeExternalLiquidation(
             contractsCache,
             totals.totalDebtToOffset,
-            totals.totalCollToSendToLiquidator
+            totals.totalCollToSendToLiquidator,
+            totals.totalDebtToRedistribute
         );
     }
 
@@ -1029,6 +1095,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             _TCR,
             0,
             0,
+            0,
             0
         );
 
@@ -1041,6 +1108,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
+        singleLiquidation.debtToRedistribute = _outputState.totalDebtToRedistribute;
     }
 
     function _getLiquidationValuesRecoveryMode(
@@ -1059,7 +1127,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
             0,
             vars.cdpId,
             _price,
-            vars.ICR
+            vars.ICR,
+            0
         );
 
         LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
@@ -1071,6 +1140,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
         singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
         singleLiquidation.collSurplus = _outputState.totalColSurplus;
+        singleLiquidation.debtToRedistribute = _outputState.totalDebtToRedistribute;
     }
 
     /*
@@ -1134,7 +1204,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         _finalizeExternalLiquidation(
             contractsCache,
             totals.totalDebtToOffset,
-            totals.totalCollToSendToLiquidator
+            totals.totalCollToSendToLiquidator,
+            totals.totalDebtToRedistribute
         );
     }
 
@@ -1751,6 +1822,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
 
         // Returns true if there have been any redemptions or pending interest
         return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+            rewardSnapshots[_cdpId].EBTCDebt < L_EBTCDebt ||
             rewardSnapshots[_cdpId].EBTCInterest < L_EBTCInterest_new); // Includes the case for interest on L_EBTCDebt
     }
 
@@ -1919,7 +1991,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager {
         // Transfer coll and debt from ActivePool to DefaultPool
         _activePool.decreaseEBTCDebt(_debt);
         _defaultPool.increaseEBTCDebt(_debt);
-        _activePool.sendETH(address(_defaultPool), _coll);
+        if (_coll > 0) {
+            _activePool.sendETH(address(_defaultPool), _coll);
+        }
     }
 
     // New pending reward functions for interest rates
