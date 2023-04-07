@@ -134,25 +134,17 @@ class MainnetDeploymentHelper {
 
   async deployEBTCContractsMainnet(bountyAddress, lpRewardsAddress, multisigAddress, deploymentState) {
     const lqtyStakingFactory = await this.getFactory("FeeRecipient")
-    const lockupContractFactory_Factory = await this.getFactory("LockupContractFactory")
-    const communityIssuanceFactory = await this.getFactory("CommunityIssuance")
 
     const feeRecipient = await this.loadOrDeploy(lqtyStakingFactory, 'feeRecipient', deploymentState)
-    const lockupContractFactory = await this.loadOrDeploy(lockupContractFactory_Factory, 'lockupContractFactory', deploymentState)
-    const communityIssuance = await this.loadOrDeploy(communityIssuanceFactory, 'communityIssuance', deploymentState)
 
     if (!this.configParams.ETHERSCAN_BASE_URL) {
       console.log('No Etherscan Url defined, skipping verification')
     } else {
       await this.verifyContract('feeRecipient', deploymentState)
-      await this.verifyContract('lockupContractFactory', deploymentState)
-      await this.verifyContract('communityIssuance', deploymentState)
     }
 
     const EBTCContracts = {
-      feeRecipient,
-      lockupContractFactory,
-      communityIssuance
+      feeRecipient
     }
     return EBTCContracts
   }
@@ -286,12 +278,6 @@ class MainnetDeploymentHelper {
         coreContracts.cdpManager.address, 
         coreContracts.borrowerOperations.address,
         coreContracts.activePool.address,
-	{gasPrice}
-      ))
-
-    await this.isOwnershipRenounced(EBTCContracts.communityIssuance) ||
-      await this.sendAndWaitForTransaction(EBTCContracts.communityIssuance.setAddresses(
-        EBTCContracts.lqtyToken.address,
 	{gasPrice}
       ))
   }
