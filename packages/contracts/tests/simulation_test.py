@@ -24,7 +24,7 @@ class Contracts:
     borrowerOperations: Optional[Contract] = None
     hintHelpers: Optional[Contract] = None
     ebtcToken: Optional[Contract] = None
-    lqtyStaking: Optional[Contract] = None
+    feeRecipient: Optional[Contract] = None
     communityIssuance: Optional[Contract] = None
     lockupContractFactory: Optional[Contract] = None
     lqtyToken: Optional[Contract] = None
@@ -49,7 +49,7 @@ def set_addresses(contracts):
         contracts.ebtcToken.address,
         contracts.sortedCdps.address,
         contracts.lqtyToken.address,
-        contracts.lqtyStaking.address,
+        contracts.feeRecipient.address,
         {'from': accounts[0]}
     )
 
@@ -63,7 +63,7 @@ def set_addresses(contracts):
         contracts.priceFeedTestnet.address,
         contracts.sortedCdps.address,
         contracts.ebtcToken.address,
-        contracts.lqtyStaking.address,
+        contracts.feeRecipient.address,
         {'from': accounts[0]}
     )
 
@@ -106,7 +106,7 @@ def set_addresses(contracts):
     )
 
     # LQTY
-    contracts.lqtyStaking.setAddresses(
+    contracts.feeRecipient.setAddresses(
         contracts.lqtyToken.address,
         contracts.ebtcToken.address,
         contracts.cdpManager.address,
@@ -150,12 +150,12 @@ def contracts():
         {'from': accounts[0]}
     )
     # LQTY
-    contracts.lqtyStaking = LQTYStaking.deploy({'from': accounts[0]})  # noqa
+    contracts.feeRecipient = FeeRecipient.deploy({'from': accounts[0]})  # noqa
     contracts.communityIssuance = CommunityIssuance.deploy({'from': accounts[0]})  # noqa
     contracts.lockupContractFactory = LockupContractFactory.deploy({'from': accounts[0]})  # noqa
     contracts.lqtyToken = LQTYToken.deploy(  # noqa
         contracts.communityIssuance.address,
-        contracts.lqtyStaking.address,
+        contracts.feeRecipient.address,
         contracts.lockupContractFactory.address,
         accounts[0],  # bountyAddress
         accounts[0],  # lpRewardsAddress

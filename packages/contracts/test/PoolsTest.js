@@ -22,7 +22,7 @@ contract('ActivePool', async accounts => {
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     collToken = await CollateralTokenTester.new()
-    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress)
+    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)
   })
 
   it('getETH(): gets the recorded ETH balance', async () => {
@@ -142,7 +142,7 @@ contract('DefaultPool', async accounts => {
     const dumbContractAddress = (await NonPayable.new()).address	  
     collToken = await CollateralTokenTester.new()
 	  
-    await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress)	  
+    await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
     await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
   })
 

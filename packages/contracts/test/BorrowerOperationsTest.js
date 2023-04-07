@@ -49,8 +49,7 @@ contract('BorrowerOperations', async accounts => {
   let activePool
   let defaultPool
   let borrowerOperations
-  let lqtyStaking
-  let lqtyToken
+  let feeRecipient
 
   let contracts
   let _signer 
@@ -84,9 +83,8 @@ contract('BorrowerOperations', async accounts => {
       contracts.borrowerOperations = await BorrowerOperationsTester.new()
       contracts.cdpManager = await CdpManagerTester.new()
       contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
-      const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+      const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
 
-      await deploymentHelper.connectLQTYContracts(LQTYContracts)
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
       await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
@@ -105,10 +103,7 @@ contract('BorrowerOperations', async accounts => {
       hintHelpers = contracts.hintHelpers
       debtToken = ebtcToken;
 
-      lqtyStaking = LQTYContracts.lqtyStaking
-      lqtyToken = LQTYContracts.lqtyToken
-      communityIssuance = LQTYContracts.communityIssuance
-      lockupContractFactory = LQTYContracts.lockupContractFactory
+      feeRecipient = LQTYContracts.feeRecipient
 
       EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
       MIN_NET_DEBT = await borrowerOperations.MIN_NET_DEBT()
@@ -365,8 +360,8 @@ contract('BorrowerOperations', async accounts => {
 
       const alicePendingETHReward = await cdpManager.getPendingETHReward(aliceIndex)
       const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
+      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.eq(toBN('0')))
       }
@@ -811,9 +806,9 @@ contract('BorrowerOperations', async accounts => {
 
       // Check A and B have pending rewards
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
+      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
-      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
         assert.isTrue(reward.eq(toBN('0')))
       }
@@ -1172,11 +1167,11 @@ contract('BorrowerOperations', async accounts => {
     xit("withdrawEBTC(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1200,7 +1195,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(th._100pct, dec(37, 18), C, C, { from: D })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -1208,8 +1203,8 @@ contract('BorrowerOperations', async accounts => {
       xit("withdrawEBTC(): borrowing at non-zero base records the (drawn debt + fee) on the Cdp struct", async () => {
         // time fast-forwards 1 year, and multisig stakes 1 LQTY
         await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-        await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-        await lqtyStaking.stake(dec(1, 18), { from: multisig })
+        await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+        await feeRecipient.stake(dec(1, 18), { from: multisig })
 
         await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
         await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
@@ -1243,11 +1238,11 @@ contract('BorrowerOperations', async accounts => {
     xit("withdrawEBTC(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY contract EBTC fees-per-unit-staked is zero
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.equal(F_EBTC_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1271,18 +1266,18 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(th._100pct, toBN(dec(37, 18)), D, D, { from: D })
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
     })
 
     xit("withdrawEBTC(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1309,7 +1304,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.withdrawEBTC(th._100pct, D_EBTCRequest, D, D, { from: D })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance now equals their initial balance plus request EBTC
@@ -1330,20 +1325,20 @@ contract('BorrowerOperations', async accounts => {
 
       // A artificially receives LQTY, then stakes it
       await lqtyToken.unprotectedMint(A, dec(100, 18))
-      await lqtyStaking.stake(dec(100, 18), { from: A })
+      await feeRecipient.stake(dec(100, 18), { from: A })
 
       // 2 hours pass
       th.fastForwardTime(7200, web3.currentProvider)
 
       // Check LQTY EBTC balance before == 0
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.equal(F_EBTC_Before, '0')
 
       // D withdraws EBTC
       await borrowerOperations.withdrawEBTC(th._100pct, dec(37, 18), D, D, { from: D })
 
       // Check LQTY EBTC balance after > 0
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.gt('0'))
     })
 
@@ -2008,11 +2003,11 @@ contract('BorrowerOperations', async accounts => {
     xit("adjustCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -2035,7 +2030,7 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
 
@@ -2043,8 +2038,8 @@ contract('BorrowerOperations', async accounts => {
       xit("adjustCdp(): borrowing at non-zero base records the (drawn debt + fee) on the Cdp struct", async () => {
         // time fast-forwards 1 year, and multisig stakes 1 LQTY
         await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-        await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-        await lqtyStaking.stake(dec(1, 18), { from: multisig })
+        await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+        await feeRecipient.stake(dec(1, 18), { from: multisig })
 
         await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
         await openCdp({ extraEBTCAmount: toBN(dec(30, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: A } })
@@ -2079,11 +2074,11 @@ contract('BorrowerOperations', async accounts => {
     xit("adjustCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY contract EBTC fees-per-unit-staked is zero
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.equal(F_EBTC_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -2107,18 +2102,18 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustCdp(th._100pct, 0, dec(37, 18), true, D, D, { from: D })
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
     })
 
     xit("adjustCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -2145,7 +2140,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustCdp(th._100pct, 0, EBTCRequest_D, true, D, D, { from: D })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance has increased by their requested EBTC
@@ -2168,18 +2163,19 @@ contract('BorrowerOperations', async accounts => {
       th.fastForwardTime(7200, web3.currentProvider)
 
       // Check staking EBTC balance before > 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_Before.eq(toBN('0')))
 
       // D adjusts cdp
       await borrowerOperations.adjustCdp(DIndex, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance after > staking balance before
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.eq(lqtyStaking_EBTCBalance_Before))
     })
-
-    it("adjustCdp(): Borrowing at zero base rate changes LQTY staking contract EBTC fees-per-unit-staked", async () => {
+    
+    // LQTY Staking adjustments won't occur anymore
+    xit("adjustCdp(): Borrowing at zero base rate changes LQTY staking contract EBTC fees-per-unit-staked", async () => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("50000")});
       await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("50000")});
@@ -2200,17 +2196,17 @@ contract('BorrowerOperations', async accounts => {
 
       // A artificially receives LQTY, then stakes it
       await lqtyToken.unprotectedMint(A, dec(100, 18))
-      await lqtyStaking.stake(dec(100, 18), { from: A })
+      await feeRecipient.stake(dec(100, 18), { from: A })
 
       // Check staking EBTC balance before == 0
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_Before.eq(toBN('0')))
 
       // D adjusts cdp
       await borrowerOperations.adjustCdp(DIndex, 0, dec(37, 18), true, DIndex, DIndex, { from: D })
 
       // Check staking EBTC balance increases
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.eq(F_EBTC_Before))
     })
 
@@ -2484,7 +2480,8 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(actualNewICR.gt(initialICR))
     })
 
-    it("adjustCdp(): debt increase in Recovery Mode charges no fee", async () => {
+    // Debt increase never charges fee
+    xit("adjustCdp(): debt increase in Recovery Mode charges no fee", async () => {
       await openCdp({ extraEBTCAmount: toBN(dec(1, 17)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openCdp({ extraEBTCAmount: toBN(dec(1, 17)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
 
@@ -2499,15 +2496,15 @@ contract('BorrowerOperations', async accounts => {
 
       // B stakes LQTY
       await lqtyToken.unprotectedMint(bob, dec(100, 18))
-      await lqtyStaking.stake(dec(100, 18), { from: bob })
+      await feeRecipient.stake(dec(100, 18), { from: bob })
 
-      const lqtyStakingEBTCBalanceBefore = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStakingEBTCBalanceBefore = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStakingEBTCBalanceBefore.eq(toBN('0')))
       const txAlice = await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, dec(1, 14), true, aliceIndex, aliceIndex, dec(100, 'ether'), { from: alice })
       assert.isTrue(txAlice.receipt.status)
 
       // Check no fee was sent to staking contract
-      const lqtyStakingEBTCBalanceAfter = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStakingEBTCBalanceAfter = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStakingEBTCBalanceAfter.toString(), lqtyStakingEBTCBalanceBefore.toString())
     })
 
@@ -3479,7 +3476,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, toBN('0')), 100)
 
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
+      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
       assert.isTrue(pendingCollReward_A.gt('0'))
       assert.isTrue(pendingDebtReward_A.gt('0'))
 
@@ -3962,11 +3959,11 @@ contract('BorrowerOperations', async accounts => {
     xit("openCdp(): borrowing at non-zero base rate sends EBTC fee to LQTY staking contract", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY EBTC balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("5000")});
@@ -3994,7 +3991,7 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(400, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY EBTC balance after has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
     })
     
@@ -4002,11 +3999,11 @@ contract('BorrowerOperations', async accounts => {
     xit("openCdp(): Borrowing at non-zero base rate increases the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY contract EBTC fees-per-unit-staked is zero
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.equal(F_EBTC_Before, '0')
 
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("5000")});
@@ -4033,7 +4030,7 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check LQTY contract EBTC fees-per-unit-staked has increased
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.gt(F_EBTC_Before))
     })
   
@@ -4041,11 +4038,11 @@ contract('BorrowerOperations', async accounts => {
     xit("openCdp(): Borrowing at non-zero base rate sends requested amount to the user", async () => {
       // time fast-forwards 1 year, and multisig stakes 1 LQTY
       await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-      await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-      await lqtyStaking.stake(dec(1, 18), { from: multisig })
+      await lqtyToken.approve(feeRecipient.address, dec(1, 18), { from: multisig })
+      await feeRecipient.stake(dec(1, 18), { from: multisig })
 
       // Check LQTY Staking contract balance before == 0
-      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_Before = await ebtcToken.balanceOf(feeRecipient.address)
       assert.equal(lqtyStaking_EBTCBalance_Before, '0')
 
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("5000")});
@@ -4073,7 +4070,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.openCdp(EBTCRequest_D, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: D, value: dec(500, 'ether') })
 
       // Check LQTY staking EBTC balance has increased
-      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(lqtyStaking.address)
+      const lqtyStaking_EBTCBalance_After = await ebtcToken.balanceOf(feeRecipient.address)
       assert.isTrue(lqtyStaking_EBTCBalance_After.gt(lqtyStaking_EBTCBalance_Before))
 
       // Check D's EBTC balance now equals their requested EBTC
@@ -4081,7 +4078,8 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(EBTCRequest_D.eq(EBTCBalance_D))
     })
 
-    it("openCdp(): Borrowing at zero base rate changes the LQTY staking contract EBTC fees-per-unit-staked", async () => {
+    // skip: No staking for variables to change 
+    xit("openCdp(): Borrowing at zero base rate changes the LQTY staking contract EBTC fees-per-unit-staked", async () => {
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("5000")});
       await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("10000")});
       await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("10000")});
@@ -4097,18 +4095,18 @@ contract('BorrowerOperations', async accounts => {
       th.fastForwardTime(7200, web3.currentProvider)
 
       // Check EBTC reward per LQTY staked == 0
-      const F_EBTC_Before = await lqtyStaking.F_EBTC()
+      const F_EBTC_Before = await feeRecipient.F_EBTC()
       assert.equal(F_EBTC_Before, '0')
 
       // A stakes LQTY
       await lqtyToken.unprotectedMint(A, dec(100, 18))
-      await lqtyStaking.stake(dec(100, 18), { from: A })
+      await feeRecipient.stake(dec(100, 18), { from: A })
 
       // D opens cdp 
       await openCdp({ extraEBTCAmount: toBN(dec(37, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
       // Check EBTC reward per LQTY staked > 0
-      const F_EBTC_After = await lqtyStaking.F_EBTC()
+      const F_EBTC_After = await feeRecipient.F_EBTC()
       assert.isTrue(F_EBTC_After.eq(toBN('0')))
     })
 

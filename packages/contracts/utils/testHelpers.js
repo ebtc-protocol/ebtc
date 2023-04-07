@@ -1,6 +1,5 @@
 
 const BN = require('bn.js')
-const LockupContract = artifacts.require(("./LockupContract.sol"))
 const Destructible = artifacts.require("./TestContracts/Destructible.sol")
 
 const DEBUG = false
@@ -493,7 +492,7 @@ class TestHelper {
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
     const pendingETHReward = await contracts.cdpManager.getPendingETHReward(account)
-    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))[0]
+    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))
     const entireColl = rawColl.add(pendingETHReward)
     const entireDebt = rawDebt.add(pendingEBTCDebtReward)
 
@@ -1130,30 +1129,6 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  // --- LQTY & Lockup Contract functions ---
-
-  static getLCAddressFromDeploymentTx(deployedLCTx) {
-    return deployedLCTx.logs[0].args[0]
-  }
-
-  static async getLCFromDeploymentTx(deployedLCTx) {
-    const deployedLCAddress = this.getLCAddressFromDeploymentTx(deployedLCTx)  // grab addr of deployed contract from event
-    const LC = await this.getLCFromAddress(deployedLCAddress)
-    return LC
-  }
-
-  static async getLCFromAddress(LCAddress) {
-    const LC = await LockupContract.at(LCAddress)
-    return LC
-  }
-
-
-  static async registerFrontEnds(frontEnds, stabilityPool) {
-    for (const frontEnd of frontEnds) {
-      await stabilityPool.registerFrontEnd(this.dec(5, 17), { from: frontEnd })  // default kickback rate of 50%
-    }
-  }
-
   // --- Time functions ---
 
   static async fastForwardTime(seconds, currentWeb3Provider) {
@@ -1197,8 +1172,8 @@ class TestHelper {
     return Number(days) * (60 * 60 * 24)
   }
 
-  static async getTimeFromSystemDeployment(lqtyToken, web3, timePassedSinceDeployment) {
-    const deploymentTime = await lqtyToken.getDeploymentStartTime()
+  static async getTimeFromSystemDeployment(cdpManager, web3, timePassedSinceDeployment) {
+    const deploymentTime = await cdpManager.getDeploymentStartTime()
     return this.toBN(deploymentTime).add(this.toBN(timePassedSinceDeployment))
   }
 

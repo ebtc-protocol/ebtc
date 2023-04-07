@@ -32,7 +32,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -49,7 +50,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
@@ -522,7 +522,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _rewardETH = await cdpManager.getPendingETHReward(_aliceCdpId);
       assert.isTrue(toBN(_rewardETH.toString()).gt(toBN('0')));
       let _rewardEBTCDebt = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
-      assert.isTrue(toBN(_rewardEBTCDebt[0].toString()).gt(toBN('0')));	
+      assert.isTrue(toBN(_rewardEBTCDebt.toString()).gt(toBN('0')));	
 	  
       // liquidator bob coming in firstly partially liquidate some portion(0.1 EBTC) of alice
       let _partialAmount = toBN("100000000000000000"); // 0.1e18

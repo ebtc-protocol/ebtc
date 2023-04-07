@@ -58,7 +58,7 @@ $ hardhat test
       ✓ reinsert(): reverts when called by an account that is neither BorrowerOps nor CdpManager
     LockupContract
       ✓ withdrawLQTY(): reverts when caller is not beneficiary (68ms)
-    LQTYStaking
+    FeeRecipient
       ✓ increaseF_EBTC(): reverts when caller is not CdpManager
     LQTYToken
       ✓ sendToLQTYStaking(): reverts when caller is not the LQTYSstaking (49ms)
@@ -260,7 +260,7 @@ $ hardhat test
     ✓ Sets the correct ActivePool address in CdpManager
     ✓ Sets the correct DefaultPool address in CdpManager
     ✓ Sets the correct StabilityPool address in CdpManager
-    ✓ Sets the correct LQTYStaking address in CdpManager
+    ✓ Sets the correct FeeRecipient address in CdpManager
     ✓ Sets the correct StabilityPool address in ActivePool
     ✓ Sets the correct DefaultPool address in ActivePool (133ms)
     ✓ Sets the correct BorrowerOperations address in ActivePool
@@ -278,14 +278,14 @@ $ hardhat test
     ✓ Sets the correct SortedCdps address in BorrowerOperations
     ✓ Sets the correct ActivePool address in BorrowerOperations
     ✓ Sets the correct DefaultPool address in BorrowerOperations
-    ✓ Sets the correct LQTYStaking address in BorrowerOperations
-    ✓ Sets the correct LQTYToken address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct BorrowerOperations address in LQTYStaking
+    ✓ Sets the correct FeeRecipient address in BorrowerOperations
+    ✓ Sets the correct LQTYToken address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct BorrowerOperations address in FeeRecipient
     ✓ Sets the correct CommunityIssuance address in LQTYToken
-    ✓ Sets the correct LQTYStaking address in LQTYToken
+    ✓ Sets the correct FeeRecipient address in LQTYToken
     ✓ Sets the correct LockupContractFactory address in LQTYToken
     ✓ Sets the correct LQTYToken address in LockupContractFactory
     ✓ Sets the correct LQTYToken address in CommunityIssuance
@@ -364,7 +364,7 @@ TCR: 11.892415157517211309
     ✓ mint(): reverts when beneficiary is address(0)
     ✓ increaseAllowance(): increases an account's allowance by the correct amount
     ✓ decreaseAllowance(): decreases an account's allowance by the correct amount
-    ✓ sendToLQTYStaking(): changes balances of LQTYStaking and calling account by the correct amounts (48ms)
+    ✓ sendToLQTYStaking(): changes balances of FeeRecipient and calling account by the correct amounts (48ms)
     ✓ Initializes PERMIT_TYPEHASH correctly
     ✓ Initializes DOMAIN_SEPARATOR correctly
     ✓ Initial nonce for a given address is 0
@@ -400,10 +400,10 @@ TCR: 11.892415157517211309
       ✓ LQTY multisig can't withraw from a LC which it funded (271ms)
       ✓ No one can withraw from a LC (78ms)
 
-  Contract: Deploying the LQTY contracts: LCF, CI, LQTYStaking, and LQTYToken 
+  Contract: Deploying the LQTY contracts: LCF, CI, FeeRecipient, and LQTYToken 
     CommunityIssuance deployment
       ✓ Stores the deployer's address
-    LQTYStaking deployment
+    FeeRecipient deployment
       ✓ Stores the deployer's address
     LQTYToken deployment
       ✓ Stores the multisig's address
@@ -418,8 +418,8 @@ TCR: 11.892415157517211309
       ✓ Has a supply cap of 32 million
       ✓ Liquity AG can set addresses if CI's LQTY balance is equal or greater than 32 million  (393ms)
       ✓ Liquity AG can't set addresses if CI's LQTY balance is < 32 million  (367ms)
-    Connecting LQTYToken to LCF, CI and LQTYStaking
-      ✓ sets the correct LQTYToken address in LQTYStaking (1866ms)
+    Connecting LQTYToken to LCF, CI and FeeRecipient
+      ✓ sets the correct LQTYToken address in FeeRecipient (1866ms)
       ✓ sets the correct LQTYToken address in LockupContractFactory
       ✓ sets the correct LQTYToken address in CommunityIssuance (203ms)
 
@@ -543,7 +543,7 @@ issuance fraction after: 949066037374286
     - Frequent token issuance: issuance event every minute, for 1 month
     - Frequent token issuance: issuance event every minute, for 1 year
 
-  Contract: LQTYStaking revenue share tests
+  Contract: FeeRecipient revenue share tests
     ✓ stake(): reverts if amount is zero (74ms)
     ✓ ETH fee per LQTY staked increases when a redemption fee is triggered and totalStakes > 0 (1562ms)
     ✓ ETH fee per LQTY staked doesn't change when a redemption fee is triggered and totalStakes == 0 (3540ms)
@@ -621,7 +621,7 @@ issuance fraction after: 949066037374286
       ✓ setParams(): reverts when called by non-owner, with wrong addresses, or twice (157ms)
     CommunityIssuance
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (136ms)
-    LQTYStaking
+    FeeRecipient
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (261ms)
     LockupContractFactory
       ✓ setLQTYAddress(): reverts when called by non-owner, with wrong address, or twice (216ms)

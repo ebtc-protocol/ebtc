@@ -106,9 +106,8 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         while (vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0) {
             uint pendingEBTC;
             {
-                (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager
-                    .getPendingEBTCDebtReward(vars.currentCdpId);
-                pendingEBTC = pendingEBTCDebtReward.add(pendingEBTCInterest);
+                uint pendingEBTCDebtReward = cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
+                pendingEBTC = pendingEBTCDebtReward;
             }
 
             uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId)).add(
@@ -152,7 +151,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         if (_oldIndex < _newIndex) {
             ETH = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, ETH, , , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, ETH, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
         }
 
         vars.remainingEBTC = vars.remainingEBTC.sub(maxRedeemableEBTC);

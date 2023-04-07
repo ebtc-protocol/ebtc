@@ -7,7 +7,7 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/ILQTYStaking.sol";
+import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -32,7 +32,7 @@ contract BorrowerOperations is
 
     ICollSurplusPool collSurplusPool;
 
-    ILQTYStaking public lqtyStaking;
+    IFeeRecipient public feeRecipient;
     address public lqtyStakingAddress;
 
     IEBTCToken public ebtcToken;
@@ -100,7 +100,7 @@ contract BorrowerOperations is
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
     event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
@@ -124,7 +124,7 @@ contract BorrowerOperations is
         address _priceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
-        address _lqtyStakingAddress,
+        address _feeRecipientAddress,
         address _collTokenAddress
     ) external override onlyOwner {
         // This makes impossible to open a cdp with zero withdrawn EBTC
@@ -138,7 +138,7 @@ contract BorrowerOperations is
         checkContract(_priceFeedAddress);
         checkContract(_sortedCdpsAddress);
         checkContract(_ebtcTokenAddress);
-        checkContract(_lqtyStakingAddress);
+        checkContract(_feeRecipientAddress);
         checkContract(_collTokenAddress);
 
         cdpManager = ICdpManager(_cdpManagerAddress);
@@ -149,8 +149,8 @@ contract BorrowerOperations is
         priceFeed = IPriceFeed(_priceFeedAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        lqtyStakingAddress = _lqtyStakingAddress;
-        lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
+        lqtyStakingAddress = _feeRecipientAddress;
+        feeRecipient = IFeeRecipient(_feeRecipientAddress);
         collateral = ICollateralToken(_collTokenAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
@@ -161,7 +161,7 @@ contract BorrowerOperations is
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit EBTCTokenAddressChanged(_ebtcTokenAddress);
-        emit LQTYStakingAddressChanged(_lqtyStakingAddress);
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
         _renounceOwnership();
@@ -182,10 +182,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         // Reverse ETH/BTC price to BTC/ETH
-        bool isRecoveryMode = _checkRecoveryMode(
-            vars.price,
-            cdpManager.lastInterestRateUpdateTime()
-        );
+        bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         vars.netDebt = _EBTCAmount;
 
@@ -375,10 +372,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         // Reversed BTC/ETH price
-        bool isRecoveryMode = _checkRecoveryMode(
-            vars.price,
-            cdpManager.lastInterestRateUpdateTime()
-        );
+        bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -661,7 +655,7 @@ contract BorrowerOperations is
 
     function _requireNotInRecoveryMode(uint _price) internal view {
         require(
-            !_checkRecoveryMode(_price, cdpManager.lastInterestRateUpdateTime()),
+            !_checkRecoveryMode(_price),
             "BorrowerOps: Operation not permitted during Recovery Mode"
         );
     }
@@ -833,7 +827,7 @@ contract BorrowerOperations is
     ) internal view returns (uint) {
         uint _shareColl = getEntireSystemColl();
         uint totalColl = collateral.getPooledEthByShares(_shareColl);
-        uint totalDebt = _getEntireSystemDebt(cdpManager.lastInterestRateUpdateTime());
+        uint totalDebt = _getEntireSystemDebt();
 
         totalColl = _isCollIncrease ? totalColl.add(_collChange) : totalColl.sub(_collChange);
         totalDebt = _isDebtIncrease ? totalDebt.add(_debtChange) : totalDebt.sub(_debtChange);
