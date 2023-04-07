@@ -13,10 +13,7 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   let defaultPool
   let functionCaller
   let borrowerOperations
-  let lqtyStaking
-  let lqtyToken
-  let communityIssuance
-  let lockupContractFactory
+  let feeRecipient
 
   before(async () => {
     const coreContracts = await deploymentHelper.deployLiquityCore()
@@ -31,12 +28,8 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
 
-    lqtyStaking = LQTYContracts.lqtyStaking
-    lqtyToken = LQTYContracts.lqtyToken
-    communityIssuance = LQTYContracts.communityIssuance
-    lockupContractFactory = LQTYContracts.lockupContractFactory
+    feeRecipient = LQTYContracts.feeRecipient
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
   })
@@ -92,10 +85,10 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   })
 
   // LQTY Staking in CdpM
-  it('Sets the correct LQTYStaking address in CdpManager', async () => {
-    const lqtyStakingAddress = lqtyStaking.address
+  it('Sets the correct FeeRecipient address in CdpManager', async () => {
+    const lqtyStakingAddress = feeRecipient.address
 
-    const recordedLQTYStakingAddress = await cdpManager.lqtyStaking()
+    const recordedLQTYStakingAddress = await cdpManager.feeRecipient()
     assert.equal(lqtyStakingAddress, recordedLQTYStakingAddress)
   })
 
@@ -197,8 +190,8 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   })
 
   // LQTY Staking in BO
-  it('Sets the correct LQTYStaking address in BorrowerOperations', async () => {
-    const lqtyStakingAddress = lqtyStaking.address
+  it('Sets the correct FeeRecipient address in BorrowerOperations', async () => {
+    const lqtyStakingAddress = feeRecipient.address
 
     const recordedLQTYStakingAddress = await borrowerOperations.lqtyStakingAddress()
     assert.equal(lqtyStakingAddress, recordedLQTYStakingAddress)
@@ -207,89 +200,43 @@ contract('Deployment script - Sets correct contract addresses dependencies after
 
   // --- LQTY Staking ---
 
-  // Sets LQTYToken in LQTYStaking
-  it('Sets the correct LQTYToken address in LQTYStaking', async () => {
-    const lqtyTokenAddress = lqtyToken.address
-
-    const recordedLQTYTokenAddress = await lqtyStaking.lqtyToken()
-    assert.equal(lqtyTokenAddress, recordedLQTYTokenAddress)
-  })
-
-  // Sets ActivePool in LQTYStaking
-  it('Sets the correct ActivePool address in LQTYStaking', async () => {
+  // Sets ActivePool in FeeRecipient
+  it('Sets the correct ActivePool address in FeeRecipient', async () => {
     const activePoolAddress = activePool.address
 
-    const recordedActivePoolAddress = await lqtyStaking.activePoolAddress()
+    const recordedActivePoolAddress = await feeRecipient.activePoolAddress()
     assert.equal(activePoolAddress, recordedActivePoolAddress)
   })
 
-  // Sets EBTCToken in LQTYStaking
-  it('Sets the correct ActivePool address in LQTYStaking', async () => {
+  // Sets EBTCToken in FeeRecipient
+  it('Sets the correct ActivePool address in FeeRecipient', async () => {
     const ebtcTokenAddress = ebtcToken.address
 
-    const recordedEBTCTokenAddress = await lqtyStaking.ebtcToken()
+    const recordedEBTCTokenAddress = await feeRecipient.ebtcToken()
     assert.equal(ebtcTokenAddress, recordedEBTCTokenAddress)
   })
 
-  // Sets CdpManager in LQTYStaking
-  it('Sets the correct ActivePool address in LQTYStaking', async () => {
+  // Sets CdpManager in FeeRecipient
+  it('Sets the correct ActivePool address in FeeRecipient', async () => {
     const cdpManagerAddress = cdpManager.address
 
-    const recordedCdpManagerAddress = await lqtyStaking.cdpManagerAddress()
+    const recordedCdpManagerAddress = await feeRecipient.cdpManagerAddress()
     assert.equal(cdpManagerAddress, recordedCdpManagerAddress)
   })
 
-  // Sets BorrowerOperations in LQTYStaking
-  it('Sets the correct BorrowerOperations address in LQTYStaking', async () => {
+  // Sets BorrowerOperations in FeeRecipient
+  it('Sets the correct BorrowerOperations address in FeeRecipient', async () => {
     const borrowerOperationsAddress = borrowerOperations.address
 
-    const recordedBorrowerOperationsAddress = await lqtyStaking.borrowerOperationsAddress()
+    const recordedBorrowerOperationsAddress = await feeRecipient.borrowerOperationsAddress()
     assert.equal(borrowerOperationsAddress, recordedBorrowerOperationsAddress)
   })
 
-  // ---  LQTYToken ---
+  // Sets CollateralToken in FeeRecipient
+  it('Sets the correct CollateralToken address in FeeRecipient', async () => {
+    const borrowerOperationsAddress = borrowerOperations.address
 
-  // Sets CI in LQTYToken
-  it('Sets the correct CommunityIssuance address in LQTYToken', async () => {
-    const communityIssuanceAddress = communityIssuance.address
-
-    const recordedcommunityIssuanceAddress = await lqtyToken.communityIssuanceAddress()
-    assert.equal(communityIssuanceAddress, recordedcommunityIssuanceAddress)
-  })
-
-  // Sets LQTYStaking in LQTYToken
-  it('Sets the correct LQTYStaking address in LQTYToken', async () => {
-    const lqtyStakingAddress = lqtyStaking.address
-
-    const recordedLQTYStakingAddress =  await lqtyToken.lqtyStakingAddress()
-    assert.equal(lqtyStakingAddress, recordedLQTYStakingAddress)
-  })
-
-  // Sets LCF in LQTYToken
-  it('Sets the correct LockupContractFactory address in LQTYToken', async () => {
-    const LCFAddress = lockupContractFactory.address
-
-    const recordedLCFAddress =  await lqtyToken.lockupContractFactory()
-    assert.equal(LCFAddress, recordedLCFAddress)
-  })
-
-  // --- LCF  ---
-
-  // Sets LQTYToken in LockupContractFactory
-  it('Sets the correct LQTYToken address in LockupContractFactory', async () => {
-    const lqtyTokenAddress = lqtyToken.address
-
-    const recordedLQTYTokenAddress = await lockupContractFactory.lqtyTokenAddress()
-    assert.equal(lqtyTokenAddress, recordedLQTYTokenAddress)
-  })
-
-  // --- CI ---
-
-  // Sets LQTYToken in CommunityIssuance
-  it('Sets the correct LQTYToken address in CommunityIssuance', async () => {
-    const lqtyTokenAddress = lqtyToken.address
-
-    const recordedLQTYTokenAddress = await communityIssuance.lqtyToken()
-    assert.equal(lqtyTokenAddress, recordedLQTYTokenAddress)
+    const recordedBorrowerOperationsAddress = await feeRecipient.borrowerOperationsAddress()
+    assert.equal(borrowerOperationsAddress, recordedBorrowerOperationsAddress)
   })
 })

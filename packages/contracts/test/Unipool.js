@@ -7,7 +7,6 @@ const { TestHelper } = require('../utils/testHelpers.js');
 const { assertRevert } = TestHelper;
 
 const Uni = artifacts.require('ERC20Mock');
-const Lqty = artifacts.require('LQTYToken');
 const Unipool = artifacts.require('Unipool');
 const NonPayable = artifacts.require('NonPayable');
 
@@ -49,11 +48,11 @@ contract('Unipool', function ([_, wallet1, wallet2, wallet3, wallet4, bountyAddr
       that.pool = await Unipool.new();
 
       const communityIssuance = await NonPayable.new();
-      const lqtyStaking = await NonPayable.new();
+      const feeRecipient = await NonPayable.new();
       const lockupContractFactory = await NonPayable.new();
       that.lqty = await Lqty.new(
         communityIssuance.address,
-        lqtyStaking.address,
+        feeRecipient.address,
         lockupContractFactory.address,
         bountyAddress,
         that.pool.address,
@@ -74,7 +73,7 @@ contract('Unipool', function ([_, wallet1, wallet2, wallet3, wallet4, bountyAddr
       await that.uni.approve(that.pool.address, new BN(2).pow(new BN(255)), { from: wallet4 });
   };
 
-  describe('Unipool', async function () {
+  xdescribe('Unipool', async function () {
     beforeEach(async function () {
       await deploy(this);
       await this.pool.setParams(this.lqty.address, this.uni.address, this.DURATION);
@@ -426,7 +425,7 @@ contract('Unipool', function ([_, wallet1, wallet2, wallet3, wallet4, bountyAddr
     });
   });
 
-  describe('Unipool, before calling setAddresses', async function () {
+  xdescribe('Unipool, before calling setAddresses', async function () {
     beforeEach(async function () {
       await deploy(this);
     });

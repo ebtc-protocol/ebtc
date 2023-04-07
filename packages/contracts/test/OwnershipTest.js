@@ -19,10 +19,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
   let defaultPool
   let borrowerOperations
 
-  let lqtyStaking
-  let communityIssuance
-  let lqtyToken 
-  let lockupContractFactory
+  let feeRecipient
 
   before(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
@@ -37,10 +34,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
     defaultPool = contracts.defaultPool
     borrowerOperations = contracts.borrowerOperations
 
-    lqtyStaking = LQTYContracts.lqtyStaking
-    communityIssuance = LQTYContracts.communityIssuance
-    lqtyToken = LQTYContracts.lqtyToken
-    lockupContractFactory = LQTYContracts.lockupContractFactory
+    feeRecipient = LQTYContracts.feeRecipient
   })
 
   const testZeroAddress = async (contract, params, method = 'setAddresses', skip = 0) => {
@@ -96,7 +90,7 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
 
   describe('ActivePool', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(activePool, 5)
+      await testSetAddresses(activePool, 6)
     })
   })
 
@@ -122,48 +116,9 @@ contract('All Liquity functions with onlyOwner modifier', async accounts => {
     })
   })
 
-  describe('CommunityIssuance', async accounts => {
+  describe('FeeRecipient', async accounts => {
     it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      const params = [lqtyToken.address]
-      await th.assertRevert(communityIssuance.setAddresses(...params, { from: alice }))
-
-      // Attempt to use zero address
-      await testZeroAddress(communityIssuance, params)
-      // Attempt to use non contract
-      await testNonContractAddress(communityIssuance, params)
-
-      // Owner can successfully set any address
-      const txOwner = await communityIssuance.setAddresses(...params, { from: owner })
-
-      assert.isTrue(txOwner.receipt.status)
-      // fails if called twice
-      await th.assertRevert(communityIssuance.setAddresses(...params, { from: owner }))
-    })
-  })
-
-  describe('LQTYStaking', async accounts => {
-    it("setAddresses(): reverts when called by non-owner, with wrong addresses, or twice", async () => {
-      await testSetAddresses(lqtyStaking, 6)
-    })
-  })
-
-  describe('LockupContractFactory', async accounts => {
-    it("setLQTYAddress(): reverts when called by non-owner, with wrong address, or twice", async () => {
-      await th.assertRevert(lockupContractFactory.setLQTYTokenAddress(lqtyToken.address, { from: alice }))
-
-      const params = [lqtyToken.address]
-
-      // Attempt to use zero address
-      await testZeroAddress(lockupContractFactory, params, 'setLQTYTokenAddress')
-      // Attempt to use non contract
-      await testNonContractAddress(lockupContractFactory, params, 'setLQTYTokenAddress')
-
-      // Owner can successfully set any address
-      const txOwner = await lockupContractFactory.setLQTYTokenAddress(lqtyToken.address, { from: owner })
-
-      assert.isTrue(txOwner.receipt.status)
-      // fails if called twice
-      await th.assertRevert(lockupContractFactory.setLQTYTokenAddress(lqtyToken.address, { from: owner }))
+      await testSetAddresses(feeRecipient, 5)
     })
   })
 })

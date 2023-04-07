@@ -6,8 +6,7 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/ILQTYToken.sol";
-import "./Interfaces/ILQTYStaking.sol";
+import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -28,9 +27,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
 
     IEBTCToken public override ebtcToken;
 
-    ILQTYToken public override lqtyToken;
-
-    ILQTYStaking public override lqtyStaking;
+    IFeeRecipient public override feeRecipient;
 
     // A doubly linked list of Cdps, sorted by their sorted by their collateral ratios
     ISortedCdps public sortedCdps;
@@ -52,6 +49,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
+
+    uint internal immutable deploymentStartTime;
 
     /*
      * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
@@ -245,7 +244,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         IActivePool activePool;
         IDefaultPool defaultPool;
         IEBTCToken ebtcToken;
-        ILQTYStaking lqtyStaking;
+        IFeeRecipient feeRecipient;
         ISortedCdps sortedCdps;
         ICollSurplusPool collSurplusPool;
         address gasPoolAddress;
@@ -279,8 +278,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event LQTYTokenAddressChanged(address _lqtyTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
 
@@ -349,6 +347,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     constructor() public {
         // TODO: Move to setAddresses or _tickInterest?
         lastInterestRateUpdateTime = block.timestamp;
+        deploymentStartTime = block.timestamp;
         L_EBTCInterest = DECIMAL_PRECISION;
     }
 
@@ -361,8 +360,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         address _priceFeedAddress,
         address _ebtcTokenAddress,
         address _sortedCdpsAddress,
-        address _lqtyTokenAddress,
-        address _lqtyStakingAddress,
+        address _feeRecipientAddress,
         address _collTokenAddress,
         address _authorityAddress
     ) external override onlyOwner {
@@ -374,8 +372,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         checkContract(_priceFeedAddress);
         checkContract(_ebtcTokenAddress);
         checkContract(_sortedCdpsAddress);
-        checkContract(_lqtyTokenAddress);
-        checkContract(_lqtyStakingAddress);
+        checkContract(_feeRecipientAddress);
         checkContract(_collTokenAddress);
         checkContract(_authorityAddress);
 
@@ -387,8 +384,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         priceFeed = IPriceFeed(_priceFeedAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
-        lqtyToken = ILQTYToken(_lqtyTokenAddress);
-        lqtyStaking = ILQTYStaking(_lqtyStakingAddress);
+        feeRecipient = IFeeRecipient(_feeRecipientAddress);
         collateral = ICollateralToken(_collTokenAddress);
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
@@ -399,8 +395,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit LQTYTokenAddressChanged(_lqtyTokenAddress);
-        emit LQTYStakingAddressChanged(_lqtyStakingAddress);
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
         _initializeAuthority(_authorityAddress);
@@ -514,7 +509,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             activePool,
             defaultPool,
             ebtcToken,
-            lqtyStaking,
+            feeRecipient,
             sortedCdps,
             collSurplusPool,
             gasPoolAddress
@@ -1173,7 +1168,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             activePool,
             defaultPool,
             IEBTCToken(address(0)),
-            ILQTYStaking(address(0)),
+            IFeeRecipient(address(0)),
             sortedCdps,
             ICollSurplusPool(address(0)),
             address(0)
@@ -1614,13 +1609,13 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     }
 
     function _mintPendingEBTCInterest(
-        ILQTYStaking _lqtyStaking,
+        IFeeRecipient _feeRecipient,
         IEBTCToken _ebtcToken,
         uint _EBTCInterest
     ) internal {
         // Send interest to LQTY staking contract
-        _lqtyStaking.increaseF_EBTC(_EBTCInterest);
-        _ebtcToken.mint(address(_lqtyStaking), _EBTCInterest);
+        _feeRecipient.receiveEbtcFee(_EBTCInterest);
+        _ebtcToken.mint(address(_feeRecipient), _EBTCInterest);
     }
 
     // --- Redemption functions ---
@@ -1801,7 +1796,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             activePool,
             defaultPool,
             ebtcToken,
-            lqtyStaking,
+            feeRecipient,
             sortedCdps,
             collSurplusPool,
             gasPoolAddress
@@ -1896,8 +1891,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         _requireUserAcceptsFee(totals.ETHFee, totals.totalETHDrawn, _maxFeePercentage);
 
         // Send the ETH fee to the LQTY staking contract
-        contractsCache.activePool.sendETH(address(contractsCache.lqtyStaking), totals.ETHFee);
-        contractsCache.lqtyStaking.increaseF_ETH(totals.ETHFee);
+        contractsCache.activePool.sendETH(address(contractsCache.feeRecipient), totals.ETHFee);
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn.sub(totals.ETHFee);
 
@@ -2133,6 +2127,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         coll = coll.add(pendingETHReward);
     }
 
+    
     function removeStake(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         return _removeStake(_cdpId);
@@ -2280,7 +2275,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             defaultPool.increaseEBTCDebt(defaultDebtInterest);
 
             _mintPendingEBTCInterest(
-                lqtyStaking,
+                feeRecipient,
                 ebtcToken,
                 activeDebtInterest.add(defaultDebtInterest)
             );
@@ -2423,7 +2418,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
                 activePool,
                 defaultPool,
                 ebtcToken,
-                lqtyStaking,
+                feeRecipient,
                 sortedCdps,
                 collSurplusPool,
                 gasPoolAddress
@@ -2636,7 +2631,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _cachedContracts.activePool.getETH() > _feeTaken,
             "CDPManager: fee split is too big"
         );
-        address _feeRecipient = address(lqtyStaking); // TODO choose other fee recipient?
+        address _feeRecipient = address(feeRecipient); // TODO choose other fee recipient?
         _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
@@ -2716,6 +2711,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         );
     }
 
+    function getDeploymentStartTime() public view returns (uint256) {
+        return deploymentStartTime;
+    }
+
+
     // --- 'require' wrapper functions ---
 
     function _requireCallerIsBorrowerOperations() internal view {
@@ -2759,7 +2759,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     }
 
     function _requireAfterBootstrapPeriod() internal view {
-        uint systemDeploymentTime = lqtyToken.getDeploymentStartTime();
+        uint systemDeploymentTime = getDeploymentStartTime();
         require(
             block.timestamp >= systemDeploymentTime.add(BOOTSTRAP_PERIOD),
             "CdpManager: Redemptions are not allowed during bootstrap phase"

@@ -10,16 +10,10 @@ const CollSurplusPool = artifacts.require("./CollSurplusPool.sol")
 const FunctionCaller = artifacts.require("./TestContracts/FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")
+const Governor = artifacts.require("./Governor.sol")
 
-const LQTYStaking = artifacts.require("./LQTYStaking.sol")
-const LQTYToken = artifacts.require("./LQTYToken.sol")
-const LockupContractFactory = artifacts.require("./LockupContractFactory.sol")
-const CommunityIssuance = artifacts.require("./CommunityIssuance.sol")
+const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 
-const Unipool =  artifacts.require("./Unipool.sol")
-
-const LQTYTokenTester = artifacts.require("./LQTYTokenTester.sol")
-const CommunityIssuanceTester = artifacts.require("./CommunityIssuanceTester.sol")
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
@@ -48,14 +42,16 @@ const {
 
 LQTY contracts consist of only those contracts related to the LQTY Token:
 
--the LQTY token
--the Lockup factory and lockup contracts
--the LQTYStaking contract
--the CommunityIssuance contract 
+-the FeeRecipient contract
 */
 
 const ZERO_ADDRESS = '0x' + '0'.repeat(40)
 const maxBytes32 = '0x' + 'f'.repeat(64)
+const dummyRoleHash = "0xb41779a0"
+
+const MINT_SIG = dummyRoleHash
+const BURN_SIG = dummyRoleHash
+const SET_STAKING_REWARD_SPLIT_SIG = dummyRoleHash
 
 class DeploymentHelper {
 
@@ -82,13 +78,34 @@ class DeploymentHelper {
     // console.log(`Framework used:  ${frameworkPath}`)
 
     if (frameworkPath.includes("hardhat")) {
-      return this.deployLQTYContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress)
+      return this.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress)
     } else if (frameworkPath.includes("truffle")) {
-      return this.deployLQTYContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress)
+      return this.deployExternalContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress)
     }
   }
 
+  static async configureGovernor(defaultGovernance, coreContracts) {
+    const authority = coreContracts.authority;
+
+    await authority.setRoleName(0, "Admin");
+    await authority.setRoleName(1, "eBTCToken: mint");
+    await authority.setRoleName(2, "eBTCToken: burn");
+    await authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+
+    await authority.setRoleCapability(1, coreContracts.ebtcToken.address, MINT_SIG, true);
+    await authority.setRoleCapability(2, coreContracts.ebtcToken.address, BURN_SIG, true);
+    await authority.setRoleCapability(3, coreContracts.cdpManager.address, SET_STAKING_REWARD_SPLIT_SIG, true);
+
+    await authority.setUserRole(defaultGovernance, 0, true);
+    await authority.setUserRole(defaultGovernance, 1, true);
+    await authority.setUserRole(defaultGovernance, 2, true);
+    await authority.setUserRole(defaultGovernance, 3, true);
+  }
+
   static async deployLiquityCoreHardhat() {
+    const accounts = await web3.eth.getAccounts()
+    const authority = await Governor.new(accounts[0])
+
     const priceFeedTestnet = await PriceFeedTestnet.new()
     const sortedCdps = await SortedCdps.new()
     const cdpManager = await CdpManager.new()
@@ -102,7 +119,8 @@ class DeploymentHelper {
     const hintHelpers = await HintHelpers.new()
     const ebtcToken = await EBTCToken.new(
       cdpManager.address,
-      borrowerOperations.address
+      borrowerOperations.address,
+      authority.address
     )
     const collateral = await CollateralTokenTester.new()  
     EBTCToken.setAsDeployed(ebtcToken)
@@ -117,6 +135,7 @@ class DeploymentHelper {
     BorrowerOperations.setAsDeployed(borrowerOperations)
     HintHelpers.setAsDeployed(hintHelpers)
     CollateralTokenTester.setAsDeployed(collateral)
+    Governor.setAsDeployed(authority)
 
     const coreContracts = {
       priceFeedTestnet,
@@ -130,19 +149,23 @@ class DeploymentHelper {
       functionCaller,
       borrowerOperations,
       hintHelpers,
-      collateral
+      collateral,
+      authority
     }
+
+    await this.configureGovernor(accounts[0], coreContracts)
     return coreContracts
   }
 
   static async deployTesterContractsHardhat() {
+    const accounts = await web3.eth.getAccounts()
     const testerContracts = {}
 
     // Contract without testers (yet)
     testerContracts.priceFeedTestnet = await PriceFeedTestnet.new()
     testerContracts.sortedCdps = await SortedCdps.new()
+    testerContracts.authority = await Governor.new(accounts[0])
     // Actual tester contracts
-    testerContracts.communityIssuance = await CommunityIssuanceTester.new()
     testerContracts.weth = await WETH9.new()
     testerContracts.activePool = await ActivePoolTester.new()
     testerContracts.defaultPool = await DefaultPoolTester.new()
@@ -155,66 +178,22 @@ class DeploymentHelper {
     testerContracts.hintHelpers = await HintHelpers.new()
     testerContracts.ebtcToken =  await EBTCTokenTester.new(
       testerContracts.cdpManager.address,
-      testerContracts.borrowerOperations.address
+      testerContracts.borrowerOperations.address,
+      testerContracts.authority.address
     )
     testerContracts.collateral = await CollateralTokenTester.new()
     return testerContracts
   }
 
-  static async deployLQTYContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress) {
-    const lqtyStaking = await LQTYStaking.new()
-    const lockupContractFactory = await LockupContractFactory.new()
-    const communityIssuance = await CommunityIssuance.new()
+  // Deploy external contracts
+  // TODO: Add Governance
+  static async deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress) {
+    const feeRecipient = await FeeRecipient.new()
 
-    LQTYStaking.setAsDeployed(lqtyStaking)
-    LockupContractFactory.setAsDeployed(lockupContractFactory)
-    CommunityIssuance.setAsDeployed(communityIssuance)
-
-    // Deploy LQTY Token, passing Community Issuance and Factory addresses to the constructor 
-    const lqtyToken = await LQTYToken.new(
-      communityIssuance.address, 
-      lqtyStaking.address,
-      lockupContractFactory.address,
-      bountyAddress,
-      lpRewardsAddress,
-      multisigAddress
-    )
-    LQTYToken.setAsDeployed(lqtyToken)
+    FeeRecipient.setAsDeployed(feeRecipient)
 
     const LQTYContracts = {
-      lqtyStaking,
-      lockupContractFactory,
-      communityIssuance,
-      lqtyToken
-    }
-    return LQTYContracts
-  }
-
-  static async deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress) {
-    const lqtyStaking = await LQTYStaking.new()
-    const lockupContractFactory = await LockupContractFactory.new()
-    const communityIssuance = await CommunityIssuanceTester.new()
-
-    LQTYStaking.setAsDeployed(lqtyStaking)
-    LockupContractFactory.setAsDeployed(lockupContractFactory)
-    CommunityIssuanceTester.setAsDeployed(communityIssuance)
-
-    // Deploy LQTY Token, passing Community Issuance and Factory addresses to the constructor 
-    const lqtyToken = await LQTYTokenTester.new(
-      communityIssuance.address, 
-      lqtyStaking.address,
-      lockupContractFactory.address,
-      bountyAddress,
-      lpRewardsAddress,
-      multisigAddress
-    )
-    LQTYTokenTester.setAsDeployed(lqtyToken)
-
-    const LQTYContracts = {
-      lqtyStaking,
-      lockupContractFactory,
-      communityIssuance,
-      lqtyToken
+      feeRecipient
     }
     return LQTYContracts
   }
@@ -253,27 +232,11 @@ class DeploymentHelper {
     return coreContracts
   }
 
-  static async deployLQTYContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress) {
-    const lqtyStaking = await lqtyStaking.new()
-    const lockupContractFactory = await LockupContractFactory.new()
-    const communityIssuance = await CommunityIssuance.new()
-
-    /* Deploy LQTY Token, passing Community Issuance,  LQTYStaking, and Factory addresses 
-    to the constructor  */
-    const lqtyToken = await LQTYToken.new(
-      communityIssuance.address, 
-      lqtyStaking.address,
-      lockupContractFactory.address,
-      bountyAddress,
-      lpRewardsAddress, 
-      multisigAddress
-    )
+  static async deployExternalContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress) {
+    const feeRecipient = await feeRecipient.new()
 
     const LQTYContracts = {
-      lqtyStaking,
-      lockupContractFactory,
-      communityIssuance,
-      lqtyToken
+      feeRecipient
     }
     return LQTYContracts
   }
@@ -281,7 +244,8 @@ class DeploymentHelper {
   static async deployEBTCToken(contracts) {
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address,
     )
     return contracts
   }
@@ -289,7 +253,8 @@ class DeploymentHelper {
   static async deployEBTCTokenTester(contracts) {
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     return contracts
   }
@@ -300,7 +265,7 @@ class DeploymentHelper {
     const borrowerWrappersScript = await BorrowerWrappersScript.new(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
-      LQTYContracts.lqtyStaking.address,
+      LQTYContracts.feeRecipient.address,
       contracts.collateral.address
     )
     contracts.borrowerWrappers = new BorrowerWrappersProxy(owner, proxies, borrowerWrappersScript.address)
@@ -316,11 +281,8 @@ class DeploymentHelper {
     const ebtcTokenScript = await TokenScript.new(contracts.ebtcToken.address)
     contracts.ebtcToken = new TokenProxy(owner, proxies, ebtcTokenScript.address, contracts.ebtcToken)
 
-    const lqtyTokenScript = await TokenScript.new(LQTYContracts.lqtyToken.address)
-    LQTYContracts.lqtyToken = new TokenProxy(owner, proxies, lqtyTokenScript.address, LQTYContracts.lqtyToken)
-
-    const lqtyStakingScript = await LQTYStakingScript.new(LQTYContracts.lqtyStaking.address)
-    LQTYContracts.lqtyStaking = new LQTYStakingProxy(owner, proxies, lqtyStakingScript.address, LQTYContracts.lqtyStaking)
+    const lqtyStakingScript = await LQTYStakingScript.new(LQTYContracts.feeRecipient.address)
+    LQTYContracts.feeRecipient = new LQTYStakingProxy(owner, proxies, lqtyStakingScript.address, LQTYContracts.feeRecipient)
   }
 
   // Connect contracts to their dependencies
@@ -347,9 +309,9 @@ class DeploymentHelper {
       contracts.priceFeedTestnet.address,
       contracts.ebtcToken.address,
       contracts.sortedCdps.address,
-      LQTYContracts.lqtyToken.address,
-      LQTYContracts.lqtyStaking.address,
-      contracts.collateral.address
+      LQTYContracts.feeRecipient.address,
+      contracts.collateral.address,
+      contracts.authority.address
     )
 
     // set contracts in BorrowerOperations 
@@ -362,7 +324,7 @@ class DeploymentHelper {
       contracts.priceFeedTestnet.address,
       contracts.sortedCdps.address,
       contracts.ebtcToken.address,
-      LQTYContracts.lqtyStaking.address,
+      LQTYContracts.feeRecipient.address,
       contracts.collateral.address
     )
 
@@ -371,7 +333,8 @@ class DeploymentHelper {
       contracts.cdpManager.address,
       contracts.defaultPool.address,
       contracts.collateral.address,
-      contracts.collSurplusPool.address
+      contracts.collSurplusPool.address,
+      LQTYContracts.feeRecipient.address
     )
 
     await contracts.defaultPool.setAddresses(
@@ -395,23 +358,13 @@ class DeploymentHelper {
     )
   }
 
-  static async connectLQTYContracts(LQTYContracts) {
-    // Set LQTYToken address in LCF
-    await LQTYContracts.lockupContractFactory.setLQTYTokenAddress(LQTYContracts.lqtyToken.address)
-  }
-
   static async connectLQTYContractsToCore(LQTYContracts, coreContracts) {
-    await LQTYContracts.lqtyStaking.setAddresses(
-      LQTYContracts.lqtyToken.address,
+    await LQTYContracts.feeRecipient.setAddresses(
       coreContracts.ebtcToken.address,
       coreContracts.cdpManager.address, 
       coreContracts.borrowerOperations.address,
       coreContracts.activePool.address,
       coreContracts.collateral.address
-    )
-  
-    await LQTYContracts.communityIssuance.setAddresses(
-      LQTYContracts.lqtyToken.address
     )
   }
 

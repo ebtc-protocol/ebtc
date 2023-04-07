@@ -32,7 +32,7 @@ contract InterestRateTest is eBTCBaseFixture {
     function setUp() public override {
         eBTCBaseFixture.setUp();
 
-        eBTCBaseFixture.connectLQTYContracts();
+        
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
@@ -76,7 +76,7 @@ contract InterestRateTest is eBTCBaseFixture {
             coll
         );
 
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
@@ -111,7 +111,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Active pool only contains realized interest (no pending interest)
         assertEq(activePool.getEBTCDebt(), 2000e18);
 
-        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertEq(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
         vm.expectEmit(false, false, false, true);
         // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
         emit LTermsUpdated(0, 0, 1019986589312086194);
@@ -131,7 +131,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             40e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -157,7 +157,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
@@ -192,7 +192,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Active pool only contains realized interest (no pending interest)
         assertEq(activePool.getEBTCDebt(), 2000e18);
 
-        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertEq(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
 
         vm.expectEmit(false, false, false, true);
         // Third parameter is the applied interest rate ~102%, first two params are 0 since no liquidations happened
@@ -212,7 +212,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             40e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -241,7 +241,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
 
@@ -274,7 +274,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             40e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -321,7 +321,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Make balance snapshot to make sure that user's balance increased after closing CDP
         uint ethSnapshot = collateral.balanceOf((users[0]));
 
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         uint icrSnapshot = cdpManager.getCurrentICR(cdpId2, priceFeedMock.getPrice());
@@ -352,7 +352,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract twice from both CDPs
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             80e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -440,7 +440,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         cdpState = _getEntireDebtAndColl(cdpId);
@@ -469,7 +469,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertApproxEqRel(debtOld.add(40e18).add(1e18), cdpManager.getEntireSystemDebt(), 0.001e18);
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             40e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -607,7 +607,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(cdpManager.getEntireSystemDebt(), 4000e18); //6000e18);
         assertEq(defaultPool.getEBTCDebt(), 0); //2000e18);
 
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
 
         skip(365 days);
 
@@ -654,7 +654,7 @@ contract InterestRateTest is eBTCBaseFixture {
 
         // Check interest is minted to LQTY staking contract
         assertApproxEqRel(
-            eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld),
+            eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld),
             80e18, //120e18,
             0.001e18
         ); // Error is <0.1% of the expected value
@@ -689,7 +689,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
@@ -726,7 +726,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Make sure total debt increased
         assertApproxEqRel(debtOld.add(1e16), cdpManager.getEntireSystemDebt(), 0.001e18);
         // Make sure that interest was applied
-        assertGt(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertGt(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
     }
 
     /**
@@ -767,7 +767,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
@@ -792,7 +792,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Make sure user's debt is now 0
         assertEq(cdpState.debt, 0);
         // Make sure that interest was applied
-        assertGt(eBTCToken.balanceOf(address(lqtyStaking)).sub(lqtyStakingBalanceOld), 0);
+        assertGt(eBTCToken.balanceOf(address(feeRecipient)).sub(lqtyStakingBalanceOld), 0);
     }
 
     /**
@@ -822,7 +822,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
         uint balanceSnapshot = eBTCToken.balanceOf(users[0]);
         // Make sure ICR is exactly COLLATERAL_RATIO_DEFENSIVE
@@ -861,7 +861,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(activePool.getEBTCDebt(), debtOld.sub(debt.div(10)));
 
         // Check interest is minted to LQTY staking contract
-        assertGt(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertGt(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
     }
 
     /**
@@ -892,7 +892,7 @@ contract InterestRateTest is eBTCBaseFixture {
             coll
         );
 
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
@@ -943,7 +943,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(activePool.getEBTCDebt(), debtOld);
 
         // Check interest is minted to LQTY staking contract
-        assertGt(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertGt(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
     }
 
     /**
@@ -971,7 +971,7 @@ contract InterestRateTest is eBTCBaseFixture {
             bytes32(0),
             coll
         );
-        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(lqtyStaking));
+        uint256 lqtyStakingBalanceOld = eBTCToken.balanceOf(address(feeRecipient));
         assertEq(lqtyStakingBalanceOld, 0);
 
         CdpState memory cdpState;
@@ -1010,7 +1010,7 @@ contract InterestRateTest is eBTCBaseFixture {
         // Active pool only contains realized interest (no pending interest)
         assertApproxEqRel(activePool.getEBTCDebt(), debt, 1);
 
-        assertEq(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertEq(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
 
         // Apply pending interest
         borrowerOperations.withdrawColl(cdpId0, 1e18, bytes32(0), bytes32(0));
@@ -1024,7 +1024,7 @@ contract InterestRateTest is eBTCBaseFixture {
         assertEq(activePool.getEBTCDebt(), debtOld);
 
         // Check interest is minted to LQTY staking contract
-        assertGt(eBTCToken.balanceOf(address(lqtyStaking)), lqtyStakingBalanceOld);
+        assertGt(eBTCToken.balanceOf(address(feeRecipient)), lqtyStakingBalanceOld);
     }
 
     function testFuzzCalcUnitAmountAfterInterest(uint256 time) public {
