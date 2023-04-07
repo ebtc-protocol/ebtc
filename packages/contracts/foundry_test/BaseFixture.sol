@@ -77,7 +77,6 @@ contract eBTCBaseFixture is Test {
         uint256 debt;
         uint256 coll;
         uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
         uint256 pendingETHReward;
     }
 
@@ -214,11 +213,9 @@ contract eBTCBaseFixture is Test {
             uint256 debt,
             uint256 coll,
             uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
             uint256 pendingETHReward
         ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
+        return CdpState(debt, coll, pendingEBTCDebtReward, pendingETHReward);
     }
 
     function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {

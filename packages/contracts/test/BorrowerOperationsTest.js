@@ -360,8 +360,8 @@ contract('BorrowerOperations', async accounts => {
 
       const alicePendingETHReward = await cdpManager.getPendingETHReward(aliceIndex)
       const bobPendingETHReward = await cdpManager.getPendingETHReward(bobIndex)
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
+      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
       for (reward of [alicePendingETHReward, bobPendingETHReward, alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.eq(toBN('0')))
       }
@@ -806,9 +806,9 @@ contract('BorrowerOperations', async accounts => {
 
       // Check A and B have pending rewards
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
+      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
-      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
       for (reward of [pendingCollReward_A, pendingDebtReward_A, pendingCollReward_B, pendingDebtReward_B]) {
         assert.isTrue(reward.eq(toBN('0')))
       }
@@ -3476,7 +3476,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isAtMost(th.getDifference(defaultPool_EBTCDebt, toBN('0')), 100)
 
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))[0]
+      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
       assert.isTrue(pendingCollReward_A.gt('0'))
       assert.isTrue(pendingDebtReward_A.gt('0'))
 
