@@ -1580,16 +1580,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         _defaultPool.sendETHToActivePool(_ETH);
     }
 
-    function _mintPendingEBTCInterest(
-        ILQTYStaking _lqtyStaking,
-        IEBTCToken _ebtcToken,
-        uint _EBTCInterest
-    ) internal {
-        // Send interest to LQTY staking contract
-        _lqtyStaking.increaseF_EBTC(_EBTCInterest);
-        _ebtcToken.mint(address(_lqtyStaking), _EBTCInterest);
-    }
-
     // --- Redemption functions ---
 
     struct LocalVariables_RedeemCollateralFromCdp {
@@ -2159,44 +2149,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         _activePool.decreaseEBTCDebt(_debt);
         _defaultPool.increaseEBTCDebt(_debt);
         _activePool.sendETH(address(_defaultPool), _coll);
-    }
-
-    // New pending reward functions for interest rates
-    // TODO: Verify:
-    //       1. Interest is ticked *before* any new debt is added in any operation.
-    //       2. Interest is ticked before all operations.
-    function _tickInterest() internal {
-        uint timeElapsed = block.timestamp.sub(lastInterestRateUpdateTime);
-        if (timeElapsed > 0) {
-            // timeElapsed >= interestTimeWindow
-            lastInterestRateUpdateTime = block.timestamp;
-
-            uint unitAmountAfterInterest = _calcUnitAmountAfterInterest(timeElapsed);
-            uint unitInterest = unitAmountAfterInterest.sub(DECIMAL_PRECISION);
-
-            L_EBTCDebt = L_EBTCDebt.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
-            L_EBTCInterest = L_EBTCInterest.mul(unitAmountAfterInterest).div(DECIMAL_PRECISION);
-
-            emit LTermsUpdated(L_ETH, L_EBTCDebt, L_EBTCInterest);
-
-            // TODO: Investigate adding the remainder retraoctive feature that the other LTerms have. Does this fix precision issues?
-            // Calculate pending interest on each pool
-            uint activeDebt = activePool.getEBTCDebt();
-            uint activeDebtInterest = activeDebt.mul(unitInterest).div(DECIMAL_PRECISION);
-
-            uint defaultDebt = defaultPool.getEBTCDebt();
-            uint defaultDebtInterest = defaultDebt.mul(unitInterest).div(DECIMAL_PRECISION);
-
-            // Mint pending interest and do accounting
-            activePool.increaseEBTCDebt(activeDebtInterest);
-            defaultPool.increaseEBTCDebt(defaultDebtInterest);
-
-            _mintPendingEBTCInterest(
-                lqtyStaking,
-                ebtcToken,
-                activeDebtInterest.add(defaultDebtInterest)
-            );
-        }
     }
 
     function closeCdp(bytes32 _cdpId) external override {
