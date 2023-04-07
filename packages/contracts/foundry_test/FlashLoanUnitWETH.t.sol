@@ -22,7 +22,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 

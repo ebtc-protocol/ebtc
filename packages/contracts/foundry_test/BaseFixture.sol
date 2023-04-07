@@ -192,7 +192,8 @@ contract eBTCBaseFixture is Test {
         // set contracts in HintHelpers
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
     }
- /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
+
+    /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
     function connectLQTYContractsToCore() public virtual {
         feeRecipient.setAddresses(
@@ -203,7 +204,8 @@ contract eBTCBaseFixture is Test {
             address(collateral)
         );
     }
-/////////////////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 

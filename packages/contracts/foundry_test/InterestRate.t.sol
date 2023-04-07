@@ -32,7 +32,6 @@ contract InterestRateTest is eBTCBaseFixture {
     function setUp() public override {
         eBTCBaseFixture.setUp();
 
-        
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 

@@ -36,6 +36,7 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
 
     event ReceiveFee(address indexed _sender, address indexed _token, uint _amount);
     event CollateralSent(address _account, uint _amount);
+
     // --- Functions ---
 
     function setAddresses(

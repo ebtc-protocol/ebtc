@@ -2127,7 +2127,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         coll = coll.add(pendingETHReward);
     }
 
-    
     function removeStake(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         return _removeStake(_cdpId);
@@ -2714,7 +2713,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     function getDeploymentStartTime() public view returns (uint256) {
         return deploymentStartTime;
     }
-
 
     // --- 'require' wrapper functions ---
 
