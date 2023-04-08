@@ -32,7 +32,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -49,7 +50,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })

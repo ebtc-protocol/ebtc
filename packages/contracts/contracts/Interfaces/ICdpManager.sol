@@ -4,8 +4,7 @@ pragma solidity 0.6.11;
 
 import "./ILiquityBase.sol";
 import "./IEBTCToken.sol";
-import "./ILQTYToken.sol";
-import "./ILQTYStaking.sol";
+import "./IFeeRecipient.sol";
 
 // Common interface for the Cdp Manager.
 interface ICdpManager is ILiquityBase {
@@ -20,7 +19,7 @@ interface ICdpManager is ILiquityBase {
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event LQTYTokenAddressChanged(address _lqtyTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
     event Liquidation(
@@ -79,16 +78,14 @@ interface ICdpManager is ILiquityBase {
         address _priceFeedAddress,
         address _ebtcTokenAddress,
         address _sortedCdpsAddress,
-        address _lqtyTokenAddress,
-        address _lqtyStakingAddress,
-        address _collTokenAddress
+        address _feeRecipientAddress,
+        address _collTokenAddress,
+        address _authorityAddress
     ) external;
 
     function ebtcToken() external view returns (IEBTCToken);
 
-    function lqtyToken() external view returns (ILQTYToken);
-
-    function lqtyStaking() external view returns (ILQTYStaking);
+    function feeRecipient() external view returns (IFeeRecipient);
 
     function getCdpIdsCount() external view returns (uint);
 

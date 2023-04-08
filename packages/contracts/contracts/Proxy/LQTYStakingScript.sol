@@ -3,21 +3,13 @@
 pragma solidity 0.6.11;
 
 import "../Dependencies/CheckContract.sol";
-import "../Interfaces/ILQTYStaking.sol";
+import "../Interfaces/IFeeRecipient.sol";
 
 contract LQTYStakingScript is CheckContract {
-    ILQTYStaking immutable LQTYStaking;
+    IFeeRecipient immutable FeeRecipient;
 
-    constructor(address _lqtyStakingAddress) public {
-        checkContract(_lqtyStakingAddress);
-        LQTYStaking = ILQTYStaking(_lqtyStakingAddress);
-    }
-
-    function stake(uint _LQTYamount) external {
-        LQTYStaking.stake(_LQTYamount);
-    }
-
-    function unstake(uint _LQTYamount) external {
-        LQTYStaking.unstake(_LQTYamount);
+    constructor(address _feeRecipientAddress) public {
+        checkContract(_feeRecipientAddress);
+        FeeRecipient = IFeeRecipient(_feeRecipientAddress);
     }
 }

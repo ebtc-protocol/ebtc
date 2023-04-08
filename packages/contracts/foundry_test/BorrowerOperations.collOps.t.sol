@@ -3,23 +3,19 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: addColl and withdrawColl
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
-    Utilities internal _utils;
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
     }
 
     // -------- Increase Collateral Test cases --------

@@ -9,8 +9,7 @@ const StabilityPool = artifacts.require("./StabilityPool.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
-const LQTYStaking = artifacts.require("./LQTY/LQTYStaking.sol")
-const LQTYToken = artifacts.require("./LQTY/LQTYToken.sol")
+const FeeRecipient = artifacts.require("./LQTY/FeeRecipient.sol")
 const LockupContractFactory = artifacts.require("./LQTY/LockupContractFactory.sol")
 const CommunityIssuance = artifacts.require("./LQTY/CommunityIssuance.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")
@@ -42,8 +41,7 @@ const coreContractABIs = [
 ]
 
 const LQTYContractABIs = [
-  LQTYStaking,
-  LQTYToken,
+  FeeRecipient,
   LockupContractFactory,
   CommunityIssuance
 ]
@@ -109,7 +107,7 @@ const logContractBytecodeLengths = (contractABIs) => {
 // Run script: log deployment gas costs and bytecode lengths for all contracts
 async function main() {
   const coreContracts = await dh.deployLiquityCoreHardhat()
-  const LQTYContracts = await dh.deployLQTYContractsHardhat(ARBITRARY_ADDRESS, ARBITRARY_ADDRESS)
+  const LQTYContracts = await dh.deployExternalContractsHardhat(ARBITRARY_ADDRESS, ARBITRARY_ADDRESS)
   const testerContracts = await dh.deployTesterContractsHardhat()
 
   await dh.connectCoreContracts(coreContracts, LQTYContracts)

@@ -33,7 +33,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -43,7 +44,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    feeSplit = await contracts.cdpManager.STAKING_REWARD_SPLIT();	
+    feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
     minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();
     _MCR = await cdpManager.MCR();
@@ -53,11 +54,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     collToken = contracts.collateral;
     hintHelpers = contracts.hintHelpers;
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	
-    splitFeeRecipient = await contracts.cdpManager.lqtyStaking();
+    splitFeeRecipient = await contracts.cdpManager.feeRecipient();
   })
   
   it("Claim split fee when there is staking reward coming", async() => {

@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
@@ -88,14 +87,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function setUp() public override {
         super.setUp();
 
-        connectLQTYContracts();
         connectCoreContracts();
         connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(1);
 
-        splitFeeRecipient = address(lqtyStaking);
+        splitFeeRecipient = address(feeRecipient);
     }
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
