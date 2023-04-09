@@ -176,21 +176,18 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         uint _deltaFeePerUnit;
         uint _newStFeePerUnit;
         uint _perUnitError;
-        uint _deltaFeeSplitShare;
+        uint _feeTaken;
 
-        (_deltaFeeSplitShare, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
+        (_feeTaken, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
             _newIndex,
             _oldIndex
         );
         _newStFeePerUnit = _deltaFeePerUnit.add(cdpManager.stFeePerUnitg());
-        (uint _newTotalStake, ) = cdpManager.getTotalStakeForFeeTaken(
-            cdpManager.standardizeTakenFee(_deltaFeeSplitShare)
-        );
         (, uint ETH) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
             _newStFeePerUnit,
             _perUnitError,
-            _newTotalStake
+            cdpManager.totalStakes()
         );
         return ETH;
     }

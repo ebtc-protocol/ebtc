@@ -83,6 +83,8 @@ interface ICdpManager is ILiquityBase {
         address _authorityAddress
     ) external;
 
+    function totalStakes() external view returns (uint);
+
     function ebtcToken() external view returns (IEBTCToken);
 
     function feeRecipient() external view returns (IFeeRecipient);
@@ -134,8 +136,6 @@ interface ICdpManager is ILiquityBase {
         uint _stFeePerUnitgError,
         uint _totalStakes
     ) external view returns (uint, uint);
-
-    function standardizeTakenFee(uint _scaledFeeTaken) external view returns (uint);
 
     function stFeePerUnitg() external view returns (uint);
 

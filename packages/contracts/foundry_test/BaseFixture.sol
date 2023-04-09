@@ -24,7 +24,7 @@ import {Utilities} from "./utils/Utilities.sol";
 contract eBTCBaseFixture is Test {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
-    uint public constant CCR = 150e16; // 150%
+    uint public constant CCR = 125e16; // 125%
     uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
     uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16; // 200% - defensive CR
     uint internal constant MIN_NET_DEBT = 1e17; // Subject to changes once CL is changed
@@ -137,6 +137,8 @@ contract eBTCBaseFixture is Test {
     function connectCoreContracts() public virtual {
         // set CdpManager addr in SortedCdps
         sortedCdps.setParams(maxBytes32, address(cdpManager), address(borrowerOperations));
+
+        skip(86400);
 
         // set contracts in the Cdp Manager
         cdpManager.setAddresses(
