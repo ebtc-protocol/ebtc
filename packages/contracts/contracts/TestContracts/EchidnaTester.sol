@@ -11,13 +11,11 @@ import "../CollSurplusPool.sol";
 import "../EBTCToken.sol";
 import "../SortedCdps.sol";
 import "../HintHelpers.sol";
-import "../LQTY/LQTYToken.sol";
-import "../LQTY/LQTYStaking.sol";
-import "../LQTY/LockupContractFactory.sol";
-import "../LQTY/CommunityIssuance.sol";
+import "../LQTY/FeeRecipient.sol";
 import "./PriceFeedTestnet.sol";
 import "./CollateralTokenTester.sol";
 import "./EchidnaProxy.sol";
+import "../Governor.sol";
 
 // https://hevm.dev/controlling-the-unit-testing-environment.html#cheat-codes
 interface IHevm {
@@ -62,18 +60,24 @@ contract EchidnaTester {
     HintHelpers private hintHelpers;
     PriceFeedTestnet private priceFeedTestnet;
     CollateralTokenTester private collateral;
-
-    // LQTY Stuff
-    LQTYToken private lqtyToken;
-    LQTYStaking private lqtyStaking;
-    LockupContractFactory private lockupContractFactory;
-    CommunityIssuance private communityIssuance;
+    FeeRecipient private feeRecipient;
+    Governor private authority;
+    address defaultGovernance;
 
     EchidnaProxy[NUMBER_OF_ACTORS] private echidnaProxies;
 
     uint private numberOfCdps;
 
     address private constant hevm = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
+
+    // -- Permissioned Function Signatures for Authority --
+    // CDPManager
+    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
+        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+
+    // EBTCToken
+    bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 private constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
     struct CDPChange {
         uint collAddition;
@@ -85,7 +89,6 @@ contract EchidnaTester {
     constructor() public payable {
         _setUp();
         _connectCoreContracts();
-        _connectLQTYContracts();
         _connectLQTYContractsToCore();
 
         for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
@@ -114,6 +117,9 @@ contract EchidnaTester {
     Use in pair with connectCoreContracts to wire up infrastructure
     */
     function _setUp() internal {
+        defaultGovernance = msg.sender;
+        authority = new Governor(address(this));
+
         borrowerOperations = new BorrowerOperations();
         priceFeedTestnet = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
@@ -123,22 +129,28 @@ contract EchidnaTester {
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
+        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations), address(authority));
         collateral = new CollateralTokenTester();
 
-        // Liquity Stuff
-        lqtyStaking = new LQTYStaking();
-        lockupContractFactory = new LockupContractFactory();
-        communityIssuance = new CommunityIssuance();
-        lqtyToken = new LQTYToken(
-            address(communityIssuance),
-            address(lqtyStaking),
-            address(lockupContractFactory),
-            // Set misc addresses to self
-            address(this),
-            address(this),
-            address(this)
-        );
+        // External Contracts
+        feeRecipient = new FeeRecipient();
+
+        // Configure authority
+        authority.setRoleName(0, "Admin");
+        authority.setRoleName(1, "eBTCToken: mint");
+        authority.setRoleName(2, "eBTCToken: burn");
+        authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+
+        authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+        authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+
+        authority.setUserRole(defaultGovernance, 0, true);
+        authority.setUserRole(defaultGovernance, 1, true);
+        authority.setUserRole(defaultGovernance, 2, true);
+        authority.setUserRole(defaultGovernance, 3, true);
+
+        authority.transferOwnership(defaultGovernance);
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
@@ -159,9 +171,9 @@ contract EchidnaTester {
             address(priceFeedTestnet),
             address(eBTCToken),
             address(sortedCdps),
-            address(lqtyToken),
-            address(lqtyStaking),
-            address(collateral)
+            address(feeRecipient),
+            address(collateral),
+            address(authority)
         );
 
         // set contracts in BorrowerOperations
@@ -174,7 +186,7 @@ contract EchidnaTester {
             address(priceFeedTestnet),
             address(sortedCdps),
             address(eBTCToken),
-            address(lqtyStaking),
+            address(feeRecipient),
             address(collateral)
         );
 
@@ -184,7 +196,8 @@ contract EchidnaTester {
             address(cdpManager),
             address(defaultPool),
             address(collateral),
-            address(collSurplusPool)
+            address(collSurplusPool),
+            address(feeRecipient)
         );
 
         // set contracts in defaultPool
@@ -202,17 +215,10 @@ contract EchidnaTester {
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
     }
 
-    /* connectLQTYContracts() - wire up necessary liquity contracts
-     */
-    function _connectLQTYContracts() internal {
-        lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
-    }
-
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
     function _connectLQTYContractsToCore() internal {
-        lqtyStaking.setAddresses(
-            address(lqtyToken),
+        feeRecipient.setAddresses(
             address(eBTCToken),
             address(cdpManager),
             address(borrowerOperations),
@@ -224,7 +230,7 @@ contract EchidnaTester {
     function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
-        (uint256 entireDebt, uint256 entireColl, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         uint _debt = entireDebt.add(_change.debtAddition).sub(_change.debtReduction);
         uint _coll = entireColl.add(_change.collAddition).sub(_change.collReduction);
         require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
@@ -290,7 +296,7 @@ contract EchidnaTester {
         if (actorBalance < requiredCollAmount) {
             echidnaProxy.dealCollateral(requiredCollAmount.sub(actorBalance));
         }
-        echidnaProxy.openCdpPrx(requiredCollAmount, _EBTCAmount, bytes32(0), bytes32(0), 0);
+        echidnaProxy.openCdpPrx(requiredCollAmount, _EBTCAmount, bytes32(0), bytes32(0));
 
         numberOfCdps = cdpManager.getCdpIdsCount();
         assert(numberOfCdps > 0);
@@ -317,7 +323,7 @@ contract EchidnaTester {
         if (actorBalance < _coll) {
             echidnaProxy.dealCollateral(_coll.sub(actorBalance));
         }
-        echidnaProxies[actor].openCdpPrx(_coll, _EBTCAmount, _upperHint, _lowerHint, _maxFee);
+        echidnaProxies[actor].openCdpPrx(_coll, _EBTCAmount, _upperHint, _lowerHint);
     }
 
     function addCollExt(uint _i, uint _coll) external {
@@ -354,8 +360,7 @@ contract EchidnaTester {
         uint _i,
         uint _amount,
         bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _maxFee
+        bytes32 _lowerHint
     ) external {
         uint actor = _getRandomActor(_i);
         EchidnaProxy echidnaProxy = echidnaProxies[actor];
@@ -365,7 +370,7 @@ contract EchidnaTester {
         CDPChange memory _change = CDPChange(0, 0, _amount, 0);
         _ensureMCR(_cdpId, _change);
 
-        echidnaProxy.withdrawEBTCPrx(_cdpId, _amount, _upperHint, _lowerHint, _maxFee);
+        echidnaProxy.withdrawEBTCPrx(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
     function repayEBTCExt(uint _i, uint _amount, bytes32 _upperHint, bytes32 _lowerHint) external {
@@ -397,7 +402,7 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
-        (uint256 entireDebt, uint256 entireColl, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
 
         uint price = priceFeedTestnet.getPrice();
@@ -418,8 +423,7 @@ contract EchidnaTester {
             debtChange,
             _isDebtIncrease,
             _cdpId,
-            _cdpId,
-            0
+            _cdpId
         );
     }
 
@@ -579,7 +583,7 @@ contract EchidnaTester {
         bytes32 currentCdp = sortedCdps.getFirst();
         uint cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, , , ) = cdpManager.getEntireDebtAndColl(
+            (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(
                 currentCdp
             );
             cdpsBalance = cdpsBalance.add(entireDebt);

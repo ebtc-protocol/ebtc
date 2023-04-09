@@ -109,7 +109,7 @@ contract eBTCBaseFixture is Test {
         );
         collateral = new CollateralTokenTester();
 
-        // Liquity Stuff
+        // External Contracts
         feeRecipient = new FeeRecipient();
 
         // Set up initial permissions and then renounce global owner role

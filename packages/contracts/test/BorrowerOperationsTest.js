@@ -812,7 +812,7 @@ contract('BorrowerOperations', async accounts => {
       const pendingCollReward_A = await cdpManager.getPendingETHReward(aliceIndex)
       const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
       const pendingCollReward_B = await cdpManager.getPendingETHReward(bobIndex)
-      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))[0]
+      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
       for (reward of [pendingCollReward_A, pendingCollReward_B]) {
         assert.isTrue(reward.eq(toBN('0')))
       }
@@ -4835,8 +4835,8 @@ contract('BorrowerOperations', async accounts => {
         await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
         await contracts.collateral.deposit({from: bob, value: dec(5000, 'ether')});
         await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: bob})
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
-        await borrowerOperations.openCdp(th._100pct, cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
+        await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
+        await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
         let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];

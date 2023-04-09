@@ -900,7 +900,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             activePool,
             defaultPool,
             ebtcToken,
-            lqtyStaking,
+            feeRecipient,
             sortedCdps,
             collSurplusPool,
             gasPoolAddress
@@ -914,10 +914,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
-        (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
-            vars.price,
-            lastInterestRateUpdateTime
-        );
+        (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
@@ -1140,7 +1137,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             activePool,
             defaultPool,
             ebtcToken,
-            lqtyStaking,
+            feeRecipient,
             sortedCdps,
             collSurplusPool,
             gasPoolAddress
@@ -1154,8 +1151,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
-            vars.price,
-            lastInterestRateUpdateTime
+            vars.price
         );
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
@@ -2412,6 +2408,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
             "CdpManager: update index too frequent"
         );
+    }
+
+    // --- Governance Parameters ---
+
+    function setStakingRewardSplit(uint _stakingRewardSplit) external {
+        require(
+            isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG),
+            "CDPManager: sender not authorized for setStakingRewardSplit(uint256)"
+        );
+        require(
+            _stakingRewardSplit <= MAX_REWARD_SPLIT,
+            "CDPManager: new staking reward split exceeds max"
+        );
+
+        stakingRewardSplit = _stakingRewardSplit;
+        emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 
     // --- Cdp property getters ---
