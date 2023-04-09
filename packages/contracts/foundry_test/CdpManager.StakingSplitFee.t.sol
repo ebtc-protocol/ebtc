@@ -152,12 +152,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(
-            _debt,
-            bytes32(0),
-            bytes32(0),
-            _coll
-        );
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
         vm.stopPrank();
         return _cdpId;
     }

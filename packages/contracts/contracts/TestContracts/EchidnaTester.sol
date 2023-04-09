@@ -129,7 +129,11 @@ contract EchidnaTester {
         defaultPool = new DefaultPool();
         collSurplusPool = new CollSurplusPool();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations), address(authority));
+        eBTCToken = new EBTCToken(
+            address(cdpManager),
+            address(borrowerOperations),
+            address(authority)
+        );
         collateral = new CollateralTokenTester();
 
         // External Contracts

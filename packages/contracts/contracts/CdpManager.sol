@@ -538,7 +538,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
 
             return (
                 _outputState.totalDebtToBurn,
-                _outputState.totalColToSend,  
+                _outputState.totalColToSend,
                 _outputState.totalDebtToRedistribute
             );
         } else {
@@ -1150,9 +1150,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
-        (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(
-            vars.price
-        );
+        (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.

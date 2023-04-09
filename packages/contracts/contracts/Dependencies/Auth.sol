@@ -55,5 +55,3 @@ abstract contract Auth {
         emit OwnershipTransferred(msg.sender, newOwner);
     }
 }
-
-
