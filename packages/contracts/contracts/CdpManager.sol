@@ -1750,7 +1750,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId].ETH < L_ETH);
+        return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+            rewardSnapshots[_cdpId].EBTCDebt < L_EBTCDebt);
     }
 
     // Return the Cdps entire debt and coll struct
