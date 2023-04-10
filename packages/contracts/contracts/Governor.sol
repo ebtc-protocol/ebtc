@@ -51,37 +51,77 @@ contract Governor is RolesAuthority {
 
     /// @notice Convenience function intended for off-chain
     function getUsersByRole(uint8 role) external view returns (address[] memory usersWithRole) {
-        // Search over all users: O(n)
+        // Search over all users: O(n) * 2
+        uint count;
         for (uint i = 0; i < users.length(); i++) {
-            uint j = 0;
             address user = users.at(i);
-            if (doesUserHaveRole(user, role)) {
-                usersWithRole[j] = user;
-                j++;
+            bool _canCall = doesUserHaveRole(user, role);
+            if (_canCall) {
+                count += 1;
+            }
+        }
+        if (count > 0) {
+            uint j = 0;
+            usersWithRole = new address[](count);
+            for (uint i = 0; i < users.length(); i++) {
+                address user = users.at(i);
+                bool _canCall = doesUserHaveRole(user, role);
+                if (_canCall) {
+                    usersWithRole[j] = user;
+                    j++;
+                }
             }
         }
     }
 
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
-        uint j = 0;
+        uint count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
             if (doesUserHaveRole(user, i)) {
-                rolesForUser[j] = i;
-                j++;
+                count += 1;
+            }
+        }
+        if (count > 0) {
+            uint j = 0;
+            rolesForUser = new uint8[](count);
+            for (uint8 i = 0; i < type(uint8).max; i++) {
+                if (doesUserHaveRole(user, i)) {
+                    rolesForUser[j] = i;
+                    j++;
+                }
             }
         }
     }
 
     function getRolesFromByteMap(bytes32 byteMap) public view returns (uint8[] memory roleIds) {
-        uint j = 0;
+        uint count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
             bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
             if (roleEnabled) {
-                roleIds[j] = i;
-                j++;
+                count += 1;
             }
         }
+        if (count > 0) {
+            uint j = 0;
+            roleIds = new uint8[](count);
+            for (uint8 i = 0; i < type(uint8).max; i++) {
+                bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
+                if (roleEnabled) {
+                    roleIds[j] = i;
+                    j++;
+                }
+            }
+        }
+    }
+
+    // helper function to generate bytes32 cache data for given roleIds array
+    function getByteMapFromRoles(uint8[] memory roleIds) public view returns (bytes32) {
+        bytes32 _data;
+        for (uint8 i = 0; i < roleIds.length; i++) {
+            _data |= bytes32(1 << uint(roleIds[i]));
+        }
+        return _data;
     }
 
     /// @notice return all role IDs that have at least one capability enabled

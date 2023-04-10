@@ -1,0 +1,126 @@
+const deploymentHelper = require("../utils/deploymentHelpers.js")
+const { TestHelper: th, MoneyValues: mv } = require("../utils/testHelpers.js")
+const { toBN, dec, ZERO_ADDRESS } = th
+
+const EBTCToken = artifacts.require("./EBTCToken.sol")
+const GovernorTester = artifacts.require("./GovernorTester.sol");
+
+const assertRevert = th.assertRevert
+
+contract('Governor - access control entrypoint to permissioned functions', async accounts => {
+  const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
+  const [
+    owner,
+    alice, bob, carol, dennis, erin, freddy, greta, harry, ida,
+    whale, defaulter_1, defaulter_2, defaulter_3, defaulter_4,
+    A, B, C, D, E, F, G, H, I
+  ] = accounts;
+
+  let contracts
+  let cdpManager
+  let priceFeed
+  let sortedCdps
+  let collSurplusPool;
+  let collToken;
+  let governorTester;
+
+  const openCdp = async (params) => th.openCdp(contracts, params)
+
+  beforeEach(async () => {
+    contracts = await deploymentHelper.deployLiquityCore()
+    contracts.ebtcToken = await EBTCToken.new(
+      contracts.cdpManager.address,
+      contracts.borrowerOperations.address,
+      contracts.authority.address
+    )
+    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+
+    priceFeed = contracts.priceFeedTestnet
+    sortedCdps = contracts.sortedCdps
+    debtToken = contracts.ebtcToken;
+    activePool = contracts.activePool;
+    defaultPool = contracts.defaultPool;
+    minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();
+    borrowerOperations = contracts.borrowerOperations;
+    collSurplusPool = contracts.collSurplusPool;
+    collToken = contracts.collateral;
+
+    await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
+    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
+	
+    // setup roles & users
+    governorTester = await GovernorTester.new(owner);
+    _funcSig1 = await governorTester.FUNC_SIG1();
+  })
+  
+  it("Governor owner could call any function while non-authorized user could not", async() => {	  
+      await governorTester.someFunc1({from: owner});  
+      await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+  })
+  
+  it("Non-authorized user could call target public function if enabled", async() => {	  
+      await governorTester.setPublicCapability(governorTester.address, _funcSig1, true, {from: owner});  
+      await governorTester.someFunc1({from: alice});  
+	 
+      // revoke publicity now 
+      await governorTester.setPublicCapability(governorTester.address, _funcSig1, false, {from: owner}); 
+      await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+  })
+  
+  it("Authorized users could call target function if enabled", async() => {	
+      let _role1 = 1;  
+      await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: owner});  
+      let _role1CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role1, governorTester.address, _funcSig1);
+      assert.isTrue(_role1CanCallFunc1);
+	  
+      // authorize alice & bob
+      await governorTester.setUserRole(alice, _role1, true, {from: owner});  
+      await governorTester.setUserRole(bob, _role1, true, {from: owner});  
+      await governorTester.someFunc1({from: alice});   
+      await governorTester.someFunc1({from: bob});  
+	  
+      // check roles
+      let _role1Users = await governorTester.getUsersByRole(_role1);
+      assert.isTrue(_role1Users.length == 2);
+      assert.isTrue(_role1Users[0] == alice);
+      assert.isTrue(_role1Users[1] == bob);
+      let _aliceRoles = await governorTester.getRolesForUser(alice);
+      assert.isTrue(_aliceRoles.length == 1);
+      assert.isTrue(_aliceRoles[0] == _role1);
+      let _bobRoles = await governorTester.getRolesForUser(bob);
+      assert.isTrue(_bobRoles.length == 1);
+      assert.isTrue(_bobRoles[0] == _role1);
+	 
+      // revoke authorization for alice now  
+      await governorTester.setUserRole(alice, _role1, false, {from: owner});  
+      await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function"); 
+      _aliceRoles = await governorTester.getRolesForUser(alice);
+      assert.isTrue(_aliceRoles.length == 0);
+	  
+      // revoke authorization for role1 now  
+      await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, false, {from: owner});  
+      _role1CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role1, governorTester.address, _funcSig1);
+      assert.isFalse(_role1CanCallFunc1);
+      await assertRevert(governorTester.someFunc1({from: bob}), "GovernorTester: sender not authorized for this function");
+  })
+  
+  it("Multiple roles could be authorized to call same function", async() => {	
+      let _role1 = 1;  
+      let _role2 = 2;  
+      await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: owner});  
+      await governorTester.setRoleCapability(_role2, governorTester.address, _funcSig1, true, {from: owner});
+      let _role1CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role1, governorTester.address, _funcSig1);
+      let _role2CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role2, governorTester.address, _funcSig1);
+      assert.isTrue(_role1CanCallFunc1);
+      assert.isTrue(_role2CanCallFunc1); 
+	  
+      // check authorized roles
+      let _dataBytes = await governorTester.getByteMapFromRoles([_role1, _role2]);
+      assert.isTrue(_dataBytes == (await governorTester.getRolesWithCapability(governorTester.address, _funcSig1)));
+      let _roleIds = await governorTester.getRolesFromByteMap(_dataBytes);
+      assert.isTrue(_roleIds.length == 2);
+      assert.isTrue(_roleIds[0] == _role1);
+      assert.isTrue(_roleIds[1] == _role2);
+  })
+  
+})
