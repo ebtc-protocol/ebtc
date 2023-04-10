@@ -4844,7 +4844,7 @@ contract('BorrowerOperations', async accounts => {
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
         let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
-        let _bobColl = _bobebtAndColl[1];
+        let _bobColl = _bobDebtAndColl[1];
 
         await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), { from: alice});
         await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), { from: bob});
