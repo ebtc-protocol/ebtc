@@ -107,10 +107,12 @@ contract BorrowerOperations is
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        uint _oldDebt,
+        uint _oldColl,
         uint _debt,
         uint _coll,
-        uint stake,
-        BorrowerOperation operation
+        uint _stake,
+        BorrowerOperation _operation
     );
 
     // --- Dependency setters ---
@@ -243,6 +245,8 @@ contract BorrowerOperations is
         emit CdpUpdated(
             _cdpId,
             msg.sender,
+            0,
+            0,
             vars.compositeDebt,
             _collShareAmt,
             vars.stake,
@@ -439,6 +443,8 @@ contract BorrowerOperations is
         emit CdpUpdated(
             _cdpId,
             _borrower,
+            vars.debt,
+            vars.coll,
             vars.newDebt,
             vars.newColl,
             vars.stake,
@@ -495,7 +501,7 @@ contract BorrowerOperations is
         cdpManagerCached.closeCdp(_cdpId);
 
         // We already verified msg.sender is the borrower
-        emit CdpUpdated(_cdpId, msg.sender, 0, 0, 0, BorrowerOperation.closeCdp);
+        emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
 
         // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
         _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));

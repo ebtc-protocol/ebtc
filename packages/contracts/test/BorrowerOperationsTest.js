@@ -3549,7 +3549,7 @@ contract('BorrowerOperations', async accounts => {
     // --- openCdp() ---
 
     if (!withProxy) { // TODO: use rawLogs instead of logs
-      it("openCdp(): emits a CdpUpdated event with the correct collateral and debt", async () => {
+      it("openCdp(): emits a CdpUpdated event with the correct output", async () => {
         await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("20000")});
         await _signer.sendTransaction({ to: B, value: ethers.utils.parseEther("20000")});
         await _signer.sendTransaction({ to: C, value: ethers.utils.parseEther("50000")});
@@ -3568,23 +3568,58 @@ contract('BorrowerOperations', async accounts => {
         const B_Debt = await getCdpEntireDebt(BIndex)
         const C_Debt = await getCdpEntireDebt(CIndex)
 
-        const A_emittedDebt = toBN(th.getEventArgByName(txA, "CdpUpdated", "_debt"))
-        const A_emittedColl = toBN(th.getEventArgByName(txA, "CdpUpdated", "_coll"))
-        const B_emittedDebt = toBN(th.getEventArgByName(txB, "CdpUpdated", "_debt"))
-        const B_emittedColl = toBN(th.getEventArgByName(txB, "CdpUpdated", "_coll"))
-        const C_emittedDebt = toBN(th.getEventArgByName(txC, "CdpUpdated", "_debt"))
-        const C_emittedColl = toBN(th.getEventArgByName(txC, "CdpUpdated", "_coll"))
+        const A_emitted = th.parseCdpUpdatedEvent(txA)
+        const B_emitted = th.parseCdpUpdatedEvent(txB)
+        const C_emitted = th.parseCdpUpdatedEvent(txC)
 
-        // Check emitted debt values are correct
-        assert.isTrue(A_Debt.eq(A_emittedDebt))
-        assert.isTrue(B_Debt.eq(B_emittedDebt))
-        assert.isTrue(C_Debt.eq(C_emittedDebt))
+        const A_expected = {
+          cdpId: AIndex,
+          borrower: A,
+          oldDebt: toBN(0),
+          oldColl: toBN(0),
+          debt: A_Debt,
+          coll: A_Coll,
+          stake: toBN(await cdpManager.getCdpStake(AIndex)),
+          operation: toBN(0), //BorrowerOperations.openCDP
+        };
 
-        // Check emitted coll values are correct
-        assert.isTrue(A_Coll.eq(A_emittedColl))
-        assert.isTrue(B_Coll.eq(B_emittedColl))
-        assert.isTrue(C_Coll.eq(C_emittedColl))
+        const B_expected = {
+          cdpId: BIndex,
+          borrower: B,
+          oldDebt: toBN(0),
+          oldColl: toBN(0),
+          debt: B_Debt,
+          coll: B_Coll,
+          stake: toBN(await cdpManager.getCdpStake(BIndex)),
+          operation: toBN(0), //BorrowerOperations.openCDP
+        };
 
+        const C_expected = {
+          cdpId: CIndex,
+          borrower: C,
+          oldDebt: toBN(0),
+          oldColl: toBN(0),
+          debt: C_Debt,
+          coll: C_Coll,
+          stake: toBN(await cdpManager.getCdpStake(CIndex)),
+          operation: toBN(0), //BorrowerOperations.openCDP
+        };
+
+        const checkEmittedValues = (expected, emitted) => {
+          assert.isTrue(expected.cdpId === emitted.cdpId);
+          assert.isTrue(expected.borrower === emitted.borrower);
+          assert.isTrue(expected.oldDebt.eq(emitted.oldDebt));
+          assert.isTrue(expected.oldColl.eq(emitted.oldColl));
+          assert.isTrue(expected.debt.eq(emitted.debt));
+          assert.isTrue(expected.coll.eq(emitted.coll));
+          assert.isTrue(expected.stake.eq(emitted.stake));
+          assert.isTrue(expected.operation.eq(emitted.operation));
+        }
+
+        checkEmittedValues(A_expected, A_emitted)
+        checkEmittedValues(B_expected, B_emitted)
+        checkEmittedValues(C_expected, C_emitted)
+        
         const baseRateBefore = await cdpManager.baseRate()
 
         // Artificially make baseRate 5%

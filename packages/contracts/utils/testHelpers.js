@@ -461,6 +461,33 @@ class TestHelper {
     throw (`The transaction logs do not contain event ${eventName} and arg ${argName}`)
   }
 
+  static parseCdpUpdatedEvent(transaction) {
+    const toBN = TestHelper.toBN
+
+    const emittedCdpId = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_cdpId")
+    const emittedBorrower = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_borrower")
+
+    const emittedOldDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldDebt"))
+    const emittedOldColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldColl"))
+
+    const emittedDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_debt"))
+    const emittedColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_coll"))
+    
+    const emittedStake = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_stake"))
+    const emittedOperation = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_operation")) //BorrowerOperation.openCdp = 0
+
+    return {
+      "cdpId": emittedCdpId,
+      "borrower": emittedBorrower,
+      "oldDebt": emittedOldDebt,
+      "oldColl": emittedOldColl,
+      "debt": emittedDebt,
+      "coll": emittedColl,
+      "stake": emittedStake,
+      "operation": emittedOperation
+    }
+  }
+
   static getAllEventsByName(tx, eventName) {
     const events = []
     for (let i = 0; i < tx.logs.length; i++) {
