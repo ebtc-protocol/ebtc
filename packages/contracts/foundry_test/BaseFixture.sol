@@ -13,14 +13,13 @@ import {ActivePool} from "../contracts/ActivePool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
-import {LQTYStaking} from "../contracts/LQTY/LQTYStaking.sol";
-import {LQTYToken} from "../contracts/LQTY/LQTYToken.sol";
-import {LockupContractFactory} from "../contracts/LQTY/LockupContractFactory.sol";
-import {CommunityIssuance} from "../contracts/LQTY/CommunityIssuance.sol";
+import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
+import {Governor} from "../contracts/Governor.sol";
+import {Utilities} from "./utils/Utilities.sol";
 
 contract eBTCBaseFixture is Test {
     uint internal constant FEE = 5e15; // 0.5%
@@ -32,6 +31,18 @@ contract eBTCBaseFixture is Test {
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
     uint internal constant AMOUNT_OF_CDPS = 3;
+
+    // -- Permissioned Function Signatures for Authority --
+    // CDPManager
+    bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
+        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+
+    // EBTCToken
+    bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
+
+    bytes4 public constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
 
     using SafeMath for uint256;
     using SafeMath for uint96;
@@ -54,12 +65,13 @@ contract eBTCBaseFixture is Test {
     HintHelpers hintHelpers;
     EBTCToken eBTCToken;
     CollateralTokenTester collateral;
+    Governor authority;
+    address defaultGovernance;
+
+    Utilities internal _utils;
 
     // LQTY Stuff
-    LQTYToken lqtyToken;
-    LQTYStaking lqtyStaking;
-    LockupContractFactory lockupContractFactory;
-    CommunityIssuance communityIssuance;
+    FeeRecipient feeRecipient;
 
     ////////////////////////////////////////////////////////////////////////////
     // Structs
@@ -68,7 +80,6 @@ contract eBTCBaseFixture is Test {
         uint256 debt;
         uint256 coll;
         uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
         uint256 pendingETHReward;
     }
 
@@ -78,6 +89,11 @@ contract eBTCBaseFixture is Test {
     Consider overriding this function if in need of custom setup
     */
     function setUp() public virtual {
+        _utils = new Utilities();
+        defaultGovernance = _utils.getNextSpecialAddress();
+
+        authority = new Governor(defaultGovernance);
+
         borrowerOperations = new BorrowerOperations();
         priceFeedMock = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
@@ -89,22 +105,37 @@ contract eBTCBaseFixture is Test {
         collSurplusPool = new CollSurplusPool();
         functionCaller = new FunctionCaller();
         hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(address(cdpManager), address(borrowerOperations));
+        eBTCToken = new EBTCToken(
+            address(cdpManager),
+            address(borrowerOperations),
+            address(authority)
+        );
         collateral = new CollateralTokenTester();
 
-        // Liquity Stuff
-        lqtyStaking = new LQTYStaking();
-        lockupContractFactory = new LockupContractFactory();
-        communityIssuance = new CommunityIssuance();
-        lqtyToken = new LQTYToken(
-            address(communityIssuance),
-            address(lqtyStaking),
-            address(lockupContractFactory),
-            // Set misc addresses to self
-            address(this),
-            address(this),
-            address(this)
-        );
+        // External Contracts
+        feeRecipient = new FeeRecipient();
+
+        // Set up initial permissions and then renounce global owner role
+        vm.startPrank(defaultGovernance);
+
+        authority.setRoleName(0, "Admin");
+        authority.setRoleName(1, "eBTCToken: mint");
+        authority.setRoleName(2, "eBTCToken: burn");
+        authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+        authority.setRoleName(3, "PriceFeed: setTellorCaller");
+
+        authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+        authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+        authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
+
+        authority.setUserRole(defaultGovernance, 0, true);
+        authority.setUserRole(defaultGovernance, 1, true);
+        authority.setUserRole(defaultGovernance, 2, true);
+        authority.setUserRole(defaultGovernance, 3, true);
+        authority.setUserRole(defaultGovernance, 4, true);
+
+        vm.stopPrank();
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
@@ -125,9 +156,9 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(eBTCToken),
             address(sortedCdps),
-            address(lqtyToken),
-            address(lqtyStaking),
-            address(collateral)
+            address(feeRecipient),
+            address(collateral),
+            address(authority)
         );
 
         // set contracts in BorrowerOperations
@@ -140,7 +171,7 @@ contract eBTCBaseFixture is Test {
             address(priceFeedMock),
             address(sortedCdps),
             address(eBTCToken),
-            address(lqtyStaking),
+            address(feeRecipient),
             address(collateral)
         );
 
@@ -150,7 +181,8 @@ contract eBTCBaseFixture is Test {
             address(cdpManager),
             address(defaultPool),
             address(collateral),
-            address(collSurplusPool)
+            address(collSurplusPool),
+            address(feeRecipient)
         );
 
         // set contracts in defaultPool
@@ -166,19 +198,14 @@ contract eBTCBaseFixture is Test {
 
         // set contracts in HintHelpers
         hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
-    }
 
-    /* connectLQTYContracts() - wire up necessary liquity contracts
-     */
-    function connectLQTYContracts() public virtual {
-        lockupContractFactory.setLQTYTokenAddress(address(lqtyToken));
+        priceFeedMock.setAddresses(address(authority));
     }
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
     function connectLQTYContractsToCore() public virtual {
-        lqtyStaking.setAddresses(
-            address(lqtyToken),
+        feeRecipient.setAddresses(
             address(eBTCToken),
             address(cdpManager),
             address(borrowerOperations),
@@ -187,7 +214,7 @@ contract eBTCBaseFixture is Test {
         );
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 
@@ -196,11 +223,9 @@ contract eBTCBaseFixture is Test {
             uint256 debt,
             uint256 coll,
             uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
             uint256 pendingETHReward
         ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
+        return CdpState(debt, coll, pendingEBTCDebtReward, pendingETHReward);
     }
 
     function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {

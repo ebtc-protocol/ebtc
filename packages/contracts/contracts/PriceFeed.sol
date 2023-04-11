@@ -11,6 +11,7 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/console.sol";
+import "./Dependencies/Authv06.sol";
 
 /*
  * PriceFeed for mainnet deployment, to be connected to Chainlink's live ETH:USD aggregator reference
@@ -20,11 +21,12 @@ import "./Dependencies/console.sol";
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle.
  */
-contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
+contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
     using SafeMath for uint256;
 
     string public constant NAME = "PriceFeed";
 
+    // TODO: Make priceAggregator immutable when we move to 0.8
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
     ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
 
@@ -43,6 +45,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
 
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -84,18 +90,25 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
 
     event LastGoodPriceUpdated(uint _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
+    event TellorCallerChanged(address _tellorCaller);
 
     // --- Dependency setters ---
 
     function setAddresses(
         address _priceAggregatorAddress,
-        address _tellorCallerAddress
+        address _tellorCallerAddress,
+        address _authorityAddress
     ) external onlyOwner {
         checkContract(_priceAggregatorAddress);
         checkContract(_tellorCallerAddress);
+        checkContract(_authorityAddress);
 
         priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
         tellorCaller = ITellorCaller(_tellorCallerAddress);
+
+        emit TellorCallerChanged(_tellorCallerAddress);
+
+        _initializeAuthority(_authorityAddress);
 
         // Explicitly set initial system status
         status = Status.chainlinkWorking;
@@ -367,6 +380,16 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed {
             // return Chainlink price (no status change)
             return _storeChainlinkPrice(chainlinkResponse);
         }
+    }
+
+    // --- Governance Functions ---
+    function setTellorCaller(address _tellorCaller) external {
+        require(
+            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
+            "PriceFeed: sender not authorized for setTellorCaller(address)"
+        );
+        tellorCaller = ITellorCaller(_tellorCaller);
+        emit TellorCallerChanged(_tellorCaller);
     }
 
     // --- Helper functions ---

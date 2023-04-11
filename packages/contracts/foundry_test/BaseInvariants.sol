@@ -13,7 +13,6 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     using SafeMath for uint16;
     using SafeMath for uint8;
 
-    Utilities internal _utils;
     uint public _tolerance = 2000000; //compared to 1e18
 
     ////////////////////////////////////////////////////////////////////////////

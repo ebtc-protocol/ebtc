@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
@@ -88,14 +87,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function setUp() public override {
         super.setUp();
 
-        connectLQTYContracts();
         connectCoreContracts();
         connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(3);
 
-        splitFeeRecipient = address(lqtyStaking);
+        splitFeeRecipient = address(feeRecipient);
     }
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
@@ -112,7 +109,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed.div(1e18);
 
         vm.startPrank(_user);
-        borrowerOperations.withdrawEBTC(_cdpId, 1e18, 1, _cdpId, _cdpId);
+        borrowerOperations.withdrawEBTC(_cdpId, 1, _cdpId, _cdpId);
         vm.stopPrank();
     }
 
@@ -155,13 +152,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            _debt,
-            bytes32(0),
-            bytes32(0),
-            _coll
-        );
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
         vm.stopPrank();
         return _cdpId;
     }

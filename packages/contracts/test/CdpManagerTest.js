@@ -45,7 +45,7 @@ contract('CdpManager', async accounts => {
   let defaultPool
   let borrowerOperations
   let hintHelpers
-
+  let authority;
   let contracts
   let _signer
 
@@ -66,7 +66,8 @@ contract('CdpManager', async accounts => {
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -82,13 +83,10 @@ contract('CdpManager', async accounts => {
     debtToken = ebtcToken;
     LICR = await cdpManager.LICR()
 
-    lqtyStaking = LQTYContracts.lqtyStaking
-    lqtyToken = LQTYContracts.lqtyToken
-    communityIssuance = LQTYContracts.communityIssuance
-    lockupContractFactory = LQTYContracts.lockupContractFactory
+    feeRecipient = LQTYContracts.feeRecipient
+    authority = contracts.authority;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
@@ -1154,7 +1152,7 @@ contract('CdpManager', async accounts => {
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
-    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))[0]
+    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -1931,7 +1929,7 @@ contract('CdpManager', async accounts => {
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
-    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))[0]
+    const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))
     const defaultPoolETH = await defaultPool.getETH()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
@@ -2906,9 +2904,9 @@ contract('CdpManager', async accounts => {
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
     await contracts.collateral.deposit({from: C, value: dec(1000, 'ether')});
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(1, 18)), A, A, dec(1000, 'ether'), { from: A })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(2, 18)), B, B, dec(1000, 'ether'), { from: B })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(1, 18)), A, A, dec(1000, 'ether'), { from: A })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(2, 18)), B, B, dec(1000, 'ether'), { from: B })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -2941,9 +2939,9 @@ contract('CdpManager', async accounts => {
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: B});
     await contracts.collateral.deposit({from: C, value: dec(1000, 'ether')});
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: C});
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(10, 18)), A, A, dec(1000, 'ether'), { from: A })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(5, 18)), B, B, dec(1000, 'ether'), { from: B })
-    await borrowerOperations.openCdp(th._100pct, await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(10, 18)), A, A, dec(1000, 'ether'), { from: A })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(5, 18)), B, B, dec(1000, 'ether'), { from: B })
+    await borrowerOperations.openCdp(await getOpenCdpEBTCAmount(dec(3, 18)), C, C, dec(1000, 'ether'), { from: C })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
@@ -3894,8 +3892,6 @@ contract('CdpManager', async accounts => {
   it("redeemCollateral(): a redemption made when base rate is non-zero increases the base rate, for negligible time passed", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -3997,11 +3993,9 @@ contract('CdpManager', async accounts => {
     assert.isTrue(lastFeeOpTime_3.gt(lastFeeOpTime_1))
   })
 
-  it("redeemCollateral(): a redemption made at zero base rate send a non-zero ETHFee to LQTY staking contract", async () => {
+  it("redeemCollateral(): a redemption made at zero base rate send a non-zero ETHFee to FeeRecipient", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -4016,7 +4010,7 @@ contract('CdpManager', async accounts => {
     assert.equal(await cdpManager.baseRate(), '0')
 
     // Check LQTY Staking contract balance before is zero
-    const lqtyStakingBalance_Before = await contracts.collateral.balanceOf(lqtyStaking.address)
+    const lqtyStakingBalance_Before = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
     assert.equal(lqtyStakingBalance_Before, '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
@@ -4032,15 +4026,13 @@ contract('CdpManager', async accounts => {
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking contract balance after is non-zero
-    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
+    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
     assert.isTrue(lqtyStakingBalance_After.gt(toBN('0')))
   })
 
-  it("redeemCollateral(): a redemption made at zero base increases the ETH-fees-per-LQTY-staked in LQTY Staking contract", async () => {
+  it("redeemCollateral(): a redemption made at zero base processes fee to FeeRecipient", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -4054,9 +4046,9 @@ contract('CdpManager', async accounts => {
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
 
-    // Check LQTY Staking ETH-fees-per-LQTY-staked before is zero
-    const F_ETH_Before = await lqtyStaking.F_ETH()
-    assert.equal(F_ETH_Before, '0')
+    // Check feeRecipient balance beforehand
+    const feeRecipientBalanceBefore = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
+    assert.equal(feeRecipientBalanceBefore, '0')
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
 
@@ -4071,15 +4063,13 @@ contract('CdpManager', async accounts => {
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking ETH-fees-per-LQTY-staked after is non-zero
-    const F_ETH_After = await lqtyStaking.F_ETH()
-    assert.isTrue(F_ETH_After.gt('0'))
+    const feeRecipientBalanceAfter = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
+    assert.isTrue(feeRecipientBalanceAfter.gt('0'))
   })
 
-  it("redeemCollateral(): a redemption made at a non-zero base rate send a non-zero ETHFee to LQTY staking contract", async () => {
+  it("redeemCollateral(): a redemption made at a non-zero base rate send a non-zero fee to FeeRecipient", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -4106,7 +4096,7 @@ contract('CdpManager', async accounts => {
     const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    const lqtyStakingBalance_Before = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
+    const lqtyStakingBalance_Before = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
 
     // B redeems 10 EBTC
     await th.redeemCollateral(B, contracts, dec(10, 18), GAS_PRICE)
@@ -4114,17 +4104,16 @@ contract('CdpManager', async accounts => {
     // Check B's balance has decreased by 10 EBTC
     assert.equal(await ebtcToken.balanceOf(B), B_balanceBefore.sub(toBN(dec(10, 18))).toString())
 
-    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(lqtyStaking.address))
+    const lqtyStakingBalance_After = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
 
     // check LQTY Staking balance has increased
-    assert.isTrue(lqtyStakingBalance_After.gt(lqtyStakingBalance_Before))
+    const feeRecipientBalanceAfter = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
+    assert.isTrue(feeRecipientBalanceAfter.gt('0'))
   })
 
   it("redeemCollateral(): a redemption made at a non-zero base rate increases ETH-per-LQTY-staked in the staking contract", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -4151,26 +4140,23 @@ contract('CdpManager', async accounts => {
     const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    // Check LQTY Staking ETH-fees-per-LQTY-staked before is zero
-    const F_ETH_Before = await lqtyStaking.F_ETH()
+    // Check feeRecipient balance beforehand
+    const feeRecipientBalanceBefore = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
 
     // B redeems 10 EBTC
     await th.redeemCollateral(B, contracts, dec(10, 18), GAS_PRICE)
 
     // Check B's balance has decreased by 10 EBTC
     assert.equal(await ebtcToken.balanceOf(B), B_balanceBefore.sub(toBN(dec(10, 18))).toString())
-
-    const F_ETH_After = await lqtyStaking.F_ETH()
-
-    // check LQTY Staking balance has increased
-    assert.isTrue(F_ETH_After.gt(F_ETH_Before))
+    
+    // Ensure balance has increased
+    const feeRecipientBalanceAfter = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
+    assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
   it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - ETHFee) to the redeemer", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     const { totalDebt: W_totalDebt } = await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
@@ -4224,8 +4210,6 @@ contract('CdpManager', async accounts => {
   it("redeemCollateral(): a full redemption (leaving cdp with 0 debt), closes the cdp", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
 
     await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("10000")});
     const { netDebt: W_netDebt } = await openCdp({ ICR: toBN(dec(20, 18)), extraEBTCAmount: dec(1000, 18), extraParams: { from: whale } })
@@ -4263,8 +4247,6 @@ contract('CdpManager', async accounts => {
   const redeemCollateral3Full1Partial = async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-    await lqtyToken.approve(lqtyStaking.address, dec(1, 18), { from: multisig })
-    await lqtyStaking.stake(dec(1, 18), { from: multisig })
     
     await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("270000")});
     const { netDebt: W_netDebt } = await openCdp({ ICR: toBN(dec(20, 18)), extraEBTCAmount: dec(1000, 18), extraParams: { from: whale } })
@@ -4340,7 +4322,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(D_balanceAfter.eq(D_balanceBefore))
 
     // Deprecated D is not closed, so cannot open cdp
-    // await assertRevert(borrowerOperations.openCdp(th._100pct, 0, th.DUMMY_BYTES32, ZERO_ADDRESS, { from: D, value: dec(10, 18) }), 'BorrowerOps: Cdp is active')
+    // await assertRevert(borrowerOperations.openCdp(0, th.DUMMY_BYTES32, ZERO_ADDRESS, { from: D, value: dec(10, 18) }), 'BorrowerOps: Cdp is active')
 
     return {
       A_netDebt, A_coll,
@@ -4527,7 +4509,7 @@ contract('CdpManager', async accounts => {
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
-      await borrowerOperations.adjustCdpWithColl(_aliceCdpId, th._100pct, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, ebtcAmount.mul(mv._1e18BN).div(price), { from: alice })
+      await borrowerOperations.adjustCdpWithColl(_aliceCdpId, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, ebtcAmount.mul(mv._1e18BN).div(price), { from: alice })
     }
 
     const {
@@ -4581,7 +4563,7 @@ contract('CdpManager', async accounts => {
     const carolSnapshot_L_EBTCDebt = (await cdpManager.rewardSnapshots(_carolCdpId))[1]
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
-    const carol_PendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(_carolCdpId))[0]
+    const carol_PendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(_carolCdpId))
     assert.isTrue(carol_PendingEBTCDebtReward.gt(toBN('0')))
   })
 
@@ -4800,6 +4782,21 @@ contract('CdpManager', async accounts => {
 
   it("hasPendingRewards(): Returns false it cdp is not active", async () => {
     assert.isFalse(await cdpManager.hasPendingRewards(alice))
+  })
+  
+  it("CDPManager governance permissioned: requiresAuth() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.someFunc1({from: alice}), "UNAUTHORIZED");   
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _func1Sig = await cdpManager.FUNC_SIG1();
+      await authority.setRoleCapability(_role123, cdpManager.address, _func1Sig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _func1Sig)));
+      await cdpManager.someFunc1({from: alice}); 
+	  
   })
 })
 

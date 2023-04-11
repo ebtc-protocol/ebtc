@@ -53,7 +53,8 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -69,7 +70,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     debtToken = ebtcToken;
     LICR = await cdpManager.LICR()
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
@@ -645,7 +645,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)
@@ -670,7 +670,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     
     let _pendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
     const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
-      .add(_pendingDebtRewards[0]).add(_pendingDebtRewards[1]))
+      .add(_pendingDebtRewards))
       .toString()
 
     const expected_B_coll = B_coll
@@ -753,7 +753,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     let _bobPendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
     const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
-      .add(_bobPendingDebtRewards[0]).add(_bobPendingDebtRewards[1]))
+      .add(_bobPendingDebtRewards))
       .toString()
 
     const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
@@ -762,7 +762,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     let _alicePendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
     const alice_EBTCDebt = ((await cdpManager.Cdps(_aliceCdpId))[0]
-      .add(_alicePendingDebtRewards[0]).add(_alicePendingDebtRewards[1]))
+      .add(_alicePendingDebtRewards))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).add(toBN('0')).add(th.applyLiquidationFee(toBN('0')))
@@ -1041,7 +1041,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)	
@@ -1064,7 +1064,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     let _bobPendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
     const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
-      .add(_bobPendingDebtRewards[0]).add(_bobPendingDebtRewards[1]))
+      .add(_bobPendingDebtRewards))
       .toString()
 	
     let _carolDebtRedistributedToBob = _carolDebtRedistributed.mul((await cdpManager.getCdpStake(_bobCdpId))).div(_totalStakesAfterCarolLiq);
@@ -1156,7 +1156,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     let _bobPendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
     const bob_EBTCDebt = ((await cdpManager.Cdps(_bobCdpId))[0]
-      .add(_bobPendingDebtRewards[0]).add(_bobPendingDebtRewards[1]))
+      .add(_bobPendingDebtRewards))
       .toString()
 
     const alice_Coll = ((await cdpManager.Cdps(_aliceCdpId))[1]
@@ -1165,7 +1165,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     let _alicePendingDebtRewards = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
     const alice_EBTCDebt = ((await cdpManager.Cdps(_aliceCdpId))[0]
-      .add(_alicePendingDebtRewards[0]).add(_alicePendingDebtRewards[1]))
+      .add(_alicePendingDebtRewards))
       .toString()
 
     const totalCollAfterL1 = A_coll.add(B_coll).sub(toBN('0')).add(th.applyLiquidationFee(toBN('0')))

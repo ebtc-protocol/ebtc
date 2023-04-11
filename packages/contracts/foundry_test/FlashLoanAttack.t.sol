@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 import "../contracts/Dependencies/IERC20.sol";
 import "../contracts/Interfaces/IERC3156FlashLender.sol";
@@ -48,15 +47,12 @@ contract FlashAttack {
 }
 
 contract FlashLoanAttack is eBTCBaseFixture {
-    Utilities internal _utils;
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;
@@ -72,7 +68,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
 

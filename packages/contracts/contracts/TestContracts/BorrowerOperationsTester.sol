@@ -60,11 +60,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
-    // Set interest rate as 0 for js tests
-    function _calcUnitAmountAfterInterest(uint) internal pure override returns (uint) {
-        return DECIMAL_PRECISION;
-    }
-
     // Payable fallback function
     receive() external payable {}
 }

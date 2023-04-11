@@ -31,16 +31,13 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let functionCaller
   let borrowerOperations
 
-  let lqtyStaking
-  let lqtyToken
-  let communityIssuance
-  let lockupContractFactory
+  let feeRecipient
 
   before(async () => {
     coreContracts = await deploymentHelper.deployLiquityCore()
     coreContracts.cdpManager = await CdpManagerTester.new()
     coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
-    const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     
     priceFeed = coreContracts.priceFeed
     ebtcToken = coreContracts.ebtcToken
@@ -52,24 +49,14 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
 
-    lqtyStaking = LQTYContracts.lqtyStaking
-    lqtyToken = LQTYContracts.lqtyToken
-    communityIssuance = LQTYContracts.communityIssuance
-    lockupContractFactory = LQTYContracts.lockupContractFactory
+    feeRecipient = LQTYContracts.feeRecipient
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
 
     for (account of accounts.slice(0, 10)) {
       await th.openCdp(coreContracts, { extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
     }
-
-    const expectedCISupplyCap = '32000000000000000000000000' // 32mil
-
-    // Check CI has been properly funded
-    const bal = await lqtyToken.balanceOf(communityIssuance.address)
-    assert.equal(bal, expectedCISupplyCap)
   })
 
   describe('CdpManager', async accounts => {
@@ -379,10 +366,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('LockupContract', async accounts => {
+  xdescribe('LockupContract', async accounts => {
     it("withdrawLQTY(): reverts when caller is not beneficiary", async () => {
       // deploy new LC with Carol as beneficiary
-      const unlockTime = (await lqtyToken.getDeploymentStartTime()).add(toBN(timeValues.SECONDS_IN_ONE_YEAR))
+      const unlockTime = (await cdpManager.getDeploymentStartTime()).add(toBN(timeValues.SECONDS_IN_ONE_YEAR))
       const deployedLCtx = await lockupContractFactory.deployLockupContract(
         carol, 
         unlockTime,
@@ -410,10 +397,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('LQTYStaking', async accounts => {
-    it("increaseF_EBTC(): reverts when caller is not CdpManager", async () => {
+  describe('FeeRecipient', async accounts => {
+    it("receiveEbtcFee(): reverts when caller is not CdpManager or BorrowerOperations", async () => {
       try {
-        const txAlice = await lqtyStaking.increaseF_EBTC(dec(1, 18), { from: alice })
+        const txAlice = await feeRecipient.receiveEbtcFee(dec(1, 18), { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -421,7 +408,8 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('LQTYToken', async accounts => {
+  // LQTY Token no longer present
+  xdescribe('LQTYToken', async accounts => {
     it("sendToLQTYStaking(): reverts when caller is not the LQTYSstaking", async () => {
       // Check multisig has some LQTY
       assert.isTrue((await lqtyToken.balanceOf(multisig)).gt(toBN('0')))
