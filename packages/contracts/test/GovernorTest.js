@@ -109,6 +109,9 @@ contract('Governor - access control entrypoint to permissioned functions', async
       await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: owner});  
       let _role1CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role1, governorTester.address, _funcSig1);
       assert.isTrue(_role1CanCallFunc1);
+      let _enabledFunctions = await governorTester.getEnabledFunctionsInTarget(governorTester.address);
+      assert.isTrue(_enabledFunctions.length == 1);
+      assert.isTrue(_enabledFunctions[0] == _funcSig1);
 	  
       // authorize alice & bob
       await governorTester.setUserRole(alice, _role1, true, {from: owner});  
@@ -136,6 +139,8 @@ contract('Governor - access control entrypoint to permissioned functions', async
 	  
       // revoke authorization for role1 now  
       await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, false, {from: owner});  
+      _enabledFunctions = await governorTester.getEnabledFunctionsInTarget(governorTester.address);
+      assert.isTrue(_enabledFunctions.length == 0);
       _role1CanCallFunc1 = await governorTester.doesRoleHaveCapability(_role1, governorTester.address, _funcSig1);
       assert.isFalse(_role1CanCallFunc1);
       await assertRevert(governorTester.someFunc1({from: bob}), "GovernorTester: sender not authorized for this function");

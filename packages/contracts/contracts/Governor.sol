@@ -63,8 +63,9 @@ contract Governor is RolesAuthority {
         if (count > 0) {
             uint j = 0;
             usersWithRole = new address[](count);
-            for (uint i = 0; i < users.length(); i++) {
-                address user = users.at(i);
+            address[] memory _usrs = users.values();
+            for (uint i = 0; i < _usrs.length; i++) {
+                address user = _usrs[i];
                 bool _canCall = doesUserHaveRole(user, role);
                 if (_canCall) {
                     usersWithRole[j] = user;
@@ -122,6 +123,19 @@ contract Governor is RolesAuthority {
             _data |= bytes32(1 << uint(roleIds[i]));
         }
         return _data;
+    }
+
+    // helper function to return every authorization-enabled function signatures for given target address
+    function getEnabledFunctionsInTarget(
+        address _target
+    ) public view returns (bytes4[] memory _funcs) {
+        bytes32[] memory _sigs = enabledFunctionSigsByTarget[_target].values();
+        if (_sigs.length > 0) {
+            _funcs = new bytes4[](_sigs.length);
+            for (uint i = 0; i < _sigs.length; ++i) {
+                _funcs[i] = bytes4(_sigs[i]);
+            }
+        }
     }
 
     /// @notice return all role IDs that have at least one capability enabled
