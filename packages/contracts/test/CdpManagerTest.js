@@ -45,7 +45,7 @@ contract('CdpManager', async accounts => {
   let defaultPool
   let borrowerOperations
   let hintHelpers
-
+  let authority;
   let contracts
   let _signer
 
@@ -84,6 +84,7 @@ contract('CdpManager', async accounts => {
     LICR = await cdpManager.LICR()
 
     feeRecipient = LQTYContracts.feeRecipient
+    authority = contracts.authority;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
@@ -4781,6 +4782,21 @@ contract('CdpManager', async accounts => {
 
   it("hasPendingRewards(): Returns false it cdp is not active", async () => {
     assert.isFalse(await cdpManager.hasPendingRewards(alice))
+  })
+  
+  it("CDPManager governance permissioned: requiresAuth() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.someFunc1({from: alice}), "UNAUTHORIZED");   
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _func1Sig = await cdpManager.FUNC_SIG1();
+      await authority.setRoleCapability(_role123, cdpManager.address, _func1Sig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _func1Sig)));
+      await cdpManager.someFunc1({from: alice}); 
+	  
   })
 })
 

@@ -108,17 +108,5 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
         require(msg.sender == activePoolAddress, "FeeRecipient: caller is not ActivePool");
     }
 
-    function _requireUserHasStake(uint currentStake) internal pure {
-        require(currentStake > 0, "FeeRecipient: User must have a non-zero stake");
-    }
-
-    function _requireNonZeroAmount(uint _amount) internal pure {
-        require(_amount > 0, "FeeRecipient: Amount must be non-zero");
-    }
-
-    receive() external payable {
-        _requireCallerIsActivePool();
-    }
-
     // TODO: Add Governable sweep function
 }

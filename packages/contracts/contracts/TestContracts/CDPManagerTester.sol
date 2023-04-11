@@ -8,6 +8,9 @@ import "../CdpManager.sol";
 for testing the parent's internal functions. */
 
 contract CdpManagerTester is CdpManager {
+    bytes4 public constant FUNC_SIG1 = bytes4(keccak256(bytes("someFunc1()")));
+    event SomeFunc1Called(address _caller);
+
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
@@ -50,6 +53,10 @@ contract CdpManagerTester is CdpManager {
 
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
         return _getNetDebt(_debtVal);
+    }
+
+    function someFunc1() external requiresAuth {
+        emit SomeFunc1Called(msg.sender);
     }
 
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {

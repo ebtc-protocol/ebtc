@@ -60,7 +60,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	
-    splitFeeRecipient = await contracts.cdpManager.feeRecipient();
+    splitFeeRecipient = await LQTYContracts.feeRecipient;
   })
   
   it("Claim split fee when there is staking reward coming", async() => {
@@ -104,9 +104,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
-      await cdpManager.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
+      await splitFeeRecipient.claimStakingSplitFee();  
+      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee);
 	  
@@ -198,9 +198,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);  
           let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
-          let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient); 
+          let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address); 
           await cdpManager.claimStakingSplitFee();  	 
-          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
           //console.log('i[' + i + ']:_totalCollBeforeAdded=' + _totalCollBeforeAdded + ',_totalColl=' + _totalColl + ',diff=' + (_totalColl.sub(_totalCollBeforeAdded)) + ',_aliceColl=' + _aliceColl + ',_bobColl=' + _bobColl + ',_expectedFee=' + _expectedFee + ',_feeBalDelta=' + _actualFee + ',diffFee=' + (_actualFee.sub(_expectedFee))); 
@@ -326,9 +326,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFeeShare = _fees[0];
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
 	  
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
       await cdpManager.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
 	  
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
       let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
@@ -379,7 +379,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _newAuthority = await GovernorTester.new(alice);
       await cdpManager.setAuthority(_newAuthority.address, {from: alice});
       assert.isTrue(_newAuthority.address == (await cdpManager.authority()));
-      _newSplitFee = 1234;
+      _newSplitFee = 10000;
       await _newAuthority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: alice});	  
       await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
       await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
