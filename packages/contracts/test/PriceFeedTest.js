@@ -21,7 +21,8 @@ contract('PriceFeed', async accounts => {
   let mockChainlink
 
   const setAddresses = async () => {
-    await priceFeed.setAddresses(mockChainlink.address, tellorCaller.address, { from: owner })
+    // Using tellorCaller as authority as we're not testing governance function
+    await priceFeed.setAddresses(mockChainlink.address, tellorCaller.address, tellorCaller.address, { from: owner })
   }
 
   beforeEach(async () => {
@@ -91,14 +92,14 @@ contract('PriceFeed', async accounts => {
 
     it("setAddresses should fail whe called by nonOwner", async () => {
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: alice }),
+        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, mockTellor.address, { from: alice }),
         "Ownable: caller is not the owner"
       )
     })
 
     it("setAddresses should fail after address has already been set", async () => {
       // Owner can successfully set any address
-      const txOwner = await priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: owner })
+      const txOwner = await priceFeed.setAddresses(mockChainlink.address, mockTellor.address, mockTellor.address, { from: owner })
       assert.isTrue(txOwner.receipt.status)
 
       await assertRevert(
