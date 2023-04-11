@@ -60,12 +60,14 @@ contract('Governor - access control entrypoint to permissioned functions', async
       await assertRevert(governorTester.setPublicCapability(governorTester.address, _funcSig1, true, {from: alice}), "UNAUTHORIZED");
       await assertRevert(governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: alice}), "UNAUTHORIZED");
       await assertRevert(governorTester.setUserRole(alice, _role1, true, {from: alice}), "UNAUTHORIZED");
+      await assertRevert(governorTester.setRoleName(_role1, "abcde", {from: alice}), "UNAUTHORIZED");
   })
   
   it("Governor owner could transfer ownership to other address", async() => {	  	  
       let _role1 = 1;  	
       assert.isTrue(owner == (await governorTester.owner()));  
       await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+      await assertRevert(governorTester.transferOwnership(alice, {from: alice}), "UNAUTHORIZED");
       await governorTester.transferOwnership(alice, {from: owner});	
       assert.isTrue(alice == (await governorTester.owner()));  
       await governorTester.someFunc1({from: alice});  	

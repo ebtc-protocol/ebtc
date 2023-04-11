@@ -4,6 +4,7 @@ const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const MockChainlink = artifacts.require("./MockAggregator.sol")
 const MockTellor = artifacts.require("./MockTellor.sol")
 const TellorCaller = artifacts.require("./TellorCaller.sol")
+const GovernorTester = artifacts.require("./GovernorTester.sol");
 
 const testHelpers = require("../utils/testHelpers.js")
 const th = testHelpers.TestHelper
@@ -2287,6 +2288,24 @@ contract('PriceFeed', async accounts => {
     assert.equal(price, dec(246, 18))
     const statusAfter = await priceFeed.status()
     assert.equal(statusAfter, '2') // status 2: both oracles untrusted
+  })
+  
+  it("SetTellorCaller() should only allow authorized caller", async() => {
+    let myPriceFeed = await PriceFeed.new()
+    let _newAuthority = await GovernorTester.new(alice);
+    await myPriceFeed.setAddresses(mockChainlink.address, tellorCaller.address, _newAuthority.address, { from: owner })
+	  
+    await assertRevert(myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setTellorCaller(address)"); 
+    assert.isTrue(tellorCaller.address == (await myPriceFeed.tellorCaller())); 
+	  	  
+    assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));
+    let _role123 = 123;
+    let _setTelorSig = "0x9545e9a5";//myPriceFeed#SET_TELLOR_CALLER_SIG;
+    await _newAuthority.setRoleCapability(_role123, myPriceFeed.address, _setTelorSig, true, {from: alice});	  
+    await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
+    assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setTelorSig)));
+    await myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}); 
+    assert.isTrue(_newAuthority.address == (await myPriceFeed.tellorCaller())); 
   })
 })
 

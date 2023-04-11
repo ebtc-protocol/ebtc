@@ -5,6 +5,7 @@ const { toBN, dec, ZERO_ADDRESS } = th
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol");
+const GovernorTester = artifacts.require("./GovernorTester.sol");
 
 const assertRevert = th.assertRevert
 
@@ -25,6 +26,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let _MCR;
   let collToken;
   let splitFeeRecipient;
+  let authority;
 
   const openCdp = async (params) => th.openCdp(contracts, params)
 
@@ -53,6 +55,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
     hintHelpers = contracts.hintHelpers;
+    authority = contracts.authority;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
@@ -350,6 +353,37 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await cdpManager.liquidate(_bobCdpId, {from: owner});
       let _surplusToClaimBob = await collSurplusPool.getCollateral(bob);
       th.assertIsApproximatelyEqual(_surplusToClaimBob, _bobCollDebtAfter[1].sub(_expectedLiquidatedCollBob), _errorTolerance);
+  })
+  
+  it("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.setStakingRewardSplit(1, {from: alice}), "CDPManager: sender not authorized for setStakingRewardSplit(uint256)");   
+      await assertRevert(cdpManager.setStakingRewardSplit(10001, {from: owner}), "CDPManager: new staking reward split exceeds max");
+      assert.isTrue(2500 == (await cdpManager.stakingRewardSplit())); 
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _splitRewardSig = "0xb6fe918a";//cdpManager#SET_STAKING_REWARD_SPLIT_SIG;
+      await authority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
+      let _newSplitFee = 9876;
+      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
+      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));  
+	  
+      // switch authority    
+      let _setAuthSig = "0x7a9e5e4b";//bytes4(keccak256(bytes("setAuthority(address)")))
+      await authority.setRoleCapability(_role123, cdpManager.address, _setAuthSig, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _setAuthSig)));
+      let _newAuthority = await GovernorTester.new(alice);
+      await cdpManager.setAuthority(_newAuthority.address, {from: alice});
+      assert.isTrue(_newAuthority.address == (await cdpManager.authority()));
+      _newSplitFee = 1234;
+      await _newAuthority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: alice});	  
+      await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
+      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
+      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));
   })
   
   
