@@ -53,9 +53,46 @@ contract('Governor - access control entrypoint to permissioned functions', async
     _funcSig1 = await governorTester.FUNC_SIG1();
   })
   
-  it("Governor owner could call any function while non-authorized user could not", async() => {	  
+  it("Governor owner could call any function while non-authorized user could not", async() => {	  	  
+      let _role1 = 1;  	  
       await governorTester.someFunc1({from: owner});  
       await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+      await assertRevert(governorTester.setPublicCapability(governorTester.address, _funcSig1, true, {from: alice}), "UNAUTHORIZED");
+      await assertRevert(governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: alice}), "UNAUTHORIZED");
+      await assertRevert(governorTester.setUserRole(alice, _role1, true, {from: alice}), "UNAUTHORIZED");
+  })
+  
+  it("Governor owner could transfer ownership to other address", async() => {	  	  
+      let _role1 = 1;  	
+      assert.isTrue(owner == (await governorTester.owner()));  
+      await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+      await governorTester.transferOwnership(alice, {from: owner});	
+      assert.isTrue(alice == (await governorTester.owner()));  
+      await governorTester.someFunc1({from: alice});  	
+      await governorTester.setPublicCapability(governorTester.address, _funcSig1, true, {from: alice});
+      await governorTester.setRoleCapability(_role1, governorTester.address, _funcSig1, true, {from: alice});
+      await governorTester.setUserRole(alice, _role1, true, {from: alice});  
+  })
+  
+  it("Governor could switch authority", async() => {	  
+      let _role1 = 1;  	  	 	
+      assert.isTrue(governorTester.address == (await governorTester.authority())); 	  
+      let _newAuthority = await GovernorTester.new(alice);  
+      await governorTester.setAuthority(_newAuthority.address, {from: owner});	
+      assert.isTrue(_newAuthority.address == (await governorTester.authority())); 
+	  
+      // check new authority to grant permission
+      await assertRevert(governorTester.someFunc1({from: alice}), "GovernorTester: sender not authorized for this function");
+      await _newAuthority.setPublicCapability(governorTester.address, _funcSig1, true, {from: alice});
+	  assert.isTrue((await _newAuthority.canCall(alice, governorTester.address, _funcSig1)));    
+      await governorTester.someFunc1({from: alice});  
+  })
+  
+  it("Good naming to role", async() => {	  
+      let _role1 = 1;  	  
+      let _role1Name = "Role1";  
+      await governorTester.setRoleName(_role1, _role1Name, {from: owner});  
+      assert.isTrue(_role1Name == (await governorTester.getRoleName(_role1)));
   })
   
   it("Non-authorized user could call target public function if enabled", async() => {	  
@@ -121,6 +158,15 @@ contract('Governor - access control entrypoint to permissioned functions', async
       assert.isTrue(_roleIds.length == 2);
       assert.isTrue(_roleIds[0] == _role1);
       assert.isTrue(_roleIds[1] == _role2);
+	  
+      // assigne both roles to alice	  
+      await governorTester.setUserRole(alice, _role1, true, {from: owner});  
+      await governorTester.setUserRole(alice, _role2, true, {from: owner});  
+      await governorTester.someFunc1({from: alice});   
+	  
+      // revoke role from alice now but still with another role
+      await governorTester.setUserRole(alice, _role1, false, {from: owner});   
+      await governorTester.someFunc1({from: alice});    
   })
   
 })

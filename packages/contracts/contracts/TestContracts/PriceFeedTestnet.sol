@@ -6,7 +6,6 @@ import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ITellorCaller.sol";
 import "../Dependencies/Authv06.sol";
 
-
 /*
  * PriceFeed placeholder for testnet and development. The price is simply set manually and saved in a state
  * variable. The contract does not connect to a live Chainlink price feed.
@@ -16,9 +15,10 @@ contract PriceFeedTestnet is IPriceFeed, Auth {
     uint256 private _price = 7428 * 1e13;
 
     // -- Permissioned Function Signatures --
-    bytes4 private constant SET_TELLOR_CALLER_SIG = bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 private constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
 
-    ITellorCaller public tellorCaller; 
+    ITellorCaller public tellorCaller;
 
     event TellorCallerChanged(address _tellorCaller);
 
@@ -48,7 +48,10 @@ contract PriceFeedTestnet is IPriceFeed, Auth {
     }
 
     function setTellorCaller(address _tellorCaller) external {
-        require(isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG), "PriceFeed: sender not authorized for setTellorCaller(address)");
+        require(
+            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
+            "PriceFeed: sender not authorized for setTellorCaller(address)"
+        );
         tellorCaller = ITellorCaller(_tellorCaller);
         emit TellorCallerChanged(_tellorCaller);
     }

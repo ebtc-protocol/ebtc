@@ -43,6 +43,10 @@ contract PriceFeedTest is eBTCBaseFixture {
     bytes32[] cdpIds;
 
     function setUp() public override {
+        eBTCBaseFixture.setUp();
+        eBTCBaseFixture.connectCoreContracts();
+        eBTCBaseFixture.connectLQTYContractsToCore();
+
         _priceFeed = new PriceFeedTester();
         _mockTellor = new MockTellor();
         _mockChainlink = new MockAggregator();
@@ -70,7 +74,11 @@ contract PriceFeedTest is eBTCBaseFixture {
     function testPriceFeedFork() private {
         _priceFeed = new PriceFeedTester();
         _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
-        _priceFeed.setAddresses(0xAc559F25B1619171CbC396a50854A3240b6A4e99, address(_tellorCaller), address(authority));
+        _priceFeed.setAddresses(
+            0xAc559F25B1619171CbC396a50854A3240b6A4e99,
+            address(_tellorCaller),
+            address(authority)
+        );
         PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
 
         console.log("Tellor Response:");

@@ -41,7 +41,8 @@ contract eBTCBaseFixture is Test {
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
-    bytes4 public constant SET_TELLOR_CALLER_SIG = bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 public constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
 
     using SafeMath for uint256;
     using SafeMath for uint96;

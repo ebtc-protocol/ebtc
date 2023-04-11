@@ -103,12 +103,12 @@ contract('PriceFeed', async accounts => {
       assert.isTrue(txOwner.receipt.status)
 
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: owner }),
+        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, mockTellor.address, { from: owner }),
         "Ownable: caller is not the owner"
       )
 
       await assertRevert(
-        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, { from: alice }),
+        priceFeed.setAddresses(mockChainlink.address, mockTellor.address, mockTellor.address, { from: alice }),
         "Ownable: caller is not the owner"
       )
     })

@@ -9,7 +9,6 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
     Test governance around swapping the backup price feed
  */
 contract PriceFeedGovernanceTest is eBTCBaseFixture {
-
     function setUp() public override {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectCoreContracts();
@@ -37,7 +36,10 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         authority.setUserRole(user, 4, true);
 
         assertEq(authority.doesUserHaveRole(user, 4), true);
-        assertEq(authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG), true);
+        assertEq(
+            authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG),
+            true
+        );
 
         vm.startPrank(user);
         priceFeedMock.setTellorCaller(mockOracle);

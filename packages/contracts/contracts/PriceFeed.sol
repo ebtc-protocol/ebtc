@@ -47,7 +47,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
 
     // -- Permissioned Function Signatures --
-    bytes4 private constant SET_TELLOR_CALLER_SIG = bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 private constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -383,7 +384,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
 
     // --- Governance Functions ---
     function setTellorCaller(address _tellorCaller) external {
-        require(isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG), "PriceFeed: sender not authorized for setTellorCaller(address)");
+        require(
+            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
+            "PriceFeed: sender not authorized for setTellorCaller(address)"
+        );
         tellorCaller = ITellorCaller(_tellorCaller);
         emit TellorCallerChanged(_tellorCaller);
     }
