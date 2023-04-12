@@ -983,7 +983,7 @@ contract('Gas compensation tests', async accounts => {
     assert.isAtMost(th.getDifference(expectedGasComp, compensationReceived), 1000)
 
     // Check ETH in defaultPool now equals the expected liquidated collateral
-    const ETHinDefaultPool = (await defaultPool.getETH()).toString()
+    const ETHinDefaultPool = (await defaultPool.getStEthColl()).toString()
     assert.isAtMost(th.getDifference('0', ETHinDefaultPool), 1000)
   })
 

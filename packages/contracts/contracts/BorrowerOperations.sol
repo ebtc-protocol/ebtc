@@ -478,7 +478,7 @@ contract BorrowerOperations is
         _repayEBTC(activePoolCached, ebtcTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
 
         // Send the collateral back to the user
-        activePoolCached.sendETH(msg.sender, coll);
+        activePoolCached.sendStEthColl(msg.sender, coll);
     }
 
     /**
@@ -548,7 +548,7 @@ contract BorrowerOperations is
         if (_varMvTokens.isCollIncrease) {
             _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
-            _activePool.sendETH(_varMvTokens.user, _varMvTokens.collChange);
+            _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 

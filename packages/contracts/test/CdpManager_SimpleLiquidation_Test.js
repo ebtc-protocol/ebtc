@@ -130,7 +130,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);
       let _collLiquidatorPre = await collToken.balanceOf(bob);	 	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       let _expectedDebtRepaid = _colDeposited.mul(toBN(_newPrice)).div(LICR);
 	  
@@ -141,7 +141,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);
       let _collLiquidatorPost = await collToken.balanceOf(bob);	  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 
       // check CdpLiquidated event
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
@@ -202,7 +202,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(simpleLiquidationTester.address);
       let _collLiquidatorPre = await collToken.balanceOf(simpleLiquidationTester.address); 	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       let _expectedDebtRepaid = _colDeposited.mul(toBN(_newPrice)).div(LICR);
 	  
@@ -213,7 +213,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(simpleLiquidationTester.address);	
       let _collLiquidatorPost = await collToken.balanceOf(simpleLiquidationTester.address);  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 	  
       // check EtherReceived event
 //      const seizedEtherEvents = th.getAllEventsByName(tx, 'EtherReceived')
@@ -560,13 +560,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);	
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
       let _debtInAllPoolPre = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPre = toBN((await activePool.getETH()).toString()).add(toBN((await defaultPool.getETH()).toString()));
+      let _collInAllPoolPre = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
       const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmount, _aliceCdpId, _aliceCdpId, {from: bob}) 
       let _collRemaining = await cdpManager.getCdpColl(_aliceCdpId); 
       let _stakeRemaining = await cdpManager.getCdpStake(_aliceCdpId);
       let _debtRemaining = await cdpManager.getCdpDebt(_aliceCdpId);
       let _debtInAllPoolPost = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPost = toBN((await activePool.getETH()).toString()).add(toBN((await defaultPool.getETH()).toString()));
+      let _collInAllPoolPost = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
       let _additionalCol = dec(1, 'ether');
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
       await contracts.collateral.deposit({from: alice, value: _additionalCol});
@@ -658,7 +658,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);	
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       for(let i = 0;i < _partialLiquidations;i++){
           if(i < _partialLiquidations - 1){
@@ -678,7 +678,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);	  
       let _collLiquidatorPost = await collToken.balanceOf(bob);	
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 	  
       // check liquidator balance change
       let _leftCollWithHalfDebtRepaid = _colDeposited.sub(_quarterDebt.add(_quarterDebt).mul(LICR).div(toBN(_newPrice)));

@@ -14,7 +14,7 @@ interface IPool {
 
     // --- Functions ---
 
-    function getETH() external view returns (uint);
+    function getStEthColl() external view returns (uint);
 
     function getEBTCDebt() external view returns (uint);
 

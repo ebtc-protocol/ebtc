@@ -19,12 +19,20 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     ICollateralToken public collateral;
 
     // deposited ether tracker
-    uint256 internal ETH;
+    uint256 internal StEthColl;
     // Collateral surplus claimable by cdp owners
     mapping(address => uint) internal balances;
 
     // --- Contract setters ---
 
+    /**
+     * @notice Sets the addresses of the contracts and renounces ownership
+     * @dev One-time initialization function. Can only be called by the owner as a security measure. Ownership is renounced after the function is called.
+     * @param _borrowerOperationsAddress The address of the BorrowerOperations
+     * @param _cdpManagerAddress The address of the CDPManager
+     * @param _activePoolAddress The address of the ActivePool
+     * @param _collTokenAddress The address of the CollateralToken
+     */
     function setAddresses(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
@@ -49,12 +57,20 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         renounceOwnership();
     }
 
-    /* Returns the ETH state variable at ActivePool address.
-       Not necessarily equal to the raw ether balance - ether can be forcibly sent to contracts. */
-    function getETH() external view override returns (uint) {
-        return ETH;
+    /**
+     * @notice Gets the current collateral state variable of the pool
+     * @dev Not necessarily equal to the raw collateral token balance - tokens can be forcibly sent to contracts
+     * @return The current collateral balance tracked by the variable
+     */
+    function getStEthColl() external view override returns (uint) {
+        return StEthColl;
     }
 
+    /**
+     * @notice Gets the collateral surplus available for the given account
+     * @param _account The address of the account
+     * @return The collateral balance available to claim
+     */
     function getCollateral(address _account) external view override returns (uint) {
         return balances[_account];
     }
@@ -78,8 +94,8 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         balances[_account] = 0;
         emit CollBalanceUpdated(_account, 0);
 
-        require(ETH >= claimableColl, "!CollSurplusPoolBal");
-        ETH = ETH - claimableColl;
+        require(StEthColl >= claimableColl, "!CollSurplusPoolBal");
+        StEthColl = StEthColl - claimableColl;
         emit CollateralSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -105,6 +121,6 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        ETH = ETH + _value;
+        StEthColl = StEthColl + _value;
     }
 }

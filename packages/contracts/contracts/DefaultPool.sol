@@ -10,10 +10,10 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 /*
- * The Default Pool holds the ETH and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
+ * The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
  * to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  *
- * When a cdp makes an operation that applies its pending ETH and EBTC debt, its pending ETH and EBTC debt is moved
+ * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved
  * from the Default Pool to the Active Pool.
  */
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
@@ -23,7 +23,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     address public cdpManagerAddress;
     address public activePoolAddress;
-    uint256 internal ETH; // deposited ETH tracker
+    uint256 internal StEthColl; // deposited stETH collateral tracker
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;
 
@@ -52,12 +52,12 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-     * Returns the ETH state variable.
+     * Returns the StEthColl state variable.
      *
-     * Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     * Not necessarily equal to the the contract's raw stETH collateral balance - ether can be forcibly sent to contracts.
      */
-    function getETH() external view override returns (uint) {
-        return ETH;
+    function getStEthColl() external view override returns (uint) {
+        return StEthColl;
     }
 
     function getEBTCDebt() external view override returns (uint) {
@@ -69,9 +69,9 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     function sendETHToActivePool(uint _amount) external override {
         _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
-        require(ETH >= _amount, "!DefaultPoolBal");
-        ETH = ETH - _amount;
-        emit DefaultPoolETHBalanceUpdated(ETH);
+        require(StEthColl >= _amount, "!DefaultPoolBal");
+        StEthColl = StEthColl - _amount;
+        emit DefaultPoolETHBalanceUpdated(StEthColl);
         emit CollateralSent(activePool, _amount);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -103,7 +103,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        ETH = ETH + _value;
-        emit DefaultPoolETHBalanceUpdated(ETH);
+        StEthColl = StEthColl + _value;
+        emit DefaultPoolETHBalanceUpdated(StEthColl);
     }
 }

@@ -30,7 +30,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     address public defaultPoolAddress;
     address public collSurplusPoolAddress;
     address public feeRecipientAddress;
-    uint256 internal ETH; // deposited ether tracker
+    uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
@@ -73,12 +73,12 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-     * Returns the ETH state variable.
+     * Returns the StEthColl state variable.
      *
-     *Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     *Not necessarily equal to the the contract's raw StEthColl balance - ether can be forcibly sent to contracts.
      */
-    function getETH() external view override returns (uint) {
-        return ETH;
+    function getStEthColl() external view override returns (uint) {
+        return StEthColl;
     }
 
     function getEBTCDebt() external view override returns (uint) {
@@ -87,11 +87,11 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendETH(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        require(ETH >= _amount, "!ActivePoolBal");
-        ETH = ETH - _amount;
-        emit ActivePoolETHBalanceUpdated(ETH);
+        require(StEthColl >= _amount, "!ActivePoolBal");
+        StEthColl = StEthColl - _amount;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
         emit CollateralSent(_account, _amount);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -135,8 +135,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH + _value;
-        emit ActivePoolETHBalanceUpdated(ETH);
+        StEthColl = StEthColl + _value;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
     }
 
     // === Flashloans === //
@@ -172,15 +172,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
         // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
-        // NOTE: This means any balance > ETH is stuck, this is also present in LUSD as is
+        // NOTE: This means any balance > StEthColl is stuck, this is also present in LUSD as is
 
         // NOTE: This check effectively prevents running 2 FL at the same time
-        //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
+        //  You technically could, but you'd be having to repay any amount below StEthColl to get Fl2 to not revert
         require(
-            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(StEthColl),
             "ActivePool: Must repay Balance"
         );
-        require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
+        require(collateral.sharesOf(address(this)) >= StEthColl, "ActivePool: Must repay Share");
         require(
             collateral.getPooledEthByShares(1e18) == oldRate,
             "ActivePool: Should keep same collateral share rate"

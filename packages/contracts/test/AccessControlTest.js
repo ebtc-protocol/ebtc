@@ -195,10 +195,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   describe('ActivePool', async accounts => {
     // sendETH
-    it("sendETH(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("sendStEthColl(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.sendETH(alice, 100, { from: alice })
+        const txAlice = await activePool.sendStEthColl(alice, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")

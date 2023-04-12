@@ -15,7 +15,7 @@ interface IActivePool is IPool {
     event CollSurplusPoolAddressChanged(address _collSurplusAddress);
 
     // --- Functions ---
-    function sendETH(address _account, uint _amount) external;
+    function sendStEthColl(address _account, uint _amount) external;
 
     function receiveColl(uint _value) external;
 }

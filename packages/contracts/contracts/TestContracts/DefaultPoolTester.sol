@@ -12,6 +12,6 @@ contract DefaultPoolTester is DefaultPool {
     }
 
     function unprotectedReceiveColl(uint _amount) external {
-        ETH = ETH.add(_amount);
+        StEthColl = StEthColl.add(_amount);
     }
 }

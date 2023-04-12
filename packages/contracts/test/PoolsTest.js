@@ -25,8 +25,8 @@ contract('ActivePool', async accounts => {
     await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)
   })
 
-  it('getETH(): gets the recorded ETH balance', async () => {
-    const recordedETHBalance = await activePool.getETH()
+  it('getStEthColl(): gets the recorded ETH balance', async () => {
+    const recordedETHBalance = await activePool.getStEthColl()
     assert.equal(recordedETHBalance, 0)
   })
 
@@ -66,7 +66,7 @@ contract('ActivePool', async accounts => {
   })
 
   // send raw ether
-  it('sendETH(): decreases the recorded ETH balance by the correct amount', async () => {
+  it('sendStEthColl(): decreases the recorded ETH balance by the correct amount', async () => {
     // setup: give pool 2 ether
     const activePool_initialBalance = web3.utils.toBN(await web3.eth.getBalance(activePool.address))
     assert.equal(activePool_initialBalance, 0)
@@ -84,8 +84,8 @@ contract('ActivePool', async accounts => {
     assert.equal(activePool_BalanceBeforeTx, dec(2, 'ether'))
 
     // send ether from pool to alice
-    //await activePool.sendETH(alice, dec(1, 'ether'), { from: mockBorrowerOperationsAddress })
-    const sendETHData = th.getTransactionData('sendETH(address,uint256)', [alice, web3.utils.toHex(dec(1, 'ether'))])
+    //await activePool.sendStEthColl(alice, dec(1, 'ether'), { from: mockBorrowerOperationsAddress })
+    const sendETHData = th.getTransactionData('sendStEthColl(address,uint256)', [alice, web3.utils.toHex(dec(1, 'ether'))])
     const tx2 = await mockBorrowerOperations.forward(activePool.address, sendETHData, { from: owner })
     assert.isTrue(tx2.receipt.status)
 
@@ -146,8 +146,8 @@ contract('DefaultPool', async accounts => {
     await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
   })
 
-  it('getETH(): gets the recorded EBTC balance', async () => {
-    const recordedETHBalance = await defaultPool.getETH()
+  it('getStEthColl(): gets the recorded EBTC balance', async () => {
+    const recordedETHBalance = await defaultPool.getStEthColl()
     assert.equal(recordedETHBalance, 0)
   })
 

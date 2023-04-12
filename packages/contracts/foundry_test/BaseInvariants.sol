@@ -22,7 +22,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_active_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(activePool)),
-            activePool.getETH(),
+            activePool.getStEthColl(),
             "System Invariant: active_pool_1"
         );
     }
@@ -51,7 +51,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
             _sum = (_sum + _cdpState.coll);
         }
         require(
-            _utils.assertApproximateEq(activePool.getETH(), _sum, _tolerance),
+            _utils.assertApproximateEq(activePool.getStEthColl(), _sum, _tolerance),
             "System Invariant: active_pool_4"
         );
     }
@@ -76,7 +76,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_default_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(defaultPool)),
-            defaultPool.getETH(),
+            defaultPool.getStEthColl(),
             "System Invariant: default_pool_1"
         );
     }
@@ -84,7 +84,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_coll_surplus_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(collSurplusPool)),
-            collSurplusPool.getETH(),
+            collSurplusPool.getStEthColl(),
             "System Invariant: coll_surplus_pool_1"
         );
     }

@@ -155,7 +155,7 @@ contract('CdpManager', async accounts => {
     // --- TEST ---
 
     // check ActivePool ETH and EBTC debt before
-    const activePool_ETH_Before = (await activePool.getETH()).toString()
+    const activePool_ETH_Before = (await activePool.getStEthColl()).toString()
     const activePool_collateral_Before = (await contracts.collateral.balanceOf(activePool.address)).toString()
     const activePool_EBTCDebt_Before = (await activePool.getEBTCDebt()).toString()
 
@@ -176,7 +176,7 @@ contract('CdpManager', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner });
 
     // check ActivePool ETH and EBTC debt 
-    const activePool_ETH_After = (await activePool.getETH()).toString()
+    const activePool_ETH_After = (await activePool.getStEthColl()).toString()
     const activePool_RawEther_After = (await contracts.collateral.balanceOf(activePool.address)).toString()
     const activePool_EBTCDebt_After = (await activePool.getEBTCDebt()).toString()
 
@@ -194,7 +194,7 @@ contract('CdpManager', async accounts => {
     // --- TEST ---
 
     // check DefaultPool ETH and EBTC debt before
-    const defaultPool_ETH_Before = (await defaultPool.getETH())
+    const defaultPool_ETH_Before = (await defaultPool.getStEthColl())
     const defaultPool_RawEther_Before = (await web3.eth.getBalance(defaultPool.address)).toString()
     const defaultPool_EBTCDebt_Before = (await defaultPool.getEBTCDebt()).toString()
 
@@ -214,7 +214,7 @@ contract('CdpManager', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner });
 
     // check after
-    const defaultPool_ETH_After = (await defaultPool.getETH()).toString()
+    const defaultPool_ETH_After = (await defaultPool.getStEthColl()).toString()
     const defaultPool_RawEther_After = (await web3.eth.getBalance(defaultPool.address)).toString()
     const defaultPool_EBTCDebt_After = (await defaultPool.getEBTCDebt()).toString()
 
@@ -1153,7 +1153,7 @@ contract('CdpManager', async accounts => {
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
     const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))
-    const defaultPoolETH = await defaultPool.getETH()
+    const defaultPoolETH = await defaultPool.getStEthColl()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
     assert.isTrue(pendingEBTCDebt_C.lte(defaultPoolEBTCDebt))
@@ -1930,7 +1930,7 @@ contract('CdpManager', async accounts => {
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingETH_C = await cdpManager.getPendingETHReward(_cCdpId)
     const pendingEBTCDebt_C = (await cdpManager.getPendingEBTCDebtReward(_cCdpId))
-    const defaultPoolETH = await defaultPool.getETH()
+    const defaultPoolETH = await defaultPool.getStEthColl()
     const defaultPoolEBTCDebt = await defaultPool.getEBTCDebt()
     assert.isTrue(pendingETH_C.lte(defaultPoolETH))
     assert.isTrue(pendingEBTCDebt_C.lt(defaultPoolEBTCDebt))
@@ -3467,7 +3467,7 @@ contract('CdpManager', async accounts => {
 
     // Get active debt and coll before redemption
     const activePool_debt_before = await activePool.getEBTCDebt()
-    const activePool_coll_before = await activePool.getETH()
+    const activePool_coll_before = await activePool.getStEthColl()
 
     th.assertIsApproximatelyEqual(activePool_debt_before, totalDebt)
     assert.equal(activePool_coll_before.toString(), totalColl)
@@ -3532,7 +3532,7 @@ contract('CdpManager', async accounts => {
 
     // Get active debt and coll before redemption
     const activePool_debt_before = await activePool.getEBTCDebt()
-    const activePool_coll_before = (await activePool.getETH()).toString()
+    const activePool_coll_before = (await activePool.getStEthColl()).toString()
 
     th.assertIsApproximatelyEqual(activePool_debt_before, totalDebt)
     assert.equal(activePool_coll_before, totalColl)
@@ -3681,7 +3681,7 @@ contract('CdpManager', async accounts => {
     const _950_EBTC = '950000000000000000000'
 
     // Check Ether in activePool
-    const activeETH_0 = await activePool.getETH()
+    const activeETH_0 = await activePool.getStEthColl()
     assert.equal(activeETH_0, totalColl.toString());
 
     let firstRedemptionHint
@@ -3718,7 +3718,7 @@ contract('CdpManager', async accounts => {
     ETH removed = (120/200) = 0.6 ETH
     Total active ETH = 280 - 0.6 = 279.4 ETH */
 
-    const activeETH_1 = await activePool.getETH()
+    const activeETH_1 = await activePool.getStEthColl()
     assert.equal(activeETH_1.toString(), activeETH_0.sub(toBN(_120_EBTC).mul(mv._1e18BN).div(price)));
 
     // Flyn redeems 373 EBTC
@@ -3747,7 +3747,7 @@ contract('CdpManager', async accounts => {
     /* 373 EBTC redeemed.  Expect $373 worth of ETH removed. At ETH:USD price of $200, 
     ETH removed = (373/200) = 1.865 ETH
     Total active ETH = 279.4 - 1.865 = 277.535 ETH */
-    const activeETH_2 = await activePool.getETH()
+    const activeETH_2 = await activePool.getStEthColl()
     assert.equal(activeETH_2.toString(), activeETH_1.sub(toBN(_373_EBTC).mul(mv._1e18BN).div(price)));
 
     // Graham redeems 950 EBTC
@@ -3776,7 +3776,7 @@ contract('CdpManager', async accounts => {
     /* 950 EBTC redeemed.  Expect $950 worth of ETH removed. At ETH:USD price of $200, 
     ETH removed = (950/200) = 4.75 ETH
     Total active ETH = 277.535 - 4.75 = 272.785 ETH */
-    const activeETH_3 = (await activePool.getETH()).toString()
+    const activeETH_3 = (await activePool.getStEthColl()).toString()
     assert.equal(activeETH_3.toString(), activeETH_2.sub(toBN(_950_EBTC).mul(mv._1e18BN).div(price)));
   })
 

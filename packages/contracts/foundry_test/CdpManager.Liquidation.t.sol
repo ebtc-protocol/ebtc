@@ -20,7 +20,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
-            activePool.getETH() + defaultPool.getETH(),
+            activePool.getStEthColl() + defaultPool.getStEthColl(),
             "System Invariant: cdp_manager_liq1"
         );
     }

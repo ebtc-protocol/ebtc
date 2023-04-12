@@ -460,7 +460,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
             // housekeeping leftover collateral for liquidated CDP
             if (_outputState.totalColSurplus > 0) {
-                _contractsCache.activePool.sendETH(
+                _contractsCache.activePool.sendStEthColl(
                     address(_contractsCache.collSurplusPool),
                     _outputState.totalColSurplus
                 );
@@ -792,7 +792,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         _contractsCache.activePool.decreaseEBTCDebt(totalDebtToBurn);
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
-        _contractsCache.activePool.sendETH(msg.sender, totalColToSend);
+        _contractsCache.activePool.sendStEthColl(msg.sender, totalColToSend);
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -883,7 +883,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            contractsCache.activePool.sendETH(
+            contractsCache.activePool.sendStEthColl(
                 address(contractsCache.collSurplusPool),
                 totals.totalCollSurplus
             );
@@ -1119,7 +1119,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            contractsCache.activePool.sendETH(
+            contractsCache.activePool.sendStEthColl(
                 address(contractsCache.collSurplusPool),
                 totals.totalCollSurplus
             );
@@ -1406,7 +1406,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
         // send ETH from Active Pool to CollSurplus Pool
         _contractsCache.collSurplusPool.accountSurplus(_borrower, _ETH);
-        _contractsCache.activePool.sendETH(address(_contractsCache.collSurplusPool), _ETH);
+        _contractsCache.activePool.sendStEthColl(address(_contractsCache.collSurplusPool), _ETH);
     }
 
     function _isValidFirstRedemptionHint(
@@ -1563,7 +1563,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         _requireUserAcceptsFee(totals.ETHFee, totals.totalETHDrawn, _maxFeePercentage);
 
         // Send the ETH fee to the LQTY staking contract
-        contractsCache.activePool.sendETH(address(contractsCache.feeRecipient), totals.ETHFee);
+        contractsCache.activePool.sendStEthColl(address(contractsCache.feeRecipient), totals.ETHFee);
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
@@ -1573,7 +1573,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         contractsCache.ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
         // Update Active Pool EBTC, and send ETH to account
         contractsCache.activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
-        contractsCache.activePool.sendETH(msg.sender, totals.ETHToSendToRedeemer);
+        contractsCache.activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
     }
 
     // --- Helper functions ---
@@ -1866,7 +1866,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         _activePool.decreaseEBTCDebt(_debt);
         _defaultPool.increaseEBTCDebt(_debt);
         if (_coll > 0) {
-            _activePool.sendETH(address(_defaultPool), _coll);
+            _activePool.sendStEthColl(address(_defaultPool), _coll);
         }
     }
 
@@ -1910,8 +1910,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     ) internal {
         totalStakesSnapshot = totalStakes;
 
-        uint activeColl = _activePool.getETH();
-        uint liquidatedColl = _defaultPool.getETH();
+        uint activeColl = _activePool.getStEthColl();
+        uint liquidatedColl = _defaultPool.getStEthColl();
         totalCollateralSnapshot = (activeColl - _collRemainder) + liquidatedColl;
 
         emit SystemSnapshotsUpdated(totalStakesSnapshot, totalCollateralSnapshot);
@@ -2221,11 +2221,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         stFeePerUnitgError = _newErrorPerUnit;
 
         require(
-            _cachedContracts.activePool.getETH() > _feeTaken,
+            _cachedContracts.activePool.getStEthColl() > _feeTaken,
             "CDPManager: fee split is too big"
         );
         address _feeRecipient = address(feeRecipient); // TODO choose other fee recipient?
-        _cachedContracts.activePool.sendETH(_feeRecipient, _feeTaken);
+        _cachedContracts.activePool.sendStEthColl(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
     }

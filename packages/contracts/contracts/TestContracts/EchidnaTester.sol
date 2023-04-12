@@ -542,11 +542,11 @@ contract EchidnaTester {
             return false;
         }
 
-        if (collateral.sharesOf(address(activePool)) != activePool.getETH()) {
+        if (collateral.sharesOf(address(activePool)) != activePool.getStEthColl()) {
             return false;
         }
 
-        if (collateral.sharesOf(address(defaultPool)) != defaultPool.getETH()) {
+        if (collateral.sharesOf(address(defaultPool)) != defaultPool.getStEthColl()) {
             return false;
         }
 

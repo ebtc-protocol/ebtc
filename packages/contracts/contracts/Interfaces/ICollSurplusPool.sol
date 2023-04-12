@@ -22,7 +22,7 @@ interface ICollSurplusPool {
         address _collTokenAddress
     ) external;
 
-    function getETH() external view returns (uint);
+    function getStEthColl() external view returns (uint);
 
     function getCollateral(address _account) external view returns (uint);
 

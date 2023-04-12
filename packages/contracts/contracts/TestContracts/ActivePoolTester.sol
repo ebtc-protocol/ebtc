@@ -12,6 +12,6 @@ contract ActivePoolTester is ActivePool {
     }
 
     function unprotectedReceiveColl(uint _amount) external {
-        ETH = ETH + _amount;
+        StEthColl = StEthColl + _amount;
     }
 }

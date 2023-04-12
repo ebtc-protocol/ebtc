@@ -119,7 +119,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint128 amount) public {
-        uint256 _maxAvailable = activePool.getETH();
+        uint256 _maxAvailable = activePool.getStEthColl();
         vm.assume(amount < (_maxAvailable / 2));
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
@@ -147,7 +147,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         dealCollateral(address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
-        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getETH());
+        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getStEthColl());
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),

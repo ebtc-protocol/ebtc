@@ -50,8 +50,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
     // --- Functions ---
 
-
-     /*
+    /*
         @notice Helper function for finding the right hints to pass to redeemCollateral().
         @dev It simulates a redemption of `_EBTCamount` to figure out where the redemption sequence will start and what state the final Cdp of the sequence will end up in.
         @param _EBTCamount The amount of EBTC to redeem.
@@ -101,31 +100,35 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
         // Underflow is intentionally used in _maxIterations-- > 0
         unchecked {
-        while (vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0) {
-            uint pendingEBTC;
-            {
-                uint pendingEBTCDebtReward = cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
-                pendingEBTC = pendingEBTCDebtReward;
-            }
-
-            uint netEBTCDebt = pendingEBTC + _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId));
-
-            if (netEBTCDebt > vars.remainingEBTC) {
-                if (netEBTCDebt > vars.minNetDebtInBTC) {
-                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
-                        vars,
-                        netEBTCDebt,
-                        _price
+            while (
+                vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0
+            ) {
+                uint pendingEBTC;
+                {
+                    uint pendingEBTCDebtReward = cdpManager.getPendingEBTCDebtReward(
+                        vars.currentCdpId
                     );
+                    pendingEBTC = pendingEBTCDebtReward;
                 }
-                break;
-            } else {
-                vars.remainingEBTC = vars.remainingEBTC - netEBTCDebt;
-            }
 
-            vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
-            vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
-        }
+                uint netEBTCDebt = pendingEBTC +
+                    _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId));
+
+                if (netEBTCDebt > vars.remainingEBTC) {
+                    if (netEBTCDebt > vars.minNetDebtInBTC) {
+                        (
+                            partialRedemptionNewColl,
+                            partialRedemptionHintNICR
+                        ) = _calculatePartialRedeem(vars, netEBTCDebt, _price);
+                    }
+                    break;
+                } else {
+                    vars.remainingEBTC = vars.remainingEBTC - netEBTCDebt;
+                }
+
+                vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
+                vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
+            }
         }
 
         truncatedEBTCamount = _EBTCamount - vars.remainingEBTC;

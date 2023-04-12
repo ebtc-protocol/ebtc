@@ -87,7 +87,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     /// @dev Cannot send ETH to ActivePool
-    function testCannotSendEth(uint256 amount) public {
+    function testCannotsendStEthColl(uint256 amount) public {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
