@@ -91,7 +91,13 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     event TellorCallerChanged(address _tellorCaller);
 
     // --- Dependency setters ---
-
+    /*
+        @notice Sets the addresses of the contracts and initializes the system
+        @param _priceAggregatorAddress The address of the Chainlink oracle contract
+        @param _tellorCallerAddress The address of the Tellor oracle contract
+        @param _authorityAddress The address of the Authority contract
+        @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
+    **/
     function setAddresses(
         address _priceAggregatorAddress,
         address _tellorCallerAddress,
@@ -130,19 +136,14 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     }
 
     // --- Functions ---
-
     /*
-     * fetchPrice():
-     * Returns the latest price obtained from the Oracle. Called by Liquity functions that require a current price.
-     *
-     * Also callable by anyone externally.
-     *
-     * Non-view function - it stores the last good price seen by Liquity.
-     *
-     * Uses a main oracle (Chainlink) and a fallback oracle (Tellor) in case Chainlink fails. If both fail,
-     * it uses the last good price seen by Liquity.
-     *
-     */
+        @notice Returns the latest price obtained from the Oracle
+        @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
+        @dev Non-view function - it stores the last good price seen by eBTC.
+        @dev Uses a main oracle (Chainlink) and a fallback oracle (Tellor) in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
+        @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the ITellorCaller interface.
+        @return The latest price fetched from the Oracle
+    **/
     function fetchPrice() external override returns (uint) {
         // Get current and previous price data from Chainlink, and current price data from Tellor
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -381,6 +382,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     }
 
     // --- Governance Functions ---
+    /*
+        @notice Sets a new fallback oracle 
+        @param _tellorCaller The new ITellorCaller-compliant oracle address
+    **/
     function setTellorCaller(address _tellorCaller) external {
         require(
             isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
@@ -633,6 +638,13 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
          * NOTE: Chainlink only offers a current decimals() value - there is no way to obtain the decimal precision used in a
          * previous round.  We assume the decimals used in the previous round are the same as the current round.
          */
+
+        // If first round, early return
+        // Handles revert from underflow in _currentRoundId - 1
+        // Behavior should be indentical to following block if this revert was caught
+        if (_currentRoundId == 0) {
+            return prevChainlinkResponse;
+        }
 
         // Try to get the price data from the previous round:
         try priceAggregator.getRoundData(_currentRoundId - 1) returns (
