@@ -9,8 +9,6 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 
 contract HintHelpers is LiquityBase, Ownable, CheckContract {
-    using SafeMath for uint256;
-
     string public constant NAME = "HintHelpers";
 
     ISortedCdps public sortedCdps;
@@ -112,9 +110,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
                 pendingEBTC = pendingEBTCDebtReward;
             }
 
-            uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId)).add(
-                pendingEBTC
-            );
+            uint netEBTCDebt = pendingEBTC + _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId));
 
             if (netEBTCDebt > vars.remainingEBTC) {
                 if (netEBTCDebt > vars.minNetDebtInBTC) {
@@ -126,14 +122,14 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
                 }
                 break;
             } else {
-                vars.remainingEBTC = vars.remainingEBTC.sub(netEBTCDebt);
+                vars.remainingEBTC = vars.remainingEBTC - netEBTCDebt;
             }
 
             vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
             vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
         }
 
-        truncatedEBTCamount = _EBTCamount.sub(vars.remainingEBTC);
+        truncatedEBTCamount = _EBTCamount - vars.remainingEBTC;
     }
 
     function _calculatePartialRedeem(
@@ -143,7 +139,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     ) internal view returns (uint, uint) {
         uint maxRedeemableEBTC = LiquityMath._min(
             vars.remainingEBTC,
-            netEBTCDebt.sub(vars.minNetDebtInBTC)
+            (netEBTCDebt - vars.minNetDebtInBTC)
         );
 
         uint ETH;
@@ -156,16 +152,15 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
             (, ETH, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
         }
 
-        vars.remainingEBTC = vars.remainingEBTC.sub(maxRedeemableEBTC);
+        vars.remainingEBTC = vars.remainingEBTC - maxRedeemableEBTC;
         return (
             ETH,
             LiquityMath._computeNominalCR(
-                ETH.sub(
+                (ETH -
                     collateral.getSharesByPooledEth(
-                        maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price)
-                    )
-                ),
-                _getCompositeDebt(netEBTCDebt.sub(maxRedeemableEBTC))
+                        (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
+                    )),
+                _getCompositeDebt(netEBTCDebt - maxRedeemableEBTC)
             )
         );
     }
@@ -184,7 +179,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
             _newIndex,
             _oldIndex
         );
-        _newStFeePerUnit = _deltaFeePerUnit.add(cdpManager.stFeePerUnitg());
+        _newStFeePerUnit = _deltaFeePerUnit + cdpManager.stFeePerUnitg();
         (, uint ETH) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
             _newStFeePerUnit,

@@ -102,13 +102,16 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         dealCollateral(address(activePool), loanAmount);
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        activePool.flashLoan(
-            wethReceiver,
-            address(collateral),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            activePool.flashLoan(
+                wethReceiver,
+                address(collateral),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     // Do nothing (no fee), check that it reverts

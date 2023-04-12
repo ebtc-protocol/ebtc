@@ -673,10 +673,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         // if there is liquidation redistribution
         {
             if (_debtAndColl.pendingDebtReward > 0) {
-                Cdps[_cdpId].debt = Cdps[_cdpId].debt - _debtAndColl.pendingDebtReward;
+                Cdps[_cdpId].debt = Cdps[_cdpId].debt + _debtAndColl.pendingDebtReward;
             }
             if (_debtAndColl.pendingCollReward > 0) {
-                Cdps[_cdpId].coll = Cdps[_cdpId].coll - _debtAndColl.pendingCollReward;
+                Cdps[_cdpId].coll = Cdps[_cdpId].coll + _debtAndColl.pendingCollReward;
             }
             if (_debtAndColl.pendingDebtReward > 0 || _debtAndColl.pendingCollReward > 0) {
                 _movePendingCdpRewardsToActivePool(
@@ -804,8 +804,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         bool _fullLiquidation
     ) private view returns (uint cappedColPortion, uint collSurplus, uint debtToRedistribute) {
         // Calculate liquidation incentive for liquidator:
-        // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt.mul(103%).div(price)
-        // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt.mul(min(ICR, 110%)).div(price)
+        // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
+        // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt * min(ICR, 110%) / price
         // Add LIQUIDATOR_REWARD in case not giving entire collateral away
         uint _incentiveColl;
         if (_ICR > LICR) {
@@ -1851,10 +1851,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         uint ETHRewardPerUnitStaked = ETHNumerator / totalStakes;
         uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
 
-        lastETHError_Redistribution = (ETHNumerator - ETHRewardPerUnitStaked) * totalStakes;
+        lastETHError_Redistribution = ETHNumerator - (ETHRewardPerUnitStaked * totalStakes);
         lastEBTCDebtError_Redistribution =
-            (EBTCDebtNumerator - EBTCDebtRewardPerUnitStaked) *
-            totalStakes;
+            EBTCDebtNumerator -
+            (EBTCDebtRewardPerUnitStaked * totalStakes);
 
         // Add per-unit-staked terms to the running totals
         L_ETH = L_ETH + ETHRewardPerUnitStaked;
@@ -2065,7 +2065,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
 
-        uint newBaseRate = (decayedBaseRate + redeemedEBTCFraction) / BETA;
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
         //assert(newBaseRate <= DECIMAL_PRECISION); // This is already enforced in the line above
         assert(newBaseRate > 0); // Base rate is always non-zero after redemption
@@ -2168,7 +2168,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
         return
             block.timestamp > lastFeeOperationTime
-                ? ((block.timestamp - lastFeeOperationTime) % SECONDS_IN_ONE_MINUTE)
+                ? ((block.timestamp - lastFeeOperationTime) / SECONDS_IN_ONE_MINUTE)
                 : 0;
     }
 
@@ -2203,10 +2203,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
         uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) + stFeePerUnitgError;
-        //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
-        //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
-        uint256 _perUnitError = (_deltaFeeSplitShare - _deltaFeePerUnit) * _cachedAllStakes;
+        uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);
     }
 

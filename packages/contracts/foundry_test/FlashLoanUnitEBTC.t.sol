@@ -101,13 +101,16 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // Zero Overflow Case
         uint256 loanAmount = type(uint256).max;
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        borrowerOperations.flashLoan(
-            ebtcReceiver,
-            address(eBTCToken),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            borrowerOperations.flashLoan(
+                ebtcReceiver,
+                address(eBTCToken),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     /// @dev Do nothing (no fee), check that it reverts

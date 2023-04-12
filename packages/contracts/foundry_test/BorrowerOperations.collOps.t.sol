@@ -3,14 +3,12 @@ pragma solidity 0.8.16;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import "../../contracts/Dependencies/SafeMath.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: addColl and withdrawColl
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
-    using SafeMath for uint256;
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
 
@@ -50,7 +48,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         // Make sure collateral increased by 2x
-        assertEq(collAmount.mul(2), cdpManager.getCdpColl(cdpId));
+        assertEq((collAmount * 2), cdpManager.getCdpColl(cdpId));
         vm.stopPrank();
     }
 
@@ -112,7 +110,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         // Make sure collateral increased by increaseAmnt
-        assertEq(collAmount.add(increaseAmnt), cdpManager.getCdpColl(cdpId));
+        assertEq((collAmount + increaseAmnt), cdpManager.getCdpColl(cdpId));
 
         // Make sure TCR increased after collateral was added
         uint newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
@@ -130,7 +128,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 100000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = (collAmount / AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -200,7 +198,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure collateral was reduced by `withdrawnColl` amount
-        assertEq(collAmount.sub(withdrawnColl), cdpManager.getCdpColl(cdpId));
+        assertEq((collAmount - withdrawnColl), cdpManager.getCdpColl(cdpId));
         vm.stopPrank();
     }
 
@@ -214,7 +212,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 100000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 100000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = (collAmount / AMOUNT_OF_CDPS);
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -245,7 +243,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint randCollWithdraw = _utils.generateRandomNumber(
                 // Max value to withdraw is 20% of collateral
                 0.1 ether,
-                cdpManager.getCdpColl(cdpIds[cdpIx]).div(5),
+                (cdpManager.getCdpColl(cdpIds[cdpIx]) / 5),
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());

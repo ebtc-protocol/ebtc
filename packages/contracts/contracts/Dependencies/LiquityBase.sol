@@ -15,8 +15,6 @@ import "../Dependencies/ICollateralToken.sol";
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {
-    using SafeMath for uint;
-
     uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
     uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
     uint public constant _5pct = 50000000000000000; // 5e16 == 5%
@@ -60,11 +58,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     // Returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation
     function _getCompositeDebt(uint _debt) internal pure returns (uint) {
-        return _debt.add(EBTC_GAS_COMPENSATION);
+        return (_debt + EBTC_GAS_COMPENSATION);
     }
 
     function _getNetDebt(uint _debt) internal pure returns (uint) {
-        return _debt.sub(EBTC_GAS_COMPENSATION);
+        return (_debt - EBTC_GAS_COMPENSATION);
     }
 
     // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
@@ -76,14 +74,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint activeColl = activePool.getETH();
         uint liquidatedColl = defaultPool.getETH();
 
-        return activeColl.add(liquidatedColl);
+        return (activeColl + liquidatedColl);
     }
 
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
 
-        return activeDebt.add(closedDebt);
+        return (activeDebt + closedDebt);
     }
 
     function _getTCR(uint256 _price) internal view returns (uint TCR) {
@@ -107,13 +105,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
-        uint feePercentage = _fee.mul(DECIMAL_PRECISION).div(_amount);
+        uint feePercentage = (_fee * DECIMAL_PRECISION) / _amount;
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
     }
 
     // Convert ETH/BTC price to BTC/ETH price
     function _getPriceReciprocal(uint _price) internal view returns (uint) {
-        return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
+        return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
     }
 
     // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
@@ -121,13 +119,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // _price is ETH/BTC
     function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
         uint priceReciprocal = _getPriceReciprocal(_price);
-        return _debt.mul(priceReciprocal).div(DECIMAL_PRECISION);
+        return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
 
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
     function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
-        return _debt.mul(_price).div(DECIMAL_PRECISION);
+        return (_debt * _price) / DECIMAL_PRECISION;
     }
 }
