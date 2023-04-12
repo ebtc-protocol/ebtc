@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 pragma experimental ABIEncoderV2;
 
 import "./Interfaces/ISortedCdps.sol";
@@ -49,11 +49,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     string public constant NAME = "SortedCdps";
 
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
-    event NodeAdded(bytes32 _id, uint _NICR);
-    event NodeRemoved(bytes32 _id);
-
     address public borrowerOperationsAddress;
 
     ICdpManager public cdpManager;
@@ -97,7 +92,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress
     ) external override onlyOwner {
-        require(_size > 0, "SortedCdps: Size can’t be zero");
+        require(_size > 0, "SortedCdps: Size can't be zero");
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
 
@@ -109,7 +104,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol

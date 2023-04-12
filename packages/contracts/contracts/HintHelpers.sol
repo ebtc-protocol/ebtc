@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
@@ -9,6 +9,8 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 
 contract HintHelpers is LiquityBase, Ownable, CheckContract {
+    using SafeMath for uint256;
+
     string public constant NAME = "HintHelpers";
 
     ISortedCdps public sortedCdps;
@@ -45,7 +47,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit CollateralAddressChanged(_collateralAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Functions ---

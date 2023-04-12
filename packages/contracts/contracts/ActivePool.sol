@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
@@ -35,17 +35,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
-    // --- Events ---
-
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
-    event ActivePoolETHBalanceUpdated(uint _ETH);
-    event CollateralAddressChanged(address _collTokenAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-
-    constructor() public {}
+    constructor() {}
 
     // --- Contract setters ---
 
@@ -78,7 +68,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---
@@ -101,7 +91,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function sendETH(address _account, uint _amount) external override {
         _requireCallerIsBOorCdpM();
         require(ETH >= _amount, "!ActivePoolBal");
-        ETH = ETH.sub(_amount);
+        ETH = ETH - _amount;
         emit ActivePoolETHBalanceUpdated(ETH);
         emit CollateralSent(_account, _amount);
 
@@ -118,13 +108,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.add(_amount);
+        EBTCDebt = EBTCDebt + _amount;
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.sub(_amount);
+        EBTCDebt = EBTCDebt - _amount;
         ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
@@ -146,7 +136,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH.add(_value);
+        ETH = ETH + _value;
         emit ActivePoolETHBalanceUpdated(ETH);
     }
 
@@ -162,8 +152,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
-        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
-        uint256 amountWithFee = amount.add(fee);
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
         collateral.transfer(address(receiver), amount);
@@ -203,7 +193,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
-        return amount.mul(FEE_AMT).div(MAX_BPS);
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in collateral token equals to the current balance

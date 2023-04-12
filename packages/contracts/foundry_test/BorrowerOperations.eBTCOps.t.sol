@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
@@ -42,7 +42,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.repayEBTC(
             cdpId,
             // Repay 10% of eBTC
-            borrowedAmount.div(10),
+            borrowedAmount / 10,
             HINT,
             HINT
         );
@@ -102,7 +102,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
         // Make sure eBTC balance decreased by repayAmnt precisely
-        assertEq(balanceSnapshot.sub(eBTCToken.balanceOf(user)), repayAmnt);
+        assertEq(balanceSnapshot - eBTCToken.balanceOf(user), repayAmnt);
         // Make sure ICR for CDP improved after eBTC was repaid
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
@@ -119,7 +119,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 10000000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -149,7 +149,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Randomize ebtc repaid amnt from 10 eBTC to max ebtc.balanceOf(user) / amount of CDPs for user
             uint randRepayAmnt = _utils.generateRandomNumber(
                 10e18,
-                eBTCToken.balanceOf(user).div(AMOUNT_OF_CDPS),
+                eBTCToken.balanceOf(user) / AMOUNT_OF_CDPS,
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
@@ -249,11 +249,11 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Calculate projected ICR change
         uint projectedIcr = LiquityMath._computeCR(
             collAmount,
-            initialDebt.add(withdrawAmnt),
+            initialDebt + withdrawAmnt,
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
-        uint projectedSystemDebt = cdpManager.getEntireSystemDebt().add(withdrawAmnt);
+        uint projectedSystemDebt = cdpManager.getEntireSystemDebt() + withdrawAmnt;
         uint projectedTcr = LiquityMath._computeCR(
             borrowerOperations.getEntireSystemColl(),
             projectedSystemDebt,
@@ -271,7 +271,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure eBTC balance increased by withdrawAmnt
-        assertEq(eBTCToken.balanceOf(user).sub(balanceSnapshot), withdrawAmnt);
+        assertEq(eBTCToken.balanceOf(user) - balanceSnapshot, withdrawAmnt);
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         vm.stopPrank();
@@ -287,7 +287,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 1000000000000000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(30 ether, 100000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -318,7 +318,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint randCollWithdraw = _utils.generateRandomNumber(
                 // Max value to withdraw is 33% of eBTCs belong to CDP
                 0.1 ether,
-                cdpManager.getCdpDebt(cdpIds[cdpIx]).div(3),
+                cdpManager.getCdpDebt(cdpIds[cdpIx]) / 3,
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());

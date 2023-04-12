@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "../Dependencies/BaseMath.sol";
-import "../Dependencies/SafeMath.sol";
 import "../Dependencies/Ownable.sol";
 import "../Dependencies/CheckContract.sol";
 import "../Dependencies/console.sol";
@@ -14,8 +13,6 @@ import "../Interfaces/ICdpManager.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
-    using SafeMath for uint;
-
     // --- Data ---
     string public constant NAME = "FeeRecipient";
 
@@ -25,17 +22,6 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
     address public cdpManagerAddress;
     address public borrowerOperationsAddress;
     address public activePoolAddress;
-
-    // --- Events ---
-
-    event EBTCTokenAddressSet(address _ebtcTokenAddress);
-    event CdpManagerAddressSet(address _cdpManager);
-    event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
-    event ActivePoolAddressSet(address _activePoolAddress);
-    event CollateralAddressSet(address _collTokenAddress);
-
-    event ReceiveFee(address indexed _sender, address indexed _token, uint _amount);
-    event CollateralSent(address _account, uint _amount);
 
     // --- Functions ---
 
@@ -64,7 +50,7 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
         emit ActivePoolAddressSet(_activePoolAddress);
         emit CollateralAddressSet(_collTokenAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Reward-per-unit-staked increase functions. Called by Liquity core contracts ---

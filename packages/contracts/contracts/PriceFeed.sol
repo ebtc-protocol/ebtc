@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/ITellorCaller.sol";
@@ -11,7 +11,7 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/console.sol";
-import "./Dependencies/Authv06.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  * PriceFeed for mainnet deployment, to be connected to Chainlink's live ETH:USD aggregator reference
@@ -21,7 +21,7 @@ import "./Dependencies/Authv06.sol";
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle.
  */
-contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
+contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner {
     using SafeMath for uint256;
 
     string public constant NAME = "PriceFeed";
@@ -88,7 +88,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
     // The current status of the PricFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
-    event LastGoodPriceUpdated(uint _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
     event TellorCallerChanged(address _tellorCaller);
 
@@ -128,7 +127,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, Auth {
 
         _storeChainlinkPrice(chainlinkResponse);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Functions ---

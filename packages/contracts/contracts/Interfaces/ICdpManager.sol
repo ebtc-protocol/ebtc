@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./ILiquityBase.sol";
 import "./IEBTCToken.sol";
@@ -18,16 +18,11 @@ interface ICdpManager is ILiquityBase {
     event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event LQTYTokenAddressChanged(address _lqtyTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
+    event StakingRewardSplitSet(uint256 _stakingRewardSplit);
 
-    event Liquidation(
-        uint _liquidatedDebt,
-        uint _liquidatedColl,
-        uint _collGasCompensation,
-        uint _EBTCGasCompensation
-    );
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -37,14 +32,21 @@ interface ICdpManager is ILiquityBase {
         uint _debt,
         uint _coll,
         uint _stake,
-        uint8 _operation
+        CdpManagerOperation _operation
     );
     event CdpLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        uint8 operation
+        CdpManagerOperation _operation
+    );
+    event CdpPartiallyLiquidated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        uint _debt,
+        uint _coll,
+        CdpManagerOperation operation
     );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
@@ -52,7 +54,7 @@ interface ICdpManager is ILiquityBase {
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt);
     event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt);
-    event CdpIndexUpdated(bytes32 _borrower, uint _newIndex);
+    event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
     event CollateralFeePerUnitUpdated(
@@ -68,6 +70,14 @@ interface ICdpManager is ILiquityBase {
         uint _collReduced,
         uint collLeft
     );
+
+    enum CdpManagerOperation {
+        applyPendingRewards,
+        liquidateInNormalMode,
+        liquidateInRecoveryMode,
+        redeemCollateral,
+        partiallyLiquidate
+    }
 
     // --- Functions ---
 

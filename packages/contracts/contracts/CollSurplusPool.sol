@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/SafeMath.sol";
@@ -23,16 +23,6 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     uint256 internal ETH;
     // Collateral surplus claimable by cdp owners
     mapping(address => uint) internal balances;
-
-    // --- Events ---
-
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolAddressChanged(address _newActivePoolAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
-    event CollBalanceUpdated(address indexed _account, uint _newBalance);
-    event CollateralSent(address _to, uint _amount);
 
     // --- Contract setters ---
 
@@ -57,7 +47,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     /* Returns the ETH state variable at ActivePool address.
@@ -75,7 +65,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     function accountSurplus(address _account, uint _amount) external override {
         _requireCallerIsCdpManager();
 
-        uint newAmount = balances[_account].add(_amount);
+        uint newAmount = balances[_account] + _amount;
         balances[_account] = newAmount;
 
         emit CollBalanceUpdated(_account, newAmount);
@@ -90,7 +80,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         emit CollBalanceUpdated(_account, 0);
 
         require(ETH >= claimableColl, "!CollSurplusPoolBal");
-        ETH = ETH.sub(claimableColl);
+        ETH = ETH - claimableColl;
         emit CollateralSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -116,6 +106,6 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        ETH = ETH.add(_value);
+        ETH = ETH + _value;
     }
 }

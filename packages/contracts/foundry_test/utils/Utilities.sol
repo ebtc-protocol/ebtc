@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
@@ -84,7 +84,7 @@ contract Utilities is Test {
      */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, now, seed)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, block.timestamp, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;

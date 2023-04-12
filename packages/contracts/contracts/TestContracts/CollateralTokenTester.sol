@@ -1,4 +1,4 @@
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "../Dependencies/ICollateralToken.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
@@ -13,7 +13,6 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     string public override symbol = "CollTester";
     uint8 public override decimals = 18;
 
-    event Approval(address indexed src, address indexed guy, uint wad);
     event Transfer(address indexed src, address indexed dst, uint wad, uint _share);
     event Deposit(address indexed dst, uint wad, uint _share);
     event Withdrawal(address indexed src, uint wad, uint _share);
@@ -44,7 +43,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         require(balances[msg.sender] >= _share);
         balances[msg.sender] -= _share;
         _totalBalance -= _share;
-        msg.sender.transfer(wad);
+        payable(msg.sender).transfer(wad);
         Withdrawal(msg.sender, wad, _share);
     }
 
@@ -77,7 +76,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         uint _share = getSharesByPooledEth(wad);
         require(balances[src] >= _share, "ERC20: transfer amount exceeds balance");
 
-        if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }

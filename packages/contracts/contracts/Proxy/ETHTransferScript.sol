@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 contract ETHTransferScript {
     function transferETH(address _recipient, uint256 _amount) external returns (bool) {

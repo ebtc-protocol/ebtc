@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/IActivePool.sol";
@@ -28,11 +28,6 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;
 
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event DefaultPoolEBTCDebtUpdated(uint _EBTCDebt);
-    event DefaultPoolETHBalanceUpdated(uint _ETH);
-    event CollateralAddressChanged(address _collTokenAddress);
-
     // --- Dependency setters ---
 
     function setAddresses(
@@ -52,7 +47,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---
@@ -76,7 +71,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
         require(ETH >= _amount, "!DefaultPoolBal");
-        ETH = ETH.sub(_amount);
+        ETH = ETH - _amount;
         emit DefaultPoolETHBalanceUpdated(ETH);
         emit CollateralSent(activePool, _amount);
 
@@ -87,13 +82,13 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsCdpManager();
-        EBTCDebt = EBTCDebt.add(_amount);
+        EBTCDebt = EBTCDebt + _amount;
         emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsCdpManager();
-        EBTCDebt = EBTCDebt.sub(_amount);
+        EBTCDebt = EBTCDebt - _amount;
         emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
@@ -109,7 +104,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        ETH = ETH.add(_value);
+        ETH = ETH + _value;
         emit DefaultPoolETHBalanceUpdated(ETH);
     }
 }

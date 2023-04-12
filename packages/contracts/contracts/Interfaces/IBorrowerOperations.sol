@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 
 // Common interface for the Cdp Manager.
 interface IBorrowerOperations {
@@ -26,8 +26,14 @@ interface IBorrowerOperations {
         uint _debt,
         uint _coll,
         uint _stake,
-        uint8 _operation
+        BorrowerOperation _operation
     );
+
+    enum BorrowerOperation {
+        openCdp,
+        closeCdp,
+        adjustCdp
+    }
 
     // --- Functions ---
 

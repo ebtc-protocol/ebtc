@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.16;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
+import "../../contracts/Dependencies/SafeMath.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: addColl and withdrawColl
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
+    using SafeMath for uint256;
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
 
