@@ -9,7 +9,6 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
@@ -109,13 +108,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
         EBTCDebt = EBTCDebt + _amount;
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
         EBTCDebt = EBTCDebt - _amount;
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     // --- 'require' functions ---

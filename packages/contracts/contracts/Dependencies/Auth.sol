@@ -15,7 +15,7 @@ abstract contract Auth {
 
     Authority public authority;
 
-    constructor(address _owner, Authority _authority) public {
+    constructor(address _owner, Authority _authority) {
         owner = _owner;
         authority = _authority;
 

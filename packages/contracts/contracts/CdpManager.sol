@@ -10,7 +10,6 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
@@ -1178,10 +1177,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
                 // Update aggregate trackers
                 vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
-                vars.entireSystemColl = vars
-                    .entireSystemColl
-                    - singleLiquidation.totalCollToSendToLiquidator
-                    - singleLiquidation.collSurplus;
+                vars.entireSystemColl =
+                    vars.entireSystemColl -
+                    singleLiquidation.totalCollToSendToLiquidator -
+                    singleLiquidation.collSurplus;
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
@@ -1248,15 +1247,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         LiquidationValues memory singleLiquidation
     ) internal pure returns (LiquidationTotals memory newTotals) {
         // Tally all the values with their respective running totals
-        newTotals.totalDebtInSequence = oldTotals.totalDebtInSequence + 
+        newTotals.totalDebtInSequence =
+            oldTotals.totalDebtInSequence +
             singleLiquidation.entireCdpDebt;
-        newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset + 
-            singleLiquidation.debtToOffset;
-        newTotals.totalCollToSendToLiquidator = oldTotals.totalCollToSendToLiquidator + 
+        newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset + singleLiquidation.debtToOffset;
+        newTotals.totalCollToSendToLiquidator =
+            oldTotals.totalCollToSendToLiquidator +
             singleLiquidation.totalCollToSendToLiquidator;
-        newTotals.totalDebtToRedistribute = oldTotals.totalDebtToRedistribute + 
+        newTotals.totalDebtToRedistribute =
+            oldTotals.totalDebtToRedistribute +
             singleLiquidation.debtToRedistribute;
-        newTotals.totalCollToRedistribute = oldTotals.totalCollToRedistribute + 
+        newTotals.totalCollToRedistribute =
+            oldTotals.totalCollToRedistribute +
             singleLiquidation.collToRedistribute;
         newTotals.totalCollSurplus = oldTotals.totalCollSurplus + singleLiquidation.collSurplus;
 
@@ -1691,9 +1693,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
         uint rewardPerUnitStaked = L_EBTCDebt - snapshotEBTCDebt;
 
-if (rewardPerUnitStaked > 0) {
-    pendingEBTCDebtReward = stake * rewardPerUnitStaked / DECIMAL_PRECISION;
-}
+        if (rewardPerUnitStaked > 0) {
+            pendingEBTCDebtReward = (stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
+        }
     }
 
     function hasPendingRewards(bytes32 _cdpId) public view override returns (bool) {
@@ -1845,13 +1847,14 @@ if (rewardPerUnitStaked > 0) {
         uint ETHNumerator = (_coll * DECIMAL_PRECISION) + lastETHError_Redistribution;
         uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
 
-
         // Get the per-unit-staked terms
         uint ETHRewardPerUnitStaked = ETHNumerator / totalStakes;
         uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
 
         lastETHError_Redistribution = (ETHNumerator - ETHRewardPerUnitStaked) * totalStakes;
-        lastEBTCDebtError_Redistribution = (EBTCDebtNumerator - EBTCDebtRewardPerUnitStaked) * totalStakes;
+        lastEBTCDebtError_Redistribution =
+            (EBTCDebtNumerator - EBTCDebtRewardPerUnitStaked) *
+            totalStakes;
 
         // Add per-unit-staked terms to the running totals
         L_ETH = L_ETH + ETHRewardPerUnitStaked;
@@ -2032,7 +2035,7 @@ if (rewardPerUnitStaked > 0) {
         ICollateralTokenOracle _oracle = ICollateralTokenOracle(collateral.getOracle());
         (uint256 epochsPerFrame, uint256 slotsPerEpoch, uint256 secondsPerSlot, ) = _oracle
             .getBeaconSpec();
-        uint256 _newInterval = epochsPerFrame * slotsPerEpoch * secondsPerSlot / 2;
+        uint256 _newInterval = (epochsPerFrame * slotsPerEpoch * secondsPerSlot) / 2;
         if (_newInterval != INDEX_UPD_INTERVAL) {
             emit CollateralIndexUpdateIntervalUpdated(INDEX_UPD_INTERVAL, _newInterval);
             INDEX_UPD_INTERVAL = _newInterval;
@@ -2059,7 +2062,7 @@ if (rewardPerUnitStaked > 0) {
 
         /* Convert the drawn ETH back to EBTC at face value rate (1 EBTC:1 USD), in order to get
          * the fraction of total supply that was redeemed at face value. */
-        uint redeemedEBTCFraction = collateral.getPooledEthByShares(_ETHDrawn) * _price /
+        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
 
         uint newBaseRate = (decayedBaseRate + redeemedEBTCFraction) / BETA;
@@ -2097,7 +2100,7 @@ if (rewardPerUnitStaked > 0) {
     }
 
     function _calcRedemptionFee(uint _redemptionRate, uint _ETHDrawn) internal pure returns (uint) {
-        uint redemptionFee = _redemptionRate * _ETHDrawn / DECIMAL_PRECISION;
+        uint redemptionFee = (_redemptionRate * _ETHDrawn) / DECIMAL_PRECISION;
         require(redemptionFee < _ETHDrawn, "CdpManager: Fee would eat up all returned collateral");
         return redemptionFee;
     }
@@ -2159,7 +2162,7 @@ if (rewardPerUnitStaked > 0) {
         uint minutesPassed = _minutesPassedSinceLastFeeOp();
         uint decayFactor = LiquityMath._decPow(MINUTE_DECAY_FACTOR, minutesPassed);
 
-        return baseRate * decayFactor / DECIMAL_PRECISION;
+        return (baseRate * decayFactor) / DECIMAL_PRECISION;
     }
 
     function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
@@ -2287,10 +2290,7 @@ if (rewardPerUnitStaked > 0) {
         uint _scaledCdpColl = Cdps[_cdpId].coll * DECIMAL_PRECISION;
         require(_scaledCdpColl > _feeSplitDistributed, "CdpManager: fee split is too big for CDP");
 
-        return (
-_feeSplitDistributed,
-(_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION
-);
+        return (_feeSplitDistributed, (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION);
     }
 
     function getDeploymentStartTime() public view returns (uint256) {

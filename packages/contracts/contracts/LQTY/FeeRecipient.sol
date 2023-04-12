@@ -5,7 +5,6 @@ pragma solidity 0.8.16;
 import "../Dependencies/BaseMath.sol";
 import "../Dependencies/Ownable.sol";
 import "../Dependencies/CheckContract.sol";
-import "../Dependencies/console.sol";
 import "../Interfaces/IFeeRecipient.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Interfaces/IEBTCToken.sol";

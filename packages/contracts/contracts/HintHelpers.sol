@@ -102,7 +102,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         }
 
         if (_maxIterations == 0) {
-            _maxIterations = uint(-1);
+            _maxIterations = type(uint256).max;
         }
 
         while (vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0) {

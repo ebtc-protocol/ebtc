@@ -6,7 +6,6 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {

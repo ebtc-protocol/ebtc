@@ -10,7 +10,6 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*

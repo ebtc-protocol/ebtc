@@ -9,7 +9,6 @@ import "./Interfaces/IBorrowerOperations.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
@@ -117,13 +116,14 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         serialized |= bytes32(nonce);
         serialized |= bytes32(blockHeight) << (8 * 8); // to accommendate more than 4.2 billion blocks
-        serialized |= bytes32(uint256(owner)) << (12 * 8);
+        serialized |= bytes32(uint256(uint160(owner))) << (12 * 8);
 
         return serialized;
     }
 
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
-        return address(uint256(cdpId) >> (12 * 8));
+        uint256 _tmp = uint256(cdpId) >> (12 * 8);
+        return address(uint160(_tmp));
     }
 
     function existCdpOwners(bytes32 cdpId) public view override returns (address) {
@@ -289,7 +289,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         delete data.nodes[_id];
         data.size = data.size.sub(1);
-        NodeRemoved(_id);
+        emit NodeRemoved(_id);
     }
 
     /*

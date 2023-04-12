@@ -5,7 +5,6 @@ pragma solidity 0.8.16;
 import "./Interfaces/IEBTCToken.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -195,7 +194,7 @@ contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
         bytes32 r,
         bytes32 s
     ) external override {
-        require(deadline >= now, "EBTC: expired deadline");
+        require(deadline >= block.timestamp, "EBTC: expired deadline");
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -217,7 +216,7 @@ contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
 
     // --- Internal operations ---
 
-    function _chainID() private pure returns (uint256 chainID) {
+    function _chainID() private view returns (uint256 chainID) {
         assembly {
             chainID := chainid()
         }
