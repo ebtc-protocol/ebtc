@@ -32,6 +32,8 @@ interface ICdpManager is ILiquityBase {
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        uint _oldDebt,
+        uint _oldColl,
         uint _debt,
         uint _coll,
         uint _stake,

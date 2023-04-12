@@ -259,6 +259,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        uint _oldDebt,
+        uint _oldColl,
         uint _debt,
         uint _coll,
         uint _stake,
@@ -567,6 +569,19 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         uint256 _collSurplus;
         uint256 _debtToRedistribute;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_liqState._cdpId);
+
+        // I don't see an issue emitting the CdpUpdated() event up here and avoiding this extra cache, any objections?
+        emit CdpUpdated(
+            _liqState._cdpId,
+            _borrower,
+            _totalDebtToBurn,
+            _totalColToSend,
+            0,
+            0,
+            0,
+            CdpManagerOperation.liquidateInNormalMode
+        );
+
         {
             (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
                 _liqState._ICR,
@@ -592,14 +607,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _cappedColPortion,
             CdpManagerOperation.liquidateInNormalMode
         );
-        emit CdpUpdated(
-            _liqState._cdpId,
-            _borrower,
-            0,
-            0,
-            0,
-            CdpManagerOperation.liquidateInNormalMode
-        );
+
         return _liqState;
     }
 
@@ -618,6 +626,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         uint256 _collSurplus;
         uint256 _debtToRedistribute;
         address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_recoveryState._cdpId);
+
+        // I don't see an issue emitting the CdpUpdated() event up here and avoiding an extra cache of the values, any objections?
+        emit CdpUpdated(
+            _recoveryState._cdpId,
+            _borrower,
+            _totalDebtToBurn,
+            _totalColToSend,
+            0,
+            0,
+            0,
+            CdpManagerOperation.liquidateInRecoveryMode
+        );
 
         // avoid stack too deep
         {
@@ -655,14 +675,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _borrower,
             _totalDebtToBurn,
             _cappedColPortion,
-            CdpManagerOperation.liquidateInRecoveryMode
-        );
-        emit CdpUpdated(
-            _recoveryState._cdpId,
-            _borrower,
-            0,
-            0,
-            0,
             CdpManagerOperation.liquidateInRecoveryMode
         );
 
@@ -757,7 +769,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _reInsertPartialLiquidation(
                 _contractsCache,
                 _partialState,
-                LiquityMath._computeNominalCR(newColl, newDebt)
+                LiquityMath._computeNominalCR(newColl, newDebt),
+                _debtAndColl.entireDebt,
+                _debtAndColl.entireColl
             );
             emit CdpPartiallyLiquidated(
                 _cdpId,
@@ -785,7 +799,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     function _reInsertPartialLiquidation(
         ContractsCache memory _contractsCache,
         LocalVar_InternalLiquidate memory _partialState,
-        uint _newNICR
+        uint _newNICR,
+        uint _oldDebt,
+        uint _oldColl
     ) internal {
         bytes32 _cdpId = _partialState._cdpId;
 
@@ -808,6 +824,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         emit CdpUpdated(
             _cdpId,
             _contractsCache.sortedCdps.getOwnerAddress(_cdpId),
+            _oldDebt,
+            _oldColl,
             Cdps[_cdpId].debt,
             Cdps[_cdpId].coll,
             Cdps[_cdpId].stake,
@@ -1363,9 +1381,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         singleRedemption.ETHLot = collateral.getSharesByPooledEth(
             singleRedemption.EBTCLot.mul(DECIMAL_PRECISION).div(_redeemColFromCdp._price)
         );
+
+        // Repurposing this struct here to avoid stack too deep.
+        LocalVar_CdpDebtColl memory _oldDebtAndColl = LocalVar_CdpDebtColl(
+            Cdps[_redeemColFromCdp._cdpId].debt,
+            Cdps[_redeemColFromCdp._cdpId].coll,
+            0,
+            0
+        );
+
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
-        uint newDebt = (Cdps[_redeemColFromCdp._cdpId].debt).sub(singleRedemption.EBTCLot);
-        uint newColl = (Cdps[_redeemColFromCdp._cdpId].coll).sub(singleRedemption.ETHLot);
+        uint newDebt = _oldDebtAndColl.entireDebt.sub(singleRedemption.EBTCLot);
+        uint newColl = _oldDebtAndColl.entireColl.sub(singleRedemption.ETHLot);
 
         if (newDebt == EBTC_GAS_COMPENSATION) {
             // No debt left in the Cdp (except for the liquidation reserve), therefore the cdp gets closed
@@ -1382,6 +1409,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
                 _borrower,
+                _oldDebtAndColl.entireDebt,
+                _oldDebtAndColl.entireColl,
                 0,
                 0,
                 0,
@@ -1420,6 +1449,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
                 _borrower,
+                _oldDebtAndColl.entireDebt,
+                _oldDebtAndColl.entireColl,
                 newDebt,
                 newColl,
                 Cdps[_redeemColFromCdp._cdpId].stake,
@@ -1664,9 +1695,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             uint pendingETHReward = getPendingETHReward(_cdpId);
             uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
 
+            uint prevDebt = Cdps[_cdpId].debt;
+            uint prevColl = Cdps[_cdpId].coll;
+
             // Apply pending rewards to cdp's state
-            Cdps[_cdpId].coll = Cdps[_cdpId].coll.add(pendingETHReward);
-            Cdps[_cdpId].debt = Cdps[_cdpId].debt.add(pendingEBTCDebtReward);
+            Cdps[_cdpId].debt = prevDebt.add(pendingEBTCDebtReward);
+            Cdps[_cdpId].coll = prevColl.add(pendingETHReward);
 
             _updateCdpRewardSnapshots(_cdpId);
 
@@ -1682,6 +1716,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             emit CdpUpdated(
                 _cdpId,
                 _borrower,
+                prevDebt,
+                prevColl,
                 Cdps[_cdpId].debt,
                 Cdps[_cdpId].coll,
                 Cdps[_cdpId].stake,
@@ -1768,6 +1804,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
+    /// @notice pending rewards are included in the debt and coll totals returned.
     function getEntireDebtAndColl(
         bytes32 _cdpId
     )
