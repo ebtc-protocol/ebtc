@@ -500,7 +500,7 @@ class TestHelper {
 
   static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
-    return [event.args[2], event.args[3]]
+    return [event.args[4], event.args[5]]
   }
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
