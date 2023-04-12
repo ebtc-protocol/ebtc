@@ -607,7 +607,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _cappedColPortion,
             CdpManagerOperation.liquidateInNormalMode
         );
-        
+
         return _liqState;
     }
 
@@ -677,7 +677,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
             _cappedColPortion,
             CdpManagerOperation.liquidateInRecoveryMode
         );
-        
 
         return _recoveryState;
     }
@@ -1384,7 +1383,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         );
 
         // Repurposing this struct here to avoid stack too deep.
-        LocalVar_CdpDebtColl memory _oldDebtAndColl = LocalVar_CdpDebtColl(Cdps[_redeemColFromCdp._cdpId].debt, Cdps[_redeemColFromCdp._cdpId].coll, 0, 0);
+        LocalVar_CdpDebtColl memory _oldDebtAndColl = LocalVar_CdpDebtColl(
+            Cdps[_redeemColFromCdp._cdpId].debt,
+            Cdps[_redeemColFromCdp._cdpId].coll,
+            0,
+            0
+        );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
         uint newDebt = _oldDebtAndColl.entireDebt.sub(singleRedemption.EBTCLot);
