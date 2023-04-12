@@ -94,7 +94,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         emit CollateralSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transfer(_account, claimableColl);
+        collateral.transferShares(_account, claimableColl);
     }
 
     // --- 'require' functions ---

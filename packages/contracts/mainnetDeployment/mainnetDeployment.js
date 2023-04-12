@@ -108,7 +108,6 @@ async function mainnetDeploy(configParams) {
 
   // Connect all core contracts up
   await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY)
-  await mdh.connectEBTCContractsMainnet(EBTCContracts)
   await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore)
 
   // Deploy a read-only multi-cdp getter
@@ -122,7 +121,7 @@ async function mainnetDeploy(configParams) {
   await mdh.logContractObjects(EBTCContracts)
   console.log(`Unipool address: ${unipool.address}`)
 
-  let deploymentStartTime = await EBTCContracts.lqtyToken.getDeploymentStartTime()
+  let deploymentStartTime = await EBTCContracts.cdpManager.getDeploymentStartTime()
 
   console.log(`deployment start time: ${deploymentStartTime}`)
   const oneYearFromDeployment = (Number(deploymentStartTime) + timeVals.SECONDS_IN_ONE_YEAR).toString()
@@ -257,7 +256,6 @@ async function mainnetDeploy(configParams) {
     console.log("Deployer opens a cdp ...")
     await mdh.sendAndWaitForTransaction(
       ebtcCore.borrowerOperations.openCdp(
-        th._100pct,
         _3kEBTCWithdrawal,
         th.DUMMY_BYTES32,
         th.DUMMY_BYTES32,
@@ -373,7 +371,7 @@ async function mainnetDeploy(configParams) {
     const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
     const borrowerOpsAcct2 = await new ethers.Contract(ebtcCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
 
-    await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openCdp(th._100pct, _1500EBTCWithdrawal, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { value: _15_ETHcoll, gasPrice, gasLimit: 1000000 }))
+    await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openCdp(_1500EBTCWithdrawal, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { value: _15_ETHcoll, gasPrice, gasLimit: 1000000 }))
   } else {
     console.log('Acct 2 already has an active cdp')
   }

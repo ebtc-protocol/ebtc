@@ -5,6 +5,7 @@ pragma solidity 0.6.11;
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
+import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
@@ -29,6 +30,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     address public cdpManagerAddress;
     address public defaultPoolAddress;
     address public collSurplusPoolAddress;
+    address public feeRecipientAddress;
     uint256 internal ETH; // deposited ether tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
@@ -41,6 +43,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     event ActivePoolETHBalanceUpdated(uint _ETH);
     event CollateralAddressChanged(address _collTokenAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
 
     constructor() public {}
 
@@ -51,25 +54,29 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         address _cdpManagerAddress,
         address _defaultPoolAddress,
         address _collTokenAddress,
-        address _collSurplusAddress
+        address _collSurplusAddress,
+        address _feeRecipientAddress
     ) external onlyOwner {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_defaultPoolAddress);
         checkContract(_collTokenAddress);
         checkContract(_collSurplusAddress);
+        checkContract(_feeRecipientAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         defaultPoolAddress = _defaultPoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
         collSurplusPoolAddress = _collSurplusAddress;
+        feeRecipientAddress = _feeRecipientAddress;
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
 
         _renounceOwnership();
     }
@@ -99,11 +106,13 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit CollateralSent(_account, _amount);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transfer(_account, _amount);
+        collateral.transferShares(_account, _amount);
         if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_amount);
         } else if (_account == collSurplusPoolAddress) {
             ICollSurplusPool(_account).receiveColl(_amount);
+        } else if (_account == feeRecipientAddress) {
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_amount);
         }
     }
 
@@ -155,6 +164,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
         uint256 amountWithFee = amount.add(fee);
+        uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
         collateral.transfer(address(receiver), amount);
 
@@ -177,7 +187,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
         // NOTE: This check effectively prevents running 2 FL at the same time
         //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
-        require(collateral.balanceOf(address(this)) >= ETH, "ActivePool: Must repay Balance");
+        require(
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            "ActivePool: Must repay Balance"
+        );
+        require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
+        require(
+            collateral.getPooledEthByShares(1e18) == oldRate,
+            "ActivePool: Should keep same collateral share rate"
+        );
 
         return true;
     }

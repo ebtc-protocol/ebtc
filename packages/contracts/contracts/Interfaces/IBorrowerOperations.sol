@@ -14,19 +14,20 @@ interface IBorrowerOperations {
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
     event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        uint _oldDebt,
+        uint _oldColl,
         uint _debt,
         uint _coll,
-        uint stake,
-        uint8 operation
+        uint _stake,
+        uint8 _operation
     );
-    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
 
     // --- Functions ---
 
@@ -39,12 +40,11 @@ interface IBorrowerOperations {
         address _priceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
-        address _lqtyStakingAddress,
+        address _feeRecipientAddress,
         address _collTokenAddress
     ) external;
 
     function openCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -67,7 +67,6 @@ interface IBorrowerOperations {
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -84,7 +83,6 @@ interface IBorrowerOperations {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -94,7 +92,6 @@ interface IBorrowerOperations {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,

@@ -18,6 +18,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event CdpManagerAddressChanged(address _cdpManagerAddress);
+    event CollateralAddressChanged(address _collTokenAddress);
 
     struct LocalVariables_getRedemptionHints {
         uint remainingEBTC;
@@ -29,16 +30,20 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     // --- Dependency setters ---
     function setAddresses(
         address _sortedCdpsAddress,
-        address _cdpManagerAddress
+        address _cdpManagerAddress,
+        address _collateralAddress
     ) external onlyOwner {
         checkContract(_sortedCdpsAddress);
         checkContract(_cdpManagerAddress);
+        checkContract(_collateralAddress);
 
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
+        collateral = ICollateralToken(_collateralAddress);
 
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
+        emit CollateralAddressChanged(_collateralAddress);
 
         _renounceOwnership();
     }
@@ -71,26 +76,28 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         returns (
             bytes32 firstRedemptionHint,
             uint partialRedemptionHintNICR,
-            uint truncatedEBTCamount
+            uint truncatedEBTCamount,
+            uint partialRedemptionNewColl
         )
     {
         ISortedCdps sortedCdpsCached = sortedCdps;
         LocalVariables_getRedemptionHints memory vars;
-        vars.remainingEBTC = _EBTCamount;
-        // Find out minimal debt value denominated in ETH
-        vars.minNetDebtInBTC = _convertDebtDenominationToBtc(MIN_NET_DEBT, _price);
-        vars.currentCdpId = sortedCdpsCached.getLast();
-        vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
-
-        while (
-            vars.currentCdpuser != address(0) &&
-            cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
-        ) {
-            vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
+        {
+            vars.remainingEBTC = _EBTCamount;
+            // Find out minimal debt value denominated in ETH
+            vars.minNetDebtInBTC = _convertDebtDenominationToBtc(MIN_NET_DEBT, _price);
+            vars.currentCdpId = sortedCdpsCached.getLast();
             vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
-        }
 
-        firstRedemptionHint = vars.currentCdpId;
+            while (
+                vars.currentCdpuser != address(0) &&
+                cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
+            ) {
+                vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
+                vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
+            }
+            firstRedemptionHint = vars.currentCdpId;
+        }
 
         if (_maxIterations == 0) {
             _maxIterations = uint(-1);
@@ -99,9 +106,8 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         while (vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0) {
             uint pendingEBTC;
             {
-                (uint pendingEBTCDebtReward, uint pendingEBTCInterest) = cdpManager
-                    .getPendingEBTCDebtReward(vars.currentCdpId);
-                pendingEBTC = pendingEBTCDebtReward.add(pendingEBTCInterest);
+                uint pendingEBTCDebtReward = cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
+                pendingEBTC = pendingEBTCDebtReward;
             }
 
             uint netEBTCDebt = _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId)).add(
@@ -110,25 +116,11 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
 
             if (netEBTCDebt > vars.remainingEBTC) {
                 if (netEBTCDebt > vars.minNetDebtInBTC) {
-                    uint maxRedeemableEBTC = LiquityMath._min(
-                        vars.remainingEBTC,
-                        netEBTCDebt.sub(vars.minNetDebtInBTC)
+                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
+                        vars,
+                        netEBTCDebt,
+                        _price
                     );
-
-                    uint ETH = cdpManager.getCdpColl(vars.currentCdpId).add(
-                        cdpManager.getPendingETHReward(vars.currentCdpId)
-                    );
-
-                    uint newColl = ETH.sub(maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price));
-                    uint newDebt = netEBTCDebt.sub(maxRedeemableEBTC);
-
-                    uint compositeDebt = _getCompositeDebt(newDebt);
-                    partialRedemptionHintNICR = LiquityMath._computeNominalCR(
-                        newColl,
-                        compositeDebt
-                    );
-
-                    vars.remainingEBTC = vars.remainingEBTC.sub(maxRedeemableEBTC);
                 }
                 break;
             } else {
@@ -140,6 +132,64 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         }
 
         truncatedEBTCamount = _EBTCamount.sub(vars.remainingEBTC);
+    }
+
+    function _calculatePartialRedeem(
+        LocalVariables_getRedemptionHints memory vars,
+        uint netEBTCDebt,
+        uint _price
+    ) internal view returns (uint, uint) {
+        uint maxRedeemableEBTC = LiquityMath._min(
+            vars.remainingEBTC,
+            netEBTCDebt.sub(vars.minNetDebtInBTC)
+        );
+
+        uint ETH;
+        uint _oldIndex = cdpManager.stFPPSg();
+        uint _newIndex = collateral.getPooledEthByShares(1e18);
+
+        if (_oldIndex < _newIndex) {
+            ETH = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
+        } else {
+            (, ETH, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+        }
+
+        vars.remainingEBTC = vars.remainingEBTC.sub(maxRedeemableEBTC);
+        return (
+            ETH,
+            LiquityMath._computeNominalCR(
+                ETH.sub(
+                    collateral.getSharesByPooledEth(
+                        maxRedeemableEBTC.mul(DECIMAL_PRECISION).div(_price)
+                    )
+                ),
+                _getCompositeDebt(netEBTCDebt.sub(maxRedeemableEBTC))
+            )
+        );
+    }
+
+    function _getCollateralWithSplitFeeApplied(
+        bytes32 _cdpId,
+        uint _newIndex,
+        uint _oldIndex
+    ) internal view returns (uint) {
+        uint _deltaFeePerUnit;
+        uint _newStFeePerUnit;
+        uint _perUnitError;
+        uint _feeTaken;
+
+        (_feeTaken, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
+            _newIndex,
+            _oldIndex
+        );
+        _newStFeePerUnit = _deltaFeePerUnit.add(cdpManager.stFeePerUnitg());
+        (, uint ETH) = cdpManager.getAccumulatedFeeSplitApplied(
+            _cdpId,
+            _newStFeePerUnit,
+            _perUnitError,
+            cdpManager.totalStakes()
+        );
+        return ETH;
     }
 
     /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 

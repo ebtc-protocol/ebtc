@@ -22,7 +22,7 @@ contract('ActivePool', async accounts => {
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     collToken = await CollateralTokenTester.new()
-    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, dumbContractAddress, collToken.address, dumbContractAddress)
+    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)
   })
 
   it('getETH(): gets the recorded ETH balance', async () => {
@@ -106,6 +106,7 @@ contract('ActivePool', async accounts => {
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
     await collToken.transfer(activePool.address, _amount, {from: alice});
     await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
+    await collToken.receiveCollToInternalPool(activePool.address, _amount);
 	
     let _newPPFS = web3.utils.toBN('1000000000000000000');
     let _collTokenBalBefore = await collToken.balanceOf(activePool.address); 
@@ -120,6 +121,10 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, 0), 'ActivePool: IERC3156: Callback failed');
     await th.assertRevert(activePool.flashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
     assert.isTrue(web3.utils.toBN("0").eq(web3.utils.toBN((await activePool.maxFlashLoan(activePool.address)).toString())));
+	
+    // should revert due to invariants check
+    let _manipulatedPPFS = web3.utils.toBN('2000000000000000000'); 
+    await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
   })
 })
 
@@ -137,7 +142,7 @@ contract('DefaultPool', async accounts => {
     const dumbContractAddress = (await NonPayable.new()).address	  
     collToken = await CollateralTokenTester.new()
 	  
-    await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress)	  
+    await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
     await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
   })
 

@@ -1,6 +1,5 @@
 
 const BN = require('bn.js')
-const LockupContract = artifacts.require(("./LockupContract.sol"))
 const Destructible = artifacts.require("./TestContracts/Destructible.sol")
 
 const DEBUG = false
@@ -29,7 +28,7 @@ const MoneyValues = {
   // Liq reward is 0.2 eth
   _LIQUIDATION_REWARD: web3.utils.toBN('200000000000000000'),
   _ICR100: web3.utils.toBN('1000000000000000000'),
-  _CCR: web3.utils.toBN('1500000000000000000'),
+  _CCR: web3.utils.toBN('1250000000000000000'),
 }
 
 const TimeValues = {
@@ -400,10 +399,8 @@ class TestHelper {
       if (liquidationTx.logs[i].event === "Liquidation") {
         const liquidatedDebt = liquidationTx.logs[i].args[0]
         const liquidatedColl = liquidationTx.logs[i].args[1]
-        const collGasComp = liquidationTx.logs[i].args[2]
-        const ebtcGasComp = liquidationTx.logs[i].args[3]
 
-        return [liquidatedDebt, liquidatedColl, collGasComp, ebtcGasComp]
+        return [liquidatedDebt, liquidatedColl]
       }
     }
     throw ("The transaction logs do not contain a liquidation event")
@@ -464,6 +461,33 @@ class TestHelper {
     throw (`The transaction logs do not contain event ${eventName} and arg ${argName}`)
   }
 
+  static parseCdpUpdatedEvent(transaction) {
+    const toBN = TestHelper.toBN
+
+    const emittedCdpId = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_cdpId")
+    const emittedBorrower = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_borrower")
+
+    const emittedOldDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldDebt"))
+    const emittedOldColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldColl"))
+
+    const emittedDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_debt"))
+    const emittedColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_coll"))
+    
+    const emittedStake = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_stake"))
+    const emittedOperation = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_operation")) //BorrowerOperation.openCdp = 0
+
+    return {
+      "cdpId": emittedCdpId,
+      "borrower": emittedBorrower,
+      "oldDebt": emittedOldDebt,
+      "oldColl": emittedOldColl,
+      "debt": emittedDebt,
+      "coll": emittedColl,
+      "stake": emittedStake,
+      "operation": emittedOperation
+    }
+  }
+
   static getAllEventsByName(tx, eventName) {
     const events = []
     for (let i = 0; i < tx.logs.length; i++) {
@@ -476,7 +500,7 @@ class TestHelper {
 
   static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
-    return [event.args[2], event.args[3]]
+    return [event.args[4], event.args[5]]
   }
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
@@ -493,7 +517,7 @@ class TestHelper {
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
     const pendingETHReward = await contracts.cdpManager.getPendingETHReward(account)
-    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))[0]
+    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))
     const entireColl = rawColl.add(pendingETHReward)
     const entireDebt = rawDebt.add(pendingEBTCDebtReward)
 
@@ -685,14 +709,12 @@ class TestHelper {
   }
 
   static async openCdp(contracts, {
-    maxFeePercentage,
     extraEBTCAmount,
     upperHint,
     lowerHint,
     ICR,
     extraParams
   }) {
-    if (!maxFeePercentage) maxFeePercentage = this._100pct
     if (!extraEBTCAmount) extraEBTCAmount = this.toBN(0)
     else if (typeof extraEBTCAmount == 'string') extraEBTCAmount = this.toBN(extraEBTCAmount)
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
@@ -738,7 +760,7 @@ class TestHelper {
         await contracts.collateral.transfer(extraParams.usrProxy, _collAmt, {from: extraParams.from});	
         if (DEBUG) console.log('transfer coll to proxy=' + extraParams.usrProxy);	
     }
-    const tx = await contracts.borrowerOperations.openCdp(maxFeePercentage, ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
+    const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
 
     return {
       ebtcAmount,
@@ -752,14 +774,12 @@ class TestHelper {
 
   static async withdrawEBTC(contracts, {
     _cdpId,
-    maxFeePercentage,
     ebtcAmount,
     ICR,
     upperHint,
     lowerHint,
     extraParams
   }) {
-    if (!maxFeePercentage) maxFeePercentage = this._100pct
     if (!upperHint) upperHint = this.DUMMY_BYTES32
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32
 
@@ -778,7 +798,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, ebtcAmount)
     }
 
-    await contracts.borrowerOperations.withdrawEBTC(_cdpId, maxFeePercentage, ebtcAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawEBTC(_cdpId, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
       ebtcAmount,
@@ -1134,30 +1154,6 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  // --- LQTY & Lockup Contract functions ---
-
-  static getLCAddressFromDeploymentTx(deployedLCTx) {
-    return deployedLCTx.logs[0].args[0]
-  }
-
-  static async getLCFromDeploymentTx(deployedLCTx) {
-    const deployedLCAddress = this.getLCAddressFromDeploymentTx(deployedLCTx)  // grab addr of deployed contract from event
-    const LC = await this.getLCFromAddress(deployedLCAddress)
-    return LC
-  }
-
-  static async getLCFromAddress(LCAddress) {
-    const LC = await LockupContract.at(LCAddress)
-    return LC
-  }
-
-
-  static async registerFrontEnds(frontEnds, stabilityPool) {
-    for (const frontEnd of frontEnds) {
-      await stabilityPool.registerFrontEnd(this.dec(5, 17), { from: frontEnd })  // default kickback rate of 50%
-    }
-  }
-
   // --- Time functions ---
 
   static async fastForwardTime(seconds, currentWeb3Provider) {
@@ -1201,8 +1197,8 @@ class TestHelper {
     return Number(days) * (60 * 60 * 24)
   }
 
-  static async getTimeFromSystemDeployment(lqtyToken, web3, timePassedSinceDeployment) {
-    const deploymentTime = await lqtyToken.getDeploymentStartTime()
+  static async getTimeFromSystemDeployment(cdpManager, web3, timePassedSinceDeployment) {
+    const deploymentTime = await cdpManager.getDeploymentStartTime()
     return this.toBN(deploymentTime).add(this.toBN(timePassedSinceDeployment))
   }
 

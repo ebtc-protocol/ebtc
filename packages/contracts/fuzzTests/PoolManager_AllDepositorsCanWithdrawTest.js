@@ -147,7 +147,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     while(await systemContainsCdpUnder100(price) && await cdpManager.checkRecoveryMode()) {
       const lowestCdp = await sortedCdps.getLast()
       const lastCdpDebt = (await cdpManager.getEntireDebtAndColl(cdp))[0]
-      await borrowerOperations.adjustCdp(0, 0 , lastCdpDebt, true, whale, {from: whale})
+      await borrowerOperations.adjustCdp(0, lastCdpDebt, true, whale, {from: whale})
       await ebtcToken.transfer(lowestCdp, lowestCdpDebt, {from: whale})
       await borrowerOperations.closeCdp({from: lowestCdp})
     }
@@ -156,7 +156,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       const debtLowest50Cdps = await getTotalDebtFromUndercollateralizedCdps(50, price)
       
       if (debtLowest50Cdps.gt(ZERO)) {
-        await borrowerOperations.adjustCdp(0, 0 , debtLowest50Cdps, true, whale, {from: whale})
+        await borrowerOperations.adjustCdp(0, debtLowest50Cdps, true, whale, {from: whale})
         await stabilityPool.provideToSP(debtLowest50Cdps, {from: whale})
       }
       

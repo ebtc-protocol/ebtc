@@ -333,7 +333,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         uint256 length = _ownedCount[to];
         _ownedCdps[to][length] = cdpId;
         _ownedCdpIndex[cdpId] = length;
-        _ownedCount[to] = _ownedCount[to] + 1;
+        _ownedCount[to] = length + 1;
     }
 
     /**

@@ -15,7 +15,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
         uint _debtChange,
         bool isDebtIncrease,
         uint _price
-    ) external pure returns (uint) {
+    ) external view returns (uint) {
         return
             _getNewICRFromCdpChange(
                 _coll,
@@ -58,11 +58,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
         address _lowerHint
     ) external {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
-    }
-
-    // Set interest rate as 0 for js tests
-    function _calcUnitAmountAfterInterest(uint) internal pure override returns (uint) {
-        return DECIMAL_PRECISION;
     }
 
     // Payable fallback function

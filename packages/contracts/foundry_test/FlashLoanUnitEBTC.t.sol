@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 
 /*
@@ -14,8 +13,6 @@ import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoa
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitEBTC is eBTCBaseFixture {
-    Utilities internal _utils;
-
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
     eBTCFlashReceiver internal ebtcReceiver;
@@ -25,10 +22,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;
@@ -44,7 +40,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
 
         uselessReceiver = new UselessFlashReceiver();

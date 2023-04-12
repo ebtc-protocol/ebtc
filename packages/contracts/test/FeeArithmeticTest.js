@@ -342,7 +342,6 @@ contract('Fee arithmetic tests', async accounts => {
     contracts = await deploymentHelper.deployLiquityCore()
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
@@ -355,6 +354,14 @@ contract('Fee arithmetic tests', async accounts => {
   })
 
   it("minutesPassedSinceLastFeeOp(): returns minutes passed between time of last fee operation and current block.timestamp, rounded down to nearest minutes", async () => {
+	
+    let startTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+    let residue = startTimestamp % 60;
+    if (residue > 0){
+        await th.fastForwardTime((60 - residue), web3.currentProvider)
+        console.log('now=' + ((await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp));		
+    }
+	  
     for (testPair of secondsToMinutesRoundedDown) {
       await cdpManagerTester.setLastFeeOpTimeToNow()
 
@@ -364,7 +371,7 @@ contract('Fee arithmetic tests', async accounts => {
       await th.fastForwardTime(seconds, web3.currentProvider)
 
       const minutesPassed = await cdpManagerTester.minutesPassedSinceLastFeeOp()
-
+      //console.log('seconds=' + seconds + ',expectedHoursPassed=' + expectedHoursPassed);
       assert.equal(expectedHoursPassed.toString(), minutesPassed.toString())
     }
   })
