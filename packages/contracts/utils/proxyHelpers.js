@@ -92,23 +92,23 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async openCdp(...params) {
-    return this.forwardFunction(params, 'openCdp(uint256,uint256,bytes32,bytes32,uint256)')
+    return this.forwardFunction(params, 'openCdp(uint256,bytes32,bytes32,uint256)')
   }
 
   async addColl(...params) {
-    return this.forwardFunction(params, 'addColl(address,address,uint256)')
+    return this.forwardFunction(params, 'addColl(bytes32,bytes32,uint256)')
   }
 
   async withdrawColl(...params) {
-    return this.forwardFunction(params, 'withdrawColl(uint256,address,address)')
+    return this.forwardFunction(params, 'withdrawColl(uint256,bytes32,bytes32)')
   }
 
   async withdrawEBTC(...params) {
-    return this.forwardFunction(params, 'withdrawEBTC(uint256,uint256,address,address)')
+    return this.forwardFunction(params, 'withdrawEBTC(uint256,bytes32,bytes32)')
   }
 
   async repayEBTC(...params) {
-    return this.forwardFunction(params, 'repayEBTC(uint256,address,address)')
+    return this.forwardFunction(params, 'repayEBTC(uint256,bytes32,bytes32)')
   }
 
   async closeCdp(...params) {
@@ -116,11 +116,11 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async adjustCdp(...params) {
-    return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,address,address)')
+    return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,bytes32,bytes32)')
   }
 
   async adjustCdpWithColl(...params) {
-    return this.forwardFunction(params, 'adjustCdpWithColl(uint256,uint256,uint256,bool,address,address,uint256)')
+    return this.forwardFunction(params, 'adjustCdpWithColl(uint256,uint256,uint256,bool,bytes32,bytes32,uint256)')
   }
 
   async claimRedeemedCollateral(...params) {
@@ -158,7 +158,7 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimCollateralAndOpenCdp(...params) {
-    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,uint256,bytes32,bytes32,uint256)')
+    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,bytes32,bytes32,uint256)')
   }
 
   async claimSPRewardsAndRecycle(...params) {
@@ -166,7 +166,7 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimStakingGainsAndRecycle(...params) {
-    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(bytes32,uint256,bytes32,bytes32)')
+    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(bytes32,bytes32,bytes32)')
   }
 
   async transferETH(...params) {

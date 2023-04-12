@@ -73,10 +73,9 @@ contract EchidnaProxy {
         uint _coll,
         uint _EBTCAmount,
         bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _maxFee
+        bytes32 _lowerHint
     ) external {
-        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, _coll);
+        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _coll);
     }
 
     function addCollPrx(
@@ -101,10 +100,9 @@ contract EchidnaProxy {
         bytes32 _cdpId,
         uint _amount,
         bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _maxFee
+        bytes32 _lowerHint
     ) external {
-        borrowerOperations.withdrawEBTC(_cdpId, _maxFee, _amount, _upperHint, _lowerHint);
+        borrowerOperations.withdrawEBTC(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
     function repayEBTCPrx(
@@ -126,12 +124,10 @@ contract EchidnaProxy {
         uint _debtChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _maxFee
+        bytes32 _lowerHint
     ) external {
         borrowerOperations.adjustCdp(
             _cdpId,
-            _maxFee,
             _collWithdrawal,
             _debtChange,
             _isDebtIncrease,
@@ -147,12 +143,10 @@ contract EchidnaProxy {
         uint _debtChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _maxFee
+        bytes32 _lowerHint
     ) external {
         borrowerOperations.adjustCdpWithColl(
             _cdpId,
-            _maxFee,
             _collWithdrawal,
             _debtChange,
             _isDebtIncrease,

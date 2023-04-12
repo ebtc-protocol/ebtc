@@ -3,17 +3,13 @@ pragma solidity 0.6.11;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 contract CDPOpsTest is eBTCBaseFixture {
-    Utilities internal _utils;
-
     function setUp() public override {
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
     }
 
     function testGetCdpsOfUser() public {
@@ -30,7 +26,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
@@ -64,7 +60,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         // Open X amount of CDPs
         for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
-            borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);

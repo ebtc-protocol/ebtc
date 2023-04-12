@@ -11,6 +11,7 @@ interface IActivePool is IPool {
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolETHBalanceUpdated(uint _ETH);
     event CollateralAddressChanged(address _collTokenAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
 
     // --- Functions ---
     function sendETH(address _account, uint _amount) external;

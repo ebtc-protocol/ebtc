@@ -10,8 +10,9 @@ contract EBTCTokenTester is EBTCToken {
 
     constructor(
         address _cdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) public EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress) {}
+        address _borrowerOperationsAddress,
+        address _authorityAddress
+    ) public EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
 
     function unprotectedMint(address _account, uint256 _amount) external {
         // No check on caller here

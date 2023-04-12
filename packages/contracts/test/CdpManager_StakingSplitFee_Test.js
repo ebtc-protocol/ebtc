@@ -5,6 +5,7 @@ const { toBN, dec, ZERO_ADDRESS } = th
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol");
+const GovernorTester = artifacts.require("./GovernorTester.sol");
 
 const assertRevert = th.assertRevert
 
@@ -25,6 +26,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let _MCR;
   let collToken;
   let splitFeeRecipient;
+  let authority;
 
   const openCdp = async (params) => th.openCdp(contracts, params)
 
@@ -33,7 +35,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     contracts.cdpManager = await CdpManagerTester.new()
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
-      contracts.borrowerOperations.address
+      contracts.borrowerOperations.address,
+      contracts.authority.address
     )
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
 
@@ -43,7 +46,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    feeSplit = await contracts.cdpManager.STAKING_REWARD_SPLIT();	
+    feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
     minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();
     _MCR = await cdpManager.MCR();
@@ -52,12 +55,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
     hintHelpers = contracts.hintHelpers;
+    authority = contracts.authority;
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	
-    splitFeeRecipient = await contracts.cdpManager.lqtyStaking();
+    splitFeeRecipient = await LQTYContracts.feeRecipient;
   })
   
   it("Claim split fee when there is staking reward coming", async() => {
@@ -101,15 +104,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
-      await cdpManager.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
+      await splitFeeRecipient.claimStakingSplitFee();  
+      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee);
 	  
       // apply accumulated fee split to CDP	upon user operations  	  
       let _expectedFeeShare = _fees[0];
-      await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
+      await borrowerOperations.withdrawEBTC(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
       let _aliceCollAfter = await cdpManager.getCdpColl(_aliceCdpId); 
       let _totalCollAfter = await cdpManager.getEntireSystemColl(); 
       th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare), _errorTolerance);
@@ -195,9 +198,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);  
           let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
-          let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient); 
+          let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address); 
           await cdpManager.claimStakingSplitFee();  	 
-          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
           //console.log('i[' + i + ']:_totalCollBeforeAdded=' + _totalCollBeforeAdded + ',_totalColl=' + _totalColl + ',diff=' + (_totalColl.sub(_totalCollBeforeAdded)) + ',_aliceColl=' + _aliceColl + ',_bobColl=' + _bobColl + ',_expectedFee=' + _expectedFee + ',_feeBalDelta=' + _actualFee + ',diffFee=' + (_actualFee.sub(_expectedFee))); 
@@ -233,8 +236,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
           // apply accumulated fee split to CDP	upon user operations 
-          await borrowerOperations.withdrawEBTC(_aliceCdpId, th._100pct, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
-          await borrowerOperations.withdrawEBTC(_bobCdpId, th._100pct, 1, _bobCdpId, _bobCdpId, { from: bob, value: 0 })	  
+          await borrowerOperations.withdrawEBTC(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
+          await borrowerOperations.withdrawEBTC(_bobCdpId, 1, _bobCdpId, _bobCdpId, { from: bob, value: 0 })	  
 	  	  
           _oldIndex = _newIndex;
           _newIndex = _newIndex.add((mv._1_5e18BN.sub(mv._1e18BN)));// increase by 0.05 for next
@@ -323,9 +326,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFeeShare = _fees[0];
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
 	  
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
       await cdpManager.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient);
+      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
 	  
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
       let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
@@ -350,6 +353,37 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await cdpManager.liquidate(_bobCdpId, {from: owner});
       let _surplusToClaimBob = await collSurplusPool.getCollateral(bob);
       th.assertIsApproximatelyEqual(_surplusToClaimBob, _bobCollDebtAfter[1].sub(_expectedLiquidatedCollBob), _errorTolerance);
+  })
+  
+  it("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.setStakingRewardSplit(1, {from: alice}), "CDPManager: sender not authorized for setStakingRewardSplit(uint256)");   
+      await assertRevert(cdpManager.setStakingRewardSplit(10001, {from: owner}), "CDPManager: new staking reward split exceeds max");
+      assert.isTrue(2500 == (await cdpManager.stakingRewardSplit())); 
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _splitRewardSig = "0xb6fe918a";//cdpManager#SET_STAKING_REWARD_SPLIT_SIG;
+      await authority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
+      let _newSplitFee = 9876;
+      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
+      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));  
+	  
+      // switch authority    
+      let _setAuthSig = "0x7a9e5e4b";//bytes4(keccak256(bytes("setAuthority(address)")))
+      await authority.setRoleCapability(_role123, cdpManager.address, _setAuthSig, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _setAuthSig)));
+      let _newAuthority = await GovernorTester.new(alice);
+      await cdpManager.setAuthority(_newAuthority.address, {from: alice});
+      assert.isTrue(_newAuthority.address == (await cdpManager.authority()));
+      _newSplitFee = 10000;
+      await _newAuthority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: alice});	  
+      await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
+      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
+      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));
   })
   
   

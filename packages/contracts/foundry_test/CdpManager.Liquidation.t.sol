@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
@@ -52,11 +51,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function setUp() public override {
         super.setUp();
 
-        connectLQTYContracts();
         connectCoreContracts();
         connectLQTYContractsToCore();
 
-        _utils = new Utilities();
         users = _utils.createUsers(4);
     }
 
@@ -69,13 +66,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            _debt,
-            bytes32(0),
-            bytes32(0),
-            _coll
-        );
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
         vm.stopPrank();
         return _cdpId;
     }
@@ -114,9 +105,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
 
-        // accrue some interest before liquidation
-        skip(365 days);
-
         // Price falls
         priceFeedMock.setPrice(price);
 
@@ -126,7 +114,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
             uint _expectedLiqDebt = _ICR > cdpManager.LICR()
@@ -198,9 +186,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
 
-        // accrue some interest before liquidation
-        skip(365 days);
-
         // Price falls
         uint _newPrice = _curPrice / 2;
         priceFeedMock.setPrice(_newPrice);
@@ -211,7 +196,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
@@ -440,5 +425,23 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
 
         _ensureSystemInvariants();
+    }
+
+    function testFullLiquidation() public {
+        // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
+    }
+
+    function testPartialLiquidation() public {
+        // Set up a test case where the CDP is only partially liquidated using HintHelper, with ICR below MCR or TCR in recovery mode
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned and collateral was sent, and that no remaining debt was redistributed
+    }
+
+    function testRetryFullLiquidation() public {
+        // Set up a test case where the CDP is partially liquidated but the amount of collateral sent is 0, resulting in a retry with full liquidation
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
     }
 }
