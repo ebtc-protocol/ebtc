@@ -298,9 +298,9 @@ contract EchidnaTester {
             echidnaProxy.liquidatePrx(_cdpId);
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
             uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-			if (_totalSupplyDiff < entireDebt){
-			    eBTCToken.unprotectedBurn(address(echidnaProxy), entireDebt - _totalSupplyDiff);
-			}
+            if (_totalSupplyDiff < entireDebt) {
+                eBTCToken.unprotectedBurn(address(echidnaProxy), entireDebt - _totalSupplyDiff);
+            }
         }
 
         priceFeedTestnet.setPrice(_oldPrice);
@@ -326,9 +326,9 @@ contract EchidnaTester {
             (uint256 _newEntireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
             uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-			if (_totalSupplyDiff < _partialAmount){
-			    eBTCToken.unprotectedBurn(address(echidnaProxy), _partialAmount - _totalSupplyDiff);
-			}
+            if (_totalSupplyDiff < _partialAmount) {
+                eBTCToken.unprotectedBurn(address(echidnaProxy), _partialAmount - _totalSupplyDiff);
+            }
         }
 
         priceFeedTestnet.setPrice(_oldPrice);
@@ -344,13 +344,13 @@ contract EchidnaTester {
         if (_n > cdpManager.getCdpIdsCount()) {
             _n = cdpManager.getCdpIdsCount();
         }
-		
+
         uint _sugar = cdpManager.getEntireSystemDebt();
         eBTCToken.unprotectedMint(address(echidnaProxy), _sugar);
         uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxy.liquidateCdpsPrx(_n);
         uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _sugar){
+        if (_totalSupplyDiff < _sugar) {
             eBTCToken.unprotectedBurn(address(echidnaProxy), _sugar - _totalSupplyDiff);
         }
 
@@ -379,7 +379,7 @@ contract EchidnaTester {
             0
         );
         uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _EBTCAmount){
+        if (_totalSupplyDiff < _EBTCAmount) {
             eBTCToken.unprotectedBurn(address(echidnaProxy), _EBTCAmount - _totalSupplyDiff);
         }
     }
@@ -493,7 +493,7 @@ contract EchidnaTester {
         uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
         uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _amount){
+        if (_totalSupplyDiff < _amount) {
             eBTCToken.unprotectedBurn(address(echidnaProxy), _amount - _totalSupplyDiff);
         }
     }
@@ -509,7 +509,7 @@ contract EchidnaTester {
         uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxies[actor].closeCdpPrx(_cdpId);
         uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < entireDebt){
+        if (_totalSupplyDiff < entireDebt) {
             eBTCToken.unprotectedBurn(address(echidnaProxy), entireDebt - _totalSupplyDiff);
         }
     }
@@ -551,12 +551,12 @@ contract EchidnaTester {
             _cdpId,
             _cdpId
         );
-		if (_totalSupplyBefore > 0){
+        if (_totalSupplyBefore > 0) {
             uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-            if (_totalSupplyDiff < _debtChange){
+            if (_totalSupplyDiff < _debtChange) {
                 eBTCToken.unprotectedBurn(address(echidnaProxy), _debtChange - _totalSupplyDiff);
-            }		
-		}
+            }
+        }
     }
 
     ///////////////////////////////////////////////////////
@@ -610,10 +610,10 @@ contract EchidnaTester {
         require(_newBiggerIndex < 10000e18, "!nonsenseNewBiggerRate");
         collateral.setEthPerShare(_newBiggerIndex);
     }
-    
+
     // Example for real world slashing: https://twitter.com/LidoFinance/status/1646505631678107649
-    // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido. 
-    // > the total projected impact is around 20 ETH, 
+    // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
+    // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
     function decreaseCollateralRate(uint _newSmallerIndex) external {
         require(_newSmallerIndex < collateral.getPooledEthByShares(1e18), "!smallerNewRate");
@@ -761,8 +761,8 @@ contract EchidnaTester {
             _sum = _sum.add(_coll);
         }
         uint _activeColl = activePool.getETH();
-		uint _diff = _sum > _activeColl? (_sum - _activeColl) : (_activeColl - _sum);
-		uint _divisor = _sum > _activeColl? _sum : _activeColl;
+        uint _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
+        uint _divisor = _sum > _activeColl ? _sum : _activeColl;
         if (_diff * 1e18 > diff_tolerance * _activeColl) {
             return false;
         }
