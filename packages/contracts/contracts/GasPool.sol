@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 /**
  * The purpose of this contract is to hold EBTC tokens for gas compensation:

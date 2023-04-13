@@ -1,4 +1,4 @@
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import {eBTCBaseFixture} from "./BaseFixture.sol";

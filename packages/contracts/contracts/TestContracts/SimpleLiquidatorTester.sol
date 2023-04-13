@@ -1,4 +1,4 @@
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../Interfaces/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "../Interfaces/IERC3156FlashLender.sol";

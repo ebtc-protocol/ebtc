@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/IActivePool.sol";
@@ -16,6 +16,12 @@ import "./Dependencies/ICollateralToken.sol";
  * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved
  * from the Default Pool to the Active Pool.
  */
+
+ /**
+    * @title Default Pool Contract
+    * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
+    * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
+ */
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     using SafeMath for uint256;
 
@@ -29,6 +35,12 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     // --- Dependency setters ---
 
+    /**
+        * @notice Sets the addresses for the contract's dependencies.
+        * @param _cdpManagerAddress The address of the cdp manager contract
+        * @param _activePoolAddress The address of the active pool contract
+        * @param _collTokenAddress The address of the collateral token contract
+     */
     function setAddresses(
         address _cdpManagerAddress,
         address _activePoolAddress,
@@ -56,16 +68,29 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
      *
      * Not necessarily equal to the the contract's raw stETH collateral balance - ether can be forcibly sent to contracts.
      */
+
+    /**
+     * @notice Returns the value of the StEthColl state variable
+     * @return The value of the StEthColl state variable
+     */
     function getStEthColl() external view override returns (uint) {
         return StEthColl;
     }
 
+    /**
+     * @notice Returns the value of the EBTCDebt state variable
+     * @return The value of the EBTCDebt state variable
+     */
     function getEBTCDebt() external view override returns (uint) {
         return EBTCDebt;
     }
 
     // --- Pool functionality ---
 
+    /**
+     * @notice Sends ETH to the active pool contract
+     * @param _amount The amount of ETH to send
+     */
     function sendETHToActivePool(uint _amount) external override {
         _requireCallerIsCdpManager();
         address activePool = activePoolAddress; // cache to save an SLOAD
@@ -79,12 +104,20 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         IActivePool(activePool).receiveColl(_amount);
     }
 
+    /**
+     * @notice Increases the value of the EBTCDebt state variable
+     * @param _amount The amount to increase by
+     */
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsCdpManager();
         EBTCDebt = EBTCDebt + _amount;
         emit DefaultPoolEBTCDebtUpdated(EBTCDebt);
     }
 
+    /**
+     * @notice Decreases the value of the EBTCDebt state variable
+     * @param _amount The amount to decrease by
+     */
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsCdpManager();
         EBTCDebt = EBTCDebt - _amount;
@@ -93,14 +126,24 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
 
     // --- 'require' functions ---
 
+    /**
+     * @notice Checks if the caller is the ActivePool contract
+     */
     function _requireCallerIsActivePool() internal view {
         require(msg.sender == activePoolAddress, "DefaultPool: Caller is not the ActivePool");
     }
 
+    /**
+     * @notice Checks if the caller is the CdpManager contract
+     */
     function _requireCallerIsCdpManager() internal view {
         require(msg.sender == cdpManagerAddress, "DefaultPool: Caller is not the CdpManager");
     }
 
+    /**
+     * @notice Receives collateral from the active pool contract
+     * @param _value The amount of collateral to receive
+     */
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
         StEthColl = StEthColl + _value;
