@@ -141,8 +141,6 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         );
         uint _balAfter = ebtcToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
         require(_balAfter - _balBefore == _fee, "!flFeeEBTC");
-
-        // burn fee to make eBTC total supply intact
         ebtcToken.unprotectedBurn(borrowerOperations.FEE_RECIPIENT(), _fee);
     }
 

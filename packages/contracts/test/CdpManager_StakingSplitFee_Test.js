@@ -386,5 +386,49 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));
   })
   
+  it("Test fee split claim with weird slashing and rewarding", async() => {
+      let _errorTolerance = toBN("2000000");//compared to 1e18
+      	  
+      // slashing: decreaseCollateralRate(1)	  	  
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      let _newIndex = 1;// yep, one wei
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // open CDP
+      let _collAmt = toBN("9751958561574716850");
+      let _ebtcAmt = toBN("148960105069686413");
+      await collToken.deposit({from: owner, value: _collAmt});
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      let _cdpDebtColl = await cdpManager.getEntireDebtAndColl(_cdpId);
+      let _activeColl = await activePool.getETH();
+      let _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_activeColl, _cdpDebtColl[1], _errorTolerance.toNumber());
+      th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
+	  
+      // rewarding: increaseCollateralRate(6)	  	  
+      await ethers.provider.send("evm_increaseTime", [44823]);
+      await ethers.provider.send("evm_mine");  
+      _newIndex = 6;
+      await collToken.setEthPerShare(_newIndex);  
+	  
+      // claim fee
+      await cdpManager.claimStakingSplitFee();
+	  
+      // final check
+      _cdpDebtColl = await cdpManager.getEntireDebtAndColl(_cdpId);
+      _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
+	  
+      _cdpColl = _cdpDebtColl[1];
+      _activeColl = await activePool.getETH();
+      let _diff = _cdpColl.gt(_activeColl)? _cdpColl.sub(_activeColl).mul(mv._1e18BN) : _activeColl.sub(_cdpColl).mul(mv._1e18BN);
+      let _divisor = _cdpColl.gt(_activeColl)? _cdpColl : _activeColl;
+      let _target = _errorTolerance.mul(_divisor);
+      assert.isTrue(_diff.lt(_target));  
+  })
+  
   
 })
