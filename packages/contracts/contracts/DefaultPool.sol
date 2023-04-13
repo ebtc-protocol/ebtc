@@ -17,10 +17,10 @@ import "./Dependencies/ICollateralToken.sol";
  * from the Default Pool to the Active Pool.
  */
 
- /**
-    * @title Default Pool Contract
-    * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
-    * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
+/**
+ * @title Default Pool Contract
+ * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
+ * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
  */
 contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     using SafeMath for uint256;
@@ -36,10 +36,10 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
     // --- Dependency setters ---
 
     /**
-        * @notice Sets the addresses for the contract's dependencies.
-        * @param _cdpManagerAddress The address of the cdp manager contract
-        * @param _activePoolAddress The address of the active pool contract
-        * @param _collTokenAddress The address of the collateral token contract
+     * @notice Sets the addresses for the contract's dependencies.
+     * @param _cdpManagerAddress The address of the cdp manager contract
+     * @param _activePoolAddress The address of the active pool contract
+     * @param _collTokenAddress The address of the collateral token contract
      */
     function setAddresses(
         address _cdpManagerAddress,
