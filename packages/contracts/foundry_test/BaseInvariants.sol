@@ -27,6 +27,8 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     // - default_pool_1： collateral balance in default pool is greater than or equal to its accounting number
     // - default_pool_2： sum of debt accounting in default pool and active pool should be equal to sum of debt accounting of individual CDPs
     // - coll_surplus_pool_1： collateral balance in collSurplus pool is greater than or equal to its accounting number
+    // - sorted_list_1： NICR ranking in the sorted list should follow descending order
+    // - sorted_list_2： the first(highest) ICR in the sorted list should bigger or equal to TCR
     ////////////////////////////////////////////////////////////////////////////
 
     function _assert_active_pool_invariant_1() internal {
@@ -107,7 +109,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , , , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (uint _debt, , , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum.add(_debt);
         }
         require(
@@ -124,6 +126,33 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         );
     }
 
+    function _assert_sorted_list_invariant_1() internal {
+        bytes32 _prev = sortedCdps.getFirst();
+        bytes32 _next = sortedCdps.getNext(_prev);
+        while (_prev != sortedCdps.dummyId() && _next != sortedCdps.dummyId() && _prev != _next) {
+            assertGe(
+                cdpManager.getNominalICR(_prev),
+                cdpManager.getNominalICR(_next),
+                "System Invariant: sorted_list_1"
+            );
+
+            _prev = _next;
+            _next = sortedCdps.getNext(_prev);
+        }
+    }
+
+    function _assert_sorted_list_invariant_2() internal {
+        bytes32 _first = sortedCdps.getFirst();
+        uint _price = priceFeedMock.getPrice();
+        if (_first != sortedCdps.dummyId() && _price > 0) {
+            assertGe(
+                cdpManager.getCurrentICR(_first, _price),
+                cdpManager.getTCR(_price),
+                "System Invariant: sorted_list_2"
+            );
+        }
+    }
+
     function _ensureSystemInvariants() internal {
         _assert_active_pool_invariant_1();
         _assert_active_pool_invariant_2();
@@ -135,5 +164,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         _assert_default_pool_invariant_1();
         _assert_default_pool_invariant_2();
         _assert_coll_surplus_pool_invariant_1();
+        _assert_sorted_list_invariant_1();
+        _assert_sorted_list_invariant_2();
     }
 }

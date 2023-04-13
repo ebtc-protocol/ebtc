@@ -4,30 +4,62 @@ pragma solidity 0.6.11;
 
 import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
-import "../EBTCToken.sol";
+import "../ActivePool.sol";
 import "./CollateralTokenTester.sol";
+import "./PriceFeedTestnet.sol";
+import "./EBTCTokenTester.sol";
+import "../Interfaces/IERC3156FlashBorrower.sol";
+import "../Dependencies/IERC20.sol";
 
-contract EchidnaProxy {
+contract EchidnaProxy is IERC3156FlashBorrower {
     CdpManager cdpManager;
     BorrowerOperations borrowerOperations;
-    EBTCToken ebtcToken;
+    EBTCTokenTester ebtcToken;
     CollateralTokenTester collateral;
+    ActivePool activePool;
+    PriceFeedTestnet priceFeed;
 
     constructor(
         CdpManager _cdpManager,
         BorrowerOperations _borrowerOperations,
-        EBTCToken _ebtcToken,
-        CollateralTokenTester _collateral
+        EBTCTokenTester _ebtcToken,
+        CollateralTokenTester _collateral,
+        ActivePool _activePool,
+        PriceFeedTestnet _priceFeed
     ) public payable {
         cdpManager = _cdpManager;
         borrowerOperations = _borrowerOperations;
         ebtcToken = _ebtcToken;
         collateral = _collateral;
+        activePool = _activePool;
+        priceFeed = _priceFeed;
+
         collateral.approve(address(borrowerOperations), type(uint256).max);
     }
 
     receive() external payable {
         // do nothing
+    }
+
+    // helper functions
+    function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
+        uint _price = priceFeed.getPrice();
+        if (_price > 0) {
+            bool _recovery = cdpManager.checkRecoveryMode(_price);
+            uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+            if (_recovery) {
+                require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
+            } else {
+                require(_icr > cdpManager.MCR(), "liquidationTriggeredInNormalMode");
+            }
+        }
+    }
+
+    function _ensureNoRecoveryModeTriggered() internal view {
+        uint _price = priceFeed.getPrice();
+        if (_price > 0) {
+            require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
+        }
     }
 
     // CdpManager
@@ -68,14 +100,61 @@ contract EchidnaProxy {
         );
     }
 
+    // ActivePool
+
+    function flashloanColl(uint _amount) external {
+        require(_amount < activePool.maxFlashLoan(address(collateral)), "!tooMuchCollToFL");
+
+        // sugardaddy fee
+        uint _fee = activePool.flashFee(address(collateral), _amount);
+        require(_fee < address(this).balance, "!tooMuchFeeCollFL");
+        collateral.deposit{value: _fee}();
+
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        activePool.flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(collateral),
+            _amount,
+            abi.encodePacked(uint256(0))
+        );
+        uint _balAfter = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        require(_balAfter - _balBefore == _fee, "!flFeeColl");
+    }
+
     // Borrower Operations
+
+    function flashloanEBTC(uint _amount) external {
+        require(_amount < borrowerOperations.maxFlashLoan(address(ebtcToken)), "!tooMuchEBTCToFL");
+
+        // sugardaddy fee
+        uint _fee = borrowerOperations.flashFee(address(ebtcToken), _amount);
+        ebtcToken.unprotectedMint(address(this), _fee);
+
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = ebtcToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        borrowerOperations.flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(ebtcToken),
+            _amount,
+            abi.encodePacked(uint256(0))
+        );
+        uint _balAfter = ebtcToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        require(_balAfter - _balBefore == _fee, "!flFeeEBTC");
+
+        // burn fee to make eBTC total supply intact
+        ebtcToken.unprotectedBurn(borrowerOperations.FEE_RECIPIENT(), _fee);
+    }
+
     function openCdpPrx(
         uint _coll,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _coll);
+        bytes32 _cdpId = borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _coll);
+        _ensureNoLiquidationTriggered(_cdpId);
+        _ensureNoRecoveryModeTriggered();
     }
 
     function addCollPrx(
@@ -94,6 +173,8 @@ contract EchidnaProxy {
         bytes32 _lowerHint
     ) external {
         borrowerOperations.withdrawColl(_cdpId, _amount, _upperHint, _lowerHint);
+        _ensureNoLiquidationTriggered(_cdpId);
+        _ensureNoRecoveryModeTriggered();
     }
 
     function withdrawEBTCPrx(
@@ -103,6 +184,8 @@ contract EchidnaProxy {
         bytes32 _lowerHint
     ) external {
         borrowerOperations.withdrawEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+        _ensureNoLiquidationTriggered(_cdpId);
+        _ensureNoRecoveryModeTriggered();
     }
 
     function repayEBTCPrx(
@@ -111,7 +194,13 @@ contract EchidnaProxy {
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+        if (_amount > 0) {
+            uint _price = priceFeed.fetchPrice();
+            uint _tcrBefore = cdpManager.getTCR(_price);
+            borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+            uint _tcrAfter = cdpManager.getTCR(_price);
+            require(_tcrAfter > _tcrBefore, "!tcrAfterRepay");
+        }
     }
 
     function closeCdpPrx(bytes32 _cdpId) external {
@@ -134,6 +223,10 @@ contract EchidnaProxy {
             _upperHint,
             _lowerHint
         );
+        if (_collWithdrawal > 0 || _isDebtIncrease) {
+            _ensureNoLiquidationTriggered(_cdpId);
+            _ensureNoRecoveryModeTriggered();
+        }
     }
 
     function adjustCdpWithCollPrx(
@@ -154,6 +247,10 @@ contract EchidnaProxy {
             _lowerHint,
             _collAddAmount
         );
+        if (_collWithdrawal > 0 || _isDebtIncrease) {
+            _ensureNoLiquidationTriggered(_cdpId);
+            _ensureNoRecoveryModeTriggered();
+        }
     }
 
     // EBTC Token
@@ -190,5 +287,23 @@ contract EchidnaProxy {
 
         uint _balAfter = collateral.balanceOf(address(this));
         return _balAfter - _balBefore;
+    }
+
+    // callback for flashloan
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
+        if (token == address(ebtcToken)) {
+            require(msg.sender == address(borrowerOperations), "!borrowerOperationsFLSender");
+        } else {
+            require(msg.sender == address(activePool), "!activePoolFLSender");
+        }
+
+        IERC20(token).approve(msg.sender, amount + fee);
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
