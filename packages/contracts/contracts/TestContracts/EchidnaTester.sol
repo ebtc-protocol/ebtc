@@ -293,14 +293,8 @@ contract EchidnaTester {
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
             (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-            eBTCToken.unprotectedMint(address(echidnaProxy), entireDebt);
-            uint _totalSupplyBefore = eBTCToken.totalSupply();
             echidnaProxy.liquidatePrx(_cdpId);
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
-            uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-            if (_totalSupplyDiff < entireDebt) {
-                eBTCToken.unprotectedBurn(address(echidnaProxy), entireDebt - _totalSupplyDiff);
-            }
         }
 
         priceFeedTestnet.setPrice(_oldPrice);
@@ -319,16 +313,10 @@ contract EchidnaTester {
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
             (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-            eBTCToken.unprotectedMint(address(echidnaProxy), _partialAmount);
             require(_partialAmount < entireDebt, "!_partialAmount");
-            uint _totalSupplyBefore = eBTCToken.totalSupply();
             echidnaProxy.partialLiquidatePrx(_cdpId, _partialAmount);
             (uint256 _newEntireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
-            uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-            if (_totalSupplyDiff < _partialAmount) {
-                eBTCToken.unprotectedBurn(address(echidnaProxy), _partialAmount - _totalSupplyDiff);
-            }
         }
 
         priceFeedTestnet.setPrice(_oldPrice);
@@ -345,14 +333,7 @@ contract EchidnaTester {
             _n = cdpManager.getCdpIdsCount();
         }
 
-        uint _sugar = cdpManager.getEntireSystemDebt();
-        eBTCToken.unprotectedMint(address(echidnaProxy), _sugar);
-        uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxy.liquidateCdpsPrx(_n);
-        uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _sugar) {
-            eBTCToken.unprotectedBurn(address(echidnaProxy), _sugar - _totalSupplyDiff);
-        }
 
         priceFeedTestnet.setPrice(_oldPrice);
     }
@@ -367,8 +348,6 @@ contract EchidnaTester {
     ) external {
         uint actor = _getRandomActor(_i);
         EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        eBTCToken.unprotectedMint(address(echidnaProxy), _EBTCAmount);
-        uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxy.redeemCollateralPrx(
             _EBTCAmount,
             _firstRedemptionHint,
@@ -378,10 +357,6 @@ contract EchidnaTester {
             0,
             0
         );
-        uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _EBTCAmount) {
-            eBTCToken.unprotectedBurn(address(echidnaProxy), _EBTCAmount - _totalSupplyDiff);
-        }
     }
 
     function claimSplitFee() external {
@@ -489,13 +464,7 @@ contract EchidnaTester {
         require(_cdpId != bytes32(0), "!cdpId");
         (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         require(_amount <= entireDebt, "!repayEBTC_amount");
-        eBTCToken.unprotectedMint(address(echidnaProxy), _amount);
-        uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
-        uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < _amount) {
-            eBTCToken.unprotectedBurn(address(echidnaProxy), _amount - _totalSupplyDiff);
-        }
     }
 
     function closeCdpExt(uint _i) external {
@@ -505,13 +474,7 @@ contract EchidnaTester {
         require(_cdpId != bytes32(0), "!cdpId");
         require(1 == cdpManager.getCdpStatus(_cdpId), "!closeCdpExtActive");
         (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-        eBTCToken.unprotectedMint(address(echidnaProxy), entireDebt);
-        uint _totalSupplyBefore = eBTCToken.totalSupply();
         echidnaProxies[actor].closeCdpPrx(_cdpId);
-        uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-        if (_totalSupplyDiff < entireDebt) {
-            eBTCToken.unprotectedBurn(address(echidnaProxy), entireDebt - _totalSupplyDiff);
-        }
     }
 
     function adjustCdpExt(
@@ -533,13 +496,10 @@ contract EchidnaTester {
 
         uint debtChange = _debtChange;
         CDPChange memory _change;
-        uint _totalSupplyBefore;
         if (_isDebtIncrease) {
             _change = CDPChange(0, _collWithdrawal, _debtChange, 0);
         } else {
             require(_debtChange < entireDebt, "!adjustCdpExt_debtChange");
-            eBTCToken.unprotectedMint(address(echidnaProxy), _debtChange);
-            _totalSupplyBefore = eBTCToken.totalSupply();
             _change = CDPChange(0, _collWithdrawal, 0, _debtChange);
         }
         _ensureMCR(_cdpId, _change);
@@ -551,12 +511,6 @@ contract EchidnaTester {
             _cdpId,
             _cdpId
         );
-        if (_totalSupplyBefore > 0) {
-            uint _totalSupplyDiff = _totalSupplyBefore - eBTCToken.totalSupply();
-            if (_totalSupplyDiff < _debtChange) {
-                eBTCToken.unprotectedBurn(address(echidnaProxy), _debtChange - _totalSupplyDiff);
-            }
-        }
     }
 
     ///////////////////////////////////////////////////////
@@ -607,6 +561,7 @@ contract EchidnaTester {
 
     function increaseCollateralRate(uint _newBiggerIndex) external {
         require(_newBiggerIndex > collateral.getPooledEthByShares(1e18), "!biggerNewRate");
+        require(_newBiggerIndex < collateral.getPooledEthByShares(1e18) * 10000, "!tooBigNewRate");
         require(_newBiggerIndex < 10000e18, "!nonsenseNewBiggerRate");
         collateral.setEthPerShare(_newBiggerIndex);
     }
@@ -617,6 +572,10 @@ contract EchidnaTester {
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
     function decreaseCollateralRate(uint _newSmallerIndex) external {
         require(_newSmallerIndex < collateral.getPooledEthByShares(1e18), "!smallerNewRate");
+        require(
+            _newSmallerIndex > collateral.getPooledEthByShares(1e18) / 10000,
+            "!tooSmallNewRate"
+        );
         require(_newSmallerIndex > 0, "!nonsenseNewSmallerRate");
         collateral.setEthPerShare(_newSmallerIndex);
     }
@@ -836,7 +795,11 @@ contract EchidnaTester {
         if (
             _first != sortedCdps.dummyId() &&
             _price > 0 &&
-            cdpManager.getCurrentICR(_first, _price) < cdpManager.getTCR(_price)
+            (!_assertApproximateEq(
+                cdpManager.getCurrentICR(_first, _price),
+                cdpManager.getTCR(_price),
+                diff_tolerance
+            ) && cdpManager.getCurrentICR(_first, _price) < cdpManager.getTCR(_price))
         ) {
             return false;
         }
