@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.6.0;
+pragma solidity >=0.8.0;
 
 import {Authority} from "./Authority.sol";
 
@@ -7,7 +7,7 @@ import {Authority} from "./Authority.sol";
 /// @author Modified by BadgerDAO to remove owner
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/Auth.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-auth/blob/master/src/auth.sol)
-contract Auth {
+contract AuthNoOwner {
     event AuthorityUpdated(address indexed user, Authority indexed newAuthority);
 
     Authority public authority;

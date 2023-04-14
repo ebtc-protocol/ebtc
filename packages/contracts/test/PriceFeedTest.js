@@ -78,7 +78,9 @@ contract('PriceFeed', async accounts => {
         const price = await zeroAddressPriceFeed.fetchPrice()
         assert.isFalse(price.receipt.status)
       } catch (err) {
-        assert.include(err.message, "function call to a non-contract account")
+        console.log(err)
+        console.log(err.message)
+        assert.include(err.message, "function returned an unexpected amount of data") 
       }
     })
 
@@ -87,7 +89,9 @@ contract('PriceFeed', async accounts => {
         const price = await zeroAddressPriceFeed.fetchPrice()
         assert.isFalse(price.receipt.status)
       } catch (err) {
-        assert.include(err.message, "function call to a non-contract account")
+        console.log(err)
+        console.log(err.message)
+        assert.include(err.message, "function returned an unexpected amount of data")
       }
     })
 

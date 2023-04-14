@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
@@ -9,7 +9,6 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
@@ -31,21 +30,11 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     address public defaultPoolAddress;
     address public collSurplusPoolAddress;
     address public feeRecipientAddress;
-    uint256 internal ETH; // deposited ether tracker
+    uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
-    // --- Events ---
-
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
-    event ActivePoolETHBalanceUpdated(uint _ETH);
-    event CollateralAddressChanged(address _collTokenAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-
-    constructor() public {}
+    constructor() {}
 
     // --- Contract setters ---
 
@@ -78,18 +67,18 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-     * Returns the ETH state variable.
+     * Returns the StEthColl state variable.
      *
-     *Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     *Not necessarily equal to the the contract's raw StEthColl balance - ether can be forcibly sent to contracts.
      */
-    function getETH() external view override returns (uint) {
-        return ETH;
+    function getStEthColl() external view override returns (uint) {
+        return StEthColl;
     }
 
     function getEBTCDebt() external view override returns (uint) {
@@ -98,11 +87,11 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendETH(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        require(ETH >= _amount, "!ActivePoolBal");
-        ETH = ETH.sub(_amount);
-        emit ActivePoolETHBalanceUpdated(ETH);
+        require(StEthColl >= _amount, "!ActivePoolBal");
+        StEthColl = StEthColl - _amount;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
         emit CollateralSent(_account, _amount);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -118,14 +107,14 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.add(_amount);
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        EBTCDebt = EBTCDebt + _amount;
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.sub(_amount);
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        EBTCDebt = EBTCDebt - _amount;
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     // --- 'require' functions ---
@@ -146,8 +135,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH.add(_value);
-        emit ActivePoolETHBalanceUpdated(ETH);
+        StEthColl = StEthColl + _value;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
     }
 
     // === Flashloans === //
@@ -162,8 +151,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
-        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
-        uint256 amountWithFee = amount.add(fee);
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
         collateral.transfer(address(receiver), amount);
@@ -183,15 +172,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
         // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
-        // NOTE: This means any balance > ETH is stuck, this is also present in LUSD as is
+        // NOTE: This means any balance > StEthColl is stuck, this is also present in LUSD as is
 
         // NOTE: This check effectively prevents running 2 FL at the same time
-        //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
+        //  You technically could, but you'd be having to repay any amount below StEthColl to get Fl2 to not revert
         require(
-            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(StEthColl),
             "ActivePool: Must repay Balance"
         );
-        require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
+        require(collateral.sharesOf(address(this)) >= StEthColl, "ActivePool: Must repay Share");
         require(
             collateral.getPooledEthByShares(1e18) == oldRate,
             "ActivePool: Should keep same collateral share rate"
@@ -203,7 +192,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
-        return amount.mul(FEE_AMT).div(MAX_BPS);
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in collateral token equals to the current balance

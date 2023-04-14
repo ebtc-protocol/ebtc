@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "./Interfaces/ISortedCdps.sol";
@@ -9,7 +9,6 @@ import "./Interfaces/IBorrowerOperations.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
@@ -48,11 +47,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     using SafeMath for uint256;
 
     string public constant NAME = "SortedCdps";
-
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
-    event NodeAdded(bytes32 _id, uint _NICR);
-    event NodeRemoved(bytes32 _id);
 
     address public borrowerOperationsAddress;
 
@@ -97,7 +91,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress
     ) external override onlyOwner {
-        require(_size > 0, "SortedCdps: Size can’t be zero");
+        require(_size > 0, "SortedCdps: Size can't be zero");
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
 
@@ -109,7 +103,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
@@ -122,13 +116,14 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         serialized |= bytes32(nonce);
         serialized |= bytes32(blockHeight) << (8 * 8); // to accommendate more than 4.2 billion blocks
-        serialized |= bytes32(uint256(owner)) << (12 * 8);
+        serialized |= bytes32(uint256(uint160(owner))) << (12 * 8);
 
         return serialized;
     }
 
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
-        return address(uint256(cdpId) >> (12 * 8));
+        uint256 _tmp = uint256(cdpId) >> (12 * 8);
+        return address(uint160(_tmp));
     }
 
     function existCdpOwners(bytes32 cdpId) public view override returns (address) {
@@ -294,7 +289,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         delete data.nodes[_id];
         data.size = data.size.sub(1);
-        NodeRemoved(_id);
+        emit NodeRemoved(_id);
     }
 
     /*

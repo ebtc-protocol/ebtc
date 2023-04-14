@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
-import "../contracts/Dependencies/SafeMath.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol";
@@ -44,12 +43,6 @@ contract eBTCBaseFixture is Test {
     bytes4 public constant SET_TELLOR_CALLER_SIG =
         bytes4(keccak256(bytes("setTellorCaller(address)")));
 
-    using SafeMath for uint256;
-    using SafeMath for uint96;
-    using SafeMath for uint64;
-    using SafeMath for uint32;
-    using SafeMath for uint16;
-    using SafeMath for uint8;
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
     PriceFeedTestnet priceFeedMock;

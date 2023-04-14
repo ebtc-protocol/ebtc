@@ -35,7 +35,7 @@ $ hardhat test
       ✓ increaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
       ✓ decreaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
     ActivePool
-      ✓ sendETH(): reverts when called by an account that is not BO nor CdpM nor SP
+      ✓ sendStEthColl(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ increaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM
       ✓ decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ fallback(): reverts when called by an account that is not Borrower Operations nor Default Pool
@@ -245,7 +245,7 @@ $ hardhat test
         ✓ collChange is negative, debtChange is positive (381ms)
 
   Contract: CollSurplusPool
-    ✓ CollSurplusPool::getETH(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
+    ✓ CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
     ✓ CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations
     ✓ CollSurplusPool: claimColl(): Reverts if nothing to claim
     ✓ CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus (723ms)
@@ -627,18 +627,18 @@ issuance fraction after: 949066037374286
       ✓ setLQTYAddress(): reverts when called by non-owner, with wrong address, or twice (216ms)
 
   Contract: StabilityPool
-    ✓ getETH(): gets the recorded ETH balance
+    ✓ getStEthColl(): gets the recorded ETH balance
     ✓ getTotalEBTCDeposits(): gets the recorded EBTC balance
 
   Contract: ActivePool
-    ✓ getETH(): gets the recorded ETH balance
+    ✓ getStEthColl(): gets the recorded ETH balance
     ✓ getEBTCDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount
-    ✓ sendETH(): decreases the recorded ETH balance by the correct amount
+    ✓ sendStEthColl(): decreases the recorded ETH balance by the correct amount
 
   Contract: DefaultPool
-    ✓ getETH(): gets the recorded EBTC balance
+    ✓ getStEthColl(): gets the recorded EBTC balance
     ✓ getEBTCDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount (57ms)

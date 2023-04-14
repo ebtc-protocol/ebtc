@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
@@ -542,11 +542,11 @@ contract EchidnaTester {
             return false;
         }
 
-        if (collateral.sharesOf(address(activePool)) != activePool.getETH()) {
+        if (collateral.sharesOf(address(activePool)) != activePool.getStEthColl()) {
             return false;
         }
 
-        if (collateral.sharesOf(address(defaultPool)) != defaultPool.getETH()) {
+        if (collateral.sharesOf(address(defaultPool)) != defaultPool.getStEthColl()) {
             return false;
         }
 

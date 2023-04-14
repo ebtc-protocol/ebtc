@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
@@ -11,7 +11,6 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
@@ -86,35 +85,6 @@ contract BorrowerOperations is
         IEBTCToken ebtcToken;
     }
 
-    enum BorrowerOperation {
-        openCdp,
-        closeCdp,
-        adjustCdp
-    }
-
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolAddressChanged(address _activePoolAddress);
-    event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event PriceFeedAddressChanged(address _newPriceFeedAddress);
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
-    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
-    event CdpUpdated(
-        bytes32 indexed _cdpId,
-        address indexed _borrower,
-        uint _oldDebt,
-        uint _oldColl,
-        uint _debt,
-        uint _coll,
-        uint _stake,
-        BorrowerOperation _operation
-    );
-
     // --- Dependency setters ---
 
     function setAddresses(
@@ -166,7 +136,7 @@ contract BorrowerOperations is
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _renounceOwnership();
+        renounceOwnership();
     }
 
     // --- Borrower Cdp Operations ---
@@ -418,7 +388,7 @@ contract BorrowerOperations is
 
         // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
         if (!_isDebtIncrease && _EBTCChange > 0) {
-            uint _netDebt = _getNetDebt(vars.debt).sub(vars.netDebtChange);
+            uint _netDebt = _getNetDebt(vars.debt) - vars.netDebtChange;
             _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(_netDebt, vars.price));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
@@ -486,7 +456,7 @@ contract BorrowerOperations is
         uint coll = cdpManagerCached.getCdpColl(_cdpId);
         uint debt = cdpManagerCached.getCdpDebt(_cdpId);
 
-        _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
+        _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt - EBTC_GAS_COMPENSATION);
 
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
@@ -504,11 +474,11 @@ contract BorrowerOperations is
         emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
 
         // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
-        _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt.sub(EBTC_GAS_COMPENSATION));
+        _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt - EBTC_GAS_COMPENSATION);
         _repayEBTC(activePoolCached, ebtcTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
 
         // Send the collateral back to the user
-        activePoolCached.sendETH(msg.sender, coll);
+        activePoolCached.sendStEthColl(msg.sender, coll);
     }
 
     /**
@@ -522,7 +492,7 @@ contract BorrowerOperations is
     // --- Helper functions ---
 
     function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
-        uint usdValue = _price.mul(_coll).div(DECIMAL_PRECISION);
+        uint usdValue = (_price * _coll) / DECIMAL_PRECISION;
 
         return usdValue;
     }
@@ -578,7 +548,7 @@ contract BorrowerOperations is
         if (_varMvTokens.isCollIncrease) {
             _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
-            _activePool.sendETH(_varMvTokens.user, _varMvTokens.collChange);
+            _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 
@@ -744,7 +714,7 @@ contract BorrowerOperations is
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
         require(
-            _debtRepayment <= _currentDebt.sub(EBTC_GAS_COMPENSATION),
+            _debtRepayment <= _currentDebt - EBTC_GAS_COMPENSATION,
             "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
         );
     }
@@ -818,8 +788,8 @@ contract BorrowerOperations is
         uint newColl = _coll;
         uint newDebt = _debt;
 
-        newColl = _isCollIncrease ? _coll.add(_collChange) : _coll.sub(_collChange);
-        newDebt = _isDebtIncrease ? _debt.add(_debtChange) : _debt.sub(_debtChange);
+        newColl = _isCollIncrease ? _coll + _collChange : _coll - _collChange;
+        newDebt = _isDebtIncrease ? _debt + _debtChange : _debt - _debtChange;
 
         return (newColl, newDebt);
     }
@@ -835,8 +805,8 @@ contract BorrowerOperations is
         uint totalColl = collateral.getPooledEthByShares(_shareColl);
         uint totalDebt = _getEntireSystemDebt();
 
-        totalColl = _isCollIncrease ? totalColl.add(_collChange) : totalColl.sub(_collChange);
-        totalDebt = _isDebtIncrease ? totalDebt.add(_debtChange) : totalDebt.sub(_debtChange);
+        totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
+        totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
 
         uint newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
         return newTCR;
@@ -857,7 +827,7 @@ contract BorrowerOperations is
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
 
-        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
         // Issue EBTC
         cachedEbtc.mint(address(receiver), amount);
@@ -872,7 +842,7 @@ contract BorrowerOperations is
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee.add(amount));
+        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
         cachedEbtc.burn(address(FEE_RECIPIENT), amount);
@@ -883,7 +853,7 @@ contract BorrowerOperations is
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
-        return amount.mul(FEE_AMT).div(MAX_BPS);
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
