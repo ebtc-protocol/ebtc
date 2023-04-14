@@ -585,7 +585,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _bobColl.mul(price).div(LICR);
     th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_bobDebt.sub(_liqDebt)).toString())
-    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
+    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
     const L_ETH = (await cdpManager.L_ETH()).toString()
@@ -1211,7 +1211,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _bobColl.mul(toBN(_newPrice)).div(LICR);
     th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_bobDebt.sub(_liqDebt)).toString())
-    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
+    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
 	
@@ -1314,7 +1314,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _carolColl.mul(price).div(LICR);
     th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_carolDebtOriginal.sub(_liqDebt)).toString())
-    const _delta = (_carolDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
+    const _delta = (_carolDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
     const L_ETH_After = (await cdpManager.L_ETH()).toString()

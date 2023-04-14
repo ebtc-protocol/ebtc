@@ -388,7 +388,7 @@ contract('CdpManager', async accounts => {
 
     // Carol's ether*0.995 and EBTC should be added to the DefaultPool.
     const L_ETH_AfterCarolLiquidated = await cdpManager.L_ETH()
-    const L_EBTCDebt_AfterCarolLiquidated = await cdpManager.L_EBTCDebt()
+    const L_EBTCDebt_AfterCarolLiquidated = (await cdpManager.L_EBTCDebt()).div(mv._1e18BN)
 
     const L_ETH_expected_1 = th.applyLiquidationFee(toBN('0')).mul(mv._1e18BN).div(A_collateral.add(B_collateral))
     const L_EBTCDebt_expected_1 = C_totalDebt.sub(C_collateral.mul(toBN(_newPrice)).div(LICR)).mul(mv._1e18BN).div(await cdpManager.totalStakes());
@@ -425,7 +425,7 @@ contract('CdpManager', async accounts => {
    L_ETH = (0.995 / 20) + (10.4975*0.995  / 10) = 1.09425125 ETH
    L_EBTCDebt = (180 / 20) + (890 / 10) = 98 EBTC */
     const L_ETH_AfterBobLiquidated = await cdpManager.L_ETH()
-    const L_EBTCDebt_AfterBobLiquidated = await cdpManager.L_EBTCDebt()
+    const L_EBTCDebt_AfterBobLiquidated = (await cdpManager.L_EBTCDebt()).div(mv._1e18BN)
 
     const L_ETH_expected_2 = L_ETH_expected_1.add(th.applyLiquidationFee(toBN('0').add(toBN('0').mul(L_ETH_expected_1).div(mv._1e18BN))).mul(mv._1e18BN).div(A_collateral))
     const L_EBTCDebt_expected_2 = L_EBTCDebt_expected_1.add((_bobTotalDebt.sub(B_collateral.mul(price).div(LICR))).mul(mv._1e18BN).div(await cdpManager.totalStakes()))
