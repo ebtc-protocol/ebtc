@@ -43,6 +43,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
     uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
     uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
 
+    // used for debt redistribution tracker to tolerate bigger difference compared to totalStakes
+    uint public constant TRACKER_COEFFICIENT = 1e36;
+
     // -- Permissioned Function Signatures --
     bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
         bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
@@ -1771,7 +1774,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         uint rewardPerUnitStaked = L_EBTCDebt.sub(snapshotEBTCDebt);
 
         if (rewardPerUnitStaked > 0) {
-            pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(DECIMAL_PRECISION);
+            pendingEBTCDebtReward = stake.mul(rewardPerUnitStaked).div(TRACKER_COEFFICIENT);
         }
     }
 
@@ -1922,7 +1925,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
          * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
          */
         uint ETHNumerator = _coll.mul(DECIMAL_PRECISION).add(lastETHError_Redistribution);
-        uint EBTCDebtNumerator = _debt.mul(DECIMAL_PRECISION).add(lastEBTCDebtError_Redistribution);
+        uint EBTCDebtNumerator = _debt.mul(TRACKER_COEFFICIENT).add(
+            lastEBTCDebtError_Redistribution
+        );
 
         // Get the per-unit-staked terms
         uint ETHRewardPerUnitStaked = ETHNumerator.div(totalStakes);
@@ -2145,7 +2150,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
 
         uint newBaseRate = decayedBaseRate.add(redeemedEBTCFraction.div(BETA));
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
-        //assert(newBaseRate <= DECIMAL_PRECISION); // This is already enforced in the line above
         assert(newBaseRate > 0); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
@@ -2281,8 +2285,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, Auth {
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit).div(DECIMAL_PRECISION);
         uint256 _deltaFeeSplitShare = _feeTaken.mul(DECIMAL_PRECISION).add(stFeePerUnitgError);
-        //.mul(collateral.getSharesByPooledEth(DECIMAL_PRECISION))
-        //.div(DECIMAL_PRECISION)
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare.div(_cachedAllStakes);
         uint256 _perUnitError = _deltaFeeSplitShare.sub(_deltaFeePerUnit.mul(_cachedAllStakes));
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);

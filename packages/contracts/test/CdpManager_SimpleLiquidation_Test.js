@@ -3,7 +3,7 @@ const { TestHelper: th, MoneyValues: mv } = require("../utils/testHelpers.js")
 const { toBN, dec, ZERO_ADDRESS } = th
 
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EBTCToken = artifacts.require("./EBTCTokenTester.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol");
 
 const assertRevert = th.assertRevert
@@ -725,6 +725,98 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // liquidator bob coming in 
       await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});     
       await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq"); 
+  })  
+  
+  it("Test sequence liquidation with extreme slashing case", async() => {
+      let _errorTolerance = toBN("2000000");//compared to 1e18
+      let _oldPrice = await priceFeed.getPrice();
+	  
+      // open CDP
+      let _collAmt1 = toBN("23295194968429539453");
+      let _ebtcAmt1 = toBN("149901978595855214");
+      await collToken.deposit({from: owner, value: _collAmt1});
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await borrowerOperations.openCdp(_ebtcAmt1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt1);
+      let _cdpId1 = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      let _cdpDebtColl1 = await cdpManager.getEntireDebtAndColl(_cdpId1);
+      let _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl1[0], _errorTolerance.toNumber());	  
+	  
+      // slashing to one wei	  	  
+      await ethers.provider.send("evm_increaseTime", [43611]);
+      await ethers.provider.send("evm_mine");  
+      let _newIndex = 1;
+      await collToken.setEthPerShare(_newIndex);  
+	  
+      // open another CDP
+      let _collAmt2 = toBN("6024831127370552532");
+      let _ebtcAmt2 = toBN("149482624651353285");
+      await collToken.deposit({from: owner, value: _collAmt2});
+      await borrowerOperations.openCdp(_ebtcAmt2, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt2);
+      let _cdpId2 = await sortedCdps.cdpOfOwnerByIndex(owner, 1);
+      let _cdpDebtColl2 = await cdpManager.getEntireDebtAndColl(_cdpId2);
+      _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, (_cdpDebtColl1[0].add(_cdpDebtColl2[0])), _errorTolerance.toNumber());	
+	  
+      // sequence liquidation	  
+      let _priceDiv = toBN("1");
+      let _newPrice = _oldPrice.div(_priceDiv);
+      await priceFeed.setPrice(_newPrice);
+      let _n = 1;
+      await debtToken.unprotectedMint(owner, _systemDebt);
+      let _totalSupplyBefore = await debtToken.totalSupply();
+      await cdpManager.liquidateCdps(_n);
+      let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
+      if (_totalSupplyDiff.lt(_systemDebt)) {
+          await debtToken.unprotectedBurn(owner, _systemDebt.sub(_totalSupplyDiff));
+      }
+	  
+      // final check
+      _cdpDebtColl1 = await cdpManager.getEntireDebtAndColl(_cdpId1);
+      _cdpDebtColl2 = await cdpManager.getEntireDebtAndColl(_cdpId2);
+      _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, (_cdpDebtColl1[0].add(_cdpDebtColl2[0])), _errorTolerance.toNumber());
+  })
+  
+  it("Test partial liquidation with extreme slashing case", async() => {
+      let _errorTolerance = toBN("2000000");//compared to 1e18
+      let _oldPrice = await priceFeed.getPrice();
+	  
+      // open CDP
+      let _collAmt1 = toBN("7082199038359602403");
+      let _ebtcAmt1 = toBN("150106490695243734");
+      await collToken.deposit({from: owner, value: _collAmt1});
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await borrowerOperations.openCdp(_ebtcAmt1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt1);
+      let _cdpId1 = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      let _cdpDebtColl1 = await cdpManager.getEntireDebtAndColl(_cdpId1);
+      let _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, (await debtToken.totalSupply()), _errorTolerance.toNumber());	  
+	  
+      // slashing to two wei	  	  
+      await ethers.provider.send("evm_increaseTime", [43567]);
+      await ethers.provider.send("evm_mine");  
+      let _newIndex = 2;
+      await collToken.setEthPerShare(_newIndex); 
+	  
+      // partial liquidation	  
+      let _priceDiv = toBN("1");
+      let _newPrice = _oldPrice.div(_priceDiv);
+      await priceFeed.setPrice(_newPrice);
+      let _partialAmount = toBN("1");
+      await debtToken.unprotectedMint(owner, _partialAmount);
+      let _totalSupplyBefore = await debtToken.totalSupply();
+      await cdpManager.partiallyLiquidate(_cdpId1, _partialAmount, _cdpId1, _cdpId1);
+      let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
+      if (_totalSupplyDiff.lt(_partialAmount)) {
+          await debtToken.unprotectedBurn(owner, _partialAmount.sub(_totalSupplyDiff));
+      }
+      let _cdpDebtColl1After = await cdpManager.getEntireDebtAndColl(_cdpId1);
+      assert.isTrue(_cdpDebtColl1After[0].lt(_cdpDebtColl1[1]));
+	  
+      // final check
+      _systemDebt = await cdpManager.getEntireSystemDebt();
+      th.assertIsApproximatelyEqual(_systemDebt, (await debtToken.totalSupply()), _errorTolerance.toNumber());
   })
   
 })

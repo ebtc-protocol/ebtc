@@ -261,7 +261,7 @@ contract EchidnaTester {
     ) internal view returns (uint _oldPrice, uint _newPrice) {
         uint _priceDiv = _i % 10;
         _oldPrice = priceFeedTestnet.getPrice();
-        _newPrice = _oldPrice / _priceDiv;
+        _newPrice = _oldPrice / (_priceDiv + 1);
     }
 
     function _assertApproximateEq(
