@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
@@ -10,8 +11,10 @@ import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
-
 import "./Dependencies/ERC3156FlashLender.sol";
+import "./Dependencies/SafeERC20.sol";
+import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -20,10 +23,15 @@ import "./Dependencies/ERC3156FlashLender.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
+contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, ReentrancyGuard, AuthNoOwner {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     string public constant NAME = "ActivePool";
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
 
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
@@ -59,6 +67,9 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         collateral = ICollateralToken(_collTokenAddress);
         collSurplusPoolAddress = _collSurplusAddress;
         feeRecipientAddress = _feeRecipientAddress;
+
+        // TEMP: read authority to avoid signature change  
+        // _initializeAuthority(address(AuthNoOwner(_borrowerOperationsAddress).authority()));
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
@@ -202,5 +213,21 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         }
 
         return collateral.balanceOf(address(this));
+    }
+
+    // === Governed Functions === //
+
+    /// @dev Function to move rewards that are not protected
+    /// @notice Only not protected, moves the whole amount using _handleRewardTransfer
+    /// @notice because token paths are harcoded, this function is safe to be called by anyone
+    /// @notice Will not notify the BRIBES_PROCESSOR as this could be triggered outside bribes
+    function sweepToken(address token, uint amount) public nonReentrant {
+        require(isAuthorized(msg.sender, SWEEP_TOKEN_SIG));
+        require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
+
+        IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
 }
