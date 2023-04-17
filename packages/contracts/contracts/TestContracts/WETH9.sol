@@ -58,7 +58,7 @@ contract WETH9 {
         return true;
     }
 
-    function transfer(address dst, uint wad) public returns (bool) {
+    function transfer(address dst, uint wad) public virtual returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 

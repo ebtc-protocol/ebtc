@@ -4,6 +4,7 @@ const NonPayable = artifacts.require("./NonPayable.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
+const ReentrancyToken = artifacts.require("./ReentrancyToken.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol")
 const Governor = artifacts.require("./Governor.sol")
 
@@ -153,6 +154,27 @@ contract('ActivePool', async accounts => {
     let _balRecipientAfter = await _dustToken.balanceOf(_feeRecipient);
     let _diff = _balRecipientAfter.sub(_balRecipient);
     assert.isTrue(_diff.toNumber() == _amt);
+	
+  })
+ 
+  it('sweepToken(): test reentrancy', async () => {
+    await activePool.initAuthority(activePoolAuthority.address);
+    let _sweepTokenFunc = await activePool.FUNC_SIG1();
+    let _amt = 123456789;
+	  
+    activePoolAuthority.setPublicCapability(activePool.address, _sweepTokenFunc, true);
+    let _dustToken = await ReentrancyToken.new();
+    _dustToken.setActivePool(activePool.address);
+	  
+    // expect guard against reentrancy
+    await _dustToken.deposit({value: _amt, from: owner});
+    await _dustToken.transferFrom(owner, activePool.address, _amt);
+    try {
+      await await activePool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "ReentrancyGuard: reentrant call")
+    }	
 	
   })
 })
