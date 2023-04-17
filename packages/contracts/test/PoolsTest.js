@@ -5,6 +5,7 @@ const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol")
+const Governor = artifacts.require("./Governor.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -13,7 +14,7 @@ const _minus_1_Ether = web3.utils.toWei('-1', 'ether')
 
 contract('ActivePool', async accounts => {
 
-  let activePool, mockBorrowerOperations, collToken
+  let activePool, mockBorrowerOperations, collToken, activePoolAuthority
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
@@ -22,7 +23,9 @@ contract('ActivePool', async accounts => {
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     collToken = await CollateralTokenTester.new()
-    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)
+    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
+	  
+    activePoolAuthority = await Governor.new(owner);
   })
 
   it('getStEthColl(): gets the recorded ETH balance', async () => {
@@ -125,6 +128,32 @@ contract('ActivePool', async accounts => {
     // should revert due to invariants check
     let _manipulatedPPFS = web3.utils.toBN('2000000000000000000'); 
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
+  })
+ 
+  it.only('sweepToken(): move unprotected token to fee recipient', async () => {
+    await activePool.initAuthority(activePoolAuthority.address);
+    let _sweepTokenFunc = await activePool.FUNC_SIG1();
+    let _amt = 123456789;
+
+    // expect reverts
+    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: sender not authorized for sweepToken(address,uint256)');
+	
+    activePoolAuthority.setPublicCapability(activePool.address, _sweepTokenFunc, true);  
+    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: Cannot Sweep Collateral');	  
+	  
+    let _dustToken = await CollateralTokenTester.new()  
+    await th.assertRevert(activePool.sweepToken(_dustToken.address, _amt), 'ActivePool: Attempt to sweep more than balance');	
+	  
+    // expect recipient get dust  
+    await _dustToken.deposit({value: _amt});
+    await _dustToken.transfer(activePool.address, _amt); 
+    let _feeRecipient = await activePool.feeRecipientAddress();	
+    let _balRecipient = await _dustToken.balanceOf(_feeRecipient);
+    await activePool.sweepToken(_dustToken.address, _amt);
+    let _balRecipientAfter = await _dustToken.balanceOf(_feeRecipient);
+    let _diff = _balRecipientAfter.sub(_balRecipient);
+    assert.isTrue(_diff.toNumber() == _amt);
+	
   })
 })
 

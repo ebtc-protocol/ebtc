@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.17;
 
-
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
@@ -23,7 +22,14 @@ import "./Dependencies/AuthNoOwner.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, ReentrancyGuard, AuthNoOwner {
+contract ActivePool is
+    Ownable,
+    CheckContract,
+    IActivePool,
+    ERC3156FlashLender,
+    ReentrancyGuard,
+    AuthNoOwner
+{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -68,7 +74,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, 
         collSurplusPoolAddress = _collSurplusAddress;
         feeRecipientAddress = _feeRecipientAddress;
 
-        // TEMP: read authority to avoid signature change  
+        // TEMP: read authority to avoid signature change
         // _initializeAuthority(address(AuthNoOwner(_borrowerOperationsAddress).authority()));
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
@@ -217,12 +223,14 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, 
 
     // === Governed Functions === //
 
-    /// @dev Function to move rewards that are not protected
-    /// @notice Only not protected, moves the whole amount using _handleRewardTransfer
-    /// @notice because token paths are harcoded, this function is safe to be called by anyone
-    /// @notice Will not notify the BRIBES_PROCESSOR as this could be triggered outside bribes
+    /// @dev Function to move unintended dust that are not protected
+    /// @notice moves given amount of given token (collateral is NOT allowed)
+    /// @notice because recipient are fixed, this function is safe to be called by anyone
     function sweepToken(address token, uint amount) public nonReentrant {
-        require(isAuthorized(msg.sender, SWEEP_TOKEN_SIG));
+        require(
+            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
+            "ActivePool: sender not authorized for sweepToken(address,uint256)"
+        );
         require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));
