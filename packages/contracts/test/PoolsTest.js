@@ -130,7 +130,7 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
   })
  
-  it.only('sweepToken(): move unprotected token to fee recipient', async () => {
+  it('sweepToken(): move unprotected token to fee recipient', async () => {
     await activePool.initAuthority(activePoolAuthority.address);
     let _sweepTokenFunc = await activePool.FUNC_SIG1();
     let _amt = 123456789;
