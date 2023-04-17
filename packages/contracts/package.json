@@ -19,7 +19,7 @@
     "test": "hardhat test",
     "coverage": "hardhat coverage",
     "coveralls": "cat coverage/lcov.info | coveralls",
-    "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat",
+    "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat --hostname 0.0.0.0",
     "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost",
     "testnet-fork-deployment": "hardhat run mainnetDeployment/testnetLocalForkDeployment.js --network localhost",
     "deploy-testnet": "hardhat run mainnetDeployment/goerliDeployment.js --network goerli"

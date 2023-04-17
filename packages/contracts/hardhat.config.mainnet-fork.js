@@ -69,7 +69,11 @@ module.exports = {
             forking: {
                 url: alchemyUrl(),
                 blockNumber: typeof (process.env.BLOCK_NUMBER) == 'NaN' ? parseInt(process.env.BLOCK_NUMBER) : 16141281
-            }
+            },
+            mining: {
+                auto: true,
+                interval: 5000
+              }
         }
     },
     mocha: { timeout: 12000000 },
