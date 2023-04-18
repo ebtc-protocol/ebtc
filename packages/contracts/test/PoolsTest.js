@@ -164,16 +164,25 @@ contract('ActivePool', async accounts => {
 	  
     activePoolAuthority.setPublicCapability(activePool.address, _sweepTokenFunc, true);
     let _dustToken = await ReentrancyToken.new();
-    _dustToken.setActivePool(activePool.address);
 	  
     // expect guard against reentrancy
     await _dustToken.deposit({value: _amt, from: owner});
     await _dustToken.transferFrom(owner, activePool.address, _amt);
     try {
+      _dustToken.setActivePool(activePool.address);
       await await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
       assert.include(err.message, "ReentrancyGuard: reentrant call")
+    }
+	
+    // expect revert on failed safeTransfer()
+    try {
+      _dustToken.setActivePool("0x0000000000000000000000000000000000000000");
+      await await activePool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: ERC20 operation did not succeed")
     }	
 	
   })

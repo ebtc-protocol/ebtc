@@ -15,6 +15,9 @@ contract ReentrancyToken is WETH9 {
     }
 
     function transfer(address dst, uint wad) public override returns (bool) {
+        if (activePool == address(0)) {
+            return false;
+        }
         // try to reenter
         IActivePool(activePool).sweepToken(address(this), wad);
     }
