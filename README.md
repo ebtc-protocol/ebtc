@@ -49,9 +49,9 @@ Most of the `/Dependency` files are copy-pastes, but some are custom:
   - [Testnet PriceFeed and PriceFeed tests](#testnet-pricefeed-and-pricefeed-tests)
   - [PriceFeed limitations and known issues](#pricefeed-limitations-and-known-issues)
   - [Keeping a sorted list of Cdps ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
-  - [Flow of Ether in eBTC](#flow-of-stETH-in-liquity)
-  - [Flow of eBTC tokens in eBTC](#flow-of-ebtc-tokens-in-liquity)
-  - [Flow of LQTY Tokens in eBTC](#flow-of-lqty-tokens-in-liquity)
+  - [Flow of Ether in eBTC](#flow-of-stETH-in-ebtc)
+  - [Flow of eBTC tokens in eBTC](#flow-of-ebtc-tokens-in-ebtc)
+  - [Flow of LQTY Tokens in eBTC](#flow-of-lqty-tokens-in-ebtc)
 - [Expected User Behaviors](#expected-user-behaviors)
 - [Contract Ownership and Function Permissions](#contract-ownership-and-function-permissions)
 - [Deployment to a Development Blockchain](#deployment-to-a-development-blockchain)
@@ -80,9 +80,8 @@ Most of the `/Dependency` files are copy-pastes, but some are custom:
   - [Liquidation](#liquidation)
   - [Gas compensation and redemptions](#gas-compensation-and-redemptions)
   - [Gas compensation helper functions](#gas-compensation-helper-functions)
-- [eBTC System Fees](#liquity-system-fees)
+- [eBTC System Fees](#ebtc-system-fees)
   - [Redemption Fee](#redemption-fee)
-  - [Issuance fee](#issuance-fee)
   - [Fee Schedule](#fee-schedule)
   - [Intuition behind fees](#intuition-behind-fees)
   - [Fee decay Implementation](#fee-decay-implementation)
@@ -378,12 +377,9 @@ Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the 
 | Function                      | eBTC Quantity | ERC20 Operation                      |
 |-------------------------------|---------------|--------------------------------------|
 | openCdp                     | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-|                               | Issuance fee  | eBTC._mint(FeeRecipient,  EBTCFee)    |
 | withdrawEBTC                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-|                               | Issuance fee  | eBTC._mint(FeeRecipient,  EBTCFee)    |
 | repayEBTC                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | adjustCdp: withdrawing eBTC | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-|                               | Issuance fee  | eBTC._mint(FeeRecipient,  EBTCFee)    |
 | adjustCdp: repaying eBTC    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | closeCdp                    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount) |
 
@@ -734,9 +730,7 @@ Gas compensation functions are found in the parent _LiquityBase.sol_ contract:
 
 ## eBTC System Fees
 
-eBTC generates fee revenue from redemptions. Fees are captured by the feeRecipient contract.
-
-Redemptions fees are paid in stETH. Issuance fees (when a user opens a Cdp, or issues more eBTC from their existing Cdp) are paid in eBTC.
+eBTC generates fee revenue from redemptions. Fees are captured by the feeRecipient contract. Redemptions fees are paid in stETH.
 
 ### Redemption Fee
 
@@ -744,15 +738,9 @@ The redemption fee is taken as a cut of the total stETH drawn from the system in
 
 In the `CdpManager`, `redeemCollateral` calculates the stETH fee and transfers it to the staking contract, `FeeRecipient.sol`
 
-### Issuance fee
-
-The issuance fee is charged on the eBTC drawn by the user and is added to the Cdp's eBTC debt. It is based on the current borrowing rate.
-
-When new eBTC are drawn via one of the `BorrowerOperations` functions `openCdp`, `withdrawEBTC` or `adjustCdp`, an extra amount `EBTCFee` is minted, and an equal amount of debt is added to the user’s Cdp. The `EBTCFee` is transferred to the staking contract, `FeeRecipient.sol`.
-
 ### Fee Schedule
 
-Redemption and issuance fees are based on the `baseRate` state variable in CdpManager, which is dynamically updated. The `baseRate` increases with each redemption, and decays according to time passed since the last fee event - i.e. the last redemption or issuance of eBTC.
+Redemption fees are based on the `baseRate` state variable in CdpManager, which is dynamically updated. The `baseRate` increases with each redemption, and decays according to time passed since the last fee event - i.e. the last redemption of eBTC.
 
 The current fee schedule:
 
@@ -761,11 +749,7 @@ Upon each redemption:
 - `baseRate` is incremented by an amount proportional to the fraction of the total eBTC supply that was redeemed
 - The redemption rate is given by `min{REDEMPTION_FEE_FLOOR + baseRate * ETHdrawn, DECIMAL_PRECISION}`
 
-Upon each debt issuance:
-- `baseRate` is decayed based on time passed since the last fee event
-- The borrowing rate is given by `min{BORROWING_FEE_FLOOR + baseRate * newDebtIssued, MAX_BORROWING_FEE}`
-
-`REDEMPTION_FEE_FLOOR` and `BORROWING_FEE_FLOOR` are both set to 0.5%, while `MAX_BORROWING_FEE` is 5% and `DECIMAL_PRECISION` is 100%.
+`REDEMPTION_FEE_FLOOR` is set to 0.5%, while `DECIMAL_PRECISION` is 100%.
 
 ### Intuition behind fees
 
@@ -775,7 +759,7 @@ The longer the time delay since the last operation, the more the `baseRate` decr
 
 The intent is to throttle large redemptions with higher fees, and to throttle borrowing directly after large redemption volumes. The `baseRate` decay over time ensures that the fee for both borrowers and redeemers will “cool down”, while redemptions volumes are low.
 
-Furthermore, the fees cannot become smaller than 0.5%, which in the case of redemptions protects the redemption facility from being front-run by arbitrageurs that are faster than the price feed. The 5% maximum on the issuance is meant to keep the system (somewhat) attractive for new borrowers even in phases where the monetary is contracting due to redemptions.
+Furthermore, the fees cannot become smaller than 0.5%, which in the case of redemptions protects the redemption facility from being front-run by arbitrageurs that are faster than the price feed.
 
 ### Fee decay Implementation
 
@@ -783,16 +767,8 @@ Time is measured in units of minutes. The `baseRate` decay is based on `block.ti
 
 The decay parameter is tuned such that the fee changes by a factor of 0.99 per hour, i.e. it loses 1% of its current value per hour. At that rate, after one week, the baseRate decays to 18% of its prior value. The exact decay parameter is subject to change, and will be fine-tuned via economic modelling.
 
-### Staking LQTY and earning fees
-
-LQTY holders may `stake` and `unstake` their LQTY in the `FeeRecipient.sol` contract. 
-
-When a fee event occurs, the fee in eBTC or stETH is sent to the staking contract, and a reward-per-unit-staked sum (`F_ETH`, or `F_EBTC`) is incremented. A LQTY stake earns a share of the fee equal to its share of the total LQTY staked, at the instant the fee occurred.
-
-This staking formula and implementation follows the basic [“Batog” pull-based reward distribution](http://batog.info/papers/scalable-reward-distribution.pdf).
-
-
 ## Redistributions and Corrected Stakes
+> 🦉 This section is not updated for eBTC, as there is no stability pool. The mechanics of redistribution still apply though
 
 When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated Cdp, to all active Cdps in the system, in proportion to their collateral.
 
@@ -893,19 +869,13 @@ _**Repayment:**_ when a borrower sends eBTC tokens to their own Cdp, reducing th
 
 _**Retrieval:**_ when a borrower with an active Cdp withdraws some or all of their stETH collateral from their own cdp, either reducing their collateralization ratio, or closing their Cdp (if they have zero debt and withdraw all their stETH)
 
-_**Liquidation:**_ the act of force-closing an undercollateralized Cdp and redistributing its collateral and debt. When the Stability Pool is sufficiently large, the liquidated debt is offset with the Stability Pool, and the stETH distributed to depositors. If the liquidated debt can not be offset with the Pool, the system redistributes the liquidated collateral and debt directly to the active Cdps with >110% collateralization ratio.
+_**Liquidation:**_ the act of force-closing an undercollateralized Cdp and redistributing its collateral and debt.
 
 Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized Cdp, or batch liquidate Cdps in ascending order of collateralization ratio.
 
 _**Collateral Surplus**_: The difference between the dollar value of a Cdp's stETH collateral, and the dollar value of its eBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
 
-_**Offset:**_ cancellation of liquidated debt with eBTC in the Stability Pool, and assignment of liquidated collateral to Stability Pool depositors, in proportion to their deposit.
-
 _**Redistribution:**_ assignment of liquidated debt and collateral directly to active Cdps, in proportion to their collateral.
-
-_**Pure offset:**_  when a Cdp's debt is entirely cancelled with eBTC in the Stability Pool, and all of it's liquidated stETH collateral is assigned to Stability Providers.
-
-_**Mixed offset and redistribution:**_  When the Stability Pool eBTC only covers a fraction of the liquidated Cdp's debt.  This fraction of debt is cancelled with eBTC in the Stability Pool, and an equal fraction of the Cdp's collateral is assigned to depositors. The remaining collateral & debt is redistributed directly to active Cdps.
 
 _**Gas compensation:**_ A refund, in eBTC and stETH, automatically paid to the caller of a liquidation function, intended to at least cover the gas cost of the transaction. Designed to ensure that liquidators are not dissuaded by potentially high gas costs.
 
@@ -921,7 +891,6 @@ You'll need to install the following:
 
 - [Git](https://help.github.com/en/github/getting-started-with-github/set-up-git) (of course)
 - [Node v12.x](https://nodejs.org/dist/latest-v12.x/)
-- [Docker](https://docs.docker.com/get-docker/)
 - [Yarn](https://classic.yarnpkg.com/en/docs/install)
 
 #### Making node-gyp work
@@ -933,8 +902,8 @@ Note: you can skip the manual installation of node-gyp itself (`npm install -g n
 ### Clone & Install
 
 ```
-git clone https://github.com/liquity/dev.git liquity
-cd liquity
+git clone https://github.com/Badger-Finance/ebtc.git ebtc
+cd ebtc
 yarn
 ```
 
