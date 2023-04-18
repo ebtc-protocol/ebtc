@@ -335,6 +335,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     // -----------------------------------------------------------------
 
     // Single CDP liquidation function (fully).
+    /**
+    callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).  
+     */
     function liquidate(bytes32 _cdpId) external override {
         _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
     }
@@ -835,6 +838,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     /*
      * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR or CR < TCR in reocvery mode,
      * starting from the one with the lowest collateral ratio in the system, and moving upwards
+
+     callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
      */
     function liquidateCdps(uint _n) external override {
         require(_n > 0, "CdpManager: can't liquidate zero CDP in sequence");
@@ -1072,6 +1077,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
     /*
      * Attempt to liquidate a custom list of cdps provided by the caller.
+
+     callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      */
     function batchLiquidateCdps(bytes32[] memory _cdpArray) public override {
         require(_cdpArray.length != 0, "CdpManager: Calldata address array must not be empty");
@@ -1426,6 +1433,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         return nextCdp == _sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
     }
 
+    /** 
+    redeems `_EBTCamount` of eBTC for stETH from the system. Decreases the caller’s eBTC balance, and sends them the corresponding amount of stETH. Executes successfully if the caller has sufficient eBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
+    */
+
     /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral
      * from as many Cdps as are needed to fill the redemption
      * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
@@ -1662,7 +1673,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         emit CdpSnapshotsUpdated(L_ETH, L_EBTCDebt);
     }
 
-    // Get the borrower's pending accumulated ETH reward, earned by their stake
+    // get the pending stETH reward from liquidation redistribution events, for the given Cdp., earned by their stake
     function getPendingETHReward(bytes32 _cdpId) public view override returns (uint) {
         uint snapshotETH = rewardSnapshots[_cdpId].ETH;
         uint rewardPerUnitStaked = L_ETH - snapshotETH;
@@ -1678,7 +1689,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         return pendingETHReward;
     }
 
-    // Get the borrower's pending accumulated EBTC debt reward, earned by their stake
+    /**
+    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
+    */
     function getPendingEBTCDebtReward(
         bytes32 _cdpId
     ) public view override returns (uint pendingEBTCDebtReward) {
@@ -1964,14 +1977,22 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
     // --- Recovery Mode and TCR functions ---
 
+    /**
+    Returns the systemic entire debt assigned to Cdps, i.e. the sum of the EBTCDebt in the Active Pool and the Default Pool.
+     */
     function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
         return _getEntireSystemDebt();
     }
 
+    /**
+    returns the total collateralization ratio (TCR) of the system.  The TCR is based on the the entire system debt and collateral (including pending rewards). */
     function getTCR(uint _price) external view override returns (uint) {
         return _getTCR(_price);
     }
 
+    /**
+    reveals whether or not the system is in Recovery Mode (i.e. whether the Total Collateralization Ratio (TCR) is below the Critical Collateralization Ratio (CCR)).
+    */
     function checkRecoveryMode(uint _price) external view override returns (bool) {
         return _checkRecoveryMode(_price);
     }

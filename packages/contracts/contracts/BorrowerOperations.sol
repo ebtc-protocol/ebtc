@@ -141,6 +141,11 @@ contract BorrowerOperations is
 
     // --- Borrower Cdp Operations ---
 
+    /**
+    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral. 
+    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). 
+    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation. 
+    */
     function openCdp(
         uint _EBTCAmount,
         bytes32 _upperHint,
@@ -229,7 +234,7 @@ contract BorrowerOperations is
         return _cdpId;
     }
 
-    // Send ETH as collateral to a cdp
+    // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
@@ -239,7 +244,9 @@ contract BorrowerOperations is
         _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, _collAmount);
     }
 
-    // Withdraw ETH collateral from a cdp
+    /**
+    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%. 
+    */
     function withdrawColl(
         bytes32 _cdpId,
         uint _collWithdrawal,
@@ -250,6 +257,9 @@ contract BorrowerOperations is
     }
 
     // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
+    /**
+    Issues `_amount` of eBTC from the caller’s Cdp to the caller. Executes only if the Cdp's collateralization ratio would remain above the minimum, and the resulting total collateralization ratio is above 150%.
+     */
     function withdrawEBTC(
         bytes32 _cdpId,
         uint _EBTCAmount,
@@ -260,6 +270,9 @@ contract BorrowerOperations is
     }
 
     // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
+    /**
+    repay `_amount` of eBTC to the caller’s Cdp, subject to leaving 50 debt in the Cdp (which corresponds to the 50 eBTC gas compensation).
+    */
     function repayEBTC(
         bytes32 _cdpId,
         uint _EBTCAmount,
@@ -280,6 +293,9 @@ contract BorrowerOperations is
         _adjustCdp(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
+    /**
+    enables a borrower to simultaneously change both their collateral and debt, subject to all the restrictions that apply to individual increases/decreases of each quantity with the following particularity: if the adjustment reduces the collateralization ratio of the Cdp, the function only executes if the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. The parameter is ignored if the debt is not increased with the transaction.
+    */
     // TODO optimization candidate
     function adjustCdpWithColl(
         bytes32 _cdpId,
@@ -440,6 +456,9 @@ contract BorrowerOperations is
         }
     }
 
+    /**
+    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC. 
+    */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
 
@@ -483,6 +502,8 @@ contract BorrowerOperations is
 
     /**
      * Claim remaining collateral from a redemption or from a liquidation with ICR > MCR in Recovery Mode
+
+      when a borrower’s Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their stETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
      */
     function claimCollateral() external override {
         // send ETH from CollSurplus Pool to owner
