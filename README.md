@@ -7,6 +7,19 @@ eBTC is a decentralized protocol that allows Staked ETH (stETH) holders to borro
 
 The redemption and liquidation mechanisms along with algorithmically adjusted redemption fees help ensure stability. This stability is maintained via economically-driven user interactions and arbitrage, rather than by active governance or monetary interventions.
 
+## eBTC Audit - What's in scope
+`/packages/contracts/contracts` (all files in the base directory)
+
+Most of the `/Dependency` files are copy-pastes, but some are custom:
+`/packages/contracts/contracts/Dependencies/LiquityBase.sol`
+`/packages/contracts/contracts/Dependencies/CheckContract.sol`
+`/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
+
+`/packages/contracts/contracts/LQTY/feeRecipient`
+
+## Other Notes
+- We anticipate liquidators and redemption arbers to use Curve and Balancer pools for on-chain liquidty, and anticipate potential economic attacks.   
+
 ## More information
 
 - [Introducing eBTC - A Decentralized Bitcoin Powered by Ethereum Staking](https://forum.badger.finance/t/introducing-ebtc-a-decentralized-bitcoin-powered-by-ethereum-staking/5952)
