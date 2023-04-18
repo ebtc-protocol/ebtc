@@ -1,4 +1,4 @@
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 import {console2 as console} from "forge-std/console2.sol";
 
@@ -60,7 +60,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _prevTotalStake;
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
-            uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)].sub(_cdpState.coll);
+            uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.coll;
 
             require(
                 _utils.assertApproximateEq(
@@ -106,7 +106,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _totalStake
         );
 
-        _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed.div(1e18);
+        _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;
 
         vm.startPrank(_user);
         borrowerOperations.withdrawEBTC(_cdpId, 1, _cdpId, _cdpId);
@@ -118,10 +118,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.claimStakingSplitFee();
         uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
-        uint _feeBalDiff = _feeBalAfter.sub(_feeBalBefore);
+        uint _feeBalDiff = _feeBalAfter - _feeBalBefore;
         require(
             _utils.assertApproximateEq(
-                collateral.getPooledEthByShares(_totalColl.sub(_totalCollAfter)),
+                collateral.getPooledEthByShares(_totalColl - _totalCollAfter),
                 _feeBalDiff,
                 _tolerance
             ),
@@ -181,7 +181,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             // Rebasing up
             uint _curIndex = collateral.getPooledEthByShares(1e18);
-            uint _newIndex = _curIndex.add(5e16);
+            uint _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
             (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 
@@ -233,7 +233,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             // Rebasing up
             uint _curIndex = collateral.getPooledEthByShares(1e18);
-            uint _newIndex = _curIndex.add(5e16);
+            uint _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
             (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./Interfaces/IEBTCToken.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
-import "./Dependencies/Authv06.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  *
@@ -26,7 +25,7 @@ import "./Dependencies/Authv06.sol";
  * 2) sendToPool() and returnFromPool(): functions callable only Liquity core contracts, which move EBTC tokens between Liquity <-> user.
  */
 
-contract EBTCToken is CheckContract, IEBTCToken, Auth {
+contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
     using SafeMath for uint256;
 
     uint256 private _totalSupply;
@@ -65,10 +64,6 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
     // --- Addresses ---
     address public immutable cdpManagerAddress;
     address public immutable borrowerOperationsAddress;
-
-    // --- Events ---
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
 
     constructor(
         address _cdpManagerAddress,
@@ -199,7 +194,7 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
         bytes32 r,
         bytes32 s
     ) external override {
-        require(deadline >= now, "EBTC: expired deadline");
+        require(deadline >= block.timestamp, "EBTC: expired deadline");
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -221,7 +216,7 @@ contract EBTCToken is CheckContract, IEBTCToken, Auth {
 
     // --- Internal operations ---
 
-    function _chainID() private pure returns (uint256 chainID) {
+    function _chainID() private view returns (uint256 chainID) {
         assembly {
             chainID := chainid()
         }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 interface ICollSurplusPool {
     // --- Events ---
@@ -22,7 +22,7 @@ interface ICollSurplusPool {
         address _collTokenAddress
     ) external;
 
-    function getETH() external view returns (uint);
+    function getStEthColl() external view returns (uint);
 
     function getCollateral(address _account) external view returns (uint);
 

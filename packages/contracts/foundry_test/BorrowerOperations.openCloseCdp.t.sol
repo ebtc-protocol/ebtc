@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
@@ -69,7 +68,7 @@ contract CDPTest is eBTCBaseFixture {
         assertEq(cdpManager.getCdpIdsCount(), 2);
 
         // Check that user has 2x eBTC balance as they opened 2 CDPs
-        assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(2));
+        assertEq(eBTCToken.balanceOf(user), borrowedAmount * 2);
 
         // Close first CDP
         borrowerOperations.closeCdp(cdpId);
@@ -194,8 +193,8 @@ contract CDPTest is eBTCBaseFixture {
             COLLATERAL_RATIO_DEFENSIVE
         );
         // Net Debt == initial Debt + Fee taken
-        uint feeTaken = borrowedAmount.mul(FEE);
-        uint borrowedAmountWithFee = borrowedAmount.add(feeTaken);
+        uint feeTaken = borrowedAmount * FEE;
+        uint borrowedAmountWithFee = borrowedAmount + feeTaken;
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
@@ -224,7 +223,7 @@ contract CDPTest is eBTCBaseFixture {
             collateral.deposit{value: 100000000000 ether}();
             // Randomize collateral amount
             uint collAmount = _utils.generateRandomNumber(100000 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -239,9 +238,9 @@ contract CDPTest is eBTCBaseFixture {
             }
             vm.stopPrank();
             // Check user balances. Should be Σ of all user's CDPs borrowed eBTC
-            assertEq(eBTCToken.balanceOf(user), borrowedAmount.mul(AMOUNT_OF_CDPS));
+            assertEq(eBTCToken.balanceOf(user), borrowedAmount * AMOUNT_OF_CDPS);
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
-        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS.mul(AMOUNT_OF_CDPS));
+        assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
     }
 }

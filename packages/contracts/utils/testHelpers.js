@@ -1232,7 +1232,7 @@ class TestHelper {
 
   // --- Misc. functions  ---
 
-  static async forceSendEth(from, receiver, value) {
+  static async forcesendStEthColl(from, receiver, value) {
     const destructible = await Destructible.new()
     await web3.eth.sendTransaction({ to: destructible.address, from, value })
     await destructible.destruct(receiver)

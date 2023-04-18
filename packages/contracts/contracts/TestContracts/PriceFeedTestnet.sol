@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ITellorCaller.sol";
-import "../Dependencies/Authv06.sol";
+import "../Dependencies/AuthNoOwner.sol";
 
 /*
  * PriceFeed placeholder for testnet and development. The price is simply set manually and saved in a state
  * variable. The contract does not connect to a live Chainlink price feed.
  */
-contract PriceFeedTestnet is IPriceFeed, Auth {
+contract PriceFeedTestnet is IPriceFeed, AuthNoOwner {
     // ETH / BTC price == ~13.4517 ETH per BTC
     uint256 private _price = 7428 * 1e13;
 

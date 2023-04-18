@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./IPool.sol";
 
@@ -12,9 +12,10 @@ interface IActivePool is IPool {
     event ActivePoolETHBalanceUpdated(uint _ETH);
     event CollateralAddressChanged(address _collTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
+    event CollSurplusPoolAddressChanged(address _collSurplusAddress);
 
     // --- Functions ---
-    function sendETH(address _account, uint _amount) external;
+    function sendStEthColl(address _account, uint _amount) external;
 
     function receiveColl(uint _value) external;
 }

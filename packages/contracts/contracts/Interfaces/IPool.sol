@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 // Common interface for the Pools.
 interface IPool {
@@ -14,7 +14,7 @@ interface IPool {
 
     // --- Functions ---
 
-    function getETH() external view returns (uint);
+    function getStEthColl() external view returns (uint);
 
     function getEBTCDebt() external view returns (uint);
 
