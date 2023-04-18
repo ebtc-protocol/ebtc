@@ -157,7 +157,7 @@ contract('ActivePool', async accounts => {
 	
   })
  
-  it('sweepToken(): test reentrancy', async () => {
+  it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
     await activePool.initAuthority(activePoolAuthority.address);
     let _sweepTokenFunc = await activePool.FUNC_SIG1();
     let _amt = 123456789;
@@ -170,21 +170,34 @@ contract('ActivePool', async accounts => {
     await _dustToken.transferFrom(owner, activePool.address, _amt);
     try {
       _dustToken.setActivePool(activePool.address);
-      await await activePool.sweepToken(_dustToken.address, _amt)
+      await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
       assert.include(err.message, "ReentrancyGuard: reentrant call")
     }
 	
-    // expect revert on failed safeTransfer()
+    // expect revert on failed safeTransfer() case 1: transfer() returns false
     try {
       _dustToken.setActivePool("0x0000000000000000000000000000000000000000");
-      await await activePool.sweepToken(_dustToken.address, _amt)
+      await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
       assert.include(err.message, "SafeERC20: ERC20 operation did not succeed")
+    }
+	
+    // expect revert on failed safeTransfer() case 2: no transfer() exist
+    try {
+      _dustToken = activePool;
+      await activePool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: low-level call failed")
     }	
 	
+    // expect safeTransfer() works with non-standard transfer() like USDT
+    // https://etherscan.io/token/0xdac17f958d2ee523a2206206994597c13d831ec7#code#L126
+    _dustToken = await SimpleLiquidationTester.new();
+    await activePool.sweepToken(_dustToken.address, _amt);	
   })
 })
 
