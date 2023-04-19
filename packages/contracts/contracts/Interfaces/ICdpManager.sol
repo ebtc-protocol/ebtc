@@ -21,6 +21,8 @@ interface ICdpManager is ILiquityBase {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
+    event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
+    event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);

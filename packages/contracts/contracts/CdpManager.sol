@@ -38,13 +38,18 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
-    uint public constant MINUTE_DECAY_FACTOR = 999037758833783000;
-    uint public constant REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
-    uint public constant MAX_BORROWING_FEE = (DECIMAL_PRECISION / 100) * 5; // 5%
+    uint public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
+
+    uint public redemptionFeeFloor = (DECIMAL_PRECISION / 1000) * 5;
+    uint public minuteDecayFactor = 999037758833783000;
 
     // -- Permissioned Function Signatures --
     bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
         bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
+        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
+    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
+        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
@@ -2108,8 +2113,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         return _calcRedemptionRate(_calcDecayedBaseRate());
     }
 
-    function _calcRedemptionRate(uint _baseRate) internal pure returns (uint) {
-        return REDEMPTION_FEE_FLOOR;
+    function _calcRedemptionRate(uint _baseRate) internal view returns (uint) {
+        return LiquityMath._min(
+            redemptionFeeFloor + _baseRate,
+            DECIMAL_PRECISION // cap at a maximum of 100%
+        );
     }
 
     function _getRedemptionFee(uint _ETHDrawn) internal view returns (uint) {
@@ -2181,7 +2189,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
     function _calcDecayedBaseRate() internal view returns (uint) {
         uint minutesPassed = _minutesPassedSinceLastFeeOp();
-        uint decayFactor = LiquityMath._decPow(MINUTE_DECAY_FACTOR, minutesPassed);
+        uint decayFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
 
         return (baseRate * decayFactor) / DECIMAL_PRECISION;
     }
@@ -2363,9 +2371,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         );
     }
 
-    function _requireValidMaxFeePercentage(uint _maxFeePercentage) internal pure {
+    function _requireValidMaxFeePercentage(uint _maxFeePercentage) internal view {
         require(
-            _maxFeePercentage >= REDEMPTION_FEE_FLOOR && _maxFeePercentage <= DECIMAL_PRECISION,
+            _maxFeePercentage >= redemptionFeeFloor && _maxFeePercentage <= DECIMAL_PRECISION,
             "Max fee percentage must be between 0.5% and 100%"
         );
     }
@@ -2398,6 +2406,30 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
 
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
+    }
+
+    function setRedemptionFeeFloor(uint _redemptionFeeFloor) external {
+        require(
+            isAuthorized(msg.sender, SET_REDEMPTION_FEE_FLOOR_SIG),
+            "CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)"
+        );
+        require(
+            _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
+            "CDPManager: new redemption fee floor is lower than minimum"
+        );
+
+        redemptionFeeFloor = _redemptionFeeFloor;
+        emit RedemptionFeeFloorSet(_redemptionFeeFloor);
+    }
+
+    function setMinuteDecayFactor(uint _minuteDecayFactor) external {
+        require(
+            isAuthorized(msg.sender, SET_MINUTE_DECAY_FACTOR_SIG),
+            "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)"
+        );
+
+        minuteDecayFactor = _minuteDecayFactor;
+        emit MinuteDecayFactorSet(_minuteDecayFactor);
     }
 
     // --- Cdp property getters ---
