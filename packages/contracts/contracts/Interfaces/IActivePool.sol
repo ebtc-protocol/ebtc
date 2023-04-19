@@ -18,4 +18,6 @@ interface IActivePool is IPool {
     function sendStEthColl(address _account, uint _amount) external;
 
     function receiveColl(uint _value) external;
+
+    function feeRecipientAddress() external view returns (address);
 }

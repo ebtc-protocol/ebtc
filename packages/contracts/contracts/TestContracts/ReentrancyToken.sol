@@ -2,23 +2,23 @@ pragma solidity 0.8.17;
 
 import "./WETH9.sol";
 
-interface IActivePool {
+interface ISweepPool {
     function sweepToken(address token, uint amount) external;
 }
 
 // for reentrancy test
 contract ReentrancyToken is WETH9 {
-    address public activePool;
+    address public pool;
 
-    function setActivePool(address _activePool) external {
-        activePool = _activePool;
+    function setSweepPool(address _pool) external {
+        pool = _pool;
     }
 
     function transfer(address dst, uint wad) public override returns (bool) {
-        if (activePool == address(0)) {
+        if (pool == address(0)) {
             return false;
         }
         // try to reenter
-        IActivePool(activePool).sweepToken(address(this), wad);
+        ISweepPool(pool).sweepToken(address(this), wad);
     }
 }

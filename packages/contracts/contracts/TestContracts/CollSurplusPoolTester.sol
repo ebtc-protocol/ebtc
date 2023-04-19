@@ -2,15 +2,11 @@
 
 pragma solidity 0.8.17;
 
-import "../DefaultPool.sol";
+import "../CollSurplusPool.sol";
 
-contract DefaultPoolTester is DefaultPool {
+contract CollSurplusPoolTester is CollSurplusPool {
     using SafeMath for uint256;
     bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
-
-    function unprotectedIncreaseEBTCDebt(uint _amount) external {
-        EBTCDebt = EBTCDebt.add(_amount);
-    }
 
     function unprotectedReceiveColl(uint _amount) external {
         StEthColl = StEthColl.add(_amount);

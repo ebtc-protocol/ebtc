@@ -169,7 +169,7 @@ contract('ActivePool', async accounts => {
     await _dustToken.deposit({value: _amt, from: owner});
     await _dustToken.transferFrom(owner, activePool.address, _amt);
     try {
-      _dustToken.setActivePool(activePool.address);
+      _dustToken.setSweepPool(activePool.address);
       await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
@@ -178,7 +178,7 @@ contract('ActivePool', async accounts => {
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false
     try {
-      _dustToken.setActivePool("0x0000000000000000000000000000000000000000");
+      _dustToken.setSweepPool("0x0000000000000000000000000000000000000000");
       await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
@@ -203,7 +203,7 @@ contract('ActivePool', async accounts => {
 
 contract('DefaultPool', async accounts => {
  
-  let defaultPool, mockCdpManager, activePool, collToken
+  let defaultPool, mockCdpManager, activePool, collToken, defaultPoolAuthority
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
@@ -217,6 +217,8 @@ contract('DefaultPool', async accounts => {
 	  
     await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
     await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
+	  
+    defaultPoolAuthority = await Governor.new(owner);
   })
 
   it('getStEthColl(): gets the recorded EBTC balance', async () => {
@@ -294,6 +296,75 @@ contract('DefaultPool', async accounts => {
     const defaultPool_BalanceChange = defaultPool_BalanceAfterTx.sub(defaultPool_BalanceBeforeTx)
     assert.equal(activePool_BalanceChange, dec(1, 'ether'))
     assert.equal(defaultPool_BalanceChange, _minus_1_Ether)
+  })
+ 
+  it('sweepToken(): move unprotected token to fee recipient', async () => {
+    await defaultPool.initAuthority(defaultPoolAuthority.address);
+    let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
+    let _amt = 123456789;
+
+    // expect reverts
+    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: sender not authorized for sweepToken(address,uint256)');
+	
+    defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);  
+    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: Cannot Sweep Collateral');	  
+	  
+    let _dustToken = await CollateralTokenTester.new()  
+    await th.assertRevert(defaultPool.sweepToken(_dustToken.address, _amt), 'DefaultPool: Attempt to sweep more than balance');	
+	  
+    // expect recipient get dust  
+    await _dustToken.deposit({value: _amt});
+    await _dustToken.transfer(defaultPool.address, _amt); 
+    let _feeRecipient = await defaultPool.feeRecipientAddress();	
+    let _balRecipient = await _dustToken.balanceOf(_feeRecipient);
+    await defaultPool.sweepToken(_dustToken.address, _amt);
+    let _balRecipientAfter = await _dustToken.balanceOf(_feeRecipient);
+    let _diff = _balRecipientAfter.sub(_balRecipient);
+    assert.isTrue(_diff.toNumber() == _amt);
+	
+  })
+ 
+  it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
+    await defaultPool.initAuthority(defaultPoolAuthority.address);
+    let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
+    let _amt = 123456789;
+	  
+    defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);
+    let _dustToken = await ReentrancyToken.new();
+	  
+    // expect guard against reentrancy
+    await _dustToken.deposit({value: _amt, from: owner});
+    await _dustToken.transferFrom(owner, defaultPool.address, _amt);
+    try {
+      _dustToken.setSweepPool(defaultPool.address);
+      await defaultPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "ReentrancyGuard: reentrant call")
+    }
+	
+    // expect revert on failed safeTransfer() case 1: transfer() returns false
+    try {
+      _dustToken.setSweepPool("0x0000000000000000000000000000000000000000");
+      await defaultPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: ERC20 operation did not succeed")
+    }
+	
+    // expect revert on failed safeTransfer() case 2: no transfer() exist
+    try {
+      _dustToken = defaultPool;
+      await defaultPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: low-level call failed")
+    }	
+	
+    // expect safeTransfer() works with non-standard transfer() like USDT
+    // https://etherscan.io/token/0xdac17f958d2ee523a2206206994597c13d831ec7#code#L126
+    _dustToken = await SimpleLiquidationTester.new();
+    await defaultPool.sweepToken(_dustToken.address, _amt);	
   })
 })
 

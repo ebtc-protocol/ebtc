@@ -43,7 +43,7 @@ contract ActivePool is
     address public cdpManagerAddress;
     address public defaultPoolAddress;
     address public collSurplusPoolAddress;
-    address public feeRecipientAddress;
+    address public override feeRecipientAddress;
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
