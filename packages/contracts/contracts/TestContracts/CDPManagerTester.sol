@@ -59,6 +59,18 @@ contract CdpManagerTester is CdpManager {
         emit SomeFunc1Called(msg.sender);
     }
 
+    function getUpdatedBaseRateFromRedemption(
+        uint _ETHDrawn,
+        uint _price
+    ) external view returns (uint) {
+        uint _totalEBTCSupply = _getEntireSystemDebt();
+        uint decayedBaseRate = _calcDecayedBaseRate();
+        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
+            _totalEBTCSupply;
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
+        return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+    }
+
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {
     //        uint cdpOwnersArrayLength = CdpOwners.length;
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);

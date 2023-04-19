@@ -48,6 +48,7 @@ contract('CdpManager', async accounts => {
   let authority;
   let contracts
   let _signer
+  let collToken;
 
   const getOpenCdpTotalDebt = async (ebtcAmount) => th.getOpenCdpTotalDebt(contracts, ebtcAmount)
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
@@ -82,6 +83,7 @@ contract('CdpManager', async accounts => {
     hintHelpers = contracts.hintHelpers
     debtToken = ebtcToken;
     LICR = await cdpManager.LICR()
+    collToken = contracts.collateral;  
 
     feeRecipient = LQTYContracts.feeRecipient
     authority = contracts.authority;
@@ -4183,6 +4185,10 @@ contract('CdpManager', async accounts => {
 
     // A redeems 9 EBTC
     const redemptionAmount = toBN(dec(9, 18))
+    const price = await priceFeed.getPrice()
+    const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
+    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(ETHDrawn, price);
+    let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
     const gasUsed = await th.redeemCollateral(A, contracts, redemptionAmount, GAS_PRICE)
 
     /*
@@ -4195,13 +4201,10 @@ contract('CdpManager', async accounts => {
     const A_balanceAfter = toBN(await contracts.collateral.balanceOf(A))
 
     // check A's ETH balance has increased by 0.045 ETH 
-    const price = await priceFeed.getPrice()
-    const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
     th.assertIsApproximatelyEqual(
       A_balanceAfter.sub(A_balanceBefore),
       ETHDrawn.sub(
-        toBN(dec(5, 15))//.add(redemptionAmount.mul(mv._1e18BN).div(totalDebt).div(toBN(2)))
-          .mul(ETHDrawn).div(mv._1e18BN)
+        _updatedRate.mul(ETHDrawn).div(mv._1e18BN)
       ),
       100000
     )
@@ -4476,6 +4479,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
 
     const price = await priceFeed.getPrice()
+    let _adjustColl = ebtcAmount.mul(mv._1e18BN).div(price);
 
     // --- TEST ---
 
@@ -4509,7 +4513,8 @@ contract('CdpManager', async accounts => {
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("10000")});
       await openCdp({ ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("10000")});
-      await borrowerOperations.adjustCdpWithColl(_aliceCdpId, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, ebtcAmount.mul(mv._1e18BN).div(price), { from: alice })
+      await collToken.deposit({from: alice, value: _adjustColl})
+      await borrowerOperations.adjustCdpWithColl(_aliceCdpId, 0, ebtcAmount, true, _aliceCdpId, _aliceCdpId, _adjustColl, { from: alice })
     }
 
     const {
@@ -4519,7 +4524,10 @@ contract('CdpManager', async accounts => {
     // Since we apply static redemption fee rate, 
     // thus the fee calculated as [fixedRate.mul(_ETHDrawn).div(1e18)] 
     // would never exceed underlying collateral
-    //await assertRevert(
+    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(_adjustColl, price);
+    let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
+    assert.isTrue(_updatedRate.gt(mv._1e18BN));
+    await assertRevert(
       cdpManager.redeemCollateral(
         ebtcAmount,
         firstRedemptionHint,
@@ -4531,9 +4539,9 @@ contract('CdpManager', async accounts => {
           from: alice,
           gasPrice: GAS_PRICE
         }
-      );//,
-      //'CdpManager: Fee would eat up all returned collateral'
-    //)
+      ),
+      'CdpManager: Fee would eat up all returned collateral'
+    )
   })
 
   it("getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward", async () => {
