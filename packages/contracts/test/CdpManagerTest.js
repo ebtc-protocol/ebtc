@@ -4806,6 +4806,52 @@ contract('CdpManager', async accounts => {
       await cdpManager.someFunc1({from: alice}); 
 	  
   })
+  
+  it("CDPManager governance permissioned: setRedemptionFeeFloor() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.setRedemptionFeeFloor(1, {from: alice}), "CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)");   
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      let _role123 = 123;
+      let _funcSig = await cdpManager.FUNC_SIG_REDEMP_FLOOR();
+      await authority.setRoleCapability(_role123, cdpManager.address, _funcSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _funcSig)));
+      await assertRevert(cdpManager.setRedemptionFeeFloor(1, {from: alice}), "CDPManager: new redemption fee floor is lower than minimum");
+      let _newFloor = mv._1e18BN.mul(toBN("999")).div(toBN("1000"));
+      assert.isTrue(_newFloor.gt(await cdpManager.redemptionFeeFloor()));
+      await cdpManager.setRedemptionFeeFloor(_newFloor, {from: alice})
+      assert.isTrue(_newFloor.eq(await cdpManager.redemptionFeeFloor()));
+	  
+  })
+  
+  it("CDPManager governance permissioned: setMinuteDecayFactor() should only allow authorized caller", async() => {	  
+      await assertRevert(cdpManager.setMinuteDecayFactor(1, {from: alice}), "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)");   
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      let _role123 = 123;
+      let _funcSig = await cdpManager.FUNC_SIG_DECAY_FACTOR();
+      await authority.setRoleCapability(_role123, cdpManager.address, _funcSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _funcSig)));
+	  
+      // advance to sometime later to decay the baseRate
+      let _minutes = 100
+      await network.provider.send("evm_increaseTime", [_minutes * 60])
+      await network.provider.send("evm_mine") 
+      await cdpManager.setLastFeeOpTimeToNow();
+      let _updatedBaseRate = await cdpManager.getDecayedBaseRate();
+	  
+      let _newFactor = toBN("1");
+      assert.isTrue(_newFactor.lt(await cdpManager.minuteDecayFactor()));
+      await cdpManager.setMinuteDecayFactor(_newFactor, {from: alice})
+	  
+      // check new factor
+      assert.isTrue(_newFactor.eq(await cdpManager.minuteDecayFactor()));
+	  
+      // check baseRate updated according to previous factor
+      assert.isTrue(_updatedBaseRate.eq(await cdpManager.baseRate()));
+	  
+  })
 })
 
 contract('Reset chain state', async accounts => { })

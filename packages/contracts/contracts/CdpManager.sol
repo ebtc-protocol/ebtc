@@ -2165,6 +2165,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     function decayBaseRateFromBorrowing() external override {
         _requireCallerIsBorrowerOperations();
 
+        _decayBaseRate();
+    }
+
+    function _decayBaseRate() internal {
         uint decayedBaseRate = _calcDecayedBaseRate();
         assert(decayedBaseRate <= DECIMAL_PRECISION); // The baseRate can decay to 0
 
@@ -2429,6 +2433,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
             "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)"
         );
 
+        // decay first according to previous factor
+        _decayBaseRate();
+
+        // set new factor after decaying
         minuteDecayFactor = _minuteDecayFactor;
         emit MinuteDecayFactorSet(_minuteDecayFactor);
     }

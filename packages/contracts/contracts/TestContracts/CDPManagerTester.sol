@@ -9,6 +9,10 @@ for testing the parent's internal functions. */
 
 contract CdpManagerTester is CdpManager {
     bytes4 public constant FUNC_SIG1 = bytes4(keccak256(bytes("someFunc1()")));
+    bytes4 public constant FUNC_SIG_REDEMP_FLOOR =
+        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
+    bytes4 public constant FUNC_SIG_DECAY_FACTOR =
+        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     event SomeFunc1Called(address _caller);
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
@@ -41,6 +45,12 @@ contract CdpManagerTester is CdpManager {
 
     function setLastFeeOpTimeToNow() external {
         lastFeeOperationTime = block.timestamp;
+    }
+
+    function getDecayedBaseRate() external view returns (uint) {
+        uint minutesPassed = _minutesPassedSinceLastFeeOp();
+        uint _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
+        return (baseRate * _mulFactor) / DECIMAL_PRECISION;
     }
 
     function setBaseRate(uint _baseRate) external {
