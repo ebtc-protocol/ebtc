@@ -2114,10 +2114,11 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     }
 
     function _calcRedemptionRate(uint _baseRate) internal view returns (uint) {
-        return LiquityMath._min(
-            redemptionFeeFloor + _baseRate,
-            DECIMAL_PRECISION // cap at a maximum of 100%
-        );
+        return
+            LiquityMath._min(
+                redemptionFeeFloor + _baseRate,
+                DECIMAL_PRECISION // cap at a maximum of 100%
+            );
     }
 
     function _getRedemptionFee(uint _ETHDrawn) internal view returns (uint) {
