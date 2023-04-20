@@ -34,13 +34,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     // --- Data structures ---
 
     uint public constant SECONDS_IN_ONE_MINUTE = 60;
+    
+    uint public constant MIN_REDEMPTION_FEE_FLOOR = DECIMAL_PRECISION * 5 / 1000; // 0.5%
+    uint public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
+
     /*
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
-    uint public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION / 1000) * 5; // 0.5%
-
-    uint public redemptionFeeFloor = (DECIMAL_PRECISION / 1000) * 5;
     uint public minuteDecayFactor = 999037758833783000;
 
     // -- Permissioned Function Signatures --
@@ -2421,6 +2422,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
             "CDPManager: new redemption fee floor is lower than minimum"
+        );
+        require(
+            _redemptionFeeFloor<= DECIMAL_PRECISION,
+            "CDPManager: new redemption fee floor is higher than maximum"
         );
 
         redemptionFeeFloor = _redemptionFeeFloor;
