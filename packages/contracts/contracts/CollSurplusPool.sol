@@ -7,21 +7,31 @@ import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
+import "./Dependencies/SafeERC20.sol";
+import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/AuthNoOwner.sol";
+import "./Interfaces/IActivePool.sol";
 
-contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
+contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     string public constant NAME = "CollSurplusPool";
 
     address public borrowerOperationsAddress;
     address public cdpManagerAddress;
     address public activePoolAddress;
+    address public feeRecipientAddress;
     ICollateralToken public collateral;
 
     // deposited ether tracker
     uint256 internal StEthColl;
     // Collateral surplus claimable by cdp owners
     mapping(address => uint) internal balances;
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
 
     // --- Contract setters ---
 
@@ -48,6 +58,7 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
+        feeRecipientAddress = IActivePool(activePoolAddress).feeRecipientAddress();
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
@@ -122,5 +133,23 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
         StEthColl = StEthColl + _value;
+    }
+
+    // === Governed Functions === //
+
+    /// @dev Function to move unintended dust that are not protected
+    /// @notice moves given amount of given token (collateral is NOT allowed)
+    /// @notice because recipient are fixed, this function is safe to be called by anyone
+    function sweepToken(address token, uint amount) public nonReentrant {
+        require(
+            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
+            "CollSurplusPool: sender not authorized for sweepToken(address,uint256)"
+        );
+        require(token != address(collateral), "CollSurplusPool: Cannot Sweep Collateral");
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(amount <= balance, "CollSurplusPool: Attempt to sweep more than balance");
+
+        IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
 }
