@@ -150,7 +150,7 @@ class TestHelper {
   }
 
   static appendData(results, message, data) {
-    data.push(message + `\n`)
+    data.push(message + '\n')
     for (const key in results) {
       data.push(key + "," + results[key] + '\n')
     }
@@ -586,7 +586,7 @@ class TestHelper {
 
       await contracts.collateral.deposit({from: account, value: ETHAmount});
       await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: account});
-      const tx = await contracts.borrowerOperations.openCdp(this._100pct, EBTCAmount, upperHint, lowerHint, ETHAmount, { from: account, value: 0 })
+      const tx = await contracts.borrowerOperations.openCdp(EBTCAmount, upperHint, lowerHint, ETHAmount, { from: account, value: 0 })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
