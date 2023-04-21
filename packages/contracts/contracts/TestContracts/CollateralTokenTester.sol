@@ -181,4 +181,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     function feeRecipientAddress() external view returns (address) {
         return address(this);
     }
+
+    function authority() external view returns (address) {
+        return address(this);
+    }
 }
