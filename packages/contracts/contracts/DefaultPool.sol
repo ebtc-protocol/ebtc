@@ -8,6 +8,9 @@ import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
+import "./Dependencies/SafeERC20.sol";
+import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  * The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed
@@ -22,16 +25,22 @@ import "./Dependencies/ICollateralToken.sol";
  * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
  */
-contract DefaultPool is Ownable, CheckContract, IDefaultPool {
+contract DefaultPool is Ownable, CheckContract, IDefaultPool, ReentrancyGuard, AuthNoOwner {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     string public constant NAME = "DefaultPool";
 
     address public cdpManagerAddress;
     address public activePoolAddress;
+    address public feeRecipientAddress;
     uint256 internal StEthColl; // deposited stETH collateral tracker
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
 
     // --- Dependency setters ---
 
@@ -53,6 +62,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
+        feeRecipientAddress = IActivePool(activePoolAddress).feeRecipientAddress();
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -148,5 +158,23 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         _requireCallerIsActivePool();
         StEthColl = StEthColl + _value;
         emit DefaultPoolETHBalanceUpdated(StEthColl);
+    }
+
+    // === Governed Functions === //
+
+    /// @dev Function to move unintended dust that are not protected
+    /// @notice moves given amount of given token (collateral is NOT allowed)
+    /// @notice because recipient are fixed, this function is safe to be called by anyone
+    function sweepToken(address token, uint amount) public nonReentrant {
+        require(
+            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
+            "DefaultPool: sender not authorized for sweepToken(address,uint256)"
+        );
+        require(token != address(collateral), "DefaultPool: Cannot Sweep Collateral");
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(amount <= balance, "DefaultPool: Attempt to sweep more than balance");
+
+        IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
 }
