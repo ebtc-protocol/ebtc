@@ -12,7 +12,7 @@ import "../EBTCToken.sol";
 import "../SortedCdps.sol";
 import "../HintHelpers.sol";
 import "../LQTY/FeeRecipient.sol";
-import "./PriceFeedTestnet.sol";
+import "./testnet/PriceFeedTestnet.sol";
 import "./CollateralTokenTester.sol";
 import "./EchidnaProxy.sol";
 import "../Governor.sol";
