@@ -19,8 +19,10 @@
     "test": "hardhat test --show-stack-traces",
     "coverage": "hardhat coverage",
     "coveralls": "cat coverage/lcov.info | coveralls",
-    "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat",
-    "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost"
+    "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat --show-stack-traces",
+    "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost",
+    "testnet-fork-deployment": "hardhat run mainnetDeployment/testnetLocalForkDeployment.js --network localhost",
+    "deploy-testnet": "hardhat run mainnetDeployment/goerliDeployment.js --network goerli"
   },
   "keywords": [],
   "author": "",
