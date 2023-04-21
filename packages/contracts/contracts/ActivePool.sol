@@ -22,14 +22,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is
-    Ownable,
-    CheckContract,
-    IActivePool,
-    ERC3156FlashLender,
-    ReentrancyGuard,
-    AuthNoOwner
-{
+contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -76,6 +69,10 @@ contract ActivePool is
 
         // TEMP: read authority to avoid signature change
         // _initializeAuthority(address(AuthNoOwner(_borrowerOperationsAddress).authority()));
+        address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);

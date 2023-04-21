@@ -64,6 +64,11 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool, ReentrancyGuard, A
         collateral = ICollateralToken(_collTokenAddress);
         feeRecipientAddress = IActivePool(activePoolAddress).feeRecipientAddress();
 
+        address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
+
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);

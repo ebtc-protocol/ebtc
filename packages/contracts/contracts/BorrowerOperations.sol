@@ -11,7 +11,7 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
-
+import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is
@@ -124,6 +124,11 @@ contract BorrowerOperations is
         lqtyStakingAddress = _feeRecipientAddress;
         feeRecipient = IFeeRecipient(_feeRecipientAddress);
         collateral = ICollateralToken(_collTokenAddress);
+
+        address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);

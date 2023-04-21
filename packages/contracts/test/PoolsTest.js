@@ -1,5 +1,6 @@
 const ActivePool = artifacts.require("./ActivePoolTester.sol")
 const DefaultPool = artifacts.require("./DefaultPoolTester.sol")
+const CDPMgr = artifacts.require("./CdpManagerTester.sol")
 const NonPayable = artifacts.require("./NonPayable.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
@@ -24,9 +25,11 @@ contract('ActivePool', async accounts => {
     mockBorrowerOperations = await NonPayable.new()
     const dumbContractAddress = (await NonPayable.new()).address
     collToken = await CollateralTokenTester.new()
-    await activePool.setAddresses(mockBorrowerOperations.address, dumbContractAddress, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
-	  
+    cdpMgr = await CDPMgr.new()
     activePoolAuthority = await Governor.new(owner);
+    await cdpMgr.initAuthority(activePoolAuthority.address);
+    await activePool.setAddresses(mockBorrowerOperations.address, cdpMgr.address, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
+	  
   })
 
   it('getStEthColl(): gets the recorded ETH balance', async () => {
@@ -130,9 +133,26 @@ contract('ActivePool', async accounts => {
     let _manipulatedPPFS = web3.utils.toBN('2000000000000000000'); 
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
   })
+	  
+	  
+  it("ActivePool governance permissioned: setFlashFee() should only allow authorized caller", async() => {	
+    await th.assertRevert(activePool.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
+
+    assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
+    let _role123 = 123;
+    let _funcSig = await activePool.FUNC_SIG_FL_FEE();
+    await activePoolAuthority.setRoleCapability(_role123, activePool.address, _funcSig, true, {from: accounts[0]});	  
+    await activePoolAuthority.setUserRole(alice, _role123, true, {from: accounts[0]});
+    assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
+    await th.assertRevert(activePool.setFlashFee(10000, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
+    let _newFee = web3.utils.toBN("9999");
+    assert.isTrue(_newFee.gt(await activePool.FEE_AMT()));
+    await activePool.setFlashFee(_newFee, {from: alice})
+    assert.isTrue(_newFee.eq(await activePool.FEE_AMT()));
+
+  })
  
   it('sweepToken(): move unprotected token to fee recipient', async () => {
-    await activePool.initAuthority(activePoolAuthority.address);
     let _sweepTokenFunc = await activePool.FUNC_SIG1();
     let _amt = 123456789;
 
@@ -158,7 +178,6 @@ contract('ActivePool', async accounts => {
   })
  
   it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
-    await activePool.initAuthority(activePoolAuthority.address);
     let _sweepTokenFunc = await activePool.FUNC_SIG1();
     let _amt = 123456789;
 	  
@@ -203,22 +222,22 @@ contract('ActivePool', async accounts => {
 
 contract('DefaultPool', async accounts => {
  
-  let defaultPool, mockCdpManager, activePool, collToken, defaultPoolAuthority
+  let defaultPool, cdpMgr, activePool, collToken, defaultPoolAuthority
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
     const weth9 = await WETH9.new()
     defaultPool = await DefaultPool.new()
-    mockCdpManager = await NonPayable.new()
-    
+	  
     activePool = await ActivePool.new()
     const dumbContractAddress = (await NonPayable.new()).address	  
     collToken = await CollateralTokenTester.new()
-	  
-    await activePool.setAddresses(dumbContractAddress, mockCdpManager.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
-    await defaultPool.setAddresses(mockCdpManager.address, activePool.address, collToken.address)
-	  
+    cdpMgr = await CDPMgr.new()	  
     defaultPoolAuthority = await Governor.new(owner);
+    await cdpMgr.initAuthority(defaultPoolAuthority.address);
+	  
+    await activePool.setAddresses(dumbContractAddress, cdpMgr.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
+    await defaultPool.setAddresses(cdpMgr.address, activePool.address, collToken.address)
   })
 
   it('getStEthColl(): gets the recorded EBTC balance', async () => {
@@ -237,7 +256,7 @@ contract('DefaultPool', async accounts => {
 
     // await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx = await mockCdpManager.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx = await cdpMgr.forward(defaultPool.address, increaseEBTCDebtData)
     assert.isTrue(tx.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -248,7 +267,7 @@ contract('DefaultPool', async accounts => {
     // start the pool on 100 wei
     //await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx1 = await mockCdpManager.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx1 = await cdpMgr.forward(defaultPool.address, increaseEBTCDebtData)
     assert.isTrue(tx1.receipt.status)
 
     const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
@@ -256,7 +275,7 @@ contract('DefaultPool', async accounts => {
 
     // await defaultPool.decreaseEBTCDebt(100, { from: mockCdpManagerAddress })
     const decreaseEBTCDebtData = th.getTransactionData('decreaseEBTCDebt(uint256)', ['0x64'])
-    const tx2 = await mockCdpManager.forward(defaultPool.address, decreaseEBTCDebtData)
+    const tx2 = await cdpMgr.forward(defaultPool.address, decreaseEBTCDebtData)
     assert.isTrue(tx2.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -286,7 +305,7 @@ contract('DefaultPool', async accounts => {
     //await defaultPool.sendETHToActivePool(dec(1, 'ether'), { from: mockCdpManagerAddress })
     const sendETHData = th.getTransactionData('sendETHToActivePool(uint256)', [web3.utils.toHex(dec(1, 'ether'))])
 //    await mockActivePool.setPayable(true)
-    const tx2 = await mockCdpManager.forward(defaultPool.address, sendETHData, { from: owner })
+    const tx2 = await cdpMgr.forward(defaultPool.address, sendETHData, { from: owner })
     assert.isTrue(tx2.receipt.status)
 
     const defaultPool_BalanceAfterTx = web3.utils.toBN(await collToken.balanceOf(defaultPool.address))
@@ -299,7 +318,6 @@ contract('DefaultPool', async accounts => {
   })
  
   it('sweepToken(): move unprotected token to fee recipient', async () => {
-    await defaultPool.initAuthority(defaultPoolAuthority.address);
     let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
     let _amt = 123456789;
 
@@ -325,7 +343,6 @@ contract('DefaultPool', async accounts => {
   })
  
   it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
-    await defaultPool.initAuthority(defaultPoolAuthority.address);
     let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
     let _amt = 123456789;
 	  

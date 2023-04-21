@@ -6,6 +6,7 @@ import "../ActivePool.sol";
 
 contract ActivePoolTester is ActivePool {
     bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
+    bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
 
     constructor() public ActivePool() {}
 

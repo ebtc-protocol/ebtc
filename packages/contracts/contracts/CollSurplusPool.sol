@@ -60,6 +60,11 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool, Reentrancy
         collateral = ICollateralToken(_collTokenAddress);
         feeRecipientAddress = IActivePool(activePoolAddress).feeRecipientAddress();
 
+        address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
+
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);

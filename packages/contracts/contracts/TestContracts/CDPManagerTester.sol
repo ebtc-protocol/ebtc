@@ -59,6 +59,15 @@ contract CdpManagerTester is CdpManager {
         emit SomeFunc1Called(msg.sender);
     }
 
+    function initAuthority(address _initAuthority) external {
+        _initializeAuthority(_initAuthority);
+    }
+
+    function forward(address _dest, bytes calldata _data) external payable {
+        (bool success, bytes memory returnData) = _dest.call{value: msg.value}(_data);
+        require(success, string(returnData));
+    }
+
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {
     //        uint cdpOwnersArrayLength = CdpOwners.length;
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
