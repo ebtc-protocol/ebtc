@@ -34,8 +34,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     // --- Data structures ---
 
     uint public constant SECONDS_IN_ONE_MINUTE = 60;
-    
-    uint public constant MIN_REDEMPTION_FEE_FLOOR = DECIMAL_PRECISION * 5 / 1000; // 0.5%
+
+    uint public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION * 5) / 1000; // 0.5%
     uint public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
 
     /*
@@ -43,6 +43,9 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
     uint public minuteDecayFactor = 999037758833783000;
+    uint public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
+    uint public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
+
 
     // -- Permissioned Function Signatures --
     bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
@@ -51,6 +54,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
     bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
+    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
@@ -2380,7 +2384,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     function _requireValidMaxFeePercentage(uint _maxFeePercentage) internal view {
         require(
             _maxFeePercentage >= redemptionFeeFloor && _maxFeePercentage <= DECIMAL_PRECISION,
-            "Max fee percentage must be between 0.5% and 100%"
+            "Max fee percentage must be between redemption fee floor and 100%"
         );
     }
 
@@ -2424,7 +2428,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
             "CDPManager: new redemption fee floor is lower than minimum"
         );
         require(
-            _redemptionFeeFloor<= DECIMAL_PRECISION,
+            _redemptionFeeFloor <= DECIMAL_PRECISION,
             "CDPManager: new redemption fee floor is higher than maximum"
         );
 
@@ -2436,6 +2440,14 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         require(
             isAuthorized(msg.sender, SET_MINUTE_DECAY_FACTOR_SIG),
             "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)"
+        );
+        require(
+            _minuteDecayFactor >= MIN_MINUTE_DECAY_FACTOR,
+            "CDPManager: new minute decay factor out of range"
+        );
+        require(
+            _minuteDecayFactor <= MAX_MINUTE_DECAY_FACTOR,
+            "CDPManager: new minute decay factor out of range"
         );
 
         // decay first according to previous factor

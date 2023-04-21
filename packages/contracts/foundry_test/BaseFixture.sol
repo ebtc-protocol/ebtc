@@ -35,11 +35,17 @@ contract eBTCBaseFixture is Test {
     // CDPManager
     bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
         bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
+        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
+    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
+        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
+    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
+    // PriceFeed
     bytes4 public constant SET_TELLOR_CALLER_SIG =
         bytes4(keccak256(bytes("setTellorCaller(address)")));
 
@@ -114,12 +120,18 @@ contract eBTCBaseFixture is Test {
         authority.setRoleName(0, "Admin");
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
-        authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+        authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(3, "PriceFeed: setTellorCaller");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
+
         authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
 
         authority.setUserRole(defaultGovernance, 0, true);
@@ -230,5 +242,14 @@ contract eBTCBaseFixture is Test {
 
         uint _balAfter = collateral.balanceOf(_recipient);
         return _balAfter - _balBefore;
+    }
+
+    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+        dealCollateral(_user, _coll);
+        vm.startPrank(_user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
+        vm.stopPrank();
+        return _cdpId;
     }
 }

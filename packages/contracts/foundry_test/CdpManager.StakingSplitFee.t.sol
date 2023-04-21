@@ -148,15 +148,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.assume(_debtAmt < 10000e18);
     }
 
-    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
-        dealCollateral(_user, _coll);
-        vm.startPrank(_user);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
-        vm.stopPrank();
-        return _cdpId;
-    }
-
     // Test staking fee split with multiple rebasing up
     function testRebasingUps(uint256 debtAmt) public {
         _ensureDebtAmountValidity(debtAmt);

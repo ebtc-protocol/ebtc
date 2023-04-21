@@ -62,15 +62,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.assume(_debtAmt < 10000e18);
     }
 
-    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
-        dealCollateral(_user, _coll);
-        vm.startPrank(_user);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
-        vm.stopPrank();
-        return _cdpId;
-    }
-
     function _checkAvailableToLiq(bytes32 _cdpId, uint _price) internal view returns (bool) {
         uint _TCR = cdpManager.getTCR(_price);
         uint _ICR = cdpManager.getCurrentICR(_cdpId, _price);
