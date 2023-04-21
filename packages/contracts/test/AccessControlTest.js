@@ -35,7 +35,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   before(async () => {
     coreContracts = await deploymentHelper.deployLiquityCore()
-    coreContracts.cdpManager = await CdpManagerTester.new()
+    coreContracts.cdpManager = await CdpManagerTester.new(coreContracts.liquidationLibrary.address)
     coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
     const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
     

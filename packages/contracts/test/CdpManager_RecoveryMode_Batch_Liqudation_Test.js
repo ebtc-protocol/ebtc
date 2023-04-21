@@ -23,7 +23,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,

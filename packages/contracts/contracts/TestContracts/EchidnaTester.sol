@@ -2,7 +2,9 @@
 
 pragma solidity 0.8.17;
 
+import "../Interfaces/ICdpManagerData.sol";
 import "../CdpManager.sol";
+import "../LiquidationLibrary.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
 import "../DefaultPool.sol";
@@ -61,6 +63,7 @@ contract EchidnaTester {
     PriceFeedTestnet private priceFeedTestnet;
     CollateralTokenTester private collateral;
     FeeRecipient private feeRecipient;
+    LiquidationLibrary private liqudationLibrary;
     Governor private authority;
     address defaultGovernance;
 
@@ -123,7 +126,8 @@ contract EchidnaTester {
         borrowerOperations = new BorrowerOperations();
         priceFeedTestnet = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
-        cdpManager = new CdpManager();
+        liqudationLibrary = new LiquidationLibrary();
+        cdpManager = new CdpManager(address(liqudationLibrary));
         activePool = new ActivePool();
         gasPool = new GasPool();
         defaultPool = new DefaultPool();
@@ -513,7 +517,10 @@ contract EchidnaTester {
 
         while (currentCdp != bytes32(0)) {
             // Status
-            if (CdpManager.Status(cdpManager.getCdpStatus(currentCdp)) != CdpManager.Status.active) {
+            if (
+                ICdpManagerData.Status(cdpManager.getCdpStatus(currentCdp)) !=
+                ICdpManagerData.Status.active
+            ) {
                 return false;
             }
 

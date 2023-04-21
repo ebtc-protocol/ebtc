@@ -81,7 +81,7 @@ contract('BorrowerOperations', async accounts => {
     beforeEach(async () => {
       contracts = await deploymentHelper.deployLiquityCore()
       contracts.borrowerOperations = await BorrowerOperationsTester.new()
-      contracts.cdpManager = await CdpManagerTester.new()
+      contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
       contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
       const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
 

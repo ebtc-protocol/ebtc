@@ -74,7 +74,7 @@ contract('SortedCdps', async accounts => {
 	
     beforeEach(async () => {
       contracts = await deploymentHelper.deployTesterContractsHardhat()
-      contracts.cdpManager = await CdpManagerTester.new()
+      contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
       contracts.ebtcToken = await EBTCToken.new(
         contracts.cdpManager.address,
         contracts.borrowerOperations.address,

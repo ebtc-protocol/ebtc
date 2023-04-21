@@ -64,7 +64,7 @@ contract('CdpManager', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployTesterContractsHardhat()
-    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,
@@ -491,6 +491,8 @@ contract('CdpManager', async accounts => {
 
       assert.isFalse(txCarol.receipt.status)
     } catch (err) {
+      console.log(err)
+      console.log(err.message)
       assert.include(err.message, "revert")
       assert.include(err.message, "Cdp does not exist or is closed")
     }
@@ -814,6 +816,8 @@ contract('CdpManager', async accounts => {
       const txDennis = await cdpManager.liquidate(dennis, { from: owner })
       assert.isFalse(txDennis.receipt.status)
     } catch (err) {
+      console.log(err)
+      console.log(err.message)
       assert.include(err.message, "revert")
       assert.include(err.message, "Cdp does not exist or is closed")
     }
@@ -2170,6 +2174,8 @@ contract('CdpManager', async accounts => {
       const tx = await cdpManager.batchLiquidateCdps(liquidationArray);
       assert.isFalse(tx.receipt.status)
     } catch (error) {
+      console.log(error)
+      console.log(error.message)
       assert.include(error.message, "CdpManager: Calldata address array must not be empty")
     }
   })

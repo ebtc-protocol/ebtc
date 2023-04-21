@@ -15,6 +15,8 @@ contract CdpManagerTester is CdpManager {
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     event SomeFunc1Called(address _caller);
 
+    constructor(address _liquidationLibrary) public CdpManager(_liquidationLibrary) {}
+
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }

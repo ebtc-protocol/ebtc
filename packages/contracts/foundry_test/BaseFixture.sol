@@ -8,6 +8,7 @@ import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
+import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
 import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
@@ -65,6 +66,7 @@ contract eBTCBaseFixture is Test {
     EBTCToken eBTCToken;
     CollateralTokenTester collateral;
     Governor authority;
+    LiquidationLibrary liqudationLibrary;
     address defaultGovernance;
 
     Utilities internal _utils;
@@ -96,7 +98,8 @@ contract eBTCBaseFixture is Test {
         borrowerOperations = new BorrowerOperations();
         priceFeedMock = new PriceFeedTestnet();
         sortedCdps = new SortedCdps();
-        cdpManager = new CdpManager();
+        liqudationLibrary = new LiquidationLibrary();
+        cdpManager = new CdpManager(address(liqudationLibrary));
         weth = new WETH9();
         activePool = new ActivePool();
         gasPool = new GasPool();

@@ -11,6 +11,7 @@ const FunctionCaller = artifacts.require("./TestContracts/FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")
 const Governor = artifacts.require("./Governor.sol")
+const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 
@@ -107,8 +108,9 @@ class DeploymentHelper {
     const authority = await Governor.new(accounts[0])
 
     const priceFeedTestnet = await PriceFeedTestnet.new()
+    const liquidationLibrary = await LiquidationLibrary.new()
     const sortedCdps = await SortedCdps.new()
-    const cdpManager = await CdpManager.new()
+    const cdpManager = await CdpManager.new(liquidationLibrary.address)
     const weth9 = await WETH9.new()
     const activePool = await ActivePool.new()
     const gasPool = await GasPool.new()
@@ -150,7 +152,8 @@ class DeploymentHelper {
       borrowerOperations,
       hintHelpers,
       collateral,
-      authority
+      authority,
+      liquidationLibrary
     }
 
     await this.configureGovernor(accounts[0], coreContracts)
@@ -163,6 +166,7 @@ class DeploymentHelper {
 
     // Contract without testers (yet)
     testerContracts.priceFeedTestnet = await PriceFeedTestnet.new()
+    testerContracts.liquidationLibrary = await LiquidationLibrary.new()
     testerContracts.sortedCdps = await SortedCdps.new()
     testerContracts.authority = await Governor.new(accounts[0])
     // Actual tester contracts
@@ -173,7 +177,7 @@ class DeploymentHelper {
     testerContracts.collSurplusPool = await CollSurplusPool.new()
     testerContracts.math = await LiquityMathTester.new()
     testerContracts.borrowerOperations = await BorrowerOperationsTester.new()
-    testerContracts.cdpManager = await CdpManagerTester.new()
+    testerContracts.cdpManager = await CdpManagerTester.new(testerContracts.liquidationLibrary.address)
     testerContracts.functionCaller = await FunctionCaller.new()
     testerContracts.hintHelpers = await HintHelpers.new()
     testerContracts.ebtcToken =  await EBTCTokenTester.new(

@@ -30,7 +30,7 @@ contract('CollSurplusPool', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,

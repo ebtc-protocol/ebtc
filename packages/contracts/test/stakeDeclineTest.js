@@ -56,7 +56,7 @@ contract('CdpManager', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
     contracts.ebtcToken = await EBTCTokenTester.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,

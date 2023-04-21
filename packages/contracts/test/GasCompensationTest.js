@@ -3,6 +3,7 @@ const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const EBTCToken = artifacts.require("EBTCToken")
+const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -47,7 +48,8 @@ contract('Gas compensation tests', async accounts => {
   }
 
   before(async () => {
-    cdpManagerTester = await CdpManagerTester.new()
+    liquidationLibrary = await LiquidationLibrary.new()
+    cdpManagerTester = await CdpManagerTester.new(liquidationLibrary.address)
     borrowerOperationsTester = await BorrowerOperationsTester.new()
 
     CdpManagerTester.setAsDeployed(cdpManagerTester)
@@ -59,7 +61,7 @@ contract('Gas compensation tests', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
+    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,
