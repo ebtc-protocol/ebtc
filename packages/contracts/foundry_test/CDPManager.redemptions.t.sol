@@ -18,8 +18,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetMinuteDecayFactorDecaysBaseRate() public {
-        uint newMinuteDecayFactor = 500;
-        uint timePassed = 60; // 60 seconds (1 minute)
+        uint newMinuteDecayFactor = (500 + 999037758833783000);
+        uint timePassed = 600; // seconds/60 => minute
 
         address user = _utils.getNextUserAddress();
 
@@ -53,7 +53,18 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
         // Set the initial baseRate to a non-zero value via rdemption
         console.log("balance: %s", eBTCToken.balanceOf(user));
         eBTCToken.approve(address(cdpManager), type(uint256).max);
-        cdpManager.redeemCollateral(1, bytes32(0), bytes32(0), bytes32(0), 0, 0, 1e18);
+        uint _redeemDebt = 1;
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(_redeemDebt, (priceFeedMock.fetchPrice()), 0);
+        cdpManager.redeemCollateral(
+            _redeemDebt,
+            firstRedemptionHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
 
         uint initialRate = cdpManager.baseRate();
 
@@ -61,16 +72,55 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
 
         // Calculate the expected decayed base rate
         uint decayFactor = cdpManager.minuteDecayFactor();
-        uint expectedDecayedBaseRate = (initialRate * (decayFactor ** timePassed)) /
-            (cdpManager.DECIMAL_PRECISION() ** timePassed);
+        console.log("decayFactor: %s", decayFactor);
+        uint _decayMultiplier = _decPow(decayFactor, (timePassed / 60));
+        console.log("_decayMultiplier: %s", _decayMultiplier);
+        uint expectedDecayedBaseRate = (initialRate * _decayMultiplier) /
+            cdpManager.DECIMAL_PRECISION();
 
         // Fast forward time by 1 minute
         vm.warp(block.timestamp + timePassed);
-
+        // set factor to decay base rate
+        cdpManager.setMinuteDecayFactor(newMinuteDecayFactor);
         // Test that baseRate is decayed according to the previous factor
         console.log("baseRate after: %s", cdpManager.baseRate());
         console.log("expected baseRate: %s", expectedDecayedBaseRate);
         assertEq(cdpManager.baseRate(), expectedDecayedBaseRate);
         vm.stopPrank();
+    }
+
+    function _decMul(uint x, uint y) internal pure returns (uint decProd) {
+        uint prod_xy = x * y;
+
+        decProd = (prod_xy + (1e18 / 2)) / 1e18;
+    }
+
+    function _decPow(uint _base, uint _minutes) internal pure returns (uint) {
+        if (_minutes > 525600000) {
+            _minutes = 525600000;
+        } // cap to avoid overflow
+
+        if (_minutes == 0) {
+            return 1e18;
+        }
+
+        uint y = 1e18;
+        uint x = _base;
+        uint n = _minutes;
+
+        // Exponentiation-by-squaring
+        while (n > 1) {
+            if (n % 2 == 0) {
+                x = _decMul(x, x);
+                n = n / 2;
+            } else {
+                // if (n % 2 != 0)
+                y = _decMul(x, y);
+                x = _decMul(x, x);
+                n = (n - 1) / 2;
+            }
+        }
+
+        return _decMul(x, y);
     }
 }
