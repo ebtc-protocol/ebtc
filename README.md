@@ -14,7 +14,6 @@ The redemption and liquidation mechanisms help ensure stability is maintained vi
 
 Most of the `/Dependency` files are copy-pastes, but some are custom:
 `/packages/contracts/contracts/Dependencies/LiquityBase.sol`
-`/packages/contracts/contracts/Dependencies/CheckContract.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
 
 `/packages/contracts/contracts/LQTY/feeRecipient`

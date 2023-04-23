@@ -3,15 +3,13 @@
 pragma solidity 0.8.17;
 
 import "../Dependencies/BaseMath.sol";
-import "../Dependencies/Ownable.sol";
-import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IFeeRecipient.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Interfaces/IEBTCToken.sol";
 import "../Interfaces/ICdpManager.sol";
 import "../Dependencies/ICollateralToken.sol";
 
-contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
+contract FeeRecipient is IFeeRecipient, BaseMath {
     // --- Data ---
     string public constant NAME = "FeeRecipient";
 

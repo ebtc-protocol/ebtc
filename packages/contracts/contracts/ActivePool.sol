@@ -7,10 +7,7 @@ import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
-
 import "./Dependencies/ERC3156FlashLender.sol";
 
 /*
@@ -20,15 +17,15 @@ import "./Dependencies/ERC3156FlashLender.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
+contract ActivePool is IActivePool, ERC3156FlashLender {
     using SafeMath for uint256;
 
     string public constant NAME = "ActivePool";
 
-    address public borrowerOperationsAddress;
-    address public cdpManagerAddress;
-    address public defaultPoolAddress;
-    address public collSurplusPoolAddress;
+    address public immutable borrowerOperationsAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable defaultPoolAddress;
+    address public immutable collSurplusPoolAddress;
     address public feeRecipientAddress;
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;

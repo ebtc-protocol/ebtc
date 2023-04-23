@@ -7,11 +7,10 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 
-contract LiquidationLibrary is CdpManagerStorage, CheckContract {
+contract LiquidationLibrary is CdpManagerStorage {
     constructor() CdpManagerStorage(address(0), address(0)) {}
 
     /// @notice Single CDP liquidation function (fully).

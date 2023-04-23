@@ -5,8 +5,6 @@ pragma solidity 0.8.17;
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/IActivePool.sol";
 import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 /*
@@ -22,13 +20,13 @@ import "./Dependencies/ICollateralToken.sol";
  * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
  */
-contract DefaultPool is Ownable, CheckContract, IDefaultPool {
+contract DefaultPool is IDefaultPool {
     using SafeMath for uint256;
 
     string public constant NAME = "DefaultPool";
 
-    address public cdpManagerAddress;
-    address public activePoolAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable activePoolAddress;
     uint256 internal StEthColl; // deposited stETH collateral tracker
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;

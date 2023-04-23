@@ -9,28 +9,27 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
-import "./Dependencies/CheckContract.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
-contract BorrowerOperations is LiquityBase, CheckContract, IBorrowerOperations, ERC3156FlashLender {
+contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
     string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
 
     ICdpManager public cdpManager;
 
-    address gasPoolAddress;
+    address immutable gasPoolAddress;
 
-    ICollSurplusPool collSurplusPool;
+    ICollSurplusPool immutable collSurplusPool;
 
     IFeeRecipient public feeRecipient;
-    address public lqtyStakingAddress;
+    address public immutable lqtyStakingAddress;
 
-    IEBTCToken public ebtcToken;
+    IEBTCToken public immutable ebtcToken;
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
-    ISortedCdps public sortedCdps;
+    ISortedCdps public immutable sortedCdps;
 
     /* --- Variable container structs  ---
 
@@ -104,8 +103,7 @@ contract BorrowerOperations is LiquityBase, CheckContract, IBorrowerOperations, 
         priceFeed = IPriceFeed(_priceFeedAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        lqtyStakingAddress = _feeRecipientAddress;
-        feeRecipient = IFeeRecipient(_feeRecipientAddress);
+      feeRecipient = IFeeRecipient(_feeRecipientAddress);
         collateral = ICollateralToken(_collTokenAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);

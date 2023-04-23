@@ -7,7 +7,6 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
@@ -17,20 +16,20 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
 
     // --- Connected contract declarations ---
 
-    address public borrowerOperationsAddress;
+    address public immutable borrowerOperationsAddress;
 
-    address gasPoolAddress;
+    address immutable gasPoolAddress;
 
-    ICollSurplusPool collSurplusPool;
+    ICollSurplusPool immutable collSurplusPool;
 
-    IEBTCToken public override ebtcToken;
+    IEBTCToken public override immutable ebtcToken;
 
     IFeeRecipient public override feeRecipient;
 
     address public immutable liquidationLibrary;
 
     // A doubly linked list of Cdps, sorted by their sorted by their collateral ratios
-    ISortedCdps public sortedCdps;
+    ISortedCdps public immutable sortedCdps;
 
     // --- Data structures ---
 

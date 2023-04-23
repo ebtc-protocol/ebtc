@@ -5,14 +5,12 @@ pragma solidity 0.8.17;
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/LiquityBase.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
-contract HintHelpers is LiquityBase, Ownable, CheckContract {
+contract HintHelpers is LiquityBase {
     string public constant NAME = "HintHelpers";
 
-    ISortedCdps public sortedCdps;
-    ICdpManager public cdpManager;
+    ISortedCdps public immutable sortedCdps;
+    ICdpManager public immutable cdpManager;
 
     // --- Events ---
 

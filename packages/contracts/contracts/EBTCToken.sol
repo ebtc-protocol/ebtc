@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IEBTCToken.sol";
 import "./Dependencies/SafeMath.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -25,7 +24,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * 2) sendToPool() and returnFromPool(): functions callable only Liquity core contracts, which move EBTC tokens between Liquity <-> user.
  */
 
-contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
+contract EBTCToken is IEBTCToken, AuthNoOwner {
     using SafeMath for uint256;
 
     uint256 private _totalSupply;
@@ -70,10 +69,6 @@ contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
         address _borrowerOperationsAddress,
         address _authorityAddress
     ) public AuthNoOwner(_authorityAddress) {
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_authorityAddress);
-
         cdpManagerAddress = _cdpManagerAddress;
         emit CdpManagerAddressChanged(_cdpManagerAddress);
 

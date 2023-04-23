@@ -7,8 +7,6 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
@@ -43,14 +41,14 @@ import "./Dependencies/CheckContract.sol";
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
-contract SortedCdps is Ownable, CheckContract, ISortedCdps {
+contract SortedCdps is ISortedCdps {
     using SafeMath for uint256;
 
     string public constant NAME = "SortedCdps";
 
-    address public borrowerOperationsAddress;
+    address public immutable borrowerOperationsAddress;
 
-    ICdpManager public cdpManager;
+    ICdpManager public immutable cdpManager;
 
     // Information for a node in the list
     struct Node {
