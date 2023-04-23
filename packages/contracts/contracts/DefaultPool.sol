@@ -41,11 +41,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
      * @param _activePoolAddress The address of the active pool contract
      * @param _collTokenAddress The address of the collateral token contract
      */
-    constructor(
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _collTokenAddress
-    ) {
+    constructor(address _cdpManagerAddress, address _activePoolAddress, address _collTokenAddress) {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
         collateral = ICollateralToken(_collTokenAddress);

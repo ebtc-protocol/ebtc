@@ -12,14 +12,16 @@ contract ActivePoolTester is ActivePool {
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
-    ) ActivePool(
-        _borrowerOperationsAddress,
-        _cdpManagerAddress,
-        _defaultPoolAddress,
-        _collTokenAddress,
-        _collSurplusAddress,
-        _feeRecipientAddress
-    ){}
+    )
+        ActivePool(
+            _borrowerOperationsAddress,
+            _cdpManagerAddress,
+            _defaultPoolAddress,
+            _collTokenAddress,
+            _collSurplusAddress,
+            _feeRecipientAddress
+        )
+    {}
 
     function unprotectedIncreaseEBTCDebt(uint _amount) external {
         EBTCDebt = EBTCDebt + _amount;

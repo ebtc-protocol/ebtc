@@ -9,7 +9,7 @@ contract BytecodeReader {
 
             // Allocate memory to store the bytecode
             bytecode := mload(0x40)
-            
+
             // Update the free memory pointer
             mstore(0x40, add(bytecode, add(codeSize, 0x20)))
 

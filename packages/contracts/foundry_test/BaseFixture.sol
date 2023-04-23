@@ -334,8 +334,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
-    function connectLQTYContractsToCore() public virtual {
-    }
+    function connectLQTYContractsToCore() public virtual {}
 
     /////////////////////////////////////////////////////////////////
     // Helper functions

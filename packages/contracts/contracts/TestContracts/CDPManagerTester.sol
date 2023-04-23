@@ -15,7 +15,8 @@ contract CdpManagerTester is CdpManager {
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     event SomeFunc1Called(address _caller);
 
-    constructor(address _liquidationLibraryAddress,
+    constructor(
+        address _liquidationLibraryAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
@@ -26,20 +27,24 @@ contract CdpManagerTester is CdpManager {
         address _sortedCdpsAddress,
         address _feeRecipientAddress,
         address _collTokenAddress,
-        address _authorityAddress) public CdpManager(
-        _liquidationLibraryAddress,
-        _borrowerOperationsAddress,
-        _activePoolAddress,
-        _defaultPoolAddress,
-        _gasPoolAddress,
-        _collSurplusPoolAddress,
-        _priceFeedAddress,
-        _ebtcTokenAddress,
-        _sortedCdpsAddress,
-        _feeRecipientAddress,
-        _collTokenAddress,
-        _authorityAddress
-    ) {}
+        address _authorityAddress
+    )
+        public
+        CdpManager(
+            _liquidationLibraryAddress,
+            _borrowerOperationsAddress,
+            _activePoolAddress,
+            _defaultPoolAddress,
+            _gasPoolAddress,
+            _collSurplusPoolAddress,
+            _priceFeedAddress,
+            _ebtcTokenAddress,
+            _sortedCdpsAddress,
+            _feeRecipientAddress,
+            _collTokenAddress,
+            _authorityAddress
+        )
+    {}
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);

@@ -20,8 +20,7 @@ contract PriceFeedTestnet is IPriceFeed, AuthNoOwner {
 
     ITellorCaller public tellorCaller;
 
-    constructor(address _authorityAddress) public AuthNoOwner(_authorityAddress) {
-    }
+    constructor(address _authorityAddress) public AuthNoOwner(_authorityAddress) {}
 
     // --- Functions ---
 

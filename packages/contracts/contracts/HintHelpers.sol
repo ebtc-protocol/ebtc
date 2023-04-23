@@ -28,11 +28,7 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     }
 
     // --- Dependency setters ---
-    constructor(
-        address _sortedCdpsAddress,
-        address _cdpManagerAddress,
-        address _collateralAddress
-    ) {
+    constructor(address _sortedCdpsAddress, address _cdpManagerAddress, address _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
         collateral = ICollateralToken(_collateralAddress);

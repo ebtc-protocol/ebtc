@@ -71,7 +71,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @param _authorityAddress The address of the Authority contract
         @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
     **/
-    constructor (
+    constructor(
         address _priceAggregatorAddress,
         address _tellorCallerAddress,
         address _authorityAddress

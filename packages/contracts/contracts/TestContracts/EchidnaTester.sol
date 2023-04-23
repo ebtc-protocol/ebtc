@@ -229,7 +229,11 @@ contract EchidnaTester {
 
             // Sorted CDPS
             creationCode = type(SortedCdps).creationCode;
-            args = abi.encode(type(uint256).max, addr.cdpManagerAddress, addr.borrowerOperationsAddress);
+            args = abi.encode(
+                type(uint256).max,
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress
+            );
 
             sortedCdps = SortedCdps(
                 ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args))
@@ -349,8 +353,7 @@ contract EchidnaTester {
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
-    function _connectLQTYContractsToCore() internal {
-    }
+    function _connectLQTYContractsToCore() internal {}
 
     function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal {
         uint price = priceFeedTestnet.getPrice();

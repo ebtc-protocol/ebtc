@@ -13,12 +13,7 @@ import "./Dependencies/CheckContract.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
-contract BorrowerOperations is
-    LiquityBase,
-    CheckContract,
-    IBorrowerOperations,
-    ERC3156FlashLender
-{
+contract BorrowerOperations is LiquityBase, CheckContract, IBorrowerOperations, ERC3156FlashLender {
     string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---

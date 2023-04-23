@@ -11,15 +11,11 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
-    constructor (
+    constructor(
         address _priceAggregatorAddress,
         address _tellorCallerAddress,
         address _authorityAddress
-    ) PriceFeed(
-        _priceAggregatorAddress,
-        _tellorCallerAddress,
-        _authorityAddress
-    ) {}
+    ) PriceFeed(_priceAggregatorAddress, _tellorCallerAddress, _authorityAddress) {}
 
     function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
         return _getCurrentTellorResponse();
@@ -56,7 +52,7 @@ contract PriceFeedTest is eBTCBaseFixture {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        
+
         _mockTellor = new MockTellor();
         _mockChainlink = new MockAggregator();
         _tellorCaller = new TellorCaller(address(_mockTellor));
@@ -71,8 +67,8 @@ contract PriceFeedTest is eBTCBaseFixture {
         _mockTellor.setUpdateTime(block.timestamp);
 
         _priceFeed = new PriceFeedTester(
-            address(_mockChainlink), 
-            address(_tellorCaller), 
+            address(_mockChainlink),
+            address(_tellorCaller),
             address(authority)
         );
     }

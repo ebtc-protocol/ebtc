@@ -85,7 +85,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
-    constructor (
+    constructor(
         uint256 _size,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress

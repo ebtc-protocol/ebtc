@@ -11,11 +11,7 @@ contract DefaultPoolTester is DefaultPool {
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) DefaultPool(
-        _cdpManagerAddress,
-        _activePoolAddress,
-        _collTokenAddress
-    ) {}
+    ) DefaultPool(_cdpManagerAddress, _activePoolAddress, _collTokenAddress) {}
 
     function unprotectedIncreaseEBTCDebt(uint _amount) external {
         EBTCDebt = EBTCDebt.add(_amount);

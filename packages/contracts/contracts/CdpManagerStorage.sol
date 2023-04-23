@@ -12,7 +12,6 @@ import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
-
 contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
     string public constant NAME = "CdpManager";
 
@@ -127,7 +126,10 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
     uint public lastETHError_Redistribution;
     uint public lastEBTCDebtError_Redistribution;
 
-    constructor(address _liquidationLibraryAddress, address _authorityAddress) AuthNoOwner(_authorityAddress) {
+    constructor(
+        address _liquidationLibraryAddress,
+        address _authorityAddress
+    ) AuthNoOwner(_authorityAddress) {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
