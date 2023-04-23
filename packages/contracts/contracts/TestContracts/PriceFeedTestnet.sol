@@ -20,11 +20,7 @@ contract PriceFeedTestnet is IPriceFeed, AuthNoOwner {
 
     ITellorCaller public tellorCaller;
 
-    event TellorCallerChanged(address _tellorCaller);
-
-    function setAddresses(address _authority) public {
-        // Set the contract's authority to the provided address
-        _initializeAuthority(_authority);
+    constructor(address _authorityAddress) public AuthNoOwner(_authorityAddress) {
     }
 
     // --- Functions ---

@@ -10,8 +10,10 @@ import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
-contract CdpManagerStorage is LiquityBase, ICdpManagerData {
+
+contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
@@ -26,7 +28,7 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData {
 
     IFeeRecipient public override feeRecipient;
 
-    address immutable liquidationLibrary;
+    address public immutable liquidationLibrary;
 
     // A doubly linked list of Cdps, sorted by their sorted by their collateral ratios
     ISortedCdps public sortedCdps;
@@ -109,7 +111,6 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData {
     uint256 lastIndexTimestamp;
     /* Global Index update minimal interval, typically it is updated once per day  */
     uint256 public INDEX_UPD_INTERVAL;
-
     // Map active cdps to their RewardSnapshot
     mapping(bytes32 => RewardSnapshot) public rewardSnapshots;
 
@@ -126,9 +127,11 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData {
     uint public lastETHError_Redistribution;
     uint public lastEBTCDebtError_Redistribution;
 
-    constructor(address _liquidationLibrary) public {
+    constructor(address _liquidationLibraryAddress, address _authorityAddress) AuthNoOwner(_authorityAddress) {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
-        liquidationLibrary = _liquidationLibrary;
+        liquidationLibrary = _liquidationLibraryAddress;
+
+        emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
     }
 }

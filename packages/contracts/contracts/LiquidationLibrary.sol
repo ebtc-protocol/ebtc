@@ -7,14 +7,12 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
-import "./Dependencies/AuthNoOwner.sol";
 import "./CdpManagerStorage.sol";
 
-contract LiquidationLibrary is Ownable, CdpManagerStorage, CheckContract, AuthNoOwner {
-    constructor() public CdpManagerStorage(address(0)) {}
+contract LiquidationLibrary is CdpManagerStorage, CheckContract {
+    constructor() CdpManagerStorage(address(0), address(0)){}
 
     /// @notice Single CDP liquidation function (fully).
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).

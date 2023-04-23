@@ -34,25 +34,16 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
-    constructor() {}
-
     // --- Contract setters ---
 
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
-    ) external onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_collTokenAddress);
-        checkContract(_collSurplusAddress);
-        checkContract(_feeRecipientAddress);
-
+    ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         defaultPoolAddress = _defaultPoolAddress;
@@ -66,8 +57,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         emit CollateralAddressChanged(_collTokenAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
-
-        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---

@@ -19,9 +19,11 @@ import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
+import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
+import {BytecodeReader} from "./utils/BytecodeReader.sol";
 
-contract eBTCBaseFixture is Test {
+contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint public constant CCR = 125e16; // 125%
@@ -67,6 +69,7 @@ contract eBTCBaseFixture is Test {
     CollateralTokenTester collateral;
     Governor authority;
     LiquidationLibrary liqudationLibrary;
+    EBTCDeployer ebtcDeployer;
     address defaultGovernance;
 
     Utilities internal _utils;
@@ -91,35 +94,212 @@ contract eBTCBaseFixture is Test {
     */
     function setUp() public virtual {
         _utils = new Utilities();
+
         defaultGovernance = _utils.getNextSpecialAddress();
 
-        authority = new Governor(defaultGovernance);
+        vm.prank(defaultGovernance);
+        ebtcDeployer = new EBTCDeployer();
 
-        borrowerOperations = new BorrowerOperations();
-        priceFeedMock = new PriceFeedTestnet();
-        sortedCdps = new SortedCdps();
-        liqudationLibrary = new LiquidationLibrary();
-        cdpManager = new CdpManager(address(liqudationLibrary));
-        weth = new WETH9();
-        activePool = new ActivePool();
-        gasPool = new GasPool();
-        defaultPool = new DefaultPool();
-        collSurplusPool = new CollSurplusPool();
-        functionCaller = new FunctionCaller();
-        hintHelpers = new HintHelpers();
-        eBTCToken = new EBTCToken(
-            address(cdpManager),
-            address(borrowerOperations),
-            address(authority)
-        );
+        // Default governance is deployer
+        // vm.prank(defaultGovernance);
+
         collateral = new CollateralTokenTester();
+        weth = new WETH9();
+        functionCaller = new FunctionCaller();
 
-        // External Contracts
-        feeRecipient = new FeeRecipient();
+        /** @dev The order is as follows:
+            0: authority
+            1: liquidationLibrary
+            2: cdpManager
+            3: borrowerOperations
+            4: priceFeed
+            5; sortedCdps
+            6: activePool
+            7: gasPool
+            8: defaultPool
+            9: collSurplusPool
+            10: hintHelpers
+            11: eBTCToken
+            12: feeRecipient
+            13: multiCdpGetter
+        */
+
+        EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
+
+        {
+            bytes memory creationCode;
+            bytes memory args;
+
+            // Use EBTCDeployer to deploy all contracts at determistic addresses
+
+            // Authority
+            creationCode = type(Governor).creationCode;
+            args = abi.encode(defaultGovernance);
+
+            authority = Governor(
+                ebtcDeployer.deploy(ebtcDeployer.AUTHORITY(), abi.encodePacked(creationCode, args))
+            );
+
+            // Liquidation Library
+            creationCode = type(LiquidationLibrary).creationCode;
+            args = abi.encode(address(0), address(0));
+
+            liqudationLibrary = LiquidationLibrary(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.LIQUIDATION_LIBRARY(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // CDP Manager
+            creationCode = type(CdpManager).creationCode;
+            args = abi.encode(
+                addr.liquidationLibraryAddress,
+                addr.borrowerOperationsAddress,
+                addr.activePoolAddress,
+                addr.defaultPoolAddress,
+                addr.gasPoolAddress,
+                addr.collSurplusPoolAddress,
+                addr.priceFeedAddress,
+                addr.ebtcTokenAddress,
+                addr.sortedCdpsAddress,
+                addr.feeRecipientAddress,
+                address(collateral),
+                addr.authorityAddress
+            );
+
+            cdpManager = CdpManager(
+                ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
+            );
+
+            // Borrower Operations
+            creationCode = type(BorrowerOperations).creationCode;
+            args = abi.encode(
+                addr.cdpManagerAddress,
+                addr.activePoolAddress,
+                addr.defaultPoolAddress,
+                addr.gasPoolAddress,
+                addr.collSurplusPoolAddress,
+                addr.priceFeedAddress,
+                addr.sortedCdpsAddress,
+                addr.ebtcTokenAddress,
+                addr.feeRecipientAddress,
+                address(collateral)
+            );
+
+            borrowerOperations = BorrowerOperations(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.BORROWER_OPERATIONS(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // Price Feed Mock
+            creationCode = type(PriceFeedTestnet).creationCode;
+            args = abi.encode(addr.authorityAddress);
+
+            priceFeedMock = PriceFeedTestnet(
+                ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
+            );
+
+            // Sorted CDPS
+            creationCode = type(SortedCdps).creationCode;
+            args = abi.encode(maxBytes32, addr.cdpManagerAddress, addr.borrowerOperationsAddress);
+
+            sortedCdps = SortedCdps(
+                ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args))
+            );
+
+            // Active Pool
+            creationCode = type(ActivePool).creationCode;
+            args = abi.encode(
+                addr.borrowerOperationsAddress,
+                addr.cdpManagerAddress,
+                addr.defaultPoolAddress,
+                address(collateral),
+                addr.collSurplusPoolAddress,
+                addr.feeRecipientAddress
+            );
+
+            activePool = ActivePool(
+                ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
+            );
+
+            // Gas Pool
+            creationCode = type(GasPool).creationCode;
+
+            gasPool = GasPool(ebtcDeployer.deploy(ebtcDeployer.GAS_POOL(), creationCode));
+
+            // Default Pool
+            creationCode = type(DefaultPool).creationCode;
+            args = abi.encode(addr.cdpManagerAddress, addr.activePoolAddress, address(collateral));
+
+            defaultPool = DefaultPool(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.DEFAULT_POOL(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // Coll Surplus Pool
+            creationCode = type(CollSurplusPool).creationCode;
+            args = abi.encode(
+                addr.borrowerOperationsAddress,
+                addr.cdpManagerAddress,
+                addr.activePoolAddress,
+                address(collateral)
+            );
+
+            collSurplusPool = CollSurplusPool(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.COLL_SURPLUS_POOL(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // Hint Helpers
+            creationCode = type(HintHelpers).creationCode;
+            args = abi.encode(addr.sortedCdpsAddress, addr.cdpManagerAddress, address(collateral));
+
+            hintHelpers = HintHelpers(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.HINT_HELPERS(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // eBTC Token
+            creationCode = type(EBTCToken).creationCode;
+            args = abi.encode(
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress,
+                addr.authorityAddress
+            );
+
+            eBTCToken = EBTCToken(
+                ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
+            );
+
+            // Fee Recipieint
+            creationCode = type(FeeRecipient).creationCode;
+            args = abi.encode(
+                addr.ebtcTokenAddress,
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress,
+                addr.activePoolAddress,
+                address(collateral)
+            );
+
+            feeRecipient = FeeRecipient(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.FEE_RECIPIENT(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+        }
 
         // Set up initial permissions and then renounce global owner role
         vm.startPrank(defaultGovernance);
-
         authority.setRoleName(0, "Admin");
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
@@ -149,77 +329,12 @@ contract eBTCBaseFixture is Test {
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
      */
     function connectCoreContracts() public virtual {
-        // set CdpManager addr in SortedCdps
-        sortedCdps.setParams(maxBytes32, address(cdpManager), address(borrowerOperations));
-
         skip(86400);
-
-        // set contracts in the Cdp Manager
-        cdpManager.setAddresses(
-            address(borrowerOperations),
-            address(activePool),
-            address(defaultPool),
-            address(gasPool),
-            address(collSurplusPool),
-            address(priceFeedMock),
-            address(eBTCToken),
-            address(sortedCdps),
-            address(feeRecipient),
-            address(collateral),
-            address(authority)
-        );
-
-        // set contracts in BorrowerOperations
-        borrowerOperations.setAddresses(
-            address(cdpManager),
-            address(activePool),
-            address(defaultPool),
-            address(gasPool),
-            address(collSurplusPool),
-            address(priceFeedMock),
-            address(sortedCdps),
-            address(eBTCToken),
-            address(feeRecipient),
-            address(collateral)
-        );
-
-        // set contracts in activePool
-        activePool.setAddresses(
-            address(borrowerOperations),
-            address(cdpManager),
-            address(defaultPool),
-            address(collateral),
-            address(collSurplusPool),
-            address(feeRecipient)
-        );
-
-        // set contracts in defaultPool
-        defaultPool.setAddresses(address(cdpManager), address(activePool), address(collateral));
-
-        // set contracts in collSurplusPool
-        collSurplusPool.setAddresses(
-            address(borrowerOperations),
-            address(cdpManager),
-            address(activePool),
-            address(collateral)
-        );
-
-        // set contracts in HintHelpers
-        hintHelpers.setAddresses(address(sortedCdps), address(cdpManager), address(collateral));
-
-        priceFeedMock.setAddresses(address(authority));
     }
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
     function connectLQTYContractsToCore() public virtual {
-        feeRecipient.setAddresses(
-            address(eBTCToken),
-            address(cdpManager),
-            address(borrowerOperations),
-            address(activePool),
-            address(collateral)
-        );
     }
 
     /////////////////////////////////////////////////////////////////

@@ -7,6 +7,16 @@ import "../DefaultPool.sol";
 contract DefaultPoolTester is DefaultPool {
     using SafeMath for uint256;
 
+    constructor(
+        address _cdpManagerAddress,
+        address _activePoolAddress,
+        address _collTokenAddress
+    ) DefaultPool(
+        _cdpManagerAddress,
+        _activePoolAddress,
+        _collTokenAddress
+    ) {}
+
     function unprotectedIncreaseEBTCDebt(uint _amount) external {
         EBTCDebt = EBTCDebt.add(_amount);
     }

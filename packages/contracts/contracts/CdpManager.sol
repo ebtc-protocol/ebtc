@@ -7,19 +7,15 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
-import "./Dependencies/AuthNoOwner.sol";
 import "./CdpManagerStorage.sol";
 import "./Dependencies/Proxy.sol";
 
-contract CdpManager is Ownable, CdpManagerStorage, CheckContract, ICdpManager, AuthNoOwner, Proxy {
+contract CdpManager is CdpManagerStorage, CheckContract, ICdpManager, Proxy {
     // --- Dependency setter ---
-
-    constructor(address _liquidationLibrary) public CdpManagerStorage(_liquidationLibrary) {}
-
-    function setAddresses(
+    constructor(
+        address _liquidationLibraryAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
@@ -31,19 +27,7 @@ contract CdpManager is Ownable, CdpManagerStorage, CheckContract, ICdpManager, A
         address _feeRecipientAddress,
         address _collTokenAddress,
         address _authorityAddress
-    ) external override onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_gasPoolAddress);
-        checkContract(_collSurplusPoolAddress);
-        checkContract(_priceFeedAddress);
-        checkContract(_ebtcTokenAddress);
-        checkContract(_sortedCdpsAddress);
-        checkContract(_feeRecipientAddress);
-        checkContract(_collTokenAddress);
-        checkContract(_authorityAddress);
-
+    ) CdpManagerStorage(_liquidationLibraryAddress, _authorityAddress) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         activePool = IActivePool(_activePoolAddress);
         defaultPool = IDefaultPool(_defaultPoolAddress);
@@ -66,8 +50,6 @@ contract CdpManager is Ownable, CdpManagerStorage, CheckContract, ICdpManager, A
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        _initializeAuthority(_authorityAddress);
-
         stakingRewardSplit = 2500;
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
@@ -75,8 +57,6 @@ contract CdpManager is Ownable, CdpManagerStorage, CheckContract, ICdpManager, A
         _syncIndex();
         syncUpdateIndexInterval();
         stFeePerUnitg = 1e18;
-
-        renounceOwnership();
     }
 
     // --- Getters ---

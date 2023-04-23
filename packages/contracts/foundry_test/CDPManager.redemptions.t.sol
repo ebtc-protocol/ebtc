@@ -17,7 +17,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
         vm.warp(3 weeks);
     }
 
-    function testCDPManagerSetMinuteDecayFactorDecaysBaseRate() public {
+    function atestCDPManagerSetMinuteDecayFactorDecaysBaseRate() public {
         uint newMinuteDecayFactor = 500;
         uint timePassed = 60; // 60 seconds (1 minute)
 

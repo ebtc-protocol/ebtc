@@ -69,7 +69,7 @@ contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) public {
+    ) public AuthNoOwner(_authorityAddress) {
         checkContract(_cdpManagerAddress);
         checkContract(_borrowerOperationsAddress);
         checkContract(_authorityAddress);
@@ -79,8 +79,6 @@ contract EBTCToken is CheckContract, IEBTCToken, AuthNoOwner {
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-
-        _initializeAuthority(_authorityAddress);
 
         bytes32 hashedName = keccak256(bytes(_NAME));
         bytes32 hashedVersion = keccak256(bytes(_VERSION));

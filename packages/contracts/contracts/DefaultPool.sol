@@ -41,15 +41,11 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
      * @param _activePoolAddress The address of the active pool contract
      * @param _collTokenAddress The address of the collateral token contract
      */
-    function setAddresses(
+    constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external onlyOwner {
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    ) {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
@@ -57,8 +53,6 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
-
-        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---

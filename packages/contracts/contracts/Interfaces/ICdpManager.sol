@@ -12,20 +12,6 @@ import "./ICdpManagerData.sol";
 interface ICdpManager is ILiquityBase, ICdpManagerData {
     // --- Functions ---
 
-    function setAddresses(
-        address _borrowerOperationsAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _ebtcTokenAddress,
-        address _sortedCdpsAddress,
-        address _feeRecipientAddress,
-        address _collTokenAddress,
-        address _authorityAddress
-    ) external;
-
     function getCdpIdsCount() external view returns (uint);
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);

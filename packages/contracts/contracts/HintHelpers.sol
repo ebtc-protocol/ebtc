@@ -28,15 +28,11 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     }
 
     // --- Dependency setters ---
-    function setAddresses(
+    constructor(
         address _sortedCdpsAddress,
         address _cdpManagerAddress,
         address _collateralAddress
-    ) external onlyOwner {
-        checkContract(_sortedCdpsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_collateralAddress);
-
+    ) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
         collateral = ICollateralToken(_collateralAddress);
@@ -44,8 +40,6 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit CollateralAddressChanged(_collateralAddress);
-
-        renounceOwnership();
     }
 
     // --- Functions ---

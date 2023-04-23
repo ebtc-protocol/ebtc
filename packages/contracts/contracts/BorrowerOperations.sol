@@ -9,14 +9,12 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
-import "./Dependencies/Ownable.sol";
 import "./Dependencies/CheckContract.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is
     LiquityBase,
-    Ownable,
     CheckContract,
     IBorrowerOperations,
     ERC3156FlashLender
@@ -86,8 +84,7 @@ contract BorrowerOperations is
     }
 
     // --- Dependency setters ---
-
-    function setAddresses(
+    constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
@@ -98,20 +95,11 @@ contract BorrowerOperations is
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
+    ) {
+        // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
+
         // This makes impossible to open a cdp with zero withdrawn EBTC
         assert(MIN_NET_DEBT > 0);
-
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_gasPoolAddress);
-        checkContract(_collSurplusPoolAddress);
-        checkContract(_priceFeedAddress);
-        checkContract(_sortedCdpsAddress);
-        checkContract(_ebtcTokenAddress);
-        checkContract(_feeRecipientAddress);
-        checkContract(_collTokenAddress);
 
         cdpManager = ICdpManager(_cdpManagerAddress);
         activePool = IActivePool(_activePoolAddress);
@@ -136,7 +124,7 @@ contract BorrowerOperations is
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        renounceOwnership();
+        // No longer need a concept of ownership if there is no initializer
     }
 
     // --- Borrower Cdp Operations ---

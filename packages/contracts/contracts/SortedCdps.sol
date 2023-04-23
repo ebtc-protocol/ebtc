@@ -13,7 +13,7 @@ import "./Dependencies/CheckContract.sol";
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
  *
- * Nodes map to active Cdps in the system - the ID property is the address of a Cdp owner.
+ * Nodes map to active Cdps in the system by ID.
  * Nodes are ordered according to their current nominal individual collateral ratio (NICR),
  * which is like the ICR but without the price, i.e., just collateral / debt.
  *
@@ -85,15 +85,12 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
-
-    function setParams(
+    constructor (
         uint256 _size,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress
-    ) external override onlyOwner {
+    ) public {
         require(_size > 0, "SortedCdps: Size can't be zero");
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
 
         data.maxSize = _size;
 
@@ -102,8 +99,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-
-        renounceOwnership();
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol

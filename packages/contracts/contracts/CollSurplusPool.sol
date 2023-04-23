@@ -33,12 +33,12 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
      * @param _activePoolAddress The address of the ActivePool
      * @param _collTokenAddress The address of the CollateralToken
      */
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
+    ) {
         checkContract(_borrowerOperationsAddress);
         checkContract(_cdpManagerAddress);
         checkContract(_activePoolAddress);

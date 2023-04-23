@@ -37,19 +37,6 @@ interface IBorrowerOperations {
 
     // --- Functions ---
 
-    function setAddresses(
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _sortedCdpsAddress,
-        address _ebtcTokenAddress,
-        address _feeRecipientAddress,
-        address _collTokenAddress
-    ) external;
-
     function openCdp(
         uint _EBTCAmount,
         bytes32 _upperHint,
