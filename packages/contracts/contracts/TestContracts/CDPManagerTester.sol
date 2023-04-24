@@ -16,35 +16,9 @@ contract CdpManagerTester is CdpManager {
     event SomeFunc1Called(address _caller);
 
     constructor(
-        address _liquidationLibraryAddress,
-        address _borrowerOperationsAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _ebtcTokenAddress,
-        address _sortedCdpsAddress,
-        address _feeRecipientAddress,
-        address _collTokenAddress,
-        address _authorityAddress
-    )
-        public
-        CdpManager(
-            _liquidationLibraryAddress,
-            _borrowerOperationsAddress,
-            _activePoolAddress,
-            _defaultPoolAddress,
-            _gasPoolAddress,
-            _collSurplusPoolAddress,
-            _priceFeedAddress,
-            _ebtcTokenAddress,
-            _sortedCdpsAddress,
-            _feeRecipientAddress,
-            _collTokenAddress,
-            _authorityAddress
-        )
-    {}
+        EBTCDeployer.EbtcAddresses memory _addresses,
+        address _collTokenAddress
+    ) public CdpManager(_addresses, _collTokenAddress) {}
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);

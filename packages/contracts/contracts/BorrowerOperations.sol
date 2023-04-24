@@ -24,7 +24,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     ICollSurplusPool immutable collSurplusPool;
 
     IFeeRecipient public feeRecipient;
-    address public immutable lqtyStakingAddress;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -89,22 +88,18 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) {
+    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collTokenAddress) {
         // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
 
         // This makes impossible to open a cdp with zero withdrawn EBTC
         assert(MIN_NET_DEBT > 0);
 
         cdpManager = ICdpManager(_cdpManagerAddress);
-        activePool = IActivePool(_activePoolAddress);
-        defaultPool = IDefaultPool(_defaultPoolAddress);
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
-        priceFeed = IPriceFeed(_priceFeedAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-      feeRecipient = IFeeRecipient(_feeRecipientAddress);
-        collateral = ICollateralToken(_collTokenAddress);
+        feeRecipient = IFeeRecipient(_feeRecipientAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);

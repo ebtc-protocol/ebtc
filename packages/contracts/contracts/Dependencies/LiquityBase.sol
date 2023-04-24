@@ -45,14 +45,21 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant MAX_REWARD_SPLIT = 10_000;
 
-    IActivePool public activePool;
+    IActivePool public immutable activePool;
 
-    IDefaultPool public defaultPool;
+    IDefaultPool public immutable defaultPool;
 
-    IPriceFeed public override priceFeed;
+    IPriceFeed public immutable override priceFeed;
 
     // the only collateral token allowed in CDP
-    ICollateralToken public collateral;
+    ICollateralToken public immutable collateral;
+
+    constructor(address _activePool, address _defaultPool, address _priceFeed, address _collateral) {
+        activePool = IActivePool(_activePool);
+        defaultPool = IDefaultPool(_defaultPool);
+        priceFeed = IPriceFeed(_priceFeed);
+        collateral = ICollateralToken(_collateral);
+    }
 
     // --- Gas compensation functions ---
 

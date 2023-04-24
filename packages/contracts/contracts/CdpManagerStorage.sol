@@ -22,7 +22,7 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
 
     ICollSurplusPool immutable collSurplusPool;
 
-    IEBTCToken public override immutable ebtcToken;
+    IEBTCToken public immutable override ebtcToken;
 
     IFeeRecipient public override feeRecipient;
 
@@ -127,11 +127,31 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
 
     constructor(
         address _liquidationLibraryAddress,
-        address _authorityAddress
-    ) AuthNoOwner(_authorityAddress) {
+        address _authorityAddress,
+        address _borrowerOperationsAddress,
+        address _gasPoolAddress,
+        address _collSurplusPool,
+        address _ebtcToken,
+        address _feeRecipient,
+        address _sortedCdps,
+        address _activePool,
+        address _defaultPool,
+        address _priceFeed,
+        address _collateral
+    )
+        AuthNoOwner(_authorityAddress)
+        LiquityBase(_activePool, _defaultPool, _priceFeed, _collateral)
+    {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
+
+        borrowerOperationsAddress = _borrowerOperationsAddress;
+        gasPoolAddress = _gasPoolAddress;
+        collSurplusPool = ICollSurplusPool(_collSurplusPool);
+        ebtcToken = IEBTCToken(_ebtcToken);
+        feeRecipient = IFeeRecipient(_feeRecipient);
+        sortedCdps = ISortedCdps(_sortedCdps);
 
         emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
     }

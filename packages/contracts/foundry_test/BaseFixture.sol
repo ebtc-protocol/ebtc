@@ -142,7 +142,18 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // Liquidation Library
             creationCode = type(LiquidationLibrary).creationCode;
-            args = abi.encode(address(0), address(0));
+            args = abi.encode(
+                addr.borrowerOperationsAddress,
+                addr.gasPoolAddress,
+                addr.collSurplusPoolAddress,
+                addr.ebtcTokenAddress,
+                addr.feeRecipientAddress,
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.defaultPoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
+            );
 
             liqudationLibrary = LiquidationLibrary(
                 ebtcDeployer.deploy(
@@ -153,20 +164,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // CDP Manager
             creationCode = type(CdpManager).creationCode;
-            args = abi.encode(
-                addr.liquidationLibraryAddress,
-                addr.borrowerOperationsAddress,
-                addr.activePoolAddress,
-                addr.defaultPoolAddress,
-                addr.gasPoolAddress,
-                addr.collSurplusPoolAddress,
-                addr.priceFeedAddress,
-                addr.ebtcTokenAddress,
-                addr.sortedCdpsAddress,
-                addr.feeRecipientAddress,
-                address(collateral),
-                addr.authorityAddress
-            );
+            args = abi.encode(addr, address(collateral));
 
             cdpManager = CdpManager(
                 ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
@@ -259,7 +257,14 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // Hint Helpers
             creationCode = type(HintHelpers).creationCode;
-            args = abi.encode(addr.sortedCdpsAddress, addr.cdpManagerAddress, address(collateral));
+            args = abi.encode(
+                addr.sortedCdpsAddress,
+                addr.cdpManagerAddress,
+                address(collateral),
+                addr.activePoolAddress,
+                addr.defaultPoolAddress,
+                addr.priceFeedAddress
+            );
 
             hintHelpers = HintHelpers(
                 ebtcDeployer.deploy(

@@ -26,10 +26,16 @@ contract HintHelpers is LiquityBase {
     }
 
     // --- Dependency setters ---
-    constructor(address _sortedCdpsAddress, address _cdpManagerAddress, address _collateralAddress) {
+    constructor(
+        address _sortedCdpsAddress,
+        address _cdpManagerAddress,
+        address _collateralAddress,
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _priceFeedAddress
+    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
-        collateral = ICollateralToken(_collateralAddress);
 
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);

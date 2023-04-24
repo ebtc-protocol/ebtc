@@ -27,10 +27,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
     ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
 
-    // Core Liquity contracts
-    address immutable borrowerOperationsAddress;
-    address immutable cdpManagerAddress;
-
     uint public constant ETHUSD_TELLOR_REQ_ID = 1;
     // TODO: Use new Tellor query ID for stETH/BTC when available
     bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =
