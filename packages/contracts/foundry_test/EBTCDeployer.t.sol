@@ -81,7 +81,21 @@ contract EBTCDeployerTest is eBTCBaseFixture {
         expectedDeployed = ebtcDeployer.addressOf(TEST_SALT_STRING_2);
         deployed = ebtcDeployer.deploy(
             TEST_SALT_STRING_2,
-            abi.encodePacked(type(LiquidationLibrary).creationCode, abi.encode(address(0)))
+            abi.encodePacked(
+                type(LiquidationLibrary).creationCode,
+                abi.encode(
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0),
+                    address(0)
+                )
+            )
         );
 
         assertEq(deployed, expectedDeployed);
