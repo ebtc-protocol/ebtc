@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "../DefaultPool.sol";
 
 contract DefaultPoolTester is DefaultPool {
-
     constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
