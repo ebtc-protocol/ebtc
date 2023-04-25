@@ -332,20 +332,19 @@ contract('Fee arithmetic tests', async accounts => {
   ]
 
   before(async () => {
-    liquidationLibrary = await LiquidationLibrary.new()
-    cdpManagerTester = await CdpManagerTester.new(liquidationLibrary.address)
-    CdpManagerTester.setAsDeployed(cdpManagerTester)
-
     mathTester = await LiquityMathTester.new()
     LiquityMathTester.setAsDeployed(mathTester)
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    const LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
+	
+    liquidationLibrary = contracts.liquidationLibrary
+    cdpManagerTester = contracts.cdpManager;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it("minutesPassedSinceLastFeeOp(): returns minutes passed for no time increase", async () => {
