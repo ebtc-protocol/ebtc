@@ -439,6 +439,27 @@ class DeploymentHelper {
   }
 
   static async deployProxyScripts(contracts, LQTYContracts, owner, users) {
+    const proxies = await buildUserProxies(users)
+
+    const borrowerWrappersScript = await BorrowerWrappersScript.new(
+      contracts.borrowerOperations.address,
+      contracts.cdpManager.address,
+      LQTYContracts.feeRecipient.address,
+      contracts.collateral.address
+    )
+    contracts.borrowerWrappers = new BorrowerWrappersProxy(owner, proxies, borrowerWrappersScript.address)
+
+    const borrowerOperationsScript = await BorrowerOperationsScript.new(contracts.borrowerOperations.address)
+    contracts.borrowerOperations = new BorrowerOperationsProxy(owner, proxies, borrowerOperationsScript.address, contracts.borrowerOperations)
+
+    const cdpManagerScript = await CdpManagerScript.new(contracts.cdpManager.address)
+    contracts.cdpManager = new CdpManagerProxy(owner, proxies, cdpManagerScript.address, contracts.cdpManager)
+
+    contracts.sortedCdps = new SortedCdpsProxy(owner, proxies, contracts.sortedCdps)
+
+    const ebtcTokenScript = await TokenScript.new(contracts.ebtcToken.address)
+    contracts.ebtcToken = new TokenProxy(owner, proxies, ebtcTokenScript.address, contracts.ebtcToken)
+
     const lqtyStakingScript = await LQTYStakingScript.new(LQTYContracts.feeRecipient.address)
     LQTYContracts.feeRecipient = new LQTYStakingProxy(owner, proxies, lqtyStakingScript.address, LQTYContracts.feeRecipient)
   }
