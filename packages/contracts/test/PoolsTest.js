@@ -132,7 +132,20 @@ contract('ActivePool', async accounts => {
     // should revert due to invariants check
     let _manipulatedPPFS = web3.utils.toBN('2000000000000000000'); 
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
-  })
+  }) 
+	  
+  it("ActivePool governance permissioned: initializeAuthority() could be called only once", async() => {	  
+    let apDummy = await ActivePool.new()
+    let _authorityInit = await apDummy.authority();
+		
+    await apDummy.setAddresses(apDummy.address, apDummy.address, apDummy.address, apDummy.address, apDummy.address, apDummy.address);
+	  
+    assert.isTrue(false == (await apDummy.authorityInitialized()));	  
+    await apDummy.initAuthority(activePoolAuthority.address)
+    assert.isTrue(activePoolAuthority.address == (await apDummy.authority()));
+    assert.isTrue(true == (await apDummy.authorityInitialized()));
+    await th.assertRevert(apDummy.initAuthority(activePoolAuthority.address), "Auth: authority already initialized");
+  })	
 	  
 	  
   it("ActivePool governance permissioned: setFlashFee() should only allow authorized caller", async() => {	
@@ -315,6 +328,19 @@ contract('DefaultPool', async accounts => {
     const defaultPool_BalanceChange = defaultPool_BalanceAfterTx.sub(defaultPool_BalanceBeforeTx)
     assert.equal(activePool_BalanceChange, dec(1, 'ether'))
     assert.equal(defaultPool_BalanceChange, _minus_1_Ether)
+  })
+	  
+  it("DefaultPool governance permissioned: initializeAuthority() could be called only once", async() => {	  
+    let dpDummy = await DefaultPool.new()
+    let _authorityInit = await dpDummy.authority();
+		
+    await dpDummy.setAddresses(dpDummy.address, dpDummy.address, dpDummy.address);
+	  
+    assert.isTrue(false == (await dpDummy.authorityInitialized()));	  
+    await dpDummy.initAuthority(defaultPoolAuthority.address)
+    assert.isTrue(defaultPoolAuthority.address == (await dpDummy.authority()));
+    assert.isTrue(true == (await dpDummy.authorityInitialized()));
+    await th.assertRevert(dpDummy.initAuthority(defaultPoolAuthority.address), "Auth: authority already initialized");
   })
  
   it('sweepToken(): move unprotected token to fee recipient', async () => {

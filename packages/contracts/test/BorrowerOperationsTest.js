@@ -125,8 +125,20 @@ contract('BorrowerOperations', async accounts => {
           await _signer.sendTransaction({ to: multisig, value: ethers.utils.parseEther("1100")});		  
       }
       
-    })
+    })	  
 	  
+    it("BorrowerOperations governance permissioned: initializeAuthority() could be called only once", async() => {	  
+	  let boDummy = await BorrowerOperationsTester.new()
+	  let _authorityInit = await boDummy.authority();
+		
+	  await boDummy.setAddresses(boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address);
+	  
+	  assert.isTrue(false == (await boDummy.authorityInitialized()));	  
+	  await boDummy.initAuthority(authority.address)
+	  assert.isTrue(authority.address == (await boDummy.authority()));
+	  assert.isTrue(true == (await boDummy.authorityInitialized()));
+	  await assertRevert(boDummy.initAuthority(authority.address), "Auth: authority already initialized");
+    })	  
 	  
     it("BorrowerOperations governance permissioned: setFlashFee() should only allow authorized caller", async() => {	  
 	  await assertRevert(borrowerOperations.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
