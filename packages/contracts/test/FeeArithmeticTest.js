@@ -333,7 +333,20 @@ contract('Fee arithmetic tests', async accounts => {
 
   before(async () => {
     liquidationLibrary = await LiquidationLibrary.new()
-    cdpManagerTester = await CdpManagerTester.new(liquidationLibrary.address)
+    cdpManagerTester = await CdpManagerTester.new(
+      contracts.liquidationLibrary.address,
+      contracts.authority.address,
+      contracts.borrowerOperations.address,
+      contracts.gasPool.address,
+      contracts.collSurplusPool.address,
+      contracts.ebtcToken.address,
+      contracts.feeRecipient.address,
+      contracts.sortedCdps.address,
+      contracts.activePool.address,
+      contracts.defaultPool.address,
+      contracts.priceFeed.address,
+      contracts.collateral.address
+      )
     CdpManagerTester.setAsDeployed(cdpManagerTester)
 
     mathTester = await LiquityMathTester.new()

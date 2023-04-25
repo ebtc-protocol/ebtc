@@ -73,7 +73,20 @@ contract('HintHelpers', async accounts => {
 
   before(async () => {
     contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
+    contracts.cdpManager = await CdpManagerTester.new(
+      contracts.liquidationLibrary.address,
+      contracts.authority.address,
+      contracts.borrowerOperations.address,
+      contracts.gasPool.address,
+      contracts.collSurplusPool.address,
+      contracts.ebtcToken.address,
+      contracts.feeRecipient.address,
+      contracts.sortedCdps.address,
+      contracts.activePool.address,
+      contracts.defaultPool.address,
+      contracts.priceFeed.address,
+      contracts.collateral.address
+      )
     contracts.ebtcToken = await EBTCToken.new(
       contracts.cdpManager.address,
       contracts.borrowerOperations.address,
