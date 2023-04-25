@@ -8,7 +8,6 @@ pragma solidity 0.8.17;
 import "../Dependencies/ICollateralToken.sol";
 import "../Dependencies/IERC20.sol";
 
-
 /**
  * @title Interest-bearing ERC20-like token for Lido Liquid Stacking protocol.
  *
@@ -47,7 +46,6 @@ import "../Dependencies/IERC20.sol";
  * to freeze all token transfers and approvals until the emergency is resolved.
  */
 contract StETHMock is IERC20 {
-
     /**
      * @dev StETH balances are dynamic and are calculated based on the accounts' shares
      * and the total amount of Ether controlled by the protocol. Account shares aren't
@@ -55,27 +53,23 @@ contract StETHMock is IERC20 {
      * each account's token balance which equals to:
      *
      *   shares[account] * _getTotalPooledEther() / _getTotalShares()
-    */
-    mapping (address => uint256) private shares;
+     */
+    mapping(address => uint256) private shares;
 
     /**
      * @dev Allowances are nominated in tokens, not token shares.
      */
-    mapping (address => mapping (address => uint256)) private allowances;
+    mapping(address => mapping(address => uint256)) private allowances;
 
     uint256 internal totalShares;
     uint256 internal pooledEthPerShare = 1e18;
 
     /**
-      * @notice An executed shares transfer from `sender` to `recipient`.
-      *
-      * @dev emitted in pair with an ERC20-defined `Transfer` event.
-      */
-    event TransferShares(
-        address indexed from,
-        address indexed to,
-        uint256 sharesValue
-    );
+     * @notice An executed shares transfer from `sender` to `recipient`.
+     *
+     * @dev emitted in pair with an ERC20-defined `Transfer` event.
+     */
+    event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
 
     /**
      * @notice An executed `burnShares` request
@@ -215,7 +209,11 @@ contract StETHMock is IERC20 {
      *
      * @dev The `_amount` argument is the amount of tokens, not shares.
      */
-    function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
+    function transferFrom(
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) public returns (bool) {
         uint256 currentAllowance = allowances[_sender][msg.sender];
         require(currentAllowance >= _amount, "TRANSFER_AMOUNT_EXCEEDS_ALLOWANCE");
 
@@ -288,7 +286,7 @@ contract StETHMock is IERC20 {
         if (totalPooledEther == 0) {
             return 0;
         } else {
-            return _ethAmount * _getTotalShares() / totalPooledEther;
+            return (_ethAmount * _getTotalShares()) / totalPooledEther;
         }
     }
 
@@ -300,7 +298,7 @@ contract StETHMock is IERC20 {
         if (totalShares == 0) {
             return 0;
         } else {
-            return _sharesAmount * _getTotalPooledEther() / totalShares;
+            return (_sharesAmount * _getTotalPooledEther()) / totalShares;
         }
     }
 
@@ -359,7 +357,7 @@ contract StETHMock is IERC20 {
      * - `_spender` cannot be the zero address.
      * - the contract must not be paused.
      */
-    function _approve(address _owner, address _spender, uint256 _amount) internal  {
+    function _approve(address _owner, address _spender, uint256 _amount) internal {
         require(_owner != address(0), "APPROVE_FROM_ZERO_ADDRESS");
         require(_spender != address(0), "APPROVE_TO_ZERO_ADDRESS");
 
@@ -391,7 +389,7 @@ contract StETHMock is IERC20 {
      * - `_sender` must hold at least `_sharesAmount` shares.
      * - the contract must not be paused.
      */
-    function _transferShares(address _sender, address _recipient, uint256 _sharesAmount) internal  {
+    function _transferShares(address _sender, address _recipient, uint256 _sharesAmount) internal {
         require(_sender != address(0), "TRANSFER_FROM_THE_ZERO_ADDRESS");
         require(_recipient != address(0), "TRANSFER_TO_THE_ZERO_ADDRESS");
 
@@ -411,7 +409,10 @@ contract StETHMock is IERC20 {
      * - `_recipient` cannot be the zero address.
      * - the contract must not be paused.
      */
-    function _mintShares(address _recipient, uint256 _sharesAmount) internal  returns (uint256 newTotalShares) {
+    function _mintShares(
+        address _recipient,
+        uint256 _sharesAmount
+    ) internal returns (uint256 newTotalShares) {
         require(_recipient != address(0), "MINT_TO_THE_ZERO_ADDRESS");
 
         newTotalShares = _getTotalShares() + _sharesAmount;
@@ -437,7 +438,10 @@ contract StETHMock is IERC20 {
      * - `_account` must hold at least `_sharesAmount` shares.
      * - the contract must not be paused.
      */
-    function _burnShares(address _account, uint256 _sharesAmount) internal  returns (uint256 newTotalShares) {
+    function _burnShares(
+        address _account,
+        uint256 _sharesAmount
+    ) internal returns (uint256 newTotalShares) {
         require(_account != address(0), "BURN_FROM_THE_ZERO_ADDRESS");
 
         uint256 accountShares = shares[_account];

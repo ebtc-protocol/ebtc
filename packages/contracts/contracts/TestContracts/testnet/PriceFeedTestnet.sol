@@ -110,7 +110,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         uint stEthBtcTimestamp;
         bool stEthBtcRetrieved;
 
-
         // Attempt to get Tellor's stETH/BTC price
         try
             tellorCaller.getTellorBufferValue(STETHBTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
