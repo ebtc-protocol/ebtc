@@ -84,7 +84,7 @@ contract('SortedCdps', async accounts => {
       ebtcToken = contracts.ebtcToken
 
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-	
+	  
       ownerSigner = await ethers.provider.getSigner(owner);
       let _ownerBal = await web3.eth.getBalance(owner);
       let _bn8Bal = await web3.eth.getBalance(bn8);

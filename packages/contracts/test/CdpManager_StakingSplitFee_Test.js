@@ -34,7 +34,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
-
+	
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps

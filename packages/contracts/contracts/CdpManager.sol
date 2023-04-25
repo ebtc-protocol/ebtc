@@ -9,8 +9,8 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
-import "./Dependencies/Proxy.sol";
 import "./EBTCDeployer.sol";
+import "./Dependencies/Proxy.sol";
 
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Dependency setter ---

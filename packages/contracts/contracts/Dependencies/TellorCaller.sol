@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "../Interfaces/ITellorCaller.sol";
 import "./ITellor.sol";
-import "./SafeMath.sol";
 
 /*
  * This contract has a single external function that calls Tellor: getTellorCurrentValue().
@@ -17,8 +16,6 @@ import "./SafeMath.sol";
  *
  */
 contract TellorCaller is ITellorCaller {
-    using SafeMath for uint256;
-
     ITellor public tellor;
 
     constructor(address _tellorMasterAddress) public {

@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/IActivePool.sol";
-import "./Dependencies/SafeMath.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 /*
@@ -21,8 +20,6 @@ import "./Dependencies/ICollateralToken.sol";
  * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
  */
 contract DefaultPool is IDefaultPool {
-    using SafeMath for uint256;
-
     string public constant NAME = "DefaultPool";
 
     address public immutable cdpManagerAddress;

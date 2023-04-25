@@ -54,11 +54,16 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;
 
-    constructor(address _activePool, address _defaultPool, address _priceFeed, address _collateral) {
-        activePool = IActivePool(_activePool);
-        defaultPool = IDefaultPool(_defaultPool);
-        priceFeed = IPriceFeed(_priceFeed);
-        collateral = ICollateralToken(_collateral);
+    constructor(
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _priceFeedAddress,
+        address _collateralAddress
+    ) {
+        activePool = IActivePool(_activePoolAddress);
+        defaultPool = IDefaultPool(_defaultPoolAddress);
+        priceFeed = IPriceFeed(_priceFeedAddress);
+        collateral = ICollateralToken(_collateralAddress);
     }
 
     // --- Gas compensation functions ---
