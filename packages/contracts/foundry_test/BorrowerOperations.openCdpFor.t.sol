@@ -110,7 +110,6 @@ contract BorrowerOperationsOpenCdpForTest is eBTCBaseFixture {
 
         // Make sure CDP is now not active anymore. Enum Status.2 == closedByOwner
         assertEq(cdpManager.getCdpStatus(cdpId), 2);
-        
     }
 
     // Fail if borrowed eBTC amount is too high
@@ -132,7 +131,5 @@ contract BorrowerOperationsOpenCdpForTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testLeverageHappy() public {
-
-    }
+    function testLeverageHappy() public {}
 }

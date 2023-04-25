@@ -177,7 +177,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.defaultPoolAddress,
                 addr.priceFeedAddress,
                 address(collateral)
-                );
+            );
 
             cdpManager = CdpManager(
                 ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))

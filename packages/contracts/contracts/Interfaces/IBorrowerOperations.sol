@@ -17,7 +17,12 @@ interface IBorrowerOperations {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, address indexed _creator, uint arrayIndex);
+    event CdpCreated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        address indexed _creator,
+        uint arrayIndex
+    );
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
