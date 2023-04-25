@@ -17,7 +17,7 @@ interface IBorrowerOperations {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, address indexed _creator, uint arrayIndex);
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
@@ -42,6 +42,14 @@ interface IBorrowerOperations {
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
+    ) external returns (bytes32);
+
+    function openCdpFor(
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount,
+        address _borrower
     ) external returns (bytes32);
 
     function addColl(
