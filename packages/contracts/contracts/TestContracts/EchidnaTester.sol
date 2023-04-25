@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import "../Interfaces/ICdpManagerData.sol";
+import "../Dependencies/SafeMath.sol";
 import "../CdpManager.sol";
 import "../LiquidationLibrary.sol";
 import "../BorrowerOperations.sol";
@@ -180,17 +181,17 @@ contract EchidnaTester {
             creationCode = type(CdpManager).creationCode;
             args = abi.encode(
                 addr.liquidationLibraryAddress,
+                addr.authorityAddress,
                 addr.borrowerOperationsAddress,
-                addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.gasPoolAddress,
                 addr.collSurplusPoolAddress,
-                addr.priceFeedAddress,
                 addr.ebtcTokenAddress,
-                addr.sortedCdpsAddress,
                 addr.feeRecipientAddress,
-                address(collateral),
-                addr.authorityAddress
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.defaultPoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
             );
 
             cdpManager = CdpManager(

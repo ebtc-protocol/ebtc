@@ -6,7 +6,6 @@ pragma experimental ABIEncoderV2;
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IBorrowerOperations.sol";
-import "./Dependencies/SafeMath.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
@@ -42,8 +41,6 @@ import "./Dependencies/SafeMath.sol";
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
 contract SortedCdps is ISortedCdps {
-    using SafeMath for uint256;
-
     string public constant NAME = "SortedCdps";
 
     address public immutable borrowerOperationsAddress;
@@ -231,7 +228,7 @@ contract SortedCdps is ISortedCdps {
             data.nodes[nextId].prevId = _id;
         }
 
-        data.size = data.size.add(1);
+        data.size = data.size + 1;
         emit NodeAdded(_id, _NICR);
     }
 
@@ -281,7 +278,7 @@ contract SortedCdps is ISortedCdps {
         }
 
         delete data.nodes[_id];
-        data.size = data.size.sub(1);
+        data.size = data.size - 1;
         emit NodeRemoved(_id);
     }
 

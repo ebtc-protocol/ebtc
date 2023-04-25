@@ -6,7 +6,6 @@ import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/SafeMath.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
@@ -18,8 +17,6 @@ import "./Dependencies/ERC3156FlashLender.sol";
  *
  */
 contract ActivePool is IActivePool, ERC3156FlashLender {
-    using SafeMath for uint256;
-
     string public constant NAME = "ActivePool";
 
     address public immutable borrowerOperationsAddress;
