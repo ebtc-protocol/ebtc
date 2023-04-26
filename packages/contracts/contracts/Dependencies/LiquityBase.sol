@@ -49,7 +49,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     IDefaultPool public immutable defaultPool;
 
-    IPriceFeed public immutable override priceFeed;
+    IPriceFeed public immutable priceFeed;
 
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;

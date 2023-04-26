@@ -4,7 +4,7 @@ import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/IERC3156FlashLender.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "../Interfaces/IPriceFeed.sol";
+import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/IBalancerV2Vault.sol";
 import "./Dependencies/LiquityBase.sol";
@@ -12,8 +12,6 @@ import "./Dependencies/LiquityBase.sol";
 contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
     IBorrowerOperations public immutable borrowerOperations;
     IEBTCToken public immutable ebtcToken;
-    ICollateralToken public immutable collateral;
-    IPriceFeed public immutable priceFeed;
     ISortedCdps public immutable sortedCdps;
 
     // DEX to swap between debt and collateral
@@ -28,6 +26,9 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
     uint public constant MAX_SLIPPAGE = 10000;
 
     event LeveragedCdpOpened(address _initiator, uint256 _debt, uint256 _coll, bytes32 _cdpId);
+
+
+    bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
     constructor(
         address _borrowerOperationsAddress,
@@ -47,8 +48,8 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
         sortedCdps = _sortedCdps;
 
         // set allowance for DEX
-        collateral.approve(_balancer, type(uint256).max());
-        ebtcToken.approve(_balancer, type(uint256).max());
+        collateral.approve(_balancerDEX, type(uint256).max());
+        ebtcToken.approve(_balancerDEX, type(uint256).max());
 
         // set allowance for flashloan lender/CDP open
         ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max());
@@ -97,7 +98,7 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
         bytes calldata data
     ) external override returns (bytes32) {
         require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
-        if (token == address(ebtc)) {
+        if (token == address(ebtcToken)) {
             require(
                 msg.sender == address(borrowerOperations),
                 "LeverageMacro: wrong lender for eBTC flashloan"
@@ -127,7 +128,7 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
 
             // Deposit stETH to mint eBTC
             uint256 _totalDebt = (_debt + fee);
-            borrowerOperations.openCdpFor(_totalDebt, _upperHint, _lowerHint, _coll, _borrower);
+            bytes32 _cdpId = borrowerOperations.openCdpFor(_totalDebt, _upperHint, _lowerHint, _coll, _borrower);
             emit LeveragedCdpOpened(_borrower, _debt, _coll, _cdpId);
 
             // Repay FlashLoan + fee
@@ -136,7 +137,7 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
                 "LeverageMacro: not enough to repay eBTC!"
             );
         }
-        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+        return FLASH_LOAN_SUCCESS;
     }
 
     // swap in single balancer v2 pool, suppose it should be stETH/eBTC
