@@ -6,6 +6,7 @@ import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
+import "./Interfaces/IGasPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
@@ -17,13 +18,13 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
     // --- Connected contract declarations ---
 
-    ICdpManager public cdpManager;
+    ICdpManager public immutable cdpManager;
 
-    address immutable gasPoolAddress;
+    IGasPool public immutable gasPool;
 
-    ICollSurplusPool immutable collSurplusPool;
+    ICollSurplusPool public immutable collSurplusPool;
 
-    IFeeRecipient public feeRecipient;
+    IFeeRecipient public immutable feeRecipient;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -52,8 +53,9 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
     struct LocalVariables_openCdp {
         uint price;
-        uint netDebt;
-        uint compositeDebt;
+        uint debt;
+        uint totalColl;
+        uint netColl;
         uint ICR;
         uint NICR;
         uint stake;
@@ -68,12 +70,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         uint EBTCChange;
         bool isDebtIncrease;
         uint netDebtChange;
-    }
-
-    struct ContractsCache {
-        ICdpManager cdpManager;
-        IActivePool activePool;
-        IEBTCToken ebtcToken;
     }
 
     // --- Dependency setters ---
@@ -92,10 +88,11 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
 
         // This makes impossible to open a cdp with zero withdrawn EBTC
-        assert(MIN_NET_DEBT > 0);
+        // assert(MIN_NET_DEBT > 0);
+        // TODO: Re-evaluate this
 
         cdpManager = ICdpManager(_cdpManagerAddress);
-        gasPoolAddress = _gasPoolAddress;
+        gasPool = IGasPool(_gasPoolAddress);
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
@@ -267,12 +264,12 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
-        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_adjustCdp memory vars;
 
-        _requireCdpisActive(contractsCache.cdpManager, _cdpId);
+        _requireCdpisActive(cdpManager, _cdpId);
 
         vars.price = priceFeed.fetchPrice();
+
         // Reversed BTC/ETH price
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
@@ -282,20 +279,19 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
         _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
 
-        // Confirm the operation is either a borrower adjusting their own cdp,
-        // or a pure ETH transfer from the Stability Pool to a cdp
+        // Confirm the operation is either a borrower adjusting their own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         assert(msg.sender == _borrower);
 
-        contractsCache.cdpManager.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
         vars.netDebtChange = _EBTCChange;
 
-        vars.debt = contractsCache.cdpManager.getCdpDebt(_cdpId);
-        vars.coll = contractsCache.cdpManager.getCdpColl(_cdpId);
+        vars.debt = cdpManager.getCdpDebt(_cdpId);
+        vars.coll = cdpManager.getCdpColl(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         uint _cdpCollAmt = collateral.getPooledEthByShares(vars.coll);
@@ -316,21 +312,22 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
         if (!_isDebtIncrease && _EBTCChange > 0) {
-            uint _netDebt = _getNetDebt(vars.debt) - vars.netDebtChange;
-            _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(_netDebt, vars.price));
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
-            _requireSufficientEBTCBalance(contractsCache.ebtcToken, _borrower, vars.netDebtChange);
+            _requireSufficientEBTCBalance(ebtcToken, _borrower, vars.netDebtChange);
         }
 
         (vars.newColl, vars.newDebt) = _updateCdpFromAdjustment(
-            contractsCache.cdpManager,
+            cdpManager,
             _cdpId,
             vars.collChange,
             vars.isCollIncrease,
             vars.netDebtChange,
             _isDebtIncrease
         );
-        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
+
+        _requireAtLeastMinColl(vars.newColl);
+
+        vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
         // Re-insert cdp in to the sorted list
         {
@@ -360,11 +357,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
                 _isDebtIncrease,
                 vars.netDebtChange
             );
-            _moveTokensAndETHfromAdjustment(
-                contractsCache.activePool,
-                contractsCache.ebtcToken,
-                _varMvTokens
-            );
+            _processTokenMovesFromAdjustment(activePool, ebtcToken, _varMvTokens);
         }
     }
 
@@ -376,83 +369,89 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _borrower
     ) internal returns (bytes32) {
         require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
+        _requireAtLeastMinColl(_collAmount);
 
-        ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
         LocalVariables_openCdp memory vars;
 
         vars.price = priceFeed.fetchPrice();
+
         // Reverse ETH/BTC price to BTC/ETH
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
-        vars.netDebt = _EBTCAmount;
+        vars.debt = _EBTCAmount;
 
-        _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(vars.netDebt, vars.price));
+        // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
+        vars.netColl = _getNetColl(_collAmount);
 
-        // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC gas comp.
-        vars.compositeDebt = _getCompositeDebt(vars.netDebt);
-        assert(vars.compositeDebt > 0);
+        // Sanity check
+        assert(vars.netColl > 0);
 
-        uint _collShareAmt = collateral.getSharesByPooledEth(_collAmount);
-        vars.ICR = LiquityMath._computeCR(_collAmount, vars.compositeDebt, vars.price);
-        vars.NICR = LiquityMath._computeNominalCR(_collShareAmt, vars.compositeDebt);
+        uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
 
+        // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
+        vars.ICR = LiquityMath._computeCR(vars.netColl, vars.debt, vars.price);
+
+        // NICR uses shares to normalize NICR across CDPs opened at different pooled ETH / shares ratios
+        vars.NICR = LiquityMath._computeNominalCR(_netCollAsShares, vars.debt);
+
+        /**
+            In recovery move, ICR must be greater than CCR
+            CCR > MCR (125% vs 110%)
+
+            In normal mode, ICR must be greater thatn MCR
+            Additionally, the new system TCR after the CDPs addition must be >CCR
+        */
         if (isRecoveryMode) {
             _requireICRisAboveCCR(vars.ICR);
         } else {
             _requireICRisAboveMCR(vars.ICR);
-            uint newTCR = _getNewTCRFromCdpChange(
-                _collAmount,
-                true,
-                vars.compositeDebt,
-                true,
-                vars.price
-            ); // bools: coll increase, debt increase
+            uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price); // bools: coll increase, debt increase
             _requireNewTCRisAboveCCR(newTCR);
         }
 
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
 
-        contractsCache.cdpManager.setCdpStatus(_cdpId, 1);
-        contractsCache.cdpManager.increaseCdpColl(_cdpId, _collShareAmt);
-        contractsCache.cdpManager.increaseCdpDebt(_cdpId, vars.compositeDebt);
+        cdpManager.setCdpStatus(_cdpId, 1);
+        cdpManager.increaseCdpColl(_cdpId, _netCollAsShares); // Collateral is stored in shares form for normalization
+        cdpManager.increaseCdpDebt(_cdpId, vars.debt);
 
-        contractsCache.cdpManager.updateCdpRewardSnapshots(_cdpId);
-        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
+        cdpManager.updateCdpRewardSnapshots(_cdpId);
+        vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        vars.arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
+        vars.arrayIndex = cdpManager.addCdpIdToArray(_cdpId);
         emit CdpCreated(_cdpId, _borrower, msg.sender, vars.arrayIndex);
 
-        // Mint the EBTCAmount to the borrower
-        _withdrawEBTC(
-            contractsCache.activePool,
-            contractsCache.ebtcToken,
-            _borrower,
-            _EBTCAmount,
-            vars.netDebt
-        );
-        // Move the EBTC gas compensation to the Gas Pool
-        _withdrawEBTC(
-            contractsCache.activePool,
-            contractsCache.ebtcToken,
-            gasPoolAddress,
-            EBTC_GAS_COMPENSATION,
-            EBTC_GAS_COMPENSATION
-        );
+        // Mint the full EBTCAmount to the borrower
+        _withdrawEBTC(activePool, ebtcToken, _borrower, _EBTCAmount, _EBTCAmount);
 
+        /** 
+            Note that only NET coll (as shares) is considered part of the CDP. 
+            The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
+            The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
+        */
         emit CdpUpdated(
             _cdpId,
             _borrower,
             0,
             0,
-            vars.compositeDebt,
-            _collShareAmt,
+            vars.debt,
+            _netCollAsShares,
             vars.stake,
             BorrowerOperation.openCdp
         );
 
-        // CEI: Move the collateral to the Active Pool
-        _activePoolAddColl(contractsCache.activePool, _collAmount, _collShareAmt);
+        // CEI: Move the net collateral to the Active Pool
+        _activePoolAddColl(activePool, vars.netCool, _netCollAsShares);
+
+        // CEI: Move the liquidator reward to the Gas Pool
+        _gasPoolAddColl(
+            gasPool,
+            LIQUIDATOR_REWARD,
+            collateral.getSharesByPooledEth(LIQUIDATOR_REWARD)
+        );
+
+        assert(vars.netCool + LIQUIDATOR_REWARD == _collAmount);
 
         return _cdpId;
     }
@@ -463,20 +462,16 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
 
-        ICdpManager cdpManagerCached = cdpManager;
-        IActivePool activePoolCached = activePool;
-        IEBTCToken ebtcTokenCached = ebtcToken;
-
-        _requireCdpisActive(cdpManagerCached, _cdpId);
+        _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(price);
 
-        cdpManagerCached.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingRewards(_cdpId);
 
-        uint coll = cdpManagerCached.getCdpColl(_cdpId);
-        uint debt = cdpManagerCached.getCdpDebt(_cdpId);
+        uint coll = cdpManager.getCdpColl(_cdpId);
+        uint debt = cdpManager.getCdpDebt(_cdpId);
 
-        _requireSufficientEBTCBalance(ebtcTokenCached, msg.sender, debt - EBTC_GAS_COMPENSATION);
+        _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
@@ -487,18 +482,20 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         );
         _requireNewTCRisAboveCCR(newTCR);
 
-        cdpManagerCached.removeStake(_cdpId);
-        cdpManagerCached.closeCdp(_cdpId);
+        cdpManager.removeStake(_cdpId);
+        cdpManager.closeCdp(_cdpId);
 
         // We already verified msg.sender is the borrower
         emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
 
-        // Burn the repaid EBTC from the user's balance and the gas compensation from the Gas Pool
-        _repayEBTC(activePoolCached, ebtcTokenCached, msg.sender, debt - EBTC_GAS_COMPENSATION);
-        _repayEBTC(activePoolCached, ebtcTokenCached, gasPoolAddress, EBTC_GAS_COMPENSATION);
+        // Burn the repaid EBTC from the user's balance
+        _repayEBTC(activePool, ebtcToken, msg.sender, debt);
 
-        // Send the collateral back to the user
-        activePoolCached.sendStEthColl(msg.sender, coll);
+        // CEI: Send the collateral back to the user
+        activePool.sendStEthColl(msg.sender, coll);
+
+        // CEI: Send the liquidation gas stipend back to the user
+        gasPool.sendStEthColl(msg.sender, LIQUIDATOR_REWARD);
     }
 
     /**
@@ -550,11 +547,16 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         return (newColl, newDebt);
     }
 
-    function _moveTokensAndETHfromAdjustment(
+    /**
+        @notice Process the token movements required by a CDP adjustment.
+        @notice Handles the cases of a debt increase / decrease, and/or a collateral increase / decrease.
+     */
+    function _processTokenMovesFromAdjustment(
         IActivePool _activePool,
         IEBTCToken _ebtcToken,
         LocalVariables_moveTokens memory _varMvTokens
     ) internal {
+        // Debt increase: mint change value of new eBTC to user, increment ActivePool eBTC internal accounting
         if (_varMvTokens.isDebtIncrease) {
             _withdrawEBTC(
                 _activePool,
@@ -564,12 +566,15 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
                 _varMvTokens.netDebtChange
             );
         } else {
+            // Debt decrease: burn change value of eBTC from user, decrement ActivePool eBTC internal accounting
             _repayEBTC(_activePool, _ebtcToken, _varMvTokens.user, _varMvTokens.EBTCChange);
         }
 
         if (_varMvTokens.isCollIncrease) {
+            // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
             _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
+            // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
@@ -579,6 +584,12 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(_activePool), _amount);
         _activePool.receiveColl(_shareAmt);
+    }
+
+    function _gasPoolAddColl(IGasPool _gasPool, uint _amount, uint _shareAmt) internal {
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transferFrom(msg.sender, address(_gasPool), _amount);
+        _gasPool.receiveColl(_shareAmt);
     }
 
     // Issue the specified amount of EBTC to _account and increases
@@ -727,16 +738,13 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         );
     }
 
-    function _requireAtLeastMinNetDebt(uint _netDebt) internal pure {
-        require(
-            _netDebt >= MIN_NET_DEBT,
-            "BorrowerOps: Cdp's net debt must be greater than minimum"
-        );
+    function _requireAtLeastMinColl(uint _coll) internal pure {
+        require(_coll >= MIN_CDP_COLL, "BorrowerOps: Cdp's total coll must be greater than minimum");
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
         require(
-            _debtRepayment <= _currentDebt - EBTC_GAS_COMPENSATION,
+            _debtRepayment <= _currentDebt,
             "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
         );
     }
@@ -832,10 +840,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         uint newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
         return newTCR;
-    }
-
-    function getCompositeDebt(uint _debt) external pure override returns (uint) {
-        return _getCompositeDebt(_debt);
     }
 
     // === Flash Loans === //

@@ -26,6 +26,13 @@ contract LeverageMacro {
         // Repay FlashLoan + fee
 
         // Send eBTC to caller + Trove (NEED TO ALLOW TRANSFERING ON CREATION)
-        return borrowerOperations.openCdpFor(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
+        return
+            borrowerOperations.openCdpFor(
+                _EBTCAmount,
+                _upperHint,
+                _lowerHint,
+                _collAmount,
+                msg.sender
+            );
     }
 }
