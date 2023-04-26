@@ -17,18 +17,18 @@ contract MockDEXTester is IBalancerV2Vault {
     CollateralTokenTester public collateral;
     EBTCTokenTester public ebtcToken;
 
-    constructor(address _ebtcTester, addresss _collTester) {
-        collateral = CollateralTokenTester(_collTester);
+    constructor(address _ebtcTester, address _collTester) {
+        collateral = CollateralTokenTester(payable(_collTester));
         ebtcToken = EBTCTokenTester(ebtcToken);
     }
 
-    function setSlippage(uint _slippage) {
+    function setSlippage(uint _slippage) public {
         require(_slippage < MAX_SLIPPAGE, "!max slippage");
         slippage = _slippage;
     }
 
     // price in decimal 18
-    function setPrice(uint _price) {
+    function setPrice(uint _price) public {
         price = _price;
     }
 
@@ -39,12 +39,12 @@ contract MockDEXTester is IBalancerV2Vault {
         uint256 _outputAmt;
         if (_tradeCollForEBTC) {
             collateral.transferFrom(msg.sender, address(this), _inputAmt);
-            _outputAmt = (((_inputAmt * price) / 1e18) * (MAX_SLIPPAGE - _slippage)) / MAX_SLIPPAGE;
+            _outputAmt = (((_inputAmt * price) / 1e18) * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE;
             ebtcToken.unprotectedMint(msg.sender, _outputAmt);
         } else {
             ebtcToken.transferFrom(msg.sender, address(this), _inputAmt);
-            amountCalculatedInOut =
-                (((_inputAmt * 1e18) / price) * (MAX_SLIPPAGE - _slippage)) /
+            uint256 amountCalculatedInOut =
+                (((_inputAmt * 1e18) / price) * (MAX_SLIPPAGE - slippage)) /
                 MAX_SLIPPAGE;
             require(address(this).balance >= _outputAmt, "!not enough ether for collateral output");
             collateral.deposit{value: _outputAmt}();

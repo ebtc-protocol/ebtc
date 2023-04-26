@@ -7,12 +7,14 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/IBalancerV2Vault.sol";
-import "./Dependencies/LiquityBase.sol";
 
-contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
+contract LeverageMacro is IERC3156FlashBorrower {
     IBorrowerOperations public immutable borrowerOperations;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
+    IPriceFeed public immutable priceFeed;
+    ICollateralToken public immutable collateral;
+
 
     // DEX to swap between debt and collateral
     IBalancerV2Vault public immutable balancerV2Vault;
@@ -34,8 +36,8 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
         address _borrowerOperationsAddress,
         address _ebtc,
         address _coll,
-        address _priceFeed,
-        address _sortedCdps,
+        IPriceFeed _priceFeed,
+        ISortedCdps _sortedCdps,
         address _balancerDEX,
         bytes32 _balancerPoolId
     ) {
@@ -48,12 +50,12 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
         sortedCdps = _sortedCdps;
 
         // set allowance for DEX
-        collateral.approve(_balancerDEX, type(uint256).max());
-        ebtcToken.approve(_balancerDEX, type(uint256).max());
+        collateral.approve(_balancerDEX, type(uint256).max);
+        ebtcToken.approve(_balancerDEX, type(uint256).max);
 
         // set allowance for flashloan lender/CDP open
-        ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max());
-        collateral.approve(_borrowerOperationsAddress, type(uint256).max());
+        ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
+        collateral.approve(_borrowerOperationsAddress, type(uint256).max);
     }
 
     function openCdpLeveraged(
@@ -71,7 +73,7 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
             _EBTCAmount < maxLeverage * _collWorthInDebt,
             "LeverageMacro: too much leverage for eBTC!"
         );
-        uint _flFee = borrowerOperations.flashFee(address(ebtcToken), _EBTCAmount);
+        uint _flFee = IERC3156FlashLender(address(borrowerOperations)).flashFee(address(ebtcToken), _EBTCAmount);
 
         // take eBTC flashloan
         bytes memory _data = abi.encode(
@@ -81,7 +83,8 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
             _lowerHint,
             _collAmount
         );
-        borrowerOperations.flashLoan(address(this), address(ebtcToken), _EBTCAmount, _data);
+        IERC3156FlashLender(address(borrowerOperations)).flashLoan(
+            IERC3156FlashBorrower(address(this)), address(ebtcToken), _EBTCAmount, _data);
         uint256 _newCdpCount = sortedCdps.cdpCountOf(msg.sender);
         require(_newCdpCount >= 1, "LeverageMacro: no CDP created!");
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, _newCdpCount - 1);
@@ -111,7 +114,7 @@ contract LeverageMacro is IERC3156FlashBorrower, LiquityBase {
                 address _borrower,
                 bytes32 _lowerHint,
                 uint256 _coll
-            ) = abi.decode(data, (uint256, bytes32, bytes32, uint256));
+            ) = abi.decode(data, (uint256, bytes32, address, bytes32, uint256));
             require(
                 ebtcToken.balanceOf(address(this)) > _debt,
                 "LeverageMacro: not enough borrowed eBTC!"
