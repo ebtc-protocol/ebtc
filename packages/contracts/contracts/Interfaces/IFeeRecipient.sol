@@ -16,14 +16,6 @@ interface IFeeRecipient {
 
     // --- Functions ---
 
-    function setAddresses(
-        address _ebtcTokenAddress,
-        address _cdpManagerAddress,
-        address _borrowerOperationsAddress,
-        address _activePoolAddress,
-        address _collTokenAddress
-    ) external;
-
     function receiveStEthFee(uint _ETHFee) external;
 
     function receiveEbtcFee(uint _EBTCFee) external;

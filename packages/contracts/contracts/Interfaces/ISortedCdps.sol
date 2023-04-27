@@ -15,12 +15,6 @@ interface ISortedCdps {
 
     // --- Functions ---
 
-    function setParams(
-        uint256 _size,
-        address _CdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) external;
-
     function insert(
         address owner,
         bytes32 _id,

@@ -74,13 +74,8 @@ contract('SortedCdps', async accounts => {
 	
     beforeEach(async () => {
       contracts = await deploymentHelper.deployTesterContractsHardhat()
-      contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
-      contracts.ebtcToken = await EBTCToken.new(
-        contracts.cdpManager.address,
-        contracts.borrowerOperations.address,
-        contracts.authority.address
-      )
-      const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+      let LQTYContracts = {}
+      LQTYContracts.feeRecipient = contracts.feeRecipient;
 
       priceFeed = contracts.priceFeedTestnet
       sortedCdps = contracts.sortedCdps
@@ -89,8 +84,7 @@ contract('SortedCdps', async accounts => {
       ebtcToken = contracts.ebtcToken
 
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-      await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
-	
+	  
       ownerSigner = await ethers.provider.getSigner(owner);
       let _ownerBal = await web3.eth.getBalance(owner);
       let _bn8Bal = await web3.eth.getBalance(bn8);
@@ -369,21 +363,15 @@ contract('SortedCdps', async accounts => {
     let sortedCdpsTester
 
     beforeEach(async () => {
-      sortedCdps = await SortedCdps.new()
       sortedCdpsTester = await SortedCdpsTester.new()
+      sortedCdps = await SortedCdps.new(2, sortedCdpsTester.address, sortedCdpsTester.address)
 
       await sortedCdpsTester.setSortedCdps(sortedCdps.address)
     })
 
-    context('when params are wrongly set', () => {
-      it('setParams(): reverts if size is zero', async () => {
-        await th.assertRevert(sortedCdps.setParams(0, sortedCdpsTester.address, sortedCdpsTester.address), 'SortedCdps: Size can’t be zero')
-      })
-    })
-
     context('when params are properly set', () => {
-      beforeEach('set params', async() => {
-        await sortedCdps.setParams(2, sortedCdpsTester.address, sortedCdpsTester.address)
+      beforeEach('', async() => {
+        
       })
 
       it('insert(): fails if list is full', async () => {

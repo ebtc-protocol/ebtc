@@ -125,8 +125,9 @@ contract('LQTY Token', async accounts => {
   }
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     feeRecipient = LQTYContracts.feeRecipient
     lqtyTokenTester = LQTYContracts.lqtyToken
@@ -137,8 +138,6 @@ contract('LQTY Token', async accounts => {
     chainId = await lqtyTokenTester.getChainId()
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
-    await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it('balanceOf(): gets the balance of the account', async () => {

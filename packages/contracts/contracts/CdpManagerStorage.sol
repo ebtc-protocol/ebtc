@@ -7,29 +7,29 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
-contract CdpManagerStorage is LiquityBase, ICdpManagerData {
+contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
 
-    address public borrowerOperationsAddress;
+    address public immutable borrowerOperationsAddress;
 
-    address gasPoolAddress;
+    address immutable gasPoolAddress;
 
-    ICollSurplusPool collSurplusPool;
+    ICollSurplusPool immutable collSurplusPool;
 
-    IEBTCToken public override ebtcToken;
+    IEBTCToken public immutable override ebtcToken;
 
     IFeeRecipient public override feeRecipient;
 
-    address immutable liquidationLibrary;
+    address public immutable liquidationLibrary;
 
     // A doubly linked list of Cdps, sorted by their sorted by their collateral ratios
-    ISortedCdps public sortedCdps;
+    ISortedCdps public immutable sortedCdps;
 
     // --- Data structures ---
 
@@ -109,7 +109,6 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData {
     uint256 lastIndexTimestamp;
     /* Global Index update minimal interval, typically it is updated once per day  */
     uint256 public INDEX_UPD_INTERVAL;
-
     // Map active cdps to their RewardSnapshot
     mapping(bytes32 => RewardSnapshot) public rewardSnapshots;
 
@@ -126,9 +125,34 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData {
     uint public lastETHError_Redistribution;
     uint public lastEBTCDebtError_Redistribution;
 
-    constructor(address _liquidationLibrary) public {
+    constructor(
+        address _liquidationLibraryAddress,
+        address _authorityAddress,
+        address _borrowerOperationsAddress,
+        address _gasPoolAddress,
+        address _collSurplusPool,
+        address _ebtcToken,
+        address _feeRecipient,
+        address _sortedCdps,
+        address _activePool,
+        address _defaultPool,
+        address _priceFeed,
+        address _collateral
+    )
+        AuthNoOwner(_authorityAddress)
+        LiquityBase(_activePool, _defaultPool, _priceFeed, _collateral)
+    {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
-        liquidationLibrary = _liquidationLibrary;
+        liquidationLibrary = _liquidationLibraryAddress;
+
+        borrowerOperationsAddress = _borrowerOperationsAddress;
+        gasPoolAddress = _gasPoolAddress;
+        collSurplusPool = ICollSurplusPool(_collSurplusPool);
+        ebtcToken = IEBTCToken(_ebtcToken);
+        feeRecipient = IFeeRecipient(_feeRecipient);
+        sortedCdps = ISortedCdps(_sortedCdps);
+
+        emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
     }
 }

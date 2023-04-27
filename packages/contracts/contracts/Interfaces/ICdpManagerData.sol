@@ -14,6 +14,7 @@ import "../Dependencies/ICollateralTokenOracle.sol";
 interface ICdpManagerData {
     // --- Events ---
 
+    event LiquidationLibraryAddressChanged(address _liquidationLibraryAddress);
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);

@@ -79,18 +79,15 @@ contract('BorrowerOperations', async accounts => {
 
   const testCorpus = ({ withProxy = false }) => {
     beforeEach(async () => {
-      contracts = await deploymentHelper.deployLiquityCore()
-      contracts.borrowerOperations = await BorrowerOperationsTester.new()
-      contracts.cdpManager = await CdpManagerTester.new(contracts.liquidationLibrary.address)
-      contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
-      const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+      contracts = await deploymentHelper.deployTesterContractsHardhat()
+      let LQTYContracts = {}
+      LQTYContracts.feeRecipient = contracts.feeRecipient;
 
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-      await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
       if (withProxy) {
         const users = [alice, bob, carol, dennis, whale, A, B, C, D, E]
-        await deploymentHelper.deployProxyScripts(contracts, LQTYContracts, owner, users)
+        await deploymentHelper.deployProxyScripts(contracts, owner, users)
       }
 
       priceFeed = contracts.priceFeedTestnet
@@ -104,7 +101,7 @@ contract('BorrowerOperations', async accounts => {
       debtToken = ebtcToken;
       LICR = await cdpManager.LICR()
 
-      feeRecipient = LQTYContracts.feeRecipient
+      feeRecipient = contracts.feeRecipient
 
       EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
       MIN_NET_DEBT = await borrowerOperations.MIN_NET_DEBT()
@@ -2833,6 +2830,7 @@ contract('BorrowerOperations', async accounts => {
     it("adjustCdp(): Changes the activePool ETH and raw ether balance by the amount of ETH sent", async () => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 

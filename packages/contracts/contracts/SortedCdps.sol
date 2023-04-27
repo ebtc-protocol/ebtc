@@ -6,14 +6,11 @@ pragma experimental ABIEncoderV2;
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IBorrowerOperations.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
  *
- * Nodes map to active Cdps in the system - the ID property is the address of a Cdp owner.
+ * Nodes map to active Cdps in the system by ID.
  * Nodes are ordered according to their current nominal individual collateral ratio (NICR),
  * which is like the ICR but without the price, i.e., just collateral / debt.
  *
@@ -43,14 +40,12 @@ import "./Dependencies/CheckContract.sol";
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
-contract SortedCdps is Ownable, CheckContract, ISortedCdps {
-    using SafeMath for uint256;
-
+contract SortedCdps is ISortedCdps {
     string public constant NAME = "SortedCdps";
 
-    address public borrowerOperationsAddress;
+    address public immutable borrowerOperationsAddress;
 
-    ICdpManager public cdpManager;
+    ICdpManager public immutable cdpManager;
 
     // Information for a node in the list
     struct Node {
@@ -85,15 +80,14 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
-
-    function setParams(
+    constructor(
         uint256 _size,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress
-    ) external override onlyOwner {
-        require(_size > 0, "SortedCdps: Size can't be zero");
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
+    ) public {
+        if (_size == 0) {
+            _size = type(uint256).max;
+        }
 
         data.maxSize = _size;
 
@@ -102,8 +96,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-
-        renounceOwnership();
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
@@ -238,7 +230,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
             data.nodes[nextId].prevId = _id;
         }
 
-        data.size = data.size.add(1);
+        data.size = data.size + 1;
         emit NodeAdded(_id, _NICR);
     }
 
@@ -288,7 +280,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         }
 
         delete data.nodes[_id];
-        data.size = data.size.sub(1);
+        data.size = data.size - 1;
         emit NodeRemoved(_id);
     }
 
