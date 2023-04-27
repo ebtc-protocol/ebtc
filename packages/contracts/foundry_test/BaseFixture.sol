@@ -22,6 +22,8 @@ import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
+import {LeverageMacro} from "../contracts/LeverageMacro.sol";
+import {MockDEXTester} from "../contracts/TestContracts/MockDEXTester.sol";
 
 contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant FEE = 5e15; // 0.5%
@@ -71,6 +73,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     LiquidationLibrary liqudationLibrary;
     EBTCDeployer ebtcDeployer;
     address defaultGovernance;
+    LeverageMacro leverageMacro;
+    MockDEXTester mockDex;
 
     Utilities internal _utils;
 
@@ -313,6 +317,22 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                     ebtcDeployer.FEE_RECIPIENT(),
                     abi.encodePacked(creationCode, args)
                 )
+            );
+
+            // MockDex and sugardaddy it to facilitate swap
+            mockDex = new MockDEXTester(addr.ebtcTokenAddress, address(collateral));
+            vm.deal(address(mockDex), type(uint128).max);
+
+            // LeverageMacro
+            bytes32 _eBTCstETHPoolIdInBalancer = bytes32(0);
+            leverageMacro = new LeverageMacro(
+                addr.borrowerOperationsAddress,
+                addr.ebtcTokenAddress,
+                address(collateral),
+                addr.priceFeedAddress,
+                addr.sortedCdpsAddress,
+                address(mockDex),
+                _eBTCstETHPoolIdInBalancer
             );
         }
 

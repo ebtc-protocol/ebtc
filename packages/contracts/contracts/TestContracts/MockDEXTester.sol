@@ -7,6 +7,7 @@ import "../Dependencies/IBalancerV2Vault.sol";
 import "./EBTCTokenTester.sol";
 import "./CollateralTokenTester.sol";
 
+// please sugardaddy this address some ether in test setup to faciliate swap
 contract MockDEXTester is IBalancerV2Vault {
     // swap output slippage
     uint public slippage = 50;
@@ -19,7 +20,7 @@ contract MockDEXTester is IBalancerV2Vault {
 
     constructor(address _ebtcTester, address _collTester) {
         collateral = CollateralTokenTester(payable(_collTester));
-        ebtcToken = EBTCTokenTester(ebtcToken);
+        ebtcToken = EBTCTokenTester(_ebtcTester);
     }
 
     function setSlippage(uint _slippage) public {
@@ -43,9 +44,7 @@ contract MockDEXTester is IBalancerV2Vault {
             ebtcToken.unprotectedMint(msg.sender, _outputAmt);
         } else {
             ebtcToken.transferFrom(msg.sender, address(this), _inputAmt);
-            uint256 amountCalculatedInOut =
-                (((_inputAmt * 1e18) / price) * (MAX_SLIPPAGE - slippage)) /
-                MAX_SLIPPAGE;
+            _outputAmt = (((_inputAmt * 1e18) / price) * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE;
             require(address(this).balance >= _outputAmt, "!not enough ether for collateral output");
             collateral.deposit{value: _outputAmt}();
             collateral.transfer(msg.sender, _outputAmt);

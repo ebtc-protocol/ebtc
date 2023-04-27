@@ -15,20 +15,18 @@ contract LeverageMacro is IERC3156FlashBorrower {
     IPriceFeed public immutable priceFeed;
     ICollateralToken public immutable collateral;
 
-
     // DEX to swap between debt and collateral
     IBalancerV2Vault public immutable balancerV2Vault;
     bytes32 public balancerV2PoolId;
 
-    // max leverage capped by MCR: (maxLeverage + 1) > MCR * maxLeverage
-    uint256 public maxLeverage = 10;
+    // swap slippage bps
+    uint public slippageBps = 50;
+    uint public constant MAX_BPS = 10000;
 
-    // swap slippage
-    uint public slippage = 50;
-    uint public constant MAX_SLIPPAGE = 10000;
+    // max leverage (scaled by 10000) capped by MCR: (maxLeverage + 1) > MCR * maxLeverage
+    uint256 public maxLeverageBPS = 10 * MAX_BPS;
 
     event LeveragedCdpOpened(address _initiator, uint256 _debt, uint256 _coll, bytes32 _cdpId);
-
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -36,8 +34,8 @@ contract LeverageMacro is IERC3156FlashBorrower {
         address _borrowerOperationsAddress,
         address _ebtc,
         address _coll,
-        IPriceFeed _priceFeed,
-        ISortedCdps _sortedCdps,
+        address _priceFeed,
+        address _sortedCdps,
         address _balancerDEX,
         bytes32 _balancerPoolId
     ) {
@@ -46,8 +44,8 @@ contract LeverageMacro is IERC3156FlashBorrower {
         collateral = ICollateralToken(_coll);
         balancerV2Vault = IBalancerV2Vault(_balancerDEX);
         balancerV2PoolId = _balancerPoolId;
-        priceFeed = _priceFeed;
-        sortedCdps = _sortedCdps;
+        priceFeed = IPriceFeed(_priceFeed);
+        sortedCdps = ISortedCdps(_sortedCdps);
 
         // set allowance for DEX
         collateral.approve(_balancerDEX, type(uint256).max);
@@ -63,34 +61,36 @@ contract LeverageMacro is IERC3156FlashBorrower {
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
-    ) external returns (bytes32 cdpId) {
+    ) external returns (bytes32, uint256) {
         // Flashloan final eBTC Balance (add buffer for fee)
         uint _collInSender = collateral.balanceOf(msg.sender);
         uint _collWorthInDebt = _getExpectedOutputAmount(true, _collInSender, 0);
 
-        // ensure leverage in safe range
+        // Note this is a rather loose requirement to provide an early check
+        // to ensure leverage in safe range, i.e, created CDP ICR > MCR or > TCR
         require(
-            _EBTCAmount < maxLeverage * _collWorthInDebt,
+            _EBTCAmount < ((maxLeverageBPS * _collWorthInDebt) / MAX_BPS),
             "LeverageMacro: too much leverage for eBTC!"
         );
-        uint _flFee = IERC3156FlashLender(address(borrowerOperations)).flashFee(address(ebtcToken), _EBTCAmount);
 
         // take eBTC flashloan
-        bytes memory _data = abi.encode(
-            _EBTCAmount,
-            _upperHint,
-            msg.sender,
-            _lowerHint,
-            _collAmount
+        uint256 flashloanFee = IERC3156FlashLender(address(borrowerOperations)).flashFee(
+            address(ebtcToken),
+            _EBTCAmount
         );
+        bytes memory _data = abi.encode(_upperHint, msg.sender, _lowerHint, _collAmount);
         IERC3156FlashLender(address(borrowerOperations)).flashLoan(
-            IERC3156FlashBorrower(address(this)), address(ebtcToken), _EBTCAmount, _data);
+            IERC3156FlashBorrower(address(this)),
+            address(ebtcToken),
+            _EBTCAmount,
+            _data
+        );
         uint256 _newCdpCount = sortedCdps.cdpCountOf(msg.sender);
         require(_newCdpCount >= 1, "LeverageMacro: no CDP created!");
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, _newCdpCount - 1);
 
         // Send eBTC to caller + Cdp (NEED TO ALLOW TRANSFERING ON CREATION)
-        return _cdpId;
+        return (_cdpId, flashloanFee);
     }
 
     function onFlashLoan(
@@ -108,15 +108,13 @@ contract LeverageMacro is IERC3156FlashBorrower {
             );
 
             // Use eBTC Balance to Buy stETH
-            (
-                uint256 _debt,
-                bytes32 _upperHint,
-                address _borrower,
-                bytes32 _lowerHint,
-                uint256 _coll
-            ) = abi.decode(data, (uint256, bytes32, address, bytes32, uint256));
+            uint256 _debt = amount;
+            (bytes32 _upperHint, address _borrower, bytes32 _lowerHint, uint256 _coll) = abi.decode(
+                data,
+                (bytes32, address, bytes32, uint256)
+            );
             require(
-                ebtcToken.balanceOf(address(this)) > _debt,
+                ebtcToken.balanceOf(address(this)) >= _debt,
                 "LeverageMacro: not enough borrowed eBTC!"
             );
             uint256 _swappedColl = _swapInBalancerV2(address(ebtcToken), address(collateral), _debt);
@@ -125,18 +123,25 @@ contract LeverageMacro is IERC3156FlashBorrower {
             uint _collFromSender = _coll - _swappedColl;
             collateral.transferFrom(_borrower, address(this), _collFromSender);
             require(
-                collateral.balanceOf(address(this)) > _coll,
+                collateral.balanceOf(address(this)) >= _coll,
                 "LeverageMacro: not enough leveraged collateral!"
             );
 
             // Deposit stETH to mint eBTC
             uint256 _totalDebt = (_debt + fee);
-            bytes32 _cdpId = borrowerOperations.openCdpFor(_totalDebt, _upperHint, _lowerHint, _coll, _borrower);
-            emit LeveragedCdpOpened(_borrower, _debt, _coll, _cdpId);
+            bytes32 _cdpId = borrowerOperations.openCdpFor(
+                _totalDebt,
+                _upperHint,
+                _lowerHint,
+                _coll,
+                _borrower
+            );
+            emit LeveragedCdpOpened(_borrower, _totalDebt, _coll, _cdpId);
 
             // Repay FlashLoan + fee
+            ebtcToken.transferFrom(_borrower, address(this), _totalDebt);
             require(
-                ebtcToken.balanceOf(address(this)) > _totalDebt,
+                ebtcToken.balanceOf(address(this)) >= _totalDebt,
                 "LeverageMacro: not enough to repay eBTC!"
             );
         }
@@ -152,7 +157,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         uint256 _expectedOut = _getExpectedOutputAmount(
             tokenIn == address(ebtcToken),
             amountIn,
-            slippage
+            slippageBps
         );
         SingleSwap memory singleSwap = SingleSwap(
             balancerV2PoolId,
@@ -178,7 +183,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         // assume eBTC token and collateral have same decimals
         return
             _tradeCollForEBTC
-                ? (((_inputAmount * _price) / 1e18) * (MAX_SLIPPAGE - _slippage)) / MAX_SLIPPAGE
-                : (((_inputAmount * 1e18) / _price) * (MAX_SLIPPAGE - _slippage)) / MAX_SLIPPAGE;
+                ? (((_inputAmount * _price) / 1e18) * (MAX_BPS - _slippage)) / MAX_BPS
+                : (((_inputAmount * 1e18) / _price) * (MAX_BPS - _slippage)) / MAX_BPS;
     }
 }
