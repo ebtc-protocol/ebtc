@@ -88,6 +88,35 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         }
     }
 
+    /**
+        @notice Send shares
+        @notice Liquidator reward shares are not tracked via internal accoutning in the active pool and are assumed to be present in expected amount as part of the intended behavior of bops and cdpm
+        @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
+        @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
+        @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
+        @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
+     */
+    function sendStEthCollAndLiquidatorReward(address _account, uint _shares, uint _liquidatorRewardShares) external override {
+        _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "!ActivePoolBal");
+        StEthColl = StEthColl - _shares;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, _shares);
+
+        uint totalShares = _shares + _liquidatorRewardShares;
+
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transferShares(_account, totalShares);
+        if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(totalShares);
+        } else if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(totalShares);
+        } else if (_account == feeRecipientAddress) {
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(totalShares);
+        }
+    }
+    
+
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
         EBTCDebt = EBTCDebt + _amount;

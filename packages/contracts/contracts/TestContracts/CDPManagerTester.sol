@@ -19,7 +19,6 @@ contract CdpManagerTester is CdpManager {
         address _liquidationLibraryAddress,
         address _authorityAddress,
         address _borrowerOperationsAddress,
-        address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
@@ -33,7 +32,6 @@ contract CdpManagerTester is CdpManager {
             _liquidationLibraryAddress,
             _authorityAddress,
             _borrowerOperationsAddress,
-            _gasPoolAddress,
             _collSurplusPoolAddress,
             _ebtcTokenAddress,
             _feeRecipientAddress,
@@ -51,14 +49,6 @@ contract CdpManagerTester is CdpManager {
 
     function getCollGasCompensation(uint _coll) external pure returns (uint) {
         return _getCollGasCompensation(_coll);
-    }
-
-    function getEBTCGasCompensation() external pure returns (uint) {
-        return EBTC_GAS_COMPENSATION;
-    }
-
-    function getCompositeDebt(uint _debt) external pure returns (uint) {
-        return _getCompositeDebt(_debt);
     }
 
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {
@@ -91,8 +81,9 @@ contract CdpManagerTester is CdpManager {
         _getRedemptionFee(_ETHDrawn);
     }
 
+    /// @dev No more concept of composite debt. Just return debt. Maintaining for test compatiblity
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
-        return _getNetDebt(_debtVal);
+        return _debtVal;
     }
 
     function someFunc1() external requiresAuth {

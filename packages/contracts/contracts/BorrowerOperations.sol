@@ -6,7 +6,6 @@ import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/IGasPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
@@ -19,8 +18,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     // --- Connected contract declarations ---
 
     ICdpManager public immutable cdpManager;
-
-    IGasPool public immutable gasPool;
 
     ICollSurplusPool public immutable collSurplusPool;
 
@@ -77,7 +74,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
-        address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedCdpsAddress,
@@ -92,7 +88,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // TODO: Re-evaluate this
 
         cdpManager = ICdpManager(_cdpManagerAddress);
-        gasPool = IGasPool(_gasPoolAddress);
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
@@ -101,7 +96,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
@@ -443,13 +437,10 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
             BorrowerOperation.openCdp
         );
 
-        // CEI: Move the net collateral to the Active Pool
-        _activePoolAddColl(vars.netCool, _netCollAsShares);
+        // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
+        _activePoolAddColl(_collAmount, _netCollAsShares, _liquidatorRewardShares);
 
-        // CEI: Move the liquidator reward to the Gas Pool
-        _gasPoolAddColl(LIQUIDATOR_REWARD, _liquidatorRewardShares);
-
-        assert(vars.netCool + LIQUIDATOR_REWARD == _collAmount); // Temporary Assertion
+        assert(vars.netColl + LIQUIDATOR_REWARD == _collAmount); // Invariant Assertion
 
         return _cdpId;
     }
@@ -468,6 +459,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
+        uint liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
@@ -482,7 +474,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         cdpManager.removeStake(_cdpId);
         cdpManager.closeCdp(_cdpId);
-        uint _liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         // We already verified msg.sender is the borrower
         emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
@@ -490,11 +481,8 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // Burn the repaid EBTC from the user's balance
         _repayEBTC(activePool, ebtcToken, msg.sender, debt);
 
-        // CEI: Send the collateral back to the user
-        activePool.sendStEthColl(msg.sender, coll);
-
-        // CEI: Send the liquidation gas stipend back to the user
-        gasPool.sendStEthColl(msg.sender, _liquidatorRewardShares);
+        // CEI: Send the collateral and liquidator reward shares back to the user
+        activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
     }
 
     /**
@@ -571,24 +559,21 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         if (_varMvTokens.isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange);
+            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange, 0);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 
-    // Send ETH to Active Pool and increase its recorded ETH balance
-    function _activePoolAddColl(uint _amount, uint _shareAmt) internal {
+    /// @notice Send stETH to Active Pool and increase its recorded ETH balance
+    /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
+    /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
+    function _activePoolAddColl(uint _amount, uint _sharesToTrack, uint _liquidatorRewardShares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        assert(_amount == collateral.getPooledEthByShares(_sharesToTrack) + collateral.getPooledEthByShares(_liquidatorRewardShares)); // Temp Invariant
         collateral.transferFrom(msg.sender, address(activePool), _amount);
-        activePool.receiveColl(_shareAmt);
-    }
-
-    function _gasPoolAddColl(uint _amount, uint _shareAmt) internal {
-        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferFrom(msg.sender, address(gasPool), _amount);
-        gasPool.receiveColl(_shareAmt);
+        activePool.receiveColl(_sharesToTrack);
     }
 
     // Issue the specified amount of EBTC to _account and increases
@@ -738,7 +723,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     }
 
     function _requireAtLeastMinColl(uint _coll) internal pure {
-        require(_coll >= MIN_CDP_COLL, "BorrowerOps: Cdp's total coll must be greater than minimum");
+        require(_coll >= MIN_NET_COLL, "BorrowerOps: Cdp's total coll must be greater than minimum");
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {

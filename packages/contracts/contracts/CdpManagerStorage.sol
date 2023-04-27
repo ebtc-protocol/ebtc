@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/IGasPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
@@ -18,8 +17,6 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
     // --- Connected contract declarations ---
 
     address public immutable borrowerOperationsAddress;
-
-    IGasPool public immutable gasPool;
 
     ICollSurplusPool immutable collSurplusPool;
 
@@ -130,7 +127,6 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
         address _liquidationLibraryAddress,
         address _authorityAddress,
         address _borrowerOperationsAddress,
-        address _gasPoolAddress,
         address _collSurplusPool,
         address _ebtcToken,
         address _feeRecipient,
@@ -148,7 +144,6 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
         liquidationLibrary = _liquidationLibraryAddress;
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
-        gasPool = IGasPool(_gasPoolAddress);
         collSurplusPool = ICollSurplusPool(_collSurplusPool);
         ebtcToken = IEBTCToken(_ebtcToken);
         feeRecipient = IFeeRecipient(_feeRecipient);

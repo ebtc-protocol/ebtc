@@ -25,8 +25,6 @@ contract GasPool is IGasPool {
 
     uint256 internal StEthColl; // deposited collateral tracker
 
-    mapping(address => uint256) public override liquidatorRewardSharesFor;
-
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
@@ -50,10 +48,6 @@ contract GasPool is IGasPool {
      */
     function getStEthColl() external view override returns (uint) {
         return StEthColl;
-    }
-
-    function getEBTCDebt() external view override returns (uint) {
-        return 0;
     }
 
     function sendStEthColl(address _account, uint _amount) external override {

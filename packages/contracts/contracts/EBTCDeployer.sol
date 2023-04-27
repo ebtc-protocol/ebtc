@@ -17,7 +17,6 @@ contract EBTCDeployer is Ownable {
     string public constant SORTED_CDPS = "ebtc.v1.sortedCdps";
 
     string public constant ACTIVE_POOL = "ebtc.v1.activePool";
-    string public constant GAS_POOL = "ebtc.v1.gasPool";
     string public constant DEFAULT_POOL = "ebtc.v1.defaultPool";
     string public constant COLL_SURPLUS_POOL = "ebtc.v1.collSurplusPool";
 
@@ -36,7 +35,6 @@ contract EBTCDeployer is Ownable {
         address priceFeedAddress;
         address sortedCdpsAddress;
         address activePoolAddress;
-        address gasPoolAddress;
         address defaultPoolAddress;
         address collSurplusPoolAddress;
         address hintHelpersAddress;
@@ -56,13 +54,12 @@ contract EBTCDeployer is Ownable {
     4: priceFeed
     5; sortedCdps
     6: activePool
-    7: gasPool
-    8: defaultPool
-    9: collSurplusPool
-    10: hintHelpers
-    11: eBTCToken
-    12: feeRecipient
-    13: multiCdpGetter
+    7: defaultPool
+    8: collSurplusPool
+    9: hintHelpers
+    10: eBTCToken
+    11: feeRecipient
+    12: multiCdpGetter
 
 
      */
@@ -75,7 +72,6 @@ contract EBTCDeployer is Ownable {
             Create3.addressOf(keccak256(abi.encodePacked(PRICE_FEED))),
             Create3.addressOf(keccak256(abi.encodePacked(SORTED_CDPS))),
             Create3.addressOf(keccak256(abi.encodePacked(ACTIVE_POOL))),
-            Create3.addressOf(keccak256(abi.encodePacked(GAS_POOL))),
             Create3.addressOf(keccak256(abi.encodePacked(DEFAULT_POOL))),
             Create3.addressOf(keccak256(abi.encodePacked(COLL_SURPLUS_POOL))),
             Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS))),
@@ -84,22 +80,6 @@ contract EBTCDeployer is Ownable {
             Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER)))
         );
 
-        // address[] memory addresses = new address[](14);
-        // bytes32 salt = keccak256(abi.encodePacked(abi.encodePacked(msg.sender)));
-        // addresses[0] = Create3.addressOf(keccak256(abi.encodePacked(AUTHORITY)));
-        // addresses[1] = Create3.addressOf(keccak256(abi.encodePacked(LIQUIDATION_LIBRARY)));
-        // addresses[2] = Create3.addressOf(keccak256(abi.encodePacked(CDP_MANAGER)));
-        // addresses[3] = Create3.addressOf(keccak256(abi.encodePacked(BORROWER_OPERATIONS)));
-        // addresses[4] = Create3.addressOf(keccak256(abi.encodePacked(PRICE_FEED)));
-        // addresses[5] = Create3.addressOf(keccak256(abi.encodePacked(SORTED_CDPS)));
-        // addresses[6] = Create3.addressOf(keccak256(abi.encodePacked(ACTIVE_POOl)));
-        // addresses[7] = Create3.addressOf(keccak256(abi.encodePacked(GAS_POOL)));
-        // addresses[8] = Create3.addressOf(keccak256(abi.encodePacked(DEFAULT_POOL)));
-        // addresses[9] = Create3.addressOf(keccak256(abi.encodePacked(COLL_SURPLUS_POOL)));
-        // addresses[10] = Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS)));
-        // addresses[11] = Create3.addressOf(keccak256(abi.encodePacked(EBTC_TOKEN)));
-        // addresses[12] = Create3.addressOf(keccak256(abi.encodePacked(FEE_RECIPIENT)));
-        // addresses[13] = Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER)));
         return addresses;
     }
 

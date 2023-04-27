@@ -13,7 +13,6 @@ import "./CdpManagerStorage.sol";
 contract LiquidationLibrary is CdpManagerStorage {
     constructor(
         address _borrowerOperationsAddress,
-        address _gasPoolAddress,
         address _collSurplusPool,
         address _ebtcToken,
         address _feeRecipient,
@@ -27,7 +26,6 @@ contract LiquidationLibrary is CdpManagerStorage {
             address(0),
             address(0),
             _borrowerOperationsAddress,
-            _gasPoolAddress,
             _collSurplusPool,
             _ebtcToken,
             _feeRecipient,
@@ -1368,11 +1366,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         stFeePerUnitgError = _newErrorPerUnit;
 
         require(
-            _cachedContracts.activePool.getStEthColl() > _feeTaken,
+            activePool.getStEthColl() > _feeTaken,
             "CDPManager: fee split is too big"
         );
         address _feeRecipient = address(feeRecipient); // TODO choose other fee recipient?
-        _cachedContracts.activePool.sendStEthColl(_feeRecipient, _feeTaken);
+        activePool.sendStEthColl(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
     }

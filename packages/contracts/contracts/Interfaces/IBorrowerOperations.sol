@@ -9,7 +9,6 @@ interface IBorrowerOperations {
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
@@ -107,6 +106,4 @@ interface IBorrowerOperations {
     ) external;
 
     function claimCollateral() external;
-
-    function getCompositeDebt(uint _debt) external pure returns (uint);
 }

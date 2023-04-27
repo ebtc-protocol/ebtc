@@ -17,7 +17,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         address _liquidationLibraryAddress,
         address _authorityAddress,
         address _borrowerOperationsAddress,
-        address _gasPoolAddress,
         address _collSurplusPoolAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
@@ -31,7 +30,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _liquidationLibraryAddress,
             _authorityAddress,
             _borrowerOperationsAddress,
-            _gasPoolAddress,
             _collSurplusPoolAddress,
             _ebtcTokenAddress,
             _feeRecipientAddress,
@@ -45,7 +43,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit GasPoolAddressChanged(_gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit EBTCTokenAddressChanged(_ebtcTokenAddress);
@@ -203,7 +200,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              *
              * If the resultant net coll of the partial is less than the minimum, we bail.
              */
-            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || newColl < MIN_CDP_COLL) {
+            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || newColl < MIN_NET_COLL) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
@@ -252,18 +249,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _removeStake(_cdpId);
         _closeCdp(_cdpId, Status.closedByRedemption);
 
-        ebtcToken.burn(address(gasPool), _EBTC);
+        uint _liquidatorRewardShares = Cdps[_cdpId].liquidatorRewardShares;
+
         // Update Active Pool EBTC, and send ETH to account
         activePool.decreaseEBTCDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH from Active Pool and Gas Pool
-        collSurplusPool.accountSurplus(_borrower, _stEth + LIQUIDATOR_REWARD);
+        collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
 
-        // CEI: send stETH from Active Pool to CollSurplus Pool
-        activePool.sendStEthColl(address(collSurplusPool), _stEth);
-
-        // CEI: send stETH from Gas Pool to CollSurplus Pool
-        gasPool.sendStEthColl(address(collSurplusPool), LIQUIDATOR_REWARD);
+        // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
+        activePool.sendStEthCollAndLiquidatorReward(address(collSurplusPool), _stEth, _liquidatorRewardShares);
     }
 
     function _isValidFirstRedemptionHint(

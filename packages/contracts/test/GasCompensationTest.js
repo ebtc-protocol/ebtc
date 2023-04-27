@@ -240,9 +240,10 @@ contract('Gas compensation tests', async accounts => {
   })
 
   // --- Composite debt calculations ---
+  // Skip: There is no longer a concept of composite debt
 
   // gets debt + 50 when 0.5% of coll < $10
-  it('_getCompositeDebt(): returns (debt + 50) when collateral < $10 in value', async () => {
+  xit('_getCompositeDebt(): returns (debt + 50) when collateral < $10 in value', async () => {
     /* 
     ETH:USD price = 200
     coll = 9.999 ETH 
@@ -268,7 +269,7 @@ contract('Gas compensation tests', async accounts => {
   })
 
   // returns $10 worth of ETH when 0.5% of coll == $10
-  it('getCompositeDebt(): returns (debt + 50) collateral = $10 in value', async () => {
+  xit('getCompositeDebt(): returns (debt + 50) collateral = $10 in value', async () => {
     /* 
     ETH:USD price = 200
     coll = 10 ETH  
@@ -282,7 +283,7 @@ contract('Gas compensation tests', async accounts => {
   /// *** 
 
   // gets debt + 50 when 0.5% of coll > 10
-  it('getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value', async () => {
+  xit('getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value', async () => {
     /* 
     ETH:USD price = 200 $/E
     coll = 100 ETH  

@@ -19,10 +19,10 @@ contract HintHelpers is LiquityBase {
     event CollateralAddressChanged(address _collTokenAddress);
 
     struct LocalVariables_getRedemptionHints {
-        uint remainingEBTC;
+        uint remainingEbtcToRedeem;
         uint minNetDebtInBTC;
         bytes32 currentCdpId;
-        address currentCdpuser;
+        address currentCdpUser;
     }
 
     // --- Dependency setters ---
@@ -55,6 +55,17 @@ contract HintHelpers is LiquityBase {
         @return truncatedEBTCamount The maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last Cdp of the redemption sequence with less net debt than the minimum allowed value (i.e. MIN_NET_DEBT).
         @return partialRedemptionNewColl The amount of collateral that will be left in the last Cdp of the sequence after being hit by partial redemption, or zero in case of no partial redemption.
      **/
+
+     /**
+        * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
+        * @param _EBTCamount The amount of eBTC to be redeemed.
+        * @param _price The current price of the asset.
+        * @param _maxIterations The maximum number of iterations to be performed.
+        * @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
+        * @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+        * @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
+        * @return partialRedemptionNewColl The new collateral amount after partial redemption.
+    */
     function getRedemptionHints(
         uint _EBTCamount,
         uint _price,
@@ -69,21 +80,18 @@ contract HintHelpers is LiquityBase {
             uint partialRedemptionNewColl
         )
     {
-        ISortedCdps sortedCdpsCached = sortedCdps;
         LocalVariables_getRedemptionHints memory vars;
         {
-            vars.remainingEBTC = _EBTCamount;
-            // Find out minimal debt value denominated in ETH
-            vars.minNetDebtInBTC = _convertDebtDenominationToBtc(MIN_NET_DEBT, _price);
-            vars.currentCdpId = sortedCdpsCached.getLast();
-            vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
+            vars.remainingEbtcToRedeem = _EBTCamount;
+            vars.currentCdpId = sortedCdps.getLast();
+            vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
 
             while (
-                vars.currentCdpuser != address(0) &&
+                vars.currentCdpUser != address(0) &&
                 cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
             ) {
-                vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
-                vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
+                vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
+                vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
             }
             firstRedemptionHint = vars.currentCdpId;
         }
@@ -95,72 +103,85 @@ contract HintHelpers is LiquityBase {
         // Underflow is intentionally used in _maxIterations-- > 0
         unchecked {
             while (
-                vars.currentCdpuser != address(0) && vars.remainingEBTC > 0 && _maxIterations-- > 0
+                vars.currentCdpUser != address(0) && vars.remainingEbtcToRedeem > 0 && _maxIterations-- > 0
             ) {
-                uint pendingEBTC;
-                {
-                    uint pendingEBTCDebtReward = cdpManager.getPendingEBTCDebtReward(
-                        vars.currentCdpId
-                    );
-                    pendingEBTC = pendingEBTCDebtReward;
-                }
+                
+                // Apply pending debt
+                uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) + cdpManager.getPendingEBTCDebtReward(
+                    vars.currentCdpId
+                );
 
-                uint netEBTCDebt = pendingEBTC +
-                    _getNetDebt(cdpManager.getCdpDebt(vars.currentCdpId));
+                // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
+                if (currentCdpDebt > vars.remainingEbtcToRedeem) {
+                    (
+                        partialRedemptionNewColl,
+                        partialRedemptionHintNICR
+                    ) = _calculatePartialRedeem(vars, currentCdpDebt, _price);
 
-                if (netEBTCDebt > vars.remainingEBTC) {
-                    if (netEBTCDebt > vars.minNetDebtInBTC) {
-                        (
-                            partialRedemptionNewColl,
-                            partialRedemptionHintNICR
-                        ) = _calculatePartialRedeem(vars, netEBTCDebt, _price);
+                    // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
+                    // TODO: This seems to return the original coll? why?
+                    if (partialRedemptionNewColl < MIN_NET_COLL) {
+                        break;
                     }
-                    break;
                 } else {
-                    vars.remainingEBTC = vars.remainingEBTC - netEBTCDebt;
+                    vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - currentCdpDebt;
                 }
 
-                vars.currentCdpId = sortedCdpsCached.getPrev(vars.currentCdpId);
-                vars.currentCdpuser = sortedCdpsCached.getOwnerAddress(vars.currentCdpId);
+                vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
+                vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
             }
         }
 
-        truncatedEBTCamount = _EBTCamount - vars.remainingEBTC;
+        truncatedEBTCamount = _EBTCamount - vars.remainingEbtcToRedeem;
     }
 
+    /**
+        * @notice Calculate the partial redemption information.
+        * @dev This is an internal function used by getRedemptionHints.
+        * @param vars The local variables of the getRedemptionHints function.
+        * @param currentCdpDebt The net eBTC debt of the CDP.
+        * @param _price The current price of the asset.
+        * @return newColl The new collateral amount after partial redemption.
+        * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+    */
     function _calculatePartialRedeem(
         LocalVariables_getRedemptionHints memory vars,
-        uint netEBTCDebt,
+        uint currentCdpDebt,
         uint _price
     ) internal view returns (uint, uint) {
+
+        // maxReemable = min(remainingToRedeem, currentDebt)
         uint maxRedeemableEBTC = LiquityMath._min(
-            vars.remainingEBTC,
-            (netEBTCDebt - vars.minNetDebtInBTC)
+            vars.remainingEbtcToRedeem, currentCdpDebt
         );
 
-        uint ETH;
+        uint newColl;
         uint _oldIndex = cdpManager.stFPPSg();
         uint _newIndex = collateral.getPooledEthByShares(1e18);
 
         if (_oldIndex < _newIndex) {
-            ETH = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
+            newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, ETH, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, newColl, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
         }
 
-        vars.remainingEBTC = vars.remainingEBTC - maxRedeemableEBTC;
+        vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
+        uint collToReceive = collateral.getSharesByPooledEth((maxRedeemableEBTC * DECIMAL_PRECISION) / _price);
+        
         return (
-            ETH,
-            LiquityMath._computeNominalCR(
-                (ETH -
-                    collateral.getSharesByPooledEth(
-                        (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
-                    )),
-                _getCompositeDebt(netEBTCDebt - maxRedeemableEBTC)
-            )
+            newColl,
+            LiquityMath._computeNominalCR(newColl - collToReceive, currentCdpDebt - maxRedeemableEBTC )
         );
     }
 
+    /** 
+        * @notice Get the collateral amount of a CDP after applying split fee.
+        * @dev This is an internal function used by _calculatePartialRedeem.
+        * @param _cdpId The identifier of the CDP.
+        * @param _newIndex The new index after the split fee is applied.
+        * @param _oldIndex The old index before the split fee is applied.
+        * @return newColl The new collateral amount after applying split fee.
+    */
     function _getCollateralWithSplitFeeApplied(
         bytes32 _cdpId,
         uint _newIndex,
@@ -176,13 +197,13 @@ contract HintHelpers is LiquityBase {
             _oldIndex
         );
         _newStFeePerUnit = _deltaFeePerUnit + cdpManager.stFeePerUnitg();
-        (, uint ETH) = cdpManager.getAccumulatedFeeSplitApplied(
+        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
             _newStFeePerUnit,
             _perUnitError,
             cdpManager.totalStakes()
         );
-        return ETH;
+        return newColl;
     }
 
     /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 

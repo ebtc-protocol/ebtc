@@ -20,7 +20,6 @@ interface ICdpManagerData {
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);

@@ -11,7 +11,6 @@ import "./ICdpManagerData.sol";
 // Common interface for the Cdp Manager.
 interface ICdpManager is ILiquityBase, ICdpManagerData {
     // --- Functions ---
-
     function getCdpIdsCount() external view returns (uint);
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
@@ -110,6 +109,8 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCdpColl(bytes32 _cdpId) external view returns (uint);
 
+    function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
+
     function setCdpStatus(bytes32 _cdpId, uint num) external;
 
     function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
@@ -119,6 +120,11 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
     function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint);
 
     function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint);
+
+    function setCdpLiquidatorRewardShares(
+        bytes32 _cdpId,
+        uint _liquidatorRewardShares
+    ) external;
 
     function getTCR(uint _price) external view returns (uint);
 

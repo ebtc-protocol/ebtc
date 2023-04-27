@@ -33,7 +33,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
     // Minimum amount of stETH collateral a CDP must have
-    uint public constant MIN_CDP_COLL = 2e18;
+    uint public constant MIN_NET_COLL = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -78,7 +78,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     /**
         @notice Get the entire system collateral
         @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
-        @dev Coll in the GasPool or CollSurplusPool are not included
+        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
      */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
         uint activeColl = activePool.getStEthColl();
