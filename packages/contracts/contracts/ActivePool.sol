@@ -70,21 +70,21 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendStEthColl(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _shares) external override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _amount, "!ActivePoolBal");
-        StEthColl = StEthColl - _amount;
+        require(StEthColl >= _shares, "!ActivePoolBal");
+        StEthColl = StEthColl - _shares;
         emit ActivePoolETHBalanceUpdated(StEthColl);
-        emit CollateralSent(_account, _amount);
+        emit CollateralSent(_account, _shares);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, _amount);
+        collateral.transferShares(_account, _shares);
         if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_amount);
+            IDefaultPool(_account).receiveColl(_shares);
         } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_amount);
+            ICollSurplusPool(_account).receiveColl(_shares);
         } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_amount);
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
         }
     }
 

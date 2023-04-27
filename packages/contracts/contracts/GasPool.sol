@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+import "./Interfaces/IGasPool.sol";
+import "./Dependencies/ICollateralToken.sol";
+
 pragma solidity 0.8.17;
 
 /**
@@ -12,13 +15,17 @@ pragma solidity 0.8.17;
  * 50 EBTC debt on the cdp is cancelled.
  * See this issue for more context: https://github.com/liquity/dev/issues/186
  */
-contract GasPool {
-    string public constant NAME = "ActivePool";
+contract GasPool is IGasPool {
+    string public constant NAME = "GasPool";
 
     address public immutable borrowerOperationsAddress;
     address public immutable cdpManagerAddress;
 
     ICollateralToken public collateral;
+
+    uint256 internal StEthColl; // deposited collateral tracker
+
+    mapping(address => uint256) public override liquidatorRewardSharesFor;
 
     constructor(
         address _borrowerOperationsAddress,
@@ -54,7 +61,7 @@ contract GasPool {
         require(StEthColl >= _amount, "GasPool: Insufficient stEth balance");
 
         StEthColl = StEthColl - _amount;
-        emit GasPoolETHBalanceUpdated(StEthColl);
+        emit GasPoolStEthBalanceUpdated(StEthColl);
         emit CollateralSent(_account, _amount);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -62,9 +69,9 @@ contract GasPool {
     }
 
     function receiveColl(uint _value) external override {
-        _requireCallerIsBorrowerOperationsOrDefaultPool();
+        _requireCallerIsBOorCdpM();
         StEthColl = StEthColl + _value;
-        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit GasPoolStEthBalanceUpdated(StEthColl);
     }
 
     function _requireCallerIsBOorCdpM() internal view {

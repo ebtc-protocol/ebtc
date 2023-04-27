@@ -148,30 +148,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Redemption functions ---
 
-    struct LocalVariables_RedeemCollateralFromCdp {
-        bytes32 _cdpId;
-        uint _maxEBTCamount;
-        uint _price;
-        bytes32 _upperPartialRedemptionHint;
-        bytes32 _lowerPartialRedemptionHint;
-        uint _partialRedemptionHintNICR;
-    }
-
     // Redeem as much collateral as possible from given Cdp in exchange for EBTC up to _maxEBTCamount
     function _redeemCollateralFromCdp(
-        ContractsCache memory _contractsCache,
         LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp
     ) internal returns (SingleRedemptionValues memory singleRedemption) {
         // Determine the remaining amount (lot) to be redeemed,
         // capped by the entire debt of the Cdp minus the liquidation reserve
-        singleRedemption.EBTCLot = LiquityMath._min(
+        singleRedemption.eBtcToRedeem = LiquityMath._min(
             _redeemColFromCdp._maxEBTCamount,
-            Cdps[_redeemColFromCdp._cdpId].debt - EBTC_GAS_COMPENSATION
+            Cdps[_redeemColFromCdp._cdpId].debt
         );
 
-        // Get the ETHLot of equivalent value in USD
-        singleRedemption.ETHLot = collateral.getSharesByPooledEth(
-            (singleRedemption.EBTCLot * DECIMAL_PRECISION) / _redeemColFromCdp._price
+        // Get the stEthToRecieve of equivalent value in USD
+        singleRedemption.stEthToRecieve = collateral.getSharesByPooledEth(
+            (singleRedemption.eBtcToRedeem * DECIMAL_PRECISION) / _redeemColFromCdp._price
         );
 
         // Repurposing this struct here to avoid stack too deep.
@@ -183,21 +173,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
-        uint newDebt = _oldDebtAndColl.entireDebt - singleRedemption.EBTCLot;
-        uint newColl = _oldDebtAndColl.entireColl - singleRedemption.ETHLot;
+        uint newDebt = _oldDebtAndColl.entireDebt - singleRedemption.eBtcToRedeem;
+        uint newColl = _oldDebtAndColl.entireColl - singleRedemption.stEthToRecieve;
 
-        if (newDebt == EBTC_GAS_COMPENSATION) {
-            // No debt left in the Cdp (except for the liquidation reserve), therefore the cdp gets closed
-            _removeStake(_redeemColFromCdp._cdpId);
-            address _borrower = _contractsCache.sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
-            _closeCdp(_redeemColFromCdp._cdpId, Status.closedByRedemption);
-            _redeemCloseCdp(
-                _contractsCache,
-                _redeemColFromCdp._cdpId,
-                EBTC_GAS_COMPENSATION,
-                newColl,
-                _borrower
-            );
+        if (newDebt == 0) {
+            // No debt remains, close CDP
+            // No debt left in the Cdp, therefore the cdp gets closed
+
+            address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
+            _redeemCloseCdp(_redeemColFromCdp._cdpId, 0, newColl, _borrower);
+
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
                 _borrower,
@@ -209,24 +194,21 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 CdpManagerOperation.redeemCollateral
             );
         } else {
+            // Debt remains, reinsert CDP
             uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
 
             /*
              * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost
              * certainly result in running out of gas.
              *
-             * If the resultant net debt of the partial is less than the minimum, net debt we bail.
+             * If the resultant net coll of the partial is less than the minimum, we bail.
              */
-            if (
-                newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                _convertDebtDenominationToEth(_getNetDebt(newDebt), _redeemColFromCdp._price) <
-                MIN_NET_DEBT
-            ) {
+            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || newColl < MIN_CDP_COLL) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
 
-            _contractsCache.sortedCdps.reInsert(
+            sortedCdps.reInsert(
                 _redeemColFromCdp._cdpId,
                 newNICR,
                 _redeemColFromCdp._upperPartialRedemptionHint,
@@ -255,27 +237,33 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /*
      * Called when a full redemption occurs, and closes the cdp.
-     * The redeemer swaps (debt - liquidation reserve) EBTC for (debt - liquidation reserve)
-     * worth of ETH, so the EBTC liquidation reserve left corresponds to the remaining debt.
-     * In order to close the cdp, the EBTC liquidation reserve is burned,
-     * and the corresponding debt is removed from the active pool.
+     * The redeemer swaps (debt) EBTC for (debt)
+     * worth of stETH, so the stETH liquidation reserve is all that remains.
+     * In order to close the cdp, the stETH liquidation reserve is returned to the CDP owner,
      * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
-     * Any surplus ETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
+     * Any surplus stETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
     function _redeemCloseCdp(
-        ContractsCache memory _contractsCache,
         bytes32 _cdpId, // TODO: Remove?
         uint _EBTC,
-        uint _ETH,
+        uint _stEth,
         address _borrower
     ) internal {
-        _contractsCache.ebtcToken.burn(gasPoolAddress, _EBTC);
-        // Update Active Pool EBTC, and send ETH to account
-        _contractsCache.activePool.decreaseEBTCDebt(_EBTC);
+        _removeStake(_cdpId);
+        _closeCdp(_cdpId, Status.closedByRedemption);
 
-        // send ETH from Active Pool to CollSurplus Pool
-        _contractsCache.collSurplusPool.accountSurplus(_borrower, _ETH);
-        _contractsCache.activePool.sendStEthColl(address(_contractsCache.collSurplusPool), _ETH);
+        ebtcToken.burn(address(gasPool), _EBTC);
+        // Update Active Pool EBTC, and send ETH to account
+        activePool.decreaseEBTCDebt(_EBTC);
+
+        // Register stETH surplus from upcoming transfers of stETH from Active Pool and Gas Pool
+        collSurplusPool.accountSurplus(_borrower, _stEth + LIQUIDATOR_REWARD);
+
+        // CEI: send stETH from Active Pool to CollSurplus Pool
+        activePool.sendStEthColl(address(collSurplusPool), _stEth);
+
+        // CEI: send stETH from Gas Pool to CollSurplus Pool
+        gasPool.sendStEthColl(address(collSurplusPool), LIQUIDATOR_REWARD);
     }
 
     function _isValidFirstRedemptionHint(
@@ -337,15 +325,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _maxIterations,
         uint _maxFeePercentage
     ) external override {
-        ContractsCache memory contractsCache = ContractsCache(
-            activePool,
-            defaultPool,
-            ebtcToken,
-            feeRecipient,
-            sortedCdps,
-            collSurplusPool,
-            gasPoolAddress
-        );
         RedemptionTotals memory totals;
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
@@ -353,31 +332,25 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
-        _requireEBTCBalanceCoversRedemption(contractsCache.ebtcToken, msg.sender, _EBTCamount);
+        _requireEBTCBalanceCoversRedemption(ebtcToken, msg.sender, _EBTCamount);
 
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
         // Confirm redeemer's balance is less than total EBTC supply
-        assert(contractsCache.ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
+        assert(ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
 
         totals.remainingEBTC = _EBTCamount;
         address currentBorrower;
         bytes32 _cId = _firstRedemptionHint;
 
-        if (
-            _isValidFirstRedemptionHint(
-                contractsCache.sortedCdps,
-                _firstRedemptionHint,
-                totals.price
-            )
-        ) {
-            currentBorrower = contractsCache.sortedCdps.existCdpOwners(_firstRedemptionHint);
+        if (_isValidFirstRedemptionHint(sortedCdps, _firstRedemptionHint, totals.price)) {
+            currentBorrower = sortedCdps.existCdpOwners(_firstRedemptionHint);
         } else {
-            _cId = contractsCache.sortedCdps.getLast();
-            currentBorrower = contractsCache.sortedCdps.getOwnerAddress(_cId);
+            _cId = sortedCdps.getLast();
+            currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
             while (currentBorrower != address(0) && getCurrentICR(_cId, totals.price) < MCR) {
-                _cId = contractsCache.sortedCdps.getPrev(_cId);
-                currentBorrower = contractsCache.sortedCdps.getOwnerAddress(_cId);
+                _cId = sortedCdps.getPrev(_cId);
+                currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
         }
 
@@ -390,10 +363,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _maxIterations--;
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                bytes32 _nextId = contractsCache.sortedCdps.getPrev(_cId);
-                address nextUserToCheck = contractsCache.sortedCdps.getOwnerAddress(_nextId);
+                bytes32 _nextId = sortedCdps.getPrev(_cId);
+                address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
 
-                _applyPendingRewards(contractsCache.activePool, contractsCache.defaultPool, _cId);
+                _applyPendingRewards(activePool, defaultPool, _cId);
 
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
@@ -405,17 +378,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                         _partialRedemptionHintNICR
                     );
                 SingleRedemptionValues memory singleRedemption = _redeemCollateralFromCdp(
-                    contractsCache,
                     _redeemColFromCdp
                 );
                 // Partial redemption was cancelled (out-of-date hint, or new net debt < minimum),
                 // therefore we could not redeem from the last Cdp
                 if (singleRedemption.cancelledPartial) break;
 
-                totals.totalEBTCToRedeem = totals.totalEBTCToRedeem + singleRedemption.EBTCLot;
-                totals.totalETHDrawn = totals.totalETHDrawn + singleRedemption.ETHLot;
+                totals.totalEBTCToRedeem = totals.totalEBTCToRedeem + singleRedemption.eBtcToRedeem;
+                totals.totalETHDrawn = totals.totalETHDrawn + singleRedemption.stEthToRecieve;
 
-                totals.remainingEBTC = totals.remainingEBTC - singleRedemption.EBTCLot;
+                totals.remainingEBTC = totals.remainingEBTC - singleRedemption.eBtcToRedeem;
                 currentBorrower = nextUserToCheck;
                 _cId = _nextId;
             }
@@ -435,18 +407,24 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _requireUserAcceptsFee(totals.ETHFee, totals.totalETHDrawn, _maxFeePercentage);
 
-        // Send the ETH fee to the LQTY staking contract
-        contractsCache.activePool.sendStEthColl(address(contractsCache.feeRecipient), totals.ETHFee);
-
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 
-        // Burn the total EBTC that is cancelled with debt, and send the redeemed ETH to msg.sender
-        contractsCache.ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
-        // Update Active Pool EBTC, and send ETH to account
-        contractsCache.activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
-        contractsCache.activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
+        // Burn the total eBTC that is redeemed
+        ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
+
+        // Update Active Pool eBTC debt internal accounting
+        activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
+
+        // CEI: Send the stETH drawn to the redeemer
+        activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
+
+        // CEI: Send the stETH fee to the FeeRecipient
+        activePool.sendStEthColl(address(feeRecipient), totals.ETHFee);
+
+        // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
+        // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
     }
 
     // --- Helper functions ---
@@ -759,6 +737,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].status = closedStatus;
         Cdps[_cdpId].coll = 0;
         Cdps[_cdpId].debt = 0;
+        Cdps[_cdpId].liquidatorRewardShares = 0;
 
         rewardSnapshots[_cdpId].ETH = 0;
         rewardSnapshots[_cdpId].EBTCDebt = 0;
@@ -891,26 +870,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _newIndex,
                 _oldIndex
             );
-            ContractsCache memory _contractsCache = ContractsCache(
-                activePool,
-                defaultPool,
-                ebtcToken,
-                feeRecipient,
-                sortedCdps,
-                collSurplusPool,
-                gasPoolAddress
-            );
-            _takeSplitAndUpdateFeePerUnit(
-                _contractsCache,
-                _feeTaken,
-                _deltaFeePerUnit,
-                _perUnitError
-            );
-            _updateSystemSnapshots_excludeCollRemainder(
-                _contractsCache.activePool,
-                _contractsCache.defaultPool,
-                0
-            );
+            _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
+            _updateSystemSnapshots_excludeCollRemainder(activePool, defaultPool, 0);
         }
     }
 
@@ -1102,7 +1063,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // Take the cut from staking reward
     // and update global fee-per-unit accumulator
     function _takeSplitAndUpdateFeePerUnit(
-        ContractsCache memory _cachedContracts,
         uint256 _feeTaken,
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
@@ -1111,12 +1071,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         stFeePerUnitg = stFeePerUnitg + _deltaPerUnit;
         stFeePerUnitgError = _newErrorPerUnit;
 
-        require(
-            _cachedContracts.activePool.getStEthColl() > _feeTaken,
-            "CDPManager: fee split is too big"
-        );
+        require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
         address _feeRecipient = address(feeRecipient); // TODO choose other fee recipient?
-        _cachedContracts.activePool.sendStEthColl(_feeRecipient, _feeTaken);
+        activePool.sendStEthColl(_feeRecipient, _feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeRecipient, _feeTaken);
     }
@@ -1240,13 +1197,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    function _requirePartialLiqDebtSize(uint _partialDebt, uint _entireDebt, uint _price) internal {
-        require(
-            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_DEBT, _price)) <= _entireDebt,
-            "!maxDebtByPartialLiq"
-        );
-    }
-
     function _requireValidUpdateInterval() internal {
         require(
             block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
@@ -1312,29 +1262,55 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Cdp property getters ---
 
+    /// @notice Get status of a CDP. Named values can be found in ICdpManagerData.Status.
     function getCdpStatus(bytes32 _cdpId) external view override returns (uint) {
         return uint(Cdps[_cdpId].status);
     }
 
+    /// @notice Get stake value of a CDP.
     function getCdpStake(bytes32 _cdpId) external view override returns (uint) {
         return Cdps[_cdpId].stake;
     }
 
+    /// @notice Get stored debt value of a CDP, in eBTC units. Does not include pending changes from redistributions
     function getCdpDebt(bytes32 _cdpId) external view override returns (uint) {
         return Cdps[_cdpId].debt;
     }
 
+    /// @notice Get stored collateral value of a CDP, in stETH shares. Does not include pending changes from redistributions or unprocessed staking yield.
     function getCdpColl(bytes32 _cdpId) external view override returns (uint) {
         return Cdps[_cdpId].coll;
     }
 
+    /**
+        @notice Get shares value of the liquidator gas incentive reward stored for a CDP. 
+        @notice This value is processed when a CDP closes. 
+        @dev This value is returned to the borrower when they close their own CDP
+        @dev This value is given to liquidators upon fully liquidating a CDP
+        @dev This value is sent to the CollSurplusPool for reclaiming by the borrower when their CDP is redeemed
+    */
+    function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view override returns (uint) {
+        return Cdps[_cdpId].liquidatorRewardShares;
+    }
+
     // --- Cdp property setters, called by BorrowerOperations ---
 
+    /**
+     * @notice Set the status of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _num The new ICdpManagerData.Satus, as an integer
+     */
     function setCdpStatus(bytes32 _cdpId, uint _num) external override {
         _requireCallerIsBorrowerOperations();
         Cdps[_cdpId].status = Status(_num);
     }
 
+    /**
+     * @notice Increase the collateral of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _collIncrease The amount to collateral to increase, in stETH shares
+     * @return The new collateral amount in stETH shares
+     */
     function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
         uint newColl = Cdps[_cdpId].coll + _collIncrease;
@@ -1342,6 +1318,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return newColl;
     }
 
+    /**
+     * @notice Decrease the collateral of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _collDecrease The amount of collateral to decrease, in stETH sharse
+     * @return The new collateral amount in stETH shares
+     */
     function decreaseCdpColl(bytes32 _cdpId, uint _collDecrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
         uint newColl = Cdps[_cdpId].coll - _collDecrease;
@@ -1349,6 +1331,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return newColl;
     }
 
+    /**
+     * @notice Increase the debt of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _debtIncrease The amount of debt to increase
+     * @return The new debt amount
+     */
     function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
         uint newDebt = Cdps[_cdpId].debt + _debtIncrease;
@@ -1356,10 +1344,29 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return newDebt;
     }
 
+    /**
+     * @notice Decrease the debt of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _debtDecrease The amount of debt to decrease
+     * @return The new debt amount
+     */
     function decreaseCdpDebt(bytes32 _cdpId, uint _debtDecrease) external override returns (uint) {
         _requireCallerIsBorrowerOperations();
         uint newDebt = Cdps[_cdpId].debt - _debtDecrease;
         Cdps[_cdpId].debt = newDebt;
         return newDebt;
+    }
+
+    /**
+     * @notice Set the liquidator reward shares of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _liquidatorRewardShares The new liquidator reward shares
+     */
+    function setCdpLiquidatorRewardShares(
+        bytes32 _cdpId,
+        uint _liquidatorRewardShares
+    ) external override {
+        _requireCallerIsBorrowerOperations();
+        Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
     }
 }

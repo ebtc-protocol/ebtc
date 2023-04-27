@@ -387,6 +387,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         assert(vars.netColl > 0);
 
         uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
+        uint _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
 
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.ICR = LiquityMath._computeCR(vars.netColl, vars.debt, vars.price);
@@ -415,6 +416,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         cdpManager.setCdpStatus(_cdpId, 1);
         cdpManager.increaseCdpColl(_cdpId, _netCollAsShares); // Collateral is stored in shares form for normalization
         cdpManager.increaseCdpDebt(_cdpId, vars.debt);
+        cdpManager.setCdpLiquidatorRewardShares(_cdpId, _liquidatorRewardShares);
 
         cdpManager.updateCdpRewardSnapshots(_cdpId);
         vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
@@ -442,16 +444,12 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         );
 
         // CEI: Move the net collateral to the Active Pool
-        _activePoolAddColl(activePool, vars.netCool, _netCollAsShares);
+        _activePoolAddColl(vars.netCool, _netCollAsShares);
 
         // CEI: Move the liquidator reward to the Gas Pool
-        _gasPoolAddColl(
-            gasPool,
-            LIQUIDATOR_REWARD,
-            collateral.getSharesByPooledEth(LIQUIDATOR_REWARD)
-        );
+        _gasPoolAddColl(LIQUIDATOR_REWARD, _liquidatorRewardShares);
 
-        assert(vars.netCool + LIQUIDATOR_REWARD == _collAmount);
+        assert(vars.netCool + LIQUIDATOR_REWARD == _collAmount); // Temporary Assertion
 
         return _cdpId;
     }
@@ -484,6 +482,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         cdpManager.removeStake(_cdpId);
         cdpManager.closeCdp(_cdpId);
+        uint _liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         // We already verified msg.sender is the borrower
         emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
@@ -495,7 +494,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         activePool.sendStEthColl(msg.sender, coll);
 
         // CEI: Send the liquidation gas stipend back to the user
-        gasPool.sendStEthColl(msg.sender, LIQUIDATOR_REWARD);
+        gasPool.sendStEthColl(msg.sender, _liquidatorRewardShares);
     }
 
     /**
@@ -572,7 +571,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         if (_varMvTokens.isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
+            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
@@ -580,16 +579,16 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     }
 
     // Send ETH to Active Pool and increase its recorded ETH balance
-    function _activePoolAddColl(IActivePool _activePool, uint _amount, uint _shareAmt) internal {
+    function _activePoolAddColl(uint _amount, uint _shareAmt) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferFrom(msg.sender, address(_activePool), _amount);
-        _activePool.receiveColl(_shareAmt);
+        collateral.transferFrom(msg.sender, address(activePool), _amount);
+        activePool.receiveColl(_shareAmt);
     }
 
-    function _gasPoolAddColl(IGasPool _gasPool, uint _amount, uint _shareAmt) internal {
+    function _gasPoolAddColl(uint _amount, uint _shareAmt) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferFrom(msg.sender, address(_gasPool), _amount);
-        _gasPool.receiveColl(_shareAmt);
+        collateral.transferFrom(msg.sender, address(gasPool), _amount);
+        gasPool.receiveColl(_shareAmt);
     }
 
     // Issue the specified amount of EBTC to _account and increases
