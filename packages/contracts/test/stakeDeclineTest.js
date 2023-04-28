@@ -55,27 +55,9 @@ contract('CdpManager', async accounts => {
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new(
-      contracts.liquidationLibrary.address,
-      contracts.authority.address,
-      contracts.borrowerOperations.address,
-      contracts.gasPool.address,
-      contracts.collSurplusPool.address,
-      contracts.ebtcToken.address,
-      contracts.feeRecipient.address,
-      contracts.sortedCdps.address,
-      contracts.activePool.address,
-      contracts.defaultPool.address,
-      contracts.priceFeed.address,
-      contracts.collateral.address
-      )
-    contracts.ebtcToken = await EBTCTokenTester.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -91,7 +73,6 @@ contract('CdpManager', async accounts => {
     feeRecipient = LQTYContracts.feeRecipient
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it("A given cdp's stake decline is negligible with adjustments and tiny liquidations", async () => {

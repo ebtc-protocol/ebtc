@@ -16,32 +16,9 @@ contract CdpManagerTester is CdpManager {
     event SomeFunc1Called(address _caller);
 
     constructor(
-        address _liquidationLibraryAddress,
-        address _authorityAddress,
-        address _borrowerOperationsAddress,
-        address _collSurplusPoolAddress,
-        address _ebtcTokenAddress,
-        address _feeRecipientAddress,
-        address _sortedCdpsAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _priceFeedAddress,
+        EBTCDeployer.EbtcAddresses memory _addresses,
         address _collTokenAddress
-    )
-        CdpManager(
-            _liquidationLibraryAddress,
-            _authorityAddress,
-            _borrowerOperationsAddress,
-            _collSurplusPoolAddress,
-            _ebtcTokenAddress,
-            _feeRecipientAddress,
-            _sortedCdpsAddress,
-            _activePoolAddress,
-            _defaultPoolAddress,
-            _priceFeedAddress,
-            _collTokenAddress
-        )
-    {}
+    ) public CdpManager(_addresses, _collTokenAddress) {}
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
@@ -100,6 +77,30 @@ contract CdpManagerTester is CdpManager {
             _totalEBTCSupply;
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+    }
+
+    function defaultPoolSendToActivePool(uint _ETH) external {
+        defaultPool.sendETHToActivePool(_ETH);
+    }
+
+    function defaultPoolIncreaseEBTCDebt(uint _amount) external {
+        defaultPool.increaseEBTCDebt(_amount);
+    }
+
+    function activePoolIncreaseEBTCDebt(uint _amount) external {
+        activePool.increaseEBTCDebt(_amount);
+    }
+
+    function defaultPoolDecreaseEBTCDebt(uint _amount) external {
+        defaultPool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolDecreaseEBTCDebt(uint _amount) external {
+        activePool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolSendStEthColl(address _addr, uint _amt) external {
+        activePool.sendStEthColl(_addr, _amt);
     }
 
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {

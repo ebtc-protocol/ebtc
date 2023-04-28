@@ -79,36 +79,11 @@ contract('BorrowerOperations', async accounts => {
 
   const testCorpus = ({ withProxy = false }) => {
     beforeEach(async () => {
-      contracts = await deploymentHelper.deployLiquityCore()
-      contracts.borrowerOperations = await BorrowerOperationsTester.new(
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        contracts.defaultPool.address,
-        contracts.gasPool.address,
-        contracts.collSurplusPool.address,
-        contracts.priceFeed.address,
-        contracts.sortedCdps.address,
-        contracts.ebtcToken.address,
-        contracts.feeRecipient.address,
-        contracts.collateral.address
-      )
+      contracts = await deploymentHelper.deployTesterContractsHardhat()
+      let LQTYContracts = {}
+      LQTYContracts.feeRecipient = contracts.feeRecipient;
 
-      contracts.cdpManager = await CdpManagerTester.new(
-        contracts.liquidationLibrary.address,
-        contracts.authority.address,
-        contracts.borrowerOperations.address,
-        contracts.gasPool.address,
-        contracts.collSurplusPool.address,
-        contracts.ebtcToken.address,
-        contracts.feeRecipient.address,
-        contracts.sortedCdps.address,
-        contracts.activePool.address,
-        contracts.defaultPool.address,
-        contracts.priceFeed.address,
-        contracts.collateral.address
-      )
-
-      contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
+      await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
 
       if (withProxy) {
         const users = [alice, bob, carol, dennis, whale, A, B, C, D, E]

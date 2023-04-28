@@ -34,24 +34,9 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let feeRecipient
 
   before(async () => {
-    coreContracts = await deploymentHelper.deployLiquityCore()
-
-    coreContracts.cdpManager = await CdpManagerTester.new(
-      coreContracts.liquidationLibrary.address,
-      coreContracts.authority.address,
-      coreContracts.borrowerOperations.address,
-      coreContracts.gasPool.address,
-      coreContracts.collSurplusPool.address,
-      coreContracts.ebtcToken.address,
-      coreContracts.feeRecipient.address,
-      coreContracts.sortedCdps.address,
-      coreContracts.activePool.address,
-      coreContracts.defaultPool.address,
-      coreContracts.priceFeed.address,
-      coreContracts.collateral.address
-      )
-
-    coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = coreContracts.feeRecipient;
     
     priceFeed = coreContracts.priceFeed
     ebtcToken = coreContracts.ebtcToken
@@ -62,7 +47,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     defaultPool = coreContracts.defaultPool
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
-    feeRecipient = coreContracts.feeRecipient
+
+    feeRecipient = LQTYContracts.feeRecipient
+
+    await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
 
     for (account of accounts.slice(0, 10)) {
       await th.openCdp(coreContracts, { extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })

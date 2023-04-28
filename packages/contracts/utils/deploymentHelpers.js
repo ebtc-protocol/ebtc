@@ -14,9 +14,9 @@ const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")
 const Governor = artifacts.require("./Governor.sol")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
-const EBTCDeployer = artifacts.require("./EBTCDeployer.sol")
 
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
+const EBTCDeployer = artifacts.require("./EBTCDeployerTester.sol")
 
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
@@ -71,20 +71,9 @@ class DeploymentHelper {
 
     if (frameworkPath.includes("hardhat")) {
       return this.deployLiquityCoreHardhat()
-    } else if (frameworkPath.includes("truffle")) {
-      return this.deployLiquityCoreTruffle()
-    }
-  }
-
-  static async deployLQTYContracts(bountyAddress, lpRewardsAddress, multisigAddress) {
-    const cmdLineArgs = process.argv
-    const frameworkPath = cmdLineArgs[1]
-    // console.log(`Framework used:  ${frameworkPath}`)
-
-    if (frameworkPath.includes("hardhat")) {
-      return this.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisigAddress)
-    } else if (frameworkPath.includes("truffle")) {
-      return this.deployExternalContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress)
+    } else {
+      console.log("invalid framework path:" + frameworkPath);
+      return;
     }
   }
 
@@ -105,278 +94,161 @@ class DeploymentHelper {
     await authority.setUserRole(defaultGovernance, 2, true);
     await authority.setUserRole(defaultGovernance, 3, true);
   }
+  
+  static async deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt){
+    let _deployTx;
+    if (_argTypes.length > 0 && _argValues.length > 0){
+        let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
+        _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg);
+    } else{
+        _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code);	
+    }
+	
+    let _deployedAddr;
+    for (let i = 0; i < _deployTx.logs.length; i++) {
+        if (_deployTx.logs[i].event === "ContractDeployed") {
+            _deployedAddr = _deployTx.logs[i].args[0]
+            break;
+        }
+    }	
+    //console.log(_salt + '_deployedAddr=' + _deployedAddr);
+    return _deployedAddr;
+  }
 
   static async deployLiquityCoreHardhat() {
     const accounts = await web3.eth.getAccounts()
-    const ebtcDeployer = await EBTCDeployer.new()
-
-    const collateral = await CollateralTokenTester.new()
-    const weth9 = await WETH9.new()
-    const functionCaller = await FunctionCaller.new()
-
-    const addr = await ebtcDeployer.getFutureEbtcAddresses()
-
-    let code, salt, args
-
-    const customCoerceFunc = (type, value) => {
-      return value;
-    };
-
-    const abiCoder = new ethers.utils.AbiCoder(customCoerceFunc);
-
-    // Authority
-    code = Governor.bytecode
-    salt = await ebtcDeployer.AUTHORITY()
-    args = abiCoder.encode(["address"], [accounts[0]]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const authority = await Governor.at(addr.authorityAddress)
-
-    // Liquidation Library
-    code = LiquidationLibrary.bytecode
-    salt = await ebtcDeployer.LIQUIDATION_LIBRARY()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.borrowerOperationsAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      addr.sortedCdpsAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const liquidationLibrary = await LiquidationLibrary.at(addr.liquidationLibraryAddress)
-
-    // CDP Manager
-    code = CdpManager.bytecode
-    salt = await ebtcDeployer.CDP_MANAGER()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.liquidationLibraryAddress,
-      addr.authorityAddress,
-      addr.borrowerOperationsAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      addr.sortedCdpsAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const cdpManager = await CdpManager.at(addr.cdpManagerAddress)
-
-    // Borrower Operations
-    code = BorrowerOperations.bytecode
-    salt = await ebtcDeployer.BORROWER_OPERATIONS()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.priceFeedAddress,
-      addr.sortedCdpsAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      collateral.address
-    ]);
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const borrowerOperations = await BorrowerOperations.at(addr.borrowerOperationsAddress)
-
-    // Price Feed
-    code = PriceFeedTestnet.bytecode
-    salt = await ebtcDeployer.PRICE_FEED()
-    args = abiCoder.encode(["address"], [addr.authorityAddress]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const priceFeedTestnet = await PriceFeedTestnet.at(addr.priceFeedAddress)
-
-    // Sorted CDPs
-    code = SortedCdps.bytecode
-    salt = await ebtcDeployer.SORTED_CDPS()
-    args = abiCoder.encode([
-      "uint256",
-      "address",
-      "address"
-    ], [
-      ethers.constants.MaxUint256,
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const sortedCdps = await SortedCdps.at(addr.sortedCdpsAddress)
-
-    // Active Pool
-    code = ActivePool.bytecode
-    salt = await ebtcDeployer.ACTIVE_POOL()
-    args = abiCoder.encode(
-      [
-        "address",
-        "address",
-        "address",
-        "address",
-        "address",
-        "address"
-      ], [
-      addr.borrowerOperationsAddress,
-      addr.cdpManagerAddress,
-      addr.defaultPoolAddress,
-      collateral.address,
-      addr.collSurplusPoolAddress,
-      addr.feeRecipientAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const activePool = await ActivePool.at(addr.activePoolAddress)
-
-    // Gas Pool
-    code = GasPool.bytecode
-    salt = await ebtcDeployer.GAS_POOL()
-
-    await ebtcDeployer.deploy(salt, code)
-    const gasPool = await GasPool.at(addr.gasPoolAddress)
-
-    // Default Pool
-    code = DefaultPool.bytecode
-    salt = await ebtcDeployer.DEFAULT_POOL()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const defaultPool = await DefaultPool.at(addr.defaultPoolAddress)
-
-    // Coll Surplus Pool
-    code = CollSurplusPool.bytecode
-    salt = await ebtcDeployer.COLL_SURPLUS_POOL()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.borrowerOperationsAddress,
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      collateral.address,
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const collSurplusPool = await CollSurplusPool.at(addr.collSurplusPoolAddress)
-
-    // Hint Helpers
-    code = HintHelpers.bytecode
-    salt = await ebtcDeployer.HINT_HELPERS()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.sortedCdpsAddress,
-      addr.cdpManagerAddress,
-      collateral.address,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const hintHelpers = await HintHelpers.at(addr.hintHelpersAddress)
-
-    // eBTCToken
-    code = EBTCToken.bytecode
-    salt = await ebtcDeployer.EBTC_TOKEN()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress,
-      addr.authorityAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const ebtcToken = await EBTCToken.at(addr.ebtcTokenAddress)
-
-    // Fee Recipient
-    code = FeeRecipient.bytecode
-    salt = await ebtcDeployer.FEE_RECIPIENT()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.ebtcTokenAddress,
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress,
-      addr.activePoolAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    const feeRecipient = await FeeRecipient.at(addr.feeRecipientAddress)
-
+	 
+    const ebtcDeployer = await EBTCDeployer.new(); 
+    let _addresses = await ebtcDeployer.getFutureEbtcAddresses();
+	
+    const collateral = await CollateralTokenTester.new();
+    const functionCaller = await FunctionCaller.new();
+	  
+    // deploy Governor as Authority 
+    let _argTypes =['address'];
+    let _argValues = [accounts[0]];
+    let _code = await ebtcDeployer.authority_creationCode();
+    let _salt = await ebtcDeployer.AUTHORITY();
+    let _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[0]);
+    const authority = await Governor.at(_deployedAddr);
+	  
+    // deploy LiquidationLibrary 
+    _argTypes =['address','address','address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[7],_addresses[9],_addresses[11],_addresses[12],_addresses[5],_addresses[6],_addresses[8],_addresses[4],collateral.address];
+    _code = await ebtcDeployer.liquidationLibrary_creationCode();
+    _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[1]);
+    const liquidationLibrary = await LiquidationLibrary.at(_deployedAddr);
+	  
+    // deploy CdpManager 
+    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address','a13':'address','a14':'address'}},'address'];
+    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11],'a13':_addresses[12],'a14':_addresses[13]},collateral.address];
+    _code = await ebtcDeployer.cdpManager_creationCode();
+    _salt = await ebtcDeployer.CDP_MANAGER();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[2]);
+    const cdpManager = await CdpManager.at(_deployedAddr);
+	  
+    // deploy BorrowOperations 
+    _argTypes =['address','address','address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],_addresses[8],_addresses[7],_addresses[9],_addresses[4],_addresses[5],_addresses[11],_addresses[12],collateral.address];
+    _code = await ebtcDeployer.borrowerOperations_creationCode();
+    _salt = await ebtcDeployer.BORROWER_OPERATIONS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[3]);
+    const borrowerOperations = await BorrowerOperations.at(_deployedAddr);	
+	  
+    // deploy PriceFeedTestnet 
+    _argTypes =['address'];
+    _argValues = [_addresses[0]];
+    _code = await ebtcDeployer.priceFeedTestnet_creationCode();
+    _salt = await ebtcDeployer.PRICE_FEED();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[4]);
+    const priceFeedTestnet = await PriceFeedTestnet.at(_deployedAddr);	
+	  
+    // deploy SortedCdps 
+    _argTypes =['uint256','address','address'];
+    _argValues = [0,_addresses[2],_addresses[3]];
+    _code = await ebtcDeployer.sortedCdps_creationCode();
+    _salt = await ebtcDeployer.SORTED_CDPS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[5]);
+    const sortedCdps = await SortedCdps.at(_deployedAddr);
+	  
+    // deploy ActivePool 
+    _argTypes =['address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],_addresses[8],collateral.address,_addresses[9],_addresses[12]];
+    _code = await ebtcDeployer.activePool_creationCode();
+    _salt = await ebtcDeployer.ACTIVE_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[6]);
+    const activePool = await ActivePool.at(_deployedAddr);
+	  
+    // deploy GasPool 
+    _argTypes =[];
+    _argValues = [];
+    _code = await ebtcDeployer.gasPool_creationCode();
+    _salt = await ebtcDeployer.GAS_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[7]);
+    const gasPool = await GasPool.at(_deployedAddr);
+	  
+    // deploy DefaultPool 
+    _argTypes =['address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.defaultPool_creationCode();
+    _salt = await ebtcDeployer.DEFAULT_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[8]);
+    const defaultPool = await DefaultPool.at(_deployedAddr);
+	  
+    // deploy CollSurplusPool 
+    _argTypes =['address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.collSurplusPool_creationCode();
+    _salt = await ebtcDeployer.COLL_SURPLUS_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[9]);
+    const collSurplusPool = await CollSurplusPool.at(_deployedAddr);
+	  
+    // deploy HintHelper 
+    _argTypes =['address','address','address','address','address','address'];
+    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[8],_addresses[4]];
+    _code = await ebtcDeployer.hintHelpers_creationCode();
+    _salt = await ebtcDeployer.HINT_HELPERS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[10]);
+    const hintHelpers = await HintHelpers.at(_deployedAddr);
+	  
+    // deploy EBTCToken 
+    _argTypes =['address','address','address'];
+    _argValues = [_addresses[2],_addresses[3],_addresses[0]];
+    _code = await ebtcDeployer.ebtcToken_creationCode();
+    _salt = await ebtcDeployer.EBTC_TOKEN();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[11]);
+    const ebtcToken = await EBTCToken.at(_deployedAddr);
+	  
+    // deploy FeeRecipient 
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[11],_addresses[2],_addresses[3],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.feeRecipient_creationCode();
+    _salt = await ebtcDeployer.FEE_RECIPIENT();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[12]);
+    const feeRecipient = await FeeRecipient.at(_deployedAddr);
+	
+    // truffle migrations
     EBTCToken.setAsDeployed(ebtcToken)
     DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
     SortedCdps.setAsDeployed(sortedCdps)
     CdpManager.setAsDeployed(cdpManager)
     ActivePool.setAsDeployed(activePool)
+    FeeRecipient.setAsDeployed(feeRecipient)
     GasPool.setAsDeployed(gasPool)
     CollSurplusPool.setAsDeployed(collSurplusPool)
     FunctionCaller.setAsDeployed(functionCaller)
@@ -416,348 +288,163 @@ class DeploymentHelper {
   }
 
   static async deployTesterContractsHardhat() {
-    const accounts = await web3.eth.getAccounts()
-    const ebtcDeployer = await EBTCDeployer.new()
-
+    const accounts = await web3.eth.getAccounts()	  
+	 
+    const ebtcDeployer = await EBTCDeployer.new(); 
+    let _addresses = await ebtcDeployer.getFutureEbtcAddresses();	
+	  
+    const collateral = await CollateralTokenTester.new();
+	  
     const testerContracts = {}
-
-    testerContracts.collateral = await CollateralTokenTester.new()
-    testerContracts.weth9 = await WETH9.new()
-    testerContracts.functionCaller = await FunctionCaller.new()
+    testerContracts.weth = await WETH9.new()
+    testerContracts.functionCaller = await FunctionCaller.new();
+    testerContracts.collateral = collateral;
     testerContracts.math = await LiquityMathTester.new()
+	  
+    // deploy Governor as Authority 
+    let _argTypes =['address'];
+    let _argValues = [accounts[0]];
+    let _code = await ebtcDeployer.authority_creationCode();
+    let _salt = await ebtcDeployer.AUTHORITY();
+    let _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[0]);
+    const authority = await Governor.at(_deployedAddr);
+	  
+    // deploy LiquidationLibrary 
+    _argTypes =['address','address','address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[7],_addresses[9],_addresses[11],_addresses[12],_addresses[5],_addresses[6],_addresses[8],_addresses[4],collateral.address];
+    _code = await ebtcDeployer.liquidationLibrary_creationCode();
+    _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[1]);
+    const liquidationLibrary = await LiquidationLibrary.at(_deployedAddr);
+	  
+    // deploy CdpManagerTester
+    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address','a13':'address','a14':'address'}},'address'];
+    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11],'a13':_addresses[12],'a14':_addresses[13]},collateral.address];
+    _code = await ebtcDeployer.cdpManagerTester_creationCode();
+    _salt = await ebtcDeployer.CDP_MANAGER();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[2]);
+    const cdpManager = await CdpManagerTester.at(_deployedAddr);
+	  
+    // deploy BorrowOperationsTester
+    _argTypes =['address','address','address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],_addresses[8],_addresses[7],_addresses[9],_addresses[4],_addresses[5],_addresses[11],_addresses[12],collateral.address];
+    _code = await ebtcDeployer.borrowerOperationsTester_creationCode();
+    _salt = await ebtcDeployer.BORROWER_OPERATIONS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[3]);
+    const borrowerOperations = await BorrowerOperationsTester.at(_deployedAddr);	
+	  
+    // deploy PriceFeedTestnet 
+    _argTypes =['address'];
+    _argValues = [_addresses[0]];
+    _code = await ebtcDeployer.priceFeedTestnet_creationCode();
+    _salt = await ebtcDeployer.PRICE_FEED();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[4]);
+    const priceFeedTestnet = await PriceFeedTestnet.at(_deployedAddr);	
+	  
+    // deploy SortedCdps 
+    _argTypes =['uint256','address','address'];
+    _argValues = [0,_addresses[2],_addresses[3]];
+    _code = await ebtcDeployer.sortedCdps_creationCode();
+    _salt = await ebtcDeployer.SORTED_CDPS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[5]);
+    const sortedCdps = await SortedCdps.at(_deployedAddr);
+	  
+    // deploy ActivePoolTester
+    _argTypes =['address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],_addresses[8],collateral.address,_addresses[9],_addresses[12]];
+    _code = await ebtcDeployer.activePoolTester_creationCode();
+    _salt = await ebtcDeployer.ACTIVE_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[6]);
+    const activePool = await ActivePoolTester.at(_deployedAddr);
+	  
+    // deploy GasPool 
+    _argTypes =[];
+    _argValues = [];
+    _code = await ebtcDeployer.gasPool_creationCode();
+    _salt = await ebtcDeployer.GAS_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[7]);
+    const gasPool = await GasPool.at(_deployedAddr);
+	  
+    // deploy DefaultPoolTester
+    _argTypes =['address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.defaultPoolTester_creationCode();
+    _salt = await ebtcDeployer.DEFAULT_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[8]);
+    const defaultPool = await DefaultPoolTester.at(_deployedAddr);
+	  
+    // deploy CollSurplusPool 
+    _argTypes =['address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.collSurplusPool_creationCode();
+    _salt = await ebtcDeployer.COLL_SURPLUS_POOL();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[9]);
+    const collSurplusPool = await CollSurplusPool.at(_deployedAddr);
+	  
+    // deploy HintHelper 
+    _argTypes =['address','address','address','address','address','address'];
+    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[8],_addresses[4]];
+    _code = await ebtcDeployer.hintHelpers_creationCode();
+    _salt = await ebtcDeployer.HINT_HELPERS();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[10]);
+    const hintHelpers = await HintHelpers.at(_deployedAddr);
+	  
+    // deploy EBTCTokenTester 
+    _argTypes =['address','address','address'];
+    _argValues = [_addresses[2],_addresses[3],_addresses[0]];
+    _code = await ebtcDeployer.ebtcTokenTester_creationCode();
+    _salt = await ebtcDeployer.EBTC_TOKEN();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[11]);
+    const ebtcToken = await EBTCTokenTester.at(_deployedAddr);
+	  
+    // deploy FeeRecipient 
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[11],_addresses[2],_addresses[3],_addresses[6],collateral.address];
+    _code = await ebtcDeployer.feeRecipient_creationCode();
+    _salt = await ebtcDeployer.FEE_RECIPIENT();
+    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _addresses[12]);
+    const feeRecipient = await FeeRecipient.at(_deployedAddr);
 
-    let code, salt, args
-
-    const customCoerceFunc = (type, value) => {
-      return value;
-    };
-
-    const abiCoder = new ethers.utils.AbiCoder(customCoerceFunc);
-
-    // Authority
-    code = Governor.bytecode
-    salt = await ebtcDeployer.AUTHORITY()
-    args = abiCoder.encode(["address"], [accounts[0]]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.authority = await Governor.at(addr.authorityAddress)
-
-
-    // Liquidation Library
-    code = LiquidationLibrary.bytecode
-    salt = await ebtcDeployer.LIQUIDATION_LIBRARY()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.borrowerOperationsAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      addr.sortedCdpsAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.liquidationLibrary = await LiquidationLibrary.at(addr.liquidationLibraryAddress)
-
-    // CDP Manager
-    code = CdpManagerTester.bytecode
-    salt = await ebtcDeployer.CDP_MANAGER()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.liquidationLibraryAddress,
-      addr.authorityAddress,
-      addr.borrowerOperationsAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      addr.sortedCdpsAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.cdpManager = await CdpManagerTester.at(addr.cdpManagerAddress)
-
-    // Borrower Operations
-    code = BorrowerOperationsTester.bytecode
-    salt = await ebtcDeployer.BORROWER_OPERATIONS()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.gasPoolAddress,
-      addr.collSurplusPoolAddress,
-      addr.priceFeedAddress,
-      addr.sortedCdpsAddress,
-      addr.ebtcTokenAddress,
-      addr.feeRecipientAddress,
-      collateral.address
-    ]);
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.borrowerOperations = await BorrowerOperationsTester.at(addr.borrowerOperationsAddress)
-
-    // Price Feed
-    code = PriceFeedTestnet.bytecode
-    salt = await ebtcDeployer.PRICE_FEED()
-    args = abiCoder.encode(["address"], [addr.authorityAddress]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.priceFeedTestnet = await PriceFeedTestnet.at(addr.priceFeedAddress)
-
-    // Sorted CDPs
-    code = SortedCdps.bytecode
-    salt = await ebtcDeployer.SORTED_CDPS()
-    args = abiCoder.encode([
-      "uint256",
-      "address",
-      "address"
-    ], [
-      ethers.constants.MaxUint256,
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.sortedCdps = await SortedCdps.at(addr.sortedCdpsAddress)
-
-    // Active Pool
-    code = ActivePoolTester.bytecode
-    salt = await ebtcDeployer.ACTIVE_POOL()
-    args = abiCoder.encode(
-      [
-        "address",
-        "address",
-        "address",
-        "address",
-        "address",
-        "address"
-      ], [
-      addr.borrowerOperationsAddress,
-      addr.cdpManagerAddress,
-      addr.defaultPoolAddress,
-      collateral.address,
-      addr.collSurplusPoolAddress,
-      addr.feeRecipientAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.activePool = await ActivePoolTester.at(addr.activePoolAddress)
-
-    // Gas Pool
-    code = GasPool.bytecode
-    salt = await ebtcDeployer.GAS_POOL()
-
-    await ebtcDeployer.deploy(salt, code)
-    testerContracts.gasPool = await GasPool.at(addr.gasPoolAddress)
-
-    // Default Pool
-    code = DefaultPoolTester.bytecode
-    salt = await ebtcDeployer.DEFAULT_POOL()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.defaultPool = await DefaultPoolTester.at(addr.defaultPoolAddress)
-
-    // Coll Surplus Pool
-    code = CollSurplusPool.bytecode
-    salt = await ebtcDeployer.COLL_SURPLUS_POOL()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.borrowerOperationsAddress,
-      addr.cdpManagerAddress,
-      addr.activePoolAddress,
-      collateral.address,
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.collSurplusPool = await CollSurplusPool.at(addr.collSurplusPoolAddress)
-
-    // Hint Helpers
-    code = HintHelpers.bytecode
-    salt = await ebtcDeployer.HINT_HELPERS()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.sortedCdpsAddress,
-      addr.cdpManagerAddress,
-      collateral.address,
-      addr.activePoolAddress,
-      addr.defaultPoolAddress,
-      addr.priceFeedAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.hintHelpers = await HintHelpers.at(addr.hintHelpersAddress)
-
-    // eBTCToken
-    code = EBTCTokenTester.bytecode
-    salt = await ebtcDeployer.EBTC_TOKEN()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress,
-      addr.authorityAddress
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.ebtcToken = await EBTCTokenTester.at(addr.ebtcTokenAddress)
-
-    // Fee Recipient
-    code = FeeRecipient.bytecode
-    salt = await ebtcDeployer.FEE_RECIPIENT()
-    args = abiCoder.encode([
-      "address",
-      "address",
-      "address",
-      "address",
-      "address"
-    ], [
-      addr.ebtcTokenAddress,
-      addr.cdpManagerAddress,
-      addr.borrowerOperationsAddress,
-      addr.activePoolAddress,
-      collateral.address
-    ]);
-
-    await ebtcDeployer.deploy(salt, code + args.substring(2))
-    testerContracts.feeRecipient = await FeeRecipient.at(addr.feeRecipientAddress)
-
-    await this.configureGovernor(accounts[0], testerContracts)
-
+    // Contract without testers
+    testerContracts.authority = authority
+    testerContracts.liquidationLibrary = liquidationLibrary
+    testerContracts.priceFeedTestnet = priceFeedTestnet
+    testerContracts.sortedCdps = sortedCdps
+    testerContracts.gasPool = gasPool
+    testerContracts.collSurplusPool = collSurplusPool
+    testerContracts.hintHelpers = hintHelpers
+    testerContracts.feeRecipient = feeRecipient
+	
+    // Actual tester contracts
+    testerContracts.cdpManager = cdpManager
+    testerContracts.borrowerOperations = borrowerOperations
+    testerContracts.activePool = activePool
+    testerContracts.defaultPool = defaultPool
+    testerContracts.ebtcToken = ebtcToken
+	
     return testerContracts
   }
 
-  // Deploy external contracts
-  // TODO: Add Governance
-
-  static async deployLiquityCoreTruffle() {
-    const priceFeedTestnet = await PriceFeedTestnet.new()
-    const sortedCdps = await SortedCdps.new()
-    const cdpManager = await CdpManager.new()
-    const weth9 = await WETH9.new()
-    const activePool = await ActivePool.new()
-    const gasPool = await GasPool.new()
-    const defaultPool = await DefaultPool.new()
-    const collSurplusPool = await CollSurplusPool.new()
-    const functionCaller = await FunctionCaller.new()
-    const borrowerOperations = await BorrowerOperations.new()
-    const hintHelpers = await HintHelpers.new()
-    const ebtcToken = await EBTCToken.new(
-      cdpManager.address,
-      borrowerOperations.address
-    )
-    const collateral = await CollateralTokenTester.new()
-    const coreContracts = {
-      priceFeedTestnet,
-      ebtcToken,
-      sortedCdps,
-      cdpManager,
-      activePool,
-      gasPool,
-      defaultPool,
-      collSurplusPool,
-      functionCaller,
-      borrowerOperations,
-      hintHelpers,
-      collateral
-    }
-    return coreContracts
-  }
-
-  static async deployExternalContractsTruffle(bountyAddress, lpRewardsAddress, multisigAddress) {
-    const feeRecipient = await feeRecipient.new()
-
-    const LQTYContracts = {
-      feeRecipient
-    }
-    return LQTYContracts
-  }
-
-  static async deployEBTCToken(contracts) {
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address,
-    )
-    return contracts
-  }
-
-  static async deployEBTCTokenTester(contracts) {
-    contracts.ebtcToken = await EBTCTokenTester.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    return contracts
-  }
-
-  static async deployProxyScripts(contracts, owner, users) {
+  static async deployProxyScripts(contracts, LQTYContracts, owner, users) {
     const proxies = await buildUserProxies(users)
 
     const borrowerWrappersScript = await BorrowerWrappersScript.new(
       contracts.borrowerOperations.address,
       contracts.cdpManager.address,
-      contracts.feeRecipient.address,
+      LQTYContracts.feeRecipient.address,
       contracts.collateral.address
     )
     contracts.borrowerWrappers = new BorrowerWrappersProxy(owner, proxies, borrowerWrappersScript.address)
@@ -773,8 +460,20 @@ class DeploymentHelper {
     const ebtcTokenScript = await TokenScript.new(contracts.ebtcToken.address)
     contracts.ebtcToken = new TokenProxy(owner, proxies, ebtcTokenScript.address, contracts.ebtcToken)
 
-    const lqtyStakingScript = await LQTYStakingScript.new(contracts.feeRecipient.address)
-    contracts.feeRecipient = new LQTYStakingProxy(owner, proxies, lqtyStakingScript.address, contracts.feeRecipient)
+    const lqtyStakingScript = await LQTYStakingScript.new(LQTYContracts.feeRecipient.address)
+    LQTYContracts.feeRecipient = new LQTYStakingProxy(owner, proxies, lqtyStakingScript.address, LQTYContracts.feeRecipient)
+  }
+
+  // Connect contracts to their dependencies
+  static async connectCoreContracts(contracts, LQTYContracts) {
+    
+    // set contract addresses in the FunctionCaller 
+    await contracts.functionCaller.setCdpManagerAddress(contracts.cdpManager.address)
+    await contracts.functionCaller.setSortedCdpsAddress(contracts.sortedCdps.address)
+  }
+
+  static async connectUnipool(uniPool, LQTYContracts, uniswapPairAddr, duration) {
+    await uniPool.setParams(LQTYContracts.lqtyToken.address, uniswapPairAddr, duration)
   }
 }
 module.exports = DeploymentHelper

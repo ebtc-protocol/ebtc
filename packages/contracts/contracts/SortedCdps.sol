@@ -85,7 +85,9 @@ contract SortedCdps is ISortedCdps {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress
     ) public {
-        require(_size > 0, "SortedCdps: Size can't be zero");
+        if (_size == 0) {
+            _size = type(uint256).max;
+        }
 
         data.maxSize = _size;
 

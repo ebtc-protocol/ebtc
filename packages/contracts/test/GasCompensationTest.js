@@ -47,53 +47,24 @@ contract('Gas compensation tests', async accounts => {
     }
   }
 
-  before(async () => {
-    liquidationLibrary = await LiquidationLibrary.new()
-    cdpManagerTester = await CdpManagerTester.new(
-      contracts.liquidationLibrary.address,
-      contracts.authority.address,
-      contracts.borrowerOperations.address,
-      contracts.gasPool.address,
-      contracts.collSurplusPool.address,
-      contracts.ebtcToken.address,
-      contracts.feeRecipient.address,
-      contracts.sortedCdps.address,
-      contracts.activePool.address,
-      contracts.defaultPool.address,
-      contracts.priceFeed.address,
-      contracts.collateral.address
-      )
-    borrowerOperationsTester = await BorrowerOperationsTester.new()
-
-    CdpManagerTester.setAsDeployed(cdpManagerTester)
-    BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
-	
+  before(async () => {	
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
     bn8Signer = await ethers.provider.getSigner(bn8);
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new(
-      contracts.liquidationLibrary.address,
-      contracts.authority.address,
-      contracts.borrowerOperations.address,
-      contracts.gasPool.address,
-      contracts.collSurplusPool.address,
-      contracts.ebtcToken.address,
-      contracts.feeRecipient.address,
-      contracts.sortedCdps.address,
-      contracts.activePool.address,
-      contracts.defaultPool.address,
-      contracts.priceFeed.address,
-      contracts.collateral.address
-      )
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
+
+    await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
+	
+    liquidationLibrary = contracts.liquidationLibrary
+    cdpManagerTester = contracts.cdpManager
+    borrowerOperationsTester = contracts.borrowerOperations
+
+    CdpManagerTester.setAsDeployed(cdpManagerTester)
+    BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -107,7 +78,6 @@ contract('Gas compensation tests', async accounts => {
     LICR = await cdpManager.LICR();
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
     let _ownerBal = await web3.eth.getBalance(owner);

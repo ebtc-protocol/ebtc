@@ -9,46 +9,40 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
+import "./EBTCDeployer.sol";
 import "./Dependencies/Proxy.sol";
 
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Dependency setter ---
     constructor(
-        address _liquidationLibraryAddress,
-        address _authorityAddress,
-        address _borrowerOperationsAddress,
-        address _collSurplusPoolAddress,
-        address _ebtcTokenAddress,
-        address _feeRecipientAddress,
-        address _sortedCdpsAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _priceFeedAddress,
-        address _collTokenAddress
+        EBTCDeployer.EbtcAddresses memory _addresses,
+        address collTokenAddress
     )
         CdpManagerStorage(
-            _liquidationLibraryAddress,
-            _authorityAddress,
-            _borrowerOperationsAddress,
-            _collSurplusPoolAddress,
-            _ebtcTokenAddress,
-            _feeRecipientAddress,
-            _sortedCdpsAddress,
-            _activePoolAddress,
-            _defaultPoolAddress,
-            _priceFeedAddress,
-            _collTokenAddress
+            _addresses.liquidationLibraryAddress,
+            _addresses.authorityAddress,
+            _addresses.borrowerOperationsAddress,
+            _addresses.gasPoolAddress,
+            _addresses.collSurplusPoolAddress,
+            _addresses.ebtcTokenAddress,
+            _addresses.feeRecipientAddress,
+            _addresses.sortedCdpsAddress,
+            _addresses.activePoolAddress,
+            _addresses.defaultPoolAddress,
+            _addresses.priceFeedAddress,
+            collTokenAddress
         )
     {
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit ActivePoolAddressChanged(_activePoolAddress);
-        emit DefaultPoolAddressChanged(_defaultPoolAddress);
-        emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
-        emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
+        emit BorrowerOperationsAddressChanged(_addresses.borrowerOperationsAddress);
+        emit ActivePoolAddressChanged(_addresses.activePoolAddress);
+        emit DefaultPoolAddressChanged(_addresses.defaultPoolAddress);
+        emit GasPoolAddressChanged(_addresses.gasPoolAddress);
+        emit CollSurplusPoolAddressChanged(_addresses.collSurplusPoolAddress);
+        emit PriceFeedAddressChanged(_addresses.priceFeedAddress);
+        emit EBTCTokenAddressChanged(_addresses.ebtcTokenAddress);
+        emit SortedCdpsAddressChanged(_addresses.sortedCdpsAddress);
+        emit FeeRecipientAddressChanged(_addresses.feeRecipientAddress);
+        emit CollateralAddressChanged(collTokenAddress);
 
         stakingRewardSplit = 2500;
         // Emit initial value for analytics
@@ -258,7 +252,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
-        activePool.sendStEthCollAndLiquidatorReward(address(collSurplusPool), _stEth, _liquidatorRewardShares);
+        activePool.sendStEthCollAndLiquidatorReward(
+            address(collSurplusPool),
+            _stEth,
+            _liquidatorRewardShares
+        );
     }
 
     function _isValidFirstRedemptionHint(

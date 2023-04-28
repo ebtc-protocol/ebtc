@@ -65,26 +65,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployTesterContractsHardhat()
-    contracts.cdpManager = await CdpManagerTester.new(
-      contracts.liquidationLibrary.address,
-      contracts.authority.address,
-      contracts.borrowerOperations.address,
-      contracts.gasPool.address,
-      contracts.collSurplusPool.address,
-      contracts.ebtcToken.address,
-      contracts.feeRecipient.address,
-      contracts.sortedCdps.address,
-      contracts.activePool.address,
-      contracts.defaultPool.address,
-      contracts.priceFeed.address,
-      contracts.collateral.address
-      )
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address,
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -102,7 +84,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     MCR = await cdpManager.MCR()
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
     let _ownerBal = await web3.eth.getBalance(owner);

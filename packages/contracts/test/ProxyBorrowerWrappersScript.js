@@ -62,26 +62,11 @@ contract('BorrowerWrappers', async accounts => {
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new(
-      contracts.liquidationLibrary.address,
-      contracts.authority.address,
-      contracts.borrowerOperations.address,
-      contracts.gasPool.address,
-      contracts.collSurplusPool.address,
-      contracts.ebtcToken.address,
-      contracts.feeRecipient.address,
-      contracts.sortedCdps.address,
-      contracts.activePool.address,
-      contracts.defaultPool.address,
-      contracts.priceFeed.address,
-      contracts.collateral.address
-      )
-    contracts = await deploymentHelper.deployEBTCToken(contracts)
-    const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	  
     let originalBorrowerOperations = contracts.borrowerOperations
 
