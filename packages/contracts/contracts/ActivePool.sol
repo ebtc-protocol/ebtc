@@ -73,19 +73,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
     function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
         require(StEthColl >= _shares, "!ActivePoolBal");
+
         StEthColl = StEthColl - _shares;
+
         emit ActivePoolETHBalanceUpdated(StEthColl);
         emit CollateralSent(_account, _shares);
 
-        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, _shares);
-        if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_shares);
-        } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_shares);
-        } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
-        }
+        _transferSharesWithContractHooks(_account, _shares);
     }
 
     /**
@@ -101,8 +95,29 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         uint _shares,
         uint _liquidatorRewardShares
     ) external override {
+        _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "!ActivePoolBal");
         uint totalShares = _shares + _liquidatorRewardShares;
-        sendStEthColl(_account, totalShares);
+
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, totalShares);
+
+        _transferSharesWithContractHooks(_account, totalShares);
+    }
+
+    function _transferSharesWithContractHooks(address _account, uint _shares) internal {
+        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
+        collateral.transferShares(_account, _shares);
+
+        if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(_shares);
+        } else if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(_shares);
+        } else if (_account == feeRecipientAddress) {
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
+        }
     }
 
     function increaseEBTCDebt(uint _amount) external override {

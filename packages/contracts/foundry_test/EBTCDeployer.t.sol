@@ -11,7 +11,6 @@ import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";

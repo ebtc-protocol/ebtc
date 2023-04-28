@@ -29,7 +29,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _sumColl;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (uint _debt, uint _coll, , , ,) = cdpManager.Cdps(_cdpId);
+            (uint _debt, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(
@@ -82,11 +82,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            2e17
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
@@ -309,11 +305,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.prank(users[2]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            2e17
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
         bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
 
@@ -364,11 +356,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.prank(users[2]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            2e17
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
         bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
 

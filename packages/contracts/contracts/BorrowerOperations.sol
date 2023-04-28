@@ -319,7 +319,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
             _isDebtIncrease
         );
 
-        _requireAtLeastMinColl(vars.newColl);
+        _requireAtLeastMinNetColl(vars.newColl);
 
         vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
@@ -363,9 +363,13 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _borrower
     ) internal returns (bytes32) {
         require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
-        _requireAtLeastMinColl(_collAmount);
 
         LocalVariables_openCdp memory vars;
+
+        // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
+        vars.netColl = _getNetColl(_collAmount);
+
+        _requireAtLeastMinNetColl(vars.netColl);
 
         vars.price = priceFeed.fetchPrice();
 
@@ -373,9 +377,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         vars.debt = _EBTCAmount;
-
-        // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
-        vars.netColl = _getNetColl(_collAmount);
 
         // Sanity check
         assert(vars.netColl > 0);
@@ -725,8 +726,8 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         );
     }
 
-    function _requireAtLeastMinColl(uint _coll) internal pure {
-        require(_coll >= MIN_NET_COLL, "BorrowerOps: Cdp's total coll must be greater than minimum");
+    function _requireAtLeastMinNetColl(uint _coll) internal pure {
+        require(_coll >= MIN_NET_COLL, "BorrowerOps: Cdp's net coll must be greater than minimum");
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {

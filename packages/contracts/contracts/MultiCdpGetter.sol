@@ -81,6 +81,7 @@ contract MultiCdpGetter {
                 /* arrayIndex */
                 ,
                 ,
+
             ) = cdpManager.Cdps(currentCdpId);
 
             (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(

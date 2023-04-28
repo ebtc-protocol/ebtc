@@ -121,10 +121,7 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint);
 
-    function setCdpLiquidatorRewardShares(
-        bytes32 _cdpId,
-        uint _liquidatorRewardShares
-    ) external;
+    function setCdpLiquidatorRewardShares(bytes32 _cdpId, uint _liquidatorRewardShares) external;
 
     function getTCR(uint _price) external view returns (uint);
 

@@ -19,5 +19,9 @@ interface IActivePool is IPool {
 
     function receiveColl(uint _value) external;
 
-    function sendStEthCollAndLiquidatorReward(address _account, uint _shares, uint _liquidatorRewardShares) external;
+    function sendStEthCollAndLiquidatorReward(
+        address _account,
+        uint _shares,
+        uint _liquidatorRewardShares
+    ) external;
 }

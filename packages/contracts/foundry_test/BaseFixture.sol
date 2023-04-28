@@ -356,6 +356,15 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         return _balAfter - _balBefore;
     }
 
+    function _dealCollateralAndPrepForUse(address user) internal virtual {
+        vm.deal(user, type(uint96).max);
+        vm.prank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+
+        vm.prank(user);
+        collateral.deposit{value: 10000 ether}();
+    }
+
     function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);

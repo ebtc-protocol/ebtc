@@ -56,16 +56,16 @@ contract HintHelpers is LiquityBase {
         @return partialRedemptionNewColl The amount of collateral that will be left in the last Cdp of the sequence after being hit by partial redemption, or zero in case of no partial redemption.
      **/
 
-     /**
-        * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
-        * @param _EBTCamount The amount of eBTC to be redeemed.
-        * @param _price The current price of the asset.
-        * @param _maxIterations The maximum number of iterations to be performed.
-        * @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
-        * @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
-        * @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
-        * @return partialRedemptionNewColl The new collateral amount after partial redemption.
-    */
+    /**
+     * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
+     * @param _EBTCamount The amount of eBTC to be redeemed.
+     * @param _price The current price of the asset.
+     * @param _maxIterations The maximum number of iterations to be performed.
+     * @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
+     * @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+     * @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
+     * @return partialRedemptionNewColl The new collateral amount after partial redemption.
+     */
     function getRedemptionHints(
         uint _EBTCamount,
         uint _price,
@@ -103,20 +103,21 @@ contract HintHelpers is LiquityBase {
         // Underflow is intentionally used in _maxIterations-- > 0
         unchecked {
             while (
-                vars.currentCdpUser != address(0) && vars.remainingEbtcToRedeem > 0 && _maxIterations-- > 0
+                vars.currentCdpUser != address(0) &&
+                vars.remainingEbtcToRedeem > 0 &&
+                _maxIterations-- > 0
             ) {
-                
                 // Apply pending debt
-                uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) + cdpManager.getPendingEBTCDebtReward(
-                    vars.currentCdpId
-                );
+                uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
+                    cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
-                    (
-                        partialRedemptionNewColl,
-                        partialRedemptionHintNICR
-                    ) = _calculatePartialRedeem(vars, currentCdpDebt, _price);
+                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
+                        vars,
+                        currentCdpDebt,
+                        _price
+                    );
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
@@ -136,24 +137,21 @@ contract HintHelpers is LiquityBase {
     }
 
     /**
-        * @notice Calculate the partial redemption information.
-        * @dev This is an internal function used by getRedemptionHints.
-        * @param vars The local variables of the getRedemptionHints function.
-        * @param currentCdpDebt The net eBTC debt of the CDP.
-        * @param _price The current price of the asset.
-        * @return newColl The new collateral amount after partial redemption.
-        * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
-    */
+     * @notice Calculate the partial redemption information.
+     * @dev This is an internal function used by getRedemptionHints.
+     * @param vars The local variables of the getRedemptionHints function.
+     * @param currentCdpDebt The net eBTC debt of the CDP.
+     * @param _price The current price of the asset.
+     * @return newColl The new collateral amount after partial redemption.
+     * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+     */
     function _calculatePartialRedeem(
         LocalVariables_getRedemptionHints memory vars,
         uint currentCdpDebt,
         uint _price
     ) internal view returns (uint, uint) {
-
         // maxReemable = min(remainingToRedeem, currentDebt)
-        uint maxRedeemableEBTC = LiquityMath._min(
-            vars.remainingEbtcToRedeem, currentCdpDebt
-        );
+        uint maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
         uint newColl;
         uint _oldIndex = cdpManager.stFPPSg();
@@ -166,22 +164,27 @@ contract HintHelpers is LiquityBase {
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
-        uint collToReceive = collateral.getSharesByPooledEth((maxRedeemableEBTC * DECIMAL_PRECISION) / _price);
-        
+        uint collToReceive = collateral.getSharesByPooledEth(
+            (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
+        );
+
         return (
             newColl,
-            LiquityMath._computeNominalCR(newColl - collToReceive, currentCdpDebt - maxRedeemableEBTC )
+            LiquityMath._computeNominalCR(
+                newColl - collToReceive,
+                currentCdpDebt - maxRedeemableEBTC
+            )
         );
     }
 
-    /** 
-        * @notice Get the collateral amount of a CDP after applying split fee.
-        * @dev This is an internal function used by _calculatePartialRedeem.
-        * @param _cdpId The identifier of the CDP.
-        * @param _newIndex The new index after the split fee is applied.
-        * @param _oldIndex The old index before the split fee is applied.
-        * @return newColl The new collateral amount after applying split fee.
-    */
+    /**
+     * @notice Get the collateral amount of a CDP after applying split fee.
+     * @dev This is an internal function used by _calculatePartialRedeem.
+     * @param _cdpId The identifier of the CDP.
+     * @param _newIndex The new index after the split fee is applied.
+     * @param _oldIndex The old index before the split fee is applied.
+     * @return newColl The new collateral amount after applying split fee.
+     */
     function _getCollateralWithSplitFeeApplied(
         bytes32 _cdpId,
         uint _newIndex,
