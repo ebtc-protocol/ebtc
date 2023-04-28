@@ -22,7 +22,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _addresses.liquidationLibraryAddress,
             _addresses.authorityAddress,
             _addresses.borrowerOperationsAddress,
-            _addresses.gasPoolAddress,
             _addresses.collSurplusPoolAddress,
             _addresses.ebtcTokenAddress,
             _addresses.feeRecipientAddress,
@@ -36,7 +35,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit BorrowerOperationsAddressChanged(_addresses.borrowerOperationsAddress);
         emit ActivePoolAddressChanged(_addresses.activePoolAddress);
         emit DefaultPoolAddressChanged(_addresses.defaultPoolAddress);
-        emit GasPoolAddressChanged(_addresses.gasPoolAddress);
         emit CollSurplusPoolAddressChanged(_addresses.collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_addresses.priceFeedAddress);
         emit EBTCTokenAddressChanged(_addresses.ebtcTokenAddress);

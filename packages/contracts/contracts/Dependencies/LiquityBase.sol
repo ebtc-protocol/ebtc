@@ -29,7 +29,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Critical system collateral ratio. If the system's total collateral ratio (TCR) falls below the CCR, Recovery Mode is triggered.
     uint public constant CCR = 1250000000000000000; // 125%
 
-    // Amount of stETH collateral to be locked in gas pool on opening cdps
+    // Amount of stETH collateral to be locked in active pool on opening cdps
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
     // Minimum amount of stETH collateral a CDP must have

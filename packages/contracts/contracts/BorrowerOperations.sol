@@ -569,9 +569,12 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     /// @notice Send stETH to Active Pool and increase its recorded ETH balance
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
     /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
-    function _activePoolAddColl(uint _amount, uint _sharesToTrack, uint _liquidatorRewardShares) internal {
+    function _activePoolAddColl(
+        uint _amount,
+        uint _sharesToTrack,
+        uint _liquidatorRewardShares
+    ) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        assert(_amount == collateral.getPooledEthByShares(_sharesToTrack) + collateral.getPooledEthByShares(_liquidatorRewardShares)); // Temp Invariant
         collateral.transferFrom(msg.sender, address(activePool), _amount);
         activePool.receiveColl(_sharesToTrack);
     }

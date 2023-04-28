@@ -70,7 +70,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendStEthColl(address _account, uint _shares) external override {
+    function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
         require(StEthColl >= _shares, "!ActivePoolBal");
         StEthColl = StEthColl - _shares;
@@ -96,26 +96,14 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
         @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
      */
-    function sendStEthCollAndLiquidatorReward(address _account, uint _shares, uint _liquidatorRewardShares) external override {
-        _requireCallerIsBOorCdpM();
-        require(StEthColl >= _shares, "!ActivePoolBal");
-        StEthColl = StEthColl - _shares;
-        emit ActivePoolETHBalanceUpdated(StEthColl);
-        emit CollateralSent(_account, _shares);
-
+    function sendStEthCollAndLiquidatorReward(
+        address _account,
+        uint _shares,
+        uint _liquidatorRewardShares
+    ) external override {
         uint totalShares = _shares + _liquidatorRewardShares;
-
-        // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, totalShares);
-        if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(totalShares);
-        } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(totalShares);
-        } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(totalShares);
-        }
+        sendStEthColl(_account, totalShares);
     }
-    
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();

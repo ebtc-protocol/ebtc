@@ -309,8 +309,7 @@ class TestHelper {
 
   // Adds the gas compensation (50 EBTC)
   static async getCompositeDebt(contracts, debt) {
-    const compositeDebt = contracts.borrowerOperations.getCompositeDebt(debt)
-    return compositeDebt
+    return debt
   }
 
   static async getCdpEntireColl(contracts, cdp) {
@@ -352,7 +351,6 @@ class TestHelper {
 
   // Vestigal function retained for ease of old test conversions - used to Subtract the borrowing fee
   static async getNetBorrowingAmount(contracts, debtWithFee) {
-    const borrowingRate = await contracts.cdpManager.getBorrowingRateWithDecay()
     return this.toBN(debtWithFee)
   }
 
@@ -720,7 +718,8 @@ class TestHelper {
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     const price = await contracts.priceFeedTestnet.getPrice()
-    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_DEBT()
+    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_COLL()
+    const securityDeposit = await contracts.borrowerOperations.LIQUIDATOR_REWARD()
     const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (
       await this.getNetBorrowingAmount(contracts, minNetDebt)
@@ -760,7 +759,7 @@ class TestHelper {
         await contracts.collateral.transfer(extraParams.usrProxy, _collAmt, {from: extraParams.from});	
         if (DEBUG) console.log('transfer coll to proxy=' + extraParams.usrProxy);	
     }
-    const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, _collAmt, extraParams)
+    const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, web3.utils.toBN(_collAmt.toString()).add(securityDeposit), extraParams)
 
     return {
       ebtcAmount,

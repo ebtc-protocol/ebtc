@@ -38,7 +38,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();	
+    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();	
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
@@ -81,7 +81,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {
-      let {tx: opAliceTx} = await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let {tx: opAliceTx} = await openCdp({ ICR: toBN(dec(299, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(199, 16)), extraParams: { from: bob } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
@@ -169,7 +169,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm removed CDP have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })
   
   it("Should allow non-EOA liquidator", async () => {
@@ -237,7 +237,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm removed CDP have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })  
   
   // with collateral token, there is no hook for liquidator to use 
@@ -612,7 +612,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm CDP have status 'active' (Status enum element idx 1)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
 	  
       // Confirm partially liquidated CDP got higher or at least equal ICR than before
       let _aliceNewICR = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
@@ -703,7 +703,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm CDPs have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })
   
   it("Partial liquidation can not leave CDP below minimum debt size", async () => {
@@ -717,8 +717,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await priceFeed.setPrice(_newPrice);
 	  
       // liquidator bob coming in 
-      await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});     
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq"); 
+      await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "LiquidationLibrary: Partial debt liquidated must be less than total debt"); 
   })
   
 })

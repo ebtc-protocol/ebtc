@@ -10,7 +10,6 @@ import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../SortedCdps.sol";
 import "../ActivePool.sol";
-import "../GasPool.sol";
 import "../DefaultPool.sol";
 import "../CollSurplusPool.sol";
 import "../HintHelpers.sol";
@@ -33,7 +32,6 @@ contract EBTCDeployerTester is EBTCDeployer {
     bytes public borrowerOperations_creationCode = type(BorrowerOperations).creationCode;
     bytes public sortedCdps_creationCode = type(SortedCdps).creationCode;
     bytes public activePool_creationCode = type(ActivePool).creationCode;
-    bytes public gasPool_creationCode = type(GasPool).creationCode;
     bytes public defaultPool_creationCode = type(DefaultPool).creationCode;
     bytes public collSurplusPool_creationCode = type(CollSurplusPool).creationCode;
     bytes public hintHelpers_creationCode = type(HintHelpers).creationCode;
