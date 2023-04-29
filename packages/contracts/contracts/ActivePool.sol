@@ -96,7 +96,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         uint _liquidatorRewardShares
     ) external override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _shares, "!ActivePoolBal");
+        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
         uint totalShares = _shares + _liquidatorRewardShares;
 
         StEthColl = StEthColl - _shares;

@@ -133,7 +133,7 @@ contract BorrowerOperationsOpenCdpForTest is eBTCBaseFixture {
     }
 
     // Fail if Net Debt is too low. Check MIN_NET_DEBT constant
-    function test_MinNetDebtTooLow() public {
+    function xtest_MinNetDebtTooLow() public {
         address payable[] memory users;
         users = _utils.createUsers(2);
         address user = users[0];
@@ -147,6 +147,28 @@ contract BorrowerOperationsOpenCdpForTest is eBTCBaseFixture {
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
         vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
         borrowerOperations.openCdpFor(1e15, "hint", "hint", 30 ether, borrower);
+        vm.stopPrank();
+    }
+
+    // @dev Attempt to open a CDP with net coll below the minimum allowed and ensure it fails
+    // @dev The collateral value passed into the openCdp function is interpretted as netColl + liqudiatorReward. The fixed liqudiator reward is taken out before netColl is checked
+    function testMinCollTooLow(uint netColl) public {
+        vm.assume(netColl < borrowerOperations.MIN_NET_COLL());
+
+        uint collPlusLiquidatorReward = netColl + borrowerOperations.LIQUIDATOR_REWARD();
+
+        address payable[] memory users;
+        users = _utils.createUsers(2);
+        address user = users[0];
+        address borrower = users[1];
+
+        _dealCollateralAndPrepForUse(user);
+
+        assert(sortedCdps.getLast() == "");
+
+        vm.startPrank(user);
+        vm.expectRevert(bytes("BorrowerOps: Cdp's net coll must be greater than minimum"));
+        borrowerOperations.openCdpFor(1, "hint", "hint", collPlusLiquidatorReward, borrower);
         vm.stopPrank();
     }
 

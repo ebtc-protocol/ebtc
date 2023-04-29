@@ -304,10 +304,11 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // Check the adjustment satisfies all conditions for the current system mode
         _requireValidAdjustmentInCurrentMode(isRecoveryMode, _collWithdrawal, _isDebtIncrease, vars);
 
-        // When the adjustment is a debt repayment, check it's a valid amount and that the caller has enough EBTC
+        // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
         if (!_isDebtIncrease && _EBTCChange > 0) {
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEBTCBalance(ebtcToken, _borrower, vars.netDebtChange);
+            _requireNonZeroDebt(vars.debt - vars.netDebtChange);
         }
 
         (vars.newColl, vars.newDebt) = _updateCdpFromAdjustment(
@@ -363,6 +364,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _borrower
     ) internal returns (bytes32) {
         require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
+        _requireNonZeroDebt(_EBTCAmount);
 
         LocalVariables_openCdp memory vars;
 
@@ -724,6 +726,10 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
             _newTCR >= CCR,
             "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
         );
+    }
+
+    function _requireNonZeroDebt(uint _debt) internal pure {
+        require(_debt > 0, "BorrowerOps: Debt must be non-zero");
     }
 
     function _requireAtLeastMinNetColl(uint _coll) internal pure {
