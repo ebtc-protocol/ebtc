@@ -397,7 +397,7 @@ class TestHelper {
       if (liquidationTx.logs[i].event === "Liquidation") {
         const liquidatedDebt = liquidationTx.logs[i].args[0]
         const liquidatedColl = liquidationTx.logs[i].args[1]
-
+        const liquidatorReward = liquidationTx.logs[i].args[2]
         return [liquidatedDebt, liquidatedColl]
       }
     }
@@ -754,12 +754,13 @@ class TestHelper {
     // Give some more ETH for misc purposes:
     await contracts.collateral.deposit({from: extraParams.from, value: MoneyValues._1000e18BN});
     await contracts.collateral.approve(contracts.borrowerOperations.address, MoneyValues._1Be18BN, {from: extraParams.from});
+    let _finalColl = web3.utils.toBN(_collAmt.toString()).add(securityDeposit);
     // handle deposit for DSProxy
     if (extraParams.usrProxy){
-        await contracts.collateral.transfer(extraParams.usrProxy, _collAmt, {from: extraParams.from});	
-        if (DEBUG) console.log('transfer coll to proxy=' + extraParams.usrProxy);	
+        await contracts.collateral.transfer(extraParams.usrProxy, _finalColl, {from: extraParams.from});	
+        if (DEBUG) console.log('transfer ' + _finalColl + 'coll to proxy=' + extraParams.usrProxy);	
     }
-    const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, web3.utils.toBN(_collAmt.toString()).add(securityDeposit), extraParams)
+    const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, _finalColl, extraParams)
 
     return {
       ebtcAmount,

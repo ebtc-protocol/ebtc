@@ -76,6 +76,7 @@ contract('Gas compensation tests', async accounts => {
     debtToken = ebtcToken;
     collToken = contracts.collateral;
     LICR = await cdpManager.LICR();
+    liqReward = await cdpManager.LIQUIDATOR_REWARD();
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
 
@@ -480,7 +481,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check liquidator's balance increases by 0.5% of coll
     const compensationReceived_A = (liquidatorBalance_after_A.sub(liquidatorBalance_before_A)).toString(); //.add(toBN(A_GAS_Used_Liquidator * GAS_PRICE))
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_aliceColl = toBN(liqReward.toString());//aliceColl.div(web3.utils.toBN('200'))
     assert.equal(compensationReceived_A, _0pt5percent_aliceColl.add(aliceColl))
 
     // --- Price drops to 15 ---
@@ -510,7 +511,7 @@ contract('Gas compensation tests', async accounts => {
     const liquidatorBalance_after_B = web3.utils.toBN(await collToken.balanceOf(liquidator))
 
     // Check liquidator's balance increases by $10 worth of coll
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN(liqReward.toString());//bobColl.div(web3.utils.toBN('200'))
     const compensationReceived_B = (liquidatorBalance_after_B.sub(liquidatorBalance_before_B)).toString(); //.add(toBN(B_GAS_Used_Liquidator * GAS_PRICE))
     assert.equal(compensationReceived_B, _0pt5percent_bobColl.add(bobColl))
   })
@@ -542,7 +543,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check value of 0.5% of collateral in USD is > $10
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const _0pt5percent_aliceColl = toBN('0');//aliceColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_aliceColl = toBN(liqReward.toString());//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -571,7 +572,7 @@ contract('Gas compensation tests', async accounts => {
 
     // Check value of 0.5% of collateral in USD is > $10
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const _0pt5percent_bobColl = toBN('0');//bobColl.div(web3.utils.toBN('200'))
+    const _0pt5percent_bobColl = toBN(liqReward.toString());//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -884,10 +885,10 @@ contract('Gas compensation tests', async accounts => {
     /* Expect liquidated coll = 
     0.95% of [A_coll + B_coll + C_coll + D_coll]
     */
-    const expectedLiquidatedColl = aliceColl
-      .add(bobColl)
-      .add(carolColl)
-      .add(dennisColl)
+    const expectedLiquidatedColl = aliceColl.add(liqReward)
+      .add(bobColl).add(liqReward)
+      .add(carolColl).add(liqReward)
+      .add(dennisColl).add(liqReward)
 
     // Liquidate cdps A-D
 

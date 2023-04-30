@@ -135,16 +135,12 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('getNewICRFromCdpChange', params)
   }
 
-  async getCompositeDebt(...params) {
-    return this.proxyFunction('getCompositeDebt', params)
+  async LIQUIDATOR_REWARD(...params) {
+    return this.proxyFunction('LIQUIDATOR_REWARD', params)
   }
 
-  async EBTC_GAS_COMPENSATION(...params) {
-    return this.proxyFunction('EBTC_GAS_COMPENSATION', params)
-  }
-
-  async MIN_NET_DEBT(...params) {
-    return this.proxyFunction('MIN_NET_DEBT', params)
+  async MIN_NET_COLL(...params) {
+    return this.proxyFunction('MIN_NET_COLL', params)
   }
 
   async BORROWING_FEE_FLOOR(...params) {

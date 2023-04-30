@@ -28,7 +28,7 @@ interface ICdpManagerData {
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _liqReward);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -130,6 +130,7 @@ interface ICdpManagerData {
         uint256 totalColToSend;
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
+        uint256 totalColReward;
     }
 
     struct LocalVar_RecoveryLiquidate {
@@ -142,6 +143,7 @@ interface ICdpManagerData {
         uint256 _price;
         uint256 _ICR;
         uint256 totalDebtToRedistribute;
+        uint256 totalColReward;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -178,6 +180,7 @@ interface ICdpManagerData {
         uint debtToRedistribute;
         uint collToRedistribute;
         uint collSurplus;
+        uint collReward;
     }
 
     struct LiquidationTotals {
@@ -187,6 +190,7 @@ interface ICdpManagerData {
         uint totalDebtToRedistribute;
         uint totalCollToRedistribute;
         uint totalCollSurplus;
+        uint totalCollReward;
     }
 
     // --- Variable container structs for redemptions ---

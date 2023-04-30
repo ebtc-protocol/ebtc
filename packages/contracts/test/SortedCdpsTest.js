@@ -116,9 +116,9 @@ contract('SortedCdps', async accounts => {
       await checkCdpId(_carolCdpId, carol);
 
       // Confirm cdp statuses became active
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '1')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '1')
 
       // Check sorted list contains cdps
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
@@ -164,9 +164,9 @@ contract('SortedCdps', async accounts => {
       await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '2')
 
       // Check sorted list does not contain cdps
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -199,9 +199,9 @@ contract('SortedCdps', async accounts => {
       await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '2')
 
       await openCdp({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
       let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
@@ -214,9 +214,9 @@ contract('SortedCdps', async accounts => {
       await checkCdpId(_carolCdpId2, carol);
 
       // Confirm cdp statuses became open again
-      assert.equal((await cdpManager.Cdps(_aliceCdpId2))[3], '1')
-      assert.equal((await cdpManager.Cdps(_bobCdpId2))[3], '1')
-      assert.equal((await cdpManager.Cdps(_carolCdpId2))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId2))[4], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId2))[4], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId2))[4], '1')
 
       // Check sorted list does  contain cdps
       assert.isTrue(await sortedCdps.contains(_aliceCdpId2))
