@@ -94,7 +94,7 @@ contract('Gas cost tests', async accounts => {
     // Between F and G
     let amount = dec(111, 18)
     let fee = await cdpManager.getBorrowingFee(amount)
-    let debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
+    let debt = amount.add(fee)
     let {upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt)  
 
     assert.equal(upperHint, F)
@@ -103,7 +103,7 @@ contract('Gas cost tests', async accounts => {
     // Bottom of the list
     amount = dec(120, 18)
     fee = await cdpManager.getBorrowingFee(amount)
-    debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
+    debt = amount.add(fee)
     ;({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt))
      
     assert.equal(upperHint, J)
@@ -112,7 +112,7 @@ contract('Gas cost tests', async accounts => {
     // Top of the list
     amount = dec(98, 18)
     fee = await cdpManager.getBorrowingFee(amount)
-    debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
+    debt = amount.add(fee)
     ;({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt))
      
     assert.equal(upperHint, ZERO_ADDRESS)

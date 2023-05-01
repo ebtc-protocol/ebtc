@@ -31,11 +31,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
 
         assertEq(cdpManager.getBorrowingRateWithDecay(), 0);
 
-        uint debt = _utils.calculateBorrowAmountFromDebt(
-            2e17,
-            cdpManager.EBTC_GAS_COMPENSATION(),
-            cdpManager.getBorrowingRateWithDecay()
-        );
+        uint debt = 2e17;
 
         console.log("debt %s", debt);
 

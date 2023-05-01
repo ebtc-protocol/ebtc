@@ -10,7 +10,6 @@ import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {GasPool} from "../contracts/GasPool.sol";
 import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
@@ -59,7 +58,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     CdpManager cdpManager;
     WETH9 weth;
     ActivePool activePool;
-    GasPool gasPool;
     DefaultPool defaultPool;
     CollSurplusPool collSurplusPool;
     FunctionCaller functionCaller;
@@ -115,13 +113,12 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             4: priceFeed
             5; sortedCdps
             6: activePool
-            7: gasPool
-            8: defaultPool
-            9: collSurplusPool
-            10: hintHelpers
-            11: eBTCToken
-            12: feeRecipient
-            13: multiCdpGetter
+            7: defaultPool
+            8: collSurplusPool
+            9: hintHelpers
+            10: eBTCToken
+            11: feeRecipient
+            12: multiCdpGetter
         */
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
@@ -144,7 +141,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             creationCode = type(LiquidationLibrary).creationCode;
             args = abi.encode(
                 addr.borrowerOperationsAddress,
-                addr.gasPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
                 addr.feeRecipientAddress,
@@ -176,7 +172,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.cdpManagerAddress,
                 addr.activePoolAddress,
                 addr.defaultPoolAddress,
-                addr.gasPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.priceFeedAddress,
                 addr.sortedCdpsAddress,
@@ -222,11 +217,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             activePool = ActivePool(
                 ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
             );
-
-            // Gas Pool
-            creationCode = type(GasPool).creationCode;
-
-            gasPool = GasPool(ebtcDeployer.deploy(ebtcDeployer.GAS_POOL(), creationCode));
 
             // Default Pool
             creationCode = type(DefaultPool).creationCode;
@@ -364,6 +354,15 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         uint _balAfter = collateral.balanceOf(_recipient);
         return _balAfter - _balBefore;
+    }
+
+    function _dealCollateralAndPrepForUse(address user) internal virtual {
+        vm.deal(user, type(uint96).max);
+        vm.prank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+
+        vm.prank(user);
+        collateral.deposit{value: 10000 ether}();
     }
 
     function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {

@@ -20,7 +20,6 @@ interface ICdpManagerData {
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
@@ -29,7 +28,7 @@ interface ICdpManagerData {
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
 
-    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl);
+    event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _liqReward);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -99,6 +98,7 @@ interface ICdpManagerData {
         uint debt;
         uint coll;
         uint stake;
+        uint liquidatorRewardShares;
         Status status;
         uint128 arrayIndex;
     }
@@ -130,6 +130,7 @@ interface ICdpManagerData {
         uint256 totalColToSend;
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
+        uint256 totalColReward;
     }
 
     struct LocalVar_RecoveryLiquidate {
@@ -142,6 +143,7 @@ interface ICdpManagerData {
         uint256 _price;
         uint256 _ICR;
         uint256 totalDebtToRedistribute;
+        uint256 totalColReward;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -162,6 +164,15 @@ interface ICdpManagerData {
         uint TCR;
     }
 
+    struct LocalVariables_RedeemCollateralFromCdp {
+        bytes32 _cdpId;
+        uint _maxEBTCamount;
+        uint _price;
+        bytes32 _upperPartialRedemptionHint;
+        bytes32 _lowerPartialRedemptionHint;
+        uint _partialRedemptionHintNICR;
+    }
+
     struct LiquidationValues {
         uint entireCdpDebt;
         uint debtToOffset;
@@ -169,6 +180,7 @@ interface ICdpManagerData {
         uint debtToRedistribute;
         uint collToRedistribute;
         uint collSurplus;
+        uint collReward;
     }
 
     struct LiquidationTotals {
@@ -178,17 +190,9 @@ interface ICdpManagerData {
         uint totalDebtToRedistribute;
         uint totalCollToRedistribute;
         uint totalCollSurplus;
+        uint totalCollReward;
     }
 
-    struct ContractsCache {
-        IActivePool activePool;
-        IDefaultPool defaultPool;
-        IEBTCToken ebtcToken;
-        IFeeRecipient feeRecipient;
-        ISortedCdps sortedCdps;
-        ICollSurplusPool collSurplusPool;
-        address gasPoolAddress;
-    }
     // --- Variable container structs for redemptions ---
 
     struct RedemptionTotals {
@@ -203,8 +207,8 @@ interface ICdpManagerData {
     }
 
     struct SingleRedemptionValues {
-        uint EBTCLot;
-        uint ETHLot;
+        uint eBtcToRedeem;
+        uint stEthToRecieve;
         bool cancelledPartial;
     }
 

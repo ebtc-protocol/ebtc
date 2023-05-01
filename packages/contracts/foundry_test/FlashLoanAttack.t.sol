@@ -121,6 +121,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
     function testWethAttack(uint128 amount) public {
         uint256 _maxAvailable = activePool.getStEthColl();
         vm.assume(amount < (_maxAvailable / 2));
+        vm.assume(amount > cdpManager.LIQUIDATOR_REWARD());
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 

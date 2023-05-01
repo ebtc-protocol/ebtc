@@ -29,13 +29,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Critical system collateral ratio. If the system's total collateral ratio (TCR) falls below the CCR, Recovery Mode is triggered.
     uint public constant CCR = 1250000000000000000; // 125%
 
-    // Amount of EBTC to be locked in gas pool on opening cdps
-    uint public constant EBTC_GAS_COMPENSATION = 1e16;
-
+    // Amount of stETH collateral to be locked in active pool on opening cdps
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
-    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
-    uint public constant MIN_NET_DEBT = 2e18;
+    // Minimum amount of stETH collateral a CDP must have
+    uint public constant MIN_NET_COLL = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -68,13 +66,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     // --- Gas compensation functions ---
 
-    // Returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation
-    function _getCompositeDebt(uint _debt) internal pure returns (uint) {
-        return (_debt + EBTC_GAS_COMPENSATION);
-    }
-
-    function _getNetDebt(uint _debt) internal pure returns (uint) {
-        return (_debt - EBTC_GAS_COMPENSATION);
+    function _getNetColl(uint _coll) internal pure returns (uint) {
+        return _coll - LIQUIDATOR_REWARD;
     }
 
     // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
@@ -82,6 +75,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _entireColl / PERCENT_DIVISOR;
     }
 
+    /**
+        @notice Get the entire system collateral
+        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
+     */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
         uint activeColl = activePool.getStEthColl();
         uint liquidatedColl = defaultPool.getStEthColl();
@@ -89,6 +87,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return (activeColl + liquidatedColl);
     }
 
+    /**
+        @notice Get the entire system debt
+        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+     */
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();

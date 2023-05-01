@@ -70,21 +70,53 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendStEthColl(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _amount, "!ActivePoolBal");
-        StEthColl = StEthColl - _amount;
-        emit ActivePoolETHBalanceUpdated(StEthColl);
-        emit CollateralSent(_account, _amount);
+        require(StEthColl >= _shares, "!ActivePoolBal");
 
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, _shares);
+
+        _transferSharesWithContractHooks(_account, _shares);
+    }
+
+    /**
+        @notice Send shares
+        @notice Liquidator reward shares are not tracked via internal accoutning in the active pool and are assumed to be present in expected amount as part of the intended behavior of bops and cdpm
+        @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
+        @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
+        @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
+        @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
+     */
+    function sendStEthCollAndLiquidatorReward(
+        address _account,
+        uint _shares,
+        uint _liquidatorRewardShares
+    ) external override {
+        _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+        uint totalShares = _shares + _liquidatorRewardShares;
+
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, totalShares);
+
+        _transferSharesWithContractHooks(_account, totalShares);
+    }
+
+    function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, _amount);
-        if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_amount);
-        } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_amount);
+        collateral.transferShares(_account, _shares);
+
+        if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(_shares);
+        } else if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(_shares);
         } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_amount);
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
         }
     }
 

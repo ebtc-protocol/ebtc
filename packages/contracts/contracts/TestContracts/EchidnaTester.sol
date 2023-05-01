@@ -9,7 +9,6 @@ import "../LiquidationLibrary.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
 import "../DefaultPool.sol";
-import "../GasPool.sol";
 import "../CollSurplusPool.sol";
 import "../EBTCToken.sol";
 import "../SortedCdps.sol";
@@ -51,13 +50,12 @@ contract EchidnaTester {
     uint private MCR;
     uint private CCR;
     uint private LICR;
-    uint private MIN_NET_DEBT;
+    uint private MIN_NET_COLL;
 
     CdpManager private cdpManager;
     BorrowerOperations private borrowerOperations;
     ActivePool private activePool;
     DefaultPool private defaultPool;
-    GasPool private gasPool;
     CollSurplusPool private collSurplusPool;
     EBTCToken private eBTCToken;
     SortedCdps private sortedCdps;
@@ -112,11 +110,11 @@ contract EchidnaTester {
         MCR = cdpManager.MCR();
         CCR = cdpManager.CCR();
         LICR = cdpManager.LICR();
-        MIN_NET_DEBT = cdpManager.MIN_NET_DEBT();
+        MIN_NET_COLL = cdpManager.MIN_NET_COLL();
         require(MCR > 0);
         require(CCR > 0);
         require(LICR > 0);
-        require(MIN_NET_DEBT > 0);
+        require(MIN_NET_COLL > 0);
     }
 
     /* basic function to call when setting up new echidna test
@@ -132,23 +130,6 @@ contract EchidnaTester {
         // vm.prank(defaultGovernance);
 
         collateral = new CollateralTokenTester();
-
-        /** @dev The order is as follows:
-            0: authority
-            1: liquidationLibrary
-            2: cdpManager
-            3: borrowerOperations
-            4: priceFeed
-            5; sortedCdps
-            6: activePool
-            7: gasPool
-            8: defaultPool
-            9: collSurplusPool
-            10: hintHelpers
-            11: eBTCToken
-            12: feeRecipient
-            13: multiCdpGetter
-        */
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
 
@@ -183,7 +164,6 @@ contract EchidnaTester {
                 addr.liquidationLibraryAddress,
                 addr.authorityAddress,
                 addr.borrowerOperationsAddress,
-                addr.gasPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
                 addr.feeRecipientAddress,
@@ -204,7 +184,6 @@ contract EchidnaTester {
                 addr.cdpManagerAddress,
                 addr.activePoolAddress,
                 addr.defaultPoolAddress,
-                addr.gasPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.priceFeedAddress,
                 addr.sortedCdpsAddress,
@@ -254,11 +233,6 @@ contract EchidnaTester {
             activePool = ActivePool(
                 ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
             );
-
-            // Gas Pool
-            creationCode = type(ActivePool).creationCode;
-
-            gasPool = GasPool(ebtcDeployer.deploy(ebtcDeployer.GAS_POOL(), creationCode));
 
             // Default Pool
             creationCode = type(DefaultPool).creationCode;
@@ -645,9 +619,9 @@ contract EchidnaTester {
                 return false;
             }
 
-            // Minimum debt
+            // Minimum coll
             uint _icr = cdpManager.getCurrentICR(currentCdp, _price);
-            if (cdpManager.getCdpDebt(currentCdp).mul(_icr).div(_price) < MIN_NET_DEBT) {
+            if (cdpManager.getCdpColl(currentCdp).mul(_price).div(_icr) < MIN_NET_COLL) {
                 return false;
             }
 
