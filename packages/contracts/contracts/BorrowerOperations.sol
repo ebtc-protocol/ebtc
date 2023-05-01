@@ -9,10 +9,15 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
-
+import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
-contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
+contract BorrowerOperations is
+    LiquityBase,
+    ReentrancyGuard,
+    IBorrowerOperations,
+    ERC3156FlashLender
+{
     string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
@@ -106,6 +111,21 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // No longer need a concept of ownership if there is no initializer
     }
 
+    /**
+        @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
+        @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
+     */
+    modifier nonReentrantSelfAndCdpM() {
+        require(locked == 1, "BorrowerOperations: REENTRANCY");
+        require(ReentrancyGuard(address(cdpManager)).locked() == 1, "CdpManager: REENTRANCY");
+
+        locked = 2;
+
+        _;
+
+        locked = 1;
+    }
+
     // --- Borrower Cdp Operations ---
 
     /**
@@ -118,7 +138,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
-    ) external override returns (bytes32) {
+    ) external override nonReentrantSelfAndCdpM returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
 
@@ -133,7 +153,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _lowerHint,
         uint _collAmount,
         address _borrower
-    ) external override returns (bytes32) {
+    ) external override nonReentrantSelfAndCdpM returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, _borrower);
     }
 
@@ -143,7 +163,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, _collAmount);
     }
 
@@ -155,7 +175,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         uint _collWithdrawal,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
     }
 
@@ -168,7 +188,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, 0);
     }
 
@@ -181,7 +201,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
     }
 
@@ -192,7 +212,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
@@ -208,7 +228,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAddAmount
-    ) external override {
+    ) external override nonReentrantSelfAndCdpM {
         _adjustCdp(
             _cdpId,
             _collWithdrawal,
