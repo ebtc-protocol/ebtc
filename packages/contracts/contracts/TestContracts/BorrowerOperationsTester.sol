@@ -17,7 +17,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
-        address _collTokenAddress
+        address _collTokenAddress,
+        address _macroAddress
     )
         BorrowerOperations(
             _cdpManagerAddress,
@@ -29,7 +30,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
             _sortedCdpsAddress,
             _ebtcTokenAddress,
             _feeRecipientAddress,
-            _collTokenAddress
+            _collTokenAddress,
+            _macroAddress
         )
     {}
 
