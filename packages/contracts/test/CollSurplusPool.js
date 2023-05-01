@@ -59,7 +59,7 @@ contract('CollSurplusPool', async accounts => {
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
     const ETH_2 = await collSurplusPool.getStEthColl()
-    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
+    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqReward))
   })
 
   it("CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations", async () => {

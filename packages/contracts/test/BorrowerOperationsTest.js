@@ -1601,6 +1601,7 @@ contract('BorrowerOperations', async accounts => {
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
       await borrowerOperations.openCdp(MIN_DEBT.add(toBN('2')), A, A, _colAmt, { from: A })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
+      let _aDebt = await cdpManager.getCdpDebt(AIndex);
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, _aDebt, AIndex, AIndex, { from: A })
       await assertRevert(repayTxAPromise, "BorrowerOps: Debt must be non-zero")

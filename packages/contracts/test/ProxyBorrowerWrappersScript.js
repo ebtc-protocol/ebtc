@@ -187,7 +187,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
-    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
+    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
@@ -221,7 +221,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
-    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
+    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 

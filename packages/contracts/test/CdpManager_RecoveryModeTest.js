@@ -1758,7 +1758,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const { collateral: D_coll } = await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_netDebt_2, extraParams: { from: dennis } })
     await th.redeemCollateral(dennis, contracts, B_netDebt_2,GAS_PRICE)
     price = await priceFeed.getPrice()
-    const bob_surplus = B_coll_2.sub(B_netDebt_2.mul(mv._1e18BN).div(price))
+    const bob_surplus = B_coll_2.sub(B_netDebt_2.mul(mv._1e18BN).div(price)).add(liqStipend)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_surplus)
     // can claim collateral
     const bob_balanceBefore_2 = th.toBN(await web3.eth.getBalance(bob))
@@ -1786,7 +1786,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Dennis redeems 40, so Bob has a surplus of (200 * 1 - 40) / 200 = 0.8 ETH	
     await th.redeemCollateral(dennis, contracts, B_netDebt, GAS_PRICE)
     let price = await priceFeed.getPrice()
-    const bob_surplus = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price))
+    const bob_surplus = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqStipend)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_surplus)
 
     // can claim collateral
