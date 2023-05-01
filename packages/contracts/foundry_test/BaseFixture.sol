@@ -16,6 +16,7 @@ import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
+import {ExternalReentrancyGuard} from "../contracts/ExternalReentrancyGuard.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
@@ -37,11 +38,11 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // CDPManager
     bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
         bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
-    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
+    bytes4 public constant SET_REDEMPTION_FEE_FLOOR_SIG =
         bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
-    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
+    bytes4 public constant SET_MINUTE_DECAY_FACTOR_SIG =
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
+    bytes4 public constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -50,6 +51,9 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // PriceFeed
     bytes4 public constant SET_TELLOR_CALLER_SIG =
         bytes4(keccak256(bytes("setTellorCaller(address)")));
+
+    // External Reentrancy Guard
+    bytes4 public constant SET_LOCKED_SIG = bytes4(keccak256("setLocked(uint256)"));
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
@@ -68,6 +72,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     Governor authority;
     LiquidationLibrary liqudationLibrary;
     EBTCDeployer ebtcDeployer;
+    ExternalReentrancyGuard reentrancyGuard;
     address defaultGovernance;
 
     Utilities internal _utils;
@@ -119,6 +124,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             10: eBTCToken
             11: feeRecipient
             12: multiCdpGetter
+            13: externalReentrancyGuard
         */
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
@@ -290,6 +296,20 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                     ebtcDeployer.FEE_RECIPIENT(),
                     abi.encodePacked(creationCode, args)
                 )
+            );
+
+            // External Reentrancy Guard
+            creationCode = type(ExternalReentrancyGuard).creationCode;
+            address[] memory authorizedCallers = new address[](2);
+            authorizedCallers[0] = address(cdpManager);
+            authorizedCallers[1] = address(borrowerOperations);
+
+            args = abi.encode(
+                authorizedCallers
+            );
+
+            reentrancyGuard = ReentrancyGuard(
+                ebtcDeployer.deploy(ebtcDeployer.EXTERNAL_REENTRANCY_GUARD(), abi.encodePacked(creationCode, args)
             );
         }
 

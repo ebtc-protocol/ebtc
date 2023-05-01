@@ -8,8 +8,8 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
+import "./Interfaces/IExternalReentrancyGuard.sol";
 import "./Dependencies/LiquityBase.sol";
-
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
@@ -27,6 +27,8 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
+
+    IExternalReentrancyGuard public immutable reentrancyGuard;
 
     /* --- Variable container structs  ---
 

@@ -11,7 +11,6 @@ contract AuthNoOwner {
     event AuthorityUpdated(address indexed user, Authority indexed newAuthority);
 
     Authority public authority;
-    bool public authorityInitialized;
 
     constructor(address _authority) {
         authority = Authority(_authority);
@@ -40,23 +39,6 @@ contract AuthNoOwner {
 
         authority = Authority(newAuthority);
 
-        // Once authority is set once via any means, ensure it is initialized
-        if (!authorityInitialized) {
-            authorityInitialized = true;
-        }
-
         emit AuthorityUpdated(msg.sender, Authority(newAuthority));
-    }
-
-    /// @notice Changed constructor to initialize to allow flexiblity of constructor vs initializer use
-    /// @notice sets authorityInitiailzed flag to ensure only one use of
-    function _initializeAuthority(address newAuthority) internal {
-        require(address(authority) == address(0), "Auth: authority is non-zero");
-        require(!authorityInitialized, "Auth: authority already initialized");
-
-        authority = Authority(newAuthority);
-        authorityInitialized = true;
-
-        emit AuthorityUpdated(address(this), Authority(newAuthority));
     }
 }

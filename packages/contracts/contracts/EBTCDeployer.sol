@@ -25,6 +25,8 @@ contract EBTCDeployer is Ownable {
     string public constant FEE_RECIPIENT = "ebtc.v1.feeRecipient";
     string public constant MULTI_CDP_GETTER = "ebtc.v1.multiCdpGetter";
 
+    string public constant EXTERNAL_REENTRANCY_GUARD = "ebtc.v1.externalReentrancyGuard";
+
     event ContractDeployed(address indexed contractAddress, string contractName, bytes32 salt);
 
     struct EbtcAddresses {
@@ -41,6 +43,7 @@ contract EBTCDeployer is Ownable {
         address ebtcTokenAddress;
         address feeRecipientAddress;
         address multiCdpGetterAddress;
+        address externalReentrancyGuardAddress;
     }
 
     /**
@@ -60,8 +63,7 @@ contract EBTCDeployer is Ownable {
     10: eBTCToken
     11: feeRecipient
     12: multiCdpGetter
-
-
+    13: externalReentrancyGuard
      */
     function getFutureEbtcAddresses() public view returns (EbtcAddresses memory) {
         EbtcAddresses memory addresses = EbtcAddresses(
@@ -77,7 +79,8 @@ contract EBTCDeployer is Ownable {
             Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS))),
             Create3.addressOf(keccak256(abi.encodePacked(EBTC_TOKEN))),
             Create3.addressOf(keccak256(abi.encodePacked(FEE_RECIPIENT))),
-            Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER)))
+            Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER))),
+            Create3.addressOf(keccak256(abi.encodePacked(EXTERNAL_REENTRANCY_GUARD)))
         );
 
         return addresses;
