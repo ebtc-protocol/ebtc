@@ -64,13 +64,8 @@ contract('CdpManager', async accounts => {
 
   beforeEach(async () => {
     contracts = await deploymentHelper.deployTesterContractsHardhat()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCTokenTester.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -89,7 +84,6 @@ contract('CdpManager', async accounts => {
     authority = contracts.authority;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
     let _ownerBal = await web3.eth.getBalance(owner);
@@ -491,6 +485,8 @@ contract('CdpManager', async accounts => {
 
       assert.isFalse(txCarol.receipt.status)
     } catch (err) {
+      console.log(err)
+      console.log(err.message)
       assert.include(err.message, "revert")
       assert.include(err.message, "Cdp does not exist or is closed")
     }
@@ -814,6 +810,8 @@ contract('CdpManager', async accounts => {
       const txDennis = await cdpManager.liquidate(dennis, { from: owner })
       assert.isFalse(txDennis.receipt.status)
     } catch (err) {
+      console.log(err)
+      console.log(err.message)
       assert.include(err.message, "revert")
       assert.include(err.message, "Cdp does not exist or is closed")
     }
@@ -2170,6 +2168,8 @@ contract('CdpManager', async accounts => {
       const tx = await cdpManager.batchLiquidateCdps(liquidationArray);
       assert.isFalse(tx.receipt.status)
     } catch (error) {
+      console.log(error)
+      console.log(error.message)
       assert.include(error.message, "CdpManager: Calldata address array must not be empty")
     }
   })

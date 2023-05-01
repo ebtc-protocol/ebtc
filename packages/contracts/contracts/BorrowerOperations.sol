@@ -9,35 +9,26 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
 import "./Dependencies/ERC3156FlashLender.sol";
 
-contract BorrowerOperations is
-    LiquityBase,
-    Ownable,
-    CheckContract,
-    IBorrowerOperations,
-    ERC3156FlashLender
-{
+contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
     string public constant NAME = "BorrowerOperations";
 
     // --- Connected contract declarations ---
 
     ICdpManager public cdpManager;
 
-    address gasPoolAddress;
+    address immutable gasPoolAddress;
 
-    ICollSurplusPool collSurplusPool;
+    ICollSurplusPool immutable collSurplusPool;
 
     IFeeRecipient public feeRecipient;
-    address public lqtyStakingAddress;
 
-    IEBTCToken public ebtcToken;
+    IEBTCToken public immutable ebtcToken;
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
-    ISortedCdps public sortedCdps;
+    ISortedCdps public immutable sortedCdps;
 
     /* --- Variable container structs  ---
 
@@ -86,8 +77,7 @@ contract BorrowerOperations is
     }
 
     // --- Dependency setters ---
-
-    function setAddresses(
+    constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _defaultPoolAddress,
@@ -98,32 +88,18 @@ contract BorrowerOperations is
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
+    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collTokenAddress) {
+        // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
+
         // This makes impossible to open a cdp with zero withdrawn EBTC
         assert(MIN_NET_DEBT > 0);
 
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_gasPoolAddress);
-        checkContract(_collSurplusPoolAddress);
-        checkContract(_priceFeedAddress);
-        checkContract(_sortedCdpsAddress);
-        checkContract(_ebtcTokenAddress);
-        checkContract(_feeRecipientAddress);
-        checkContract(_collTokenAddress);
-
         cdpManager = ICdpManager(_cdpManagerAddress);
-        activePool = IActivePool(_activePoolAddress);
-        defaultPool = IDefaultPool(_defaultPoolAddress);
         gasPoolAddress = _gasPoolAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
-        priceFeed = IPriceFeed(_priceFeedAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        lqtyStakingAddress = _feeRecipientAddress;
         feeRecipient = IFeeRecipient(_feeRecipientAddress);
-        collateral = ICollateralToken(_collTokenAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -136,7 +112,7 @@ contract BorrowerOperations is
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        renounceOwnership();
+        // No longer need a concept of ownership if there is no initializer
     }
 
     // --- Borrower Cdp Operations ---

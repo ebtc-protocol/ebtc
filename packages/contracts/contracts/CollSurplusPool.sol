@@ -3,14 +3,9 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 
-contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
-    using SafeMath for uint256;
-
+contract CollSurplusPool is ICollSurplusPool {
     string public constant NAME = "CollSurplusPool";
 
     address public borrowerOperationsAddress;
@@ -33,17 +28,12 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
      * @param _activePoolAddress The address of the ActivePool
      * @param _collTokenAddress The address of the CollateralToken
      */
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
@@ -53,8 +43,6 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
-
-        renounceOwnership();
     }
 
     /**

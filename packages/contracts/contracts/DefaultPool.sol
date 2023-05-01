@@ -4,9 +4,6 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/IActivePool.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 
 /*
@@ -22,13 +19,11 @@ import "./Dependencies/ICollateralToken.sol";
  * @dev The Default Pool holds the stETH collateral and EBTC debt (but not EBTC tokens) from liquidations that have been redistributed to active cdps but not yet "applied", i.e. not yet recorded on a recipient active cdp's struct.
  * When a cdp makes an operation that applies its pending stETH collateral and EBTC debt, its pending stETH collateral and EBTC debt is moved from the Default Pool to the Active Pool.
  */
-contract DefaultPool is Ownable, CheckContract, IDefaultPool {
-    using SafeMath for uint256;
-
+contract DefaultPool is IDefaultPool {
     string public constant NAME = "DefaultPool";
 
-    address public cdpManagerAddress;
-    address public activePoolAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable activePoolAddress;
     uint256 internal StEthColl; // deposited stETH collateral tracker
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;
@@ -41,15 +36,7 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
      * @param _activePoolAddress The address of the active pool contract
      * @param _collTokenAddress The address of the collateral token contract
      */
-    function setAddresses(
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _collTokenAddress
-    ) external onlyOwner {
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    constructor(address _cdpManagerAddress, address _activePoolAddress, address _collTokenAddress) {
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
@@ -57,8 +44,6 @@ contract DefaultPool is Ownable, CheckContract, IDefaultPool {
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
-
-        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---

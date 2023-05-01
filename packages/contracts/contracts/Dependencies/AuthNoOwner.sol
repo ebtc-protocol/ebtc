@@ -13,6 +13,12 @@ contract AuthNoOwner {
     Authority public authority;
     bool public authorityInitialized;
 
+    constructor(address _authority) {
+        authority = Authority(_authority);
+
+        emit AuthorityUpdated(msg.sender, Authority(_authority));
+    }
+
     modifier requiresAuth() virtual {
         require(isAuthorized(msg.sender, msg.sig), "UNAUTHORIZED");
 

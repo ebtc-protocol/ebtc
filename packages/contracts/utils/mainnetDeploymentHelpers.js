@@ -66,6 +66,7 @@ class MainnetDeploymentHelper {
     // Get contract factories
     const priceFeedFactory = await this.getFactory("PriceFeed")
     const sortedCdpsFactory = await this.getFactory("SortedCdps")
+    const liquidationLibraryFactory = await this.getFactory("LiquidationLibrary")
     const cdpManagerFactory = await this.getFactory("CdpManager")
     const activePoolFactory = await this.getFactory("ActivePool")
     const gasPoolFactory = await this.getFactory("GasPool")
@@ -80,7 +81,8 @@ class MainnetDeploymentHelper {
     // Deploy txs
     const priceFeed = await this.loadOrDeploy(priceFeedFactory, 'priceFeed', deploymentState)
     const sortedCdps = await this.loadOrDeploy(sortedCdpsFactory, 'sortedCdps', deploymentState)
-    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'cdpManager', deploymentState)
+    const liquidationLibrary = await this.loadOrDeploy(liquidationLibraryFactory, 'cdpManager', deploymentState)
+    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'liquidationLibrary', deploymentState, [liquidationLibrary.address])
     const activePool = await this.loadOrDeploy(activePoolFactory, 'activePool', deploymentState)
     const gasPool = await this.loadOrDeploy(gasPoolFactory, 'gasPool', deploymentState)
     const defaultPool = await this.loadOrDeploy(defaultPoolFactory, 'defaultPool', deploymentState)

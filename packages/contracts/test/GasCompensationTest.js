@@ -3,6 +3,7 @@ const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const EBTCToken = artifacts.require("EBTCToken")
+const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -46,26 +47,24 @@ contract('Gas compensation tests', async accounts => {
     }
   }
 
-  before(async () => {
-    cdpManagerTester = await CdpManagerTester.new()
-    borrowerOperationsTester = await BorrowerOperationsTester.new()
-
-    CdpManagerTester.setAsDeployed(cdpManagerTester)
-    BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
-	
+  before(async () => {	
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [bn8]}); 
     bn8Signer = await ethers.provider.getSigner(bn8);
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
+
+    await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
+	
+    liquidationLibrary = contracts.liquidationLibrary
+    cdpManagerTester = contracts.cdpManager
+    borrowerOperationsTester = contracts.borrowerOperations
+
+    CdpManagerTester.setAsDeployed(cdpManagerTester)
+    BorrowerOperationsTester.setAsDeployed(borrowerOperationsTester)
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -79,7 +78,6 @@ contract('Gas compensation tests', async accounts => {
     LICR = await cdpManager.LICR();
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts) 
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
     let _ownerBal = await web3.eth.getBalance(owner);

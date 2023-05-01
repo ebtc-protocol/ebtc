@@ -5,14 +5,12 @@ pragma solidity 0.8.17;
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/LiquityBase.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
-contract HintHelpers is LiquityBase, Ownable, CheckContract {
+contract HintHelpers is LiquityBase {
     string public constant NAME = "HintHelpers";
 
-    ISortedCdps public sortedCdps;
-    ICdpManager public cdpManager;
+    ISortedCdps public immutable sortedCdps;
+    ICdpManager public immutable cdpManager;
 
     // --- Events ---
 
@@ -28,24 +26,20 @@ contract HintHelpers is LiquityBase, Ownable, CheckContract {
     }
 
     // --- Dependency setters ---
-    function setAddresses(
+    constructor(
         address _sortedCdpsAddress,
         address _cdpManagerAddress,
-        address _collateralAddress
-    ) external onlyOwner {
-        checkContract(_sortedCdpsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_collateralAddress);
-
+        address _collateralAddress,
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _priceFeedAddress
+    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
-        collateral = ICollateralToken(_collateralAddress);
 
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit CollateralAddressChanged(_collateralAddress);
-
-        renounceOwnership();
     }
 
     // --- Functions ---

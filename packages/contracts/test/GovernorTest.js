@@ -26,14 +26,10 @@ contract('Governor - access control entrypoint to permissioned functions', async
 
   const openCdp = async (params) => th.openCdp(contracts, params)
 
-  beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+  beforeEach(async () => {      
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
@@ -46,7 +42,6 @@ contract('Governor - access control entrypoint to permissioned functions', async
     collToken = contracts.collateral;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	
     // setup roles & users
     governorTester = await GovernorTester.new(owner);

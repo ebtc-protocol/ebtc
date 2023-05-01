@@ -22,14 +22,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
@@ -37,7 +32,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     debtToken = contracts.ebtcToken;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   context('Batch liquidations', () => {

@@ -15,6 +15,11 @@ contract CdpManagerTester is CdpManager {
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     event SomeFunc1Called(address _caller);
 
+    constructor(
+        EBTCDeployer.EbtcAddresses memory _addresses,
+        address _collTokenAddress
+    ) public CdpManager(_addresses, _collTokenAddress) {}
+
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
@@ -79,6 +84,30 @@ contract CdpManagerTester is CdpManager {
             _totalEBTCSupply;
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+    }
+
+    function defaultPoolSendToActivePool(uint _ETH) external {
+        defaultPool.sendETHToActivePool(_ETH);
+    }
+
+    function defaultPoolIncreaseEBTCDebt(uint _amount) external {
+        defaultPool.increaseEBTCDebt(_amount);
+    }
+
+    function activePoolIncreaseEBTCDebt(uint _amount) external {
+        activePool.increaseEBTCDebt(_amount);
+    }
+
+    function defaultPoolDecreaseEBTCDebt(uint _amount) external {
+        defaultPool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolDecreaseEBTCDebt(uint _amount) external {
+        activePool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolSendStEthColl(address _addr, uint _amt) external {
+        activePool.sendStEthColl(_addr, _amt);
     }
 
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {

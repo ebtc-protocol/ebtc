@@ -15,13 +15,6 @@ interface ICollSurplusPool {
 
     // --- Contract setters ---
 
-    function setAddresses(
-        address _borrowerOperationsAddress,
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _collTokenAddress
-    ) external;
-
     function getStEthColl() external view returns (uint);
 
     function getCollateral(address _account) external view returns (uint);
