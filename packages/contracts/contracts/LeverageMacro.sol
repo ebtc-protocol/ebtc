@@ -172,7 +172,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
             bytes32 _cdpId = borrowerOperations.openCdpFor(flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, flData.borrower);
             emit LeveragedCdpOpened(flData.borrower, flData.eBTCToMint, flData.stETHToDeposit, _cdpId);
 
-            // TODO: Should we approve exact amount?
         }
         return FLASH_LOAN_SUCCESS;
     }
