@@ -56,6 +56,20 @@ interface IBorrowerOperations {
         uint _collAmount,
         address _borrower
     ) external returns (bytes32);
+    
+    function closeCdpFor(bytes32 _cdpId, address _forwardedCaller) external {}
+
+    function adjustCdpFor(
+        bytes32 _cdpId,
+        uint256 _collWithdrawal,
+        uint256 _EBTCChange,
+        bool _isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint256 _collAddAmount,
+        address _forwardedCaller
+    ) external {}
+
 
     function addColl(
         bytes32 _cdpId,

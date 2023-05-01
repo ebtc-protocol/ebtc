@@ -172,16 +172,16 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint256 _collAddAmount,
-        address forwardedCaller
+        address _forwardedCaller
     ) external {
-        _requireForwardedCdpOwner(_cdpId, forwardedCaller);
+        _requireForwardedCdpOwner(_cdpId, _forwardedCaller);
         _adjustCdpInternal(
             _cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _collAddAmount
         );
     }
 
-    function closeCdpFor(bytes32 _cdpId, address forwardedCaller) external {
-        _requireForwardedCdpOwner(_cdpId, forwardedCaller);
+    function closeCdpFor(bytes32 _cdpId, address _forwardedCaller) external {
+        _requireForwardedCdpOwner(_cdpId, _forwardedCaller);
         _closeCdp(_cdpId);
     }
 
