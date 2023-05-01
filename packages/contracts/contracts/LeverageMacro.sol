@@ -13,24 +13,14 @@ contract LeverageMacro is IERC3156FlashBorrower {
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     IPriceFeed public immutable priceFeed;
-    ICollateralToken public immutable collateral;
-
-
-    // DEX to swap between debt and collateral
-    IBalancerV2Vault public immutable balancerV2Vault;
-    bytes32 public balancerV2PoolId;
-
-    // max leverage capped by MCR: (maxLeverage + 1) > MCR * maxLeverage
-    uint256 public maxLeverage = 10;
-
-    // swap slippage
-    uint public slippage = 50;
-    uint public constant MAX_SLIPPAGE = 10000;
+    ICollateralToken public immutable stETH;
 
     event LeveragedCdpOpened(address _initiator, uint256 _debt, uint256 _coll, bytes32 _cdpId);
 
-
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+
+    // Leverage Macro should receive a request and set that data
+    // Then perform the request
 
     constructor(
         address _borrowerOperationsAddress,
@@ -43,142 +33,194 @@ contract LeverageMacro is IERC3156FlashBorrower {
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         ebtcToken = IEBTCToken(_ebtc);
-        collateral = ICollateralToken(_coll);
-        balancerV2Vault = IBalancerV2Vault(_balancerDEX);
-        balancerV2PoolId = _balancerPoolId;
+        stETH = ICollateralToken(_coll);
         priceFeed = _priceFeed;
         sortedCdps = _sortedCdps;
 
         // set allowance for DEX
-        collateral.approve(_balancerDEX, type(uint256).max);
+        stETH.approve(_balancerDEX, type(uint256).max);
         ebtcToken.approve(_balancerDEX, type(uint256).max);
 
         // set allowance for flashloan lender/CDP open
         ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        collateral.approve(_borrowerOperationsAddress, type(uint256).max);
+        stETH.approve(_borrowerOperationsAddress, type(uint256).max);
+    }
+
+    struct FLOperation {
+        // Open CDP For Data
+        uint256 eBTCToMint;
+        bytes32 _upperHint;
+        bytes32 _lowerHint;
+        uint256 stETHToDeposit;
+        address borrower;
+        // Swap Data
+        address tokenForSwap;
+        address addressForApprove;
+        uint256 exactApproveAmount;
+        address addressForSwap;
+        bytes calldataForSwap;
+        // Swap Slippage Check
+        address tokenToCheck;
+        uint256 expectedMinOut;
+    }
+
+    /// @notice Given the inputs returns the Bytes for the contract to pass via FL
+    /// @dev Must be memory because it's encoded locally
+    /// @dev Maybe we can encode from caller and save the cost, but that makes it less practical to perform onChain
+    function encodeOperation(FLOperation calldata flData) external view returns (bytes memory encoded) {
+        encoded = abi.encode(flData);
+    }
+
+    /// @notice Given the data returns the data for the FL to decode
+    function decodeOperation(bytes calldata encoded) public view returns (FLOperation memory flData) {
+        (
+            flData
+        ) = abi.decode(encoded, (FLOperation));
     }
 
     function openCdpLeveraged(
-        uint _EBTCAmount,
-        bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _collAmount
-    ) external returns (bytes32 cdpId) {
-        // Flashloan final eBTC Balance (add buffer for fee)
-        uint _collInSender = collateral.balanceOf(msg.sender);
-        uint _collWorthInDebt = _getExpectedOutputAmount(true, _collInSender, 0);
+        // FL Settings
+        uint256 initialEBTCAmount,
+        uint256 eBTCToBorrow,
+        // NOTE: We pass the encoded data directly because it's already complex enough
+        bytes calldata encodedFlData
+    ) external returns (bytes32) {
+        // NOTE: data validation is on FL so we avoid any gotcha
 
-        // ensure leverage in safe range
-        require(
-            _EBTCAmount < maxLeverage * _collWorthInDebt,
-            "LeverageMacro: too much leverage for eBTC!"
-        );
-        uint _flFee = IERC3156FlashLender(address(borrowerOperations)).flashFee(address(ebtcToken), _EBTCAmount);
+        // Get the initial amount, we'll verify the cdpCount has increased
+        uint256 initialCdpCount = sortedCdps.cdpCountOf(msg.sender);
+
+        // Take the initial eBTC Amount
+        ebtcToken.transferFrom(msg.sender, address(this), initialEBTCAmount);
+
+        // NOTE: You need to make sure there's enough for swap and fee to work
 
         // take eBTC flashloan
-        bytes memory _data = abi.encode(
-            _EBTCAmount,
-            _upperHint,
-            msg.sender,
-            _lowerHint,
-            _collAmount
-        );
         IERC3156FlashLender(address(borrowerOperations)).flashLoan(
-            IERC3156FlashBorrower(address(this)), address(ebtcToken), _EBTCAmount, _data);
-        uint256 _newCdpCount = sortedCdps.cdpCountOf(msg.sender);
-        require(_newCdpCount >= 1, "LeverageMacro: no CDP created!");
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, _newCdpCount - 1);
+            IERC3156FlashBorrower(address(this)), address(ebtcToken), eBTCToBorrow, encodedFlData
+        );
+
+        // Verify they got the new CDP
+        // Verify the leverage is the intended one -> Not necessary, the leverage is implicit in the CDP status
+        // Safety of operation is also implicit in the status
+
+        /**
+         * VERIFY OPENING *
+         */
+        // We do fetch because it's cheaper cause we always write in those slots anyway
+        // 100 + 100
+        uint256 newCdpCount = sortedCdps.cdpCountOf(msg.sender);
+        require(newCdpCount > initialCdpCount, "LeverageMacro: no CDP created!");
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, newCdpCount - 1);
+
+        /**
+         * SWEEP TO CALLER *
+         */
+        // Safe unchecked because known tokens
+        uint256 ebtcBal = ebtcToken.balanceOf(address(this));
+        uint256 collateralBal = stETH.balanceOf(address(this));
+
+        if (ebtcBal > 0) {
+            ebtcToken.transfer(msg.sender, ebtcBal);
+        }
+
+        if (collateralBal > 0) {
+            stETH.transfer(msg.sender, collateralBal);
+        }
 
         // Send eBTC to caller + Cdp (NEED TO ALLOW TRANSFERING ON CREATION)
-        return _cdpId;
+        return cdpId;
     }
 
-    function onFlashLoan(
-        address initiator,
-        address token,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata data
-    ) external override returns (bytes32) {
+    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data)
+        external
+        override
+        returns (bytes32)
+    {
+        // Verify we started the FL
         require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
+
+        // Ensure the caller is the intended contract
+        require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
+
+        // Get the data
+        (FLOperation memory flData) = decodeOperation(data);
+
+        // NOTE: This is the check that will be enforced, so we do it here
+        require(flData.tokenForSwap == address(ebtcToken)); // TODO: For now just eBTC so we have a easier time
+        require(flData.tokenToCheck == address(stETH)); // TODO: For now just stETH so we have a easier time
+
+        // Check this to avoid griefing, if we change to local approvals on each operation we can get rid of this check
+        require(flData.addressForApprove != address(borrowerOperations));
+
         if (token == address(ebtcToken)) {
-            require(
-                msg.sender == address(borrowerOperations),
-                "LeverageMacro: wrong lender for eBTC flashloan"
-            );
+            /**
+             * SWAP from eBTC to stETH *
+             */
 
-            // Use eBTC Balance to Buy stETH
-            (
-                uint256 _debt,
-                bytes32 _upperHint,
-                address _borrower,
-                bytes32 _lowerHint,
-                uint256 _coll
-            ) = abi.decode(data, (uint256, bytes32, address, bytes32, uint256));
-            require(
-                ebtcToken.balanceOf(address(this)) > _debt,
-                "LeverageMacro: not enough borrowed eBTC!"
-            );
-            uint256 _swappedColl = _swapInBalancerV2(address(ebtcToken), address(collateral), _debt);
+            // Exact approve
+            IERC20(flData.tokenForSwap).approve(flData.addressForApprove, flData.exactApproveAmount);
 
-            // transfer remaining collateral from borrower
-            uint _collFromSender = _coll - _swappedColl;
-            collateral.transferFrom(_borrower, address(this), _collFromSender);
-            require(
-                collateral.balanceOf(address(this)) > _coll,
-                "LeverageMacro: not enough leveraged collateral!"
-            );
+            // Call and perform swap // TODO Technically approval may be different from target, something to keep in mind
+            excessivelySafeCall(flData.addressForSwap, gasleft(), 0, 32, flData.calldataForSwap);
 
-            // Deposit stETH to mint eBTC
-            uint256 _totalDebt = (_debt + fee);
-            bytes32 _cdpId = borrowerOperations.openCdpFor(_totalDebt, _upperHint, _lowerHint, _coll, _borrower);
-            emit LeveragedCdpOpened(_borrower, _debt, _coll, _cdpId);
+            // Approve back to 0
+            // Enforce exact approval
+            // Can use max because the tokens are OZ
+            // val -> 0 -> 0 -> val means this is safe to repeat since even if full approve is unused, we always go back to 0 after
+            IERC20(flData.tokenForSwap).approve(flData.addressForApprove, 0);
 
-            // Repay FlashLoan + fee
-            require(
-                ebtcToken.balanceOf(address(this)) > _totalDebt,
-                "LeverageMacro: not enough to repay eBTC!"
-            );
+            // Perform the slippage check
+            // TODO: Perhaps make it options
+            // TODO TODO Perhaps allow to skim vs use all of the out
+            require(IERC20(flData.tokenToCheck).balanceOf(address(this)) > flData.expectedMinOut);
+
+            /**
+             * Open CDP AND REPAY *
+             */
+            bytes32 _cdpId = borrowerOperations.openCdpFor(flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, flData.borrower);
+            emit LeveragedCdpOpened(flData.borrower, flData.eBTCToMint, flData.stETHToDeposit, _cdpId);
+
+            // TODO: Should we approve exact amount?
         }
         return FLASH_LOAN_SUCCESS;
     }
 
-    // swap in single balancer v2 pool, suppose it should be stETH/eBTC
-    function _swapInBalancerV2(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) internal returns (uint256) {
-        uint256 _expectedOut = _getExpectedOutputAmount(
-            tokenIn == address(ebtcToken),
-            amountIn,
-            slippage
-        );
-        SingleSwap memory singleSwap = SingleSwap(
-            balancerV2PoolId,
-            SwapKind.GIVEN_IN,
-            tokenIn,
-            tokenOut,
-            amountIn,
-            ""
-        );
-        FundManagement memory funds = FundManagement(address(this), false, address(this), false);
-        return balancerV2Vault.swap(singleSwap, funds, _expectedOut, block.timestamp);
-    }
-
-    function _getExpectedOutputAmount(
-        bool _tradeCollForEBTC,
-        uint256 _inputAmount,
-        uint256 _slippage
-    ) internal returns (uint256) {
-        if (_inputAmount == 0) {
-            return 0;
+    /**
+     * excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
+     */
+    // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
+    function excessivelySafeCall(address _target, uint256 _gas, uint256 _value, uint16 _maxCopy, bytes memory _calldata)
+        internal
+        returns (bool, bytes memory)
+    {
+        // set up for assembly call
+        uint256 _toCopy;
+        bool _success;
+        bytes memory _returnData = new bytes(_maxCopy);
+        // dispatch message to recipient
+        // by assembly calling "handle" function
+        // we call via assembly to avoid memcopying a very large returndata
+        // returned by a malicious contract
+        assembly {
+            _success :=
+                call(
+                    _gas, // gas
+                    _target, // recipient
+                    _value, // ether value
+                    add(_calldata, 0x20), // inloc
+                    mload(_calldata), // inlen
+                    0, // outloc
+                    0 // outlen
+                )
+            // limit our copy to 256 bytes
+            _toCopy := returndatasize()
+            if gt(_toCopy, _maxCopy) { _toCopy := _maxCopy }
+            // Store the length of the copied bytes
+            mstore(_returnData, _toCopy)
+            // copy the bytes from returndata[0:_toCopy]
+            returndatacopy(add(_returnData, 0x20), 0, _toCopy)
         }
-        uint _price = priceFeed.fetchPrice();
-        // assume eBTC token and collateral have same decimals
-        return
-            _tradeCollForEBTC
-                ? (((_inputAmount * _price) / 1e18) * (MAX_SLIPPAGE - _slippage)) / MAX_SLIPPAGE
-                : (((_inputAmount * 1e18) / _price) * (MAX_SLIPPAGE - _slippage)) / MAX_SLIPPAGE;
+        return (_success, _returnData);
     }
 }
