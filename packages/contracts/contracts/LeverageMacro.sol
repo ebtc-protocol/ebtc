@@ -12,7 +12,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
     IBorrowerOperations public immutable borrowerOperations;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
-    IPriceFeed public immutable priceFeed;
     ICollateralToken public immutable stETH;
 
     event LeveragedCdpOpened(address _initiator, uint256 _debt, uint256 _coll, bytes32 _cdpId);
@@ -26,20 +25,12 @@ contract LeverageMacro is IERC3156FlashBorrower {
         address _borrowerOperationsAddress,
         address _ebtc,
         address _coll,
-        IPriceFeed _priceFeed,
-        ISortedCdps _sortedCdps,
-        address _balancerDEX,
-        bytes32 _balancerPoolId
+        address _sortedCdps
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
-        priceFeed = _priceFeed;
-        sortedCdps = _sortedCdps;
-
-        // set allowance for DEX
-        stETH.approve(_balancerDEX, type(uint256).max);
-        ebtcToken.approve(_balancerDEX, type(uint256).max);
+        sortedCdps = ISortedCdps(_sortedCdps);
 
         // set allowance for flashloan lender/CDP open
         ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
@@ -162,8 +153,8 @@ contract LeverageMacro is IERC3156FlashBorrower {
             IERC20(flData.tokenForSwap).approve(flData.addressForApprove, flData.exactApproveAmount);
 
             // Call and perform swap // TODO Technically approval may be different from target, something to keep in mind
-            excessivelySafeCall(flData.addressForSwap, gasleft(), 0, 32, flData.calldataForSwap);
-
+            (bool success, ) = excessivelySafeCall(flData.addressForSwap, gasleft(), 0, 32, flData.calldataForSwap);
+            require(success, "Call has failed"); 
             // Approve back to 0
             // Enforce exact approval
             // Can use max because the tokens are OZ
