@@ -45,81 +45,74 @@ contract LeverageMacro is IERC3156FlashBorrower {
         stETH,
         eBTC
     }
-    
 
-    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation memory operation) external {
+    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation memory operation)
+        external
+    {
         require(operation.forwardedCaller == msg.sender); // Enforce encoded properly
 
         // Call FL Here, then the stuff below needs to happen inside the FL
-        if(operation.amountToTransferIn > 0) {
+        if (operation.amountToTransferIn > 0) {
             // Not safe because OZ for our cases, if you use USDT it's your prob friend
             IERC20(operation.tokenToTransferIn).transferFrom(msg.sender, address(this), operation.amountToTransferIn);
         }
 
         // take eBTC flashloan
         // TODO: Allow specifying of the macro data etc..
-        if(flType == FlashLoanType.eBTC) {
-        IERC3156FlashLender(address(borrowerOperations)).flashLoan(
-            IERC3156FlashBorrower(address(this)), address(ebtcToken), borrowAmount, abi.encode(operation)
-        );
+        if (flType == FlashLoanType.eBTC) {
+            IERC3156FlashLender(address(borrowerOperations)).flashLoan(
+                IERC3156FlashBorrower(address(this)), address(ebtcToken), borrowAmount, abi.encode(operation)
+            );
         }
 
-
-
         /**
-            FL Setup
-            - Validate Caller
-
-            FL
-            - SwapsBefore
-            - Operation
-            - SwapsAfter
-            - Repay
-
-            - Sweep
-
+         * FL Setup
+         *         - Validate Caller
+         * 
+         *         FL
+         *         - SwapsBefore
+         *         - Operation
+         *         - SwapsAfter
+         *         - Repay
+         * 
+         *         - Sweep
          */
         // TODO: Post Operations Checks
 
         // Sweep here
-        _sweepToCaller();  
+        _sweepToCaller();
     }
-
 
     function operationCallback(LeverageMacroOperation memory operation, address forwardedCaller) internal {
         uint256 beforeSwapsLength = operation.swapsBefore.length;
-        if(beforeSwapsLength > 0) {
+        if (beforeSwapsLength > 0) {
             _doSwaps(operation.swapsBefore);
         }
 
         // Based on the type we do stuff
-        if(operation.operationType == OperationType.OpenCdpOperation) {
+        if (operation.operationType == OperationType.OpenCdpOperation) {
             _openCdpCallback(operation.OperationData, forwardedCaller);
-        } else if(operation.operationType == OperationType.CloseCdpOperation) {
+        } else if (operation.operationType == OperationType.CloseCdpOperation) {
             _closeCdpCallback(operation.OperationData, forwardedCaller);
-        } else if(operation.operationType == OperationType.AdjustCdpOperation) {
+        } else if (operation.operationType == OperationType.AdjustCdpOperation) {
             _adjustCdpCallback(operation.OperationData, forwardedCaller);
         }
 
-
         uint256 afterSwapsLength = operation.swapsAfter.length;
-        if(afterSwapsLength > 0) {
+        if (afterSwapsLength > 0) {
             _doSwaps(operation.swapsAfter);
         }
     }
 
-    struct LeverageMacroOperation{
+    struct LeverageMacroOperation {
         address tokenToTransferIn;
         uint256 amountToTransferIn;
-
         SwapOperation[] swapsBefore; // Empty to skip
         SwapOperation[] swapsAfter; // Empty to skip
-
         OperationType operationType; // Open, Close, etc..
         bytes OperationData; // Generic Operation Data, which we'll decode to use
         address forwardedCaller; // We add this, we'll enforce that it's added by us
     }
-
 
     struct SwapOperation {
         // Swap Data
@@ -128,7 +121,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
         uint256 exactApproveAmount;
         address addressForSwap;
         bytes calldataForSwap;
-
         SwapCheck[] swapChecks; // Empty to skip
     }
 
@@ -174,8 +166,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         return leverageMacroData;
     }
 
-
-    // TODO: Encoding of different types as helpers for View 
+    // TODO: Encoding of different types as helpers for View
     // TODO: Perhaps, to side-step audit LOC we can do it in a view contract which will not be audited since it's just a way to populate calldata
 
     // // TODO: Consider adding more post-op checks
@@ -184,7 +175,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
     //     require(newCdpCount > initialCdpCount, "LeverageMacro: no CDP created!");
     //     bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(originalCaller, newCdpCount - 1);
     // }
-
 
     function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data)
         external
@@ -195,21 +185,19 @@ contract LeverageMacro is IERC3156FlashBorrower {
         require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
 
         // Ensure the caller is the intended contract
-        if(token == address(ebtcToken)){
+        if (token == address(ebtcToken)) {
             require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
         }
 
-        if(token == address(stETH)) {
+        if (token == address(stETH)) {
             require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
         }
-        
 
         // Get the data
         // We will get the first byte of data for enum an type
         // The rest of the data we can decode based on the operation type from calldata
         // Then we can do multiple hooks and stuff
-        (LeverageMacroOperation memory operation
-        ) = decodeFLData(data);
+        (LeverageMacroOperation memory operation) = decodeFLData(data);
 
         operationCallback(operation, operation.forwardedCaller);
 
@@ -218,9 +206,8 @@ contract LeverageMacro is IERC3156FlashBorrower {
 
     function _doSwaps(SwapOperation[] memory swapData) internal {
         uint256 swapLength = swapData.length;
-        
-        for(uint256 i; i < swapLength; ) {
 
+        for (uint256 i; i < swapLength;) {
             _doSwap(swapData[i]);
             unchecked {
                 ++i;
@@ -242,9 +229,9 @@ contract LeverageMacro is IERC3156FlashBorrower {
         // TODO: BLOCK ALL SYSTEM CALL PLS SER
         // Call target are limited
         // But technically you could approve w/e you want here, this is fine because the contract is a router and will not hold user funds
-        (bool success, ) = excessivelySafeCall(swapData.addressForSwap, gasleft(), 0, 32, swapData.calldataForSwap);
-        require(success, "Call has failed"); 
-        
+        (bool success,) = excessivelySafeCall(swapData.addressForSwap, gasleft(), 0, 32, swapData.calldataForSwap);
+        require(success, "Call has failed");
+
         // Approve back to 0
         // Enforce exact approval
         // Can use max because the tokens are OZ
@@ -265,11 +252,11 @@ contract LeverageMacro is IERC3156FlashBorrower {
         }
     }
 
-
     // TODO: Check and add more if you think it's better
     function _ensureNotSystem(address addy) internal {
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
+        require(addy != address(activePool));
         require(addy != address(this)); // If it could call this it could fake the forwarded caller
     }
 
@@ -290,13 +277,14 @@ contract LeverageMacro is IERC3156FlashBorrower {
         }
     }
 
-
     function _openCdpCallback(bytes memory data, address forwardedCaller) internal {
         OpenCdpOperation memory flData = abi.decode(data, (OpenCdpOperation));
         /**
-        * Open CDP and Emit event
-        */
-        bytes32 _cdpId = borrowerOperations.openCdpFor(flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, forwardedCaller);
+         * Open CDP and Emit event
+         */
+        bytes32 _cdpId = borrowerOperations.openCdpFor(
+            flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, forwardedCaller
+        );
         emit LeveragedCdpOpened(forwardedCaller, flData.eBTCToMint, flData.stETHToDeposit, _cdpId);
 
         // Tokens will be swept to msg.sender
@@ -308,7 +296,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
 
         // Initiator must be added by this contract, else it's not trusted
         borrowerOperations.closeCdpFor(flData._cdpId, forwardedCaller);
-
     }
 
     function _adjustCdpCallback(bytes memory data, address forwardedCaller) internal {
