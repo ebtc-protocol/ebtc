@@ -24,7 +24,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     // TODO: SECURITY
     // TODO: REFACTOR
     function setTheMacro(address newMacro) external {
-        theMacro = newMacro;
+        theMacro = LeverageMacro(newMacro);
     }
 
     ICdpManager public cdpManager;
