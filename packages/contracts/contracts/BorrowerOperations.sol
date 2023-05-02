@@ -116,14 +116,14 @@ contract BorrowerOperations is
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndCdpM() {
-        require(locked == 1, "BorrowerOperations: REENTRANCY");
-        require(ReentrancyGuard(address(cdpManager)).locked() == 1, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "BorrowerOperations: REENTRANCY");
+        require(ReentrancyGuard(address(cdpManager)).locked() == OPEN, "CdpManager: REENTRANCY");
 
-        locked = 2;
+        locked = LOCKED;
 
         _;
 
-        locked = 1;
+        locked = OPEN;
     }
 
     // --- Borrower Cdp Operations ---

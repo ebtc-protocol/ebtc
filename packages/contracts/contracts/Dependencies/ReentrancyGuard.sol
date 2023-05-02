@@ -5,18 +5,18 @@ pragma solidity >=0.8.0;
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/utils/ReentrancyGuard.sol)
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol)
 abstract contract ReentrancyGuard {
-    uint256 private constant UNLOCKED = 1;
-    uint256 private constant LOCKED = 2;
+    uint256 internal constant OPEN = 1;
+    uint256 internal constant LOCKED = 2;
 
-    uint256 public locked = UNLOCKED;
+    uint256 public locked = OPEN;
 
     modifier nonReentrant() virtual {
-        require(locked == UNLOCKED, "REENTRANCY");
+        require(locked == OPEN, "REENTRANCY");
 
         locked = LOCKED;
 
         _;
 
-        locked = UNLOCKED;
+        locked = OPEN;
     }
 }
