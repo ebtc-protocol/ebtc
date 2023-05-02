@@ -9,7 +9,9 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
-
+import "./Dependencies/Ownable.sol";
+import "./Dependencies/CheckContract.sol";
+import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
@@ -92,6 +94,11 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         feeRecipient = IFeeRecipient(_feeRecipientAddress);
+
+        address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);

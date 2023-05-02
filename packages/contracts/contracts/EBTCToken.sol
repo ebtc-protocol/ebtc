@@ -68,7 +68,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) public AuthNoOwner(_authorityAddress) {
+    ) public {
+        _initializeAuthority(_authorityAddress);
+
         cdpManagerAddress = _cdpManagerAddress;
         emit CdpManagerAddressChanged(_cdpManagerAddress);
 

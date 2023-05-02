@@ -24,4 +24,6 @@ interface IActivePool is IPool {
         uint _shares,
         uint _liquidatorRewardShares
     ) external;
+
+    function feeRecipientAddress() external view returns (address);
 }

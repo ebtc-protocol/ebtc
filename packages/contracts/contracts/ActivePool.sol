@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
+pragma experimental ABIEncoderV2;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
@@ -8,6 +9,9 @@ import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
+import "./Dependencies/SafeERC20.sol";
+import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -16,14 +20,20 @@ import "./Dependencies/ERC3156FlashLender.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is IActivePool, ERC3156FlashLender {
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
+
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
 
     address public immutable borrowerOperationsAddress;
     address public immutable cdpManagerAddress;
     address public immutable defaultPoolAddress;
     address public immutable collSurplusPoolAddress;
-    address public feeRecipientAddress;
+    address public immutable override feeRecipientAddress;
+
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
@@ -44,6 +54,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         collateral = ICollateralToken(_collTokenAddress);
         collSurplusPoolAddress = _collSurplusAddress;
         feeRecipientAddress = _feeRecipientAddress;
+
+        // TEMP: read authority to avoid signature change
+        address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
@@ -217,5 +233,23 @@ contract ActivePool is IActivePool, ERC3156FlashLender {
         }
 
         return collateral.balanceOf(address(this));
+    }
+
+    // === Governed Functions === //
+
+    /// @dev Function to move unintended dust that are not protected
+    /// @notice moves given amount of given token (collateral is NOT allowed)
+    /// @notice because recipient are fixed, this function is safe to be called by anyone
+    function sweepToken(address token, uint amount) public nonReentrant {
+        require(
+            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
+            "ActivePool: sender not authorized for sweepToken(address,uint256)"
+        );
+        require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
+
+        IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
 }
