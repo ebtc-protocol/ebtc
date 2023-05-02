@@ -47,7 +47,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         eBTC
     }
 
-    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation memory operation)
+    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation calldata operation)
         external
     {
         require(operation.forwardedCaller == msg.sender); // Enforce encoded properly
@@ -90,6 +90,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         _sweepToCaller();
     }
 
+    /// @dev Must be memory since we had to decode it
     function _handleOperation(LeverageMacroOperation memory operation, address forwardedCaller) internal {
         uint256 beforeSwapsLength = operation.swapsBefore.length;
         if (beforeSwapsLength > 0) {
@@ -168,6 +169,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         bytes32 _cdpId;
     }
 
+    
     function decodeFLData(bytes calldata data) public view returns (LeverageMacroOperation memory) {
         (LeverageMacroOperation memory leverageMacroData) = abi.decode(data, (LeverageMacroOperation));
         return leverageMacroData;
@@ -215,6 +217,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         return FLASH_LOAN_SUCCESS;
     }
 
+    /// @dev Must be memory since we had to decode it
     function _doSwaps(SwapOperation[] memory swapData) internal {
         uint256 swapLength = swapData.length;
 
@@ -287,6 +290,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         }
     }
 
+    /// @dev Must be memory since we had to decode it
     function _openCdpCallback(bytes memory data, address forwardedCaller) internal {
         OpenCdpOperation memory flData = abi.decode(data, (OpenCdpOperation));
         /**
@@ -300,6 +304,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         // NOTE: that you need to repay the FL here, which will happen automatically
     }
 
+    /// @dev Must be memory since we had to decode it
     function _closeCdpCallback(bytes memory data, address forwardedCaller) internal {
         CloseCdpOperation memory flData = abi.decode(data, (CloseCdpOperation));
 
@@ -307,6 +312,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         borrowerOperations.closeCdpFor(flData._cdpId, forwardedCaller);
     }
 
+    /// @dev Must be memory since we had to decode it
     function _adjustCdpCallback(bytes memory data, address forwardedCaller) internal {
         AdjustCdpOperation memory flData = abi.decode(data, (AdjustCdpOperation));
 
