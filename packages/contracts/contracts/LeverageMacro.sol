@@ -217,16 +217,15 @@ contract LeverageMacro is IERC3156FlashBorrower {
 
     function _doSwap(SwapOperation memory swapData) internal {
         // Ensure call is safe
+        // Block all system contracts
         _ensureNotSystem(swapData.addressForSwap);
 
         // Exact approve
         // Approve can be given anywhere because this is a router, and after call we will delete all approvals
         IERC20(swapData.tokenForSwap).approve(swapData.addressForApprove, swapData.exactApproveAmount);
 
-        // Call and perform swap // TODO Technically approval may be different from target, something to keep in mind
-        // TODO: Block calling `BO` else it's an issue
-        // Must block all systems contract I think
-        // TODO: BLOCK ALL SYSTEM CALL PLS SER
+        // Call and perform swap 
+        // NOTE: Technically approval may be different from target, something to keep in mind
         // Call target are limited
         // But technically you could approve w/e you want here, this is fine because the contract is a router and will not hold user funds
         (bool success,) = excessivelySafeCall(swapData.addressForSwap, gasleft(), 0, 32, swapData.calldataForSwap);
