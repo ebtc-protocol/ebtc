@@ -19,7 +19,13 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
     // --- Connected contract declarations ---
 
-    LeverageMacro public immutable theMacro;
+    LeverageMacro public theMacro;
+
+    // TODO: SECURITY
+    // TODO: REFACTOR
+    function setTheMacro(address newMacro) external {
+        theMacro = newMacro;
+    }
 
     ICdpManager public cdpManager;
 
@@ -91,8 +97,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
-        address _collTokenAddress,
-        address _macroAddress
+        address _collTokenAddress
     ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collTokenAddress) {
         // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
 
@@ -105,7 +110,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         feeRecipient = IFeeRecipient(_feeRecipientAddress);
-        theMacro = LeverageMacro(_macroAddress);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
