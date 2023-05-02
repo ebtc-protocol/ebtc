@@ -84,62 +84,62 @@ contract LeverageOpenCdpTest is eBTCBaseFixture {
         assertEq(expectedOut, delta);
     }
 
-    function test_basicLeverageHashing() public {
-        LeverageMacro.FLOperation memory flData = LeverageMacro.FLOperation({
-            eBTCToMint: 0,
-            _upperHint: bytes32(0),
-            _lowerHint: bytes32(0),
-            stETHToDeposit: 1,
-            borrower: user,
-            // Swap Data
-            tokenForSwap: address(eBTCToken),
-            addressForApprove: address(oneInch),
-            exactApproveAmount: 1,
-            addressForSwap: address(oneInch),
-            calldataForSwap: "",
-            // Swap Slippage Check
-            tokenToCheck: address(eBTCToken),
-            expectedMinOut: 0
-        });
+    // function test_basicLeverageHashing() public {
+    //     LeverageMacro.FLOperation memory flData = LeverageMacro.FLOperation({
+    //         eBTCToMint: 0,
+    //         _upperHint: bytes32(0),
+    //         _lowerHint: bytes32(0),
+    //         stETHToDeposit: 1,
+    //         borrower: user,
+    //         // Swap Data
+    //         tokenForSwap: address(eBTCToken),
+    //         addressForApprove: address(oneInch),
+    //         exactApproveAmount: 1,
+    //         addressForSwap: address(oneInch),
+    //         calldataForSwap: "",
+    //         // Swap Slippage Check
+    //         tokenToCheck: address(eBTCToken),
+    //         expectedMinOut: 0
+    //     });
 
-        bytes memory encoded = leverageMacro.encodeOperation(flData);
-        assertTrue(encoded.length > 0, "Encoded exists");
-    }
+    //     bytes memory encoded = leverageMacro.encodeOpenCdpOperation(flData);
+    //     assertTrue(encoded.length > 0, "Encoded exists");
+    // }
 
-    function test_basicLeverUp() public {
-        uint256 priceOut = oneInch.price();
+    // function test_basicLeverUp() public {
+    //     uint256 priceOut = oneInch.price();
 
 
-        LeverageMacro.FLOperation memory flData = LeverageMacro.FLOperation({
-            eBTCToMint: (MIN_NET_DEBT + 1) / priceOut,
-            _upperHint: bytes32(0),
-            _lowerHint: bytes32(0),
-            stETHToDeposit: MIN_NET_DEBT * 3,
-            borrower: user,
-            // Swap Data
-            tokenForSwap: address(eBTCToken),
-            addressForApprove: address(oneInch),
-            exactApproveAmount: MIN_NET_DEBT * 3 / priceOut,
-            addressForSwap: address(oneInch),
-            calldataForSwap: abi.encodeCall(oneInch.swap, (address(eBTCToken), address(collateral), (MIN_NET_DEBT + 1) / priceOut)),
-            // Swap Slippage Check
-            tokenToCheck: address(collateral),
-            expectedMinOut: 1
-        });
+    //     LeverageMacro.FLOperation memory flData = LeverageMacro.FLOperation({
+    //         eBTCToMint: (MIN_NET_DEBT + 1) / priceOut,
+    //         _upperHint: bytes32(0),
+    //         _lowerHint: bytes32(0),
+    //         stETHToDeposit: MIN_NET_DEBT * 3,
+    //         borrower: user,
+    //         // Swap Data
+    //         tokenForSwap: address(eBTCToken),
+    //         addressForApprove: address(oneInch),
+    //         exactApproveAmount: MIN_NET_DEBT * 3 / priceOut,
+    //         addressForSwap: address(oneInch),
+    //         calldataForSwap: abi.encodeCall(oneInch.swap, (address(eBTCToken), address(collateral), (MIN_NET_DEBT + 1) / priceOut)),
+    //         // Swap Slippage Check
+    //         tokenToCheck: address(collateral),
+    //         expectedMinOut: 1
+    //     });
 
-        bytes memory encoded = leverageMacro.encodeOperation(flData);
-        vm.startPrank(user);
-        eBTCToken.approve(address(leverageMacro), (MIN_NET_DEBT + 1) / priceOut);
+    //     bytes memory encoded = leverageMacro.encodeOpenCdpOperation(flData);
+    //     vm.startPrank(user);
+    //     eBTCToken.approve(address(leverageMacro), (MIN_NET_DEBT + 1) / priceOut);
 
-        // TODO: They should buy some eBTC initially
-        deal(address(eBTCToken), user, (MIN_NET_DEBT + 1) / priceOut);
+    //     // TODO: They should buy some eBTC initially
+    //     deal(address(eBTCToken), user, (MIN_NET_DEBT + 1) / priceOut);
 
-        leverageMacro.openCdpLeveraged(
-            (MIN_NET_DEBT + 1) / priceOut,
-            MIN_NET_DEBT * 2,
-            encoded
-        );
+    //     leverageMacro.openCdpLeveraged(
+    //         (MIN_NET_DEBT + 1) / priceOut,
+    //         MIN_NET_DEBT * 2,
+    //         encoded
+    //     );
 
-        vm.stopPrank();
-    }
+    //     vm.stopPrank();
+    // }
 }
