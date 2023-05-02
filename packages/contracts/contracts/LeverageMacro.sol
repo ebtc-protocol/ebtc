@@ -299,9 +299,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
         bytes32 _cdpId = borrowerOperations.openCdpFor(
             flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, forwardedCaller
         );
-
-        // Tokens will be swept to msg.sender
-        // NOTE: that you need to repay the FL here, which will happen automatically
     }
 
     /// @dev Must be memory since we had to decode it
