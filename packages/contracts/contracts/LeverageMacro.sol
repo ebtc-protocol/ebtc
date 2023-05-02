@@ -64,10 +64,15 @@ contract LeverageMacro is IERC3156FlashBorrower {
             IERC3156FlashLender(address(borrowerOperations)).flashLoan(
                 IERC3156FlashBorrower(address(this)), address(ebtcToken), borrowAmount, abi.encode(operation)
             );
+        } else if (flType == FlashLoanType.stETH) {
+            IERC3156FlashLender(address(activePool)).flashLoan(
+                IERC3156FlashBorrower(address(this)), address(stETH), borrowAmount, abi.encode(operation)
+            );
         } else {
+            // TODO: If enum OOB reverts, can remove this, can also leave as explicity
             revert("Must be valid due to forwarding of users");
         }
-
+ 
         /**
          * FL Setup
          *         - Validate Caller
