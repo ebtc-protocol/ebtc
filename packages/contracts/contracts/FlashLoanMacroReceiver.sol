@@ -11,9 +11,10 @@ import "./Dependencies/IBalancerV2Vault.sol";
 /**
     This is a DANGEROUS CONTRACT
     DO NOT EVER GRANT ANY APPROVAL TO THIS
+    THIS IS USED ONLY BY DEVS YOU SHOULD INTERACT WITH LeverageMacro
  */
 
-contract LeverageMacro is IERC3156FlashBorrower {
+contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
     IBorrowerOperations public immutable borrowerOperations;
     IBorrowerOperations public immutable activePool; // TODO: TYPE
     IEBTCToken public immutable ebtcToken;

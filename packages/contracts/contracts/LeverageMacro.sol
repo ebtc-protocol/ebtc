@@ -8,6 +8,13 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/IBalancerV2Vault.sol";
 
+/**
+    Allows specifying arbitrary operations to lever up
+    NOTE: Due to security concenrs
+    LeverageMacro accepts allowances and transfers token to FlashLoanMacroReceiver
+    // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
+    LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
+ */
 contract LeverageMacro {
     IBorrowerOperations public immutable borrowerOperations;
     IBorrowerOperations public immutable activePool; // TODO: TYPE
