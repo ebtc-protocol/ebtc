@@ -10,6 +10,7 @@ import "./Dependencies/IBalancerV2Vault.sol";
 
 contract LeverageMacro is IERC3156FlashBorrower {
     IBorrowerOperations public immutable borrowerOperations;
+    IBorrowerOperations public immutable activePool; // TODO: TYPE
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
@@ -24,11 +25,13 @@ contract LeverageMacro is IERC3156FlashBorrower {
 
     constructor(
         address _borrowerOperationsAddress,
+        address _activePool,
         address _ebtc,
         address _coll,
         address _sortedCdps
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
+        activePool = IBorrowerOperations(_activePool);
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
@@ -190,13 +193,16 @@ contract LeverageMacro is IERC3156FlashBorrower {
     {
         // Verify we started the FL
         require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
-        
-        // TODO:
-        // Check that: if we got eBTC it's from BO
-        // Check that: if we got stETH it's from activePool
 
         // Ensure the caller is the intended contract
-        require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
+        if(token == address(ebtcToken)){
+            require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
+        }
+
+        if(token == address(stETH)) {
+            require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
+        }
+        
 
         // Get the data
         // We will get the first byte of data for enum an type
@@ -264,6 +270,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
     function _ensureNotSystem(address addy) internal {
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
+        require(addy != address(this)); // If it could call this it could fake the forwarded caller
     }
 
     function _sweepToCaller() internal {
