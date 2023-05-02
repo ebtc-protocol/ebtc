@@ -58,8 +58,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
             IERC20(operation.tokenToTransferIn).transferFrom(msg.sender, address(this), operation.amountToTransferIn);
         }
 
-        // take eBTC flashloan
-        // TODO: Allow specifying of the macro data etc..
+        // Take eBTC or stETH FlashLoan
         if (flType == FlashLoanType.eBTC) {
             IERC3156FlashLender(address(borrowerOperations)).flashLoan(
                 IERC3156FlashBorrower(address(this)), address(ebtcToken), borrowAmount, abi.encode(operation)
@@ -200,6 +199,9 @@ contract LeverageMacro is IERC3156FlashBorrower {
             // If we allow anything then the forwardedCaller invariant will break
             require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
         }
+
+        // NOTE: Because of the fact that the forward the caller, we must only allow fallback from known contracts
+        // Else a malicious contract, that changes the data would be able to inject a forwarded caller
 
 
         // Get the data
