@@ -64,6 +64,8 @@ contract LeverageMacro is IERC3156FlashBorrower {
             IERC3156FlashLender(address(borrowerOperations)).flashLoan(
                 IERC3156FlashBorrower(address(this)), address(ebtcToken), borrowAmount, abi.encode(operation)
             );
+        } else {
+            revert("Must be valid due to forwarding of users");
         }
 
         /**
@@ -188,11 +190,12 @@ contract LeverageMacro is IERC3156FlashBorrower {
         // Ensure the caller is the intended contract
         if (token == address(ebtcToken)) {
             require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
-        }
-
-        if (token == address(stETH)) {
+        } else {
+            // Enforce that this is either eBTC or stETH
+            // If we allow anything then the forwardedCaller invariant will break
             require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
         }
+
 
         // Get the data
         // We will get the first byte of data for enum an type
