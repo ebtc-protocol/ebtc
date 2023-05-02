@@ -90,7 +90,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         _sweepToCaller();
     }
 
-    function operationCallback(LeverageMacroOperation memory operation, address forwardedCaller) internal {
+    function _handleOperation(LeverageMacroOperation memory operation, address forwardedCaller) internal {
         uint256 beforeSwapsLength = operation.swapsBefore.length;
         if (beforeSwapsLength > 0) {
             _doSwaps(operation.swapsBefore);
@@ -210,7 +210,7 @@ contract LeverageMacro is IERC3156FlashBorrower {
         // Then we can do multiple hooks and stuff
         (LeverageMacroOperation memory operation) = decodeFLData(data);
 
-        operationCallback(operation, operation.forwardedCaller);
+        _handleOperation(operation, operation.forwardedCaller);
 
         return FLASH_LOAN_SUCCESS;
     }
