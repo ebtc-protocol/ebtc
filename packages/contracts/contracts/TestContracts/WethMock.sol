@@ -40,7 +40,7 @@ contract WethMock {
         balanceOf[msg.sender] += value;
         emit Deposit(msg.sender, value);
     }
-  
+
     function withdraw(uint wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
