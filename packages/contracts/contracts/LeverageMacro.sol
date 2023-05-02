@@ -15,8 +15,9 @@ contract LeverageMacro is IERC3156FlashBorrower {
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
 
-    event LeveragedCdpOpened(address indexed _initiator, uint256 _debt, uint256 _coll, bytes32 indexed _cdpId);
-    event LeveragedCdpClosed(address indexed _initiator, uint256 _debt, uint256 _coll, bytes32 indexed _cdpId);
+    // event LeveragedCdpOpened(address indexed _initiator, uint256 _debt, uint256 _coll, bytes32 indexed _cdpId);
+    // TODO: Events if you want, imo not needed
+    
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -284,7 +285,6 @@ contract LeverageMacro is IERC3156FlashBorrower {
         bytes32 _cdpId = borrowerOperations.openCdpFor(
             flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, forwardedCaller
         );
-        emit LeveragedCdpOpened(forwardedCaller, flData.eBTCToMint, flData.stETHToDeposit, _cdpId);
 
         // Tokens will be swept to msg.sender
         // NOTE: that you need to repay the FL here, which will happen automatically
