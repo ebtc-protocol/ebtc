@@ -172,6 +172,7 @@ contract('SortedCdps', async accounts => {
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
       assert.isTrue(await sortedCdps.contains(_bobCdpId))
       assert.isTrue(await sortedCdps.contains(_carolCdpId))
+      assert.isFalse(await sortedCdps.contains(th.DUMMY_BYTES32))
     })
 
     it('contains(): returns false for addresses that have not opened cdps', async () => {

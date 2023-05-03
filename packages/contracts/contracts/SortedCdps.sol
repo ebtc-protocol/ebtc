@@ -49,7 +49,6 @@ contract SortedCdps is ISortedCdps {
 
     // Information for a node in the list
     struct Node {
-        bool exists;
         bytes32 nextId; // Id of next node (smaller NICR) in the list
         bytes32 prevId; // Id of previous node (larger NICR) in the list
     }
@@ -205,8 +204,6 @@ contract SortedCdps is ISortedCdps {
             // Use sender's hint to find a valid insert position
             (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
         }
-
-        data.nodes[_id].exists = true;
 
         if (prevId == dummyId && nextId == dummyId) {
             // Insert as head and tail
@@ -383,7 +380,12 @@ contract SortedCdps is ISortedCdps {
      * @dev Checks if the list contains a node
      */
     function contains(bytes32 _id) public view override returns (bool) {
-        return data.nodes[_id].exists;
+        bool _exist = _id != dummyId && (data.head == _id || data.tail == _id);
+        if (!_exist) {
+            Node memory _node = data.nodes[_id];
+            _exist = _id != dummyId && (_node.nextId != dummyId && _node.prevId != dummyId);
+        }
+        return _exist;
     }
 
     /*
