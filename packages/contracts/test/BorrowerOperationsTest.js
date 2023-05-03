@@ -124,13 +124,7 @@ contract('BorrowerOperations', async accounts => {
     })	  
 	  
     it("BorrowerOperations governance permissioned: initializeAuthority() could be called only once", async() => {	  
-	  let boDummy = await BorrowerOperationsTester.new()
-	  let _authorityInit = await boDummy.authority();
-		
-	  await boDummy.setAddresses(boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address, boDummy.address);
-	  
-	  assert.isTrue(false == (await boDummy.authorityInitialized()));	  
-	  await boDummy.initAuthority(authority.address)
+	  let boDummy = await BorrowerOperationsTester.new(cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address)
 	  assert.isTrue(authority.address == (await boDummy.authority()));
 	  assert.isTrue(true == (await boDummy.authorityInitialized()));
 	  await assertRevert(boDummy.initAuthority(authority.address), "Auth: authority already initialized");

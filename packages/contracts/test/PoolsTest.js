@@ -129,13 +129,7 @@ contract('ActivePool', async accounts => {
   }) 
 	  
   it("ActivePool governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let apDummy = await ActivePool.new()
-    let _authorityInit = await apDummy.authority();
-		
-    await apDummy.setAddresses(apDummy.address, apDummy.address, apDummy.address, apDummy.address, apDummy.address, apDummy.address);
-	  
-    assert.isTrue(false == (await apDummy.authorityInitialized()));	  
-    await apDummy.initAuthority(activePoolAuthority.address)
+    let apDummy = await ActivePool.new(cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address);
     assert.isTrue(activePoolAuthority.address == (await apDummy.authority()));
     assert.isTrue(true == (await apDummy.authorityInitialized()));
     await th.assertRevert(apDummy.initAuthority(activePoolAuthority.address), "Auth: authority already initialized");
@@ -310,13 +304,7 @@ contract('DefaultPool', async accounts => {
   })
 	  
   it("DefaultPool governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let dpDummy = await DefaultPool.new()
-    let _authorityInit = await dpDummy.authority();
-		
-    await dpDummy.setAddresses(dpDummy.address, dpDummy.address, dpDummy.address);
-	  
-    assert.isTrue(false == (await dpDummy.authorityInitialized()));	  
-    await dpDummy.initAuthority(defaultPoolAuthority.address)
+    let dpDummy = await DefaultPool.new(cdpManager.address, activePool.address, cdpManager.address);
     assert.isTrue(defaultPoolAuthority.address == (await dpDummy.authority()));
     assert.isTrue(true == (await dpDummy.authorityInitialized()));
     await th.assertRevert(dpDummy.initAuthority(defaultPoolAuthority.address), "Auth: authority already initialized");

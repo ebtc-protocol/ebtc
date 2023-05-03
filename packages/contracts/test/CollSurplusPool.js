@@ -121,14 +121,8 @@ contract('CollSurplusPool', async accounts => {
     await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
   })  
 	  
-  it("CollSurplusPool: governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let cspDummy = await CollSurplusPool.new()
-    let _authorityInit = await cspDummy.authority();
-		
-    await cspDummy.setAddresses(cspDummy.address, cspDummy.address, cspDummy.address, cspDummy.address);
-	  
-    assert.isTrue(false == (await cspDummy.authorityInitialized()));	  
-    await cspDummy.initAuthority(poolAuthority.address)
+  it.only("CollSurplusPool: governance permissioned: initializeAuthority() could be called only once", async() => {	  
+    let cspDummy = await CollSurplusPool.new(contracts.cdpManager.address, contracts.cdpManager.address, activePool.address, contracts.cdpManager.address)
     assert.isTrue(poolAuthority.address == (await cspDummy.authority()));
     assert.isTrue(true == (await cspDummy.authorityInitialized()));
     await th.assertRevert(cspDummy.initAuthority(poolAuthority.address), "Auth: authority already initialized");
