@@ -247,10 +247,15 @@ contract SortedCdps is ISortedCdps {
 
         bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
         bytes32 _lastNext = data.nodes[_ids[_len - 1]].nextId;
+
         require(
             _firstPrev != dummyId || _lastNext != dummyId,
             "SortedCdps: batchRemove() leave ZERO node left!"
         );
+
+        for (uint i = 0; i < _len; ++i) {
+            require(contains(_ids[i]), "SortedCdps: List does not contain the id");
+        }
 
         // orphan nodes in between to save gas
         if (_firstPrev != dummyId) {
@@ -266,7 +271,6 @@ contract SortedCdps is ISortedCdps {
 
         // delete node & owner storages to get gas refund
         for (uint i = 0; i < _len; ++i) {
-            require(contains(_ids[i]), "SortedCdps: List does not contain the id");
             _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
             delete cdpOwners[_ids[i]];
             delete data.nodes[_ids[i]];
