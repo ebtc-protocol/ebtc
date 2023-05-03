@@ -200,6 +200,10 @@ contract LeverageMacro {
         _sweepToCaller();
     }
 
+    /// @dev Assumes that 
+    ///     >= you prob use this one
+    ///     <= if you don't need >= you go for lte
+    ///     And if you really need eq, it's third
     function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
         if(check.operator == Operator.skip) {
             // Early return
