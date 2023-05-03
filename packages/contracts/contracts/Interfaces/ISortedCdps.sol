@@ -25,6 +25,8 @@ interface ISortedCdps {
 
     function remove(bytes32 _id) external;
 
+    function batchRemove(bytes32[] memory _ids) external;
+
     function reInsert(bytes32 _id, uint256 _newICR, bytes32 _prevId, bytes32 _nextId) external;
 
     function contains(bytes32 _id) external view returns (bool);

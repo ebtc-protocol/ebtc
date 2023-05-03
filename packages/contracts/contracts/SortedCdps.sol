@@ -243,6 +243,41 @@ contract SortedCdps is ISortedCdps {
         delete cdpOwners[_id];
     }
 
+    function batchRemove(bytes32[] memory _ids) external override {
+        _requireCallerIsCdpManager();
+        uint _len = _ids.length;
+        require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
+
+        bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
+        bytes32 _lastNext = data.nodes[_ids[_len - 1]].nextId;
+        require(
+            _firstPrev != dummyId || _lastNext != dummyId,
+            "SortedCdps: batchRemove() leave ZERO node left!"
+        );
+
+        // orphan nodes in between to save gas
+        if (_firstPrev != dummyId) {
+            data.nodes[_firstPrev].nextId = _lastNext;
+        } else {
+            data.head = _lastNext;
+        }
+        if (_lastNext != dummyId) {
+            data.nodes[_lastNext].prevId = _firstPrev;
+        } else {
+            data.tail = _firstPrev;
+        }
+
+        // delete node & owner storages to get gas refund
+        for (uint i = 0; i < _len; ++i) {
+            require(contains(_ids[i]), "SortedCdps: List does not contain the id");
+            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
+            delete cdpOwners[_ids[i]];
+            delete data.nodes[_ids[i]];
+            emit NodeRemoved(_ids[i]);
+        }
+        data.size = data.size - _len;
+    }
+
     /*
      * @dev Remove a node from the list
      * @param _id Node's id

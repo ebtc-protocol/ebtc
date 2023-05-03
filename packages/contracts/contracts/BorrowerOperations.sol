@@ -416,6 +416,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
 
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
+        require(cdpManager.getCdpStatus(_cdpId) == 0, "BorrowerOps: new cdpId is NOT nonExistent!");
 
         cdpManager.setCdpStatus(_cdpId, 1);
         cdpManager.increaseCdpColl(_cdpId, _netCollAsShares); // Collateral is stored in shares form for normalization

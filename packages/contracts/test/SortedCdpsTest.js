@@ -104,6 +104,54 @@ contract('SortedCdps', async accounts => {
       }
     })
 
+    it('batchRemove(): batch remove nodes from the list', async () => {
+      await openCdp({ ICR: toBN(dec(30, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await checkCdpId(_aCdpId, A);
+      await openCdp({ ICR: toBN(dec(25, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await checkCdpId(_bCdpId, B);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await checkCdpId(_cCdpId, C);
+      await openCdp({ ICR: toBN(dec(15, 18)), extraParams: { from: D } })
+      let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+      await checkCdpId(_dCdpId, D);
+
+      // Confirm ordering
+      let _first = await sortedCdps.getFirst();
+      let _second = await sortedCdps.getNext(_first);
+      let _third = await sortedCdps.getNext(_second);
+      let _last = await sortedCdps.getNext(_third);
+      assert.isTrue(_first == _aCdpId)
+      assert.isTrue(_second == _bCdpId)
+      assert.isTrue(_third == _cCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(4 == (await sortedCdps.getSize()))
+      assert.isTrue(await sortedCdps.contains(_bCdpId))
+      assert.isTrue(await sortedCdps.contains(_cCdpId))
+	  
+      // batch remove revert case
+      let _toRemoveIds = [_second];	  
+      await th.assertRevert(cdpManager.sortedCdpsBatchRemove(_toRemoveIds), 'SortedCdps: batchRemove() only apply to multiple cdpIds!')
+      _toRemoveIds = [_first, _last];	  
+      await th.assertRevert(cdpManager.sortedCdpsBatchRemove(_toRemoveIds), 'SortedCdps: batchRemove() leave ZERO node left!')
+	  
+      // batch remove happy case
+      _toRemoveIds = [_second, _third];
+      await cdpManager.sortedCdpsBatchRemove(_toRemoveIds);
+      _first = await sortedCdps.getFirst();
+      _last = await sortedCdps.getNext(_first);
+      assert.isTrue(_first == _aCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(_first == (await sortedCdps.getPrev(_last)))
+      assert.isTrue(2 == (await sortedCdps.getSize()))
+      assert.isFalse(await sortedCdps.contains(_bCdpId))
+      assert.isFalse(await sortedCdps.contains(_cCdpId))
+    })
+
     it('contains(): returns true for addresses that have opened cdps', async () => {
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
