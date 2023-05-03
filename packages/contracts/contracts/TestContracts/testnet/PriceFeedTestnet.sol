@@ -30,15 +30,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     bool public _useTellor;
     ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
 
-    struct TellorResponse {
-        bool ifRetrieve;
-        uint256 value;
-        uint256 timestamp;
-        bool success;
-    }
-
-    event TellorCallerChanged(address _tellorCaller);
-
     // --- Dependency setters ---
 
     function setAddresses(
@@ -129,7 +120,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         tellorResponse.value = stEthBtcValue;
         tellorResponse.timestamp = stEthBtcTimestamp;
         tellorResponse.success = true;
-        tellorResponse.ifRetrieve = true;
+        tellorResponse.retrieved = true;
         return (tellorResponse);
     }
 }

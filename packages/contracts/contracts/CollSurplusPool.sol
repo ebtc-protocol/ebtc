@@ -3,26 +3,22 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Interfaces/IActivePool.sol";
 
-contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
-    using SafeMath for uint256;
+contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     using SafeERC20 for IERC20;
 
     string public constant NAME = "CollSurplusPool";
 
-    address public borrowerOperationsAddress;
-    address public cdpManagerAddress;
-    address public activePoolAddress;
-    address public feeRecipientAddress;
-    ICollateralToken public collateral;
+    address public immutable borrowerOperationsAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable activePoolAddress;
+    address public immutable feeRecipientAddress;
+    ICollateralToken public immutable collateral;
 
     // deposited ether tracker
     uint256 internal StEthColl;
@@ -43,17 +39,12 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool, Reentrancy
      * @param _activePoolAddress The address of the ActivePool
      * @param _collTokenAddress The address of the CollateralToken
      */
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         activePoolAddress = _activePoolAddress;
@@ -69,8 +60,6 @@ contract CollSurplusPool is Ownable, CheckContract, ICollSurplusPool, Reentrancy
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
-
-        renounceOwnership();
     }
 
     /**

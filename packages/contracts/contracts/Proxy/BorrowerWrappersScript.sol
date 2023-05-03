@@ -22,7 +22,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     ICdpManager immutable cdpManager;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
-    IFeeRecipient immutable feeRecipient;
+    IFeeRecipient feeRecipient;
     ICollateralToken immutable collToken;
 
     constructor(

@@ -80,18 +80,15 @@ contract('BorrowerOperations', async accounts => {
 
   const testCorpus = ({ withProxy = false }) => {
     beforeEach(async () => {
-      contracts = await deploymentHelper.deployLiquityCore()
-      contracts.borrowerOperations = await BorrowerOperationsTester.new()
-      contracts.cdpManager = await CdpManagerTester.new()
-      contracts = await deploymentHelper.deployEBTCTokenTester(contracts)
-      const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+      contracts = await deploymentHelper.deployTesterContractsHardhat()
+      let LQTYContracts = {}
+      LQTYContracts.feeRecipient = contracts.feeRecipient;
 
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-      await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
       if (withProxy) {
         const users = [alice, bob, carol, dennis, whale, A, B, C, D, E]
-        await deploymentHelper.deployProxyScripts(contracts, LQTYContracts, owner, users)
+        await deploymentHelper.deployProxyScripts(contracts, owner, users)
       }
 
       priceFeed = contracts.priceFeedTestnet
@@ -106,10 +103,9 @@ contract('BorrowerOperations', async accounts => {
       LICR = await cdpManager.LICR()
       authority = contracts.authority;
 
-      feeRecipient = LQTYContracts.feeRecipient
+      feeRecipient = contracts.feeRecipient
 
-      EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
-      MIN_NET_DEBT = await borrowerOperations.MIN_NET_DEBT()
+      MIN_NET_DEBT = await borrowerOperations.MIN_NET_COLL()
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR()
 
       ownerSigner = await ethers.provider.getSigner(owner);
@@ -287,7 +283,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
       const coll_before = alice_Cdp_Before[1]
-      const status_Before = alice_Cdp_Before[3]
+      const status_Before = alice_Cdp_Before[4]
 
       // check status before
       assert.equal(status_Before, 1)
@@ -297,7 +293,7 @@ contract('BorrowerOperations', async accounts => {
 
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
       const coll_After = alice_Cdp_After[1]
-      const status_After = alice_Cdp_After[3]
+      const status_After = alice_Cdp_After[4]
 
       // check coll increases by correct amount,and status remains active
       assert.isTrue(coll_After.eq(coll_before.add(toBN(dec(1, 'ether')))))
@@ -691,7 +687,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const status_Before = alice_Cdp_Before[3]
+      const status_Before = alice_Cdp_Before[4]
       assert.equal(status_Before, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex))
 
@@ -710,7 +706,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const status_Before = alice_Cdp_Before[3]
+      const status_Before = alice_Cdp_Before[4]
       assert.equal(status_Before, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex))
 
@@ -719,7 +715,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is still active
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
-      const status_After = alice_Cdp_After[3]
+      const status_After = alice_Cdp_After[4]
       assert.equal(status_After, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex))
     })
@@ -1626,22 +1622,22 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(repayTxB.receipt.status)
     })
 
-    it("repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt", async () => {
-      // Make the EBTC request 2 wei above min net debt to correct for floor division, and make net debt = min net debt + 1 wei
+    it("repayEBTC(): reverts when it would leave cdp with net debt > 0", async () => {
       await _signer.sendTransaction({ to: A, value: ethers.utils.parseEther("20000")});
       let _colAmt = dec(100, 18);
       const price = await priceFeed.getPrice()
-      const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
+      const minNetDebtEth = MIN_NET_DEBT;
       const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).add(toBN(1))
       await contracts.collateral.deposit({from: A, value: ethers.utils.parseEther("20000")});
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: A});
       await borrowerOperations.openCdp(MIN_DEBT.add(toBN('2')), A, A, _colAmt, { from: A })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
+      let _aDebt = await cdpManager.getCdpDebt(AIndex);
 
-      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, 3, AIndex, AIndex, { from: A })
-      await assertRevert(repayTxAPromise, "BorrowerOps: Cdp's net debt must be greater than minimum")
-    }, "repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt")
+      const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, _aDebt, AIndex, AIndex, { from: A })
+      await assertRevert(repayTxAPromise, "BorrowerOps: Debt must be non-zero")
+    })
 
     it("adjustCdp(): Reverts if repaid amount is greater than current debt", async () => {
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("20000")});
@@ -1649,8 +1645,7 @@ contract('BorrowerOperations', async accounts => {
       const { totalDebt } = await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)  
       
-      EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
-      const repayAmount = totalDebt.sub(EBTC_GAS_COMPENSATION).add(toBN(1))
+      const repayAmount = totalDebt.add(toBN(1))
 
       await openCdp({ extraEBTCAmount: repayAmount, ICR: toBN(dec(150, 16)), extraParams: { from: bob } })
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
@@ -2578,7 +2573,7 @@ contract('BorrowerOperations', async accounts => {
       const bobDebt = await getCdpEntireDebt(bobIndex)
       assert.isTrue(bobDebt.gt(toBN('0')))
 
-      const remainingDebt = (await cdpManager.getCdpDebt(bobIndex)).sub(EBTC_GAS_COMPENSATION)
+      const remainingDebt = (await cdpManager.getCdpDebt(bobIndex))
 
       // Bob attempts an adjustment that would repay 1 wei more than his debt
       await assertRevert(
@@ -2865,6 +2860,7 @@ contract('BorrowerOperations', async accounts => {
     it("adjustCdp(): Changes the activePool ETH and raw ether balance by the amount of ETH sent", async () => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
+
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: alice } })
 
@@ -3284,7 +3280,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const status_Before = alice_Cdp_Before[3]
+      const status_Before = alice_Cdp_Before[4]
 
       assert.equal(status_Before, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex))
@@ -3296,7 +3292,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
 
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
-      const status_After = alice_Cdp_After[3]
+      const status_After = alice_Cdp_After[4]
 
       assert.equal(status_After, 2)
       assert.isFalse(await sortedCdps.contains(aliceIndex))
@@ -3444,7 +3440,7 @@ contract('BorrowerOperations', async accounts => {
 
       // check alice EBTC balance after
       const alice_EBTCBalance_After = await ebtcToken.balanceOf(alice)
-      th.assertIsApproximatelyEqual(alice_EBTCBalance_After, alice_EBTCBalance_Before.sub(aliceDebt.sub(EBTC_GAS_COMPENSATION)))
+      th.assertIsApproximatelyEqual(alice_EBTCBalance_After, alice_EBTCBalance_Before.sub(aliceDebt))
     })
 
     it("closeCdp(): applies pending rewards", async () => {
@@ -3561,16 +3557,13 @@ contract('BorrowerOperations', async accounts => {
       // Without borrowing fees, we expect balance + gas compensation pool amount to equal debt, so we have to transfer some away otherwise there will be sufficient eBTC in the user's wallet
       let B_EBTCBal = await ebtcToken.balanceOf(B)
       const B_cdpDebt = await getCdpEntireDebt(BIndex)
-      const gasCompensation = await borrowerOperations.EBTC_GAS_COMPENSATION()
-      const B_EBTCBal_withCompensation = toBN(B_EBTCBal).add(toBN(gasCompensation))
 
-      assert.isTrue(B_EBTCBal.lt(B_cdpDebt))
-      assert.isTrue(B_cdpDebt.eq(B_EBTCBal_withCompensation))
+      assert.isTrue(B_cdpDebt.eq(B_EBTCBal))
 
       await ebtcToken.transfer(A, 1, {from: B})
       
       B_EBTCBal = await ebtcToken.balanceOf(B)
-      assert.isTrue(B_EBTCBal.lt(toBN(B_cdpDebt).sub(toBN(gasCompensation))))
+      assert.isTrue(B_EBTCBal.lt(toBN(B_cdpDebt)))
 
       const closeCdpPromise_B = borrowerOperations.closeCdp(BIndex, { from: B })
 
@@ -3722,13 +3715,13 @@ contract('BorrowerOperations', async accounts => {
       const txAPromise = borrowerOperations.openCdp(0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: A })
       await assertRevert(txAPromise, "revert")
       const price = await priceFeed.getPrice()
-      const minNetDebtEth = await borrowerOperations.MIN_NET_DEBT()
+      const minNetDebtEth = MIN_NET_DEBT
       const minNetDebt = minNetDebtEth.mul(price).div(mv._1e18BN)
       const MIN_DEBT = (await getNetBorrowingAmount(minNetDebt)).sub(toBN(1))
-      const txBPromise = borrowerOperations.openCdp(MIN_DEBT, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: B })
+      const txBPromise = borrowerOperations.openCdp(1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, MIN_DEBT, { from: B })
       await assertRevert(txBPromise, "revert")
 
-      const txCPromise = borrowerOperations.openCdp(MIN_DEBT.sub(toBN(dec(1, 16))), th.DUMMY_BYTES32, th.DUMMY_BYTES32, _colAmt, { from: C })
+      const txCPromise = borrowerOperations.openCdp(toBN(dec(1, 16)), th.DUMMY_BYTES32, th.DUMMY_BYTES32, MIN_DEBT, { from: C })
       await assertRevert(txCPromise, "revert")
     })
 
@@ -4361,7 +4354,6 @@ contract('BorrowerOperations', async accounts => {
       // Get the expected debt based on the EBTC request (adding fee and liq. reserve on top)
       const expectedDebt = EBTCRequest
         .add(await cdpManager.getBorrowingFee(EBTCRequest))
-        .add(EBTC_GAS_COMPENSATION)
       const debt_After = await getCdpEntireDebt(aliceIndex)
       const coll_After = await getCdpEntireColl(aliceIndex)
       const status_After = await cdpManager.getCdpStatus(aliceIndex)
@@ -4503,7 +4495,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is active
       const alice_Cdp_1 = await cdpManager.Cdps(aliceIndex)
-      const status_1 = alice_Cdp_1[3]
+      const status_1 = alice_Cdp_1[4]
       assert.equal(status_1, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex))
 
@@ -4515,7 +4507,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is closed
       const alice_Cdp_2 = await cdpManager.Cdps(aliceIndex)
-      const status_2 = alice_Cdp_2[3]
+      const status_2 = alice_Cdp_2[4]
       assert.equal(status_2, 2)
       assert.isFalse(await sortedCdps.contains(aliceIndex))
 
@@ -4529,7 +4521,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check Cdp is re-opened
       const alice_Cdp_3 = await cdpManager.Cdps(aliceIndex2)
-      const status_3 = alice_Cdp_3[3]
+      const status_3 = alice_Cdp_3[4]
       assert.equal(status_3, 1)
       assert.isTrue(await sortedCdps.contains(aliceIndex2))
       assert.isFalse(await sortedCdps.contains(aliceIndex))
@@ -4690,19 +4682,6 @@ contract('BorrowerOperations', async accounts => {
         const newICR = (await borrowerOperations.getNewICRFromCdpChange(initialColl, initialDebt, collChange, false, debtChange, true, price)).toString()
         assert.equal(newICR, '6718963636363636363')
       })
-    })
-
-    // --- getCompositeDebt ---
-
-    it("getCompositeDebt(): returns debt + gas comp", async () => {
-      const res1 = await borrowerOperations.getCompositeDebt('0')
-      assert.equal(res1, EBTC_GAS_COMPENSATION.toString())
-
-      const res2 = await borrowerOperations.getCompositeDebt(dec(90, 18))
-      th.assertIsApproximatelyEqual(res2, EBTC_GAS_COMPENSATION.add(toBN(dec(90, 18))))
-
-      const res3 = await borrowerOperations.getCompositeDebt(dec(24423422357345049, 12))
-      th.assertIsApproximatelyEqual(res3, EBTC_GAS_COMPENSATION.add(toBN(dec(24423422357345049, 12))))
     })
 
     //  --- getNewTCRFromCdpChange  - (external wrapper in Tester contract calls internal function) ---

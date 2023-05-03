@@ -16,8 +16,9 @@ contract('Deployment script - Sets correct contract addresses dependencies after
   let feeRecipient
 
   before(async () => {
-    const coreContracts = await deploymentHelper.deployLiquityCore()
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = coreContracts.feeRecipient;
 
     priceFeed = coreContracts.priceFeedTestnet
     ebtcToken = coreContracts.ebtcToken
@@ -31,7 +32,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     feeRecipient = LQTYContracts.feeRecipient
 
     await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
   })
 
   it('Sets the correct PriceFeed address in CdpManager', async () => {
@@ -187,14 +187,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
 
     const recordedDefaultPoolAddress = await borrowerOperations.defaultPool()
     assert.equal(defaultPoolAddress, recordedDefaultPoolAddress)
-  })
-
-  // LQTY Staking in BO
-  it('Sets the correct FeeRecipient address in BorrowerOperations', async () => {
-    const lqtyStakingAddress = feeRecipient.address
-
-    const recordedLQTYStakingAddress = await borrowerOperations.lqtyStakingAddress()
-    assert.equal(lqtyStakingAddress, recordedLQTYStakingAddress)
   })
 
 

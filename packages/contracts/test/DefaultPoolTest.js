@@ -1,4 +1,5 @@
 const testHelpers = require("../utils/testHelpers.js")
+const deploymentHelper = require("../utils/deploymentHelpers.js")
 const DefaultPool = artifacts.require("./DefaultPoolTester.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
 const CDPMgr = artifacts.require("./CdpManagerTester.sol")
@@ -21,18 +22,15 @@ contract('DefaultPool', async accounts => {
   let [owner] = accounts
 
   beforeEach('Deploy contracts', async () => {
-    defaultPool = await DefaultPool.new()
-    nonPayable = await NonPayable.new()
-    mockCdpManager = await NonPayable.new()
-    activePool = await ActivePool.new()
-    collToken = await CollateralTokenTester.new()
-    feeRecipient = await FeeRecipient.new()
-    cdpMgr = await CDPMgr.new()
-    authority = await Governor.new(owner);
-    await cdpMgr.initAuthority(authority.address);
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
 	
-    await activePool.setAddresses(nonPayable.address, cdpMgr.address, defaultPool.address, collToken.address, nonPayable.address, feeRecipient.address);
-    await defaultPool.setAddresses(cdpMgr.address, activePool.address, collToken.address)
+    cdpManager = coreContracts.cdpManager;
+    collToken = coreContracts.collateral;
+	  
+    activePool = coreContracts.activePool;
+    defaultPool = coreContracts.defaultPool;
+    authority = coreContracts.authority;
+    feeRecipient = coreContracts.feeRecipient;
   })
 
   it('sendETHToActivePool(): fails if receiver cannot receive ETH', async () => {
@@ -47,10 +45,11 @@ contract('DefaultPool', async accounts => {
 
     // try to send ether from pool to non-payable
     //await th.assertRevert(defaultPool.sendETHToActivePool(amount, { from: owner }), 'DefaultPool: sending ETH failed')
-    const sendETHData = th.getTransactionData('sendETHToActivePool(uint256)', [web3.utils.toHex(amount)])
-    await cdpMgr.forward(defaultPool.address, sendETHData, { from: owner });//, 'DefaultPool: sending ETH failed')
+    let _collBalanceBefore = await collToken.balanceOf(activePool.address);
+    assert.isTrue(toBN(_collBalanceBefore.toString()).eq(toBN('0')));
+    await cdpManager.defaultPoolSendToActivePool(web3.utils.toHex(amount));//, 'DefaultPool: sending ETH failed')
     let _collBalance = await collToken.balanceOf(activePool.address);
-    assert.isTrue(toBN(_collBalance.toString()).gt(toBN('0')));
+    assert.isTrue(toBN(_collBalance.toString()).eq(toBN(amount)));
   })
 })
 

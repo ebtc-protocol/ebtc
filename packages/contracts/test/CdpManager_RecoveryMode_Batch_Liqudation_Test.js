@@ -22,14 +22,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
@@ -37,7 +32,6 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     debtToken = contracts.ebtcToken;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   context('Batch liquidations', () => {
@@ -114,9 +108,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
       // Confirm cdps have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '3')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '3')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '3')
     })
 
     it('A cdp over TCR is not liquidated', async () => {
@@ -162,10 +156,10 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await sortedCdps.contains(_carolCdpId))
 
       // Confirm cdps have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '3')
       // Confirm cdps have status 'open' (Status enum element idx 1)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '1')
     })
   })
 
@@ -231,8 +225,8 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
       // Confirm cdps have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '3')
     })
   })
 })
