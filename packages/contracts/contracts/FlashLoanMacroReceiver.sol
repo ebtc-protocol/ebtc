@@ -23,10 +23,6 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
 
     address leverageMacro;
 
-
-    // event LeveragedCdpOpened(address indexed _initiator, uint256 _debt, uint256 _coll, bytes32 indexed _cdpId);
-    // TODO: Events if you want, imo not needed
-
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
     // Leverage Macro should receive a request and set that data
