@@ -68,9 +68,21 @@ contract LeverageMacro {
         isClosed
     }
 
+
+    enum Operator {
+        skip,
+        equal,
+        gte,
+        lte
+    }
+    struct CheckValueAndType {
+        uint256 value;
+        Operator operator;
+    }
+
     struct PostCheckParams {
-        uint256 expectedDebt;
-        uint256 expectedCollateral;
+        CheckValueAndType expectedDebt;
+        CheckValueAndType expectedCollateral;
 
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
