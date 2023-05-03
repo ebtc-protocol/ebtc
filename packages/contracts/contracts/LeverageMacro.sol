@@ -90,25 +90,7 @@ contract LeverageMacro {
         // Used only if isClosed
        ICdpManagerData.Status expectedStatus;
     }
-
-    // /** TODO IMPORT FROM ICdpManagerData */
-    // enum Status {
-    //     nonExistent,
-    //     active,
-    //     closedByOwner,
-    //     closedByLiquidation,
-    //     closedByRedemption
-    // }
-
-    // // Store the necessary data for a cdp
-    // struct Cdp {
-    //     uint debt;
-    //     uint coll;
-    //     uint stake;
-    //     Status status;
-    //     uint128 arrayIndex;
-    // }
-
+    
     /**
      * FL Setup
      *         - Validate Caller
