@@ -16,7 +16,7 @@ import "./Dependencies/IBalancerV2Vault.sol";
 
 contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
     IBorrowerOperations public immutable borrowerOperations;
-    IBorrowerOperations public immutable activePool; // TODO: TYPE
+    IERC3156FlashLender public immutable activePool;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
@@ -41,7 +41,7 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
         address _leverageMacro
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
-        activePool = IBorrowerOperations(_activePool);
+        activePool = IERC3156FlashLender(_activePool);
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
