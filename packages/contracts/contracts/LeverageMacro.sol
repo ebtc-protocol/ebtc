@@ -9,17 +9,20 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/IBalancerV2Vault.sol";
 
+import "./FlashLoanMacroReceiver.sol";
+
 import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
+
 interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
 /**
-    Allows specifying arbitrary operations to lever up
-    NOTE: Due to security concenrs
-    LeverageMacro accepts allowances and transfers token to FlashLoanMacroReceiver
-    // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
-    LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
+ * Allows specifying arbitrary operations to lever up
+ *     NOTE: Due to security concenrs
+ *     LeverageMacro accepts allowances and transfers token to FlashLoanMacroReceiver
+ *     // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
+ *     LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
  */
 contract LeverageMacro {
     address public immutable borrowerOperations;
@@ -52,7 +55,16 @@ contract LeverageMacro {
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
 
-        flashLoanMacroReceiver = _flashLoanMacroReceiver;
+        flashLoanMacroReceiver = address(
+            new FlashLoanMacroReceiver(
+                    _borrowerOperationsAddress,
+            _activePool,
+            _ebtc,
+            _coll,
+            _sortedCdps,
+            address(this)
+            )
+        );
 
         // NO allowances here, this contract just has allowance from users and only sends to FLMacroReceiver
     }
@@ -68,13 +80,13 @@ contract LeverageMacro {
         isClosed
     }
 
-
     enum Operator {
         skip,
         equal,
         gte,
         lte
     }
+
     struct CheckValueAndType {
         uint256 value;
         Operator operator;
@@ -83,14 +95,12 @@ contract LeverageMacro {
     struct PostCheckParams {
         CheckValueAndType expectedDebt;
         CheckValueAndType expectedCollateral;
-
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
-
         // Used only if isClosed
-       ICdpManagerData.Status expectedStatus;
+        ICdpManagerData.Status expectedStatus;
     }
-    
+
     /**
      * FL Setup
      *         - Validate Caller
@@ -105,21 +115,29 @@ contract LeverageMacro {
      *
      *         - Sweep
      */
-    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation calldata operation, PostOperationCheck postCheckType, PostCheckParams calldata checkParams)
-        external
-    {
+    function doOperation(
+        FlashLoanType flType,
+        uint256 borrowAmount,
+        LeverageMacroOperation calldata operation,
+        PostOperationCheck postCheckType,
+        PostCheckParams calldata checkParams
+    ) external {
         require(operation.forwardedCaller == msg.sender); // Enforce encoded properly
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
             // Not safe because OZ for our cases, if you use USDT it's your prob friend
             // NOTE: Send directly to flashLoanMacroReceiver
-            IERC20(operation.tokenToTransferIn).transferFrom(msg.sender, address(flashLoanMacroReceiver), operation.amountToTransferIn);
+            IERC20(operation.tokenToTransferIn).transferFrom(
+                msg.sender, address(flashLoanMacroReceiver), operation.amountToTransferIn
+            );
         }
 
-        /** SETUP FOR POST CALL CHECK */
+        /**
+         * SETUP FOR POST CALL CHECK
+         */
         uint256 initialCdpIndex;
-        if(postCheckType == PostOperationCheck.openCdp){
+        if (postCheckType == PostOperationCheck.openCdp) {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             initialCdpIndex = sortedCdps.cdpCountOf(msg.sender);
@@ -128,19 +146,27 @@ contract LeverageMacro {
         // Take eBTC or stETH FlashLoan
         if (flType == FlashLoanType.eBTC) {
             IERC3156FlashLender(address(borrowerOperations)).flashLoan(
-                IERC3156FlashBorrower(address(flashLoanMacroReceiver)), address(ebtcToken), borrowAmount, abi.encode(operation)
+                IERC3156FlashBorrower(address(flashLoanMacroReceiver)),
+                address(ebtcToken),
+                borrowAmount,
+                abi.encode(operation)
             );
         } else if (flType == FlashLoanType.stETH) {
             IERC3156FlashLender(address(activePool)).flashLoan(
-                IERC3156FlashBorrower(address(flashLoanMacroReceiver)), address(stETH), borrowAmount, abi.encode(operation)
+                IERC3156FlashBorrower(address(flashLoanMacroReceiver)),
+                address(stETH),
+                borrowAmount,
+                abi.encode(operation)
             );
         } else {
             // TODO: If enum OOB reverts, can remove this, can also leave as explicity
             revert("Must be valid due to forwarding of users");
         }
 
-        /** POST CALL CHECK FOR CREATION */
-        if(postCheckType == PostOperationCheck.openCdp){
+        /**
+         * POST CALL CHECK FOR CREATION
+         */
+        if (postCheckType == PostOperationCheck.openCdp) {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             // initialCdpIndex is initialCdpIndex + 1
@@ -148,36 +174,48 @@ contract LeverageMacro {
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
-            require(cdpInfo.debt == checkParams.expectedDebt);
-            require(cdpInfo.coll == checkParams.expectedCollateral);
+            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
+            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
             require(cdpInfo.status == checkParams.expectedStatus);
         }
 
         // Update CDP, Ensure the stats are as intended
-        if(postCheckType == PostOperationCheck.cdpStats) {
+        if (postCheckType == PostOperationCheck.cdpStats) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
             // TODO: These checks maybe should be made more lenient else some dust will always accrue
-            require(cdpInfo.debt == checkParams.expectedDebt);
-            require(cdpInfo.coll == checkParams.expectedCollateral);
+            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
+            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
             require(cdpInfo.status == checkParams.expectedStatus);
         }
 
         // Post check type: Close, ensure it has the status we want
-        if(postCheckType == PostOperationCheck.isClosed) {
+        if (postCheckType == PostOperationCheck.isClosed) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
             require(cdpInfo.status == checkParams.expectedStatus);
         }
-        
-        
-
 
         // Sweep here
         _sweepToCaller();
     }
 
-   
+    function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
+        if(check.operator == Operator.skip) {
+            // Early return
+            return;
+        } else if(check.operator == Operator.gte) {
+            require(check.value >= valueToCheck);
+        } else if(check.operator == Operator.lte) {
+            require(check.value <= valueToCheck);
+        } else if (check.operator == Operator.equal) {
+            require(check.value == valueToCheck);
+        } else {
+            // TODO: If proof OOB enum, then we can remove this
+            revert("Operator not found");
+        }
+    } 
+
     struct LeverageMacroOperation {
         address tokenToTransferIn;
         uint256 amountToTransferIn;
