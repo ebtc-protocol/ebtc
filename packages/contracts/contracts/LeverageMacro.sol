@@ -3,10 +3,16 @@ pragma solidity 0.8.17;
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/IERC3156FlashLender.sol";
 import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/IBalancerV2Vault.sol";
+
+import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
+interface ICdpCdps {
+    function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
+}
 
 /**
     Allows specifying arbitrary operations to lever up
@@ -18,6 +24,7 @@ import "./Dependencies/IBalancerV2Vault.sol";
 contract LeverageMacro {
     address public immutable borrowerOperations;
     address public immutable activePool;
+    ICdpCdps public immutable cdpManager;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
@@ -32,6 +39,7 @@ contract LeverageMacro {
     constructor(
         address _borrowerOperationsAddress,
         address _activePool,
+        address _cdpManager,
         address _ebtc,
         address _coll,
         address _sortedCdps,
@@ -39,6 +47,7 @@ contract LeverageMacro {
     ) {
         borrowerOperations = _borrowerOperationsAddress;
         activePool = _activePool;
+        cdpManager = ICdpCdps(_cdpManager);
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
@@ -52,6 +61,41 @@ contract LeverageMacro {
         stETH,
         eBTC
     }
+
+    enum PostOperationCheck {
+        openCdp,
+        cdpStats,
+        isClosed
+    }
+
+    struct PostCheckParams {
+        uint256 expectedDebt;
+        uint256 expectedCollateral;
+
+        // Used only if cdpStats || isClosed
+        bytes32 cdpId;
+
+        // Used only if isClosed
+       ICdpManagerData.Status expectedStatus;
+    }
+
+    // /** TODO IMPORT FROM ICdpManagerData */
+    // enum Status {
+    //     nonExistent,
+    //     active,
+    //     closedByOwner,
+    //     closedByLiquidation,
+    //     closedByRedemption
+    // }
+
+    // // Store the necessary data for a cdp
+    // struct Cdp {
+    //     uint debt;
+    //     uint coll;
+    //     uint stake;
+    //     Status status;
+    //     uint128 arrayIndex;
+    // }
 
     /**
      * FL Setup
@@ -67,7 +111,7 @@ contract LeverageMacro {
      *
      *         - Sweep
      */
-    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation calldata operation)
+    function doOperation(FlashLoanType flType, uint256 borrowAmount, LeverageMacroOperation calldata operation, PostOperationCheck postCheckType, PostCheckParams calldata checkParams)
         external
     {
         require(operation.forwardedCaller == msg.sender); // Enforce encoded properly
@@ -77,6 +121,14 @@ contract LeverageMacro {
             // Not safe because OZ for our cases, if you use USDT it's your prob friend
             // NOTE: Send directly to flashLoanMacroReceiver
             IERC20(operation.tokenToTransferIn).transferFrom(msg.sender, address(flashLoanMacroReceiver), operation.amountToTransferIn);
+        }
+
+        /** SETUP FOR POST CALL CHECK */
+        uint256 initialCdpIndex;
+        if(postCheckType == PostOperationCheck.openCdp){
+            // How to get owner
+            // sortedCdps.existCdpOwners(_cdpId);
+            initialCdpIndex = sortedCdps.cdpCountOf(msg.sender);
         }
 
         // Take eBTC or stETH FlashLoan
@@ -93,9 +145,39 @@ contract LeverageMacro {
             revert("Must be valid due to forwarding of users");
         }
 
-        // TODO: Post Operations Checks
-        // CDP ID.isClosed for Close
-        // CDP ID.debt, collateral
+        /** POST CALL CHECK FOR CREATION */
+        if(postCheckType == PostOperationCheck.openCdp){
+            // How to get owner
+            // sortedCdps.existCdpOwners(_cdpId);
+            // initialCdpIndex is initialCdpIndex + 1
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, initialCdpIndex);
+
+            // Check for param details
+            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
+            require(cdpInfo.debt == checkParams.expectedDebt);
+            require(cdpInfo.coll == checkParams.expectedCollateral);
+            require(cdpInfo.status == checkParams.expectedStatus);
+        }
+
+        // Update CDP, Ensure the stats are as intended
+        if(postCheckType == PostOperationCheck.cdpStats) {
+            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
+
+            // TODO: These checks maybe should be made more lenient else some dust will always accrue
+            require(cdpInfo.debt == checkParams.expectedDebt);
+            require(cdpInfo.coll == checkParams.expectedCollateral);
+            require(cdpInfo.status == checkParams.expectedStatus);
+        }
+
+        // Post check type: Close, ensure it has the status we want
+        if(postCheckType == PostOperationCheck.isClosed) {
+            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
+
+            require(cdpInfo.status == checkParams.expectedStatus);
+        }
+        
+        
+
 
         // Sweep here
         _sweepToCaller();
@@ -158,18 +240,6 @@ contract LeverageMacro {
     struct CloseCdpOperation {
         bytes32 _cdpId;
     }
-
-
-    // TODO: Encoding of different types as helpers for View
-    // TODO: Perhaps, to side-step audit LOC we can do it in a view contract which will not be audited since it's just a way to populate calldata
-
-    // // TODO: Consider adding more post-op checks
-    // function _hardcodedPostOpenChecks(address originalCaller) internal {
-    //     uint256 newCdpCount = sortedCdps.cdpCountOf(originalCaller);
-    //     require(newCdpCount > initialCdpCount, "LeverageMacro: no CDP created!");
-    //     bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(originalCaller, newCdpCount - 1);
-    // }
-
 
     function _sweepToCaller() internal {
         /**
