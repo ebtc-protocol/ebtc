@@ -16,16 +16,13 @@ import "./Dependencies/IBalancerV2Vault.sol";
     LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
  */
 contract LeverageMacro {
-    IBorrowerOperations public immutable borrowerOperations;
-    IERC3156FlashLender public immutable activePool;
+    address public immutable borrowerOperations;
+    address public immutable activePool;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
 
-    address flashLoanMacroReceiver;
-
-    // event LeveragedCdpOpened(address indexed _initiator, uint256 _debt, uint256 _coll, bytes32 indexed _cdpId);
-    // TODO: Events if you want, imo not needed
+    address flashLoanMacroReceiver; // TODO: Prob deploy via constructor and make immutable
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -40,8 +37,8 @@ contract LeverageMacro {
         address _sortedCdps,
         address _flashLoanMacroReceiver
     ) {
-        borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
-        activePool = IERC3156FlashLender(_activePool);
+        borrowerOperations = _borrowerOperationsAddress;
+        activePool = _activePool;
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
