@@ -17,7 +17,7 @@ import "./Dependencies/IBalancerV2Vault.sol";
  */
 contract LeverageMacro {
     IBorrowerOperations public immutable borrowerOperations;
-    IBorrowerOperations public immutable activePool; // TODO: TYPE
+    IERC3156FlashLender public immutable activePool;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
@@ -41,7 +41,7 @@ contract LeverageMacro {
         address _flashLoanMacroReceiver
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
-        activePool = IBorrowerOperations(_activePool);
+        activePool = IERC3156FlashLender(_activePool);
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
@@ -97,6 +97,8 @@ contract LeverageMacro {
         }
 
         // TODO: Post Operations Checks
+        // CDP ID.isClosed for Close
+        // CDP ID.debt, collateral
 
         // Sweep here
         _sweepToCaller();
