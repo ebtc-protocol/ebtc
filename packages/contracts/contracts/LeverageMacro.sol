@@ -32,7 +32,7 @@ contract LeverageMacro {
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
 
-    address flashLoanMacroReceiver; // TODO: Prob deploy via constructor and make immutable
+    address public immutable flashLoanMacroReceiver;
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -183,7 +183,6 @@ contract LeverageMacro {
         if (postCheckType == PostOperationCheck.cdpStats) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            // TODO: These checks maybe should be made more lenient else some dust will always accrue
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
             require(cdpInfo.status == checkParams.expectedStatus);
