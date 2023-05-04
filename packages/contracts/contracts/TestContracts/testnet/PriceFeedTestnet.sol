@@ -60,9 +60,9 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         // Fire an event just like the mainnet version would.
         // This lets the subgraph rely on events to get the latest price even when developing locally.
         if (_useTellor) {
-            FallbackResponse memory tellorResponse = _getCurrentTellorResponse();
-            if (tellorResponse.success) {
-                _price = tellorResponse.value;
+            FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
+            if (fallbackResponse.success) {
+                _price = fallbackResponse.value;
             }
         }
         emit LastGoodPriceUpdated(_price);
@@ -92,13 +92,13 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
 
     // --- Oracle response wrapper functions ---
     /*
-     * "_getCurrentTellorResponse" fetches stETH/BTC from Tellor, and returns it as a
+     * "_getCurrentFallbackResponse" fetches stETH/BTC from Tellor, and returns it as a
      * FallbackResponse struct.
      */
-    function _getCurrentTellorResponse()
+    function _getCurrentFallbackResponse()
         internal
         view
-        returns (FallbackResponse memory tellorResponse)
+        returns (FallbackResponse memory fallbackResponse)
     {
         uint stEthBtcValue;
         uint stEthBtcTimestamp;
@@ -109,23 +109,23 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         try
             tellorCaller.getFallbackResponse()
         returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
-            tellorResponse.answer = answer;
-            tellorResponse.timestamp = timestampRetrieved;
-            tellorResponse.success = success;
-            tellorResponse.decimals = decimals;
+            fallbackResponse.answer = answer;
+            fallbackResponse.timestamp = timestampRetrieved;
+            fallbackResponse.success = success;
+            fallbackResponse.decimals = decimals;
         } catch {
-            return (tellorResponse);
+            return (fallbackResponse);
         }
 
         // If the price was not retrieved, return the FallbackResponse struct with success = false.
         if (!stEthBtcRetrieved) {
-            return (tellorResponse);
+            return (fallbackResponse);
         }
 
-        tellorResponse.value = stEthBtcValue;
-        tellorResponse.timestamp = stEthBtcTimestamp;
-        tellorResponse.success = true;
-        tellorResponse.ifRetrieve = true;
-        return (tellorResponse);
+        fallbackResponse.value = stEthBtcValue;
+        fallbackResponse.timestamp = stEthBtcTimestamp;
+        fallbackResponse.success = true;
+        fallbackResponse.ifRetrieve = true;
+        return (fallbackResponse);
     }
 }

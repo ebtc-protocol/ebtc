@@ -72,17 +72,17 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
 
     enum Status {
         chainlinkWorking,
-        usingTellorChainlinkUntrusted,
+        usingFallbackChainlinkUntrusted,
         bothOraclesUntrusted,
-        usingTellorChainlinkFrozen,
-        usingChainlinkTellorUntrusted
+        usingFallbackChainlinkFrozen,
+        usingChainlinkFallbackUntrusted
     }
 
     // The current status of the PricFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
     event PriceFeedStatusChanged(Status newStatus);
-    event TellorCallerChanged(address _fallbackCaller);
+    event FallbackCallerChanged(address _fallbackCaller);
 
     // --- Dependency setters ---
     /*
@@ -104,7 +104,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
-        emit TellorCallerChanged(_fallbackCallerAddress);
+        emit FallbackCallerChanged(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
@@ -134,7 +134,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         @notice Returns the latest price obtained from the Oracle
         @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
         @dev Non-view function - it stores the last good price seen by eBTC.
-        @dev Uses a main oracle (Chainlink) and a fallback oracle (Tellor) in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
+        @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
         @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
         @return The latest price fetched from the Oracle
     **/
@@ -145,14 +145,14 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
             chainlinkResponse.roundId,
             chainlinkResponse.decimals
         );
-        FallbackResponse memory tellorResponse = _getCurrentTellorResponse();
+        FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
 
         // --- CASE 1: System fetched last price from Chainlink  ---
         if (status == Status.chainlinkWorking) {
             // If Chainlink is broken, try Tellor
             if (_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse)) {
                 // If Tellor is broken then both oracles are untrusted, so return the last good price
-                if (_tellorIsBroken(tellorResponse)) {
+                if (_tellorIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
                     return lastGoodPrice;
                 }
@@ -160,46 +160,46 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
                  * If Tellor is only frozen but otherwise returning valid data, return the last good price.
                  * Tellor may need to be tipped to return current data.
                  */
-                if (_tellorIsFrozen(tellorResponse)) {
-                    _changeStatus(Status.usingTellorChainlinkUntrusted);
+                if (_tellorIsFrozen(fallbackResponse)) {
+                    _changeStatus(Status.usingFallbackChainlinkUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Chainlink is broken and Tellor is working, switch to Tellor and return current Tellor price
-                _changeStatus(Status.usingTellorChainlinkUntrusted);
-                return _storeTellorPrice(tellorResponse);
+                _changeStatus(Status.usingFallbackChainlinkUntrusted);
+                return _storeTellorPrice(fallbackResponse);
             }
 
             // If Chainlink is frozen, try Tellor
             if (_chainlinkIsFrozen(chainlinkResponse)) {
                 // If Tellor is broken too, remember Tellor broke, and return last good price
-                if (_tellorIsBroken(tellorResponse)) {
-                    _changeStatus(Status.usingChainlinkTellorUntrusted);
+                if (_tellorIsBroken(fallbackResponse)) {
+                    _changeStatus(Status.usingChainlinkFallbackUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Tellor is frozen or working, remember Chainlink froze, and switch to Tellor
-                _changeStatus(Status.usingTellorChainlinkFrozen);
+                _changeStatus(Status.usingFallbackChainlinkFrozen);
 
-                if (_tellorIsFrozen(tellorResponse)) {
+                if (_tellorIsFrozen(fallbackResponse)) {
                     return lastGoodPrice;
                 }
 
                 // If Tellor is working, use it
-                return _storeTellorPrice(tellorResponse);
+                return _storeTellorPrice(fallbackResponse);
             }
 
             // If Chainlink price has changed by > 50% between two consecutive rounds, compare it to Tellor's price
             if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
                 // If Tellor is broken, both oracles are untrusted, and return last good price
-                if (_tellorIsBroken(tellorResponse)) {
+                if (_tellorIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Tellor is frozen, switch to Tellor and return last good price
-                if (_tellorIsFrozen(tellorResponse)) {
-                    _changeStatus(Status.usingTellorChainlinkUntrusted);
+                if (_tellorIsFrozen(fallbackResponse)) {
+                    _changeStatus(Status.usingFallbackChainlinkUntrusted);
                     return lastGoodPrice;
                 }
 
@@ -207,19 +207,19 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
                  * If Tellor is live and both oracles have a similar price, conclude that Chainlink's large price deviation between
                  * two consecutive rounds was likely a legitmate market price movement, and so continue using Chainlink
                  */
-                if (_bothOraclesSimilarPrice(chainlinkResponse, tellorResponse)) {
+                if (_bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse)) {
                     return _storeChainlinkPrice(chainlinkResponse);
                 }
 
                 // If Tellor is live but the oracles differ too much in price, conclude that Chainlink's initial price deviation was
                 // an oracle failure. Switch to Tellor, and use Tellor price
-                _changeStatus(Status.usingTellorChainlinkUntrusted);
-                return _storeTellorPrice(tellorResponse);
+                _changeStatus(Status.usingFallbackChainlinkUntrusted);
+                return _storeTellorPrice(fallbackResponsese);
             }
 
             // If Chainlink is working and Tellor is broken, remember Tellor is broken
-            if (_tellorIsBroken(tellorResponse)) {
-                _changeStatus(Status.usingChainlinkTellorUntrusted);
+            if (_tellorIsBroken(fallbackResponse)) {
+                _changeStatus(Status.usingChainlinkFallbackUntrusted);
             }
 
             // If Chainlink is working, return Chainlink current price (no status change)
@@ -227,20 +227,20 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         }
 
         // --- CASE 2: The system fetched last price from Tellor ---
-        if (status == Status.usingTellorChainlinkUntrusted) {
+        if (status == Status.usingFallbackChainlinkUntrusted) {
             // If both Tellor and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink
             if (
                 _bothOraclesLiveAndUnbrokenAndSimilarPrice(
                     chainlinkResponse,
                     prevChainlinkResponse,
-                    tellorResponse
+                    fallbackResponse
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
                 return _storeChainlinkPrice(chainlinkResponse);
             }
 
-            if (_tellorIsBroken(tellorResponse)) {
+            if (_tellorIsBroken(fallbackResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
                 return lastGoodPrice;
             }
@@ -249,12 +249,12 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
              * If Tellor is only frozen but otherwise returning valid data, just return the last good price.
              * Tellor may need to be tipped to return current data.
              */
-            if (_tellorIsFrozen(tellorResponse)) {
+            if (_tellorIsFrozen(fallbackResponse)) {
                 return lastGoodPrice;
             }
 
             // Otherwise, use Tellor price
-            return _storeTellorPrice(tellorResponse);
+            return _storeTellorPrice(fallbackResponse);
         }
 
         // --- CASE 3: Both oracles were untrusted at the last price fetch ---
@@ -267,7 +267,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
                 _bothOraclesLiveAndUnbrokenAndSimilarPrice(
                     chainlinkResponse,
                     prevChainlinkResponse,
-                    tellorResponse
+                    fallbackResponse
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
@@ -279,66 +279,66 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         }
 
         // --- CASE 4: Using Tellor, and Chainlink is frozen ---
-        if (status == Status.usingTellorChainlinkFrozen) {
+        if (status == Status.usingFallbackChainlinkFrozen) {
             if (_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse)) {
                 // If both Oracles are broken, return last good price
-                if (_tellorIsBroken(tellorResponse)) {
+                if (_tellorIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Chainlink is broken, remember it and switch to using Tellor
-                _changeStatus(Status.usingTellorChainlinkUntrusted);
+                _changeStatus(Status.usingFallbackChainlinkUntrusted);
 
-                if (_tellorIsFrozen(tellorResponse)) {
+                if (_tellorIsFrozen(fallbackResponse)) {
                     return lastGoodPrice;
                 }
 
                 // If Tellor is working, return Tellor current price
-                return _storeTellorPrice(tellorResponse);
+                return _storeTellorPrice(fallbackResponse);
             }
 
             if (_chainlinkIsFrozen(chainlinkResponse)) {
                 // if Chainlink is frozen and Tellor is broken, remember Tellor broke, and return last good price
-                if (_tellorIsBroken(tellorResponse)) {
-                    _changeStatus(Status.usingChainlinkTellorUntrusted);
+                if (_tellorIsBroken(fallbackResponse)) {
+                    _changeStatus(Status.usingChainlinkFallbackUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If both are frozen, just use lastGoodPrice
-                if (_tellorIsFrozen(tellorResponse)) {
+                if (_tellorIsFrozen(fallbackResponse)) {
                     return lastGoodPrice;
                 }
 
                 // if Chainlink is frozen and Tellor is working, keep using Tellor (no status change)
-                return _storeTellorPrice(tellorResponse);
+                return _storeTellorPrice(fallbackResponse);
             }
 
             // if Chainlink is live and Tellor is broken, remember Tellor broke, and return Chainlink price
-            if (_tellorIsBroken(tellorResponse)) {
-                _changeStatus(Status.usingChainlinkTellorUntrusted);
+            if (_tellorIsBroken(fallbackResponse)) {
+                _changeStatus(Status.usingChainlinkFallbackUntrusted);
                 return _storeChainlinkPrice(chainlinkResponse);
             }
 
             // If Chainlink is live and Tellor is frozen, just use last good price (no status change) since we have no basis for comparison
-            if (_tellorIsFrozen(tellorResponse)) {
+            if (_tellorIsFrozen(fallbackResponse)) {
                 return lastGoodPrice;
             }
 
             // If Chainlink is live and Tellor is working, compare prices. Switch to Chainlink
             // if prices are within 5%, and return Chainlink price.
-            if (_bothOraclesSimilarPrice(chainlinkResponse, tellorResponse)) {
+            if (_bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse)) {
                 _changeStatus(Status.chainlinkWorking);
                 return _storeChainlinkPrice(chainlinkResponse);
             }
 
             // Otherwise if Chainlink is live but price not within 5% of Tellor, distrust Chainlink, and return Tellor price
-            _changeStatus(Status.usingTellorChainlinkUntrusted);
-            return _storeTellorPrice(tellorResponse);
+            _changeStatus(Status.usingFallbackChainlinkUntrusted);
+            return _storeTellorPrice(fallbackResponse);
         }
 
         // --- CASE 5: Using Chainlink, Tellor is untrusted ---
-        if (status == Status.usingChainlinkTellorUntrusted) {
+        if (status == Status.usingChainlinkFallbackUntrusted) {
             // If Chainlink breaks, now both oracles are untrusted
             if (_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
@@ -355,7 +355,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
                 _bothOraclesLiveAndUnbrokenAndSimilarPrice(
                     chainlinkResponse,
                     prevChainlinkResponse,
-                    tellorResponse
+                    fallbackResponse
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
@@ -386,7 +386,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
             "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
         fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit TellorCallerChanged(_fallbackCaller);
+        emit FallbackCallerChanged(_fallbackCaller);
     }
 
     // --- Helper functions ---
@@ -568,25 +568,25 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
 
     // --- Oracle response wrapper functions ---
     /*
-     * "_getCurrentTellorResponse" fetches ETH/USD and BTC/USD prices from Tellor, and returns them as a
+     * "_getCurrentFallbackResponse" fetches ETH/USD and BTC/USD prices from Tellor, and returns them as a
      * FallbackResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
      */
-    function _getCurrentTellorResponse()
+    function _getCurrentFallbackResponse()
         internal
         view
-        returns (FallbackResponse memory tellorResponse)
+        returns (FallbackResponse memory fallbackResponse)
     {
         try
             fallbackCaller.getFallbackResponse()
         returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
-            tellorResponse.answer = answer;
-            tellorResponse.timestamp = timestampRetrieved;
-            tellorResponse.success = success;
-            tellorResponse.decimals = decimals;
-            return (tellorResponse);
+            fallbackResponse.answer = answer;
+            fallbackResponse.timestamp = timestampRetrieved;
+            fallbackResponse.success = success;
+            fallbackResponse.decimals = decimals;
+            return (fallbackResponse);
         } catch {
             // If call to Tellor reverts, return a zero response with success = false
-            return (tellorResponse);
+            return (fallbackResponse);
         }
     }
 
