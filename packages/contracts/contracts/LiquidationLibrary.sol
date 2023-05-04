@@ -427,17 +427,43 @@ contract LiquidationLibrary is CdpManagerStorage {
         return (_partialDebt, _partialColl);
     }
 
-    // return array (in NICR-decreasing order) including the last N CDPs in sortedCdps
-    function _sequenceToCdpIdArray(uint _n) internal view returns (bytes32[] memory _array) {
+    // return CdpId array (in NICR-decreasing order same as SortedCdps)
+    // including the last N CDPs in sortedCdps for batch liquidation
+    function _sequenceLiqToBatchLiq(
+        uint _n,
+        bool _recovery,
+        uint _price
+    ) internal view returns (bytes32[] memory _array) {
         if (_n > 0) {
-            _array = new bytes32[](_n);
             bytes32 _last = sortedCdps.getLast();
             bytes32 _first = sortedCdps.getFirst();
             bytes32 _cdpId = _last;
+
+            // get count of liquidatable CDPs
+            uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                _array[_n - i - 1] = _cdpId;
+                uint _icr = getCurrentICR(_cdpId, _price);
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < CCR) : _icr < MCR;
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    _cnt += 1;
+                }
                 _cdpId = sortedCdps.getPrev(_cdpId);
             }
+
+            // retrieve liquidatable CDPs
+            _array = new bytes32[](_cnt);
+            _cdpId = _last;
+            uint _j;
+            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
+                uint _icr = getCurrentICR(_cdpId, _price);
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < CCR) : _icr < MCR;
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    _array[_cnt - _j - 1] = _cdpId;
+                    _j += 1;
+                }
+                _cdpId = sortedCdps.getPrev(_cdpId);
+            }
+            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
         }
     }
 
@@ -596,8 +622,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
-        bytes32[] memory _batchedCdps = _sequenceToCdpIdArray(_n);
+        bytes32[] memory _batchedCdps;
         if (vars.recoveryModeAtStart) {
+            _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
@@ -607,6 +634,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             );
         } else {
             // if !vars.recoveryModeAtStart
+            _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
             totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
         }
 
@@ -765,7 +793,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.entireSystemDebt,
             _price
         );
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+        uint _cnt = _cdpArray.length;
+        bool[] memory _liqFlags = new bool[](_cnt);
+        uint _liqCnt;
+        for (vars.i = 0; vars.i < _cnt; ++vars.i) {
             vars.cdpId = _cdpArray[vars.i];
             // Skip non-active cdps
             if (vars.cdpId == bytes32(0) || Cdps[vars.cdpId].status != Status.active) {
@@ -801,22 +832,40 @@ contract LiquidationLibrary is CdpManagerStorage {
                     _price
                 );
                 vars.backToNormalMode = _TCR < CCR ? false : true;
+                _liqFlags[vars.i] = true;
+                _liqCnt += 1;
             } else if (vars.backToNormalMode && vars.ICR < MCR) {
                 _applyAccumulatedFeeSplit(vars.cdpId);
                 _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation, sequenceLiq);
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                _liqFlags[vars.i] = true;
+                _liqCnt += 1;
             } else continue; // In Normal Mode skip cdps with ICR >= MCR
         }
 
         // remove from sortedCdps for sequence liquidation
         if (sequenceLiq) {
-            uint _cnt = _cdpArray.length;
-            if (_cnt > 1) {
-                sortedCdps.batchRemove(_cdpArray);
-            } else if (_cnt == 1) {
-                sortedCdps.remove(_cdpArray[0]);
+            bytes32[] memory _toRemoveIds = _cdpArray;
+            if (_liqCnt > 0 && _liqCnt != _cnt) {
+                _toRemoveIds = new bytes32[](_liqCnt);
+                uint _j;
+                for (uint i = 0; i < _cnt; ++i) {
+                    if (_liqFlags[i]) {
+                        _toRemoveIds[_j] = _cdpArray[i];
+                        _j += 1;
+                    }
+                }
+                require(
+                    _j == _liqCnt,
+                    "LiquidationLibrary: sequence liquidation (recovery mode) count error!"
+                );
+            }
+            if (_liqCnt > 1) {
+                sortedCdps.batchRemove(_toRemoveIds);
+            } else if (_liqCnt == 1) {
+                sortedCdps.remove(_toRemoveIds[0]);
             }
         }
     }
@@ -829,8 +878,9 @@ contract LiquidationLibrary is CdpManagerStorage {
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
-
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+        uint _cnt = _cdpArray.length;
+        uint _liqCnt;
+        for (vars.i = 0; vars.i < _cnt; ++vars.i) {
             vars.cdpId = _cdpArray[vars.i];
             // Skip non-active cdps
             if (vars.cdpId == bytes32(0) || Cdps[vars.cdpId].status != Status.active) {
@@ -844,12 +894,16 @@ contract LiquidationLibrary is CdpManagerStorage {
 
                 // Add liquidation values to their respective running totals
                 totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                _liqCnt += 1;
             }
         }
 
         // remove from sortedCdps for sequence liquidation
         if (sequenceLiq) {
-            uint _cnt = _cdpArray.length;
+            require(
+                _liqCnt == _cnt,
+                "LiquidationLibrary: sequence liquidation (normal mode) count error!"
+            );
             if (_cnt > 1) {
                 sortedCdps.batchRemove(_cdpArray);
             } else if (_cnt == 1) {
