@@ -16,25 +16,4 @@ contract LeverageOpenCdpTest is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
     }
 
-    // Generic test for happy case when 1 user open CDP
-    function test_OpenCDPForSelfHappy() public {
-        address payable[] memory users;
-        users = _utils.createUsers(1);
-        address user = users[0];
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        uint borrowedAmount = _utils.calculateBorrowAmount(
-            30 ether,
-            priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
-        );
-        // Make sure there is no CDPs in the system yet
-        assert(sortedCdps.getLast() == "");
-
-        borrowerOperations.openCdpFor(borrowedAmount, "hint", "hint", 30 ether, user);
-
-        vm.stopPrank();
-    }
 }

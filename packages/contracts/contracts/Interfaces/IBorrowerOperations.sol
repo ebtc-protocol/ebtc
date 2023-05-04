@@ -48,14 +48,6 @@ interface IBorrowerOperations {
         uint _collAmount
     ) external returns (bytes32);
 
-    function openCdpFor(
-        uint _EBTCAmount,
-        bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _collAmount,
-        address _borrower
-    ) external returns (bytes32);
-
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
