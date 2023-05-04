@@ -2300,7 +2300,7 @@ contract('PriceFeed', async accounts => {
     await myPriceFeed.setAddresses(mockChainlink.address, tellorCaller.address, _newAuthority.address, { from: owner })
 	  
     await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setFallbackCaller(address)"); 
-    assert.isTrue(tellorCaller.address == (await myPriceFeed.tellorCaller())); 
+    assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
 	  	  
     assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));
     let _role123 = 123;
@@ -2309,7 +2309,7 @@ contract('PriceFeed', async accounts => {
     await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
     assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setFallbackSig)));
     await myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}); 
-    assert.isTrue(_newAuthority.address == (await myPriceFeed.tellorCaller())); 
+    assert.isTrue(_newAuthority.address == (await myPriceFeed.fallbackCaller())); 
   })
 })
 
