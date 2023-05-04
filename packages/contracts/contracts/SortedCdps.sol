@@ -151,25 +151,28 @@ contract SortedCdps is ISortedCdps {
         bytes32 _nextId
     ) external override returns (bytes32) {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
-        insert(owner, _id, _NICR, _prevId, _nextId);
+        require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
+
+        _insertWithGeneratedId(owner, _id, _NICR, _prevId, _nextId);
         return _id;
     }
 
     /*
      * @dev Add a node to the list
+     * @param owner cdp owner
      * @param _id Node's id
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
 
-    function insert(
+    function _insertWithGeneratedId(
         address owner,
         bytes32 _id,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
-    ) public override {
+    ) internal {
         ICdpManager cdpManagerCached = cdpManager;
 
         _requireCallerIsBOorCdpM(cdpManagerCached);

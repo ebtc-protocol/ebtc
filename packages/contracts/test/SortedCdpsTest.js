@@ -440,10 +440,6 @@ contract('SortedCdps', async accounts => {
         assert.equal(_aliceCdps, 2);
       })
 
-      it('insert(): fails if id is zero', async () => {
-        await th.assertRevert(sortedCdpsTester.insert(alice, th.DUMMY_BYTES32, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: Id cannot be zero')
-      })
-
       it('insert(): fails if NICR is zero', async () => {
         await th.assertRevert(sortedCdpsTester.insert(alice, 0, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: NICR must be positive')
       })
