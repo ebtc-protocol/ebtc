@@ -152,7 +152,7 @@ contract('SortedCdps', async accounts => {
       assert.isFalse(await sortedCdps.contains(_cCdpId))
     })
 
-    it.only('batchRemove(): batch remove the first N', async () => {
+    it('batchRemove(): batch remove the first N', async () => {
       await openCdp({ ICR: toBN(dec(30, 18)), extraParams: { from: A } })
       let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
       await checkCdpId(_aCdpId, A);
