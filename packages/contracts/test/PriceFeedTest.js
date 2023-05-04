@@ -84,7 +84,7 @@ contract('PriceFeed', async accounts => {
       }
     })
 
-    it("fetchPrice should fail on contract with no tellor address set", async () => {
+    it("fetchPrice should fail on contract with no fallback address set", async () => {
       try {
         const price = await zeroAddressPriceFeed.fetchPrice()
         assert.isFalse(price.receipt.status)

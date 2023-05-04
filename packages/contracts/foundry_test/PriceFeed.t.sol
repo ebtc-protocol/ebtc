@@ -29,9 +29,9 @@ contract PriceFeedTester is PriceFeed {
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        FallbackResponse memory _tellorResponse
+        FallbackResponse memory _fallbackResponse
     ) public view returns (bool) {
-        return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 }
 
@@ -83,7 +83,7 @@ contract PriceFeedTest is eBTCBaseFixture {
 
         console.log("Fallback Response:");
 
-        console.log(fallbackResponse.value);
+        console.log(fallbackResponse.answer);
         console.log("Chainlink Response:");
         PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed
             .getCurrentChainlinkResponse();

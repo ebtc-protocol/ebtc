@@ -10,7 +10,7 @@ import "./../../Dependencies/AuthNoOwner.sol";
 
 /*
  * PriceFeed placeholder for testnet and development. The price can be manually input or fetched from
-   Tellor's TestNet implementation. Backwards compatible with local test environment as it defaults to use
+   the Fallback's TestNet implementation. Backwards compatible with local test environment as it defaults to use
    the manual price.
  */
 contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
@@ -21,14 +21,14 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     // --- variables ---
 
     uint256 private _price = 7428 * 1e13; // stETH/BTC price == ~15.8118 ETH per BTC
-    bool public _useTellor;
-    IFallbackCaller public tellorCaller; // Wrapper contract that calls the Tellor system
+    bool public _useFallback;
+    IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Fallback system
 
     struct FallbackResponse {
-        bool ifRetrieve;
-        uint256 value;
+        uint256 answer;
         uint256 timestamp;
         bool success;
+        uint8 decimals;
     }
 
     event FallbackCallerChanged(address _fallbackCaller);
@@ -37,12 +37,12 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
 
     function setAddresses(
         address _priceAggregatorAddress, // Not used but kept for compatibility with deployment script
-        address _tellorCallerAddress,
+        address _fallbackCallerAddress,
         address _authorityAddress
     ) external onlyOwner {
-        checkContract(_tellorCallerAddress);
+        checkContract(_fallbackCallerAddress);
 
-        tellorCaller = IFallbackCaller(_tellorCallerAddress);
+        fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
@@ -59,10 +59,10 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     function fetchPrice() external override returns (uint256) {
         // Fire an event just like the mainnet version would.
         // This lets the subgraph rely on events to get the latest price even when developing locally.
-        if (_useTellor) {
+        if (_useFallback) {
             FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
             if (fallbackResponse.success) {
-                _price = fallbackResponse.value;
+                _price = fallbackResponse.answer;
             }
         }
         emit LastGoodPriceUpdated(_price);
@@ -76,9 +76,9 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     }
 
     // Manual toggle use of Tellor testnet feed
-    function toggleUseTellor() external returns (bool) {
-        _useTellor = !_useTellor;
-        return _useTellor;
+    function toggleUseFallback() external returns (bool) {
+        _useFallback = !_useFallback;
+        return _useFallback;
     }
 
     function setFallbackCaller(address _fallbackCaller) external {
@@ -87,12 +87,12 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
             "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
         fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit FallbackCallerChanged(fallbackCaller);
+        emit FallbackCallerChanged(_fallbackCaller);
     }
 
     // --- Oracle response wrapper functions ---
     /*
-     * "_getCurrentFallbackResponse" fetches stETH/BTC from Tellor, and returns it as a
+     * "_getCurrentFallbackResponse" fetches stETH/BTC from the Fallback, and returns it as a
      * FallbackResponse struct.
      */
     function _getCurrentFallbackResponse()
@@ -107,7 +107,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
 
         // Attempt to get the Fallback's stETH/BTC price
         try
-            tellorCaller.getFallbackResponse()
+            fallbackCaller.getFallbackResponse()
         returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
             fallbackResponse.answer = answer;
             fallbackResponse.timestamp = timestampRetrieved;
@@ -116,16 +116,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         } catch {
             return (fallbackResponse);
         }
-
-        // If the price was not retrieved, return the FallbackResponse struct with success = false.
-        if (!stEthBtcRetrieved) {
-            return (fallbackResponse);
-        }
-
-        fallbackResponse.value = stEthBtcValue;
-        fallbackResponse.timestamp = stEthBtcTimestamp;
-        fallbackResponse.success = true;
-        fallbackResponse.ifRetrieve = true;
         return (fallbackResponse);
     }
 }

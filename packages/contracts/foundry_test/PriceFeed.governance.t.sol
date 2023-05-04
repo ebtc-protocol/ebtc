@@ -17,7 +17,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
     // -------- eBTC Minting governance cases --------
 
-    function testSetTellorCallerNoPermission() public {
+    function testSetFallbackCallerNoPermission() public {
         address user = _utils.getNextUserAddress();
         address mockOracle = _utils.getNextUserAddress();
 
@@ -27,7 +27,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testSetTellorCallerWithPermission() public {
+    function testSetFallbackCallerWithPermission() public {
         address user = _utils.getNextUserAddress();
         address mockOracle = _utils.getNextUserAddress();
 
@@ -46,6 +46,6 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
 
         // Confirm variable set
-        assertEq(address(priceFeedMock.tellorCaller()), mockOracle);
+        assertEq(address(priceFeedMock.fallbackCaller()), mockOracle);
     }
 }
