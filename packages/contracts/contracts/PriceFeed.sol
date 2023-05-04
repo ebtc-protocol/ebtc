@@ -13,12 +13,12 @@ import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
- * PriceFeed for mainnet deployment, to be connected to Chainlink's live ETH:USD aggregator reference
- * contract, and a wrapper contract TellorCaller, which connects to TellorMaster contract.
+ * PriceFeed for mainnet deployment, to be connected to Chainlink's live stETH:BTC aggregator reference
+ * contracts (ETH/BTC + stETH/ETH), and allows for the connection to a fallback Oracle source.
  *
- * The PriceFeed uses Chainlink as primary oracle, and Tellor as fallback. It contains logic for
+ * The PriceFeed uses Chainlink as primary oracle, and Tellor as the current fallback. It contains logic for
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
- * Chainlink oracle.
+ * Chainlink oracle. The fallback Oracle can be switched or removed by the Authority.
  */
 contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner {
     using SafeMath for uint256;
