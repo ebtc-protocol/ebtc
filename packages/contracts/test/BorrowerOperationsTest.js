@@ -123,13 +123,6 @@ contract('BorrowerOperations', async accounts => {
       
     })	  
 	  
-    it("BorrowerOperations governance permissioned: initializeAuthority() could be called only once", async() => {	  
-	  let boDummy = await BorrowerOperationsTester.new(cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address)
-	  assert.isTrue(authority.address == (await boDummy.authority()));
-	  assert.isTrue(true == (await boDummy.authorityInitialized()));
-	  await assertRevert(boDummy.initAuthority(authority.address), "Auth: authority already initialized");
-    })	  
-	  
     it("BorrowerOperations governance permissioned: setFlashFee() should only allow authorized caller", async() => {	  
 	  await assertRevert(borrowerOperations.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
 

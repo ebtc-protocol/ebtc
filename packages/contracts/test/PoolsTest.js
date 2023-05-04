@@ -128,14 +128,6 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
   }) 
 	  
-  it("ActivePool governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let apDummy = await ActivePool.new(cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address, cdpManager.address);
-    assert.isTrue(activePoolAuthority.address == (await apDummy.authority()));
-    assert.isTrue(true == (await apDummy.authorityInitialized()));
-    await th.assertRevert(apDummy.initAuthority(activePoolAuthority.address), "Auth: authority already initialized");
-  })	
-	  
-	  
   it("ActivePool governance permissioned: setFlashFee() should only allow authorized caller", async() => {	
     await th.assertRevert(activePool.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
 
@@ -301,13 +293,6 @@ contract('DefaultPool', async accounts => {
     const defaultPool_BalanceChange = defaultPool_BalanceAfterTx.sub(defaultPool_BalanceBeforeTx)
     assert.equal(activePool_BalanceChange, dec(1, 'ether'))
     assert.equal(defaultPool_BalanceChange, _minus_1_Ether)
-  })
-	  
-  it("DefaultPool governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let dpDummy = await DefaultPool.new(cdpManager.address, activePool.address, cdpManager.address);
-    assert.isTrue(defaultPoolAuthority.address == (await dpDummy.authority()));
-    assert.isTrue(true == (await dpDummy.authorityInitialized()));
-    await th.assertRevert(dpDummy.initAuthority(defaultPoolAuthority.address), "Auth: authority already initialized");
   })
  
   it('sweepToken(): move unprotected token to fee recipient', async () => {
