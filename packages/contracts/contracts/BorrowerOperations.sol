@@ -14,10 +14,24 @@ import "./Dependencies/CheckContract.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
+import {LeverageMacro} from "./LeverageMacro.sol";
+
+
 contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
     string public constant NAME = "BorrowerOperations";
 
+    
+
     // --- Connected contract declarations ---
+
+    LeverageMacro public theMacro;
+
+    // TODO: SECURITY
+    // TODO: REFACTOR
+    function setTheMacro(address newMacro) external {
+        theMacro = LeverageMacro(newMacro);
+    }
+
 
     ICdpManager public immutable cdpManager;
 
@@ -129,20 +143,59 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
 
+
+    /**
+     * LEVERAGE MACRO FUNCTIONS
+    */
+
+    /// @dev Ensures that the caller is macro and the forwarded caller is the owner
+    function _requireForwardedCdpOwner(bytes32 _cdpId, address owner) internal view {
+        // Only macro
+        require(msg.sender == address(theMacro));
+
+        address _owner = sortedCdps.existCdpOwners(_cdpId);
+        require(owner == _owner, "BorrowerOps: Caller must be cdp owner");
+    }
+
     /**
     @notice Function that creates a Cdp for a specified borrower with the requested debt, and the stETH received as collateral. 
     @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). 
     @notice In addition to the requested debt, extra debt is issued to cover the gas compensation. 
     */
     function openCdpFor(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount,
+        uint256 _collAmount,
         address _borrower
     ) external override returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, _borrower);
     }
+
+    function adjustCdpFor(
+        bytes32 _cdpId,
+        uint256 _collWithdrawal,
+        uint256 _EBTCChange,
+        bool _isDebtIncrease,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint256 _collAddAmount,
+        address _forwardedCaller
+    ) external {
+        _requireForwardedCdpOwner(_cdpId, _forwardedCaller);
+        _adjustCdpInternal(
+            _cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _collAddAmount
+        );
+    }
+
+    function closeCdpFor(bytes32 _cdpId, address _forwardedCaller) external {
+        _requireForwardedCdpOwner(_cdpId, _forwardedCaller);
+        _closeCdp(_cdpId);
+    }
+
+    /**
+     * END LEVERAGE MACRO FUNCTIONS
+     */
 
     // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
@@ -460,6 +513,11 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
+        _closeCdp(_cdpId);
+    }
+
+    
+    function _closeCdp(bytes32 _cdpId) internal {
 
         _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
