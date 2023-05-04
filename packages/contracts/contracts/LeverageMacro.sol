@@ -7,7 +7,6 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
-import "./Dependencies/IBalancerV2Vault.sol";
 
 import "./FlashLoanMacroReceiver.sol";
 
