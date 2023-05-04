@@ -121,14 +121,7 @@ contract('CollSurplusPool', async accounts => {
     await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
   })  
 	  
-  it("CollSurplusPool: governance permissioned: initializeAuthority() could be called only once", async() => {	  
-    let cspDummy = await CollSurplusPool.new(contracts.cdpManager.address, contracts.cdpManager.address, activePool.address, contracts.cdpManager.address)
-    assert.isTrue(poolAuthority.address == (await cspDummy.authority()));
-    assert.isTrue(true == (await cspDummy.authorityInitialized()));
-    await th.assertRevert(cspDummy.initAuthority(poolAuthority.address), "Auth: authority already initialized");
-  })	 
- 
-  it('sweepToken(): move unprotected token to fee recipient', async () => {
+    it('sweepToken(): move unprotected token to fee recipient', async () => {
 	  
     collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, collToken.address)
     let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();

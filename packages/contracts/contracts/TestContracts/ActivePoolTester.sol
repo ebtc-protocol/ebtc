@@ -34,10 +34,6 @@ contract ActivePoolTester is ActivePool {
         StEthColl = StEthColl + _amount;
     }
 
-    function initAuthority(address _initAuthority) external {
-        _initializeAuthority(_initAuthority);
-    }
-
     // dummy test functions for sweepToken()
     function balanceOf(address account) external view returns (uint256) {
         return 1234567890;

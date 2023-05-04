@@ -86,10 +86,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
-    function initAuthority(address _auth) external {
-        _initializeAuthority(_auth);
-    }
-
     // Payable fallback function
     receive() external payable {}
 }
