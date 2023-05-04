@@ -49,6 +49,7 @@ contract BorrowerOperationsOpenCdpForTest is eBTCBaseFixture {
         users = _utils.createUsers(1);
         address user = users[0];
         vm.assume(borrower != user);
+        vm.assume(borrower != address(0));
 
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
