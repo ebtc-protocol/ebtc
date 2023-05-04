@@ -2299,16 +2299,16 @@ contract('PriceFeed', async accounts => {
     let _newAuthority = await GovernorTester.new(alice);
     await myPriceFeed.setAddresses(mockChainlink.address, tellorCaller.address, _newAuthority.address, { from: owner })
 	  
-    await assertRevert(myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setTellorCaller(address)"); 
+    await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setFallbackCaller(address)"); 
     assert.isTrue(tellorCaller.address == (await myPriceFeed.tellorCaller())); 
 	  	  
     assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));
     let _role123 = 123;
-    let _setTelorSig = "0x9545e9a5";//myPriceFeed#SET_TELLOR_CALLER_SIG;
-    await _newAuthority.setRoleCapability(_role123, myPriceFeed.address, _setTelorSig, true, {from: alice});	  
+    let _setFallbackSig = "0xb6f0e8ce";//myPriceFeed#SET_FALLBACK_CALLER_SIG;
+    await _newAuthority.setRoleCapability(_role123, myPriceFeed.address, _setFallbackSig, true, {from: alice});	  
     await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
-    assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setTelorSig)));
-    await myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}); 
+    assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setFallbackSig)));
+    await myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}); 
     assert.isTrue(_newAuthority.address == (await myPriceFeed.tellorCaller())); 
   })
 })

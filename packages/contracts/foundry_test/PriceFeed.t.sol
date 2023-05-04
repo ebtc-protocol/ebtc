@@ -11,7 +11,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
-    function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
+    function getCurrentTellorResponse() public view returns (FallbackResponse memory tellorResponse) {
         return _getCurrentTellorResponse();
     }
 
@@ -29,7 +29,7 @@ contract PriceFeedTester is PriceFeed {
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _tellorResponse
     ) public view returns (bool) {
         return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
     }
@@ -79,7 +79,7 @@ contract PriceFeedTest is eBTCBaseFixture {
             address(_tellorCaller),
             address(authority)
         );
-        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
+        PriceFeed.FallbackResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
 
         console.log("Tellor Response:");
 

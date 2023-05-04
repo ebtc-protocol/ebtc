@@ -40,8 +40,8 @@ contract eBTCBaseFixture is Test {
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
-    bytes4 public constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 public constant SET_FALLBACK_CALLER_SIG =
+        bytes4(keccak256(bytes("setFallbackCaller(address)")));
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
@@ -115,12 +115,12 @@ contract eBTCBaseFixture is Test {
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
-        authority.setRoleName(3, "PriceFeed: setTellorCaller");
+        authority.setRoleName(3, "PriceFeed: setFallbackCaller");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
-        authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
+        authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);

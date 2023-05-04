@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "../Interfaces/ITellorCaller.sol";
+import "../Interfaces/IFallbackCaller.sol";
 import "./ITellor.sol";
 import "./SafeMath.sol";
 
@@ -16,7 +16,7 @@ import "./SafeMath.sol";
  * https://github.com/tellor-io/usingtellor/blob/master/contracts/UsingTellor.sol
  *
  */
-contract TellorCaller is ITellorCaller {
+contract TellorCaller is IFallbackCaller {
     using SafeMath for uint256;
 
     ITellor public tellor;

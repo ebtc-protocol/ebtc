@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IPriceFeed.sol";
-import "./Interfaces/ITellorCaller.sol";
+import "./Interfaces/IFallbackCaller.sol";
 import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/SafeMath.sol";
 import "./Dependencies/Ownable.sol";
@@ -27,7 +27,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
 
     // TODO: Make priceAggregator immutable when we move to 0.8
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
-    ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
+    IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Tellor system
 
     // Core Liquity contracts
     address borrowerOperationsAddress;
@@ -46,8 +46,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
 
     // -- Permissioned Function Signatures --
-    bytes4 private constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 private constant SET_FALLBACK_CALLER_SIG =
+        bytes4(keccak256(bytes("setFallbackCaller(address)")));
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -69,9 +69,9 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         uint8 decimals;
     }
 
-    struct TellorResponse {
+    struct FallbackResponse {
         bool retrieved;
-        uint256 value;
+        uint256 answer;
         uint256 timestamp;
         bool success;
     }
@@ -88,29 +88,29 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     Status public status;
 
     event PriceFeedStatusChanged(Status newStatus);
-    event TellorCallerChanged(address _tellorCaller);
+    event TellorCallerChanged(address _fallbackCaller);
 
     // --- Dependency setters ---
     /*
         @notice Sets the addresses of the contracts and initializes the system
         @param _priceAggregatorAddress The address of the Chainlink oracle contract
-        @param _tellorCallerAddress The address of the Tellor oracle contract
+        @param _fallbackCallerAddress The address of the Tellor oracle contract
         @param _authorityAddress The address of the Authority contract
         @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
     **/
     function setAddresses(
         address _priceAggregatorAddress,
-        address _tellorCallerAddress,
+        address _fallbackCallerAddress,
         address _authorityAddress
     ) external onlyOwner {
         checkContract(_priceAggregatorAddress);
-        checkContract(_tellorCallerAddress);
+        checkContract(_fallbackCallerAddress);
         checkContract(_authorityAddress);
 
         priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
-        tellorCaller = ITellorCaller(_tellorCallerAddress);
+        fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
-        emit TellorCallerChanged(_tellorCallerAddress);
+        emit TellorCallerChanged(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
@@ -141,7 +141,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
         @dev Non-view function - it stores the last good price seen by eBTC.
         @dev Uses a main oracle (Chainlink) and a fallback oracle (Tellor) in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
-        @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the ITellorCaller interface.
+        @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
         @return The latest price fetched from the Oracle
     **/
     function fetchPrice() external override returns (uint) {
@@ -151,7 +151,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
             chainlinkResponse.roundId,
             chainlinkResponse.decimals
         );
-        TellorResponse memory tellorResponse = _getCurrentTellorResponse();
+        FallbackResponse memory tellorResponse = _getCurrentTellorResponse();
 
         // --- CASE 1: System fetched last price from Chainlink  ---
         if (status == Status.chainlinkWorking) {
@@ -384,15 +384,15 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     // --- Governance Functions ---
     /*
         @notice Sets a new fallback oracle 
-        @param _tellorCaller The new ITellorCaller-compliant oracle address
+        @param _fallbackCaller The new IFallbackCaller-compliant oracle address
     **/
-    function setTellorCaller(address _tellorCaller) external {
+    function setFallbackCaller(address _fallbackCaller) external {
         require(
-            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
-            "PriceFeed: sender not authorized for setTellorCaller(address)"
+            isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
+            "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
-        tellorCaller = ITellorCaller(_tellorCaller);
-        emit TellorCallerChanged(_tellorCaller);
+        fallbackCaller = IFallbackCaller(_fallbackCaller);
+        emit TellorCallerChanged(_fallbackCaller);
     }
 
     // --- Helper functions ---
@@ -464,7 +464,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
     }
 
-    function _tellorIsBroken(TellorResponse memory _response) internal view returns (bool) {
+    function _tellorIsBroken(FallbackResponse memory _response) internal view returns (bool) {
         // Check for response call reverted
         if (!_response.success) {
             return true;
@@ -474,21 +474,21 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
             return true;
         }
         // Check for zero price
-        if (_response.value == 0) {
+        if (_response.answer == 0) {
             return true;
         }
 
         return false;
     }
 
-    function _tellorIsFrozen(TellorResponse memory _tellorResponse) internal view returns (bool) {
+    function _tellorIsFrozen(FallbackResponse memory _tellorResponse) internal view returns (bool) {
         return block.timestamp.sub(_tellorResponse.timestamp) > TIMEOUT;
     }
 
     function _bothOraclesLiveAndUnbrokenAndSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
         ChainlinkResponse memory _prevChainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _tellorResponse
     ) internal view returns (bool) {
         // Return false if either oracle is broken or frozen
         if (
@@ -505,7 +505,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
 
     function _bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _tellorResponse
     ) internal pure returns (bool) {
         uint scaledChainlinkPrice = _scaleChainlinkPriceByDigits(
             uint256(_chainlinkResponse.answer),
@@ -513,8 +513,8 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         );
 
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint minPrice = LiquityMath._min(_tellorResponse.value, scaledChainlinkPrice);
-        uint maxPrice = LiquityMath._max(_tellorResponse.value, scaledChainlinkPrice);
+        uint minPrice = LiquityMath._min(_tellorResponse.answer, scaledChainlinkPrice);
+        uint maxPrice = LiquityMath._max(_tellorResponse.answer, scaledChainlinkPrice);
         uint percentPriceDifference = maxPrice.sub(minPrice).mul(DECIMAL_PRECISION).div(minPrice);
 
         /*
@@ -555,9 +555,9 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
-    function _storeTellorPrice(TellorResponse memory _tellorResponse) internal returns (uint) {
-        _storePrice(_tellorResponse.value);
-        return _tellorResponse.value;
+    function _storeTellorPrice(FallbackResponse memory _tellorResponse) internal returns (uint) {
+        _storePrice(_tellorResponse.answer);
+        return _tellorResponse.answer;
     }
 
     function _storeChainlinkPrice(
@@ -575,18 +575,18 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     // --- Oracle response wrapper functions ---
     /*
      * "_getCurrentTellorResponse" fetches ETH/USD and BTC/USD prices from Tellor, and returns them as a
-     * TellorResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
+     * FallbackResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
      */
     function _getCurrentTellorResponse()
         internal
         view
-        returns (TellorResponse memory tellorResponse)
+        returns (FallbackResponse memory tellorResponse)
     {
         try
-            tellorCaller.getTellorBufferValue(STETH_BTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
-        returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
+            fallbackCaller.getTellorBufferValue(STETH_BTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
+        returns (bool ifRetrieved, uint256 answer, uint256 timestampRetrieved) {
             tellorResponse.retrieved = ifRetrieved;
-            tellorResponse.value = value;
+            tellorResponse.answer = answer;
             tellorResponse.timestamp = timestampRetrieved;
             tellorResponse.success = true;
             return (tellorResponse);

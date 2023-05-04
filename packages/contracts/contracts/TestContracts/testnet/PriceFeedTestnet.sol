@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "../../Interfaces/IPriceFeed.sol";
-import "../../Interfaces/ITellorCaller.sol";
+import "../../Interfaces/IFallbackCaller.sol";
 import "./../../Dependencies/Ownable.sol";
 import "./../../Dependencies/CheckContract.sol";
 import "./../../Dependencies/AuthNoOwner.sol";
@@ -21,16 +21,16 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
 
     // -- Permissioned Function Signatures --
-    bytes4 private constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 private constant SET_FALLBACK_CALLER_SIG =
+        bytes4(keccak256(bytes("setFallbackCaller(address)")));
 
     // --- variables ---
 
     uint256 private _price = 7428 * 1e13; // stETH/BTC price == ~15.8118 ETH per BTC
     bool public _useTellor;
-    ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
+    IFallbackCaller public tellorCaller; // Wrapper contract that calls the Tellor system
 
-    struct TellorResponse {
+    struct FallbackResponse {
         bool ifRetrieve;
         uint256 value;
         uint256 timestamp;
@@ -48,7 +48,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     ) external onlyOwner {
         checkContract(_tellorCallerAddress);
 
-        tellorCaller = ITellorCaller(_tellorCallerAddress);
+        tellorCaller = IFallbackCaller(_tellorCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
@@ -66,7 +66,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         // Fire an event just like the mainnet version would.
         // This lets the subgraph rely on events to get the latest price even when developing locally.
         if (_useTellor) {
-            TellorResponse memory tellorResponse = _getCurrentTellorResponse();
+            FallbackResponse memory tellorResponse = _getCurrentTellorResponse();
             if (tellorResponse.success) {
                 _price = tellorResponse.value;
             }
@@ -87,24 +87,24 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         return _useTellor;
     }
 
-    function setTellorCaller(address _tellorCaller) external {
+    function setFallbackCaller(address _tellorCaller) external {
         require(
-            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
-            "PriceFeed: sender not authorized for setTellorCaller(address)"
+            isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
+            "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
-        tellorCaller = ITellorCaller(_tellorCaller);
+        tellorCaller = IFallbackCaller(_tellorCaller);
         emit TellorCallerChanged(_tellorCaller);
     }
 
     // --- Oracle response wrapper functions ---
     /*
      * "_getCurrentTellorResponse" fetches stETH/BTC from Tellor, and returns it as a
-     * TellorResponse struct.
+     * FallbackResponse struct.
      */
     function _getCurrentTellorResponse()
         internal
         view
-        returns (TellorResponse memory tellorResponse)
+        returns (FallbackResponse memory tellorResponse)
     {
         uint stEthBtcValue;
         uint stEthBtcTimestamp;
@@ -122,7 +122,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
             return (tellorResponse);
         }
 
-        // If the price was not retrieved, return the TellorResponse struct with success = false.
+        // If the price was not retrieved, return the FallbackResponse struct with success = false.
         if (!stEthBtcRetrieved) {
             return (tellorResponse);
         }

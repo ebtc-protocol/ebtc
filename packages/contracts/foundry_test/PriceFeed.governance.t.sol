@@ -22,8 +22,8 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         address mockOracle = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("PriceFeed: sender not authorized for setTellorCaller(address)");
-        priceFeedMock.setTellorCaller(mockOracle);
+        vm.expectRevert("PriceFeed: sender not authorized for setFallbackCaller(address)");
+        priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();
     }
 
@@ -37,12 +37,12 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         assertEq(authority.doesUserHaveRole(user, 4), true);
         assertEq(
-            authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG),
+            authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG),
             true
         );
 
         vm.startPrank(user);
-        priceFeedMock.setTellorCaller(mockOracle);
+        priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();
 
         // Confirm variable set
