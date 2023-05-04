@@ -27,17 +27,11 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
 
     // TODO: Make priceAggregator immutable when we move to 0.8
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
-    IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Tellor system
+    IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
     // Core Liquity contracts
     address borrowerOperationsAddress;
     address cdpManagerAddress;
-
-    uint public constant ETHUSD_TELLOR_REQ_ID = 1;
-    // TODO: Use new Tellor query ID for stETH/BTC when available
-    bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =
-        0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
-    uint256 public tellorQueryBufferSeconds = 901; // default 15 minutes, soft governance might help to change this default configuration if required
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
@@ -70,10 +64,10 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     }
 
     struct FallbackResponse {
-        bool retrieved;
         uint256 answer;
         uint256 timestamp;
         bool success;
+        uint8 decimals;
     }
 
     enum Status {
@@ -583,12 +577,12 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         returns (FallbackResponse memory tellorResponse)
     {
         try
-            fallbackCaller.getTellorBufferValue(STETH_BTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
-        returns (bool ifRetrieved, uint256 answer, uint256 timestampRetrieved) {
-            tellorResponse.retrieved = ifRetrieved;
+            fallbackCaller.getFallbackResponse()
+        returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
             tellorResponse.answer = answer;
             tellorResponse.timestamp = timestampRetrieved;
-            tellorResponse.success = true;
+            tellorResponse.success = success;
+            tellorResponse.decimals = decimals;
             return (tellorResponse);
         } catch {
             // If call to Tellor reverts, return a zero response with success = false

@@ -20,10 +20,7 @@ contract TellorCallerMock is IFallbackCaller {
     }
 
     // Mock price data
-    function getTellorBufferValue(
-        bytes32 _queryId,
-        uint256 _bufferInSeconds
-    ) external view override returns (bool, uint256, uint256) {
-        return (true, 7428 * 1e13, block.timestamp);
+    function getFallbackResponse() external view override returns (uint256, uint256, bool, uint8) {
+        return (7428 * 1e13, block.timestamp, true, 18);
     }
 }

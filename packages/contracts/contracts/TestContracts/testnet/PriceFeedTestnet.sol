@@ -14,12 +14,6 @@ import "./../../Dependencies/AuthNoOwner.sol";
    the manual price.
  */
 contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
-    // --- Constants ---
-
-    uint256 public constant tellorQueryBufferSeconds = 901;
-    bytes32 public constant STETHBTC_TELLOR_QUERY_ID =
-        0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
-
     // -- Permissioned Function Signatures --
     bytes4 private constant SET_FALLBACK_CALLER_SIG =
         bytes4(keccak256(bytes("setFallbackCaller(address)")));
@@ -37,7 +31,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         bool success;
     }
 
-    event TellorCallerChanged(address _tellorCaller);
+    event FallbackCallerChanged(address _fallbackCaller);
 
     // --- Dependency setters ---
 
@@ -87,13 +81,13 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         return _useTellor;
     }
 
-    function setFallbackCaller(address _tellorCaller) external {
+    function setFallbackCaller(address _fallbackCaller) external {
         require(
             isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
             "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
-        tellorCaller = IFallbackCaller(_tellorCaller);
-        emit TellorCallerChanged(_tellorCaller);
+        fallbackCaller = IFallbackCaller(_fallbackCaller);
+        emit FallbackCallerChanged(fallbackCaller);
     }
 
     // --- Oracle response wrapper functions ---
@@ -111,13 +105,14 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         bool stEthBtcRetrieved;
 
 
-        // Attempt to get Tellor's stETH/BTC price
+        // Attempt to get the Fallback's stETH/BTC price
         try
-            tellorCaller.getTellorBufferValue(STETHBTC_TELLOR_QUERY_ID, tellorQueryBufferSeconds)
-        returns (bool ifRetrieved, uint256 value, uint256 timestampRetrieved) {
-            stEthBtcRetrieved = ifRetrieved;
-            stEthBtcValue = value;
-            stEthBtcTimestamp = timestampRetrieved;
+            tellorCaller.getFallbackResponse()
+        returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
+            tellorResponse.answer = answer;
+            tellorResponse.timestamp = timestampRetrieved;
+            tellorResponse.success = success;
+            tellorResponse.decimals = decimals;
         } catch {
             return (tellorResponse);
         }
