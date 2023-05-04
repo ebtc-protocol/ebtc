@@ -11,7 +11,11 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
-    function getCurrentFallbackResponse() public view returns (FallbackResponse memory fallbackResponse) {
+    function getCurrentFallbackResponse()
+        public
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
         return _getCurrentFallbackResponse();
     }
 

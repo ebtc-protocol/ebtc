@@ -39,12 +39,7 @@ contract TellorCaller is IFallbackCaller {
      * @return success - wheather or not the value was successfully retrived
      * @return decimals - the hardcoded decimals used by the Oracle
      */
-    function getFallbackResponse() external view override returns (
-        uint256,
-        uint256,
-        bool,
-        uint8
-    ) {
+    function getFallbackResponse() external view override returns (uint256, uint256, bool, uint8) {
         (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved) = tellor.getDataBefore(
             STETH_BTC_TELLOR_QUERY_ID,
             block.timestamp - tellorQueryBufferSeconds

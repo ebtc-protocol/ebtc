@@ -104,11 +104,13 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         uint stEthBtcTimestamp;
         bool stEthBtcRetrieved;
 
-
         // Attempt to get the Fallback's stETH/BTC price
-        try
-            fallbackCaller.getFallbackResponse()
-        returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
+        try fallbackCaller.getFallbackResponse() returns (
+            uint256 answer,
+            uint256 timestampRetrieved,
+            bool success,
+            uint8 decimals
+        ) {
             fallbackResponse.answer = answer;
             fallbackResponse.timestamp = timestampRetrieved;
             fallbackResponse.success = success;

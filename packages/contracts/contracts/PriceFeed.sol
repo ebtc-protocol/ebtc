@@ -475,7 +475,9 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         return false;
     }
 
-    function _fallbackIsFrozen(FallbackResponse memory _fallbackResponse) internal view returns (bool) {
+    function _fallbackIsFrozen(
+        FallbackResponse memory _fallbackResponse
+    ) internal view returns (bool) {
         return block.timestamp.sub(_fallbackResponse.timestamp) > TIMEOUT;
     }
 
@@ -576,9 +578,12 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         view
         returns (FallbackResponse memory fallbackResponse)
     {
-        try
-            fallbackCaller.getFallbackResponse()
-        returns (uint256 answer, uint256 timestampRetrieved, bool success, uint8 decimals) {
+        try fallbackCaller.getFallbackResponse() returns (
+            uint256 answer,
+            uint256 timestampRetrieved,
+            bool success,
+            uint8 decimals
+        ) {
             fallbackResponse.answer = answer;
             fallbackResponse.timestamp = timestampRetrieved;
             fallbackResponse.success = success;
