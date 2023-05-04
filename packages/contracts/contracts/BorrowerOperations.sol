@@ -44,6 +44,8 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
+    mapping (address => mapping (address => bool)) approvedDelegates;
+
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
@@ -561,6 +563,21 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     function claimCollateral() external override {
         // send ETH from CollSurplus Pool to owner
         collSurplusPool.claimColl(msg.sender);
+    }
+
+    /// @notice Approve an address to to create, adjust, and close CDPs on the senders behalf
+    /// @dev note any potential security vulns here
+    /// @dev Ensure the recipient only allows 
+    function approveDelegate(address delegate) external {
+        approvedDelegates[user][asset] = true   ;
+    }
+
+    function revokeDelegate(address delegate) external {
+        approvedDelegates[user][asset] = false;
+    }
+
+    function isDelegateApproved(address user, address delegate) public view returns (bool) {
+        return approvedDelegates[user][asset];
     }
 
     // --- Helper functions ---
