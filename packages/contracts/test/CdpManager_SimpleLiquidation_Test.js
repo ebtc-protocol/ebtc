@@ -720,6 +720,39 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // liquidator bob coming in 
       await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});
       await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "LiquidationLibrary: Partial debt liquidated must be less than total debt"); 
+  })  
+  
+  it("LiquidateCdps(1) in normal mode", async () => {
+      await openCdp({ ICR: toBN(dec(345, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: bob } })
+      await openCdp({ ICR: toBN(dec(120, 16)), extraParams: { from: owner } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      assert.isTrue((await sortedCdps.contains(_ownerCdpId)));
+      let _ownerColl = await cdpManager.getCdpColl(_ownerCdpId);
+      let _ownerDebt = await cdpManager.getCdpDebt(_ownerCdpId);
+	  
+      // price slump but still in normal mode
+      let _newPrice = dec(3700, 13);
+      await priceFeed.setPrice(_newPrice);
+      assert.isFalse((await cdpManager.checkRecoveryMode(_newPrice)));
+	  
+      // liquidateCdps(1)
+      await debtToken.transfer(alice, toBN((await debtToken.balanceOf(owner)).toString()), {from: owner});
+      let _debtBefore = await debtToken.balanceOf(alice);
+      await cdpManager.liquidateCdps(1, {from: alice});
+      let _debtAfter = await debtToken.balanceOf(alice);
+	  
+      // post checks
+      assert.isFalse((await sortedCdps.contains(_ownerCdpId)));
+      let _liquidatedDebt = _ownerColl.mul(toBN(_newPrice)).div(LICR);
+      let _badDebt = _ownerDebt.sub(_liquidatedDebt);
+      assert.equal(_debtAfter.add(_liquidatedDebt).toString(), _debtBefore.toString(), '!liquidated debt');
+      let _alicePendingDebt = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
+      let _bobPendingDebt = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
+      th.assertIsApproximatelyEqual(_alicePendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString());  
+	  
   })
   
 })

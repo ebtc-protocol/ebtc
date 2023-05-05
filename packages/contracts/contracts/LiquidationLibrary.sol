@@ -439,11 +439,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             bytes32 _first = sortedCdps.getFirst();
             bytes32 _cdpId = _last;
 
+            uint _TCR = _getTCR(_price);
+
             // get count of liquidatable CDPs
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < CCR) : _icr < MCR;
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
                 }
@@ -456,7 +458,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < CCR) : _icr < MCR;
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
@@ -476,30 +478,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         _updateStakeAndTotalStakes(_cdpId);
 
         _updateCdpRewardSnapshots(_cdpId);
-    }
-
-    function _getCdpIdsToRemove(
-        bytes32 _start,
-        uint _total,
-        bytes32 _end
-    ) internal returns (bytes32[] memory) {
-        uint _cnt = _total;
-        bytes32 _id = _start;
-        bytes32[] memory _toRemoveIds = new bytes32[](_total);
-        while (_cnt > 0 && _id != bytes32(0)) {
-            _toRemoveIds[_total - _cnt] = _id;
-            _cnt = _cnt - 1;
-            _id = sortedCdps.getNext(_id);
-        }
-        require(
-            _toRemoveIds[0] == _start,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
-        );
-        require(
-            _toRemoveIds[_total - 1] == _end,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
-        );
-        return _toRemoveIds;
     }
 
     // Re-Insertion into SortedCdp list after partial liquidation
