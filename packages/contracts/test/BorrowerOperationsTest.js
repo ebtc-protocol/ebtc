@@ -123,7 +123,7 @@ contract('BorrowerOperations', async accounts => {
       
     })	  
 	  
-    it("BorrowerOperations governance permissioned: setFlashFee() should only allow authorized caller", async() => {	  
+    it.only("BorrowerOperations governance permissioned: setFlashFee() should only allow authorized caller", async() => {	  
 	  await assertRevert(borrowerOperations.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
 
 	  assert.isTrue(authority.address == (await borrowerOperations.authority()));
@@ -132,12 +132,31 @@ contract('BorrowerOperations', async accounts => {
 	  await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
 	  await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
 	  assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
-	  await assertRevert(borrowerOperations.setFlashFee(10000, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
+	  await assertRevert(borrowerOperations.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFlashFee");
 	  let _newFee = toBN("9999");
-	  assert.isTrue(_newFee.gt(await borrowerOperations.FEE_AMT()));
+	  assert.isTrue(_newFee.gt(await borrowerOperations.flashFee()));
 	  await borrowerOperations.setFlashFee(_newFee, {from: alice})
-	  assert.isTrue(_newFee.eq(await borrowerOperations.FEE_AMT()));
+	  assert.isTrue(_newFee.eq(await borrowerOperations.flashFee()));
 
+    })
+
+    it.only("BorrowerOperations governance permissioned: setMaxFlashFee() should only allow authorized caller", async() => {	  
+      await assertRevert(borrowerOperations.setMaxFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFlashFee(uint256)");   
+  
+      assert.isTrue(authority.address == (await borrowerOperations.authority()));
+      let _role123 = 123;
+      let _funcSig = await borrowerOperations.FUNC_SIG_MAX_FL_FEE();
+      await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
+
+      await assertRevert(borrowerOperations.setMaxFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
+      let _newFee = toBN("9999");
+      
+      assert.isTrue(_newFee.gt(await borrowerOperations.maxFlashFee()));
+      await borrowerOperations.setMaxFlashFee(_newFee, {from: alice})
+      assert.isTrue(_newFee.eq(await borrowerOperations.maxFlashFee()));
+  
     })
 
     xit("openCdp(): mutiple Cdp via non-EOA smart contract", async () => {

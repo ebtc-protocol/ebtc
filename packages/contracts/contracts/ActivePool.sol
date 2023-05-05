@@ -182,7 +182,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
-        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 fee = (amount * flashFee) / MAX_BPS;
         uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
@@ -220,10 +220,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         return true;
     }
 
-    function flashFee(address token, uint256 amount) external view override returns (uint256) {
+    function getFlashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
-        return (amount * FEE_AMT) / MAX_BPS;
+        return (amount * flashFee) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in collateral token equals to the current balance

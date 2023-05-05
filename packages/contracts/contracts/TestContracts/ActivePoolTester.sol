@@ -25,6 +25,7 @@ contract ActivePoolTester is ActivePool {
 
     bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
     bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
+    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x8508a195; //setMaxFlashFee(uint256)
 
     function unprotectedIncreaseEBTCDebt(uint _amount) external {
         EBTCDebt = EBTCDebt + _amount;
