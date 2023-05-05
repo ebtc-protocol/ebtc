@@ -24,15 +24,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     bool public _useFallback;
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Fallback system
 
-    struct FallbackResponse {
-        uint256 answer;
-        uint256 timestamp;
-        bool success;
-        uint8 decimals;
-    }
-
-    event FallbackCallerChanged(address _fallbackCaller);
-
     // --- Dependency setters ---
 
     function setAddresses(

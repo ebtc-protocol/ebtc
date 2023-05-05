@@ -49,34 +49,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // The last good price seen from an oracle by Liquity
     uint public lastGoodPrice;
 
-    struct ChainlinkResponse {
-        uint80 roundId;
-        int256 answer;
-        uint256 timestamp;
-        bool success;
-        uint8 decimals;
-    }
-
-    struct FallbackResponse {
-        uint256 answer;
-        uint256 timestamp;
-        bool success;
-        uint8 decimals;
-    }
-
-    enum Status {
-        chainlinkWorking,
-        usingFallbackChainlinkUntrusted,
-        bothOraclesUntrusted,
-        usingFallbackChainlinkFrozen,
-        usingChainlinkFallbackUntrusted
-    }
-
     // The current status of the PricFeed, which determines the conditions for the next price fetch attempt
     Status public status;
-
-    event PriceFeedStatusChanged(Status newStatus);
-    event FallbackCallerChanged(address _fallbackCaller);
 
     // --- Dependency setters ---
 
