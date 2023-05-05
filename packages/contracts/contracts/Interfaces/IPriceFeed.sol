@@ -21,7 +21,6 @@ interface IPriceFeed {
         uint256 answer;
         uint256 timestamp;
         bool success;
-        uint8 decimals;
     }
 
     enum Status {

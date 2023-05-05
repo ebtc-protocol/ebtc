@@ -99,13 +99,11 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         try fallbackCaller.getFallbackResponse() returns (
             uint256 answer,
             uint256 timestampRetrieved,
-            bool success,
-            uint8 decimals
+            bool success
         ) {
             fallbackResponse.answer = answer;
             fallbackResponse.timestamp = timestampRetrieved;
             fallbackResponse.success = success;
-            fallbackResponse.decimals = decimals;
         } catch {
             return (fallbackResponse);
         }
