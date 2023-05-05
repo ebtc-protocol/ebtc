@@ -3,15 +3,13 @@
 pragma solidity 0.8.17;
 
 import "../Dependencies/BaseMath.sol";
-import "../Dependencies/Ownable.sol";
-import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IFeeRecipient.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Interfaces/IEBTCToken.sol";
 import "../Interfaces/ICdpManager.sol";
 import "../Dependencies/ICollateralToken.sol";
 
-contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
+contract FeeRecipient is IFeeRecipient, BaseMath {
     // --- Data ---
     string public constant NAME = "FeeRecipient";
 
@@ -24,19 +22,13 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
 
     // --- Functions ---
 
-    function setAddresses(
+    constructor(
         address _ebtcTokenAddress,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
-        checkContract(_ebtcTokenAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    ) {
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         cdpManagerAddress = _cdpManagerAddress;
         borrowerOperationsAddress = _borrowerOperationsAddress;
@@ -48,8 +40,6 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
         emit BorrowerOperationsAddressSet(_borrowerOperationsAddress);
         emit ActivePoolAddressSet(_activePoolAddress);
         emit CollateralAddressSet(_collTokenAddress);
-
-        renounceOwnership();
     }
 
     // --- Reward-per-unit-staked increase functions. Called by Liquity core contracts ---

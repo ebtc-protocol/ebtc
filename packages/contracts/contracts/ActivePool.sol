@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
+pragma experimental ABIEncoderV2;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";
@@ -22,44 +20,34 @@ import "./Dependencies/AuthNoOwner.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, ReentrancyGuard {
-    using SafeMath for uint256;
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     using SafeERC20 for IERC20;
-
     string public constant NAME = "ActivePool";
 
     // -- Permissioned Function Signatures --
     bytes4 private constant SWEEP_TOKEN_SIG =
         bytes4(keccak256(bytes("sweepToken(address,uint256)")));
 
-    address public borrowerOperationsAddress;
-    address public cdpManagerAddress;
-    address public defaultPoolAddress;
-    address public collSurplusPoolAddress;
-    address public override feeRecipientAddress;
+    address public immutable borrowerOperationsAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable defaultPoolAddress;
+    address public immutable collSurplusPoolAddress;
+    address public immutable override feeRecipientAddress;
+
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
-    constructor() {}
-
     // --- Contract setters ---
 
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
-    ) external onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_collTokenAddress);
-        checkContract(_collSurplusAddress);
-        checkContract(_feeRecipientAddress);
-
+    ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         defaultPoolAddress = _defaultPoolAddress;
@@ -68,7 +56,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, 
         feeRecipientAddress = _feeRecipientAddress;
 
         // TEMP: read authority to avoid signature change
-        // _initializeAuthority(address(AuthNoOwner(_borrowerOperationsAddress).authority()));
         address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
         if (_authorityAddress != address(0)) {
             _initializeAuthority(_authorityAddress);
@@ -80,8 +67,6 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, 
         emit CollateralAddressChanged(_collTokenAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
-
-        renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---
@@ -101,21 +86,53 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender, 
 
     // --- Pool functionality ---
 
-    function sendStEthColl(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _amount, "!ActivePoolBal");
-        StEthColl = StEthColl - _amount;
-        emit ActivePoolETHBalanceUpdated(StEthColl);
-        emit CollateralSent(_account, _amount);
+        require(StEthColl >= _shares, "!ActivePoolBal");
 
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, _shares);
+
+        _transferSharesWithContractHooks(_account, _shares);
+    }
+
+    /**
+        @notice Send shares
+        @notice Liquidator reward shares are not tracked via internal accoutning in the active pool and are assumed to be present in expected amount as part of the intended behavior of bops and cdpm
+        @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
+        @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
+        @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
+        @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
+     */
+    function sendStEthCollAndLiquidatorReward(
+        address _account,
+        uint _shares,
+        uint _liquidatorRewardShares
+    ) external override {
+        _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+        uint totalShares = _shares + _liquidatorRewardShares;
+
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, totalShares);
+
+        _transferSharesWithContractHooks(_account, totalShares);
+    }
+
+    function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, _amount);
-        if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_amount);
-        } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_amount);
+        collateral.transferShares(_account, _shares);
+
+        if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(_shares);
+        } else if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(_shares);
         } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_amount);
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
         }
     }
 

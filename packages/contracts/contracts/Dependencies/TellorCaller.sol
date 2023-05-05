@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "../Interfaces/IFallbackCaller.sol";
 import "./ITellor.sol";
-import "./SafeMath.sol";
 
 /*
  * This contract has a single external function that calls Tellor: getTellorCurrentValue().
@@ -17,8 +16,6 @@ import "./SafeMath.sol";
  *
  */
 contract TellorCaller is IFallbackCaller {
-    using SafeMath for uint256;
-
     ITellor public tellor;
     // TODO: Use new Tellor query ID for stETH/BTC when available
     bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =

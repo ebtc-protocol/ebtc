@@ -7,6 +7,30 @@ import "../BorrowerOperations.sol";
 /* Tester contract inherits from BorrowerOperations, and provides external functions 
 for testing the parent's internal functions. */
 contract BorrowerOperationsTester is BorrowerOperations {
+    constructor(
+        address _cdpManagerAddress,
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _collSurplusPoolAddress,
+        address _priceFeedAddress,
+        address _sortedCdpsAddress,
+        address _ebtcTokenAddress,
+        address _feeRecipientAddress,
+        address _collTokenAddress
+    )
+        BorrowerOperations(
+            _cdpManagerAddress,
+            _activePoolAddress,
+            _defaultPoolAddress,
+            _collSurplusPoolAddress,
+            _priceFeedAddress,
+            _sortedCdpsAddress,
+            _ebtcTokenAddress,
+            _feeRecipientAddress,
+            _collTokenAddress
+        )
+    {}
+
     bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
 
     function getNewICRFromCdpChange(

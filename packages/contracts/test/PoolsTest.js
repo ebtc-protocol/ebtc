@@ -4,6 +4,7 @@ const CDPMgr = artifacts.require("./CdpManagerTester.sol")
 const NonPayable = artifacts.require("./NonPayable.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const testHelpers = require("../utils/testHelpers.js")
+const deploymentHelper = require("../utils/deploymentHelpers.js")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 const ReentrancyToken = artifacts.require("./ReentrancyToken.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol")
@@ -15,21 +16,19 @@ const dec = th.dec
 const _minus_1_Ether = web3.utils.toWei('-1', 'ether')
 
 contract('ActivePool', async accounts => {
-
-  let activePool, mockBorrowerOperations, collToken, activePoolAuthority
+	
+  let defaultPool, activePool, cdpManager, collToken
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
-    const weth9 = await WETH9.new()
-    activePool = await ActivePool.new()
-    mockBorrowerOperations = await NonPayable.new()
-    const dumbContractAddress = (await NonPayable.new()).address
-    collToken = await CollateralTokenTester.new()
-    cdpMgr = await CDPMgr.new()
-    activePoolAuthority = await Governor.new(owner);
-    await cdpMgr.initAuthority(activePoolAuthority.address);
-    await activePool.setAddresses(mockBorrowerOperations.address, cdpMgr.address, collToken.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
 	  
+    activePool = coreContracts.activePool
+    collToken = coreContracts.collateral;
+    cdpManager = coreContracts.cdpManager;
+    defaultPool = coreContracts.defaultPool;
+	  
+    activePoolAuthority = coreContracts.authority;
   })
 
   it('getStEthColl(): gets the recorded ETH balance', async () => {
@@ -45,10 +44,8 @@ contract('ActivePool', async accounts => {
   it('increaseEBTC(): increases the recorded EBTC balance by the correct amount', async () => {
     const recordedEBTC_balanceBefore = await activePool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 0)
-
-    // await activePool.increaseEBTCDebt(100, { from: mockBorrowerOperationsAddress })
-    const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx = await mockBorrowerOperations.forward(activePool.address, increaseEBTCDebtData)
+	  
+    const tx = await cdpManager.activePoolIncreaseEBTCDebt('0x64')
     assert.isTrue(tx.receipt.status)
     const recordedEBTC_balanceAfter = await activePool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceAfter, 100)
@@ -56,17 +53,13 @@ contract('ActivePool', async accounts => {
   // Decrease
   it('decreaseEBTC(): decreases the recorded EBTC balance by the correct amount', async () => {
     // start the pool on 100 wei
-    //await activePool.increaseEBTCDebt(100, { from: mockBorrowerOperationsAddress })
-    const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx1 = await mockBorrowerOperations.forward(activePool.address, increaseEBTCDebtData)
+    const tx1 = await cdpManager.activePoolIncreaseEBTCDebt('0x64')
     assert.isTrue(tx1.receipt.status)
 
     const recordedEBTC_balanceBefore = await activePool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 100)
-
-    //await activePool.decreaseEBTCDebt(100, { from: mockBorrowerOperationsAddress })
-    const decreaseEBTCDebtData = th.getTransactionData('decreaseEBTCDebt(uint256)', ['0x64'])
-    const tx2 = await mockBorrowerOperations.forward(activePool.address, decreaseEBTCDebtData)
+	  
+    const tx2 = await cdpManager.activePoolDecreaseEBTCDebt('0x64')
     assert.isTrue(tx2.receipt.status)
     const recordedEBTC_balanceAfter = await activePool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceAfter, 0)
@@ -91,9 +84,7 @@ contract('ActivePool', async accounts => {
     assert.equal(activePool_BalanceBeforeTx, dec(2, 'ether'))
 
     // send ether from pool to alice
-    //await activePool.sendStEthColl(alice, dec(1, 'ether'), { from: mockBorrowerOperationsAddress })
-    const sendETHData = th.getTransactionData('sendStEthColl(address,uint256)', [alice, web3.utils.toHex(dec(1, 'ether'))])
-    const tx2 = await mockBorrowerOperations.forward(activePool.address, sendETHData, { from: owner })
+    const tx2 = await cdpManager.activePoolSendStEthColl(alice, web3.utils.toHex(dec(1, 'ether')))
     assert.isTrue(tx2.receipt.status)
 
     const activePool_BalanceAfterTx = web3.utils.toBN(await collToken.balanceOf(activePool.address))
@@ -111,9 +102,12 @@ contract('ActivePool', async accounts => {
     let _fee = await activePool.flashFee(collToken.address, _amount);
 	  
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
-    await collToken.transfer(activePool.address, _amount, {from: alice});
+    
+    await collToken.transfer(defaultPool.address, _amount, {from: alice});
+    await defaultPool.unprotectedReceiveColl(_amount);
+    await cdpManager.defaultPoolSendToActivePool(_amount);
+	
     await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
-    await collToken.receiveCollToInternalPool(activePool.address, _amount);
 	
     let _newPPFS = web3.utils.toBN('1000000000000000000');
     let _collTokenBalBefore = await collToken.balanceOf(activePool.address); 
@@ -222,22 +216,17 @@ contract('ActivePool', async accounts => {
 
 contract('DefaultPool', async accounts => {
  
-  let defaultPool, cdpMgr, activePool, collToken, defaultPoolAuthority
+  let defaultPool, cdpManager, activePool, collToken
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
-    const weth9 = await WETH9.new()
-    defaultPool = await DefaultPool.new()
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
 	  
-    activePool = await ActivePool.new()
-    const dumbContractAddress = (await NonPayable.new()).address	  
-    collToken = await CollateralTokenTester.new()
-    cdpMgr = await CDPMgr.new()	  
-    defaultPoolAuthority = await Governor.new(owner);
-    await cdpMgr.initAuthority(defaultPoolAuthority.address);
-	  
-    await activePool.setAddresses(dumbContractAddress, cdpMgr.address, defaultPool.address, collToken.address, dumbContractAddress, dumbContractAddress)	  
-    await defaultPool.setAddresses(cdpMgr.address, activePool.address, collToken.address)
+    defaultPool = coreContracts.defaultPool    
+    activePool = coreContracts.activePool	  
+    collToken = coreContracts.collateral
+    cdpManager = coreContracts.cdpManager;
+    defaultPoolAuthority = coreContracts.authority;
   })
 
   it('getStEthColl(): gets the recorded EBTC balance', async () => {
@@ -253,10 +242,7 @@ contract('DefaultPool', async accounts => {
   it('increaseEBTC(): increases the recorded EBTC balance by the correct amount', async () => {
     const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 0)
-
-    // await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
-    const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx = await cdpMgr.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx = await cdpManager.defaultPoolIncreaseEBTCDebt('0x64')
     assert.isTrue(tx.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -265,17 +251,13 @@ contract('DefaultPool', async accounts => {
   
   it('decreaseEBTC(): decreases the recorded EBTC balance by the correct amount', async () => {
     // start the pool on 100 wei
-    //await defaultPool.increaseEBTCDebt(100, { from: mockCdpManagerAddress })
-    const increaseEBTCDebtData = th.getTransactionData('increaseEBTCDebt(uint256)', ['0x64'])
-    const tx1 = await cdpMgr.forward(defaultPool.address, increaseEBTCDebtData)
+    const tx1 = await cdpManager.defaultPoolIncreaseEBTCDebt('0x64')
     assert.isTrue(tx1.receipt.status)
 
     const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
     assert.equal(recordedEBTC_balanceBefore, 100)
-
-    // await defaultPool.decreaseEBTCDebt(100, { from: mockCdpManagerAddress })
-    const decreaseEBTCDebtData = th.getTransactionData('decreaseEBTCDebt(uint256)', ['0x64'])
-    const tx2 = await cdpMgr.forward(defaultPool.address, decreaseEBTCDebtData)
+	  
+    const tx2 = await cdpManager.defaultPoolDecreaseEBTCDebt('0x64')
     assert.isTrue(tx2.receipt.status)
 
     const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
@@ -301,11 +283,8 @@ contract('DefaultPool', async accounts => {
 
     assert.equal(defaultPool_BalanceBeforeTx, dec(2, 'ether'))
 
-    // send ether from pool to alice
-    //await defaultPool.sendETHToActivePool(dec(1, 'ether'), { from: mockCdpManagerAddress })
-    const sendETHData = th.getTransactionData('sendETHToActivePool(uint256)', [web3.utils.toHex(dec(1, 'ether'))])
-//    await mockActivePool.setPayable(true)
-    const tx2 = await cdpMgr.forward(defaultPool.address, sendETHData, { from: owner })
+    // send ether from pool
+    const tx2 = await cdpManager.defaultPoolSendToActivePool(web3.utils.toHex(dec(1, 'ether')))
     assert.isTrue(tx2.receipt.status)
 
     const defaultPool_BalanceAfterTx = web3.utils.toBN(await collToken.balanceOf(defaultPool.address))

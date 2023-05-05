@@ -6,8 +6,6 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/IFallbackCaller.sol";
 import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
@@ -20,7 +18,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle. The fallback Oracle can be switched or removed by the Authority.
  */
-contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner {
+contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     using SafeMath for uint256;
 
     string public constant NAME = "PriceFeed";
@@ -28,10 +26,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     // TODO: Make priceAggregator immutable when we move to 0.8
     AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
-
-    // Core Liquity contracts
-    address borrowerOperationsAddress;
-    address cdpManagerAddress;
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
@@ -85,6 +79,7 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
     event FallbackCallerChanged(address _fallbackCaller);
 
     // --- Dependency setters ---
+
     /*
         @notice Sets the addresses of the contracts and initializes the system
         @param _priceAggregatorAddress The address of the Chainlink oracle contract
@@ -92,21 +87,17 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         @param _authorityAddress The address of the Authority contract
         @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
     **/
-    function setAddresses(
+    constructor(
         address _priceAggregatorAddress,
         address _fallbackCallerAddress,
         address _authorityAddress
-    ) external onlyOwner {
-        checkContract(_priceAggregatorAddress);
-        checkContract(_fallbackCallerAddress);
-        checkContract(_authorityAddress);
-
+    ) {
         priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
-        emit FallbackCallerChanged(_fallbackCallerAddress);
-
         _initializeAuthority(_authorityAddress);
+
+        emit FallbackCallerChanged(_fallbackCallerAddress);
 
         // Explicitly set initial system status
         status = Status.chainlinkWorking;
@@ -125,8 +116,6 @@ contract PriceFeed is Ownable, CheckContract, BaseMath, IPriceFeed, AuthNoOwner 
         );
 
         _storeChainlinkPrice(chainlinkResponse);
-
-        renounceOwnership();
     }
 
     // --- Functions ---

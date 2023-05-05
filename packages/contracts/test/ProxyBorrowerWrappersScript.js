@@ -54,7 +54,7 @@ contract('BorrowerWrappers', async accounts => {
 
   let contracts
 
-  let EBTC_GAS_COMPENSATION
+  let liqReward
 
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const getActualDebtFromComposite = async (compositeDebt) => th.getActualDebtFromComposite(compositeDebt, contracts)
@@ -62,13 +62,11 @@ contract('BorrowerWrappers', async accounts => {
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts = await deploymentHelper.deployEBTCToken(contracts)
-    const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	  
     let originalBorrowerOperations = contracts.borrowerOperations
 
@@ -90,15 +88,14 @@ contract('BorrowerWrappers', async accounts => {
     feeRecipient = LQTYContracts.feeRecipient
     lqtyToken = LQTYContracts.lqtyToken
     dummyAddrs = "0x000000000000000000000000000000000000dEaD"
-    collToken = contracts.collateral;	
+    collToken = contracts.collateral;
+    liqReward = await borrowerOperations.LIQUIDATOR_REWARD(); 	
 	
     // approve BorrowerOperations for CDP proxy
     for (let usr of users) {
          const usrProxyAddress = borrowerWrappers.getProxyAddressFromUser(usr)
          await collToken.nonStandardSetApproval(usrProxyAddress, originalBorrowerOperations.address, mv._1Be18BN);
     }
-
-    EBTC_GAS_COMPENSATION = await borrowerOperations.EBTC_GAS_COMPENSATION()
   })
 
   it('proxy owner can recover ETH', async () => {
@@ -190,7 +187,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
-    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
+    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
@@ -202,7 +199,7 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus)
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.sub(liqReward))
   })
 
   it('claimCollateralAndOpenCdp(): sending value in the transaction', async () => {
@@ -224,7 +221,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
-    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price))
+    const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
@@ -237,7 +234,7 @@ contract('BorrowerWrappers', async accounts => {
     th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.add(collateral))
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.add(collateral).sub(liqReward))
   })
 
   // --- claimSPRewardsAndRecycle ---

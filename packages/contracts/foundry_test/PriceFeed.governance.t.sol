@@ -41,6 +41,9 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
             true
         );
 
+        vm.prank(priceFeedMock.owner());
+        priceFeedMock.setAddresses(address(0), address(authority), address(authority));
+
         vm.startPrank(user);
         priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();

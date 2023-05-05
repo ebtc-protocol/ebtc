@@ -9,7 +9,6 @@ interface IBorrowerOperations {
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
     event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
@@ -17,7 +16,12 @@ interface IBorrowerOperations {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event CdpCreated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        address indexed _creator,
+        uint arrayIndex
+    );
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
@@ -36,19 +40,6 @@ interface IBorrowerOperations {
     }
 
     // --- Functions ---
-
-    function setAddresses(
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _sortedCdpsAddress,
-        address _ebtcTokenAddress,
-        address _feeRecipientAddress,
-        address _collTokenAddress
-    ) external;
 
     function openCdp(
         uint _EBTCAmount,
@@ -107,6 +98,4 @@ interface IBorrowerOperations {
     ) external;
 
     function claimCollateral() external;
-
-    function getCompositeDebt(uint _debt) external pure returns (uint);
 }

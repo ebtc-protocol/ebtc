@@ -49,14 +49,9 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
@@ -71,7 +66,6 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     LICR = await cdpManager.LICR()
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     ownerSigner = await ethers.provider.getSigner(owner);
     let _ownerBal = await web3.eth.getBalance(owner);

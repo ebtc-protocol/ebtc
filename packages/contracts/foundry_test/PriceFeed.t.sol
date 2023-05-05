@@ -11,6 +11,12 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
+    constructor(
+        address _priceAggregatorAddress,
+        address _tellorCallerAddress,
+        address _authorityAddress
+    ) PriceFeed(_priceAggregatorAddress, _tellorCallerAddress, _authorityAddress) {}
+
     function getCurrentFallbackResponse()
         public
         view
@@ -51,7 +57,6 @@ contract PriceFeedTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
-        _priceFeed = new PriceFeedTester();
         _mockTellor = new MockTellor();
         _mockChainlink = new MockAggregator();
         _tellorCaller = new TellorCaller(address(_mockTellor));
@@ -64,7 +69,12 @@ contract PriceFeedTest is eBTCBaseFixture {
 
         _mockChainlink.setUpdateTime(block.timestamp);
         _mockTellor.setUpdateTime(block.timestamp);
-        _priceFeed.setAddresses(address(_mockChainlink), address(_tellorCaller), address(authority));
+
+        _priceFeed = new PriceFeedTester(
+            address(_mockChainlink),
+            address(_tellorCaller),
+            address(authority)
+        );
     }
 
     function testMockedPrice() public {
@@ -76,14 +86,17 @@ contract PriceFeedTest is eBTCBaseFixture {
 
     // TODO: To run this forktest, make tests public instead of private
     function testPriceFeedFork() private {
-        _priceFeed = new PriceFeedTester();
-        _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
-        _priceFeed.setAddresses(
+        _priceFeed = new PriceFeedTester(
             0xAc559F25B1619171CbC396a50854A3240b6A4e99,
             address(_tellorCaller),
             address(authority)
         );
+<<<<<<< HEAD
         PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
+=======
+        _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
+        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
+>>>>>>> origin/feat/redemption-governed-params
 
         console.log("Fallback Response:");
 

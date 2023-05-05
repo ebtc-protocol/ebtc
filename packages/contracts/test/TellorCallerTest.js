@@ -26,10 +26,8 @@ contract('TellorCaller', async accounts => {
     tellorCaller = await TellorCaller.new(mockTellor.address)
     TellorCaller.setAsDeployed(tellorCaller)	
 	
-    dummyPriceFeed = await PriceFeed.new();
-    PriceFeed.setAsDeployed(dummyPriceFeed)
-	
     qBuffer = await tellorCaller.tellorQueryBufferSeconds();
+
     await mockTellor.setPrice(dec(3714, 13))
     const now = await th.getLatestBlockTimestamp(web3)	
     // set oracle update time to (now - buffer - 1) to satisfy the Tellor getDataBefore() semantic requirement:
