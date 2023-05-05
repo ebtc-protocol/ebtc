@@ -554,6 +554,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return (fallbackResponse);
         } catch {
             // If call to Fallback reverts, return a zero response with success = false
+            // This would be the case if the fallback is bricked with the ADDRESS_ZERO, for instance
             return (fallbackResponse);
         }
     }
