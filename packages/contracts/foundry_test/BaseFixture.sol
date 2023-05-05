@@ -299,7 +299,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
-        authority.setRoleName(3, "PriceFeed: setFallbackCaller");
+        authority.setRoleName(4, "PriceFeed: setFallbackCaller");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 

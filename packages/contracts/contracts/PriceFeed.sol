@@ -430,7 +430,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         if (_response.timestamp == 0 || _response.timestamp > block.timestamp) {
             return true;
         }
-        // Check for zero price
+        // Check for zero price (FallbackCaller must ensure that the price is not negative and return 0 if it is)
         if (_response.answer == 0) {
             return true;
         }
