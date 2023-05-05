@@ -312,7 +312,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
-
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);
         authority.setUserRole(defaultGovernance, 2, true);

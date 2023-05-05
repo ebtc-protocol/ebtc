@@ -15,5 +15,4 @@ contract LeverageOpenCdpTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
     }
-
 }

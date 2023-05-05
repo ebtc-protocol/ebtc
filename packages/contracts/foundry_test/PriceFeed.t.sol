@@ -91,12 +91,8 @@ contract PriceFeedTest is eBTCBaseFixture {
             address(_tellorCaller),
             address(authority)
         );
-<<<<<<< HEAD
-        PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
-=======
         _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
-        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
->>>>>>> origin/feat/redemption-governed-params
+        PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
 
         console.log("Fallback Response:");
 
