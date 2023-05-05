@@ -835,13 +835,12 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
         uint256 fee = (amount * FEE_AMT) / MAX_BPS;
 
         // Issue EBTC
-        cachedEbtc.mint(address(receiver), amount);
+        ebtcToken.mint(address(receiver), amount);
 
         // Callback
         require(
@@ -853,10 +852,10 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
+        ebtcToken.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
-        cachedEbtc.burn(address(FEE_RECIPIENT), amount);
+        ebtcToken.burn(address(FEE_RECIPIENT), amount);
 
         return true;
     }
