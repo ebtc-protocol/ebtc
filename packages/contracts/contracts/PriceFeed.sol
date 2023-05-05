@@ -533,27 +533,30 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     // --- Oracle response wrapper functions ---
     /*
-     * "_getCurrentFallbackResponse" fetches ETH/USD and BTC/USD prices from Fallback, and returns them as a
-     * FallbackResponse struct. ETH/BTC price is calculated as (ETH/USD) / (BTC/USD).
+     * "_getCurrentFallbackResponse" fetches stETH/BTC price from Fallback, and returns them as a
+     * FallbackResponse struct. If the Fallback is set to the ADDRESS_ZERO, return failing struct.
      */
     function _getCurrentFallbackResponse()
         internal
         view
         returns (FallbackResponse memory fallbackResponse)
     {
-        try fallbackCaller.getFallbackResponse() returns (
-            uint256 answer,
-            uint256 timestampRetrieved,
-            bool success
-        ) {
-            fallbackResponse.answer = answer;
-            fallbackResponse.timestamp = timestampRetrieved;
-            fallbackResponse.success = success;
-            return (fallbackResponse);
-        } catch {
-            // If call to Fallback reverts, return a zero response with success = false
-            // This would be the case if the fallback is bricked with the ADDRESS_ZERO, for instance
-            return (fallbackResponse);
+        if (address(fallbackCaller) != address(0)) {
+            try fallbackCaller.getFallbackResponse() returns (
+                uint256 answer,
+                uint256 timestampRetrieved,
+                bool success
+            ) {
+                fallbackResponse.answer = answer;
+                fallbackResponse.timestamp = timestampRetrieved;
+                fallbackResponse.success = success;
+                return (fallbackResponse);
+            } catch {
+                // If call to Fallback reverts, return a zero response with success = false
+                return (fallbackResponse);
+            }
+        } else {
+            return fallbackResponse;
         }
     }
 
