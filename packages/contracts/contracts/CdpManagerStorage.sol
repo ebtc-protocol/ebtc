@@ -136,13 +136,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         address _defaultPool,
         address _priceFeed,
         address _collateral
-    )
-        AuthNoOwner(_authorityAddress)
-        LiquityBase(_activePool, _defaultPool, _priceFeed, _collateral)
-    {
+    ) LiquityBase(_activePool, _defaultPool, _priceFeed, _collateral) {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
+
+        _initializeAuthority(_authorityAddress);
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPool);

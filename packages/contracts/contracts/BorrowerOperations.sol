@@ -10,6 +10,9 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/Ownable.sol";
+import "./Dependencies/CheckContract.sol";
+import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is
@@ -98,6 +101,11 @@ contract BorrowerOperations is
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         feeRecipient = IFeeRecipient(_feeRecipientAddress);
 
+        address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
+
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
@@ -141,22 +149,6 @@ contract BorrowerOperations is
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
-
-    /**
-    @notice Function that creates a Cdp for a specified borrower with the requested debt, and the stETH received as collateral. 
-    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). 
-    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation. 
-    */
-    function openCdpFor(
-        uint _EBTCAmount,
-        bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _collAmount,
-        address _borrower
-    ) external override nonReentrantSelfAndCdpM returns (bytes32) {
-        return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, _borrower);
-    }
-
     // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
         bytes32 _cdpId,

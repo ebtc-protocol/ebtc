@@ -2,9 +2,11 @@ const testHelpers = require("../utils/testHelpers.js")
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const DefaultPool = artifacts.require("./DefaultPoolTester.sol")
 const ActivePool = artifacts.require("./ActivePool.sol")
+const CDPMgr = artifacts.require("./CdpManagerTester.sol")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 const NonPayable = artifacts.require('NonPayable.sol')
 const FeeRecipient = artifacts.require('FeeRecipient.sol')
+const Governor = artifacts.require("./Governor.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -27,6 +29,8 @@ contract('DefaultPool', async accounts => {
 	  
     activePool = coreContracts.activePool;
     defaultPool = coreContracts.defaultPool;
+    authority = coreContracts.authority;
+    feeRecipient = coreContracts.feeRecipient;
   })
 
   it('sendETHToActivePool(): fails if receiver cannot receive ETH', async () => {

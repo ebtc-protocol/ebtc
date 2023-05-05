@@ -19,7 +19,7 @@ import "../LQTY/FeeRecipient.sol";
 // tester imports
 import "./CDPManagerTester.sol";
 import "./BorrowerOperationsTester.sol";
-import "./PriceFeedTestnet.sol";
+import "./testnet/PriceFeedTestnet.sol";
 import "./ActivePoolTester.sol";
 import "./DefaultPoolTester.sol";
 import "./EBTCTokenTester.sol";

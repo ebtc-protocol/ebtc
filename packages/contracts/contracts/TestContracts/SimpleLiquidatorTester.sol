@@ -71,4 +71,14 @@ contract SimpleLiquidationTester is IERC3156FlashBorrower {
         IERC20(token).approve(msg.sender, amount + fee);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
+
+    // dummy test functions for activePool.sweepToken()
+    function balanceOf(address account) external view returns (uint256) {
+        return 1234567890;
+    }
+
+    // non-standard transfer() without returning bool
+    function transfer(address recipient, uint256 amount) external {
+        return;
+    }
 }

@@ -71,9 +71,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         address _priceAggregatorAddress,
         address _tellorCallerAddress,
         address _authorityAddress
-    ) AuthNoOwner(_authorityAddress) {
+    ) {
         priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
         tellorCaller = ITellorCaller(_tellorCallerAddress);
+
+        _initializeAuthority(_authorityAddress);
 
         emit TellorCallerChanged(_tellorCallerAddress);
 

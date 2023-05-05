@@ -57,7 +57,7 @@ async function testnetDeploy(configParams) {
 
   // Deploy or load mock WETH and collateral token contracts
   const wethTokenFactory = await mdh.getFactory("WethMock")
-  const collateralTokenFactory = await mdh.getFactory("CollateralMock")
+  const collateralTokenFactory = await mdh.getFactory("StETHMock")
 
   const wethToken = await mdh.loadOrDeploy(wethTokenFactory, 'wethToken', deploymentState)
   const collateralToken = await mdh.loadOrDeploy(collateralTokenFactory, 'collateralToken', deploymentState, [wethToken.address])

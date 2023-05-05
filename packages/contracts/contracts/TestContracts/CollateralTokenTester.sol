@@ -176,4 +176,13 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         uint256 c = a / b;
         return c;
     }
+
+    // dummy test purpose
+    function feeRecipientAddress() external view returns (address) {
+        return address(this);
+    }
+
+    function authority() external view returns (address) {
+        return address(this);
+    }
 }

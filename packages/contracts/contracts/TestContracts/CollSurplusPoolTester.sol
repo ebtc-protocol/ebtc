@@ -2,20 +2,24 @@
 
 pragma solidity 0.8.17;
 
-import "../DefaultPool.sol";
+import "../CollSurplusPool.sol";
 
-contract DefaultPoolTester is DefaultPool {
+contract CollSurplusPoolTester is CollSurplusPool {
+    bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
+
     constructor(
+        address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) DefaultPool(_cdpManagerAddress, _activePoolAddress, _collTokenAddress) {}
-
-    bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
-
-    function unprotectedIncreaseEBTCDebt(uint _amount) external {
-        EBTCDebt = EBTCDebt + _amount;
-    }
+    )
+        CollSurplusPool(
+            _borrowerOperationsAddress,
+            _cdpManagerAddress,
+            _activePoolAddress,
+            _collTokenAddress
+        )
+    {}
 
     function unprotectedReceiveColl(uint _amount) external {
         StEthColl = StEthColl + _amount;

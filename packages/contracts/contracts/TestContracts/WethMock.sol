@@ -19,9 +19,12 @@
 
 pragma solidity 0.8.17;
 
-contract WETH9 {
-    string public name = "Wrapped Ether";
-    string public symbol = "WETH";
+/**
+  Mock version of weth for testing liquidity. Mock collateral should take as deposit token (replacement for ETH)
+ */
+contract WethMock {
+    string public name = "Test Wrapped Ether";
+    string public symbol = "tWETH";
     uint8 public decimals = 18;
 
     event Approval(address indexed src, address indexed guy, uint wad);
@@ -32,13 +35,10 @@ contract WETH9 {
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
 
-    function receive() public payable {
-        deposit();
-    }
-
-    function deposit() public payable {
-        balanceOf[msg.sender] += msg.value;
-        emit Deposit(msg.sender, msg.value);
+    /// @notice "Deposit" arbitrary value to mint
+    function deposit(uint256 value) public {
+        balanceOf[msg.sender] += value;
+        emit Deposit(msg.sender, value);
     }
 
     function withdraw(uint wad) public {
@@ -58,7 +58,7 @@ contract WETH9 {
         return true;
     }
 
-    function transfer(address dst, uint wad) public virtual returns (bool) {
+    function transfer(address dst, uint wad) public returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
