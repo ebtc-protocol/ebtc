@@ -21,6 +21,7 @@ import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
+import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 
 contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant FEE = 5e15; // 0.5%
@@ -32,6 +33,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
     uint internal constant AMOUNT_OF_CDPS = 3;
+
+    uint internal constant MAX_BPS = 10000;
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
@@ -50,6 +53,14 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // PriceFeed
     bytes4 public constant SET_TELLOR_CALLER_SIG =
         bytes4(keccak256(bytes("setTellorCaller(address)")));
+
+    // Flash Lender
+    bytes4 internal constant SET_FLASH_FEE_SIG = bytes4(keccak256(bytes("setFlashFee(uint256)")));
+    bytes4 internal constant SET_MAX_FLASH_FEE_SIG =
+        bytes4(keccak256(bytes("setMaxFlashFee(uint256)")));
+
+    event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
+    event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
@@ -299,7 +310,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
-        authority.setRoleName(3, "PriceFeed: setTellorCaller");
+        authority.setRoleName(4, "PriceFeed: setTellorCaller");
+        authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 
@@ -312,11 +324,18 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
 
+        authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
+        authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
+
+        authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
+
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);
         authority.setUserRole(defaultGovernance, 2, true);
         authority.setUserRole(defaultGovernance, 3, true);
         authority.setUserRole(defaultGovernance, 4, true);
+        authority.setUserRole(defaultGovernance, 5, true);
 
         vm.stopPrank();
     }
