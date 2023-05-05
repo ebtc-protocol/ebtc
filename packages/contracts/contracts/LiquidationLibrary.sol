@@ -774,53 +774,71 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _cnt = _cdpArray.length;
         bool[] memory _liqFlags = new bool[](_cnt);
         uint _liqCnt;
-        for (vars.i = 0; vars.i < _cnt; ++vars.i) {
+        uint _start = sequenceLiq ? _cnt - 1 : 0;
+        for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
-            // Skip non-active cdps
-            if (vars.cdpId == bytes32(0) || Cdps[vars.cdpId].status != Status.active) {
-                continue;
+            // only for active cdps
+            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+                vars.ICR = getCurrentICR(vars.cdpId, _price);
+
+                if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
+                    vars.price = _price;
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesRecoveryMode(
+                        _price,
+                        vars.entireSystemDebt,
+                        vars.entireSystemColl,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Update aggregate trackers
+                    vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
+                    vars.entireSystemColl =
+                        vars.entireSystemColl -
+                        singleLiquidation.totalCollToSendToLiquidator -
+                        singleLiquidation.collSurplus;
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+
+                    _TCR = _computeTCRWithGivenSystemValues(
+                        vars.entireSystemColl,
+                        vars.entireSystemDebt,
+                        _price
+                    );
+                    vars.backToNormalMode = _TCR < CCR ? false : true;
+                    _liqFlags[vars.i] = true;
+                    _liqCnt += 1;
+                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesNormalMode(
+                        _price,
+                        _TCR,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                    _liqFlags[vars.i] = true;
+                    _liqCnt += 1;
+                }
+                // In Normal Mode skip cdps with ICR >= MCR
             }
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
-
-            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
-                vars.price = _price;
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesRecoveryMode(
-                    _price,
-                    vars.entireSystemDebt,
-                    vars.entireSystemColl,
-                    vars,
-                    singleLiquidation,
-                    sequenceLiq
-                );
-
-                // Update aggregate trackers
-                vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
-                vars.entireSystemColl =
-                    vars.entireSystemColl -
-                    singleLiquidation.totalCollToSendToLiquidator -
-                    singleLiquidation.collSurplus;
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
-                _TCR = _computeTCRWithGivenSystemValues(
-                    vars.entireSystemColl,
-                    vars.entireSystemDebt,
-                    _price
-                );
-                vars.backToNormalMode = _TCR < CCR ? false : true;
-                _liqFlags[vars.i] = true;
-                _liqCnt += 1;
-            } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation, sequenceLiq);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-                _liqFlags[vars.i] = true;
-                _liqCnt += 1;
-            } else continue; // In Normal Mode skip cdps with ICR >= MCR
+            if (sequenceLiq) {
+                if (vars.i == 0) {
+                    break;
+                }
+                --vars.i;
+            } else {
+                ++vars.i;
+                if (vars.i == _cnt) {
+                    break;
+                }
+            }
         }
 
         // remove from sortedCdps for sequence liquidation
@@ -858,21 +876,38 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationValues memory singleLiquidation;
         uint _cnt = _cdpArray.length;
         uint _liqCnt;
-        for (vars.i = 0; vars.i < _cnt; ++vars.i) {
+        uint _start = sequenceLiq ? _cnt - 1 : 0;
+        for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
-            // Skip non-active cdps
-            if (vars.cdpId == bytes32(0) || Cdps[vars.cdpId].status != Status.active) {
-                continue;
+            // only for active cdps
+            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+                vars.ICR = getCurrentICR(vars.cdpId, _price);
+
+                if (vars.ICR < MCR) {
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesNormalMode(
+                        _price,
+                        _TCR,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                    _liqCnt += 1;
+                }
             }
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
-
-            if (vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation, sequenceLiq);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-                _liqCnt += 1;
+            if (sequenceLiq) {
+                if (vars.i == 0) {
+                    break;
+                }
+                --vars.i;
+            } else {
+                ++vars.i;
+                if (vars.i == _cnt) {
+                    break;
+                }
             }
         }
 

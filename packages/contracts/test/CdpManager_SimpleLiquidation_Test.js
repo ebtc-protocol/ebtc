@@ -753,6 +753,40 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _bobPendingDebt = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
       th.assertIsApproximatelyEqual(_alicePendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString());  
 	  
+  }) 
+  
+  it("LiquidateCdps(n) in recovery mode", async () => {
+      await openCdp({ ICR: toBN(dec(195, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(232, 16)), extraParams: { from: bob } })
+      await openCdp({ ICR: toBN(dec(255, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: owner } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      let _aliceColl = await cdpManager.getCdpColl(_aliceCdpId);
+      let _aliceDebt = await cdpManager.getCdpDebt(_aliceCdpId);
+      let _bobDebt = await cdpManager.getCdpDebt(_bobCdpId);
+	  
+      // price slump to recovery mode
+      let _newPrice = dec(3700, 13);
+      await priceFeed.setPrice(_newPrice);
+      assert.isTrue((await cdpManager.checkRecoveryMode(_newPrice)));
+	  
+      // liquidateCdps(2) with second in the list skipped due to backToNormal
+      await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
+      let _debtBefore = await debtToken.balanceOf(owner);
+      await cdpManager.liquidateCdps(2, {from: owner});
+      let _debtAfter = await debtToken.balanceOf(owner);
+	  
+      // post checks
+      assert.isFalse((await sortedCdps.contains(_aliceCdpId)));
+      assert.isTrue((await sortedCdps.contains(_bobCdpId)));
+      let _liquidatedDebt = _aliceColl.mul(toBN(_newPrice)).div(LICR);
+      let _badDebt = _aliceDebt.sub(_liquidatedDebt);
+      assert.equal(_debtAfter.add(_liquidatedDebt).toString(), _debtBefore.toString(), '!liquidated debt');
+      let _ownerPendingDebt = await cdpManager.getPendingEBTCDebtReward(_ownerCdpId);
+      let _bobPendingDebt = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
+      th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString());  
+	  
   })
   
 })
