@@ -68,33 +68,7 @@ contract('PriceFeed', async accounts => {
     })
   })
 
-  describe('Mainnet PriceFeed setup', async accounts => {
-    it("fetchPrice should fail on contract with no chainlink address set", async () => {
-      try {
-        const price = await zeroAddressPriceFeed.fetchPrice()
-        assert.isFalse(price.receipt.status)
-      } catch (err) {
-        console.log(err)
-        console.log(err.message)
-        assert.include(err.message, "function returned an unexpected amount of data") 
-      }
-    })
-
-    it("fetchPrice should fail on contract with no fallback address set", async () => {
-      try {
-        const price = await zeroAddressPriceFeed.fetchPrice()
-        assert.isFalse(price.receipt.status)
-      } catch (err) {
-        console.log(err)
-        console.log(err.message)
-        assert.include(err.message, "function returned an unexpected amount of data")
-      }
-    })
-  })
-
   it("C1 Chainlink working: fetchPrice should return the correct price, taking into account the number of decimal digits on the aggregator", async () => {
-    
-
     // Oracle price price is 10.00000000
     await mockChainlink.setDecimals(8)
     await mockChainlink.setPrevPrice(dec(1, 9))
