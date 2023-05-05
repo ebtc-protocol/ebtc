@@ -113,14 +113,16 @@ contract LeverageMacro {
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
     ) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "LeverageMacro: not owner!");
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
             // Not safe because OZ for our cases, if you use USDT it's your prob friend
             // NOTE: Send directly to flashLoanMacroReceiver
             IERC20(operation.tokenToTransferIn).transferFrom(
-                msg.sender, address(this), operation.amountToTransferIn
+                msg.sender,
+                address(this),
+                operation.amountToTransferIn
             );
         }
 
@@ -131,7 +133,7 @@ contract LeverageMacro {
         if (postCheckType == PostOperationCheck.openCdp) {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
-            initialCdpIndex = sortedCdps.cdpCountOf(msg.sender);
+            initialCdpIndex = sortedCdps.cdpCountOf(address(this));
         }
 
         // Take eBTC or stETH FlashLoan
@@ -161,7 +163,7 @@ contract LeverageMacro {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             // initialCdpIndex is initialCdpIndex + 1
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, initialCdpIndex);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), initialCdpIndex);
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
@@ -190,17 +192,17 @@ contract LeverageMacro {
         _sweepToCaller();
     }
 
-    /// @dev Assumes that 
+    /// @dev Assumes that
     ///     >= you prob use this one
     ///     <= if you don't need >= you go for lte
     ///     And if you really need eq, it's third
     function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
-        if(check.operator == Operator.skip) {
+        if (check.operator == Operator.skip) {
             // Early return
             return;
-        } else if(check.operator == Operator.gte) {
+        } else if (check.operator == Operator.gte) {
             require(check.value >= valueToCheck);
-        } else if(check.operator == Operator.lte) {
+        } else if (check.operator == Operator.lte) {
             require(check.value <= valueToCheck);
         } else if (check.operator == Operator.equal) {
             require(check.value == valueToCheck);
@@ -208,7 +210,7 @@ contract LeverageMacro {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");
         }
-    } 
+    }
 
     struct LeverageMacroOperation {
         address tokenToTransferIn;
@@ -280,7 +282,6 @@ contract LeverageMacro {
         }
     }
 
-
     // Open
     struct OpenCdpOperation {
         // Open CDP For Data
@@ -307,23 +308,32 @@ contract LeverageMacro {
     }
 
     function decodeFLData(bytes calldata data) public view returns (LeverageMacroOperation memory) {
-        (LeverageMacroOperation memory leverageMacroData) = abi.decode(data, (LeverageMacroOperation));
+        LeverageMacroOperation memory leverageMacroData = abi.decode(data, (LeverageMacroOperation));
         return leverageMacroData;
     }
 
-    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data)
-        external
-        returns (bytes32)
-    {
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external returns (bytes32) {
         // Verify we started the FL
         require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
 
         // Ensure the caller is the intended contract
         if (token == address(ebtcToken)) {
-            require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
+            require(
+                msg.sender == address(borrowerOperations),
+                "LeverageMacro: wrong lender for eBTC flashloan"
+            );
         } else {
             // Enforce that this is either eBTC or stETH
-            require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
+            require(
+                msg.sender == address(activePool),
+                "LeverageMacro: wrong lender for stETH flashloan"
+            );
         }
 
         // Else a malicious contract, that changes the data would be able to inject a forwarded caller
@@ -332,7 +342,7 @@ contract LeverageMacro {
         // We will get the first byte of data for enum an type
         // The rest of the data we can decode based on the operation type from calldata
         // Then we can do multiple hooks and stuff
-        (LeverageMacroOperation memory operation) = decodeFLData(data);
+        LeverageMacroOperation memory operation = decodeFLData(data);
 
         _handleOperation(operation);
 
@@ -343,7 +353,7 @@ contract LeverageMacro {
     function _doSwaps(SwapOperation[] memory swapData) internal {
         uint256 swapLength = swapData.length;
 
-        for (uint256 i; i < swapLength;) {
+        for (uint256 i; i < swapLength; ) {
             _doSwap(swapData[i]);
             unchecked {
                 ++i;
@@ -358,13 +368,22 @@ contract LeverageMacro {
 
         // Exact approve
         // Approve can be given anywhere because this is a router, and after call we will delete all approvals
-        IERC20(swapData.tokenForSwap).approve(swapData.addressForApprove, swapData.exactApproveAmount);
+        IERC20(swapData.tokenForSwap).approve(
+            swapData.addressForApprove,
+            swapData.exactApproveAmount
+        );
 
         // Call and perform swap
         // NOTE: Technically approval may be different from target, something to keep in mind
         // Call target are limited
         // But technically you could approve w/e you want here, this is fine because the contract is a router and will not hold user funds
-        (bool success,) = excessivelySafeCall(swapData.addressForSwap, gasleft(), 0, 32, swapData.calldataForSwap);
+        (bool success, ) = excessivelySafeCall(
+            swapData.addressForSwap,
+            gasleft(),
+            0,
+            32,
+            swapData.calldataForSwap
+        );
         require(success, "Call has failed");
 
         // Approve back to 0
@@ -382,7 +401,11 @@ contract LeverageMacro {
         unchecked {
             for (uint256 i; i < length; ++i) {
                 // > because if you don't want to check for 0, just don't have the check
-                require(IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) > swapChecks[i].expectedMinOut);
+                require(
+                    IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) >
+                        swapChecks[i].expectedMinOut,
+                    "LeverageMacro: swap check failure!"
+                );
             }
         }
     }
@@ -392,6 +415,7 @@ contract LeverageMacro {
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
         require(addy != address(activePool));
+        require(addy != address(cdpManager));
         require(addy != address(this)); // If it could call this it could fake the forwarded caller
     }
 
@@ -402,7 +426,10 @@ contract LeverageMacro {
          * Open CDP and Emit event
          */
         bytes32 _cdpId = borrowerOperations.openCdp(
-            flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit
+            flData.eBTCToMint,
+            flData._upperHint,
+            flData._lowerHint,
+            flData.stETHToDeposit
         );
     }
 
@@ -433,10 +460,13 @@ contract LeverageMacro {
      * excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
      */
     // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
-    function excessivelySafeCall(address _target, uint256 _gas, uint256 _value, uint16 _maxCopy, bytes memory _calldata)
-        internal
-        returns (bool, bytes memory)
-    {
+    function excessivelySafeCall(
+        address _target,
+        uint256 _gas,
+        uint256 _value,
+        uint16 _maxCopy,
+        bytes memory _calldata
+    ) internal returns (bool, bytes memory) {
         // set up for assembly call
         uint256 _toCopy;
         bool _success;
@@ -446,19 +476,20 @@ contract LeverageMacro {
         // we call via assembly to avoid memcopying a very large returndata
         // returned by a malicious contract
         assembly {
-            _success :=
-                call(
-                    _gas, // gas
-                    _target, // recipient
-                    _value, // ether value
-                    add(_calldata, 0x20), // inloc
-                    mload(_calldata), // inlen
-                    0, // outloc
-                    0 // outlen
-                )
+            _success := call(
+                _gas, // gas
+                _target, // recipient
+                _value, // ether value
+                add(_calldata, 0x20), // inloc
+                mload(_calldata), // inlen
+                0, // outloc
+                0 // outlen
+            )
             // limit our copy to 256 bytes
             _toCopy := returndatasize()
-            if gt(_toCopy, _maxCopy) { _toCopy := _maxCopy }
+            if gt(_toCopy, _maxCopy) {
+                _toCopy := _maxCopy
+            }
             // Store the length of the copied bytes
             mstore(_returnData, _toCopy)
             // copy the bytes from returndata[0:_toCopy]

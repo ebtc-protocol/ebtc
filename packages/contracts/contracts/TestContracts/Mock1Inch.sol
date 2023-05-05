@@ -21,21 +21,19 @@ contract Mock1Inch {
         eBTCToken = EBTCTokenTester(_ebtcTester);
     }
 
+    function setPrice(uint _newPrice) external {
+        price = _newPrice;
+    }
 
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external returns (uint256) {
+    function swap(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256) {
         if (tokenIn == address(stETH) && tokenOut == address(eBTCToken)) {
             stETH.transferFrom(msg.sender, address(this), amountIn);
-            uint256 amt = amountIn / price;
+            uint256 amt = (amountIn * price) / 1e18;
             eBTCToken.transfer(msg.sender, amt);
             return amt;
-            
         } else if (tokenIn == address(eBTCToken) && tokenOut == address(stETH)) {
             eBTCToken.transferFrom(msg.sender, address(this), amountIn);
-            uint256 amt = amountIn * price;
+            uint256 amt = (amountIn * 1e18) / price;
             stETH.transfer(msg.sender, amt);
             return amt;
         }
