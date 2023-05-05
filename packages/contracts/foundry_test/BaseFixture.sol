@@ -21,7 +21,7 @@ import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
-import {IERC3156FlashLender} from "../contracts/interfaces/IERC3156FlashLender.sol";
+import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 
 contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant FEE = 5e15; // 0.5%
