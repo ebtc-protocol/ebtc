@@ -84,7 +84,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).  
     @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
      */
-    function liquidate(bytes32 _cdpId) external override nonReentrantSelfAndBOps {
+    function liquidate(bytes32 _cdpId) external override {
         _delegate(liquidationLibrary);
     }
 
@@ -95,7 +95,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) external override nonReentrantSelfAndBOps {
+    ) external override {
         _delegate(liquidationLibrary);
     }
 
@@ -109,7 +109,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
      @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
      */
-    function liquidateCdps(uint _n) external override nonReentrantSelfAndBOps {
+    function liquidateCdps(uint _n) external override {
         _delegate(liquidationLibrary);
     }
 
@@ -119,7 +119,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) public override nonReentrantSelfAndBOps {
+    function batchLiquidateCdps(bytes32[] memory _cdpArray) public override {
         _delegate(liquidationLibrary);
     }
 
