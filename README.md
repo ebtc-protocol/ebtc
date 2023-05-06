@@ -119,7 +119,11 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
 - [Disclaimer](#disclaimer)
 
 ## eBTC Overview
-eBTC is a collateralized debt platform. Users can lock up Staked Ether, and are issued soft-pegged BTC tokens (eBTC) to their own Ethereum address, and subsequently transfer those tokens to any other Ethereum address. The individual collateralized debt positions are called Cdps.
+eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Lido's stETH and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
+
+A CDP is the unit of accounting used to track a specific borrowed debt amount, the respective collateral that backs it as well as the ratio between the value of these two assets, known as the Individual Collateral Ratio (ICR). Each CDP is tied and owned by a single Ethereum account.
+
+CDP owners have the freedom to make adjustments to their CDPs at any time by increasing their collateral, withdrawing some collateral, borrowing more debt, or repaying a part or the full outstanding debt. Any modification to the CDP triggers a corresponding adjustment to the ICR.
 
 The BTC tokens are economically geared towards maintaining value of 1 eBTC = 1 BTC, due to the following properties:
 
