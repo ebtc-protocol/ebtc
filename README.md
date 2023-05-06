@@ -133,7 +133,7 @@ The eBTC Token is designed with economic properties that aim to maintain price p
 
 After opening a CDP with some stETH, users may issue ("borrow") tokens such that the collateralization ratio of their Cdp remains above 110%. A user with $1000 worth of stETH in a CDP can issue up to $909.09 worth of eBTC.
 
-The tokens are freely exchangeable - anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open Cdp or not. The tokens are burned upon repayment of a Cdp's debt.
+The tokens are freely exchangeable - anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not. The tokens are burned upon repayment of a CDP's debt.
 
 The eBTC system regularly updates the stETH:BTC price via a decentralized data feed. When a Cdp falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
 
