@@ -127,7 +127,7 @@ CDP owners have the freedom to make adjustments to their CDPs at any time by inc
 
 The eBTC Token is designed with economic properties that aim to maintain price parity with BTC. These properties include:
 
-1. The system is designed to always be over-collateralized - the dollar value of the locked Ether exceeds the dollar value of the issued BTC
+1. The system is designed to always be over-collateralized - the dollar value of the locked Ether exceeds the dollar value of the issued eBTC.
 
 2. eBTC token are fully redeemable - users can always swap $x worth of eBTC for $x worth of stETH (minus fees), directly with the system.
 
