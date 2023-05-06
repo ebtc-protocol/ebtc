@@ -125,7 +125,7 @@ A CDP is the unit of accounting used to track a specific borrowed debt amount, t
 
 CDP owners have the freedom to make adjustments to their CDPs at any time by increasing their collateral, withdrawing some collateral, borrowing more debt, or repaying a part or the full outstanding debt. Any modification to the CDP triggers a corresponding adjustment to the ICR.
 
-The BTC tokens are economically geared towards maintaining value of 1 eBTC = 1 BTC, due to the following properties:
+The eBTC Token is designed with economic properties that aim to maintain price parity with BTC. These properties include:
 
 1. The system is designed to always be over-collateralized - the dollar value of the locked Ether exceeds the dollar value of the issued BTC
 
