@@ -48,7 +48,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
   - [PriceFeed Logic](#pricefeed-logic)
   - [Testnet PriceFeed and PriceFeed tests](#testnet-pricefeed-and-pricefeed-tests)
   - [PriceFeed limitations and known issues](#pricefeed-limitations-and-known-issues)
-  - [Keeping a sorted list of Cdps ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
+  - [Keeping a sorted list of CDPs ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
   - [Flow of Ether in eBTC](#flow-of-stETH-in-ebtc)
   - [Flow of eBTC tokens in eBTC](#flow-of-ebtc-tokens-in-ebtc)
   - [Flow of LQTY Tokens in eBTC](#flow-of-lqty-tokens-in-ebtc)
@@ -63,7 +63,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
   - [Integer representations of decimals](#integer-representations-of-decimals)
 - [Public Data](#public-data)
 - [Public User-Facing Functions](#public-user-facing-functions)
-  - [Borrower (Cdp) Operations - `BorrowerOperations.sol`](#borrower-cdp-operations---borroweroperationssol)
+  - [Borrower (CDP) Operations - `BorrowerOperations.sol`](#borrower-cdp-operations---borroweroperationssol)
   - [CdpManager Functions - `CdpManager.sol`](#cdpmanager-functions---cdpmanagersol)
   - [Hint Helper Functions - `HintHelpers.sol`](#hint-helper-functions---hinthelperssol)
   - [Stability Pool Functions - `StabilityPool.sol`](#stability-pool-functions---stabilitypoolsol)
@@ -71,7 +71,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
   - [Lockup Contract Factory `LockupContractFactory.sol`](#lockup-contract-factory-lockupcontractfactorysol)
   - [Lockup contract - `LockupContract.sol`](#lockup-contract---lockupcontractsol)
   - [eBTC token `EBTCToken.sol` and LQTY token `LQTYToken.sol`](#ebtc-token-ebtctokensol-and-lqty-token-lqtytokensol)
-- [Supplying Hints to Cdp operations](#supplying-hints-to-cdp-operations)
+- [Supplying Hints to CDP operations](#supplying-hints-to-cdp-operations)
   - [Hints for `redeemCollateral`](#hints-for-redeemcollateral)
     - [First redemption hint](#first-redemption-hint)
     - [Partial redemption hints](#partial-redemption-hints)
@@ -131,7 +131,7 @@ The eBTC Token is designed with economic properties that aim to maintain price p
 
 2. eBTC token are fully redeemable - users can always swap $x worth of eBTC for $x worth of stETH (minus fees), directly with the system.
 
-After opening a CDP with some stETH, users may issue ("borrow") tokens such that the collateralization ratio of their Cdp remains above 110%. A user with $1000 worth of stETH in a CDP can issue up to $909.09 worth of eBTC.
+After opening a CDP with some stETH, users may issue ("borrow") tokens such that the collateralization ratio of their CDP remains above 110%. A user with $1000 worth of stETH in a CDP can issue up to $909.09 worth of eBTC.
 
 The tokens are freely exchangeable - anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not. The tokens are burned upon repayment of a CDP's debt.
 
@@ -142,21 +142,21 @@ The eBTC system regularly updates the stETH:BTC price via a decentralized data f
 
 eBTC implements an open and incentivized liquidation mechanism, where any user can liquidate a CDP that does not have enough collateral. As a reward for their service, the liquidator receives a percentage of the CDP's collateral, ranging from 3% to 10%. Additionally, the liquidator also receives a "Gas Stipend" of 0.2 stETH, which is previously deposited by the borrower as insurance against liquidation costs. See [this](https://hackmd.io/@re73/r19oq9LM2) for details.
 
-Anyone may call the public `liquidateCdps()` function, which will check for under-collateralized Cdps, and liquidate them. Alternatively they can call `batchLiquidateCdps()` with a custom list of cdp addresses to attempt to liquidate.
+Anyone may call the public `liquidateCdps()` function, which will check for under-collateralized CDPs, and liquidate them. Alternatively they can call `batchLiquidateCdps()` with a custom list of CDP addresses to attempt to liquidate.
 
 ### Liquidation gas costs
 
-Currently, mass liquidations performed via the above functions cost 60-65k gas per cdp. Thus the system can liquidate up to a maximum of 95-105 cdps in a single transaction.
+Currently, mass liquidations performed via the above functions cost 60-65k gas per CDP. Thus the system can liquidate up to a maximum of 95-105 CDPs in a single transaction.
 
 ## eBTC Token Redemption
 
-Any eBTC holder (whether or not they have an active Cdp) may redeem their eBTC directly with the system. Their eBTC is exchanged for stETH, at face value: redeeming x eBTC tokens returns \$x worth of stETH (minus a [redemption fee](#redemption-fee)).
+Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC directly with the system. Their eBTC is exchanged for stETH, at face value: redeeming x eBTC tokens returns \$x worth of stETH (minus a [redemption fee](#redemption-fee)).
 
-When eBTC is redeemed for stETH, the system cancels the eBTC with debt from Cdps, and the stETH is drawn from their collateral.
+When eBTC is redeemed for stETH, the system cancels the eBTC with debt from CDPs, and the stETH is drawn from their collateral.
 
-In order to fulfill the redemption request, Cdps are redeemed from in ascending order of their collateralization ratio.
+In order to fulfill the redemption request, CDPs are redeemed from in ascending order of their collateralization ratio.
 
-A redemption sequence of `n` steps will **fully** redeem from up to `n-1` Cdps, and, and **partially** redeems from up to 1 Cdp, which is always the last Cdp in the redemption sequence.
+A redemption sequence of `n` steps will **fully** redeem from up to `n-1` CDPs, and, and **partially** redeems from up to 1 CDP, which is always the last CDP in the redemption sequence.
 
 Redemptions are blocked when TCR < 110% (there is no need to restrict ICR < TCR). At that TCR redemptions would likely be unprofitable, as eBTC is probably trading above $1 if the system has crashed that badly, but it could be a way for an attacker with a lot of eBTC to lower the TCR even further.
 
@@ -164,17 +164,17 @@ Note that redemptions are disabled during the first 14 days of operation since d
 
 ### Partial redemption
 
-Most redemption transactions will include a partial redemption, since the amount redeemed is unlikely to perfectly match the total debt of a series of Cdps.
+Most redemption transactions will include a partial redemption, since the amount redeemed is unlikely to perfectly match the total debt of a series of CDPs.
 
-The partially redeemed Cdp is re-inserted into the sorted list of Cdps, and remains active, with reduced collateral and debt.
+The partially redeemed CDP is re-inserted into the sorted list of CDPs, and remains active, with reduced collateral and debt.
 
 ### Full redemption
 
-If we assume the fixed liquidation incentive is 200 units, A Cdp is defined as “fully redeemed from” when the redemption has caused its debt to absorb (debt-200) eBTC. Then, its 200 eBTC Liquidation Reserve is cancelled with its remaining 200 debt: the Liquidation Reserve is burned from the gas address, and the 200 debt is zero’d.
+If we assume the fixed liquidation incentive is 200 units, A CDP is defined as “fully redeemed from” when the redemption has caused its debt to absorb (debt-200) eBTC. Then, its 200 eBTC Liquidation Reserve is cancelled with its remaining 200 debt: the Liquidation Reserve is burned from the gas address, and the 200 debt is zero’d.
 
-Before closing, we must handle the Cdp’s **collateral surplus**: that is, the excess stETH collateral remaining after redemption, due to its initial over-collateralization.
+Before closing, we must handle the CDP’s **collateral surplus**: that is, the excess stETH collateral remaining after redemption, due to its initial over-collateralization.
 
-This collateral surplus is sent to the `CollSurplusPool`, and the borrower can reclaim it later. The Cdp is then fully closed.
+This collateral surplus is sent to the `CollSurplusPool`, and the borrower can reclaim it later. The CDP is then fully closed.
 
 ### Redemptions create a price floor
 
@@ -182,9 +182,9 @@ Economically, the redemption mechanism creates a hard price floor for eBTC, ensu
 
 ## Recovery Mode
 
-Recovery Mode kicks in when the total collateralization ratio (TCR) of the system falls below 150%.
+Recovery Mode kicks in when the total collateralization ratio (TCR) of the system falls below 125%.
 
-During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New eBTC may only be issued by adjusting existing Cdps in a way that improves their ICR, or by opening a new Cdp with an ICR of >=150%. In general, if an existing Cdp's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 150%
+During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New eBTC may only be issued by adjusting existing CDPs in a way that improves their ICR, or by opening a new CDP with an ICR of >=125%. In general, if an existing CDP's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 125%
 
 Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 150%.
 
@@ -193,7 +193,7 @@ Economically, Recovery Mode is designed to encourage collateral top-ups and debt
 ## Project Structure
 
 ### Directories
-- `papers` - Whitepaper and math papers inhereited from Liquity: a proof of eBTC's cdp order invariant, and a derivation of the scalable Stability Pool staking formula
+- `papers` - Whitepaper and math papers inhereited from Liquity: a proof of eBTC's CDP order invariant, and a derivation of the scalable Stability Pool staking formula
 - `packages/contracts/` - The backend development folder, contains the Hardhat and Foundry projects, contracts, and tests
 - `packages/contracts/contracts/` - The core back end smart contracts written in Solidity
 - `packages/contracts/test/` - JS test suite for the system. Tests run in Mocha/Chai
@@ -201,7 +201,7 @@ Economically, Recovery Mode is designed to encourage collateral top-ups and debt
 - `packages/contracts/tests/` - Python test suite for the system. Tests run in Brownie
 - `packages/contracts/gasTest/` - Non-assertive tests that return gas costs for eBTC operations under various scenarios
 - `packages/contracts/fuzzTests/` - Echidna tests, and naive "random operation" tests 
-- `packages/contracts/migrations/` - contains Hardhat script for deploying the smart contracts to the blockchain
+- `packages/contracts/migrations/` - contains Hardhat scripts for deploying the smart contracts to the blockchain
 - `packages/contracts/utils/` - external Hardhat and node scripts - deployment helpers, gas calculators, etc
 
 Backend development is done in the Hardhat framework, and allows eBTC to be deployed on the Hardhat EVM network for fast compilation and test execution.
@@ -219,19 +219,19 @@ All application logic and data is contained in these contracts - there is no nee
 
 The system has no admin key or human governance. Once deployed, it is fully automated, decentralized and no user holds any special privileges in or control over the system.
 
-The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control Cdp state updates and movements of stETH and eBTC tokens around the system.
+The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control CDP state updates and movements of stETH and eBTC tokens around the system.
 
 ### Core Smart Contracts
 
-`BorrowerOperations.sol` - contains the basic operations by which borrowers interact with their Cdp: Cdp creation, stETH top-up / withdrawal, eBTC issuance and repayment. BorrowerOperations functions call in to CdpManager, telling it to update Cdp state, where necessary. BorrowerOperations functions also call in to the various Pools, telling them to move stETH/eBTC between Pools or between Pool <> user, where necessary.
+`BorrowerOperations.sol` - contains the basic operations by which borrowers interact with their CDP: CDP creation, stETH top-up / withdrawal, eBTC issuance and repayment. BorrowerOperations functions call in to CdpManager, telling it to update CDP state, where necessary. BorrowerOperations functions also call in to the various Pools, telling them to move stETH/eBTC between Pools or between Pool <> user, where necessary.
 
-`CdpManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `FeeRecipient` contract. Also contains the state of each Cdp - i.e. a record of the Cdp’s collateral and debt. CdpManager does not hold value (i.e. Ether / other tokens). CdpManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
+`CdpManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `FeeRecipient` contract. Also contains the state of each CDP - i.e. a record of the CDP’s collateral and debt. CdpManager does not hold value (i.e. Ether / other tokens). CdpManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
 
 `LiquityBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract LiquityBase, which contains global constants and some common functions.
 
 `EBTCToken.sol` - the eBTC token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers eBTC tokens.
 
-`SortedCdps.sol` - a doubly linked list that stores addresses of Cdp owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts Cdps at the correct position, based on their ICR.
+`SortedCdps.sol` - a doubly linked list that stores addresses of CDP owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts CDPs at the correct position, based on their ICR.
 
 `PriceFeed.sol` - Contains functionality for obtaining the current stETH:BTC price, which the system uses for calculating collateralization ratios.
 
@@ -240,13 +240,13 @@ The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold th
 ### Data and Value Silo Contracts
 These contracts hold stETH and/or eBTC for their respective parts of the system, and contain minimal logic:
 
-`ActivePool.sol` - holds the total stETH balance and records the total eBTC debt of the active Cdps.
+`ActivePool.sol` - holds the total stETH balance and records the total eBTC debt of the active CDPs.
 
-`DefaultPool.sol` - holds the total stETH balance and records the total eBTC debt of the liquidated Cdps that are pending redistribution to active Cdps. If a Cdp has pending stETH/debt “rewards” in the DefaultPool, then they will be applied to the Cdp when it next undergoes a borrower operation, a redemption, or a liquidation.
+`DefaultPool.sol` - holds the total stETH balance and records the total eBTC debt of the liquidated CDPs that are pending redistribution to active CDPs. If a CDP has pending stETH/debt “rewards” in the DefaultPool, then they will be applied to the CDP when it next undergoes a borrower operation, a redemption, or a liquidation.
 
-`CollSurplusPool.sol` - holds the stETH surplus from Cdps that have been fully redeemed from as well as from Cdps with an ICR > MCR that were liquidated in Recovery Mode. Sends the surplus back to the owning borrower, when told to do so by `BorrowerOperations.sol`.
+`CollSurplusPool.sol` - holds the stETH surplus from CDPs that have been fully redeemed from as well as from CDPs with an ICR > MCR that were liquidated in Recovery Mode. Sends the surplus back to the owning borrower, when told to do so by `BorrowerOperations.sol`.
 
-`GasPool.sol` - holds the total eBTC liquidation reserves. eBTC is moved into the `GasPool` when a Cdp is opened, and moved out when a Cdp is liquidated or closed.
+`GasPool.sol` - holds the total eBTC liquidation reserves. eBTC is moved into the `GasPool` when a CDP is opened, and moved out when a CDP is liquidated or closed.
 
 ### Contract Interfaces
 
@@ -304,30 +304,30 @@ To summarize the Chainlink decimals issue:
 - If eBTC fetches the price at round `i`, it will not know if Chainlink decimals changed across round `i-1` to round `i`, and the consequent price scaling distortion may cause eBTC to fall back to Tellor
 - eBTC will always calculate the correct current price at 18-digit precision assuming the current return value of `decimals()` is correct (i.e. is the value used by the nodes).
 
-### Keeping a sorted list of Cdps ordered by ICR
+### Keeping a sorted list of CDPs ordered by ICR
 
-eBTC relies on a particular data structure: a sorted doubly-linked list of Cdps that remains ordered by individual collateralization ratio (ICR), i.e. the amount of collateral (in USD) divided by the amount of debt (in eBTC).
+eBTC relies on a particular data structure: a sorted doubly-linked list of CDPs that remains ordered by individual collateralization ratio (ICR), i.e. the amount of collateral value divided by the amount of debt value.
 
-This ordered list is critical for gas-efficient redemption sequences and for the `liquidateCdps` sequence, both of which target Cdps in ascending order of ICR.
+This ordered list is critical for gas-efficient redemption sequences and for the `liquidateCdps` sequence, both of which target CDPs in ascending order of ICR.
 
 The sorted doubly-linked list is found in `SortedCdps.sol`. 
 
-Nodes map to active Cdps in the system - the ID property is the address of a cdp owner. The list accepts positional hints for efficient O(1) insertion - please see the [hints](#supplying-hints-to-cdp-operations) section for more details.
+Nodes map to active CDPs in the system - the ID property is the address of a CDP owner. The list accepts positional hints for efficient O(1) insertion - please see the [hints](#supplying-hints-to-cdp-operations) section for more details.
 
-ICRs are computed dynamically at runtime, and not stored on the node. This is because ICRs of active Cdps change dynamically, when:
+ICRs are computed dynamically at runtime, and not stored on the node. This is because ICRs of active CDPs change dynamically, when:
 
-- The stETH:BTC price varies, altering the value of the collateral of every Cdp
-- A liquidation that redistributes collateral and debt to active Cdps occurs
+- The stETH:BTC price varies, altering the value of the collateral of every CDP
+- A liquidation that redistributes collateral and debt to active CDPs occurs
 
-The list relies on the fact that a collateral and debt redistribution due to a liquidation preserves the ordering of all active Cdps (though it does decrease the ICR of each active Cdp above the MCR).
+The list relies on the fact that a collateral and debt redistribution due to a liquidation preserves the ordering of all active CDPs (though it does decrease the ICR of each active CDP above the MCR).
 
 The fact that ordering is maintained as redistributions occur, is not immediately obvious: please see the [mathematical proof](https://github.com/liquity/dev/blob/main/papers) which shows that this holds in eBTC.
 
 A node inserted based on current ICR will maintain the correct position, relative to its peers, as liquidation gains accumulate, as long as its raw collateral and debt have not changed.
 
-Nodes also remain sorted as the stETH:BTC price varies, since price fluctuations change the collateral value of each Cdp by the same proportion.
+Nodes also remain sorted as the stETH:BTC price varies, since price fluctuations change the collateral value of each CDP by the same proportion.
 
-Thus, nodes need only be re-inserted to the sorted list upon a Cdp operation - when the owner adds or removes collateral or debt to their position.
+Thus, nodes need only be re-inserted to the sorted list upon a CDP operation - when the owner adds or removes collateral or debt to their position.
 
 ### Flow of stETH in eBTC
 
@@ -339,7 +339,7 @@ stETH in the system lives in three Pools: the ActivePool, the DefaultPool and th
 - From a Pool to a user
 - From one Pool to another Pool
 
-stETH is recorded on an _individual_ level, but stored in _aggregate_ in a Pool. An active Cdp with collateral and debt has a struct in the CdpManager that stores its stETH collateral value in a uint, but its actual stETH is in the balance of the ActivePool contract.
+stETH is recorded on an _individual_ level, but stored in _aggregate_ in a Pool. An active CDP with collateral and debt has a struct in the CdpManager that stores its stETH collateral value in a uint, but its actual stETH is in the balance of the ActivePool contract.
 
 Likewise, the StabilityPool holds the total accumulated stETH gains from liquidations for all depositors.
 
@@ -355,7 +355,7 @@ Likewise, the StabilityPool holds the total accumulated stETH gains from liquida
 | closeCdp                   | All remaining                       | ActivePool->msg.sender                     |
 | claimCollateral              | CollSurplusPool.balance[msg.sender] | CollSurplusPool->msg.sender                |
 
-**Cdp Manager**
+**CDP Manager**
 
 | Function                                | stETH quantity                           | Path                          |
 |-----------------------------------------|----------------------------------------|-------------------------------|
@@ -367,15 +367,15 @@ Likewise, the StabilityPool holds the total accumulated stETH gains from liquida
 | batchLiquidateCdps (redistribution).  | collateral to be redistributed         | ActivePool->DefaultPool       |
 | redeemCollateral                        | collateral to be swapped with redeemer | ActivePool->msg.sender        |
 | redeemCollateral                        | redemption fee                         | ActivePool->FeeRecipient       |
-| redeemCollateral                        | cdp's collateral surplus             | ActivePool->CollSurplusPool |
+| redeemCollateral                        | CDP's collateral surplus             | ActivePool->CollSurplusPool |
 
 ### Flow of eBTC tokens in eBTC
 
 ![Flow of eBTC](images/EBTC_flows.svg)
 
-When a user issues debt from their Cdp, eBTC tokens are minted to their own address, and a debt is recorded on the Cdp. Conversely, when they repay their Cdp’s eBTC debt, eBTC is burned from their address, and the debt on their Cdp is reduced.
+When a user issues debt from their CDP, eBTC tokens are minted to their own address, and a debt is recorded on the CDP. Conversely, when they repay their CDP’s eBTC debt, eBTC is burned from their address, and the debt on their CDP is reduced.
 
-Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the Cdp redeemed against.
+Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the CDP redeemed against.
 
 **Borrower Operations**
 
@@ -388,7 +388,7 @@ Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the 
 | adjustCdp: repaying eBTC    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | closeCdp                    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount) |
 
-**Cdp Manager**
+**CDP Manager**
 
 | Function                 | eBTC Quantity            | ERC20 Operation                                  |
 |--------------------------|--------------------------|--------------------------------------------------|
@@ -399,9 +399,9 @@ Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the 
 
 ## Expected User Behaviors
 
-Generally, borrowers call functions that trigger Cdp operations on their own Cdp.
+Generally, borrowers call functions that trigger CDP operations on their own CDP.
 
-Anyone may call the public liquidation functions, and attempt to liquidate one or several Cdps.
+Anyone may call the public liquidation functions, and attempt to liquidate one or several CDPs.
 
 eBTC token holders may also redeem their tokens, and swap an amount of tokens 1-for-1 in value (minus fees) with stETH.
 
@@ -488,7 +488,7 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 
 ## Public User-Facing Functions
 
-### Borrower (Cdp) Operations - `BorrowerOperations.sol`
+### Borrower (CDP) Operations - `BorrowerOperations.sol`
 
 - `openCdp`
 - `addColl`
@@ -509,15 +509,15 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 
 ### Hint Helper Functions - `HintHelpers.sol`
 
-`function getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)`: helper function, returns a positional hint for the sorted list. Used for transactions that must efficiently re-insert a Cdp to the sorted list.
+`function getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)`: helper function, returns a positional hint for the sorted list. Used for transactions that must efficiently re-insert a CDP to the sorted list.
 
 `getRedemptionHints(uint _EBTCamount, uint _price, uint _maxIterations)`: helper function specifically for redemptions. Returns three hints:
 
-- `firstRedemptionHint` is a positional hint for the first redeemable Cdp (i.e. Cdp with the lowest ICR >= MCR).
-- `partialRedemptionHintNICR` is the final nominal ICR of the last Cdp after being hit by partial redemption, or zero in case of no partial redemption (see [Hints for `redeemCollateral`](#hints-for-redeemcollateral)).
-- `truncatedEBTCamount` is the maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last Cdp of the redemption sequence with less debt than the minimum allowed value.
+- `firstRedemptionHint` is a positional hint for the first redeemable CDP (i.e. CDP with the lowest ICR >= MCR).
+- `partialRedemptionHintNICR` is the final nominal ICR of the last CDP after being hit by partial redemption, or zero in case of no partial redemption (see [Hints for `redeemCollateral`](#hints-for-redeemcollateral)).
+- `truncatedEBTCamount` is the maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last CDP of the redemption sequence with less debt than the minimum allowed value.
 
-The number of Cdps to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
+The number of CDPs to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
 
 ### eBTC token `EBTCToken.sol`
 
@@ -533,44 +533,44 @@ could be front-run and revert - which may hamper the execution flow of a contrac
 For more details please see the original proposal EIP-2612:
 https://eips.ethereum.org/EIPS/eip-2612
 
-## Supplying Hints to Cdp operations
+## Supplying Hints to CDP operations
 
-Cdps in eBTC are recorded in a sorted doubly linked list, sorted by their NICR, from high to low. NICR stands for the nominal collateral ratio that is simply the amount of collateral (in stETH) multiplied by 100e18 and divided by the amount of debt (in eBTC), without taking the stETH:BTC price into account. Given that all Cdps are equally affected by stETH price changes, they do not need to be sorted by their real ICR.
+CDPs in eBTC are recorded in a sorted doubly linked list, sorted by their NICR, from high to low. NICR stands for the nominal collateral ratio that is simply the amount of collateral (in stETH) multiplied by 100e18 and divided by the amount of debt (in eBTC), without taking the stETH:BTC price into account. Given that all CDPs are equally affected by stETH price changes, they do not need to be sorted by their real ICR.
 
-All Cdp operations that change the collateralization ratio need to either insert or reinsert the Cdp to the `SortedCdps` list. To reduce the computational complexity (and gas cost) of the insertion to the linked list, two ‘hints’ may be provided.
+All CDP operations that change the collateralization ratio need to either insert or reinsert the CDP to the `SortedCdps` list. To reduce the computational complexity (and gas cost) of the insertion to the linked list, two ‘hints’ may be provided.
 
-A hint is the address of a Cdp with a position in the sorted list close to the correct insert position.
+A hint is the address of a CDP with a position in the sorted list close to the correct insert position.
 
-All Cdp operations take two ‘hint’ arguments: a `_lowerHint` referring to the `nextId` and an `_upperHint` referring to the `prevId` of the two adjacent nodes in the linked list that are (or would become) the neighbors of the given Cdp. Taking both direct neighbors as hints has the advantage of being much more resilient to situations where a neighbor gets moved or removed before the caller's transaction is processed: the transaction would only fail if both neighboring Cdps are affected during the pendency of the transaction.
+All CDP operations take two ‘hint’ arguments: a `_lowerHint` referring to the `nextId` and an `_upperHint` referring to the `prevId` of the two adjacent nodes in the linked list that are (or would become) the neighbors of the given CDP. Taking both direct neighbors as hints has the advantage of being much more resilient to situations where a neighbor gets moved or removed before the caller's transaction is processed: the transaction would only fail if both neighboring CDPs are affected during the pendency of the transaction.
 
-The better the ‘hint’ is, the shorter the list traversal, and the cheaper the gas cost of the function call. `SortedList::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)` that is called by the Cdp operation firsts check if `prevId` is still existant and valid (larger NICR than the provided `_NICR`) and then descends the list starting from `prevId`. If the check fails, the function further checks if `nextId` is still existant and valid (smaller NICR than the provided `_NICR`) and then ascends list starting from `nextId`. 
+The better the ‘hint’ is, the shorter the list traversal, and the cheaper the gas cost of the function call. `SortedList::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)` that is called by the CDP operation firsts check if `prevId` is still existant and valid (larger NICR than the provided `_NICR`) and then descends the list starting from `prevId`. If the check fails, the function further checks if `nextId` is still existant and valid (smaller NICR than the provided `_NICR`) and then ascends list starting from `nextId`. 
 
-The `HintHelpers::getApproxHint(...)` function can be used to generate a useful hint pointing to a Cdp relatively close to the target position, which can then be passed as an argument to the desired Cdp operation or to `SortedCdps::findInsertPosition(...)` to get its two direct neighbors as ‘exact‘ hints (based on the current state of the system).
+The `HintHelpers::getApproxHint(...)` function can be used to generate a useful hint pointing to a CDP relatively close to the target position, which can then be passed as an argument to the desired CDP operation or to `SortedCdps::findInsertPosition(...)` to get its two direct neighbors as ‘exact‘ hints (based on the current state of the system).
 
-`getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)` randomly selects `numTrials` amount of Cdps, and returns the one with the closest position in the list to where a Cdp with a nominal collateralization ratio of `_CR` should be inserted. It can be shown mathematically that for `numTrials = k * sqrt(n)`, the function's gas cost is with very high probability worst case `O(sqrt(n)) if k >= 10`. For scalability reasons (Infura is able to serve up to ~4900 trials), the function also takes a random seed `_inputRandomSeed` to make sure that calls with different seeds may lead to a different results, allowing for better approximations through multiple consecutive runs.
+`getApproxHint(uint _CR, uint _numTrials, uint _inputRandomSeed)` randomly selects `numTrials` amount of CDPs, and returns the one with the closest position in the list to where a CDP with a nominal collateralization ratio of `_CR` should be inserted. It can be shown mathematically that for `numTrials = k * sqrt(n)`, the function's gas cost is with very high probability worst case `O(sqrt(n)) if k >= 10`. For scalability reasons (Infura is able to serve up to ~4900 trials), the function also takes a random seed `_inputRandomSeed` to make sure that calls with different seeds may lead to a different results, allowing for better approximations through multiple consecutive runs.
 
-**Cdp operation without a hint**
+**CDP operation without a hint**
 
-1. User performs Cdp operation in their browser
-2. Call the Cdp operation with `_lowerHint = _upperHint = userAddress`
+1. User performs CDP operation in their browser
+2. Call the CDP operation with `_lowerHint = _upperHint = userAddress`
 
 Gas cost will be worst case `O(n)`, where n is the size of the `SortedCdps` list.
 
-**Cdp operation with hints**
+**CDP operation with hints**
 
-1. User performs Cdp operation in their browser
+1. User performs CDP operation in their browser
 2. The front end computes a new collateralization ratio locally, based on the change in collateral and/or debt.
 3. Call `HintHelpers::getApproxHint(...)`, passing it the computed nominal collateralization ratio. Returns an address close to the correct insert position
 4. Call `SortedCdps::findInsertPosition(uint256 _NICR, address _prevId, address _nextId)`, passing it the same approximate hint via both `_prevId` and `_nextId` and the new nominal collateralization ratio via `_NICR`. 
-5. Pass the ‘exact‘ hint in the form of the two direct neighbors, i.e. `_nextId` as `_lowerHint` and `_prevId` as `_upperHint`, to the Cdp operation function call. (Note that the hint may become slightly inexact due to pending transactions that are processed first, though this is gracefully handled by the system that can ascend or descend the list as needed to find the right position.)
+5. Pass the ‘exact‘ hint in the form of the two direct neighbors, i.e. `_nextId` as `_lowerHint` and `_prevId` as `_upperHint`, to the CDP operation function call. (Note that the hint may become slightly inexact due to pending transactions that are processed first, though this is gracefully handled by the system that can ascend or descend the list as needed to find the right position.)
 
 Gas cost of steps 2-4 will be free, and step 5 will be `O(1)`.
 
-Hints allow cheaper Cdp operations for the user, at the expense of a slightly longer time to completion, due to the need to await the result of the two read calls in steps 1 and 2 - which may be sent as JSON-RPC requests to Infura, unless the Frontend Operator is running a full Ethereum node.
+Hints allow cheaper CDP operations for the user, at the expense of a slightly longer time to completion, due to the need to await the result of the two read calls in steps 1 and 2 - which may be sent as JSON-RPC requests to Infura, unless the Frontend Operator is running a full Ethereum node.
 
 ### Example Borrower Operations with Hints
 
-#### Opening a cdp
+#### Opening a CDP
 ```
   const toWei = web3.utils.toWei
   const toBN = web3.utils.toBN
@@ -582,14 +582,14 @@ Hints allow cheaper Cdp operations for the user, at the expense of a slightly lo
   const liquidationReserve = await cdpManager.EBTC_GAS_COMPENSATION()
   const expectedFee = await cdpManager.getBorrowingFeeWithDecay(EBTCAmount)
   
-  // Total debt of the new cdp = eBTC amount drawn, plus fee, plus the liquidation reserve
+  // Total debt of the new CDP = eBTC amount drawn, plus fee, plus the liquidation reserve
   const expectedDebt = EBTCAmount.add(expectedFee).add(liquidationReserve)
 
-  // Get the nominal NICR of the new cdp
+  // Get the nominal NICR of the new CDP
   const _1e20 = toBN(toWei('100'))
   let NICR = ETHColl.mul(_1e20).div(expectedDebt)
 
-  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
+  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of CDPs) trials 
   // to get an approx. hint that is close to the right position.
   let numCdps = await sortedCdps.getSize()
   let numTrials = numCdps.mul(toBN('15'))
@@ -603,12 +603,12 @@ Hints allow cheaper Cdp operations for the user, at the expense of a slightly lo
   await borrowerOperations.openCdp(maxFee, EBTCAmount, upperHint, lowerHint, { value: ETHColl })
 ```
 
-#### Adjusting a Cdp
+#### Adjusting a CDP
 ```
   const collIncrease = toBN(toWei('1'))  // borrower wants to add 1 stETH
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 eBTC
 
-  // Get cdp's current debt and coll
+  // Get CDP's current debt and coll
   const {0: debt, 1: coll} = await cdpManager.getEntireDebtAndColl(borrower)
   
   const newDebt = debt.sub(EBTCRepayment)
@@ -616,7 +616,7 @@ Hints allow cheaper Cdp operations for the user, at the expense of a slightly lo
 
   NICR = newColl.mul(_1e20).div(newDebt)
 
-  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of cdps) trials 
+  // Get an approximate address hint from the deployed HintHelper contract. Use (15 * number of CDPs) trials 
   // to get an approx. hint that is close to the right position.
   numCdps = await sortedCdps.getSize()
   numTrials = numCdps.mul(toBN('15'))
@@ -632,28 +632,28 @@ Hints allow cheaper Cdp operations for the user, at the expense of a slightly lo
 ### Hints for `redeemCollateral`
 
 `CdpManager::redeemCollateral` as a special case requires additional hints:
-- `_firstRedemptionHint` hints at the position of the first Cdp that will be redeemed from,
-- `_lowerPartialRedemptionHint` hints at the `nextId` neighbor of the last redeemed Cdp upon reinsertion, if it's partially redeemed,
-- `_upperPartialRedemptionHint` hints at the `prevId` neighbor of the last redeemed Cdp upon reinsertion, if it's partially redeemed,
+- `_firstRedemptionHint` hints at the position of the first CDP that will be redeemed from,
+- `_lowerPartialRedemptionHint` hints at the `nextId` neighbor of the last redeemed CDP upon reinsertion, if it's partially redeemed,
+- `_upperPartialRedemptionHint` hints at the `prevId` neighbor of the last redeemed CDP upon reinsertion, if it's partially redeemed,
 - `_partialRedemptionHintNICR` ensures that the transaction won't run out of gas if neither `_lowerPartialRedemptionHint` nor `_upperPartialRedemptionHint` are  valid anymore.
 
-`redeemCollateral` will only redeem from Cdps that have an ICR >= MCR. In other words, if there are Cdps at the bottom of the SortedCdps list that are below the minimum collateralization ratio (which can happen after an stETH:BTC price drop), they will be skipped. To make this more gas-efficient, the position of the first redeemable Cdp should be passed as `_firstRedemptionHint`.
+`redeemCollateral` will only redeem from CDPs that have an ICR >= MCR. In other words, if there are CDPs at the bottom of the SortedCdps list that are below the minimum collateralization ratio (which can happen after an stETH:BTC price drop), they will be skipped. To make this more gas-efficient, the position of the first redeemable CDP should be passed as `_firstRedemptionHint`.
 
 #### First redemption hint
 
-The first redemption hint is the address of the cdp from which to start the redemption sequence - i.e the address of the first cdp in the system with ICR >= 110%.
+The first redemption hint is the address of the CDP from which to start the redemption sequence - i.e the address of the first CDP in the system with ICR >= 110%.
 
-If when the transaction is confirmed the address is in fact not valid - the system will start from the lowest ICR cdp in the system, and step upwards until it finds the first cdp with ICR >= 110% to redeem from. In this case, since the number of cdps below 110% will be limited due to ongoing liquidations, there's a good chance that the redemption transaction still succeed. 
+If when the transaction is confirmed the address is in fact not valid - the system will start from the lowest ICR CDP in the system, and step upwards until it finds the first CDP with ICR >= 110% to redeem from. In this case, since the number of CDPs below 110% will be limited due to ongoing liquidations, there's a good chance that the redemption transaction still succeed. 
 
 #### Partial redemption hints
 
-All Cdps that are fully redeemed from in a redemption sequence are left with zero debt, and are closed. The remaining collateral (the difference between the orginal collateral and the amount used for the redemption) will be claimable by the owner.
+All CDPs that are fully redeemed from in a redemption sequence are left with zero debt, and are closed. The remaining collateral (the difference between the orginal collateral and the amount used for the redemption) will be claimable by the owner.
 
-It’s likely that the last Cdp in the redemption sequence would be partially redeemed from - i.e. only some of its debt cancelled with eBTC. In this case, it should be reinserted somewhere between top and bottom of the list. The `_lowerPartialRedemptionHint` and `_upperPartialRedemptionHint` hints passed to `redeemCollateral` describe the future neighbors the expected reinsert position.
+It’s likely that the last CDP in the redemption sequence would be partially redeemed from - i.e. only some of its debt cancelled with eBTC. In this case, it should be reinserted somewhere between top and bottom of the list. The `_lowerPartialRedemptionHint` and `_upperPartialRedemptionHint` hints passed to `redeemCollateral` describe the future neighbors the expected reinsert position.
 
-However, if between the off-chain hint computation and on-chain execution a different transaction changes the state of a Cdp that would otherwise be hit by the redemption sequence, then the off-chain hint computation could end up totally inaccurate. This could lead to the whole redemption sequence reverting due to out-of-gas error.
+However, if between the off-chain hint computation and on-chain execution a different transaction changes the state of a CDP that would otherwise be hit by the redemption sequence, then the off-chain hint computation could end up totally inaccurate. This could lead to the whole redemption sequence reverting due to out-of-gas error.
 
-To mitigate this, another hint needs to be provided: `_partialRedemptionHintNICR`, the expected nominal ICR of the final partially-redeemed-from Cdp. The on-chain redemption function checks whether, after redemption, the nominal ICR of this Cdp would equal the nominal ICR hint.
+To mitigate this, another hint needs to be provided: `_partialRedemptionHintNICR`, the expected nominal ICR of the final partially-redeemed-from CDP. The on-chain redemption function checks whether, after redemption, the nominal ICR of this CDP would equal the nominal ICR hint.
 
 If not, the redemption sequence doesn’t perform the final partial redemption, and terminates early. This ensures that the transaction doesn’t revert, and most of the requested eBTC redemption can be fulfilled.
 
@@ -675,7 +675,7 @@ If not, the redemption sequence doesn’t perform the final partial redemption, 
     approxPartialRedemptionHint))
 
   /* Finally, perform the on-chain redemption, passing the truncated eBTC amount, the correct hints, and the expected
-  * ICR of the final partially redeemed cdp in the sequence. 
+  * ICR of the final partially redeemed CDP in the sequence. 
   */
   await cdpManager.redeemCollateral(truncatedEBTCAmount,
     firstRedemptionHint,
@@ -689,49 +689,48 @@ If not, the redemption sequence doesn’t perform the final partial redemption, 
 
 ## Gas compensation
 
-In eBTC, we want to maximize liquidation throughput, and ensure that undercollateralized Cdps are liquidated promptly by “liquidators” - agents who may also hold Stability Pool deposits, and who expect to profit from liquidations.
+In eBTC, we want to maximize liquidation throughput, and ensure that undercollateralized CDPs are liquidated promptly by “liquidators” at all times, regardless of the degree of collateralization of the CDP.
 
-However, gas costs in Ethereum are substantial. If the gas costs of our public liquidation functions are too high, this may discourage liquidators from calling them, and leave the system holding too many undercollateralized Cdps for too long.
+However, gas costs in Ethereum are substantial. If the gas costs of our public liquidation functions are too high, this may discourage liquidators from calling them, and leave the system holding too many undercollateralized CDPs for too long.
 
 The protocol thus directly compensates liquidators for their gas costs, to incentivize prompt liquidations in both normal and extreme periods of high gas prices. Liquidators should be confident that they will at least break even by making liquidation transactions.
 
-Gas compensation is paid in a mix of eBTC and stETH. While the stETH is taken from the liquidated Cdp, the eBTC is provided by the borrower. When a borrower first issues debt, some eBTC is reserved as a Liquidation Reserve. A liquidation transaction thus draws stETH from the cdp(s) it liquidates, and sends the both the reserved eBTC and the compensation in stETH to the caller, and liquidates the remainder.
+Liquidation incentives are paid in stETH. When a borrower first issues debt, they must provide an additional 0.2 stETH (Gas Stipend) that is reserved as a Liquidation Reserve. A liquidation transaction thus draws stETH from the CDP(s) it liquidates, and sends both the reserved Gas Stipend and the compensation in stETH to the caller, and liquidates the remainder.
 
-When a liquidation transaction liquidates multiple Cdps, each Cdp contributes eBTC and stETH towards the total compensation for the transaction.
+When a liquidation transaction liquidates multiple CDPs, each CDP contributes its Gas Stipend and stETH towards the total compensation for the transaction.
 
-Gas compensation per liquidated Cdp is given by the formula:
+Gas compensation per liquidated CDP is given by the formula:
 
-Gas compensation = `200 eBTC + 0.5% of cdp’s collateral (stETH)`
+- Full liquidation Gas compensation = `max(1.03, min(ICR, 1.1)) + Gas Stipend`
+- Partial liquidation Gas compensation = `max(1.03, min(ICR, 1.1))`
 
-The intentions behind this formula are:
-- To ensure that smaller Cdps are liquidated promptly in normal times, at least
-- To ensure that larger Cdps are liquidated promptly even in extreme high gas price periods. The larger the Cdp, the stronger the incentive to liquidate it.
+This means that liquidations are always incentivized within the eBTC ecosystem with a percentage of the collateral that can go from 3% to 10%, plus tha gas stipend when the liquidation results in the closing of the CDP. This also applies to CDPs being liquidated during Recovery Mode, the max incentive is capped at 10%. In the same way, CDPs that are liquidated at or below the 103% ICR mark are also subject to a fixed 3% incentive. In these cases, CDPs will remain with a portion of bad dept reamianing and no collateral. Then, and only then, this outstanding debt will be subject to [redistribution](#redistributions-and-corrected-stakes).
 
 ### Gas compensation schedule
 
-When a borrower opens a Cdp, an additional 200 eBTC debt is issued, and 200 eBTC is minted and sent to a dedicated contract (`GasPool`) for gas compensation - the "gas pool".
+When a borrower opens a CDP, an additional 0.2 stETH are required and the equivalent amount of shares are sent to a dedicated contract (`GasPool`) for gas compensation - the "gas pool".
 
-When a borrower closes their active Cdp, this gas compensation is refunded: 200 eBTC is burned from the gas pool's balance, and the corresponding 200 eBTC debt on the Cdp is cancelled.
+When a borrower closes their active CDP, this gas compensation is refunded: the amount of shares sent by the user are transferred back from the GasPool to the user. Note that these shares may represent a larger amount of stETH than before due to the accrued yield.
 
-The purpose of the 200 eBTC Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the Cdp's collateral size or the current stETH price.
+The purpose of the 0.2 stETH Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the CDP's collateral size or the current stETH price.
 
 ### Liquidation
 
-When a Cdp is liquidated, 0.5% of its collateral is sent to the liquidator, along with the 200 eBTC Liquidation Reserve. Thus, a liquidator always receives `{200 eBTC + 0.5% collateral}` per Cdp that they liquidate. The collateral remainder of the Cdp is then either offset, redistributed or a combination of both, depending on the amount of eBTC in the Stability Pool.
+When a CDP is liquidated, all of the collateral is transferred to the liquidator. Therefore, the compensation incentive percentage will depend on the ICR at which the ICR is liquidated according to the equations [above](#gas-compensation). For example, a liquidation at 110% ICR will mean a 10% profit for the liquidator plus the Gas Stipend. 
+
+As mentioned as well, if liquidated below 103%, the liquidator is guaranteed a 3% incentive. For intance, if the liquidation occurs at 97% ICR, the system will estimate the debt to be repaid based equivalent to that required to yield a 103% ICR. Therefore, the liquiadtor will be required to pay a debt amount 3% lower in value than the total available collateral and profit from that difference. Undercollateralized liquidations are also incentivized with the Gas Stipend.
 
 ### Gas compensation and redemptions
 
-When a Cdp is redeemed from, the redemption is made only against (debt - 200), not the entire debt.
-
-But if the redemption causes an amount (debt - 200) to be cancelled, the Cdp is then closed: the 200 eBTC Liquidation Reserve is cancelled with its remaining 200 debt. That is, the gas compensation is burned from the gas pool, and the 200 debt is zero’d. The stETH collateral surplus from the Cdp remains in the system, to be later claimed by its owner.
+If the redemption causes a CDP's full debt to be cancelled, the CDP is then closed: Gas Stipend from the Liquidation Reserve becomes avaiable for the borrower to reclaim along of the CDP's Collateral Surplus.
 
 ### Gas compensation helper functions
 
 Gas compensation functions are found in the parent _LiquityBase.sol_ contract:
 
-`_getCollGasCompensation(uint _entireColl)` returns the amount of stETH to be drawn from a cdp's collateral and sent as gas compensation. 
+`_getCollGasCompensation(uint _entireColl)` returns the amount of stETH to be drawn from a CDP's collateral and sent as gas compensation. 
 
-`_getCompositeDebt(uint _debt)` returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation.
+`_getCompositeDebt(uint _debt)` returns the composite debt (drawn debt + gas compensation) of a CDP, for the purpose of ICR calculation.
 
 ## eBTC System Fees
 
@@ -754,7 +753,7 @@ Upon each redemption:
 - `baseRate` is incremented by an amount proportional to the fraction of the total eBTC supply that was redeemed
 - The redemption rate is given by `min{REDEMPTION_FEE_FLOOR + baseRate * ETHdrawn, DECIMAL_PRECISION}`
 
-`REDEMPTION_FEE_FLOOR` is set to 0.5%, while `DECIMAL_PRECISION` is 100%.
+`REDEMPTION_FEE_FLOOR` is set to 1%, while `DECIMAL_PRECISION` is 100%.
 
 ### Intuition behind fees
 
@@ -762,9 +761,9 @@ The larger the redemption volume, the greater the fee percentage.
 
 The longer the time delay since the last operation, the more the `baseRate` decreases.
 
-The intent is to throttle large redemptions with higher fees, and to throttle borrowing directly after large redemption volumes. The `baseRate` decay over time ensures that the fee for both borrowers and redeemers will “cool down”, while redemptions volumes are low.
+The intent is to throttle large redemptions with higher fees. The `baseRate` decay over time ensures that the fee for redeemers will “cool down”, while redemptions volumes are low.
 
-Furthermore, the fees cannot become smaller than 0.5%, which in the case of redemptions protects the redemption facility from being front-run by arbitrageurs that are faster than the price feed.
+Furthermore, the fees cannot become smaller than 1% (Oracle's maximum deviation threshold), which in the case of redemptions protects the redemption facility from being front-run by arbitrageurs that are faster than the price feed.
 
 ### Fee decay Implementation
 
@@ -775,31 +774,31 @@ The decay parameter is tuned such that the fee changes by a factor of 0.99 per h
 ## Redistributions and Corrected Stakes
 > 🦉 This section is not updated for eBTC, as there is no stability pool. The mechanics of redistribution still apply though
 
-When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated Cdp, to all active Cdps in the system, in proportion to their collateral.
+When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated CDP, to all active CDPs in the system, in proportion to their collateral.
 
-For two Cdps A and B with collateral `A.coll > B.coll`, Cdp A should earn a bigger share of the liquidated collateral and debt.
+For two CDPs A and B with collateral `A.coll > B.coll`, CDP A should earn a bigger share of the liquidated collateral and debt.
 
-In eBTC it is important that all active Cdps remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Cdps’ collateral, preserves the ordering of active Cdps by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
+In eBTC it is important that all active CDPs remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Cdps’ collateral, preserves the ordering of active CDPs by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
 
-However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all Cdps and write new data to storage for each one. When a Cdp receives redistribution rewards, the system does not update the Cdp's collateral and debt properties - instead, the Cdp’s rewards remain "pending" until the borrower's next operation.
+However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all CDPs and write new data to storage for each one. When a CDP receives redistribution rewards, the system does not update the CDP's collateral and debt properties - instead, the Cdp’s rewards remain "pending" until the borrower's next operation.
 
 These “pending rewards” can not be accounted for in future reward calculations in a scalable way.
 
-However: the ICR of a Cdp is always calculated as the ratio of its total collateral to its total debt. So, a Cdp’s ICR calculation **does** include all its previous accumulated rewards.
+However: the ICR of a CDP is always calculated as the ratio of its total collateral to its total debt. So, a Cdp’s ICR calculation **does** include all its previous accumulated rewards.
 
-**This causes a problem: redistributions proportional to initial collateral can break cdp ordering.**
+**This causes a problem: redistributions proportional to initial collateral can break CDP ordering.**
 
-Consider the case where new Cdp is created after all active Cdps have received a redistribution from a liquidation. This “fresh” Cdp has then experienced fewer rewards than the older Cdps, and thus, it receives a disproportionate share of subsequent rewards, relative to its total collateral.
+Consider the case where new CDP is created after all active CDPs have received a redistribution from a liquidation. This “fresh” CDP has then experienced fewer rewards than the older CDPs, and thus, it receives a disproportionate share of subsequent rewards, relative to its total collateral.
 
-The fresh cdp would earns rewards based on its **entire** collateral, whereas old Cdps would earn rewards based only on **some portion** of their collateral - since a part of their collateral is pending, and not included in the Cdp’s `coll` property.
+The fresh CDP would earns rewards based on its **entire** collateral, whereas old CDPs would earn rewards based only on **some portion** of their collateral - since a part of their collateral is pending, and not included in the Cdp’s `coll` property.
 
-This can break the ordering of Cdps by ICR - see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
+This can break the ordering of CDPs by ICR - see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
 
 ### Corrected Stake Solution
 
-We use a corrected stake to account for this discrepancy, and ensure that newer Cdps earn the same liquidation rewards per unit of total collateral, as do older Cdps with pending rewards. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
+We use a corrected stake to account for this discrepancy, and ensure that newer CDPs earn the same liquidation rewards per unit of total collateral, as do older CDPs with pending rewards. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
 
-When a Cdp is opened, its stake is calculated based on its collateral, and snapshots of the entire system collateral and debt which were taken immediately after the last liquidation.
+When a CDP is opened, its stake is calculated based on its collateral, and snapshots of the entire system collateral and debt which were taken immediately after the last liquidation.
 
 A Cdp’s stake is given by:
 
@@ -807,11 +806,11 @@ A Cdp’s stake is given by:
 stake = _coll.mul(totalStakesSnapshot).div(totalCollateralSnapshot)
 ```
 
-It then earns redistribution rewards based on this corrected stake. A newly opened Cdp’s stake will be less than its raw collateral, if the system contains active Cdps with pending redistribution rewards when it was made.
+It then earns redistribution rewards based on this corrected stake. A newly opened Cdp’s stake will be less than its raw collateral, if the system contains active CDPs with pending redistribution rewards when it was made.
 
 Whenever a borrower adjusts their Cdp’s collateral, their pending rewards are applied, and a fresh corrected stake is computed.
 
-To convince yourself this corrected stake preserves ordering of active Cdps by ICR, please see the [proofs section](https://github.com/liquity/dev/blob/main/papers).
+To convince yourself this corrected stake preserves ordering of active CDPs by ICR, please see the [proofs section](https://github.com/liquity/dev/blob/main/papers).
 
 ## Math Proofs
 
@@ -819,20 +818,20 @@ The eBTC implementation relies on some important system properties and mathemati
 
 In particular, we have:
 
-- Proofs that Cdp ordering is maintained throughout a series of liquidations and new Cdp openings
+- Proofs that CDP ordering is maintained throughout a series of liquidations and new CDP openings
 - A derivation of a formula and implementation for a highly scalable (O(1) complexity) reward distribution in the Stability Pool, involving compounding and decreasing stakes.
 
 PDFs of these can be found in https://github.com/liquity/dev/blob/main/papers
 
 ## Definitions
 
-_**Cdp:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
+_**CDP:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
 
 _**eBTC**_:  The soft-pegged asset that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with the US dollar, and can always be redeemed directly with the system: 1 eBTC is always exchangeable for $1 USD worth of stETH.
 
-_**Active Cdp:**_ an Ethereum address owns an “active Cdp” if there is a node in the `SortedCdps` list with ID equal to the address, and non-zero collateral is recorded on the Cdp struct for that address.
+_**Active CDP:**_ an Ethereum address owns an “active Cdp” if there is a node in the `SortedCdps` list with ID equal to the address, and non-zero collateral is recorded on the CDP struct for that address.
 
-_**Closed Cdp:**_ a Cdp that was once active, but now has zero debt and zero collateral recorded on its struct, and there is no node in the `SortedCdps` list with ID equal to the owning address.
+_**Closed CDP:**_ a CDP that was once active, but now has zero debt and zero collateral recorded on its struct, and there is no node in the `SortedCdps` list with ID equal to the owning address.
 
 _**Active collateral:**_ the amount of stETH collateral recorded on a Cdp’s struct
 
@@ -842,13 +841,13 @@ _**Entire collateral:**_ the sum of a Cdp’s active collateral plus its pending
 
 _**Entire debt:**_ the sum of a Cdp’s active debt plus its pending debt rewards accumulated from distributions
 
-_**Individual collateralization ratio (ICR):**_ a Cdp's ICR is the ratio of the dollar value of its entire collateral at the current stETH:BTC price, to its entire debt
+_**Individual collateralization ratio (ICR):**_ a CDP's ICR is the ratio of the dollar value of its entire collateral at the current stETH:BTC price, to its entire debt
 
-_**Nominal collateralization ratio (nominal ICR, NICR):**_ a Cdp's nominal ICR is its entire collateral (in stETH) multiplied by 100e18 and divided by its entire debt.
+_**Nominal collateralization ratio (nominal ICR, NICR):**_ a CDP's nominal ICR is its entire collateral (in stETH) multiplied by 100e18 and divided by its entire debt.
 
-_**Total active collateral:**_ the sum of active collateral over all Cdps. Equal to the stETH in the ActivePool.
+_**Total active collateral:**_ the sum of active collateral over all CDPs. Equal to the stETH in the ActivePool.
 
-_**Total active debt:**_ the sum of active debt over all Cdps. Equal to the eBTC in the ActivePool.
+_**Total active debt:**_ the sum of active debt over all CDPs. Equal to the eBTC in the ActivePool.
 
 _**Total defaulted collateral:**_ the total stETH collateral in the DefaultPool
 
@@ -862,25 +861,25 @@ _**Total collateralization ratio (TCR):**_ the ratio of the dollar value of the 
 
 _**Critical collateralization ratio (CCR):**_ 150%. When the TCR is below the CCR, the system enters Recovery Mode.
 
-_**Borrower:**_ an externally owned account or contract that locks collateral in a Cdp and issues eBTC tokens to their own address. They “borrow” eBTC tokens against their stETH collateral.
+_**Borrower:**_ an externally owned account or contract that locks collateral in a CDP and issues eBTC tokens to their own address. They “borrow” eBTC tokens against their stETH collateral.
 
 _**Depositor:**_ an externally owned account or contract that has assigned eBTC tokens to the Stability Pool, in order to earn returns from liquidations, and receive LQTY token issuance.
 
 _**Redemption:**_ the act of swapping eBTC tokens with the system, in return for an equivalent value of stETH. Any account with a eBTC token balance may redeem them, whether or not they are a borrower.
 
-When eBTC is redeemed for stETH, the stETH is always withdrawn from the lowest collateral Cdps, in ascending order of their collateralization ratio. A redeemer can not selectively target Cdps with which to swap eBTC for stETH.
+When eBTC is redeemed for stETH, the stETH is always withdrawn from the lowest collateral CDPs, in ascending order of their collateralization ratio. A redeemer can not selectively target CDPs with which to swap eBTC for stETH.
 
-_**Repayment:**_ when a borrower sends eBTC tokens to their own Cdp, reducing their debt, and increasing their collateralization ratio.
+_**Repayment:**_ when a borrower sends eBTC tokens to their own CDP, reducing their debt, and increasing their collateralization ratio.
 
-_**Retrieval:**_ when a borrower with an active Cdp withdraws some or all of their stETH collateral from their own cdp, either reducing their collateralization ratio, or closing their Cdp (if they have zero debt and withdraw all their stETH)
+_**Retrieval:**_ when a borrower with an active CDP withdraws some or all of their stETH collateral from their own CDP, either reducing their collateralization ratio, or closing their CDP (if they have zero debt and withdraw all their stETH)
 
-_**Liquidation:**_ the act of force-closing an undercollateralized Cdp and redistributing its collateral and debt.
+_**Liquidation:**_ the act of force-closing an undercollateralized CDP and redistributing its collateral and debt.
 
-Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized Cdp, or batch liquidate Cdps in ascending order of collateralization ratio.
+Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized CDP, or batch liquidate CDPs in ascending order of collateralization ratio.
 
-_**Collateral Surplus**_: The difference between the dollar value of a Cdp's stETH collateral, and the dollar value of its eBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
+_**Collateral Surplus**_: The difference between the dollar value of a CDP's stETH collateral, and the dollar value of its eBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
 
-_**Redistribution:**_ assignment of liquidated debt and collateral directly to active Cdps, in proportion to their collateral.
+_**Redistribution:**_ assignment of liquidated debt and collateral directly to active CDPs, in proportion to their collateral.
 
 _**Gas compensation:**_ A refund, in eBTC and stETH, automatically paid to the caller of a liquidation function, intended to at least cover the gas cost of the transaction. Designed to ensure that liquidators are not dissuaded by potentially high gas costs.
 
@@ -991,13 +990,13 @@ These issues are not modified from the text of the Liquity readme, and may no lo
 
 ### Temporary and slightly inaccurate TCR calculation within `batchLiquidateCdps` in Recovery Mode. 
 
-When liquidating a cdp with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateCdps` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateCdps` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
+When liquidating a CDP with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateCdps` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateCdps` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
 
-There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 150% boundary, a large cdp must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
+There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 150% boundary, a large CDP must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
 
 ### SortedCdps edge cases - top and bottom of the sorted list
 
-When the cdp is at one end of the `SortedCdps` list and adjusted such that its ICR moves further away from its neighbor, `findInsertPosition` returns unhelpful positional hints, which if used can cause the `adjustCdp` transaction to run out of gas. This is due to the fact that one of the returned addresses is in fact the address of the cdp to move - however, at re-insertion, it has already been removed from the list. As such the insertion logic defaults to `0x0` for that hint address, causing the system to search for the cdp starting at the opposite end of the list. A workaround is possible, and this has been corrected in the SDK used by front ends.
+When the CDP is at one end of the `SortedCdps` list and adjusted such that its ICR moves further away from its neighbor, `findInsertPosition` returns unhelpful positional hints, which if used can cause the `adjustCdp` transaction to run out of gas. This is due to the fact that one of the returned addresses is in fact the address of the CDP to move - however, at re-insertion, it has already been removed from the list. As such the insertion logic defaults to `0x0` for that hint address, causing the system to search for the CDP starting at the opposite end of the list. A workaround is possible, and this has been corrected in the SDK used by front ends.
 
 ### Front-running issues
 
@@ -1011,13 +1010,13 @@ When the cdp is at one end of the `SortedCdps` list and adjusted such that its I
 - Depositor sees incoming price drop tx (or just anticipates one, by reading exchange price data), that would shortly be followed by unprofitable liquidation txs
 - Depositor front-runs with `withdrawFromSP()` to evade the loss
 
-Stability Pool depositors expect to make profits from liquidations which are likely to happen at a collateral ratio slightly below 110%, but well above 100%. In rare cases (flash crashes, oracle failures), cdps may be liquidated below 100% though, resulting in a net loss for stability depositors. Depositors thus have an incentive to withdraw their deposits if they anticipate liquidations below 100% (note that the exact threshold of such “unprofitable” liquidations will depend on the current Dollar price of eBTC).
+Stability Pool depositors expect to make profits from liquidations which are likely to happen at a collateral ratio slightly below 110%, but well above 100%. In rare cases (flash crashes, oracle failures), CDPs may be liquidated below 100% though, resulting in a net loss for stability depositors. Depositors thus have an incentive to withdraw their deposits if they anticipate liquidations below 100% (note that the exact threshold of such “unprofitable” liquidations will depend on the current Dollar price of eBTC).
 
 As long the difference between two price feed updates is <10% and price stability is maintained, loss evasion situations should be rare. The percentage changes between two consecutive prices reported by Chainlink’s stETH:BTC oracle has only ever come close to 10% a handful of times in the past few years.
 
-In the current implementation, deposit withdrawals are prohibited if and while there are cdps with a collateral ratio (ICR) < 110% in the system. This prevents loss evasion by front-running the liquidate transaction as long as there are cdps that are liquidatable in normal mode.
+In the current implementation, deposit withdrawals are prohibited if and while there are CDPs with a collateral ratio (ICR) < 110% in the system. This prevents loss evasion by front-running the liquidate transaction as long as there are CDPs that are liquidatable in normal mode.
 
-This solution is only partially effective since it does not prevent stability depositors from monitoring the stETH price feed and front-running oracle price update transactions that would make cdps liquidatable. Given that we expect loss-evasion opportunities to be very rare, we do not expect that a significant fraction of stability depositors would actually apply front-running strategies, which require sophistication and automation. In the unlikely event that large fraction of the depositors withdraw shortly before the liquidation of cdps at <100% CR, the redistribution mechanism will still be able to absorb defaults.
+This solution is only partially effective since it does not prevent stability depositors from monitoring the stETH price feed and front-running oracle price update transactions that would make CDPs liquidatable. Given that we expect loss-evasion opportunities to be very rare, we do not expect that a significant fraction of stability depositors would actually apply front-running strategies, which require sophistication and automation. In the unlikely event that large fraction of the depositors withdraw shortly before the liquidation of CDPs at <100% CR, the redistribution mechanism will still be able to absorb defaults.
 
 
 #### Reaping liquidation gains on the fly
@@ -1027,22 +1026,22 @@ This solution is only partially effective since it does not prevent stability de
 - User front-runs it and immediately makes a deposit with `provideToSP()`
 - User earns a profit
 
-Front-runners could deposit funds to the Stability Pool on the fly (instead of keeping their funds in the pool) and make liquidation gains when they see a pending price update or liquidate transaction. They could even borrow the eBTC using a cdp as a flash loan.
+Front-runners could deposit funds to the Stability Pool on the fly (instead of keeping their funds in the pool) and make liquidation gains when they see a pending price update or liquidate transaction. They could even borrow the eBTC using a CDP as a flash loan.
 
-Such flash deposit-liquidations would actually be beneficial (in terms of TCR) to system health and prevent redistributions, since the pool can be filled on the spot to liquidate cdps anytime, if only for the length of 1 transaction.
+Such flash deposit-liquidations would actually be beneficial (in terms of TCR) to system health and prevent redistributions, since the pool can be filled on the spot to liquidate CDPs anytime, if only for the length of 1 transaction.
 
 
-#### Front-running and changing the order of cdps as a DoS attack
+#### Front-running and changing the order of CDPs as a DoS attack
 
 *Example sequence:**
--Attacker sees incoming operation(`openLoan()`, `redeemCollateral()`, etc) that would insert a cdp to the sorted list
+-Attacker sees incoming operation(`openLoan()`, `redeemCollateral()`, etc) that would insert a CDP to the sorted list
 -Attacker front-runs with mass openLoan txs
 -Incoming operation becomes more costly - more traversals needed for insertion
 
-It’s theoretically possible to increase the number of the cdps that need to be traversed on-chain. That is, an attacker that sees a pending borrower transaction (or redemption or liquidation transaction) could try to increase the number of traversed cdps by introducing additional cdps on the way. However, the number of cdps that an attacker can inject before the pending transaction gets mined is limited by the amount of spendable gas. Also, the total costs of making the path longer by 1 are significantly higher (gas costs of opening a cdp, plus the 0.5% borrowing fee) than the costs of one extra traversal step (simply reading from storage). The attacker also needs significant capital on-hand, since the minimum debt for a cdp is 2000 eBTC.
+It’s theoretically possible to increase the number of the CDPs that need to be traversed on-chain. That is, an attacker that sees a pending borrower transaction (or redemption or liquidation transaction) could try to increase the number of traversed CDPs by introducing additional CDPs on the way. However, the number of CDPs that an attacker can inject before the pending transaction gets mined is limited by the amount of spendable gas. Also, the total costs of making the path longer by 1 are significantly higher (gas costs of opening a CDP, plus the 0.5% borrowing fee) than the costs of one extra traversal step (simply reading from storage). The attacker also needs significant capital on-hand, since the minimum debt for a CDP is 2000 eBTC.
 
-In case of a redemption, the “last” cdp affected by the transaction may end up being only partially redeemed from, which means that its ICR will change so that it needs to be reinserted at a different place in the sorted cdp list (note that this is not the case for partial liquidations in recovery mode, which preserve the ICR). A special ICR hint therefore needs to be provided by the transaction sender for that matter, which may become incorrect if another transaction changes the order before the redemption is processed. The protocol gracefully handles this by terminating the redemption sequence at the last fully redeemed cdp (see [here](https://github.com/liquity/dev#hints-for-redeemcollateral)).
+In case of a redemption, the “last” CDP affected by the transaction may end up being only partially redeemed from, which means that its ICR will change so that it needs to be reinserted at a different place in the sorted CDP list (note that this is not the case for partial liquidations in recovery mode, which preserve the ICR). A special ICR hint therefore needs to be provided by the transaction sender for that matter, which may become incorrect if another transaction changes the order before the redemption is processed. The protocol gracefully handles this by terminating the redemption sequence at the last fully redeemed CDP (see [here](https://github.com/liquity/dev#hints-for-redeemcollateral)).
 
-An attacker trying to DoS redemptions could be bypassed by redeeming an amount that exactly corresponds to the debt of the affected cdp(s).
+An attacker trying to DoS redemptions could be bypassed by redeeming an amount that exactly corresponds to the debt of the affected CDP(s).
 
 Finally, this DoS could be avoided if the initial transaction avoids the public gas auction entirely and is sent direct-to-miner, via (for example) Flashbots.
