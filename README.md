@@ -139,7 +139,8 @@ The eBTC system regularly updates the stETH:BTC price via a decentralized data f
 
 ## Liquidations
 
-eBTC utilizes an open and intentivized liqudiation system. Any user can liquidate an under-collateralized CDP. Then will recieve a fixed "gas compensation" fee as well as up to a 3% liquidation bonus on the collateral recieved. See [this](https://hackmd.io/@re73/r19oq9LM2) for details.
+
+eBTC implements an open and incentivized liquidation mechanism, where any user can liquidate a CDP that does not have enough collateral. As a reward for their service, the liquidator receives a percentage of the CDP's collateral, ranging from 3% to 10%. Additionally, the liquidator also receives a "Gas Stipend" of 0.2 stETH, which is previously deposited by the borrower as insurance against liquidation costs. See [this](https://hackmd.io/@re73/r19oq9LM2) for details.
 
 Anyone may call the public `liquidateCdps()` function, which will check for under-collateralized Cdps, and liquidate them. Alternatively they can call `batchLiquidateCdps()` with a custom list of cdp addresses to attempt to liquidate.
 
