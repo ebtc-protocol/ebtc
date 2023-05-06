@@ -86,7 +86,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
     }
 
     function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
-        uint256 fee = activePool.flashFee(address(collateral), amount);
+        uint256 fee = activePool.getFlashFee(address(collateral), amount);
 
         vm.assume(fee > 0);
 

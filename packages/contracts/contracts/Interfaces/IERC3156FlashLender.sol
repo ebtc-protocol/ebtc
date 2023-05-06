@@ -5,6 +5,9 @@ pragma solidity 0.8.17;
 import "./IERC3156FlashBorrower.sol";
 
 interface IERC3156FlashLender {
+    event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
+    event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
+
     /**
      * @dev The amount of currency available to be lent.
      * @param token The loan currency.
@@ -18,7 +21,7 @@ interface IERC3156FlashLender {
      * @param amount The amount of tokens lent.
      * @return The amount of `token` to be charged for the loan, on top of the returned principal.
      */
-    function flashFee(address token, uint256 amount) external view returns (uint256);
+    function getFlashFee(address token, uint256 amount) external view returns (uint256);
 
     /**
      * @dev Initiate a flash loan.
