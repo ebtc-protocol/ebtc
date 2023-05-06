@@ -20,7 +20,7 @@ Most of the `/Dependency` files are copy-pastes, but some are custom:
 `/packages/contracts/contracts/LQTY/feeRecipient`
 
 ## Other Notes
-- We anticipate liquidators and redemption arbers to use Curve and Balancer pools for on-chain liquidty, and anticipate potential economic attacks.   
+We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer pools to access on-chain liquidity. Potential economic attacks should be considered taking this into account.
 
 ## More information
 
