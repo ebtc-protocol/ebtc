@@ -7,7 +7,7 @@ eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and bu
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
 
-The redemption and liquidation mechanisms help ensure stability is maintained via economically-driven user interactions and arbitrage, rather than by active governance or monetary interventions.
+The redemption and liquidation mechanisms help ensure that stability is maintained through economically-driven user interactions and arbitrage, rather than through active governance or monetary interventions.
 
 ## eBTC Audit - What's in scope
 `/packages/contracts/contracts` (all files in the base directory)
