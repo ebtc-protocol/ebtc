@@ -131,7 +131,7 @@ The eBTC Token is designed with economic properties that aim to maintain price p
 
 2. eBTC token are fully redeemable - users can always swap $x worth of eBTC for $x worth of stETH (minus fees), directly with the system.
 
-After opening a Cdp with some stETH, users may issue ("borrow") tokens such that the collateralization ratio of their Cdp remains above 110%. A user with $1000 worth of stETH in a Cdp can issue up to $909.09 worth of eBTC.
+After opening a CDP with some stETH, users may issue ("borrow") tokens such that the collateralization ratio of their Cdp remains above 110%. A user with $1000 worth of stETH in a CDP can issue up to $909.09 worth of eBTC.
 
 The tokens are freely exchangeable - anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open Cdp or not. The tokens are burned upon repayment of a Cdp's debt.
 
