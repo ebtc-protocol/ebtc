@@ -135,7 +135,7 @@ After opening a CDP with some stETH, users may issue ("borrow") tokens such that
 
 The tokens are freely exchangeable - anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not. The tokens are burned upon repayment of a CDP's debt.
 
-The eBTC system regularly updates the stETH:BTC price via a decentralized data feed. When a Cdp falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
+The eBTC system regularly updates the stETH:BTC price via a decentralized data feed. When a CDP falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
 
 ## Liquidations
 
