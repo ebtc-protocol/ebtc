@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Dependencies/SafeMath.sol";
 import "../Dependencies/LiquityMath.sol";
@@ -12,7 +12,6 @@ import "../Interfaces/IFeeRecipient.sol";
 import "./BorrowerOperationsScript.sol";
 import "./ETHTransferScript.sol";
 import "./LQTYStakingScript.sol";
-import "../Dependencies/console.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, LQTYStakingScript {
@@ -23,7 +22,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     ICdpManager immutable cdpManager;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
-    IFeeRecipient immutable feeRecipient;
+    IFeeRecipient feeRecipient;
     ICollateralToken immutable collToken;
 
     constructor(

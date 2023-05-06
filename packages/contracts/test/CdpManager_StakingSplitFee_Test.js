@@ -31,15 +31,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
-
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
+	
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
@@ -48,7 +43,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     defaultPool = contracts.defaultPool;
     feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
-    minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();
+    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
@@ -58,7 +53,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     authority = contracts.authority;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 	
     splitFeeRecipient = await LQTYContracts.feeRecipient;
   })
@@ -77,6 +71,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);
 	  
       let _apBalBefore = await collToken.balanceOf(activePool.address);
+      let _securityDepositShare = liq_stipend.mul(mv._1e18BN).div(_newIndex);
       await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _apBalAfter = await collToken.balanceOf(activePool.address);
@@ -85,8 +80,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _totalColl = await cdpManager.getEntireSystemColl(); 
       th.assertIsApproximatelyEqual(_aliceColl, _totalColl, 0);	
 	  
-      let _underlyingBalBefore = _totalColl.mul(_newIndex).div(mv._1e18BN);
-      th.assertIsApproximatelyEqual(_apBalAfter.sub(_apBalBefore), _underlyingBalBefore);
+      let _underlyingBalBefore = (_totalColl.add(_securityDepositShare)).mul(_newIndex).div(mv._1e18BN);
+      let _diffApBal = _apBalAfter.sub(_apBalBefore);
+      th.assertIsApproximatelyEqual(_diffApBal, _underlyingBalBefore);
 	  
       let _price = await priceFeed.getPrice();
       let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _price);
@@ -302,8 +298,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));
       let _expectedColl = toBN(_redeemDebt.toString()).mul(mv._1e18BN).div(toBN(_newPrice));
       let _expectedRedeemedColl = _expectedColl.mul(mv._1e18BN).div(_newIndex);
-      let _expectedRedeemFee = await cdpManager.getRedemptionRate();
-      let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFee).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
+      let _expectedRedeemFloor = await cdpManager.redemptionFeeFloor();
+      let _expectedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(_expectedRedeemedColl, _newPrice);
+      let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFloor.add(_expectedBaseRate)).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
       const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
       let _collBeforeRedeemer = await collToken.balanceOf(owner); 
       await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  

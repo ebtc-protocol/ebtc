@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import "../../contracts/Dependencies/SafeMath.sol";
 import "../../contracts/Interfaces/ICdpManager.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
-    using SafeMath for uint256;
-
     uint internal constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
@@ -55,7 +52,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return debt.mul(collateralRatio).div(price);
+        return ((debt * collateralRatio) / price);
     }
 
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
@@ -66,7 +63,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return coll.mul(price).div(collateralRatio);
+        return ((coll * price) / collateralRatio);
     }
 
     /// @dev Given Borrow Amount, Price and Collateral Ratio tells you how much to deposit
@@ -75,7 +72,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return collateralRatio.mul(borrowAmount).div(price);
+        return ((collateralRatio * borrowAmount) / price);
     }
 
     /* This is the function that generates the random number.
@@ -84,7 +81,7 @@ contract Utilities is Test {
      */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, now, seed)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, block.timestamp, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;
@@ -120,7 +117,7 @@ contract Utilities is Test {
             mulDivUp(
                 amount - gasCompensation,
                 DECIMAL_PRECISION,
-                DECIMAL_PRECISION.add(borrowingRate)
+                (DECIMAL_PRECISION + borrowingRate)
             );
     }
 
@@ -130,9 +127,9 @@ contract Utilities is Test {
         uint _tolerance
     ) public pure returns (bool) {
         if (_num1 > _num2) {
-            return _tolerance >= _num1.sub(_num2);
+            return _tolerance >= (_num1 - _num2);
         } else {
-            return _tolerance >= _num2.sub(_num1);
+            return _tolerance >= (_num2 - _num1);
         }
     }
 }

@@ -1,6 +1,7 @@
 const { UniswapV2Factory } = require("./ABIs/UniswapV2Factory.js")
 const { UniswapV2Pair } = require("./ABIs/UniswapV2Pair.js")
 const { UniswapV2Router02 } = require("./ABIs/UniswapV2Router02.js")
+const { Lido } = require("./ABIs/Lido.js")
 const { ChainlinkAggregatorV3Interface } = require("./ABIs/ChainlinkAggregatorV3Interface.js")
 const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js")
 const { dec } = th
@@ -23,6 +24,8 @@ async function mainnetDeploy(configParams) {
   console.log('ChainId:', chainId.chainId)
 
   let deploymentState = mdh.loadPreviousDeployment()
+
+  const ZERO_ADDRESS = th.ZERO_ADDRESS
 
   // If local deployment record present, check if it exists in current environment
   if (Object.entries(deploymentState).length != 0 && chainId.chainId == 31337) {
@@ -62,6 +65,13 @@ async function mainnetDeploy(configParams) {
     deployerWallet
   )
 
+  // Get the collateral token contract
+  const collateralToken = new ethers.Contract(
+    configParams.externalAddrs.STETH_ERC20,
+    Lido.abi,
+    deployerWallet
+  )
+
   console.log(`Uniswp addr: ${uniswapV2Factory.address}`)
   const uniAllPairsLength = await uniswapV2Factory.allPairsLength()
   console.log(`Uniswap Factory number of pairs: ${uniAllPairsLength}`)
@@ -70,7 +80,7 @@ async function mainnetDeploy(configParams) {
   console.log(`deployer's ETH balance before deployments: ${deployerETHBalance}`)
 
   // Deploy core logic contracts
-  const ebtcCore = await mdh.deployLiquityCoreMainnet(configParams.externalAddrs.TELLOR_MASTER, deploymentState)
+  const ebtcCore = await mdh.deployEbtcCoreMainnet(configParams, deploymentState, chainId)
   await mdh.logContractObjects(ebtcCore)
 
   // Check Uniswap Pair EBTC-ETH pair before pair creation
@@ -98,6 +108,8 @@ async function mainnetDeploy(configParams) {
   // Deploy Unipool
   const unipool = await mdh.deployUnipoolMainnet(deploymentState)
 
+  console.log("deployEBTCContractsMainnet...")
+
   // Deploy EBTC Contracts
   const EBTCContracts = await mdh.deployEBTCContractsMainnet(
     configParams.ebtcAddrs.GENERAL_SAFE, // bounty address
@@ -107,13 +119,21 @@ async function mainnetDeploy(configParams) {
   )
 
   // Connect all core contracts up
-  await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams.externalAddrs.CHAINLINK_ETHBTC_PROXY)
-  await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore)
+  console.log("connectCoreContractsMainnet...")
+  await mdh.connectCoreContractsMainnet(ebtcCore, EBTCContracts, configParams)
+
+  console.log("connectEBTCContractsMainnet...")
+  await mdh.connectEBTCContractsMainnet(EBTCContracts)
+
+  console.log("connectEBTCContractsToCoreMainnet...")
+  await mdh.connectEBTCContractsToCoreMainnet(EBTCContracts, ebtcCore, configParams)
 
   // Deploy a read-only multi-cdp getter
+  console.log("deployMultiCdpGetterMainnet...")
   const multiCdpGetter = await mdh.deployMultiCdpGetterMainnet(ebtcCore, deploymentState)
 
   // Connect Unipool to LQTYToken and the EBTC-WETH pair address, with a 6 week duration
+  console.log("connectUnipoolMainnet...")
   const LPRewardsDuration = timeVals.SECONDS_IN_SIX_WEEKS
   await mdh.connectUnipoolMainnet(unipool, EBTCContracts, EBTCWETHPairAddr, LPRewardsDuration)
 
@@ -175,11 +195,6 @@ async function mainnetDeploy(configParams) {
   // Get latest price
   let chainlinkPrice = await chainlinkProxy.latestAnswer()
   console.log(`current Chainlink price: ${chainlinkPrice}`)
-
-  // Check Tellor price directly (through our TellorCaller)
-  let tellorPriceResponse = await ebtcCore.tellorCaller.getTellorCurrentValue(1) // id == 1: the ETH-USD request ID
-  console.log(`current Tellor price: ${tellorPriceResponse[1]}`)
-  console.log(`current Tellor timestamp: ${tellorPriceResponse[2]}`)
 
   // // --- Lockup Contracts ---
   console.log("LOCKUP CONTRACT CHECKS")
@@ -251,15 +266,32 @@ async function mainnetDeploy(configParams) {
   // Open cdp if not yet opened
   let cdpCount = await ebtcCore.sortedCdps.cdpCountOf(deployerWallet.address)
   if (cdpCount.toString() == '0') {
-    let _3kEBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
-    let _3ETHcoll = th.dec(30, 'ether') // 3 ETH
+    let _EBTCWithdrawal = th.dec(10, 18) // 10 EBTC
+    let _ETHcoll = th.dec(2000, 'ether')
+    let _ETHdeposit = th.dec(20000, 'ether')
+
+    console.log("Deployer converts ETH to collateral token ...")
+    await mdh.sendAndWaitForTransaction(
+      collateralToken.submit(ZERO_ADDRESS, { value: _ETHdeposit, gasPrice })
+    )
+
+    const collateralBal = await collateralToken.balanceOf(deployerWallet.address)
+    console.log(`deployer wallet has ${collateralBal} collateral token`) 
+    
+    console.log("Deployer approves collateral token for use by BorrowerOperations ...")
+    await mdh.sendAndWaitForTransaction(
+      collateralToken.approve(ebtcCore.borrowerOperations.address, dec(10000, 36), { gasPrice })
+    )
+    
     console.log("Deployer opens a cdp ...")
     await mdh.sendAndWaitForTransaction(
       ebtcCore.borrowerOperations.openCdp(
-        _3kEBTCWithdrawal,
+        th._100pct,
+        _EBTCWithdrawal,
         th.DUMMY_BYTES32,
         th.DUMMY_BYTES32,
-        { value: _3ETHcoll, gasPrice }
+        _ETHcoll,
+        { gasPrice }
       )
     )
   } else {
@@ -330,7 +362,10 @@ async function mainnetDeploy(configParams) {
       .mul(toBigNum(LP_ETH))
       .div(toBigNum(dec(1, 18)))
 
-    const minEBTCAmount = EBTCAmount.sub(toBigNum(dec(100, 18)))
+    const minEBTCAmount = EBTCAmount.sub(toBigNum(dec(1, 15)))
+
+    console.log(`EBTCAmount to provide is ${EBTCAmount}`)
+    console.log(`minEBTCAmount to provide is ${minEBTCAmount}`)
 
     latestBlock = await ethers.provider.getBlockNumber()
     now = (await ethers.provider.getBlock(latestBlock)).timestamp
@@ -365,19 +400,48 @@ async function mainnetDeploy(configParams) {
   // --- 2nd Account opens cdp ---
   cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
   if (cdpCount.toString() == '0') {
-    console.log("Acct 2 opens a cdp ...")
-    let _1500EBTCWithdrawal = th.dec(3000, 18) // 3000 EBTC
-    let _15_ETHcoll = th.dec(30, 18) // 30 ETH
+    let _1500EBTCWithdrawal = th.dec(10, 18) // 3000 EBTC
+    let _15_ETHcoll = th.dec(3000, 18) // 30 ETH
+    let _ETHdeposit = th.dec(30000, 18) // 30 ETH
     const borrowerOpsEthersFactory = await ethers.getContractFactory("BorrowerOperations", account2Wallet)
     const borrowerOpsAcct2 = await new ethers.Contract(ebtcCore.borrowerOperations.address, borrowerOpsEthersFactory.interface, account2Wallet)
+    const collateralTokenAcct2 = new ethers.Contract(
+      configParams.externalAddrs.STETH_ERC20,
+      Lido.abi,
+      account2Wallet
+    )
 
-    await mdh.sendAndWaitForTransaction(borrowerOpsAcct2.openCdp(_1500EBTCWithdrawal, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { value: _15_ETHcoll, gasPrice, gasLimit: 1000000 }))
+    console.log("Acct 2 converts ETH to collateral token ...")
+    await mdh.sendAndWaitForTransaction(
+      collateralTokenAcct2.submit(ZERO_ADDRESS, { value: _ETHdeposit, gasPrice })
+    )
+
+    const collateralBal = await collateralTokenAcct2.balanceOf(deployerWallet.address)
+    console.log(`Acct 2 wallet has ${collateralBal} collateral token`) 
+    
+    console.log("Acct 2 approves collateral token for use by BorrowerOperations ...")
+    await mdh.sendAndWaitForTransaction(
+      collateralTokenAcct2.approve(ebtcCore.borrowerOperations.address, dec(10000, 36), { gasPrice })
+    )
+    
+    console.log("Acct 2 opens a cdp ...")
+    await mdh.sendAndWaitForTransaction(
+      borrowerOpsAcct2.openCdp(
+        th._100pct,
+        _1500EBTCWithdrawal,
+        th.DUMMY_BYTES32,
+        th.DUMMY_BYTES32,
+        _15_ETHcoll,
+        { gasPrice }
+      )
+    )
   } else {
     console.log('Acct 2 already has an active cdp')
   }
 
   // Check deployer now has an open cdp
   cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
+  console.log(`Acct 2 CDP count is ${cdpCount}`)
   assert.equal(cdpCount, 1)
   const cdpId2 = await ebtcCore.sortedCdps._ownedCdps(account2Wallet.address, 0)
   console.log(`Acct 2 is in sorted list after making cdp: ${await ebtcCore.sortedCdps.contains(cdpId2)}`)

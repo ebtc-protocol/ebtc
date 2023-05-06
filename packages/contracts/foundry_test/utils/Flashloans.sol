@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../contracts/Interfaces/IERC3156FlashBorrower.sol";
 import {IERC20} from "../../contracts/Dependencies/IERC20.sol";
@@ -102,7 +102,7 @@ contract FlashLoanSpecReceiver is IERC3156FlashBorrower {
         receivedAmount = amount;
         receivedData = data;
 
-        // The flashLoan function MUST include a fee argument to onFlashLoan with the fee to pay for the loan on top of the principal, ensuring that fee == flashFee(token, amount).
+        // The flashLoan function MUST include a fee argument to onFlashLoan with the fee to pay for the loan on top of the principal, ensuring that fee == getFlashFee(token, amount).
         receivedFee = fee;
 
         // TODO: Because of this we have to transfer both amounts and then burn them vs burning direcrly

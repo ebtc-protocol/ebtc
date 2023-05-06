@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
@@ -15,8 +15,6 @@ import "../Dependencies/ICollateralToken.sol";
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {
-    using SafeMath for uint;
-
     uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
     uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
     uint public constant _5pct = 50000000000000000; // 5e16 == 5%
@@ -31,13 +29,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Critical system collateral ratio. If the system's total collateral ratio (TCR) falls below the CCR, Recovery Mode is triggered.
     uint public constant CCR = 1250000000000000000; // 125%
 
-    // Amount of EBTC to be locked in gas pool on opening cdps
-    uint public constant EBTC_GAS_COMPENSATION = 1e16;
-
+    // Amount of stETH collateral to be locked in active pool on opening cdps
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
-    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
-    uint public constant MIN_NET_DEBT = 2e18;
+    // Minimum amount of stETH collateral a CDP must have
+    uint public constant MIN_NET_COLL = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -47,24 +43,31 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant MAX_REWARD_SPLIT = 10_000;
 
-    IActivePool public activePool;
+    IActivePool public immutable activePool;
 
-    IDefaultPool public defaultPool;
+    IDefaultPool public immutable defaultPool;
 
-    IPriceFeed public override priceFeed;
+    IPriceFeed public immutable override priceFeed;
 
     // the only collateral token allowed in CDP
-    ICollateralToken public collateral;
+    ICollateralToken public immutable collateral;
+
+    constructor(
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _priceFeedAddress,
+        address _collateralAddress
+    ) {
+        activePool = IActivePool(_activePoolAddress);
+        defaultPool = IDefaultPool(_defaultPoolAddress);
+        priceFeed = IPriceFeed(_priceFeedAddress);
+        collateral = ICollateralToken(_collateralAddress);
+    }
 
     // --- Gas compensation functions ---
 
-    // Returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation
-    function _getCompositeDebt(uint _debt) internal pure returns (uint) {
-        return _debt.add(EBTC_GAS_COMPENSATION);
-    }
-
-    function _getNetDebt(uint _debt) internal pure returns (uint) {
-        return _debt.sub(EBTC_GAS_COMPENSATION);
+    function _getNetColl(uint _coll) internal pure returns (uint) {
+        return _coll - LIQUIDATOR_REWARD;
     }
 
     // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
@@ -72,18 +75,27 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _entireColl / PERCENT_DIVISOR;
     }
 
+    /**
+        @notice Get the entire system collateral
+        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
+     */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
-        uint activeColl = activePool.getETH();
-        uint liquidatedColl = defaultPool.getETH();
+        uint activeColl = activePool.getStEthColl();
+        uint liquidatedColl = defaultPool.getStEthColl();
 
-        return activeColl.add(liquidatedColl);
+        return (activeColl + liquidatedColl);
     }
 
+    /**
+        @notice Get the entire system debt
+        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+     */
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
         uint activeDebt = activePool.getEBTCDebt();
         uint closedDebt = defaultPool.getEBTCDebt();
 
-        return activeDebt.add(closedDebt);
+        return (activeDebt + closedDebt);
     }
 
     function _getTCR(uint256 _price) internal view returns (uint TCR) {
@@ -107,13 +119,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
-        uint feePercentage = _fee.mul(DECIMAL_PRECISION).div(_amount);
+        uint feePercentage = (_fee * DECIMAL_PRECISION) / _amount;
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
     }
 
     // Convert ETH/BTC price to BTC/ETH price
     function _getPriceReciprocal(uint _price) internal view returns (uint) {
-        return DECIMAL_PRECISION.mul(DECIMAL_PRECISION).div(_price);
+        return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
     }
 
     // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
@@ -121,13 +133,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // _price is ETH/BTC
     function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
         uint priceReciprocal = _getPriceReciprocal(_price);
-        return _debt.mul(priceReciprocal).div(DECIMAL_PRECISION);
+        return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
 
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
     function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
-        return _debt.mul(_price).div(DECIMAL_PRECISION);
+        return (_debt * _price) / DECIMAL_PRECISION;
     }
 }

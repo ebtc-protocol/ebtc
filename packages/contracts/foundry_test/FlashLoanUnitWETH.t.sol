@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
@@ -38,7 +38,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     function testBasicLoanWETH(uint128 loanAmount, uint128 giftAmount) public {
         require(address(wethReceiver) != address(0));
 
-        uint256 fee = activePool.flashFee(address(collateral), loanAmount);
+        uint256 fee = activePool.getFlashFee(address(collateral), loanAmount);
 
         // Funny enough 0 reverts because of deal not
         vm.assume(loanAmount > 0);
@@ -87,7 +87,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     /// @dev Cannot send ETH to ActivePool
-    function testCannotSendEth(uint256 amount) public {
+    function testCannotsendStEthColl(uint256 amount) public {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
@@ -102,18 +102,21 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         dealCollateral(address(activePool), loanAmount);
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        activePool.flashLoan(
-            wethReceiver,
-            address(collateral),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            activePool.flashLoan(
+                wethReceiver,
+                address(collateral),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     // Do nothing (no fee), check that it reverts
     function testWETHRevertsIfUnpaid(uint128 loanAmount) public {
-        uint256 fee = activePool.flashFee(address(collateral), loanAmount);
+        uint256 fee = activePool.getFlashFee(address(collateral), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
@@ -152,15 +155,15 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // If a token is not currently supported maxFlashLoan MUST return 0, instead of reverting.
         assertEq(activePool.maxFlashLoan(randomToken), 0);
 
-        uint256 fee = activePool.flashFee(address(collateral), amount);
+        uint256 fee = activePool.getFlashFee(address(collateral), amount);
 
         // The flashFee function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.FEE_AMT()) / activePool.MAX_BPS());
+        assertEq(fee, (amount * activePool.flashFee()) / activePool.MAX_BPS());
 
         // If the token is not supported flashFee MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
-        activePool.flashFee(randomToken, amount);
+        activePool.getFlashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("ActivePool: collateral Only");

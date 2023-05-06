@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
@@ -54,7 +54,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     function testBasicLoanEBTC(uint128 loanAmount) public {
         require(address(ebtcReceiver) != address(0));
 
-        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+        uint256 fee = borrowerOperations.getFlashFee(address(eBTCToken), loanAmount);
 
         // Funny enough 0 reverts because of deal not
         vm.assume(loanAmount > 0);
@@ -101,18 +101,21 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // Zero Overflow Case
         uint256 loanAmount = type(uint256).max;
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        borrowerOperations.flashLoan(
-            ebtcReceiver,
-            address(eBTCToken),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            borrowerOperations.flashLoan(
+                ebtcReceiver,
+                address(eBTCToken),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     /// @dev Do nothing (no fee), check that it reverts
     function testEBTCRevertsIfUnpaid(uint128 loanAmount) public {
-        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+        uint256 fee = borrowerOperations.getFlashFee(address(eBTCToken), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
@@ -141,15 +144,15 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // If a token is not currently supported maxFlashLoan MUST return 0, instead of reverting.
         assertEq(borrowerOperations.maxFlashLoan(randomToken), 0);
 
-        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
+        uint256 fee = borrowerOperations.getFlashFee(address(eBTCToken), amount);
 
         // The flashFee function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * borrowerOperations.FEE_AMT()) / borrowerOperations.MAX_BPS());
+        assertEq(fee, (amount * borrowerOperations.flashFee()) / borrowerOperations.MAX_BPS());
 
         // If the token is not supported flashFee MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
-        borrowerOperations.flashFee(randomToken, amount);
+        borrowerOperations.getFlashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");

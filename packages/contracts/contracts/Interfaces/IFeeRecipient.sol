@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 interface IFeeRecipient {
     // --- Events --
@@ -15,14 +15,6 @@ interface IFeeRecipient {
     event CollateralSent(address _account, uint _amount);
 
     // --- Functions ---
-
-    function setAddresses(
-        address _ebtcTokenAddress,
-        address _cdpManagerAddress,
-        address _borrowerOperationsAddress,
-        address _activePoolAddress,
-        address _collTokenAddress
-    ) external;
 
     function receiveStEthFee(uint _ETHFee) external;
 

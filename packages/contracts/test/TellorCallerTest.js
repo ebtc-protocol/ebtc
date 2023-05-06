@@ -26,11 +26,8 @@ contract('TellorCaller', async accounts => {
     tellorCaller = await TellorCaller.new(mockTellor.address)
     TellorCaller.setAsDeployed(tellorCaller)	
 	
-    dummyPriceFeed = await PriceFeed.new();
-    PriceFeed.setAsDeployed(dummyPriceFeed)
-	
-    qID = await dummyPriceFeed.STETH_BTC_TELLOR_QUERY_ID();
-    qBuffer = await dummyPriceFeed.tellorQueryBufferSeconds();
+    qID = "0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69";//await dummyPriceFeed.STETH_BTC_TELLOR_QUERY_ID();
+    qBuffer = 901;//await dummyPriceFeed.tellorQueryBufferSeconds();
     await mockTellor.setPrice(dec(3714, 13))
     const now = await th.getLatestBlockTimestamp(web3)	
     // set oracle update time to (now - buffer - 1) to satisfy the Tellor getDataBefore() semantic requirement:

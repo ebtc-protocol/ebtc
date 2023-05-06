@@ -1,12 +1,39 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../BorrowerOperations.sol";
 
 /* Tester contract inherits from BorrowerOperations, and provides external functions 
 for testing the parent's internal functions. */
 contract BorrowerOperationsTester is BorrowerOperations {
+    constructor(
+        address _cdpManagerAddress,
+        address _activePoolAddress,
+        address _defaultPoolAddress,
+        address _collSurplusPoolAddress,
+        address _priceFeedAddress,
+        address _sortedCdpsAddress,
+        address _ebtcTokenAddress,
+        address _feeRecipientAddress,
+        address _collTokenAddress
+    )
+        BorrowerOperations(
+            _cdpManagerAddress,
+            _activePoolAddress,
+            _defaultPoolAddress,
+            _collSurplusPoolAddress,
+            _priceFeedAddress,
+            _sortedCdpsAddress,
+            _ebtcTokenAddress,
+            _feeRecipientAddress,
+            _collTokenAddress
+        )
+    {}
+
+    bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
+    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x8508a195; //setMaxFlashFee(uint256)
+
     function getNewICRFromCdpChange(
         uint _coll,
         uint _debt,

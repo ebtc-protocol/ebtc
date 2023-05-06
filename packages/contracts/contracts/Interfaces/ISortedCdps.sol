@@ -1,24 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 // Common interface for the SortedCdps Doubly Linked List.
 interface ISortedCdps {
     // --- Events ---
 
+    event CdpManagerAddressChanged(address _cdpManagerAddress);
     event SortedCdpsAddressChanged(address _sortedDoublyLLAddress);
     event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
     event NodeAdded(bytes32 _id, uint _NICR);
     event NodeRemoved(bytes32 _id);
 
     // --- Functions ---
-
-    function setParams(
-        uint256 _size,
-        address _CdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) external;
 
     function insert(
         address owner,

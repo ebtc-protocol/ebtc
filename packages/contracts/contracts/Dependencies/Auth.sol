@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.6.0;
+pragma solidity >=0.8.0;
 
 import {Authority} from "./Authority.sol";
 
@@ -15,7 +15,7 @@ abstract contract Auth {
 
     Authority public authority;
 
-    constructor(address _owner, Authority _authority) public {
+    constructor(address _owner, Authority _authority) {
         owner = _owner;
         authority = _authority;
 

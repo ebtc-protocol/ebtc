@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "./CdpManager.sol";
@@ -80,6 +80,7 @@ contract MultiCdpGetter {
                 /* status */
                 /* arrayIndex */
                 ,
+                ,
 
             ) = cdpManager.Cdps(currentCdpId);
 
@@ -111,6 +112,7 @@ contract MultiCdpGetter {
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */
+                ,
                 ,
 
             ) = cdpManager.Cdps(currentCdpId);

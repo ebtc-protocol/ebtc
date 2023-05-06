@@ -1,4 +1,4 @@
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../Interfaces/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "../Interfaces/IERC3156FlashLender.sol";
@@ -70,5 +70,15 @@ contract SimpleLiquidationTester is IERC3156FlashBorrower {
 
         IERC20(token).approve(msg.sender, amount + fee);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+
+    // dummy test functions for activePool.sweepToken()
+    function balanceOf(address account) external view returns (uint256) {
+        return 1234567890;
+    }
+
+    // non-standard transfer() without returning bool
+    function transfer(address recipient, uint256 amount) external {
+        return;
     }
 }

@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Interfaces/ITellorCaller.sol";
 import "./ITellor.sol";
-import "./SafeMath.sol";
 
 /*
  * This contract is a mock that returns hardcoded price
  * Should not be used on mainnet
  */
 contract TellorCallerMock is ITellorCaller {
-    using SafeMath for uint256;
-
     ITellor public tellor;
 
     constructor(address _tellorMasterAddress) public {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
@@ -86,7 +86,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
     }
 
     function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
-        uint256 fee = activePool.flashFee(address(collateral), amount);
+        uint256 fee = activePool.getFlashFee(address(collateral), amount);
 
         vm.assume(fee > 0);
 
