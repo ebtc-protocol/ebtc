@@ -141,7 +141,6 @@ contract BorrowerOperations is
             }
         }
 
-        // Set the cdp struct's properties
         bytes32 _cdpId;
         {
             _cdpId = sortedCdps.insert(msg.sender, NICR, _upperHint, _lowerHint);
@@ -412,7 +411,6 @@ contract BorrowerOperations is
             );
         }
 
-        // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         {
             bytes32 cdpId = _cdpId;
             bytes32 upperHint = _upperHint;
@@ -421,6 +419,7 @@ contract BorrowerOperations is
         }
 
         {
+            // Use the unmodified _EBTCChange here, as we don't send the fee to the user
             uint256 collAddAmount = _collAddAmount;
             bool isDebtIncrease = _isDebtIncrease;
             uint256 EBTCChange = _EBTCChange;
