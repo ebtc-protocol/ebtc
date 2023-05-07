@@ -75,7 +75,7 @@ contract CdpManagerTester is CdpManager {
         uint decayedBaseRate = _calcDecayedBaseRate();
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
-        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 

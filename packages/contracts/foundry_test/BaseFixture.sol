@@ -44,7 +44,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
     bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
+    bytes4 private constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -319,7 +319,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
-        authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_BETA_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
 

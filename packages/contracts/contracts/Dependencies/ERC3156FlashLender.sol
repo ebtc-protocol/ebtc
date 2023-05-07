@@ -19,12 +19,7 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
     bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
-    function setFeeBps(uint _newFee) external {
-        require(
-            isAuthorized(msg.sender, SET_FEE_BPS_SIG),
-            "ERC3156FlashLender: sender not authorized for setFeeBps(uint256)"
-        );
-
+    function setFeeBps(uint _newFee) external requiresAuth {
         require(_newFee <= maxFeeBps, "ERC3156FlashLender: _newFee should <= maxFeeBps");
 
         // set new flash fee
@@ -33,12 +28,7 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }
 
-    function setMaxFeeBps(uint _newMaxFlashFee) external {
-        require(
-            isAuthorized(msg.sender, SET_MAX_FEE_BPS_SIG),
-            "ERC3156FlashLender: sender not authorized for setMaxFeeBps(uint256)"
-        );
-
+    function setMaxFeeBps(uint _newMaxFlashFee) external requiresAuth {
         require(_newMaxFlashFee <= MAX_BPS, "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
 
         // set new max flash fee
