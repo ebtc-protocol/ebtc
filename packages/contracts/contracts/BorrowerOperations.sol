@@ -128,6 +128,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     ) external override returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
+
     // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
         bytes32 _cdpId,

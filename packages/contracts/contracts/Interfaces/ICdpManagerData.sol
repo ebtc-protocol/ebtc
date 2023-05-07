@@ -131,6 +131,7 @@ interface ICdpManagerData {
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
+        bool sequenceLiq;
     }
 
     struct LocalVar_RecoveryLiquidate {
@@ -144,6 +145,7 @@ interface ICdpManagerData {
         uint256 _ICR;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
+        bool sequenceLiq;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -210,6 +212,7 @@ interface ICdpManagerData {
         uint eBtcToRedeem;
         uint stEthToRecieve;
         bool cancelledPartial;
+        bool fullRedemption;
     }
 
     function totalStakes() external view returns (uint);
