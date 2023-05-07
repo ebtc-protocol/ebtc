@@ -102,7 +102,7 @@ contract FlashLoanSpecReceiver is IERC3156FlashBorrower {
         receivedAmount = amount;
         receivedData = data;
 
-        // The flashLoan function MUST include a fee argument to onFlashLoan with the fee to pay for the loan on top of the principal, ensuring that fee == getFlashFee(token, amount).
+        // The flashLoan function MUST include a fee argument to onFlashLoan with the fee to pay for the loan on top of the principal, ensuring that fee == flashFee(token, amount).
         receivedFee = fee;
 
         // TODO: Because of this we have to transfer both amounts and then burn them vs burning direcrly

@@ -128,7 +128,7 @@ contract('CollSurplusPool', async accounts => {
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     poolAuthority.setPublicCapability(collSurplusPool.address, _sweepTokenFunc, true);  
     await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: Cannot Sweep Collateral');	  

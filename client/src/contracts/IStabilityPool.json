@@ -146,7 +146,7 @@
     {
       "constant": true,
       "inputs": [],
-      "name": "getETH",
+      "name": "getStEthColl",
       "outputs": [
         {
           "internalType": "uint256",

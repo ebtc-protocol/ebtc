@@ -860,7 +860,7 @@ contract BorrowerOperations is
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
 
-        uint256 fee = (amount * flashFee) / MAX_BPS;
+        uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC
         cachedEbtc.mint(address(receiver), amount);
@@ -883,10 +883,10 @@ contract BorrowerOperations is
         return true;
     }
 
-    function getFlashFee(address token, uint256 amount) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
-        return (amount * flashFee) / MAX_BPS;
+        return (amount * feeBps) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance

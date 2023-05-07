@@ -148,11 +148,7 @@ contract DefaultPool is IDefaultPool, ReentrancyGuard, AuthNoOwner {
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
-    function sweepToken(address token, uint amount) public nonReentrant {
-        require(
-            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
-            "DefaultPool: sender not authorized for sweepToken(address,uint256)"
-        );
+    function sweepToken(address token, uint amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "DefaultPool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));

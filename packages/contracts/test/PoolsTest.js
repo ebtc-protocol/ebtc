@@ -99,7 +99,7 @@ contract('ActivePool', async accounts => {
   it('flashloan(): should work', async () => {
     let _amount = "123456789";
     let _flashBorrower = await SimpleLiquidationTester.new();
-    let _fee = await activePool.getFlashFee(collToken.address, _amount);
+    let _fee = await activePool.flashFee(collToken.address, _amount);
 	  
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
     
@@ -120,7 +120,7 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, 0, _newPPFS), 'ActivePool: 0 Amount');
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _newPPFS, _newPPFS), 'ActivePool: Too much');
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, 0), 'ActivePool: IERC3156: Callback failed');
-    await th.assertRevert(activePool.getFlashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
+    await th.assertRevert(activePool.flashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
     assert.isTrue(web3.utils.toBN("0").eq(web3.utils.toBN((await activePool.maxFlashLoan(activePool.address)).toString())));
 	
     // should revert due to invariants check
@@ -128,8 +128,8 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, _manipulatedPPFS), 'ActivePool: Must repay Share');
   }) 
 	  
-  it("ActivePool governance permissioned: setFlashFee() should only allow authorized caller", async() => {	
-    await th.assertRevert(activePool.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
+  it("ActivePool governance permissioned: setFeeBps() should only allow authorized caller", async() => {	
+    await th.assertRevert(activePool.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
     assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
 
@@ -139,17 +139,17 @@ contract('ActivePool', async accounts => {
     await activePoolAuthority.setUserRole(alice, _role123, true, {from: accounts[0]});
 
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
-    await th.assertRevert(activePool.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
+    await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
 
     let _newFee = web3.utils.toBN("9999");
-    assert.isTrue(_newFee.gt(await activePool.flashFee()));
-    await activePool.setFlashFee(_newFee, {from: alice})
-    assert.isTrue(_newFee.eq(await activePool.flashFee()));
+    assert.isTrue(_newFee.gt(await activePool.feeBps()));
+    await activePool.setFeeBps(_newFee, {from: alice})
+    assert.isTrue(_newFee.eq(await activePool.feeBps()));
 
   })
 
-  it("ActivePool governance permissioned: setMaxFlashFee() should only allow authorized caller", async() => {	
-    await th.assertRevert(activePool.setMaxFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFlashFee(uint256)");   
+  it("ActivePool governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	
+    await th.assertRevert(activePool.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
     assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
 
@@ -161,12 +161,12 @@ contract('ActivePool', async accounts => {
     await activePoolAuthority.setUserRole(alice, _role123, true, {from: accounts[0]});
 
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
-    await th.assertRevert(activePool.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should < maxFlashFee");
+    await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < maxFeeBps");
 
     let _newFee = web3.utils.toBN("9999");
-    assert.isTrue(_newFee.lt(await activePool.maxFlashFee())); // starts at 10000
-    await activePool.setMaxFlashFee(_newFee, {from: alice})
-    assert.isTrue(_newFee.eq(await activePool.maxFlashFee()));
+    assert.isTrue(_newFee.lt(await activePool.maxFeeBps())); // starts at 10000
+    await activePool.setMaxFeeBps(_newFee, {from: alice})
+    assert.isTrue(_newFee.eq(await activePool.maxFeeBps()));
 
   })
  
@@ -175,7 +175,7 @@ contract('ActivePool', async accounts => {
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     activePoolAuthority.setPublicCapability(activePool.address, _sweepTokenFunc, true);  
     await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: Cannot Sweep Collateral');	  
@@ -325,7 +325,7 @@ contract('DefaultPool', async accounts => {
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);  
     await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: Cannot Sweep Collateral');	  

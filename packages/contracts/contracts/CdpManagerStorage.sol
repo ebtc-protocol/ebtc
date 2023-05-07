@@ -52,7 +52,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
     bytes4 internal constant SET_MINUTE_DECAY_FACTOR_SIG =
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 internal constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
+    bytes4 internal constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
 
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
@@ -64,7 +64,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      * in order to calc the new base rate from a redemption.
      * Corresponds to (1 / ALPHA) in the white paper.
      */
-    uint public constant BETA = 2;
+    uint public beta = 2;
 
     uint public baseRate;
 
