@@ -124,7 +124,7 @@ contract('BorrowerOperations', async accounts => {
     })	  
 	  
     it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
-	  await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFeeBps(uint256)");   
+	  await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
 	  assert.isTrue(authority.address == (await borrowerOperations.authority()));
 	  let _role123 = 123;
@@ -141,7 +141,7 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("BorrowerOperations governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	  
-      await assertRevert(borrowerOperations.setMaxFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFeeBps(uint256)");   
+      await assertRevert(borrowerOperations.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
   
       assert.isTrue(authority.address == (await borrowerOperations.authority()));
       let _role123 = 123;

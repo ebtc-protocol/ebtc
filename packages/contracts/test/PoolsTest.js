@@ -129,7 +129,7 @@ contract('ActivePool', async accounts => {
   }) 
 	  
   it("ActivePool governance permissioned: setFeeBps() should only allow authorized caller", async() => {	
-    await th.assertRevert(activePool.setFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFeeBps(uint256)");   
+    await th.assertRevert(activePool.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
     assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
 
@@ -149,7 +149,7 @@ contract('ActivePool', async accounts => {
   })
 
   it("ActivePool governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	
-    await th.assertRevert(activePool.setMaxFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFeeBps(uint256)");   
+    await th.assertRevert(activePool.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
     assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
 
@@ -175,7 +175,7 @@ contract('ActivePool', async accounts => {
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     activePoolAuthority.setPublicCapability(activePool.address, _sweepTokenFunc, true);  
     await th.assertRevert(activePool.sweepToken(collToken.address, _amt), 'ActivePool: Cannot Sweep Collateral');	  
@@ -325,7 +325,7 @@ contract('DefaultPool', async accounts => {
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);  
     await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: Cannot Sweep Collateral');	  

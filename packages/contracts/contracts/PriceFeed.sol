@@ -349,11 +349,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @notice Sets a new fallback oracle 
         @param _tellorCaller The new ITellorCaller-compliant oracle address
     **/
-    function setTellorCaller(address _tellorCaller) external {
-        require(
-            isAuthorized(msg.sender, SET_TELLOR_CALLER_SIG),
-            "PriceFeed: sender not authorized for setTellorCaller(address)"
-        );
+    function setTellorCaller(address _tellorCaller) external requiresAuth {
         tellorCaller = ITellorCaller(_tellorCaller);
         emit TellorCallerChanged(_tellorCaller);
     }

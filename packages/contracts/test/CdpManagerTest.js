@@ -4796,7 +4796,7 @@ contract('CdpManager', async accounts => {
   })
   
   it("CDPManager governance permissioned: requiresAuth() should only allow authorized caller", async() => {	  
-      await assertRevert(cdpManager.someFunc1({from: alice}), "UNAUTHORIZED");   
+      await assertRevert(cdpManager.someFunc1({from: alice}), "Auth: UNAUTHORIZED");   
 	  	  
       assert.isTrue(authority.address == (await cdpManager.authority()));
       const accounts = await web3.eth.getAccounts()
@@ -4811,7 +4811,7 @@ contract('CdpManager', async accounts => {
   })
   
   it("CDPManager governance permissioned: setRedemptionFeeFloor() should only allow authorized caller", async() => {	  
-      await assertRevert(cdpManager.setRedemptionFeeFloor(1, {from: alice}), "CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)");   
+      await assertRevert(cdpManager.setRedemptionFeeFloor(1, {from: alice}), "Auth: UNAUTHORIZED");   
 	  	  
       assert.isTrue(authority.address == (await cdpManager.authority()));
       let _role123 = 123;
@@ -4828,7 +4828,7 @@ contract('CdpManager', async accounts => {
   })
   
   it("CDPManager governance permissioned: setMinuteDecayFactor() should only allow authorized caller", async() => {	  
-      await assertRevert(cdpManager.setMinuteDecayFactor(1, {from: alice}), "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)");   
+      await assertRevert(cdpManager.setMinuteDecayFactor(1, {from: alice}), "Auth: UNAUTHORIZED");   
 	  	  
       assert.isTrue(authority.address == (await cdpManager.authority()));
       let _role123 = 123;

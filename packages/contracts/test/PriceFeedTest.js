@@ -2247,7 +2247,7 @@ contract('PriceFeed', async accounts => {
     let _newAuthority = await GovernorTester.new(alice);    
     let myPriceFeed = await PriceFeed.new(mockChainlink.address, tellorCaller.address, _newAuthority.address)
 	  
-    await assertRevert(myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setTellorCaller(address)"); 
+    await assertRevert(myPriceFeed.setTellorCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
     assert.isTrue(tellorCaller.address == (await myPriceFeed.tellorCaller())); 
 	  	  
     assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));

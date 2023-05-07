@@ -948,7 +948,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
 
-        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
         assert(newBaseRate > 0); // Base rate is always non-zero after redemption
 
@@ -1244,11 +1244,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Governance Parameters ---
 
-    function setStakingRewardSplit(uint _stakingRewardSplit) external {
-        require(
-            isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG),
-            "CDPManager: sender not authorized for setStakingRewardSplit(uint256)"
-        );
+    function setStakingRewardSplit(uint _stakingRewardSplit) external requiresAuth {
         require(
             _stakingRewardSplit <= MAX_REWARD_SPLIT,
             "CDPManager: new staking reward split exceeds max"
@@ -1258,11 +1254,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 
-    function setRedemptionFeeFloor(uint _redemptionFeeFloor) external {
-        require(
-            isAuthorized(msg.sender, SET_REDEMPTION_FEE_FLOOR_SIG),
-            "CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)"
-        );
+    function setRedemptionFeeFloor(uint _redemptionFeeFloor) external requiresAuth {
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
             "CDPManager: new redemption fee floor is lower than minimum"
@@ -1276,11 +1268,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
     }
 
-    function setMinuteDecayFactor(uint _minuteDecayFactor) external {
-        require(
-            isAuthorized(msg.sender, SET_MINUTE_DECAY_FACTOR_SIG),
-            "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)"
-        );
+    function setMinuteDecayFactor(uint _minuteDecayFactor) external requiresAuth {
         require(
             _minuteDecayFactor >= MIN_MINUTE_DECAY_FACTOR,
             "CDPManager: new minute decay factor out of range"
@@ -1296,6 +1284,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // set new factor after decaying
         minuteDecayFactor = _minuteDecayFactor;
         emit MinuteDecayFactorSet(_minuteDecayFactor);
+    }
+
+    function setBeta(uint _beta) external requiresAuth {
+        _decayBaseRate();
+
+        beta = _beta;
+        emit BetaSet(_beta);
     }
 
     // --- Cdp property getters ---
