@@ -55,7 +55,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
 
         // create users
         address payable[] memory expectedUsers = _utils.createUsers(usersWithRole);
-        
+
         // grant role to all users
         vm.startPrank(defaultGovernance);
         for (uint i = 0; i < expectedUsers.length; i++) {
@@ -74,31 +74,27 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
 
     // Setup: Assign a few addresses with various roles, then add and remove users
     // Test: getUsersByRole should return the updated list of addresses for each role after additions and removals
-    function test_GetUsersByRoleReturnsExpectedAfterAddingAndRemovingUsers(uint usersWithRole) public {
+    function test_GetUsersByRoleReturnsExpectedAfterAddingAndRemovingUsers(
+        uint usersWithRole
+    ) public {
         // vm.assume(usersWithRole < 100);
         // uint8 testRole = 50;
-
         // // create users
         // address payable[] memory expectedUsers = _utils.createUsers(usersWithRole);
-        
         // // grant role to all users
         // vm.startPrank(defaultGovernance);
         // for (uint i = 0; i < expectedUsers.length; i++) {
         //     authority.setUserRole(expectedUsers[i], testRole, true);
         // }
         // vm.stopPrank();
-
         // // remove role from some users
         // // generate random value between expectedUsers - 1 and 0
         // uint usersToRemove = 0;
         // uint numUsersExpected = expectedUsers.length - usersToRemove;
-
-        // // accumulate users that should have been removed into a new list  
+        // // accumulate users that should have been removed into a new list
         // // create list of users that remain
-
         // address[] memory actualUsers = authority.getUsersByRole(testRole);
         // assertEq(actualUsers.length, expectedUsers.length - usersToRemove, "Returned users length mismatch");
-
         // // assert each user that was removed is not in the actual list
         // // asert each user that was not removed is in the actual list
         // for (uint i = 0; i < actualUsers.length; i++) {
