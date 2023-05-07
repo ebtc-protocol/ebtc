@@ -69,15 +69,15 @@ contract BorrowerOperations is
     //     uint arrayIndex;
     // }
 
-    struct LocalVariables_moveTokens {
-        address user;
-        uint collChange;
-        uint collAddUnderlying; // ONLY for isCollIncrease=true
-        bool isCollIncrease;
-        uint EBTCChange;
-        bool isDebtIncrease;
-        uint netDebtChange;
-    }
+    // struct LocalVariables_moveTokens {
+    //     address user;
+    //     uint collChange;
+    //     uint collAddUnderlying; // ONLY for isCollIncrease=true
+    //     bool isCollIncrease;
+    //     uint EBTCChange;
+    //     bool isDebtIncrease;
+    //     uint netDebtChange;
+    // }
 
     struct ContractsCache {
         ICdpManager cdpManager;
@@ -427,19 +427,15 @@ contract BorrowerOperations is
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         {
-            LocalVariables_moveTokens memory _varMvTokens = LocalVariables_moveTokens(
-                msg.sender,
+            _moveTokensAndETHfromAdjustment(
+                contractsCache.activePool,
+                contractsCache.ebtcToken,
                 vars.collChange,
                 (vars.isCollIncrease ? _collAddAmount : 0),
                 vars.isCollIncrease,
                 _EBTCChange,
                 _isDebtIncrease,
                 vars.netDebtChange
-            );
-            _moveTokensAndETHfromAdjustment(
-                contractsCache.activePool,
-                contractsCache.ebtcToken,
-                _varMvTokens
             );
         }
     }
@@ -535,24 +531,23 @@ contract BorrowerOperations is
     function _moveTokensAndETHfromAdjustment(
         IActivePool _activePool,
         IEBTCToken _ebtcToken,
-        LocalVariables_moveTokens memory _varMvTokens
+        uint collChange,
+        uint collAddUnderlying,
+        bool isCollIncrease,
+        uint EBTCChange,
+        bool isDebtIncrease,
+        uint netDebtChange
     ) internal {
-        if (_varMvTokens.isDebtIncrease) {
-            _withdrawEBTC(
-                _activePool,
-                _ebtcToken,
-                _varMvTokens.user,
-                _varMvTokens.EBTCChange,
-                _varMvTokens.netDebtChange
-            );
+        if (isDebtIncrease) {
+            _withdrawEBTC(_activePool, _ebtcToken, msg.sender, EBTCChange, netDebtChange);
         } else {
-            _repayEBTC(_activePool, _ebtcToken, _varMvTokens.user, _varMvTokens.EBTCChange);
+            _repayEBTC(_activePool, _ebtcToken, msg.sender, EBTCChange);
         }
 
-        if (_varMvTokens.isCollIncrease) {
-            _activePoolAddColl(_activePool, _varMvTokens.collAddUnderlying, _varMvTokens.collChange);
+        if (isCollIncrease) {
+            _activePoolAddColl(_activePool, collAddUnderlying, collChange);
         } else {
-            _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
+            _activePool.sendStEthColl(msg.sender, collChange);
         }
     }
 
