@@ -59,15 +59,15 @@ contract BorrowerOperations is
         uint stake;
     }
 
-    struct LocalVariables_openCdp {
-        uint price;
-        uint netDebt;
-        uint compositeDebt;
-        uint ICR;
-        uint NICR;
-        uint stake;
-        uint arrayIndex;
-    }
+    // struct LocalVariables_openCdp {
+    //     uint price;
+    //     uint netDebt;
+    //     uint compositeDebt;
+    //     uint ICR;
+    //     uint NICR;
+    //     uint stake;
+    //     uint arrayIndex;
+    // }
 
     struct LocalVariables_moveTokens {
         address user;
@@ -150,78 +150,82 @@ contract BorrowerOperations is
         require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
 
         ContractsCache memory contractsCache = ContractsCache(cdpManager, activePool, ebtcToken);
-        LocalVariables_openCdp memory vars;
 
-        vars.price = priceFeed.fetchPrice();
-        // Reverse ETH/BTC price to BTC/ETH
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        uint256 NICR;
+        uint256 _collShareAmt;
+        uint256 netDebt;
+        uint256 compositeDebt;
+        {
+            uint256 price = priceFeed.fetchPrice();
+            // Reverse ETH/BTC price to BTC/ETH
+            bool isRecoveryMode = _checkRecoveryMode(price);
 
-        vars.netDebt = _EBTCAmount;
+            netDebt = _EBTCAmount;
+            _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(netDebt, price));
 
-        _requireAtLeastMinNetDebt(_convertDebtDenominationToEth(vars.netDebt, vars.price));
+            // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC gas comp.
+            compositeDebt = _getCompositeDebt(netDebt);
+            assert(compositeDebt > 0);
 
-        // ICR is based on the composite debt, i.e. the requested EBTC amount + EBTC gas comp.
-        vars.compositeDebt = _getCompositeDebt(vars.netDebt);
-        assert(vars.compositeDebt > 0);
+            _collShareAmt = collateral.getSharesByPooledEth(_collAmount);
 
-        uint _collShareAmt = collateral.getSharesByPooledEth(_collAmount);
-        vars.ICR = LiquityMath._computeCR(_collAmount, vars.compositeDebt, vars.price);
-        vars.NICR = LiquityMath._computeNominalCR(_collShareAmt, vars.compositeDebt);
+            uint256 ICR = LiquityMath._computeCR(_collAmount, compositeDebt, price);
+            NICR = LiquityMath._computeNominalCR(_collShareAmt, compositeDebt);
 
-        if (isRecoveryMode) {
-            _requireICRisAboveCCR(vars.ICR);
-        } else {
-            _requireICRisAboveMCR(vars.ICR);
-            uint newTCR = _getNewTCRFromCdpChange(
-                _collAmount,
-                true,
-                vars.compositeDebt,
-                true,
-                vars.price
-            ); // bools: coll increase, debt increase
-            _requireNewTCRisAboveCCR(newTCR);
+            if (isRecoveryMode) {
+                _requireICRisAboveCCR(ICR);
+            } else {
+                _requireICRisAboveMCR(ICR);
+                uint newTCR = _getNewTCRFromCdpChange(_collAmount, true, compositeDebt, true, price); // bools: coll increase, debt increase
+                _requireNewTCRisAboveCCR(newTCR);
+            }
         }
 
         // Set the cdp struct's properties
-        bytes32 _cdpId = sortedCdps.insert(msg.sender, vars.NICR, _upperHint, _lowerHint);
+        bytes32 _cdpId;
+        {
+            _cdpId = sortedCdps.insert(msg.sender, NICR, _upperHint, _lowerHint);
 
-        contractsCache.cdpManager.setCdpStatus(_cdpId, 1);
-        contractsCache.cdpManager.increaseCdpColl(_cdpId, _collShareAmt);
-        contractsCache.cdpManager.increaseCdpDebt(_cdpId, vars.compositeDebt);
+            contractsCache.cdpManager.setCdpStatus(_cdpId, 1);
+            contractsCache.cdpManager.increaseCdpColl(_cdpId, _collShareAmt);
+            contractsCache.cdpManager.increaseCdpDebt(_cdpId, compositeDebt);
 
-        contractsCache.cdpManager.updateCdpRewardSnapshots(_cdpId);
-        vars.stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
+            contractsCache.cdpManager.updateCdpRewardSnapshots(_cdpId);
+            uint256 stake = contractsCache.cdpManager.updateStakeAndTotalStakes(_cdpId);
 
-        vars.arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
-        emit CdpCreated(_cdpId, msg.sender, vars.arrayIndex);
+            uint256 arrayIndex = contractsCache.cdpManager.addCdpIdToArray(_cdpId);
+            emit CdpCreated(_cdpId, msg.sender, arrayIndex);
 
-        // Mint the EBTCAmount to the borrower
-        _withdrawEBTC(
-            contractsCache.activePool,
-            contractsCache.ebtcToken,
-            msg.sender,
-            _EBTCAmount,
-            vars.netDebt
-        );
-        // Move the EBTC gas compensation to the Gas Pool
-        _withdrawEBTC(
-            contractsCache.activePool,
-            contractsCache.ebtcToken,
-            gasPoolAddress,
-            EBTC_GAS_COMPENSATION,
-            EBTC_GAS_COMPENSATION
-        );
+            emit CdpUpdated(
+                _cdpId,
+                msg.sender,
+                0,
+                0,
+                compositeDebt,
+                _collShareAmt,
+                stake,
+                BorrowerOperation.openCdp
+            );
+        }
 
-        emit CdpUpdated(
-            _cdpId,
-            msg.sender,
-            0,
-            0,
-            vars.compositeDebt,
-            _collShareAmt,
-            vars.stake,
-            BorrowerOperation.openCdp
-        );
+        {
+            // Mint the EBTCAmount to the borrower
+            _withdrawEBTC(
+                contractsCache.activePool,
+                contractsCache.ebtcToken,
+                msg.sender,
+                _EBTCAmount,
+                netDebt
+            );
+            // Move the EBTC gas compensation to the Gas Pool
+            _withdrawEBTC(
+                contractsCache.activePool,
+                contractsCache.ebtcToken,
+                gasPoolAddress,
+                EBTC_GAS_COMPENSATION,
+                EBTC_GAS_COMPENSATION
+            );
+        }
 
         // CEI: Move the collateral to the Active Pool
         _activePoolAddColl(contractsCache.activePool, _collAmount, _collShareAmt);
