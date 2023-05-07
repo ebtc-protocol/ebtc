@@ -6,7 +6,7 @@ import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
 import "./CollateralTokenTester.sol";
-import "./PriceFeedTestnet.sol";
+import "./testnet/PriceFeedTestnet.sol";
 import "./EBTCTokenTester.sol";
 import "../Interfaces/IERC3156FlashBorrower.sol";
 import "../Dependencies/IERC20.sol";

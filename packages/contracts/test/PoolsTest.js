@@ -99,7 +99,7 @@ contract('ActivePool', async accounts => {
   it('flashloan(): should work', async () => {
     let _amount = "123456789";
     let _flashBorrower = await SimpleLiquidationTester.new();
-    let _fee = await activePool.getFlashFee(collToken.address, _amount);
+    let _fee = await activePool.flashFee(collToken.address, _amount);
 	  
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
     
@@ -120,7 +120,7 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, 0, _newPPFS), 'ActivePool: 0 Amount');
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _newPPFS, _newPPFS), 'ActivePool: Too much');
     await th.assertRevert(_flashBorrower.initFlashLoan(activePool.address, collToken.address, _amount, 0), 'ActivePool: IERC3156: Callback failed');
-    await th.assertRevert(activePool.getFlashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
+    await th.assertRevert(activePool.flashFee(activePool.address, _newPPFS), 'ActivePool: collateral Only');
     assert.isTrue(web3.utils.toBN("0").eq(web3.utils.toBN((await activePool.maxFlashLoan(activePool.address)).toString())));
 	
     // should revert due to invariants check
@@ -142,9 +142,9 @@ contract('ActivePool', async accounts => {
     await th.assertRevert(activePool.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
 
     let _newFee = web3.utils.toBN("9999");
-    assert.isTrue(_newFee.gt(await activePool.flashFee()));
+    assert.isTrue(_newFee.gt(await activePool.feeBps()));
     await activePool.setFlashFee(_newFee, {from: alice})
-    assert.isTrue(_newFee.eq(await activePool.flashFee()));
+    assert.isTrue(_newFee.eq(await activePool.feeBps()));
 
   })
 

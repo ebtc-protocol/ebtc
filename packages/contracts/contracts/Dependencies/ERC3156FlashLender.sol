@@ -11,7 +11,7 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
     address public constant FEE_RECIPIENT = address(1);
     uint256 public constant MAX_BPS = 10_000;
 
-    uint256 public flashFee = 50; // 50 BPS
+    uint256 public feeBps = 50; // 50 BPS
     uint256 public maxFlashFee = MAX_BPS; // 1000 BPS
 
     bytes32 public constant FLASH_SUCCESS_VALUE = keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -29,8 +29,8 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
         require(_newFee <= maxFlashFee, "ERC3156FlashLender: _newFee should <= maxFlashFee");
 
         // set new flash fee
-        uint _oldFee = flashFee;
-        flashFee = _newFee;
+        uint _oldFee = feeBps;
+        feeBps = _newFee;
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }
 

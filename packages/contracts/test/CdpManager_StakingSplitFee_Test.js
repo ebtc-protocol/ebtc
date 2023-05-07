@@ -400,7 +400,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
       let _cdpDebtColl = await cdpManager.getEntireDebtAndColl(_cdpId);
-      let _activeColl = await activePool.getETH();
+      let _activeColl = await activePool.getStEthColl();
       let _systemDebt = await cdpManager.getEntireSystemDebt();
       th.assertIsApproximatelyEqual(_activeColl, _cdpDebtColl[1], _errorTolerance.toNumber());
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
@@ -420,7 +420,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
 	  
       _cdpColl = _cdpDebtColl[1];
-      _activeColl = await activePool.getETH();
+      _activeColl = await activePool.getStEthColl();
       let _diff = _cdpColl.gt(_activeColl)? _cdpColl.sub(_activeColl).mul(mv._1e18BN) : _activeColl.sub(_cdpColl).mul(mv._1e18BN);
       let _divisor = _cdpColl.gt(_activeColl)? _cdpColl : _activeColl;
       let _target = _errorTolerance.mul(_divisor);

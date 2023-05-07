@@ -23,7 +23,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
     function test_FlashFeeInValidFullRange(uint newFee) public {
         vm.assume(newFee < MAX_BPS);
 
-        uint oldFee = borrowerOperations.flashFee();
+        uint oldFee = borrowerOperations.feeBps();
 
         vm.startPrank(defaultGovernance);
 
@@ -32,7 +32,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
 
         borrowerOperations.setFlashFee(newFee);
 
-        assertEq(borrowerOperations.flashFee(), newFee);
+        assertEq(borrowerOperations.feeBps(), newFee);
 
         vm.stopPrank();
     }
@@ -41,7 +41,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
         vm.assume(randomMaxFlashFee < MAX_BPS);
         vm.assume(newFee < randomMaxFlashFee);
 
-        uint oldFee = borrowerOperations.flashFee();
+        uint oldFee = borrowerOperations.feeBps();
 
         vm.startPrank(defaultGovernance);
 
@@ -50,7 +50,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
 
         borrowerOperations.setFlashFee(newFee);
 
-        assertEq(borrowerOperations.flashFee(), newFee);
+        assertEq(borrowerOperations.feeBps(), newFee);
 
         vm.stopPrank();
     }

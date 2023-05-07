@@ -134,9 +134,9 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 	  await assertRevert(borrowerOperations.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFlashFee");
 	  let _newFee = toBN("9999");
-	  assert.isTrue(_newFee.gt(await borrowerOperations.flashFee()));
+	  assert.isTrue(_newFee.gt(await borrowerOperations.feeBps()));
 	  await borrowerOperations.setFlashFee(_newFee, {from: alice})
-	  assert.isTrue(_newFee.eq(await borrowerOperations.flashFee()));
+	  assert.isTrue(_newFee.eq(await borrowerOperations.feeBps()));
 
     })
 
