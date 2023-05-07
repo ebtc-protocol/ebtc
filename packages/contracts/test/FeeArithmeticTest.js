@@ -4,6 +4,7 @@ const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
+const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const th = testHelpers.TestHelper
 const timeValues = testHelpers.TimeValues
@@ -331,19 +332,19 @@ contract('Fee arithmetic tests', async accounts => {
   ]
 
   before(async () => {
-    cdpManagerTester = await CdpManagerTester.new()
-    CdpManagerTester.setAsDeployed(cdpManagerTester)
-
     mathTester = await LiquityMathTester.new()
     LiquityMathTester.setAsDeployed(mathTester)
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    const LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
+	
+    liquidationLibrary = contracts.liquidationLibrary
+    cdpManagerTester = contracts.cdpManager;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it("minutesPassedSinceLastFeeOp(): returns minutes passed for no time increase", async () => {

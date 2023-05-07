@@ -28,14 +28,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     cdpManager = contracts.cdpManager
     priceFeed = contracts.priceFeedTestnet
@@ -43,7 +38,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    minDebt = await contracts.borrowerOperations.MIN_NET_DEBT();	
+    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    liqReward = await contracts.cdpManager.LIQUIDATOR_REWARD();	
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
@@ -52,7 +48,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     liqStipend = await cdpManager.LIQUIDATOR_REWARD()
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
   
   it("CDP needs to be active to be liquidated", async() => {	  
@@ -87,7 +82,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {
-      let {tx: opAliceTx} = await openCdp({ ICR: toBN(dec(299, 16)), extraParams: { from: alice } })
+      let {tx: opAliceTx} = await openCdp({ ICR: toBN(dec(299, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(199, 16)), extraParams: { from: bob } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       assert.isTrue(await sortedCdps.contains(_aliceCdpId));
@@ -130,7 +125,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);
       let _collLiquidatorPre = await collToken.balanceOf(bob);	 	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       let _expectedDebtRepaid = _colDeposited.mul(toBN(_newPrice)).div(LICR);
 	  
@@ -141,7 +136,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);
       let _collLiquidatorPost = await collToken.balanceOf(bob);	  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 
       // check CdpLiquidated event
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
@@ -157,7 +152,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_debtDecreased.toString(), _expectedDebtRepaid.toString());		  
       const gasUsedETH = toBN(tx.receipt.effectiveGasPrice.toString()).mul(toBN(_gasUsed.toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));//.add(gasUsedETH);
-      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.toString(), '!liquidator collateral balance');	 
+      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.add(liqReward).toString(), '!liquidator collateral balance');	 
 	  
       // check system balance change
       let _debtDecreasedSystem = toBN(_debtSystemPre.toString()).sub(toBN(_debtSystemPost.toString()));
@@ -175,7 +170,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm removed CDP have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })
   
   it("Should allow non-EOA liquidator", async () => {
@@ -202,7 +197,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(simpleLiquidationTester.address);
       let _collLiquidatorPre = await collToken.balanceOf(simpleLiquidationTester.address); 	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       let _expectedDebtRepaid = _colDeposited.mul(toBN(_newPrice)).div(LICR);
 	  
@@ -213,7 +208,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(simpleLiquidationTester.address);	
       let _collLiquidatorPost = await collToken.balanceOf(simpleLiquidationTester.address);  
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 	  
       // check EtherReceived event
 //      const seizedEtherEvents = th.getAllEventsByName(tx, 'EtherReceived')
@@ -225,7 +220,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _debtDecreased = toBN(_debtLiquidatorPre.toString()).sub(toBN(_debtLiquidatorPost.toString()));
       th.assertIsApproximatelyEqual(_debtDecreased.toString(), _expectedDebtRepaid.toString());		
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
-      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.toString(), '!liquidator collateral balance');	 
+      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.add(liqReward).toString(), '!liquidator collateral balance');	 
 	  
       // check system balance change
       let _debtDecreasedSystem = toBN(_debtSystemPre.toString()).sub(toBN(_debtSystemPost.toString()));
@@ -243,7 +238,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm removed CDP have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })  
   
   // with collateral token, there is no hook for liquidator to use 
@@ -372,7 +367,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // owner get collateral from alice by repaying the debts
       assert.equal(toBN(prevDebtOfOwner.toString()).sub(toBN(postDebtOfOwner.toString())).toString(), toBN(_expectedDebtRepaid.toString()).toString());
-      assert.equal(_ethSeizedByLiquidator.toString(), toBN(aliceColl.toString()).toString());
+      assert.equal(_ethSeizedByLiquidator.toString(), toBN(aliceColl.toString()).add(liqReward).toString());
   }) 
   
   it("liquidate(): liquidate a CDP in recovery mode with some surplus to claim", async () => {	
@@ -409,7 +404,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _aliceICR = await cdpManager.getCurrentICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).gt(toBN(_MCR.toString())));
-      let _cappedLiqColl = toBN(aliceDebt.toString()).mul(_MCR).div(toBN(_newPrice)).add(mv._LIQUIDATION_REWARD);
+      let _cappedLiqColl = toBN(aliceDebt.toString()).mul(_MCR).div(toBN(_newPrice));
       let _liquidateRecoveryTx = await cdpManager.liquidate(aliceCdpId, { from: owner});	  
       let postDebtOfOwner = await debtToken.balanceOf(owner);
       let postETHOfOwner = await ethers.provider.getBalance(owner);	
@@ -431,7 +426,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // owner get collateral from alice by repaying the debts
       assert.equal(toBN(prevDebtOfOwner.toString()).sub(toBN(postDebtOfOwner.toString())).toString(), toBN(aliceDebt.toString()).toString());
-      assert.equal(_ethSeizedByLiquidator.toString(), toBN(aliceColl.toString()).sub(toBN(_toClaimSurplus.toString())).toString());
+      assert.equal(_ethSeizedByLiquidator.toString(), toBN(aliceColl.toString()).add(liqReward).sub(toBN(_toClaimSurplus.toString())).toString());
 	  
       // alice could claim whatever surplus is
       let prevETHOfAlice = await ethers.provider.getBalance(alice);	
@@ -560,13 +555,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);	
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
       let _debtInAllPoolPre = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPre = toBN((await activePool.getETH()).toString()).add(toBN((await defaultPool.getETH()).toString()));
+      let _collInAllPoolPre = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
       const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmount, _aliceCdpId, _aliceCdpId, {from: bob}) 
       let _collRemaining = await cdpManager.getCdpColl(_aliceCdpId); 
       let _stakeRemaining = await cdpManager.getCdpStake(_aliceCdpId);
       let _debtRemaining = await cdpManager.getCdpDebt(_aliceCdpId);
       let _debtInAllPoolPost = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPost = toBN((await activePool.getETH()).toString()).add(toBN((await defaultPool.getETH()).toString()));
+      let _collInAllPoolPost = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
       let _additionalCol = dec(1, 'ether');
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
       await contracts.collateral.deposit({from: alice, value: _additionalCol});
@@ -618,7 +613,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm CDP have status 'active' (Status enum element idx 1)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
 	  
       // Confirm partially liquidated CDP got higher or at least equal ICR than before
       let _aliceNewICR = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
@@ -658,7 +653,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);	
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
       let _debtInActivePoolPre = await activePool.getEBTCDebt();
-      let _collInActivePoolPre = await activePool.getETH();
+      let _collInActivePoolPre = await activePool.getStEthColl();
 	  
       for(let i = 0;i < _partialLiquidations;i++){
           if(i < _partialLiquidations - 1){
@@ -678,7 +673,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);	  
       let _collLiquidatorPost = await collToken.balanceOf(bob);	
       let _debtInActivePoolPost = await activePool.getEBTCDebt();
-      let _collInActivePoolPost = await activePool.getETH();
+      let _collInActivePoolPost = await activePool.getStEthColl();
 	  
       // check liquidator balance change
       let _leftCollWithHalfDebtRepaid = _colDeposited.sub(_quarterDebt.add(_quarterDebt).mul(LICR).div(toBN(_newPrice)));
@@ -691,7 +686,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           gasUsedETH = gasUsedETH.add(toBN(_partialLiquidationTxs[i].receipt.effectiveGasPrice.toString()).mul(toBN(_gasUsed.toString())));	  		  
       }
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
-      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.toString(), '!liquidator collateral balance');
+      assert.equal(_ethSeizedByLiquidator.toString(), _colDeposited.add(liqReward).toString(), '!liquidator collateral balance');
 	  
       // check system balance change
       let _debtDecreasedSystem = toBN(_debtSystemPre.toString()).sub(toBN(_debtSystemPost.toString()));
@@ -709,7 +704,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
 
       // Confirm CDPs have status 'closed by liquidation' (Status enum element idx 3)
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '3')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')
   })
   
   it("Partial liquidation can not leave CDP below minimum debt size", async () => {

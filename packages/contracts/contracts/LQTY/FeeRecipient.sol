@@ -1,21 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Dependencies/BaseMath.sol";
-import "../Dependencies/SafeMath.sol";
-import "../Dependencies/Ownable.sol";
-import "../Dependencies/CheckContract.sol";
-import "../Dependencies/console.sol";
 import "../Interfaces/IFeeRecipient.sol";
 import "../Dependencies/LiquityMath.sol";
 import "../Interfaces/IEBTCToken.sol";
 import "../Interfaces/ICdpManager.sol";
 import "../Dependencies/ICollateralToken.sol";
 
-contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
-    using SafeMath for uint;
-
+contract FeeRecipient is IFeeRecipient, BaseMath {
     // --- Data ---
     string public constant NAME = "FeeRecipient";
 
@@ -26,32 +20,15 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
     address public borrowerOperationsAddress;
     address public activePoolAddress;
 
-    // --- Events ---
-
-    event EBTCTokenAddressSet(address _ebtcTokenAddress);
-    event CdpManagerAddressSet(address _cdpManager);
-    event BorrowerOperationsAddressSet(address _borrowerOperationsAddress);
-    event ActivePoolAddressSet(address _activePoolAddress);
-    event CollateralAddressSet(address _collTokenAddress);
-
-    event ReceiveFee(address indexed _sender, address indexed _token, uint _amount);
-    event CollateralSent(address _account, uint _amount);
-
     // --- Functions ---
 
-    function setAddresses(
+    constructor(
         address _ebtcTokenAddress,
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _activePoolAddress,
         address _collTokenAddress
-    ) external override onlyOwner {
-        checkContract(_ebtcTokenAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_activePoolAddress);
-        checkContract(_collTokenAddress);
-
+    ) {
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
         cdpManagerAddress = _cdpManagerAddress;
         borrowerOperationsAddress = _borrowerOperationsAddress;
@@ -63,8 +40,6 @@ contract FeeRecipient is IFeeRecipient, Ownable, CheckContract, BaseMath {
         emit BorrowerOperationsAddressSet(_borrowerOperationsAddress);
         emit ActivePoolAddressSet(_activePoolAddress);
         emit CollateralAddressSet(_collTokenAddress);
-
-        _renounceOwnership();
     }
 
     // --- Reward-per-unit-staked increase functions. Called by Liquity core contracts ---

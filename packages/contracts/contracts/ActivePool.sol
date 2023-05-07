@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
+pragma experimental ABIEncoderV2;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
-import "./Dependencies/console.sol";
 import "./Dependencies/ICollateralToken.sol";
-
 import "./Dependencies/ERC3156FlashLender.sol";
+import "./Dependencies/SafeERC20.sol";
+import "./Dependencies/ReentrancyGuard.sol";
+import "./Dependencies/AuthNoOwner.sol";
 
 /*
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -21,49 +20,34 @@ import "./Dependencies/ERC3156FlashLender.sol";
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  *
  */
-contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
-    using SafeMath for uint256;
-
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 
-    address public borrowerOperationsAddress;
-    address public cdpManagerAddress;
-    address public defaultPoolAddress;
-    address public collSurplusPoolAddress;
-    address public feeRecipientAddress;
-    uint256 internal ETH; // deposited ether tracker
+    // -- Permissioned Function Signatures --
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
+
+    address public immutable borrowerOperationsAddress;
+    address public immutable cdpManagerAddress;
+    address public immutable defaultPoolAddress;
+    address public immutable collSurplusPoolAddress;
+    address public immutable override feeRecipientAddress;
+
+    uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
     ICollateralToken public collateral;
 
-    // --- Events ---
-
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
-    event ActivePoolETHBalanceUpdated(uint _ETH);
-    event CollateralAddressChanged(address _collTokenAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-
-    constructor() public {}
-
     // --- Contract setters ---
 
-    function setAddresses(
+    constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
-    ) external onlyOwner {
-        checkContract(_borrowerOperationsAddress);
-        checkContract(_cdpManagerAddress);
-        checkContract(_defaultPoolAddress);
-        checkContract(_collTokenAddress);
-        checkContract(_collSurplusAddress);
-        checkContract(_feeRecipientAddress);
-
+    ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         defaultPoolAddress = _defaultPoolAddress;
@@ -71,25 +55,29 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         collSurplusPoolAddress = _collSurplusAddress;
         feeRecipientAddress = _feeRecipientAddress;
 
+        // TEMP: read authority to avoid signature change
+        address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());
+        if (_authorityAddress != address(0)) {
+            _initializeAuthority(_authorityAddress);
+        }
+
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
-
-        _renounceOwnership();
     }
 
     // --- Getters for public variables. Required by IPool interface ---
 
     /*
-     * Returns the ETH state variable.
+     * Returns the StEthColl state variable.
      *
-     *Not necessarily equal to the the contract's raw ETH balance - ether can be forcibly sent to contracts.
+     *Not necessarily equal to the the contract's raw StEthColl balance - ether can be forcibly sent to contracts.
      */
-    function getETH() external view override returns (uint) {
-        return ETH;
+    function getStEthColl() external view override returns (uint) {
+        return StEthColl;
     }
 
     function getEBTCDebt() external view override returns (uint) {
@@ -98,34 +86,66 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     // --- Pool functionality ---
 
-    function sendETH(address _account, uint _amount) external override {
+    function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
-        require(ETH >= _amount, "!ActivePoolBal");
-        ETH = ETH.sub(_amount);
-        emit ActivePoolETHBalanceUpdated(ETH);
-        emit CollateralSent(_account, _amount);
+        require(StEthColl >= _shares, "!ActivePoolBal");
 
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, _shares);
+
+        _transferSharesWithContractHooks(_account, _shares);
+    }
+
+    /**
+        @notice Send shares
+        @notice Liquidator reward shares are not tracked via internal accoutning in the active pool and are assumed to be present in expected amount as part of the intended behavior of bops and cdpm
+        @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
+        @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
+        @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
+        @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
+     */
+    function sendStEthCollAndLiquidatorReward(
+        address _account,
+        uint _shares,
+        uint _liquidatorRewardShares
+    ) external override {
+        _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+        uint totalShares = _shares + _liquidatorRewardShares;
+
+        StEthColl = StEthColl - _shares;
+
+        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit CollateralSent(_account, totalShares);
+
+        _transferSharesWithContractHooks(_account, totalShares);
+    }
+
+    function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferShares(_account, _amount);
-        if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_amount);
-        } else if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_amount);
+        collateral.transferShares(_account, _shares);
+
+        if (_account == collSurplusPoolAddress) {
+            ICollSurplusPool(_account).receiveColl(_shares);
+        } else if (_account == defaultPoolAddress) {
+            IDefaultPool(_account).receiveColl(_shares);
         } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_amount);
+            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
         }
     }
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.add(_amount);
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        EBTCDebt = EBTCDebt + _amount;
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt.sub(_amount);
-        ActivePoolEBTCDebtUpdated(EBTCDebt);
+        EBTCDebt = EBTCDebt - _amount;
+        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
     }
 
     // --- 'require' functions ---
@@ -146,8 +166,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        ETH = ETH.add(_value);
-        emit ActivePoolETHBalanceUpdated(ETH);
+        StEthColl = StEthColl + _value;
+        emit ActivePoolETHBalanceUpdated(StEthColl);
     }
 
     // === Flashloans === //
@@ -162,8 +182,8 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
-        uint256 fee = amount.mul(FEE_AMT).div(MAX_BPS);
-        uint256 amountWithFee = amount.add(fee);
+        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
         collateral.transfer(address(receiver), amount);
@@ -183,15 +203,15 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
         // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
-        // NOTE: This means any balance > ETH is stuck, this is also present in LUSD as is
+        // NOTE: This means any balance > StEthColl is stuck, this is also present in LUSD as is
 
         // NOTE: This check effectively prevents running 2 FL at the same time
-        //  You technically could, but you'd be having to repay any amount below ETH to get Fl2 to not revert
+        //  You technically could, but you'd be having to repay any amount below StEthColl to get Fl2 to not revert
         require(
-            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(ETH),
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(StEthColl),
             "ActivePool: Must repay Balance"
         );
-        require(collateral.sharesOf(address(this)) >= ETH, "ActivePool: Must repay Share");
+        require(collateral.sharesOf(address(this)) >= StEthColl, "ActivePool: Must repay Share");
         require(
             collateral.getPooledEthByShares(1e18) == oldRate,
             "ActivePool: Should keep same collateral share rate"
@@ -203,7 +223,7 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
-        return amount.mul(FEE_AMT).div(MAX_BPS);
+        return (amount * FEE_AMT) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in collateral token equals to the current balance
@@ -213,5 +233,23 @@ contract ActivePool is Ownable, CheckContract, IActivePool, ERC3156FlashLender {
         }
 
         return collateral.balanceOf(address(this));
+    }
+
+    // === Governed Functions === //
+
+    /// @dev Function to move unintended dust that are not protected
+    /// @notice moves given amount of given token (collateral is NOT allowed)
+    /// @notice because recipient are fixed, this function is safe to be called by anyone
+    function sweepToken(address token, uint amount) public nonReentrant {
+        require(
+            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
+            "ActivePool: sender not authorized for sweepToken(address,uint256)"
+        );
+        require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
+
+        IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
 }

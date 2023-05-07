@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
@@ -119,8 +119,9 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint128 amount) public {
-        uint256 _maxAvailable = activePool.getETH();
-        vm.assume(amount * 2 < _maxAvailable);
+        uint256 _maxAvailable = activePool.getStEthColl();
+        vm.assume(amount < (_maxAvailable / 2));
+        vm.assume(amount > cdpManager.LIQUIDATOR_REWARD());
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
@@ -147,7 +148,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         dealCollateral(address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
-        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getETH());
+        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getStEthColl());
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),

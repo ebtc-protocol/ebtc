@@ -34,10 +34,9 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let feeRecipient
 
   before(async () => {
-    coreContracts = await deploymentHelper.deployLiquityCore()
-    coreContracts.cdpManager = await CdpManagerTester.new()
-    coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
-    const LQTYContracts = await deploymentHelper.deployExternalContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = coreContracts.feeRecipient;
     
     priceFeed = coreContracts.priceFeed
     ebtcToken = coreContracts.ebtcToken
@@ -52,7 +51,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     feeRecipient = LQTYContracts.feeRecipient
 
     await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
 
     for (account of accounts.slice(0, 10)) {
       await th.openCdp(coreContracts, { extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
@@ -195,10 +193,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   describe('ActivePool', async accounts => {
     // sendETH
-    it("sendETH(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("sendStEthColl(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.sendETH(alice, 100, { from: alice })
+        const txAlice = await activePool.sendStEthColl(alice, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")

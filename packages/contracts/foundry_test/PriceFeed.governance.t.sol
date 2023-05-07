@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
@@ -40,6 +40,9 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
             authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG),
             true
         );
+
+        vm.prank(priceFeedMock.owner());
+        priceFeedMock.setAddresses(address(0), address(authority), address(authority));
 
         vm.startPrank(user);
         priceFeedMock.setTellorCaller(mockOracle);

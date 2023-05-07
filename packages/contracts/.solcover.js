@@ -6,6 +6,8 @@ const { accountsList } = require("./hardhatAccountsList2k.js");
 const accounts = accountsList.map(a => ({ secretKey: a.privateKey, balance: '0xc097ce7bc90715b34b9f1000000000' }))
 
 module.exports = {
+  configureYulOptimizer : true,
+	
   providerOptions: {
     accounts
   },

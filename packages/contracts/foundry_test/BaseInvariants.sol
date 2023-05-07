@@ -1,18 +1,10 @@
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
-import "../contracts/Dependencies/SafeMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 contract eBTCBaseInvariants is eBTCBaseFixture {
-    using SafeMath for uint256;
-    using SafeMath for uint96;
-    using SafeMath for uint64;
-    using SafeMath for uint32;
-    using SafeMath for uint16;
-    using SafeMath for uint8;
-
     uint public _tolerance = 2000000; //compared to 1e18
 
     ////////////////////////////////////////////////////////////////////////////
@@ -34,7 +26,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_active_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(activePool)),
-            activePool.getETH(),
+            activePool.getStEthColl(),
             "System Invariant: active_pool_1"
         );
     }
@@ -50,7 +42,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_active_pool_invariant_3() internal {
         assertEq(
             eBTCToken.totalSupply(),
-            activePool.getEBTCDebt().add(defaultPool.getEBTCDebt()),
+            (activePool.getEBTCDebt() + defaultPool.getEBTCDebt()),
             "System Invariant: active_pool_3"
         );
     }
@@ -60,10 +52,10 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = _sum.add(_cdpState.coll);
+            _sum = (_sum + _cdpState.coll);
         }
         require(
-            _utils.assertApproximateEq(activePool.getETH(), _sum, _tolerance),
+            _utils.assertApproximateEq(activePool.getStEthColl(), _sum, _tolerance),
             "System Invariant: active_pool_4"
         );
     }
@@ -80,7 +72,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            _sum = _sum.add(cdpManager.getCdpStake(cdpManager.CdpIds(i)));
+            _sum = (_sum + cdpManager.getCdpStake(cdpManager.CdpIds(i)));
         }
         assertEq(_sum, cdpManager.totalStakes(), "System Invariant: cdp_manager_2");
     }
@@ -100,7 +92,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_default_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(defaultPool)),
-            defaultPool.getETH(),
+            defaultPool.getStEthColl(),
             "System Invariant: default_pool_1"
         );
     }
@@ -121,7 +113,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_coll_surplus_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(collSurplusPool)),
-            collSurplusPool.getETH(),
+            collSurplusPool.getStEthColl(),
             "System Invariant: coll_surplus_pool_1"
         );
     }
