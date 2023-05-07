@@ -210,7 +210,7 @@ contract('ActivePool', async accounts => {
       await activePool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: reentrant call")
+      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
     }
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false
@@ -359,8 +359,8 @@ contract('DefaultPool', async accounts => {
       _dustToken.setSweepPool(defaultPool.address);
       await defaultPool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
-      //console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: reentrant call")
+      console.log("errMsg=" + err.message)
+      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
     }
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false

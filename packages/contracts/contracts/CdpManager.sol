@@ -316,7 +316,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _partialRedemptionHintNICR,
         uint _maxIterations,
         uint _maxFeePercentage
-    ) external override {
+    ) external override nonReentrantSelfAndBOps {
         RedemptionTotals memory totals;
 
         _requireValidMaxFeePercentage(_maxFeePercentage);

@@ -8,10 +8,11 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
-contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
+contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
@@ -149,5 +150,23 @@ contract CdpManagerStorage is LiquityBase, ICdpManagerData, AuthNoOwner {
         sortedCdps = ISortedCdps(_sortedCdps);
 
         emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
+    }
+
+    /**
+        @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
+        @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
+     */
+    modifier nonReentrantSelfAndBOps() {
+        require(locked == OPEN, "CdpManager: REENTRANCY");
+        require(
+            ReentrancyGuard(borrowerOperationsAddress).locked() == OPEN,
+            "BorrowerOperations: REENTRANCY"
+        );
+
+        locked = LOCKED;
+
+        _;
+
+        locked = OPEN;
     }
 }
