@@ -3,17 +3,17 @@ pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
-contract CDPManagerRedemptionsTest is eBTCBaseFixture {
+contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
     uint public mintAmount = 1e18;
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+        connectCoreContracts();
+        connectLQTYContractsToCore();
         vm.warp(3 weeks);
     }
 
@@ -83,6 +83,85 @@ contract CDPManagerRedemptionsTest is eBTCBaseFixture {
         console.log("expected baseRate: %s", expectedDecayedBaseRate);
         assertEq(cdpManager.baseRate(), expectedDecayedBaseRate);
         vm.stopPrank();
+    }
+
+    function testMultipleRedemption(uint _cdpNumber, uint _collAmt) public {
+        vm.assume(_cdpNumber > 1);
+        vm.assume(_cdpNumber <= 1000);
+        vm.assume(_collAmt > 22e17);
+        vm.assume(_collAmt <= 10000e18);
+        uint _price = priceFeedMock.getPrice();
+
+        // open random cdps with increasing ICR
+        address payable[] memory _borrowers = _utils.createUsers(_cdpNumber + 1);
+        bytes32[] memory _cdpIds = new bytes32[](_cdpNumber);
+        for (uint i = 1; i <= _cdpNumber; ++i) {
+            uint _debt = _utils.calculateBorrowAmount(
+                _collAmt,
+                _price,
+                (COLLATERAL_RATIO + (i * 5e15))
+            );
+            require(_debt > 0, "!no debt for cdp");
+            bytes32 _cdpId = _openTestCDP(_borrowers[i], _collAmt, _debt);
+            _cdpIds[i - 1] = _cdpId;
+            if (i > 1) {
+                uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+                uint _prevICR = cdpManager.getCurrentICR(_cdpIds[i - 2], _price);
+                require(_icr > _prevICR, "!icr");
+                require(_icr > CCR, "!icr>ccr");
+            }
+        }
+
+        _ensureSystemInvariants();
+
+        // prepare redemption by picking a random number of CDPs to redeem
+        address _redeemer = _borrowers[0];
+        uint _debt = _utils.calculateBorrowAmount(_collAmt, _price, COLLATERAL_RATIO * 1000);
+        _openTestCDP(_redeemer, _collAmt, _debt);
+        uint _redeemNumber = _utils.generateRandomNumber(1, _cdpNumber - 1, _redeemer);
+        vm.assume(_redeemNumber > 0);
+        uint _redeemDebt;
+        for (uint i = 0; i < _redeemNumber; ++i) {
+            CdpState memory _state = _getEntireDebtAndColl(_cdpIds[i]);
+            _redeemDebt += _state.debt;
+            address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
+            uint _sugar = eBTCToken.balanceOf(_owner);
+            vm.prank(_owner);
+            eBTCToken.transfer(_redeemer, _sugar);
+        }
+
+        // execute redemption
+        (bytes32 firstRedempHint, uint partialRedempNICR, , ) = hintHelpers.getRedemptionHints(
+            _redeemDebt,
+            _price,
+            0
+        );
+        require(firstRedempHint == _cdpIds[0], "!firstRedempHint");
+        uint _debtBalBefore = eBTCToken.balanceOf(_redeemer);
+        vm.prank(_redeemer);
+        cdpManager.redeemCollateral(
+            _redeemDebt,
+            firstRedempHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedempNICR,
+            0,
+            1e18
+        );
+        uint _debtBalAfter = eBTCToken.balanceOf(_redeemer);
+
+        // post checks
+        require(_debtBalAfter + _redeemDebt == _debtBalBefore, "!redemption debt reduction");
+        for (uint i = 0; i < _redeemNumber; ++i) {
+            require(cdpManager.getCdpStatus(_cdpIds[i]) == 4, "redemption leave CDP not closed!");
+            address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
+            require(
+                collSurplusPool.getCollateral(_owner) > cdpManager.LIQUIDATOR_REWARD(),
+                "redemption leave wrong surplus to claim!"
+            );
+        }
+
+        _ensureSystemInvariants();
     }
 
     function _decMul(uint x, uint y) internal pure returns (uint decProd) {

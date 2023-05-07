@@ -103,8 +103,8 @@ contract CdpManagerTester is CdpManager {
         activePool.sendStEthColl(_addr, _amt);
     }
 
-    function initAuthority(address _initAuthority) external {
-        _initializeAuthority(_initAuthority);
+    function sortedCdpsBatchRemove(bytes32[] memory _cdpIds) external {
+        sortedCdps.batchRemove(_cdpIds);
     }
 
     function forward(address _dest, bytes calldata _data) external payable {

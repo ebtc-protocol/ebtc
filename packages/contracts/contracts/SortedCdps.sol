@@ -49,7 +49,6 @@ contract SortedCdps is ISortedCdps {
 
     // Information for a node in the list
     struct Node {
-        bool exists;
         bytes32 nextId; // Id of next node (smaller NICR) in the list
         bytes32 prevId; // Id of previous node (larger NICR) in the list
     }
@@ -152,25 +151,28 @@ contract SortedCdps is ISortedCdps {
         bytes32 _nextId
     ) external override returns (bytes32) {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
-        insert(owner, _id, _NICR, _prevId, _nextId);
+        require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
+
+        _insertWithGeneratedId(owner, _id, _NICR, _prevId, _nextId);
         return _id;
     }
 
     /*
      * @dev Add a node to the list
+     * @param owner cdp owner
      * @param _id Node's id
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
 
-    function insert(
+    function _insertWithGeneratedId(
         address owner,
         bytes32 _id,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
-    ) public override {
+    ) internal {
         ICdpManager cdpManagerCached = cdpManager;
 
         _requireCallerIsBOorCdpM(cdpManagerCached);
@@ -206,8 +208,6 @@ contract SortedCdps is ISortedCdps {
             (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
         }
 
-        data.nodes[_id].exists = true;
-
         if (prevId == dummyId && nextId == dummyId) {
             // Insert as head and tail
             data.head = _id;
@@ -241,6 +241,45 @@ contract SortedCdps is ISortedCdps {
         address _owner = cdpOwners[_id];
         _removeCdpFromOwnerEnumeration(_owner, _id);
         delete cdpOwners[_id];
+    }
+
+    function batchRemove(bytes32[] memory _ids) external override {
+        _requireCallerIsCdpManager();
+        uint _len = _ids.length;
+        require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
+
+        bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
+        bytes32 _lastNext = data.nodes[_ids[_len - 1]].nextId;
+
+        require(
+            _firstPrev != dummyId || _lastNext != dummyId,
+            "SortedCdps: batchRemove() leave ZERO node left!"
+        );
+
+        for (uint i = 0; i < _len; ++i) {
+            require(contains(_ids[i]), "SortedCdps: List does not contain the id");
+        }
+
+        // orphan nodes in between to save gas
+        if (_firstPrev != dummyId) {
+            data.nodes[_firstPrev].nextId = _lastNext;
+        } else {
+            data.head = _lastNext;
+        }
+        if (_lastNext != dummyId) {
+            data.nodes[_lastNext].prevId = _firstPrev;
+        } else {
+            data.tail = _firstPrev;
+        }
+
+        // delete node & owner storages to get gas refund
+        for (uint i = 0; i < _len; ++i) {
+            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
+            delete cdpOwners[_ids[i]];
+            delete data.nodes[_ids[i]];
+            emit NodeRemoved(_ids[i]);
+        }
+        data.size = data.size - _len;
     }
 
     /*
@@ -348,7 +387,12 @@ contract SortedCdps is ISortedCdps {
      * @dev Checks if the list contains a node
      */
     function contains(bytes32 _id) public view override returns (bool) {
-        return data.nodes[_id].exists;
+        bool _exist = _id != dummyId && (data.head == _id || data.tail == _id);
+        if (!_exist) {
+            Node memory _node = data.nodes[_id];
+            _exist = _id != dummyId && (_node.nextId != dummyId && _node.prevId != dummyId);
+        }
+        return _exist;
     }
 
     /*

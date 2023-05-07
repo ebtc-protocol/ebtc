@@ -128,6 +128,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     ) external override returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
+
     // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
         bytes32 _cdpId,
@@ -838,7 +839,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         IEBTCToken cachedEbtc = ebtcToken;
         require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
 
-        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 fee = (amount * flashFee) / MAX_BPS;
 
         // Issue EBTC
         cachedEbtc.mint(address(receiver), amount);
@@ -861,10 +862,10 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         return true;
     }
 
-    function flashFee(address token, uint256 amount) external view override returns (uint256) {
+    function getFlashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
-        return (amount * FEE_AMT) / MAX_BPS;
+        return (amount * flashFee) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
