@@ -950,7 +950,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
-        //assert(newBaseRate <= DECIMAL_PRECISION); // This is already enforced in the line above
         assert(newBaseRate > 0); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
