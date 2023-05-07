@@ -31,8 +31,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
         )
     {}
 
-    bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
-    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x8508a195; //setMaxFlashFee(uint256)
+    bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFeeBps(uint256)
+    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x8508a195; //setMaxFeeBps(uint256)
 
     function getNewICRFromCdpChange(
         uint _coll,

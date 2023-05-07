@@ -30,7 +30,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
         vm.expectEmit(true, true, false, true);
         emit FlashFeeSet(defaultGovernance, oldFee, newFee);
 
-        borrowerOperations.setFlashFee(newFee);
+        borrowerOperations.setFeeBps(newFee);
 
         assertEq(borrowerOperations.feeBps(), newFee);
 
@@ -48,7 +48,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
         vm.expectEmit(true, true, false, true);
         emit FlashFeeSet(defaultGovernance, oldFee, newFee);
 
-        borrowerOperations.setFlashFee(newFee);
+        borrowerOperations.setFeeBps(newFee);
 
         assertEq(borrowerOperations.feeBps(), newFee);
 
@@ -65,10 +65,10 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
 
         vm.startPrank(defaultGovernance);
 
-        borrowerOperations.setMaxFlashFee(randomMaxFlashFee);
+        borrowerOperations.setMaxFeeBps(randomMaxFlashFee);
 
-        vm.expectRevert("ERC3156FlashLender: _newFee should <= maxFlashFee");
-        borrowerOperations.setFlashFee(newFee);
+        vm.expectRevert("ERC3156FlashLender: _newFee should <= maxFeeBps");
+        borrowerOperations.setFeeBps(newFee);
 
         vm.stopPrank();
     }

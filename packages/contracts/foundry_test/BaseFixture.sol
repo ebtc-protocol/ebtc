@@ -55,9 +55,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         bytes4(keccak256(bytes("setTellorCaller(address)")));
 
     // Flash Lender
-    bytes4 internal constant SET_FLASH_FEE_SIG = bytes4(keccak256(bytes("setFlashFee(uint256)")));
-    bytes4 internal constant SET_MAX_FLASH_FEE_SIG =
-        bytes4(keccak256(bytes("setMaxFlashFee(uint256)")));
+    bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
+    bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
     event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
     event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
@@ -311,7 +310,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(4, "PriceFeed: setTellorCaller");
-        authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
+        authority.setRoleName(5, "BorrowerOperations: setFeeBps & setMaxFeeBps");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 
@@ -324,11 +323,11 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
 
-        authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
-        authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
+        authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
 
-        authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
-        authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
 
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);

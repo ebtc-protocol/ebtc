@@ -123,8 +123,8 @@ contract('BorrowerOperations', async accounts => {
       
     })	  
 	  
-    it("BorrowerOperations governance permissioned: setFlashFee() should only allow authorized caller", async() => {	  
-	  await assertRevert(borrowerOperations.setFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFlashFee(uint256)");   
+    it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
+	  await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setFeeBps(uint256)");   
 
 	  assert.isTrue(authority.address == (await borrowerOperations.authority()));
 	  let _role123 = 123;
@@ -132,16 +132,16 @@ contract('BorrowerOperations', async accounts => {
 	  await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
 	  await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
 	  assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
-	  await assertRevert(borrowerOperations.setFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFlashFee");
+	  await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFeeBps");
 	  let _newFee = toBN("9999");
 	  assert.isTrue(_newFee.gt(await borrowerOperations.feeBps()));
-	  await borrowerOperations.setFlashFee(_newFee, {from: alice})
+	  await borrowerOperations.setFeeBps(_newFee, {from: alice})
 	  assert.isTrue(_newFee.eq(await borrowerOperations.feeBps()));
 
     })
 
-    it("BorrowerOperations governance permissioned: setMaxFlashFee() should only allow authorized caller", async() => {	  
-      await assertRevert(borrowerOperations.setMaxFlashFee(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFlashFee(uint256)");   
+    it("BorrowerOperations governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	  
+      await assertRevert(borrowerOperations.setMaxFeeBps(1, {from: alice}), "ERC3156FlashLender: sender not authorized for setMaxFeeBps(uint256)");   
   
       assert.isTrue(authority.address == (await borrowerOperations.authority()));
       let _role123 = 123;
@@ -150,12 +150,12 @@ contract('BorrowerOperations', async accounts => {
       await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
       assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 
-      await assertRevert(borrowerOperations.setMaxFlashFee(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
+      await assertRevert(borrowerOperations.setMaxFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
       let _newFee = toBN("9999");
       
-      assert.isTrue(_newFee.lt(await borrowerOperations.maxFlashFee()));
-      await borrowerOperations.setMaxFlashFee(_newFee, {from: alice})
-      assert.isTrue(_newFee.eq(await borrowerOperations.maxFlashFee()));
+      assert.isTrue(_newFee.lt(await borrowerOperations.maxFeeBps()));
+      await borrowerOperations.setMaxFeeBps(_newFee, {from: alice})
+      assert.isTrue(_newFee.eq(await borrowerOperations.maxFeeBps()));
   
     })
 
