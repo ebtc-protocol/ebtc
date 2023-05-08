@@ -61,6 +61,15 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return CdpIds[_index];
     }
 
+    /// @notice Helper function to check whether or not the system *would be* in Recovery Mode, given a price, and the entire system coll and debt.
+    function checkPotentialRecoveryMode(
+        uint _entireSystemColl,
+        uint _entireSystemDebt,
+        uint _price
+    ) external view returns (bool) {
+        _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
+    }
+
     // --- Cdp Liquidation functions ---
     // -----------------------------------------------------------------
     //    CDP ICR     |       Liquidation Behavior (TODO gas compensation?)
@@ -119,7 +128,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) public override {
+    function batchLiquidateCdps(bytes32[] memory _cdpArray) external override {
         _delegate(liquidationLibrary);
     }
 
@@ -466,7 +475,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _cdpId) public view override returns (uint) {
+    function getNominalICR(bytes32 _cdpId) external view override returns (uint) {
         (uint currentEBTCDebt, uint currentETH, , ) = getEntireDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
@@ -651,13 +660,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         totalStakes = totalStakes - stake;
         Cdps[_cdpId].stake = 0;
         emit TotalStakesUpdated(totalStakes);
-    }
-
-    // Remove stake from the totalStakes sum according to split fee taken
-    function _removeTotalStakeForFeeTaken(uint _feeTaken) internal {
-        (uint _newTotalStakes, uint stake) = getTotalStakeForFeeTaken(_feeTaken);
-        totalStakes = _newTotalStakes;
-        emit TotalStakesUpdated(_newTotalStakes);
     }
 
     // get totalStakes after split fee taken removed
@@ -1192,17 +1194,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _requireCdpIsActive(bytes32 _cdpId) internal view {
         require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
-    }
-
-    function _requireEBTCBalanceCoversRedemption(
-        IEBTCToken _ebtcToken,
-        address _redeemer,
-        uint _amount
-    ) internal view {
-        require(
-            _ebtcToken.balanceOf(_redeemer) >= _amount,
-            "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
-        );
     }
 
     function _requireMoreThanOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
