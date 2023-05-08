@@ -17,8 +17,12 @@ contract PriceFeedTester is PriceFeed {
         address _authorityAddress
     ) PriceFeed(_tellorCallerAddress, _authorityAddress) {}
 
-    function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
-        return _getCurrentTellorResponse();
+    function getCurrentFallbackResponse()
+        public
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
+        return _getCurrentFallbackResponse();
     }
 
     function getCurrentChainlinkResponse()
@@ -94,11 +98,14 @@ contract PriceFeedTest is eBTCBaseFixture {
     // TODO: To run this forktest, make tests public instead of private
     // and make sure you are forking the suggested `block_number=17210175`
     function testPriceFeedFork() private {
-        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
+        PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
 
-        console.log("Tellor Response:");
+        // -- Fallback outputs --
+        console.log("Fallback Response:");
 
-        console.log(tellorResponse.value);
+        console.log(fallbackResponse.answer);
+
+        // -- CL outputs --
         console.log("Chainlink Response:");
         PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed
             .getCurrentChainlinkResponse();
