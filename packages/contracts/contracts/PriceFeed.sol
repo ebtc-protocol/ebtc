@@ -16,7 +16,7 @@ import "./Dependencies/AuthNoOwner.sol";
  *
  * The PriceFeed uses Chainlink as primary oracle and allows for an optional fallback source. It contains logic for
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
- * Chainlink oracle.
+ * Chainlink oracle. In addition, it contains the mechanism to add or remove the fallback oracle through governance.
  */
 contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
