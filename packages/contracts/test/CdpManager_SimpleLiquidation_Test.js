@@ -760,17 +760,18 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _n = 1;
       await debtToken.unprotectedMint(owner, _systemDebt);
       let _totalSupplyBefore = await debtToken.totalSupply();
-      await cdpManager.liquidateCdps(_n);
+      await cdpManager.liquidateCdps(_n, {from: owner});
       let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
       if (_totalSupplyDiff.lt(_systemDebt)) {
           await debtToken.unprotectedBurn(owner, _systemDebt.sub(_totalSupplyDiff));
       }
 	  
       // final check
-      _cdpDebtColl1 = await cdpManager.getEntireDebtAndColl(_cdpId1);
+      assert.isFalse(await sortedCdps.contains(_cdpId1));
       _cdpDebtColl2 = await cdpManager.getEntireDebtAndColl(_cdpId2);
       _systemDebt = await cdpManager.getEntireSystemDebt();
-      th.assertIsApproximatelyEqual(_systemDebt, (_cdpDebtColl1[0].add(_cdpDebtColl2[0])), _errorTolerance.toNumber());
+      let _distributedError = (await cdpManager.lastEBTCDebtError_Redistribution()).div(mv._1e18BN);
+      th.assertIsApproximatelyEqual(_systemDebt, (_distributedError.add(_cdpDebtColl2[0])), _errorTolerance.toNumber());
   })
   
   it("Test partial liquidation with extreme slashing case", async() => {

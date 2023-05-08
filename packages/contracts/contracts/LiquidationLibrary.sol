@@ -382,8 +382,12 @@ contract LiquidationLibrary is CdpManagerStorage {
             return (0, 0);
         }
 
-        // If we have coll remaining, it must meet minimum CDP size requirements
-        _requirePartialLiqCollSize(newColl);
+        // If we have coll remaining, it must meet minimum CDP size requirements:
+        // Only check when the collateral exchange rate from share is above 1e18
+        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+            _requirePartialLiqCollSize(collateral.getPooledEthByShares(newColl));
+        }
 
         // apply pending debt and collateral if any
         // and update CDP internal accounting for debt and collateral
