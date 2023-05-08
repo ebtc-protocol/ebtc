@@ -21,7 +21,7 @@ interface IERC3156FlashLender {
      * @param amount The amount of tokens lent.
      * @return The amount of `token` to be charged for the loan, on top of the returned principal.
      */
-    function getFlashFee(address token, uint256 amount) external view returns (uint256);
+    function flashFee(address token, uint256 amount) external view returns (uint256);
 
     /**
      * @dev Initiate a flash loan.

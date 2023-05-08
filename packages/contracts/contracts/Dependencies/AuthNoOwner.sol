@@ -14,7 +14,7 @@ contract AuthNoOwner {
     bool public authorityInitialized;
 
     modifier requiresAuth() virtual {
-        require(isAuthorized(msg.sender, msg.sig), "UNAUTHORIZED");
+        require(isAuthorized(msg.sender, msg.sig), "Auth: UNAUTHORIZED");
 
         _;
     }

@@ -39,7 +39,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     /// @notice Single CDP liquidation function (fully).
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
-    function liquidate(bytes32 _cdpId) external {
+    function liquidate(bytes32 _cdpId) external nonReentrantSelfAndBOps {
         _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
     }
 
@@ -49,7 +49,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) external {
+    ) external nonReentrantSelfAndBOps {
         _liquidateSingle(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
     }
 
@@ -589,7 +589,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
      */
-    function liquidateCdps(uint _n) external {
+    function liquidateCdps(uint _n) external nonReentrantSelfAndBOps {
         require(_n > 0, "LiquidationLibrary: can't liquidate zero CDP in sequence");
 
         LocalVariables_OuterLiquidationFunction memory vars;
@@ -708,7 +708,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) public {
+    function batchLiquidateCdps(bytes32[] memory _cdpArray) public nonReentrantSelfAndBOps {
         require(
             _cdpArray.length != 0,
             "LiquidationLibrary: Calldata address array must not be empty"

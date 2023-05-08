@@ -17,8 +17,12 @@ contract PriceFeedTester is PriceFeed {
         address _authorityAddress
     ) PriceFeed(_priceAggregatorAddress, _tellorCallerAddress, _authorityAddress) {}
 
-    function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
-        return _getCurrentTellorResponse();
+    function getCurrentFallbackResponse()
+        public
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
+        return _getCurrentFallbackResponse();
     }
 
     function getCurrentChainlinkResponse()
@@ -35,9 +39,9 @@ contract PriceFeedTester is PriceFeed {
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _fallbackResponse
     ) public view returns (bool) {
-        return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 }
 
@@ -88,11 +92,11 @@ contract PriceFeedTest is eBTCBaseFixture {
             address(authority)
         );
         _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
-        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
+        PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
 
-        console.log("Tellor Response:");
+        console.log("Fallback Response:");
 
-        console.log(tellorResponse.value);
+        console.log(fallbackResponse.answer);
         console.log("Chainlink Response:");
         PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed
             .getCurrentChainlinkResponse();
@@ -107,7 +111,7 @@ contract PriceFeedTest is eBTCBaseFixture {
         console.log("PriceFeed Response:");
         console.log(_priceFeed.fetchPrice());
 
-        bool similar = _priceFeed.bothOraclesSimilarPrice(chainlinkResponse, tellorResponse);
+        bool similar = _priceFeed.bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse);
         console.log(similar);
     }
 }
