@@ -72,11 +72,7 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         return _useFallback;
     }
 
-    function setFallbackCaller(address _fallbackCaller) external {
-        require(
-            isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
-            "PriceFeed: sender not authorized for setFallbackCaller(address)"
-        );
+    function setFallbackCaller(address _fallbackCaller) external requiresAuth() {
         fallbackCaller = IFallbackCaller(_fallbackCaller);
         emit FallbackCallerChanged(_fallbackCaller);
     }

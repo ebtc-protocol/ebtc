@@ -343,7 +343,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @notice Sets a new fallback oracle 
         @param _fallbackCaller The new IFallbackCaller-compliant oracle address
     **/
-    function setFallbackCaller(address _fallbackCaller) external {
+    function setFallbackCaller(address _fallbackCaller) external requiresAuth {
         require(
             isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
             "PriceFeed: sender not authorized for setFallbackCaller(address)"

@@ -24,7 +24,7 @@ abstract contract Auth {
     }
 
     modifier requiresAuth() virtual {
-        require(isAuthorized(msg.sender, msg.sig), "UNAUTHORIZED");
+        require(isAuthorized(msg.sender, msg.sig), "Auth: UNAUTHORIZED");
 
         _;
     }

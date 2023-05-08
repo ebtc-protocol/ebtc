@@ -22,7 +22,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         address mockOracle = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("PriceFeed: sender not authorized for setFallbackCaller(address)");
+        vm.expectRevert("Auth: UNAUTHORIZED");
         priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();
     }

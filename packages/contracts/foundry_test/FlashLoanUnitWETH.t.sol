@@ -38,7 +38,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     function testBasicLoanWETH(uint128 loanAmount, uint128 giftAmount) public {
         require(address(wethReceiver) != address(0));
 
-        uint256 fee = activePool.getFlashFee(address(collateral), loanAmount);
+        uint256 fee = activePool.flashFee(address(collateral), loanAmount);
 
         // Funny enough 0 reverts because of deal not
         vm.assume(loanAmount > 0);
@@ -116,7 +116,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
     // Do nothing (no fee), check that it reverts
     function testWETHRevertsIfUnpaid(uint128 loanAmount) public {
-        uint256 fee = activePool.getFlashFee(address(collateral), loanAmount);
+        uint256 fee = activePool.flashFee(address(collateral), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
@@ -155,15 +155,15 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // If a token is not currently supported maxFlashLoan MUST return 0, instead of reverting.
         assertEq(activePool.maxFlashLoan(randomToken), 0);
 
-        uint256 fee = activePool.getFlashFee(address(collateral), amount);
+        uint256 fee = activePool.flashFee(address(collateral), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.flashFee()) / activePool.MAX_BPS());
+        assertEq(fee, (amount * activePool.feeBps()) / activePool.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
-        activePool.getFlashFee(randomToken, amount);
+        activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("ActivePool: collateral Only");

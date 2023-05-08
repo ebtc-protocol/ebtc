@@ -2241,11 +2241,11 @@ contract('PriceFeed', async accounts => {
       assert.equal(statusAfter, '2') // status 2: both oracles untrusted
     })
     
-    it("SetTellorCaller() should only allow authorized caller", async() => {
+    it("SetFallbackCaller() should only allow authorized caller", async() => {
       let _newAuthority = await GovernorTester.new(alice);    
       let myPriceFeed = await PriceFeed.new(mockChainlink.address, tellorCaller.address, _newAuthority.address)
       
-      await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "PriceFeed: sender not authorized for setFallbackCaller(address)"); 
+      await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
           
       assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));
