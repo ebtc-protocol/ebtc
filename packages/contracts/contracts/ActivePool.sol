@@ -182,7 +182,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
-        uint256 fee = (amount * FEE_AMT) / MAX_BPS;
+        uint256 fee = (amount * feeBps) / MAX_BPS;
         uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 
@@ -223,7 +223,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
-        return (amount * FEE_AMT) / MAX_BPS;
+        return (amount * feeBps) / MAX_BPS;
     }
 
     /// @dev Max flashloan, exclusively in collateral token equals to the current balance
@@ -240,11 +240,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
-    function sweepToken(address token, uint amount) public nonReentrant {
-        require(
-            isAuthorized(msg.sender, SWEEP_TOKEN_SIG),
-            "ActivePool: sender not authorized for sweepToken(address,uint256)"
-        );
+    function sweepToken(address token, uint amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));

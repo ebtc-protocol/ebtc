@@ -119,16 +119,16 @@ contract('CollSurplusPool', async accounts => {
 
   it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
     await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
-  })
- 
-  it('sweepToken(): move unprotected token to fee recipient', async () => {
+  })  
+	  
+    it('sweepToken(): move unprotected token to fee recipient', async () => {
 	  
     collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, collToken.address)
     let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     poolAuthority.setPublicCapability(collSurplusPool.address, _sweepTokenFunc, true);  
     await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: Cannot Sweep Collateral');	  
@@ -164,7 +164,7 @@ contract('CollSurplusPool', async accounts => {
       await collSurplusPool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: reentrant call")
+      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
     }
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false

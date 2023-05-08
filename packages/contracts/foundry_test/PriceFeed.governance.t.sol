@@ -17,17 +17,17 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
     // -------- eBTC Minting governance cases --------
 
-    function testSetTellorCallerNoPermission() public {
+    function testSetFallbackCallerNoPermission() public {
         address user = _utils.getNextUserAddress();
         address mockOracle = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("PriceFeed: sender not authorized for setTellorCaller(address)");
-        priceFeedMock.setTellorCaller(mockOracle);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();
     }
 
-    function testSetTellorCallerWithPermission() public {
+    function testSetFallbackCallerWithPermission() public {
         address user = _utils.getNextUserAddress();
         address mockOracle = _utils.getNextUserAddress();
 
@@ -37,7 +37,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         assertEq(authority.doesUserHaveRole(user, 4), true);
         assertEq(
-            authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG),
+            authority.doesRoleHaveCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG),
             true
         );
 
@@ -45,10 +45,10 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         priceFeedMock.setAddresses(address(0), address(authority), address(authority));
 
         vm.startPrank(user);
-        priceFeedMock.setTellorCaller(mockOracle);
+        priceFeedMock.setFallbackCaller(mockOracle);
         vm.stopPrank();
 
         // Confirm variable set
-        assertEq(address(priceFeedMock.tellorCaller()), mockOracle);
+        assertEq(address(priceFeedMock.fallbackCaller()), mockOracle);
     }
 }

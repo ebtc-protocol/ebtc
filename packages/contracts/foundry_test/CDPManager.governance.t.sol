@@ -26,7 +26,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("CDPManager: sender not authorized for setStakingRewardSplit(uint256)");
+        vm.expectRevert("Auth: UNAUTHORIZED");
         cdpManager.setStakingRewardSplit(5000);
         vm.stopPrank();
     }
@@ -75,7 +75,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)");
+        vm.expectRevert("Auth: UNAUTHORIZED");
         cdpManager.setRedemptionFeeFloor(500);
         vm.stopPrank();
     }
@@ -147,7 +147,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         vm.startPrank(user);
-        vm.expectRevert("CDPManager: sender not authorized for setMinuteDecayFactor(uint256)");
+        vm.expectRevert("Auth: UNAUTHORIZED");
         cdpManager.setMinuteDecayFactor(1000);
         vm.stopPrank();
     }
@@ -191,5 +191,33 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.expectRevert("CDPManager: new minute decay factor out of range");
         cdpManager.setMinuteDecayFactor(newInvalidMinuteDecayFactor);
         vm.stopPrank();
+    }
+
+    // Set beta
+    function testCDPManagerSetBetaNoPermission() public {
+        address user = _utils.getNextUserAddress();
+
+        vm.startPrank(user);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        cdpManager.setBeta(500);
+        vm.stopPrank();
+    }
+
+    function testCDPManagerSetBetaWithPermission(uint newBeta) public {
+        address user = _utils.getNextUserAddress();
+
+        // Grant permission
+        vm.prank(defaultGovernance);
+        authority.setUserRole(user, 3, true);
+
+        // Set redemption fee floor
+        vm.startPrank(user);
+        // TODO: Confirm event
+
+        cdpManager.setBeta(newBeta);
+        vm.stopPrank();
+
+        // Confirm variable set
+        assertEq(cdpManager.beta(), newBeta);
     }
 }

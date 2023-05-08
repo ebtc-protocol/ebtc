@@ -39,7 +39,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     /// @notice Single CDP liquidation function (fully).
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
-    function liquidate(bytes32 _cdpId) external {
+    function liquidate(bytes32 _cdpId) external nonReentrantSelfAndBOps {
         _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
     }
 
@@ -49,7 +49,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) external {
+    ) external nonReentrantSelfAndBOps {
         _liquidateSingle(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
     }
 
@@ -86,7 +86,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            0
+            0,
+            false
         );
 
         LocalVar_RecoveryLiquidate memory _rs = LocalVar_RecoveryLiquidate(
@@ -99,7 +100,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             _price,
             _ICR,
             0,
-            0
+            0,
+            false
         );
 
         _liquidateSingleCDP(_liqState, _rs);
@@ -187,7 +189,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_liqState._cdpId);
+        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_liqState._cdpId, _liqState.sequenceLiq);
         uint256 _cappedColPortion;
         uint256 _collSurplus;
         uint256 _debtToRedistribute;
@@ -248,7 +250,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_recoveryState._cdpId);
+        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(
+                _recoveryState._cdpId,
+                _recoveryState.sequenceLiq
+            );
 
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
@@ -316,7 +321,8 @@ contract LiquidationLibrary is CdpManagerStorage {
     // this function would return the liquidated debt and collateral of the given CDP
     // without emmiting events
     function _liquidateCDPByExternalLiquidatorWithoutEvent(
-        bytes32 _cdpId
+        bytes32 _cdpId,
+        bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
         (
@@ -339,7 +345,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
         uint _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
-        _closeCdp(_cdpId, Status.closedByLiquidation);
+        if (_sequenceLiq) {
+            _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByLiquidation);
+        } else {
+            _closeCdp(_cdpId, Status.closedByLiquidation);
+        }
 
         return (entireDebt, entireColl, _liquidatorReward);
     }
@@ -415,6 +425,48 @@ contract LiquidationLibrary is CdpManagerStorage {
             );
         }
         return (_partialDebt, _partialColl);
+    }
+
+    // return CdpId array (in NICR-decreasing order same as SortedCdps)
+    // including the last N CDPs in sortedCdps for batch liquidation
+    function _sequenceLiqToBatchLiq(
+        uint _n,
+        bool _recovery,
+        uint _price
+    ) internal view returns (bytes32[] memory _array) {
+        if (_n > 0) {
+            bytes32 _last = sortedCdps.getLast();
+            bytes32 _first = sortedCdps.getFirst();
+            bytes32 _cdpId = _last;
+
+            uint _TCR = _getTCR(_price);
+
+            // get count of liquidatable CDPs
+            uint _cnt;
+            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
+                uint _icr = getCurrentICR(_cdpId, _price);
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    _cnt += 1;
+                }
+                _cdpId = sortedCdps.getPrev(_cdpId);
+            }
+
+            // retrieve liquidatable CDPs
+            _array = new bytes32[](_cnt);
+            _cdpId = _last;
+            uint _j;
+            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
+                uint _icr = getCurrentICR(_cdpId, _price);
+                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    _array[_cnt - _j - 1] = _cdpId;
+                    _j += 1;
+                }
+                _cdpId = sortedCdps.getPrev(_cdpId);
+            }
+            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
+        }
     }
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
@@ -533,7 +585,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
      */
-    function liquidateCdps(uint _n) external {
+    function liquidateCdps(uint _n) external nonReentrantSelfAndBOps {
         require(_n > 0, "LiquidationLibrary: can't liquidate zero CDP in sequence");
 
         LocalVariables_OuterLiquidationFunction memory vars;
@@ -548,16 +600,20 @@ contract LiquidationLibrary is CdpManagerStorage {
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
+        bytes32[] memory _batchedCdps;
         if (vars.recoveryModeAtStart) {
-            totals = _getTotalsFromLiquidateCdpsSequence_RecoveryMode(
+            _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
+            totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
                 systemDebt,
-                _n
+                _batchedCdps,
+                true
             );
         } else {
             // if !vars.recoveryModeAtStart
-            totals = _getTotalsFromLiquidateCdpsSequence_NormalMode(vars.price, _TCR, _n);
+            _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
+            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
         }
 
         require(totals.totalDebtInSequence > 0, "LiquidationLibrary: nothing to liquidate");
@@ -575,103 +631,12 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
     }
 
-    /*
-     * This function is used when the liquidateCdps sequence starts during Recovery Mode. However, it
-     * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
-     */
-    function _getTotalsFromLiquidateCdpsSequence_RecoveryMode(
-        uint _price,
-        uint _systemColl,
-        uint _systemDebt,
-        uint _n
-    ) internal returns (LiquidationTotals memory totals) {
-        LocalVariables_LiquidationSequence memory vars;
-        LiquidationValues memory singleLiquidation;
-
-        vars.backToNormalMode = false;
-        vars.entireSystemDebt = _systemDebt;
-        vars.entireSystemColl = _systemColl;
-
-        vars.cdpId = sortedCdps.getLast();
-        bytes32 firstId = sortedCdps.getFirst();
-        uint _TCR = _computeTCRWithGivenSystemValues(
-            vars.entireSystemColl,
-            vars.entireSystemDebt,
-            _price
-        );
-        for (vars.i = 0; vars.i < _n && vars.cdpId != firstId; ++vars.i) {
-            // we need to cache it, because current CDP is likely going to be deleted
-            bytes32 nextCdp = sortedCdps.getPrev(vars.cdpId);
-
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
-
-            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
-                vars.price = _price;
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesRecoveryMode(
-                    _price,
-                    vars.entireSystemDebt,
-                    vars.entireSystemColl,
-                    vars,
-                    singleLiquidation
-                );
-
-                // Update aggregate trackers
-                vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
-                vars.entireSystemColl =
-                    vars.entireSystemColl -
-                    singleLiquidation.totalCollToSendToLiquidator -
-                    singleLiquidation.collSurplus;
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
-                _TCR = _computeTCRWithGivenSystemValues(
-                    vars.entireSystemColl,
-                    vars.entireSystemDebt,
-                    _price
-                );
-                vars.backToNormalMode = _TCR < CCR ? false : true;
-            } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-            } else break; // break if the loop reaches a Cdp with ICR >= MCR
-
-            vars.cdpId = nextCdp;
-        }
-    }
-
-    function _getTotalsFromLiquidateCdpsSequence_NormalMode(
-        uint _price,
-        uint _TCR,
-        uint _n
-    ) internal returns (LiquidationTotals memory totals) {
-        LocalVariables_LiquidationSequence memory vars;
-        LiquidationValues memory singleLiquidation;
-        ISortedCdps sortedCdpsCached = sortedCdps;
-
-        for (vars.i = 0; vars.i < _n; ++vars.i) {
-            vars.cdpId = sortedCdpsCached.getLast();
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
-
-            if (vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-            } else break; // break if the loop reaches a Cdp with ICR >= MCR
-        }
-    }
-
     function _getLiquidationValuesNormalMode(
         uint _price,
         uint _TCR,
         LocalVariables_LiquidationSequence memory vars,
-        LiquidationValues memory singleLiquidation
+        LiquidationValues memory singleLiquidation,
+        bool sequenceLiq
     ) internal {
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             vars.cdpId,
@@ -686,7 +651,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            0
+            0,
+            sequenceLiq
         );
 
         LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(_liqState);
@@ -704,7 +670,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _systemDebt,
         uint _systemColl,
         LocalVariables_LiquidationSequence memory vars,
-        LiquidationValues memory singleLiquidation
+        LiquidationValues memory singleLiquidation,
+        bool sequenceLiq
     ) internal {
         LocalVar_RecoveryLiquidate memory _recState = LocalVar_RecoveryLiquidate(
             _systemDebt,
@@ -716,7 +683,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             _price,
             vars.ICR,
             0,
-            0
+            0,
+            sequenceLiq
         );
 
         LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
@@ -736,7 +704,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) public {
+    function batchLiquidateCdps(bytes32[] memory _cdpArray) public nonReentrantSelfAndBOps {
         require(
             _cdpArray.length != 0,
             "LiquidationLibrary: Calldata address array must not be empty"
@@ -758,11 +726,12 @@ contract LiquidationLibrary is CdpManagerStorage {
                 vars.price,
                 systemColl,
                 systemDebt,
-                _cdpArray
+                _cdpArray,
+                false
             );
         } else {
             //  if !vars.recoveryModeAtStart
-            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _cdpArray);
+            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _cdpArray, false);
         }
 
         require(totals.totalDebtInSequence > 0, "LiquidationLibrary: nothing to liquidate");
@@ -788,7 +757,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _price,
         uint _systemColl,
         uint _systemDebt,
-        bytes32[] memory _cdpArray
+        bytes32[] memory _cdpArray,
+        bool sequenceLiq
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
@@ -801,73 +771,156 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.entireSystemDebt,
             _price
         );
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+        uint _cnt = _cdpArray.length;
+        bool[] memory _liqFlags = new bool[](_cnt);
+        uint _liqCnt;
+        uint _start = sequenceLiq ? _cnt - 1 : 0;
+        for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
-            // Skip non-active cdps
-            if (Cdps[vars.cdpId].status != Status.active) {
-                continue;
+            // only for active cdps
+            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+                vars.ICR = getCurrentICR(vars.cdpId, _price);
+
+                if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
+                    vars.price = _price;
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesRecoveryMode(
+                        _price,
+                        vars.entireSystemDebt,
+                        vars.entireSystemColl,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Update aggregate trackers
+                    vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
+                    vars.entireSystemColl =
+                        vars.entireSystemColl -
+                        singleLiquidation.totalCollToSendToLiquidator -
+                        singleLiquidation.collSurplus;
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+
+                    _TCR = _computeTCRWithGivenSystemValues(
+                        vars.entireSystemColl,
+                        vars.entireSystemDebt,
+                        _price
+                    );
+                    vars.backToNormalMode = _TCR < CCR ? false : true;
+                    _liqFlags[vars.i] = true;
+                    _liqCnt += 1;
+                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesNormalMode(
+                        _price,
+                        _TCR,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                    _liqFlags[vars.i] = true;
+                    _liqCnt += 1;
+                }
+                // In Normal Mode skip cdps with ICR >= MCR
             }
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
+            if (sequenceLiq) {
+                if (vars.i == 0) {
+                    break;
+                }
+                --vars.i;
+            } else {
+                ++vars.i;
+                if (vars.i == _cnt) {
+                    break;
+                }
+            }
+        }
 
-            if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
-                vars.price = _price;
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesRecoveryMode(
-                    _price,
-                    vars.entireSystemDebt,
-                    vars.entireSystemColl,
-                    vars,
-                    singleLiquidation
+        // remove from sortedCdps for sequence liquidation
+        if (sequenceLiq) {
+            bytes32[] memory _toRemoveIds = _cdpArray;
+            if (_liqCnt > 0 && _liqCnt != _cnt) {
+                _toRemoveIds = new bytes32[](_liqCnt);
+                uint _j;
+                for (uint i = 0; i < _cnt; ++i) {
+                    if (_liqFlags[i]) {
+                        _toRemoveIds[_j] = _cdpArray[i];
+                        _j += 1;
+                    }
+                }
+                require(
+                    _j == _liqCnt,
+                    "LiquidationLibrary: sequence liquidation (recovery mode) count error!"
                 );
-
-                // Update aggregate trackers
-                vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
-                vars.entireSystemColl =
-                    vars.entireSystemColl -
-                    singleLiquidation.totalCollToSendToLiquidator -
-                    singleLiquidation.collSurplus;
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-
-                _TCR = _computeTCRWithGivenSystemValues(
-                    vars.entireSystemColl,
-                    vars.entireSystemDebt,
-                    _price
-                );
-                vars.backToNormalMode = _TCR < CCR ? false : true;
-            } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-            } else continue; // In Normal Mode skip cdps with ICR >= MCR
+            }
+            if (_liqCnt > 1) {
+                sortedCdps.batchRemove(_toRemoveIds);
+            } else if (_liqCnt == 1) {
+                sortedCdps.remove(_toRemoveIds[0]);
+            }
         }
     }
 
     function _getTotalsFromBatchLiquidate_NormalMode(
         uint _price,
         uint _TCR,
-        bytes32[] memory _cdpArray
+        bytes32[] memory _cdpArray,
+        bool sequenceLiq
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
-
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
+        uint _cnt = _cdpArray.length;
+        uint _liqCnt;
+        uint _start = sequenceLiq ? _cnt - 1 : 0;
+        for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
-            // Skip non-active cdps
-            if (Cdps[vars.cdpId].status != Status.active) {
-                continue;
+            // only for active cdps
+            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+                vars.ICR = getCurrentICR(vars.cdpId, _price);
+
+                if (vars.ICR < MCR) {
+                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _getLiquidationValuesNormalMode(
+                        _price,
+                        _TCR,
+                        vars,
+                        singleLiquidation,
+                        sequenceLiq
+                    );
+
+                    // Add liquidation values to their respective running totals
+                    totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                    _liqCnt += 1;
+                }
             }
-            vars.ICR = getCurrentICR(vars.cdpId, _price);
+            if (sequenceLiq) {
+                if (vars.i == 0) {
+                    break;
+                }
+                --vars.i;
+            } else {
+                ++vars.i;
+                if (vars.i == _cnt) {
+                    break;
+                }
+            }
+        }
 
-            if (vars.ICR < MCR) {
-                _applyAccumulatedFeeSplit(vars.cdpId);
-                _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
-
-                // Add liquidation values to their respective running totals
-                totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+        // remove from sortedCdps for sequence liquidation
+        if (sequenceLiq) {
+            require(
+                _liqCnt == _cnt,
+                "LiquidationLibrary: sequence liquidation (normal mode) count error!"
+            );
+            if (_cnt > 1) {
+                sortedCdps.batchRemove(_cdpArray);
+            } else if (_cnt == 1) {
+                sortedCdps.remove(_cdpArray[0]);
             }
         }
     }
@@ -1165,6 +1218,11 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _closeCdp(bytes32 _cdpId, Status closedStatus) internal {
+        _closeCdpWithoutRemovingSortedCdps(_cdpId, closedStatus);
+        sortedCdps.remove(_cdpId);
+    }
+
+    function _closeCdpWithoutRemovingSortedCdps(bytes32 _cdpId, Status closedStatus) internal {
         assert(closedStatus != Status.nonExistent && closedStatus != Status.active);
 
         uint CdpIdsArrayLength = CdpIds.length;
@@ -1179,7 +1237,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         rewardSnapshots[_cdpId].EBTCDebt = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
-        sortedCdps.remove(_cdpId);
     }
 
     /*

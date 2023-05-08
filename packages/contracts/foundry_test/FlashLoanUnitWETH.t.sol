@@ -157,11 +157,11 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.FEE_AMT()) / activePool.MAX_BPS());
+        assertEq(fee, (amount * activePool.feeBps()) / activePool.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
         activePool.flashFee(randomToken, amount);
 

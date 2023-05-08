@@ -171,6 +171,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
             address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
             _redeemCloseCdp(_redeemColFromCdp._cdpId, 0, newColl, _borrower);
+            singleRedemption.fullRedemption = true;
 
             emit CdpUpdated(
                 _redeemColFromCdp._cdpId,
@@ -241,7 +242,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _liquidatorRewardShares = Cdps[_cdpId].liquidatorRewardShares;
 
         _removeStake(_cdpId);
-        _closeCdp(_cdpId, Status.closedByRedemption);
+        _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
         activePool.decreaseEBTCDebt(_EBTC);
@@ -315,7 +316,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _partialRedemptionHintNICR,
         uint _maxIterations,
         uint _maxFeePercentage
-    ) external override {
+    ) external override nonReentrantSelfAndBOps {
         RedemptionTotals memory totals;
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
@@ -350,6 +351,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (_maxIterations == 0) {
             _maxIterations = type(uint256).max;
         }
+        bytes32 _firstRedeemed = _cId;
+        bytes32 _lastRedeemed = _cId;
+        uint _fullRedeemed;
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
             _maxIterations--;
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
@@ -380,10 +384,26 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
                 totals.remainingEBTC = totals.remainingEBTC - singleRedemption.eBtcToRedeem;
                 currentBorrower = nextUserToCheck;
+                if (singleRedemption.fullRedemption) {
+                    _lastRedeemed = _cId;
+                    _fullRedeemed = _fullRedeemed + 1;
+                }
                 _cId = _nextId;
             }
         }
         require(totals.totalETHDrawn > 0, "CdpManager: Unable to redeem any amount");
+
+        // remove from sortedCdps
+        if (_fullRedeemed == 1) {
+            sortedCdps.remove(_firstRedeemed);
+        } else if (_fullRedeemed > 1) {
+            bytes32[] memory _toRemoveIds = _getCdpIdsToRemove(
+                _lastRedeemed,
+                _fullRedeemed,
+                _firstRedeemed
+            );
+            sortedCdps.batchRemove(_toRemoveIds);
+        }
 
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
         // Use the saved total EBTC supply value, from before it was reduced by the redemption.
@@ -419,6 +439,30 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     // --- Helper functions ---
+
+    function _getCdpIdsToRemove(
+        bytes32 _start,
+        uint _total,
+        bytes32 _end
+    ) internal returns (bytes32[] memory) {
+        uint _cnt = _total;
+        bytes32 _id = _start;
+        bytes32[] memory _toRemoveIds = new bytes32[](_total);
+        while (_cnt > 0 && _id != bytes32(0)) {
+            _toRemoveIds[_total - _cnt] = _id;
+            _cnt = _cnt - 1;
+            _id = sortedCdps.getNext(_id);
+        }
+        require(
+            _toRemoveIds[0] == _start,
+            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
+        );
+        require(
+            _toRemoveIds[_total - 1] == _end,
+            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
+        );
+        return _toRemoveIds;
+    }
 
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
@@ -720,6 +764,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function _closeCdp(bytes32 _cdpId, Status closedStatus) internal {
+        _closeCdpWithoutRemovingSortedCdps(_cdpId, closedStatus);
+        sortedCdps.remove(_cdpId);
+    }
+
+    function _closeCdpWithoutRemovingSortedCdps(bytes32 _cdpId, Status closedStatus) internal {
         assert(closedStatus != Status.nonExistent && closedStatus != Status.active);
 
         uint CdpIdsArrayLength = CdpIds.length;
@@ -734,7 +783,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         rewardSnapshots[_cdpId].EBTCDebt = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
-        sortedCdps.remove(_cdpId);
     }
 
     /*
@@ -900,9 +948,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
 
-        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / BETA);
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
-        //assert(newBaseRate <= DECIMAL_PRECISION); // This is already enforced in the line above
         assert(newBaseRate > 0); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
@@ -1197,11 +1244,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Governance Parameters ---
 
-    function setStakingRewardSplit(uint _stakingRewardSplit) external {
-        require(
-            isAuthorized(msg.sender, SET_STAKING_REWARD_SPLIT_SIG),
-            "CDPManager: sender not authorized for setStakingRewardSplit(uint256)"
-        );
+    function setStakingRewardSplit(uint _stakingRewardSplit) external requiresAuth {
         require(
             _stakingRewardSplit <= MAX_REWARD_SPLIT,
             "CDPManager: new staking reward split exceeds max"
@@ -1211,11 +1254,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 
-    function setRedemptionFeeFloor(uint _redemptionFeeFloor) external {
-        require(
-            isAuthorized(msg.sender, SET_REDEMPTION_FEE_FLOOR_SIG),
-            "CDPManager: sender not authorized for setRedemptionFeeFloor(uint256)"
-        );
+    function setRedemptionFeeFloor(uint _redemptionFeeFloor) external requiresAuth {
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
             "CDPManager: new redemption fee floor is lower than minimum"
@@ -1229,11 +1268,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
     }
 
-    function setMinuteDecayFactor(uint _minuteDecayFactor) external {
-        require(
-            isAuthorized(msg.sender, SET_MINUTE_DECAY_FACTOR_SIG),
-            "CDPManager: sender not authorized for setMinuteDecayFactor(uint256)"
-        );
+    function setMinuteDecayFactor(uint _minuteDecayFactor) external requiresAuth {
         require(
             _minuteDecayFactor >= MIN_MINUTE_DECAY_FACTOR,
             "CDPManager: new minute decay factor out of range"
@@ -1249,6 +1284,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // set new factor after decaying
         minuteDecayFactor = _minuteDecayFactor;
         emit MinuteDecayFactorSet(_minuteDecayFactor);
+    }
+
+    function setBeta(uint _beta) external requiresAuth {
+        _decayBaseRate();
+
+        beta = _beta;
+        emit BetaSet(_beta);
     }
 
     // --- Cdp property getters ---

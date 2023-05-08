@@ -38,16 +38,47 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         address user = _utils.createUsers(1)[0];
 
         vm.deal(user, type(uint96).max);
-        dealCollateral(user, INITITAL_COLL);
 
         // check input
         vm.assume(netColl < INITITAL_COLL * 5);
         vm.assume(netColl > cdpManager.MIN_NET_COLL());
-        netColl = 9999800000000000000001;
-        uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
 
         // deploy proxy for user
-        LeverageMacro proxy = LeverageMacro(_createLeverageMacro(user));
+        address proxyAddr = _createLeverageMacro(user);
+
+        // open CDP
+        dealCollateral(user, netColl);
+        _openCDPViaProxy(user, netColl, proxyAddr);
+    }
+
+    function test_AdjustLeveragedCDPHappy() public {}
+
+    function test_OpenAndCloseLeveragedCDPHappy(uint netColl) public {
+        address user = _utils.createUsers(1)[0];
+
+        vm.deal(user, type(uint96).max);
+
+        // check input
+        vm.assume(netColl < INITITAL_COLL * 5);
+        vm.assume(netColl > cdpManager.MIN_NET_COLL());
+
+        // deploy proxy for user
+        address proxyAddr = _createLeverageMacro(user);
+
+        // open CDP
+        dealCollateral(user, netColl);
+        bytes32 cdpId = _openCDPViaProxy(user, netColl, proxyAddr);
+
+        // close CDP
+        _closeCDPViaProxy(user, cdpId, proxyAddr);
+    }
+
+    function _openCDPViaProxy(
+        address user,
+        uint256 netColl,
+        address proxyAddr
+    ) internal returns (bytes32) {
+        uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
 
         vm.startPrank(user);
 
@@ -73,13 +104,18 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             debt,
             true,
             _acceptedSlippage,
-            priceFeedMock.getPrice()
+            priceFeedMock.getPrice(),
+            false
         );
         _levSwapsBefore = _generateCalldataSwapMock1InchOneStep(
             address(eBTCToken),
             debt,
             address(collateral),
             _collMinOut
+        );
+        require(
+            (grossColl - _collMinOut) > 0,
+            "!leverage Open CDP transferIn collateral amount can't be zero"
         );
         LeverageMacro.LeverageMacroOperation memory operation = LeverageMacro.LeverageMacroOperation(
             address(collateral),
@@ -100,8 +136,9 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         );
 
         // execute the leverage through proxy
+        uint cdpCntBefore = sortedCdps.cdpCountOf(proxyAddr);
         _mock1Inch.setPrice(priceFeedMock.getPrice());
-        proxy.doOperation(
+        LeverageMacro(proxyAddr).doOperation(
             LeverageMacro.FlashLoanType.eBTC,
             debt,
             operation,
@@ -110,12 +147,78 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         );
 
         vm.stopPrank();
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(proxyAddr, cdpCntBefore);
+
+        // check system invariants
         _ensureSystemInvariants();
+        return cdpId;
     }
 
-    function test_AdjustLeveragedCDPHappy() public {}
+    function _closeCDPViaProxy(address user, bytes32 cdpId, address proxyAddr) internal {
+        vm.startPrank(user);
 
-    function test_OpenAndCloseLeveragedCDPHappy() public {}
+        // leverage parameters
+        LeverageMacro.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacro.SwapOperation[] memory _levSwapsAfter;
+        bytes memory _opDataEncoded;
+        uint _totalDebt;
+
+        // prepare operation data
+        {
+            (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+            _totalDebt = _debt;
+            uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
+            LeverageMacro.CloseCdpOperation memory _opData = LeverageMacro.CloseCdpOperation(cdpId);
+            _opDataEncoded = abi.encode(_opData);
+            uint _collRequired = _convertDebtAndCollForSwap(
+                _flDebt,
+                true,
+                _acceptedSlippage,
+                priceFeedMock.getPrice(),
+                true
+            );
+            require(_totalColl >= _collRequired, "!not enough collateral in CDP for flashloan debt");
+
+            _levSwapsAfter = _generateCalldataSwapMock1InchOneStep(
+                address(collateral),
+                _collRequired,
+                address(eBTCToken),
+                _flDebt
+            );
+        }
+        LeverageMacro.LeverageMacroOperation memory operation = LeverageMacro.LeverageMacroOperation(
+            address(collateral),
+            0,
+            _levSwapsBefore,
+            _levSwapsAfter,
+            LeverageMacro.OperationType.CloseCdpOperation,
+            _opDataEncoded
+        );
+
+        LeverageMacro.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+            0,
+            LeverageMacro.Operator.equal,
+            0,
+            LeverageMacro.Operator.equal,
+            ICdpManagerData.Status.closedByOwner,
+            cdpId
+        );
+
+        // execute the leverage through proxy
+        _mock1Inch.setPrice(priceFeedMock.getPrice());
+        LeverageMacro(proxyAddr).doOperation(
+            LeverageMacro.FlashLoanType.eBTC,
+            _totalDebt,
+            operation,
+            LeverageMacro.PostOperationCheck.isClosed,
+            postCheckParams
+        );
+
+        vm.stopPrank();
+
+        // check system invariants
+        _ensureSystemInvariants();
+    }
 
     function _generateCalldataSwapMock1Inch(
         address _inToken,
@@ -158,7 +261,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint _amt,
         bool _fromDebtToColl,
         uint _acceptedSlippage,
-        uint _price
+        uint _price,
+        bool _addSlippage
     ) internal view returns (uint) {
         uint _raw;
         if (_fromDebtToColl) {
@@ -166,7 +270,10 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         } else {
             _raw = (_amt * _price) / 1e18;
         }
-        return (_raw * (MAX_SLIPPAGE - _acceptedSlippage)) / MAX_SLIPPAGE;
+        uint _multiplier = _addSlippage
+            ? (MAX_SLIPPAGE + _acceptedSlippage)
+            : (MAX_SLIPPAGE - _acceptedSlippage);
+        return (_raw * _multiplier) / MAX_SLIPPAGE;
     }
 
     function _preparePostCheckParams(

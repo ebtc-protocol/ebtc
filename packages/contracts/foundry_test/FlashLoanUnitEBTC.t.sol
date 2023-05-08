@@ -146,11 +146,11 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * borrowerOperations.FEE_AMT()) / borrowerOperations.MAX_BPS());
+        assertEq(fee, (amount * borrowerOperations.feeBps()) / borrowerOperations.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
 

@@ -6,10 +6,9 @@ interface IPriceFeed {
     // --- Events ---
     event LastGoodPriceUpdated(uint _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
-    event TellorCallerChanged(address _tellorCaller);
+    event FallbackCallerChanged(address _fallbackCaller);
 
     // --- Structs ---
-
     struct ChainlinkResponse {
         uint80 roundId;
         int256 answer;
@@ -18,19 +17,18 @@ interface IPriceFeed {
         uint8 decimals;
     }
 
-    struct TellorResponse {
-        bool retrieved;
-        uint256 value;
+    struct FallbackResponse {
+        uint256 answer;
         uint256 timestamp;
         bool success;
     }
 
     enum Status {
         chainlinkWorking,
-        usingTellorChainlinkUntrusted,
+        usingFallbackChainlinkUntrusted,
         bothOraclesUntrusted,
-        usingTellorChainlinkFrozen,
-        usingChainlinkTellorUntrusted
+        usingFallbackChainlinkFrozen,
+        usingChainlinkFallbackUntrusted
     }
 
     // --- Function ---

@@ -27,6 +27,7 @@ interface ICdpManagerData {
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
+    event BetaSet(uint256 _beta);
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _liqReward);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
@@ -131,6 +132,7 @@ interface ICdpManagerData {
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
+        bool sequenceLiq;
     }
 
     struct LocalVar_RecoveryLiquidate {
@@ -144,6 +146,7 @@ interface ICdpManagerData {
         uint256 _ICR;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
+        bool sequenceLiq;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -210,6 +213,7 @@ interface ICdpManagerData {
         uint eBtcToRedeem;
         uint stEthToRecieve;
         bool cancelledPartial;
+        bool fullRedemption;
     }
 
     function totalStakes() external view returns (uint);
