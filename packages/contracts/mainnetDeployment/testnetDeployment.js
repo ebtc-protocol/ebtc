@@ -101,7 +101,7 @@ async function testnetDeploy(configParams) {
   console.log("\n == PRICEFEED CHECKS ==")
   // Check Pricefeed's status and last good price
   const lastGoodPrice = await ebtcCore.priceFeed.fetchPrice()
-  const priceFeedInitialTellorStatus = await ebtcCore.priceFeed._useTellor()
+  const priceFeedInitialTellorStatus = await ebtcCore.priceFeed._useFallback()
   th.logBN('PriceFeed first stored price', lastGoodPrice)
   console.log(`PriceFeed initial Tellor status: ${priceFeedInitialTellorStatus}`)
 

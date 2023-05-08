@@ -51,8 +51,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
     // PriceFeed
-    bytes4 public constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
+    bytes4 public constant SET_FALLBACK_CALLER_SIG =
+        bytes4(keccak256(bytes("setFallbackCaller(address)")));
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
@@ -309,7 +309,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(1, "eBTCToken: mint");
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
-        authority.setRoleName(4, "PriceFeed: setTellorCaller");
+        authority.setRoleName(4, "PriceFeed: setFallbackCaller");
         authority.setRoleName(5, "BorrowerOperations: setFeeBps & setMaxFeeBps");
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
@@ -321,7 +321,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_BETA_SIG, true);
 
-        authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
+        authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
