@@ -10,7 +10,7 @@ import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
- * PriceFeed for mainnet deployment, its connected to two Chainlink's live feeds ETH:BTC and
+ * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
  * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
  * and allows a fallback oracle in case that primary Chainlink's fail.
  *
