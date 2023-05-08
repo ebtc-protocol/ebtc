@@ -14,10 +14,5 @@ contract GovernorTester is Governor {
         emit OwnerSet(_owner);
     }
 
-    function someFunc1() external {
-        require(
-            isAuthorized(msg.sender, FUNC_SIG1),
-            "GovernorTester: sender not authorized for this function"
-        );
-    }
+    function someFunc1() external requiresAuth {}
 }

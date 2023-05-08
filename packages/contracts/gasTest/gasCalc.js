@@ -127,7 +127,7 @@ contract('Gas cost tests', async accounts => {
     amount = dec(1, 18)
     fee = await cdpManager.getBorrowingFee(amount)
     debt = (await th.getCompositeDebt(contracts, amount)).add(fee);
-    ({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(30, 'ether'), debt)) 
+    ({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(30, 'ether'), debt))
      
     assert.equal(upperHint, _cdpIdA)
     assert.equal(lowerHint, th.DUMMY_BYTES32)

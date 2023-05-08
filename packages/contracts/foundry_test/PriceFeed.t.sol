@@ -11,8 +11,18 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 
 contract PriceFeedTester is PriceFeed {
-    function getCurrentTellorResponse() public view returns (TellorResponse memory tellorResponse) {
-        return _getCurrentTellorResponse();
+    constructor(
+        address _priceAggregatorAddress,
+        address _tellorCallerAddress,
+        address _authorityAddress
+    ) PriceFeed(_priceAggregatorAddress, _tellorCallerAddress, _authorityAddress) {}
+
+    function getCurrentFallbackResponse()
+        public
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
+        return _getCurrentFallbackResponse();
     }
 
     function getCurrentChainlinkResponse()
@@ -29,9 +39,9 @@ contract PriceFeedTester is PriceFeed {
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _fallbackResponse
     ) public view returns (bool) {
-        return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 }
 
@@ -47,7 +57,6 @@ contract PriceFeedTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
-        _priceFeed = new PriceFeedTester();
         _mockTellor = new MockTellor();
         _mockChainlink = new MockAggregator();
         _tellorCaller = new TellorCaller(address(_mockTellor));
@@ -60,7 +69,12 @@ contract PriceFeedTest is eBTCBaseFixture {
 
         _mockChainlink.setUpdateTime(block.timestamp);
         _mockTellor.setUpdateTime(block.timestamp);
-        _priceFeed.setAddresses(address(_mockChainlink), address(_tellorCaller), address(authority));
+
+        _priceFeed = new PriceFeedTester(
+            address(_mockChainlink),
+            address(_tellorCaller),
+            address(authority)
+        );
     }
 
     function testMockedPrice() public {
@@ -72,18 +86,17 @@ contract PriceFeedTest is eBTCBaseFixture {
 
     // TODO: To run this forktest, make tests public instead of private
     function testPriceFeedFork() private {
-        _priceFeed = new PriceFeedTester();
-        _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
-        _priceFeed.setAddresses(
+        _priceFeed = new PriceFeedTester(
             0xAc559F25B1619171CbC396a50854A3240b6A4e99,
             address(_tellorCaller),
             address(authority)
         );
-        PriceFeed.TellorResponse memory tellorResponse = _priceFeed.getCurrentTellorResponse();
+        _tellorCaller = new TellorCaller(0xB3B662644F8d3138df63D2F43068ea621e2981f9);
+        PriceFeed.FallbackResponse memory fallbackResponse = _priceFeed.getCurrentFallbackResponse();
 
-        console.log("Tellor Response:");
+        console.log("Fallback Response:");
 
-        console.log(tellorResponse.value);
+        console.log(fallbackResponse.answer);
         console.log("Chainlink Response:");
         PriceFeed.ChainlinkResponse memory chainlinkResponse = _priceFeed
             .getCurrentChainlinkResponse();
@@ -98,7 +111,7 @@ contract PriceFeedTest is eBTCBaseFixture {
         console.log("PriceFeed Response:");
         console.log(_priceFeed.fetchPrice());
 
-        bool similar = _priceFeed.bothOraclesSimilarPrice(chainlinkResponse, tellorResponse);
+        bool similar = _priceFeed.bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse);
         console.log(similar);
     }
 }

@@ -5,10 +5,27 @@ pragma solidity 0.8.17;
 import "../ActivePool.sol";
 
 contract ActivePoolTester is ActivePool {
-    bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
-    bytes4 public constant FUNC_SIG_FL_FEE = 0x907a267b; //setFlashFee(uint256)
+    constructor(
+        address _borrowerOperationsAddress,
+        address _cdpManagerAddress,
+        address _defaultPoolAddress,
+        address _collTokenAddress,
+        address _collSurplusAddress,
+        address _feeRecipientAddress
+    )
+        ActivePool(
+            _borrowerOperationsAddress,
+            _cdpManagerAddress,
+            _defaultPoolAddress,
+            _collTokenAddress,
+            _collSurplusAddress,
+            _feeRecipientAddress
+        )
+    {}
 
-    constructor() public ActivePool() {}
+    bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
+    bytes4 public constant FUNC_SIG_FL_FEE = 0x72c27b62; //setFeeBps(uint256)
+    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
 
     function unprotectedIncreaseEBTCDebt(uint _amount) external {
         EBTCDebt = EBTCDebt + _amount;
@@ -16,10 +33,6 @@ contract ActivePoolTester is ActivePool {
 
     function unprotectedReceiveColl(uint _amount) external {
         StEthColl = StEthColl + _amount;
-    }
-
-    function initAuthority(address _initAuthority) external {
-        _initializeAuthority(_initAuthority);
     }
 
     // dummy test functions for sweepToken()

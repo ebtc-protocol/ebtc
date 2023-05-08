@@ -9,7 +9,16 @@ for testing the parent's internal functions. */
 
 contract CdpManagerTester is CdpManager {
     bytes4 public constant FUNC_SIG1 = bytes4(keccak256(bytes("someFunc1()")));
+    bytes4 public constant FUNC_SIG_REDEMP_FLOOR =
+        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
+    bytes4 public constant FUNC_SIG_DECAY_FACTOR =
+        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     event SomeFunc1Called(address _caller);
+
+    constructor(
+        EBTCDeployer.EbtcAddresses memory _addresses,
+        address _collTokenAddress
+    ) public CdpManager(_addresses, _collTokenAddress) {}
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
@@ -17,14 +26,6 @@ contract CdpManagerTester is CdpManager {
 
     function getCollGasCompensation(uint _coll) external pure returns (uint) {
         return _getCollGasCompensation(_coll);
-    }
-
-    function getEBTCGasCompensation() external pure returns (uint) {
-        return EBTC_GAS_COMPENSATION;
-    }
-
-    function getCompositeDebt(uint _debt) external pure returns (uint) {
-        return _getCompositeDebt(_debt);
     }
 
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {
@@ -43,6 +44,12 @@ contract CdpManagerTester is CdpManager {
         lastFeeOperationTime = block.timestamp;
     }
 
+    function getDecayedBaseRate() external view returns (uint) {
+        uint minutesPassed = _minutesPassedSinceLastFeeOp();
+        uint _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
+        return (baseRate * _mulFactor) / DECIMAL_PRECISION;
+    }
+
     function setBaseRate(uint _baseRate) external {
         baseRate = _baseRate;
     }
@@ -51,16 +58,53 @@ contract CdpManagerTester is CdpManager {
         _getRedemptionFee(_ETHDrawn);
     }
 
+    /// @dev No more concept of composite debt. Just return debt. Maintaining for test compatiblity
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
-        return _getNetDebt(_debtVal);
+        return _debtVal;
     }
 
     function someFunc1() external requiresAuth {
         emit SomeFunc1Called(msg.sender);
     }
 
-    function initAuthority(address _initAuthority) external {
-        _initializeAuthority(_initAuthority);
+    function getUpdatedBaseRateFromRedemption(
+        uint _ETHDrawn,
+        uint _price
+    ) external view returns (uint) {
+        uint _totalEBTCSupply = _getEntireSystemDebt();
+        uint decayedBaseRate = _calcDecayedBaseRate();
+        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
+            _totalEBTCSupply;
+        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
+        return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+    }
+
+    function defaultPoolSendToActivePool(uint _ETH) external {
+        defaultPool.sendETHToActivePool(_ETH);
+    }
+
+    function defaultPoolIncreaseEBTCDebt(uint _amount) external {
+        defaultPool.increaseEBTCDebt(_amount);
+    }
+
+    function activePoolIncreaseEBTCDebt(uint _amount) external {
+        activePool.increaseEBTCDebt(_amount);
+    }
+
+    function defaultPoolDecreaseEBTCDebt(uint _amount) external {
+        defaultPool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolDecreaseEBTCDebt(uint _amount) external {
+        activePool.decreaseEBTCDebt(_amount);
+    }
+
+    function activePoolSendStEthColl(address _addr, uint _amt) external {
+        activePool.sendStEthColl(_addr, _amt);
+    }
+
+    function sortedCdpsBatchRemove(bytes32[] memory _cdpIds) external {
+        sortedCdps.batchRemove(_cdpIds);
     }
 
     function forward(address _dest, bytes calldata _data) external payable {

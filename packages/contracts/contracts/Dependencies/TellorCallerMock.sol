@@ -2,17 +2,14 @@
 
 pragma solidity 0.8.17;
 
-import "../Interfaces/ITellorCaller.sol";
+import "../Interfaces/IFallbackCaller.sol";
 import "./ITellor.sol";
-import "./SafeMath.sol";
 
 /*
  * This contract is a mock that returns hardcoded price
  * Should not be used on mainnet
  */
-contract TellorCallerMock is ITellorCaller {
-    using SafeMath for uint256;
-
+contract TellorCallerMock is IFallbackCaller {
     ITellor public tellor;
 
     constructor(address _tellorMasterAddress) public {
@@ -20,10 +17,7 @@ contract TellorCallerMock is ITellorCaller {
     }
 
     // Mock price data
-    function getTellorBufferValue(
-        bytes32 _queryId,
-        uint256 _bufferInSeconds
-    ) external view override returns (bool, uint256, uint256) {
-        return (true, 7428 * 1e13, block.timestamp);
+    function getFallbackResponse() external view override returns (uint256, uint256, bool) {
+        return (7428 * 1e13, block.timestamp, true);
     }
 }

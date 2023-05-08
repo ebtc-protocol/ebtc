@@ -5,15 +5,24 @@ pragma solidity 0.8.17;
 import "../CollSurplusPool.sol";
 
 contract CollSurplusPoolTester is CollSurplusPool {
-    using SafeMath for uint256;
     bytes4 public constant FUNC_SIG1 = 0xe90a182f; //sweepToken(address,uint256)
 
-    function unprotectedReceiveColl(uint _amount) external {
-        StEthColl = StEthColl.add(_amount);
-    }
+    constructor(
+        address _borrowerOperationsAddress,
+        address _cdpManagerAddress,
+        address _activePoolAddress,
+        address _collTokenAddress
+    )
+        CollSurplusPool(
+            _borrowerOperationsAddress,
+            _cdpManagerAddress,
+            _activePoolAddress,
+            _collTokenAddress
+        )
+    {}
 
-    function initAuthority(address _initAuthority) external {
-        _initializeAuthority(_initAuthority);
+    function unprotectedReceiveColl(uint _amount) external {
+        StEthColl = StEthColl + _amount;
     }
 
     // dummy test functions for sweepToken()

@@ -15,21 +15,9 @@ interface ISortedCdps {
 
     // --- Functions ---
 
-    function setParams(
-        uint256 _size,
-        address _CdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) external;
-
-    function insert(
-        address owner,
-        bytes32 _id,
-        uint256 _ICR,
-        bytes32 _prevId,
-        bytes32 _nextId
-    ) external;
-
     function remove(bytes32 _id) external;
+
+    function batchRemove(bytes32[] memory _ids) external;
 
     function reInsert(bytes32 _id, uint256 _newICR, bytes32 _prevId, bytes32 _nextId) external;
 

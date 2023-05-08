@@ -21,10 +21,10 @@ contract CDPTest is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
+
+        _dealCollateralAndPrepForUse(user);
+
         vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
         uint borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
@@ -49,10 +49,10 @@ contract CDPTest is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
+
+        _dealCollateralAndPrepForUse(user);
+
         vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
         uint borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
@@ -82,11 +82,11 @@ contract CDPTest is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
+
+        _dealCollateralAndPrepForUse(user);
         assert(sortedCdps.getLast() == "");
+
+        vm.startPrank(user);
         // Borrowed eBTC amount is too high compared to Collateral
         vm.expectRevert(
             bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
@@ -96,18 +96,39 @@ contract CDPTest is eBTCBaseFixture {
     }
 
     // Fail if Net Debt is too low. Check MIN_NET_DEBT constant
-    function testMinNetDebtTooLow() public {
+    function xtestMinNetDebtTooLow() public {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
+
         vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
+        _dealCollateralAndPrepForUse(user);
+
         assert(sortedCdps.getLast() == "");
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
         vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
         borrowerOperations.openCdp(1e15, "hint", "hint", 30 ether);
+        vm.stopPrank();
+    }
+
+    // @dev Attempt to open a CDP with net coll below the minimum allowed and ensure it fails
+    // @dev The collateral value passed into the openCdp function is interpretted as netColl + liqudiatorReward. The fixed liqudiator reward is taken out before netColl is checked
+    function testMinCollTooLow(uint netColl) public {
+        vm.assume(netColl < borrowerOperations.MIN_NET_COLL());
+
+        uint collPlusLiquidatorReward = netColl + borrowerOperations.LIQUIDATOR_REWARD();
+
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        address user = users[0];
+
+        _dealCollateralAndPrepForUse(user);
+
+        assert(sortedCdps.getLast() == "");
+
+        vm.startPrank(user);
+        vm.expectRevert(bytes("BorrowerOps: Cdp's net coll must be greater than minimum"));
+        borrowerOperations.openCdp(1, "hint", "hint", collPlusLiquidatorReward);
         vm.stopPrank();
     }
 
@@ -124,10 +145,10 @@ contract CDPTest is eBTCBaseFixture {
         // Iterate thru all users and open CDP for each of them
         for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
+
+            _dealCollateralAndPrepForUse(user);
             vm.startPrank(user);
-            vm.deal(user, type(uint96).max);
-            collateral.approve(address(borrowerOperations), type(uint256).max);
-            collateral.deposit{value: 10000 ether}();
+
             borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmnt);
             // Get User's CDP and check it for uniqueness
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);

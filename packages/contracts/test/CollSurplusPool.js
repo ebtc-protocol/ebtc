@@ -35,24 +35,18 @@ contract('CollSurplusPool', async accounts => {
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     collSurplusPool = contracts.collSurplusPool
+    activePool = contracts.activePool;
     borrowerOperations = contracts.borrowerOperations
     collToken = contracts.collateral;
-
+    liqReward = await borrowerOperations.LIQUIDATOR_REWARD();
+    poolAuthority = contracts.authority;
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
-	  
-    poolAuthority = await Governor.new(owner);
   })
 
   it("CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption", async () => {
@@ -72,7 +66,7 @@ contract('CollSurplusPool', async accounts => {
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
     const ETH_2 = await collSurplusPool.getStEthColl()
-    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
+    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqReward))
   })
 
   it("CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations", async () => {
@@ -109,7 +103,8 @@ contract('CollSurplusPool', async accounts => {
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
     const ETH_2 = await collSurplusPool.getStEthColl()
-    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
+    let _expected = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price));
+    th.assertIsApproximatelyEqual(ETH_2, _expected)
 
     let _collBefore = await collToken.balanceOf(nonPayable.address);
     const claimCollateralData = th.getTransactionData('claimCollateral()', [])
@@ -124,17 +119,16 @@ contract('CollSurplusPool', async accounts => {
 
   it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
     await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
-  })
- 
-  it('sweepToken(): move unprotected token to fee recipient', async () => {
+  })  
 	  
-    collSurplusPool = await CollSurplusPool.new()
-    await collSurplusPool.initAuthority(poolAuthority.address);
+    it('sweepToken(): move unprotected token to fee recipient', async () => {
+	  
+    collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, collToken.address)
     let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();
     let _amt = 123456789;
 
     // expect reverts
-    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: sender not authorized for sweepToken(address,uint256)');
+    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
 	
     poolAuthority.setPublicCapability(collSurplusPool.address, _sweepTokenFunc, true);  
     await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: Cannot Sweep Collateral');	  
@@ -155,8 +149,7 @@ contract('CollSurplusPool', async accounts => {
   })
  
   it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
-    collSurplusPool = await CollSurplusPool.new()
-    await collSurplusPool.initAuthority(poolAuthority.address);
+    collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, poolAuthority.address)
     let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();
     let _amt = 123456789;
 	  
@@ -171,7 +164,7 @@ contract('CollSurplusPool', async accounts => {
       await collSurplusPool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: reentrant call")
+      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
     }
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false
@@ -200,3 +193,4 @@ contract('CollSurplusPool', async accounts => {
 })
 
 contract('Reset chain state', async accounts => { })
+ 

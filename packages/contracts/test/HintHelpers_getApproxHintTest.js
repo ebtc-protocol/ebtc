@@ -72,14 +72,9 @@ contract('HintHelpers', async accounts => {
   }
 
   before(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address,
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
@@ -88,7 +83,6 @@ contract('HintHelpers', async accounts => {
     priceFeed = contracts.priceFeedTestnet
   
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     numAccounts = 10
 

@@ -29,7 +29,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _sumColl;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (uint _debt, uint _coll, , , ) = cdpManager.Cdps(_cdpId);
+            (uint _debt, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(
@@ -62,13 +62,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.assume(_debtAmt < 10000e18);
     }
 
-    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
-        dealCollateral(_user, _coll);
-        vm.startPrank(_user);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
-        vm.stopPrank();
-        return _cdpId;
+    function _ensureCollAmountValidity(uint _collAmt) internal {
+        vm.assume(_collAmt > 22e17);
+        vm.assume(_collAmt < 10000e18);
     }
 
     function _checkAvailableToLiq(bytes32 _cdpId, uint _price) internal view returns (bool) {
@@ -88,18 +84,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
+        vm.assume(coll1 > 22e17); // Must reach minimum coll threshold
+
         vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            )
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
@@ -172,15 +162,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            )
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
@@ -202,12 +184,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.debt - _partialLiq._repaidDebt) <
-                ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18)
+                (_cdpState.coll - ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)) <=
+                cdpManager.MIN_NET_COLL()
             ) {
                 _partialLiq._repaidDebt =
                     _cdpState.debt -
-                    ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18);
+                    (((cdpManager.MIN_NET_COLL() * _newPrice) * 2) / 1e18);
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
                 }
@@ -326,15 +308,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.prank(users[2]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            )
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
         bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
 
@@ -385,15 +359,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.prank(users[2]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        _openTestCDP(
-            users[0],
-            10000 ether,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            )
-        );
+        _openTestCDP(users[0], 10000 ether, 2e17);
         bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
         bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
 

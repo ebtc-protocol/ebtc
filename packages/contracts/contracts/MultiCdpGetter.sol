@@ -80,6 +80,7 @@ contract MultiCdpGetter {
                 /* status */
                 /* arrayIndex */
                 ,
+                ,
 
             ) = cdpManager.Cdps(currentCdpId);
 
@@ -111,6 +112,7 @@ contract MultiCdpGetter {
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */
+                ,
                 ,
 
             ) = cdpManager.Cdps(currentCdpId);
