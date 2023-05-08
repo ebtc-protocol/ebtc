@@ -67,10 +67,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
   - [CdpManager Functions - `CdpManager.sol`](#cdpmanager-functions---cdpmanagersol)
   - [Hint Helper Functions - `HintHelpers.sol`](#hint-helper-functions---hinthelperssol)
   - [Stability Pool Functions - `StabilityPool.sol`](#stability-pool-functions---stabilitypoolsol)
-  - [LQTY Staking Functions  `FeeRecipient.sol`](#lqty-staking-functions--lqtystakingsol)
-  - [Lockup Contract Factory `LockupContractFactory.sol`](#lockup-contract-factory-lockupcontractfactorysol)
-  - [Lockup contract - `LockupContract.sol`](#lockup-contract---lockupcontractsol)
-  - [eBTC token `EBTCToken.sol` and LQTY token `LQTYToken.sol`](#ebtc-token-ebtctokensol-and-lqty-token-lqtytokensol)
+  - [eBTC token `EBTCToken.sol`](#ebtc-token-ebtctokensol)
 - [Supplying Hints to CDP operations](#supplying-hints-to-cdp-operations)
   - [Hints for `redeemCollateral`](#hints-for-redeemcollateral)
     - [First redemption hint](#first-redemption-hint)
@@ -127,7 +124,7 @@ CDP owners have the freedom to make adjustments to their CDPs at any time by inc
 
 The eBTC Token is designed with economic properties that aim to maintain price parity with BTC. These properties include:
 
-1. The system is designed to always be over-collateralized - the dollar value of the locked Ether exceeds the dollar value of the issued eBTC.
+1. The system is designed to always be over-collateralized - the dollar value of the locked stETH exceeds the dollar value of the issued eBTC.
 
 2. eBTC token are fully redeemable - users can always swap $x worth of eBTC for $x worth of stETH (minus fees), directly with the system.
 
