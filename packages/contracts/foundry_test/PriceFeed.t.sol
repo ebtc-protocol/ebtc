@@ -35,9 +35,9 @@ contract PriceFeedTester is PriceFeed {
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
-        TellorResponse memory _tellorResponse
+        FallbackResponse memory _fallbackResponse
     ) public view returns (bool) {
-        return _bothOraclesSimilarPrice(_chainlinkResponse, _tellorResponse);
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 }
 
