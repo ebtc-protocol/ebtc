@@ -6,7 +6,7 @@ import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
 import "./CollateralTokenTester.sol";
-import "./PriceFeedTestnet.sol";
+import "./testnet/PriceFeedTestnet.sol";
 import "./EBTCTokenTester.sol";
 import "../Interfaces/IERC3156FlashBorrower.sol";
 import "../Dependencies/IERC20.sol";
@@ -62,6 +62,11 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         }
     }
 
+    function _ensureMinCollInCdp(bytes32 _cdpId) internal view {
+        uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
+        require(_collWorth < cdpManager.MIN_NET_COLL(), "!minimum CDP collateral");
+    }
+
     // CdpManager
 
     function liquidatePrx(bytes32 _cdpId) external {
@@ -106,7 +111,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         require(_amount < activePool.maxFlashLoan(address(collateral)), "!tooMuchCollToFL");
 
         // sugardaddy fee
-        uint _fee = activePool.flashFee(address(collateral), _amount);
+        uint _fee = activePool.getFlashFee(address(collateral), _amount);
         require(_fee < address(this).balance, "!tooMuchFeeCollFL");
         collateral.deposit{value: _fee}();
 
@@ -128,7 +133,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         require(_amount < borrowerOperations.maxFlashLoan(address(ebtcToken)), "!tooMuchEBTCToFL");
 
         // sugardaddy fee
-        uint _fee = borrowerOperations.flashFee(address(ebtcToken), _amount);
+        uint _fee = borrowerOperations.getFlashFee(address(ebtcToken), _amount);
         ebtcToken.unprotectedMint(address(this), _fee);
 
         // take the flashloan which should always cost the fee paid by caller
@@ -153,6 +158,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         bytes32 _cdpId = borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _coll);
         _ensureNoLiquidationTriggered(_cdpId);
         _ensureNoRecoveryModeTriggered();
+        _ensureMinCollInCdp(_cdpId);
     }
 
     function addCollPrx(

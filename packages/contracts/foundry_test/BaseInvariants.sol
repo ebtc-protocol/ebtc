@@ -102,7 +102,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             (uint _debt, , , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = _sum.add(_debt);
+            _sum = _sum + _debt;
         }
         require(
             _utils.assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), _tolerance),
