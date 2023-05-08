@@ -12,7 +12,7 @@ import "./Dependencies/AuthNoOwner.sol";
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
  * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
- * and allows a fallback oracle in case that primary Chainlink's fail.
+ * It also allows for a fallback oracle to intervene in case that the primary Chainlink oracle fails.
  *
  * The PriceFeed uses Chainlink as primary oracle, and fallback source. It contains logic for
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
