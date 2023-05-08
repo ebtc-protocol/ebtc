@@ -333,7 +333,11 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        _requireAtLeastMinNetColl(vars.newColl);
+        // Only check when the collateral exchange rate from share is above 1e18
+        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
+        }
 
         vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
