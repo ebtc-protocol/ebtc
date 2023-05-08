@@ -54,7 +54,10 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
     }
 
     /// @dev Must be memory since we had to decode it
-    function _handleOperation(LeverageMacroOperation memory operation, address forwardedCaller) internal {
+    function _handleOperation(
+        LeverageMacroOperation memory operation,
+        address forwardedCaller
+    ) internal {
         uint256 beforeSwapsLength = operation.swapsBefore.length;
         if (beforeSwapsLength > 0) {
             _doSwaps(operation.swapsBefore);
@@ -133,25 +136,33 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
     }
 
     function decodeFLData(bytes calldata data) public view returns (LeverageMacroOperation memory) {
-        (LeverageMacroOperation memory leverageMacroData) = abi.decode(data, (LeverageMacroOperation));
+        LeverageMacroOperation memory leverageMacroData = abi.decode(data, (LeverageMacroOperation));
         return leverageMacroData;
     }
 
-    function onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes calldata data)
-        external
-        override
-        returns (bytes32)
-    {
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
         // Verify we started the FL
         require(initiator == address(leverageMacro), "LeverageMacro: wrong initiator for flashloan");
 
         // Ensure the caller is the intended contract
         if (token == address(ebtcToken)) {
-            require(msg.sender == address(borrowerOperations), "LeverageMacro: wrong lender for eBTC flashloan");
+            require(
+                msg.sender == address(borrowerOperations),
+                "LeverageMacro: wrong lender for eBTC flashloan"
+            );
         } else {
             // Enforce that this is either eBTC or stETH
             // If we allow anything then the forwardedCaller invariant will break
-            require(msg.sender == address(activePool), "LeverageMacro: wrong lender for stETH flashloan");
+            require(
+                msg.sender == address(activePool),
+                "LeverageMacro: wrong lender for stETH flashloan"
+            );
         }
 
         // Else a malicious contract, that changes the data would be able to inject a forwarded caller
@@ -160,7 +171,7 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
         // We will get the first byte of data for enum an type
         // The rest of the data we can decode based on the operation type from calldata
         // Then we can do multiple hooks and stuff
-        (LeverageMacroOperation memory operation) = decodeFLData(data);
+        LeverageMacroOperation memory operation = decodeFLData(data);
 
         _handleOperation(operation, operation.forwardedCaller);
 
@@ -171,7 +182,7 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
     function _doSwaps(SwapOperation[] memory swapData) internal {
         uint256 swapLength = swapData.length;
 
-        for (uint256 i; i < swapLength;) {
+        for (uint256 i; i < swapLength; ) {
             _doSwap(swapData[i]);
             unchecked {
                 ++i;
@@ -186,13 +197,22 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
 
         // Exact approve
         // Approve can be given anywhere because this is a router, and after call we will delete all approvals
-        IERC20(swapData.tokenForSwap).approve(swapData.addressForApprove, swapData.exactApproveAmount);
+        IERC20(swapData.tokenForSwap).approve(
+            swapData.addressForApprove,
+            swapData.exactApproveAmount
+        );
 
         // Call and perform swap
         // NOTE: Technically approval may be different from target, something to keep in mind
         // Call target are limited
         // But technically you could approve w/e you want here, this is fine because the contract is a router and will not hold user funds
-        (bool success,) = excessivelySafeCall(swapData.addressForSwap, gasleft(), 0, 32, swapData.calldataForSwap);
+        (bool success, ) = excessivelySafeCall(
+            swapData.addressForSwap,
+            gasleft(),
+            0,
+            32,
+            swapData.calldataForSwap
+        );
         require(success, "Call has failed");
 
         // Approve back to 0
@@ -210,7 +230,10 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
         unchecked {
             for (uint256 i; i < length; ++i) {
                 // > because if you don't want to check for 0, just don't have the check
-                require(IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) > swapChecks[i].expectedMinOut);
+                require(
+                    IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) >
+                        swapChecks[i].expectedMinOut
+                );
             }
         }
     }
@@ -247,7 +270,11 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
          * Open CDP and Emit event
          */
         bytes32 _cdpId = borrowerOperations.openCdpFor(
-            flData.eBTCToMint, flData._upperHint, flData._lowerHint, flData.stETHToDeposit, forwardedCaller
+            flData.eBTCToMint,
+            flData._upperHint,
+            flData._lowerHint,
+            flData.stETHToDeposit,
+            forwardedCaller
         );
     }
 
@@ -279,10 +306,13 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
      * excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
      */
     // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
-    function excessivelySafeCall(address _target, uint256 _gas, uint256 _value, uint16 _maxCopy, bytes memory _calldata)
-        internal
-        returns (bool, bytes memory)
-    {
+    function excessivelySafeCall(
+        address _target,
+        uint256 _gas,
+        uint256 _value,
+        uint16 _maxCopy,
+        bytes memory _calldata
+    ) internal returns (bool, bytes memory) {
         // set up for assembly call
         uint256 _toCopy;
         bool _success;
@@ -292,19 +322,20 @@ contract FlashLoanMacroReceiver is IERC3156FlashBorrower {
         // we call via assembly to avoid memcopying a very large returndata
         // returned by a malicious contract
         assembly {
-            _success :=
-                call(
-                    _gas, // gas
-                    _target, // recipient
-                    _value, // ether value
-                    add(_calldata, 0x20), // inloc
-                    mload(_calldata), // inlen
-                    0, // outloc
-                    0 // outlen
-                )
+            _success := call(
+                _gas, // gas
+                _target, // recipient
+                _value, // ether value
+                add(_calldata, 0x20), // inloc
+                mload(_calldata), // inlen
+                0, // outloc
+                0 // outlen
+            )
             // limit our copy to 256 bytes
             _toCopy := returndatasize()
-            if gt(_toCopy, _maxCopy) { _toCopy := _maxCopy }
+            if gt(_toCopy, _maxCopy) {
+                _toCopy := _maxCopy
+            }
             // Store the length of the copied bytes
             mstore(_returnData, _toCopy)
             // copy the bytes from returndata[0:_toCopy]

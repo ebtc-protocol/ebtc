@@ -11,11 +11,11 @@ interface IPriceFeed {
     // --- Structs ---
 
     struct ChainlinkResponse {
-        uint80 roundId;
-        int256 answer;
+        uint80 roundEthBtcId;
+        uint80 roundStEthEthId;
+        uint256 answer;
         uint256 timestamp;
         bool success;
-        uint8 decimals;
     }
 
     struct TellorResponse {
@@ -24,6 +24,8 @@ interface IPriceFeed {
         uint256 timestamp;
         bool success;
     }
+
+    // --- Enum ---
 
     enum Status {
         chainlinkWorking,

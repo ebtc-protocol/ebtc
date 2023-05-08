@@ -56,12 +56,12 @@ contract LeverageMacro {
 
         flashLoanMacroReceiver = address(
             new FlashLoanMacroReceiver(
-                    _borrowerOperationsAddress,
-            _activePool,
-            _ebtc,
-            _coll,
-            _sortedCdps,
-            address(this)
+                _borrowerOperationsAddress,
+                _activePool,
+                _ebtc,
+                _coll,
+                _sortedCdps,
+                address(this)
             )
         );
 
@@ -128,7 +128,9 @@ contract LeverageMacro {
             // Not safe because OZ for our cases, if you use USDT it's your prob friend
             // NOTE: Send directly to flashLoanMacroReceiver
             IERC20(operation.tokenToTransferIn).transferFrom(
-                msg.sender, address(flashLoanMacroReceiver), operation.amountToTransferIn
+                msg.sender,
+                address(flashLoanMacroReceiver),
+                operation.amountToTransferIn
             );
         }
 
@@ -198,17 +200,17 @@ contract LeverageMacro {
         _sweepToCaller();
     }
 
-    /// @dev Assumes that 
+    /// @dev Assumes that
     ///     >= you prob use this one
     ///     <= if you don't need >= you go for lte
     ///     And if you really need eq, it's third
     function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
-        if(check.operator == Operator.skip) {
+        if (check.operator == Operator.skip) {
             // Early return
             return;
-        } else if(check.operator == Operator.gte) {
+        } else if (check.operator == Operator.gte) {
             require(check.value >= valueToCheck);
-        } else if(check.operator == Operator.lte) {
+        } else if (check.operator == Operator.lte) {
             require(check.value <= valueToCheck);
         } else if (check.operator == Operator.equal) {
             require(check.value == valueToCheck);
@@ -216,7 +218,7 @@ contract LeverageMacro {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");
         }
-    } 
+    }
 
     struct LeverageMacroOperation {
         address tokenToTransferIn;

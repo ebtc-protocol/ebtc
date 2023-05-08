@@ -16,11 +16,8 @@ import "./Dependencies/ERC3156FlashLender.sol";
 
 import {LeverageMacro} from "./LeverageMacro.sol";
 
-
 contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLender {
     string public constant NAME = "BorrowerOperations";
-
-    
 
     // --- Connected contract declarations ---
 
@@ -31,7 +28,6 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     function setTheMacro(address newMacro) external {
         theMacro = LeverageMacro(newMacro);
     }
-
 
     ICdpManager public immutable cdpManager;
 
@@ -143,10 +139,9 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
 
-
     /**
      * LEVERAGE MACRO FUNCTIONS
-    */
+     */
 
     /// @dev Ensures that the caller is macro and the forwarded caller is the owner
     function _requireForwardedCdpOwner(bytes32 _cdpId, address owner) internal view {
@@ -184,7 +179,13 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
     ) external {
         _requireForwardedCdpOwner(_cdpId, _forwardedCaller);
         _adjustCdpInternal(
-            _cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, _collAddAmount
+            _cdpId,
+            _collWithdrawal,
+            _EBTCChange,
+            _isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            _collAddAmount
         );
     }
 
@@ -516,9 +517,7 @@ contract BorrowerOperations is LiquityBase, IBorrowerOperations, ERC3156FlashLen
         _closeCdp(_cdpId);
     }
 
-    
     function _closeCdp(bytes32 _cdpId) internal {
-
         _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(price);
