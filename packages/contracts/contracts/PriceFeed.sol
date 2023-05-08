@@ -14,7 +14,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
  * It also allows for a fallback oracle to intervene in case that the primary Chainlink oracle fails.
  *
- * The PriceFeed uses Chainlink as primary oracle, and fallback source. It contains logic for
+ * The PriceFeed uses Chainlink as primary oracle and allows for an optional fallback source. It contains logic for
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle.
  */
