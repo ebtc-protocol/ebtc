@@ -111,7 +111,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         require(_amount < activePool.maxFlashLoan(address(collateral)), "!tooMuchCollToFL");
 
         // sugardaddy fee
-        uint _fee = activePool.getFlashFee(address(collateral), _amount);
+        uint _fee = activePool.flashFee(address(collateral), _amount);
         require(_fee < address(this).balance, "!tooMuchFeeCollFL");
         collateral.deposit{value: _fee}();
 
@@ -133,7 +133,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         require(_amount < borrowerOperations.maxFlashLoan(address(ebtcToken)), "!tooMuchEBTCToFL");
 
         // sugardaddy fee
-        uint _fee = borrowerOperations.getFlashFee(address(ebtcToken), _amount);
+        uint _fee = borrowerOperations.flashFee(address(ebtcToken), _amount);
         ebtcToken.unprotectedMint(address(this), _fee);
 
         // take the flashloan which should always cost the fee paid by caller
