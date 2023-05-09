@@ -183,7 +183,6 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     }
 
     struct LocalVariables_LiquidationSequence {
-        uint i;
         uint ICR;
         bytes32 cdpId;
         bool backToNormalMode;
@@ -919,7 +918,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
             vars.entireSystemDebt,
             _price
         );
-        for (vars.i = 0; vars.i < _n && vars.cdpId != firstId; ++vars.i) {
+        for (uint256 i = 0; i < _n && vars.cdpId != firstId; ++i) {
             // we need to cache it, because current CDP is likely going to be deleted
             bytes32 nextCdp = _contractsCache.sortedCdps.getPrev(vars.cdpId);
 
@@ -981,7 +980,7 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         LiquidationValues memory singleLiquidation;
         ISortedCdps sortedCdpsCached = _contractsCache.sortedCdps;
 
-        for (vars.i = 0; vars.i < _n; ++vars.i) {
+        for (uint256 i = 0; i < _n; ++i) {
             vars.cdpId = sortedCdpsCached.getLast();
             vars.ICR = getCurrentICR(vars.cdpId, _price);
 
@@ -1152,8 +1151,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
             vars.entireSystemDebt,
             _price
         );
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
-            vars.cdpId = _cdpArray[vars.i];
+        for (uint256 i = 0; i < _cdpArray.length; ++i) {
+            vars.cdpId = _cdpArray[i];
             // Skip non-active cdps
             if (Cdps[vars.cdpId].status != Status.active) {
                 continue;
@@ -1213,8 +1212,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
 
-        for (vars.i = 0; vars.i < _cdpArray.length; ++vars.i) {
-            vars.cdpId = _cdpArray[vars.i];
+        for (uint256 i = 0; i < _cdpArray.length; ++i) {
+            vars.cdpId = _cdpArray[i];
             // Skip non-active cdps
             if (Cdps[vars.cdpId].status != Status.active) {
                 continue;
