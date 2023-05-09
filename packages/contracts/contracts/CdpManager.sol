@@ -673,10 +673,10 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         // if there is liquidation redistribution
         {
             if (_debtAndColl.pendingDebtReward > 0) {
-                Cdps[_cdpId].debt = Cdps[_cdpId].debt + _debtAndColl.pendingDebtReward;
+                Cdps[_cdpId].debt += _debtAndColl.pendingDebtReward;
             }
             if (_debtAndColl.pendingCollReward > 0) {
-                Cdps[_cdpId].coll = Cdps[_cdpId].coll + _debtAndColl.pendingCollReward;
+                Cdps[_cdpId].coll += _debtAndColl.pendingCollReward;
             }
             if (_debtAndColl.pendingDebtReward > 0 || _debtAndColl.pendingCollReward > 0) {
                 _movePendingCdpRewardsToActivePool(
@@ -712,11 +712,8 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
     }
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
-        uint _coll = Cdps[_cdpId].coll;
-        uint _debt = Cdps[_cdpId].debt;
-
-        Cdps[_cdpId].coll = _coll - _partialColl;
-        Cdps[_cdpId].debt = _debt - _partialDebt;
+        Cdps[_cdpId].coll -= _partialColl;
+        Cdps[_cdpId].debt -= _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
 
         _updateCdpRewardSnapshots(_cdpId);
