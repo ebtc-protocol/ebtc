@@ -81,21 +81,21 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public totalCollateralSnapshot;
 
     /*
-     * L_ETH and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * L_STETHColl and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
      * During its lifetime, each stake earns:
      *
-     * An ETH gain of ( stake * [L_ETH - L_ETH(0)] )
+     * An ETH gain of ( stake * [L_STETHColl - L_STETHColl(0)] )
      * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
      *
-     * Where L_ETH(0) and L_EBTCDebt(0) are snapshots of L_ETH and L_EBTCDebt
+     * Where L_STETHColl(0) and L_EBTCDebt(0) are snapshots of L_STETHColl and L_EBTCDebt
      * for the active Cdp taken at the instant the stake was made
      */
-    uint public L_ETH;
+    uint public L_STETHColl;
     uint public L_EBTCDebt;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
-    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_ETH & L_EBTCdebt */
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_STETHColl & L_EBTCdebt */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
@@ -110,7 +110,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Object containing the ETH and EBTC snapshots for a given active cdp
     struct RewardSnapshot {
-        uint ETH;
+        uint STETHColl;
         uint EBTCDebt;
     }
 
@@ -183,7 +183,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        rewardSnapshots[_cdpId].ETH = 0;
+        rewardSnapshots[_cdpId].STETHColl = 0;
         rewardSnapshots[_cdpId].EBTCDebt = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);

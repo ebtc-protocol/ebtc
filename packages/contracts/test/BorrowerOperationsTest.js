@@ -349,7 +349,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(totalStakes_After.eq(totalStakes_Before.add(toBN(dec(2, 'ether')))))
     })
 
-    it("addColl(), active Cdp: applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots", async () => {
+    it("addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots", async () => {
       // --- SETUP ---
 
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
@@ -376,7 +376,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isFalse(await sortedCdps.contains(carolIndex))
 
-      const L_ETH = await cdpManager.L_ETH()
+      const L_STETHColl = await cdpManager.L_STETHColl()
       const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Cdps
@@ -423,7 +423,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward)))
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
-       to the latest values of L_ETH and L_EBTCDebt */
+       to the latest values of L_STETHColl and L_EBTCDebt */
       const alice_rewardSnapshot_After = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_After = alice_rewardSnapshot_After[0]
       const alice_EBTCDebtRewardSnapshot_After = alice_rewardSnapshot_After[1]
@@ -432,9 +432,9 @@ contract('BorrowerOperations', async accounts => {
       const bob_ETHrewardSnapshot_After = bob_rewardSnapshot_After[0]
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
-      assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_ETH), 100)
+      assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_STETHColl), 100)
       assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
-      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_ETH), 100)
+      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_STETHColl), 100)
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
     })
 
@@ -795,7 +795,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(balanceDiff.toString(), toBN(dec(1, 17)).toString())
     })
 
-    it("withdrawColl(): applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots", async () => {
+    it("withdrawColl(): applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots", async () => {
       // --- SETUP ---
       // Alice adds 15 ether, Bob adds 5 ether, Carol adds 1 ether
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -825,7 +825,7 @@ contract('BorrowerOperations', async accounts => {
       // close Carol's Cdp, liquidating her 1 ether and 180EBTC.
       await cdpManager.liquidate(carolIndex, { from: owner });
 
-      const L_ETH = await cdpManager.L_ETH()
+      const L_STETHColl = await cdpManager.L_STETHColl()
       const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Cdps
@@ -874,7 +874,7 @@ contract('BorrowerOperations', async accounts => {
       th.assertIsApproximatelyEqual(bobDebtAfter, bobDebtBefore.add(pendingDebtReward_B), 10000)
 
       /* After top up, both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
-       to the latest values of L_ETH and L_EBTCDebt */
+       to the latest values of L_STETHColl and L_EBTCDebt */
       const alice_rewardSnapshot_After = await cdpManager.rewardSnapshots(aliceIndex)
       const alice_ETHrewardSnapshot_After = alice_rewardSnapshot_After[0]
       const alice_EBTCDebtRewardSnapshot_After = alice_rewardSnapshot_After[1]
@@ -883,9 +883,9 @@ contract('BorrowerOperations', async accounts => {
       const bob_ETHrewardSnapshot_After = bob_rewardSnapshot_After[0]
       const bob_EBTCDebtRewardSnapshot_After = bob_rewardSnapshot_After[1]
 
-      assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_ETH), 100)
+      assert.isAtMost(th.getDifference(alice_ETHrewardSnapshot_After, L_STETHColl), 100)
       assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
-      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_ETH), 100)
+      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot_After, L_STETHColl), 100)
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, L_EBTCDebt), 100)
     })
 
@@ -3244,9 +3244,9 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(3000, 13))
 
       // Get Alice's pending reward snapshots 
-      const L_ETH_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_STETHColl_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[0]
       const L_EBTCDebt_A_Snapshot = (await cdpManager.rewardSnapshots(aliceIndex))[1]
-      assert.isTrue(L_ETH_A_Snapshot.eq(toBN('0')))
+      assert.isTrue(L_STETHColl_A_Snapshot.eq(toBN('0')))
       assert.isTrue(L_EBTCDebt_A_Snapshot.gt(toBN('0')))
 
       // Liquidate Carol
@@ -3254,10 +3254,10 @@ contract('BorrowerOperations', async accounts => {
       assert.isFalse(await sortedCdps.contains(carolIndex))
 
       // Get Alice's pending reward snapshots after Carol's liquidation. Check above 0
-      const L_ETH_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_STETHColl_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[0]
       const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await cdpManager.rewardSnapshots(aliceIndex))[1]
 
-      assert.isTrue(L_ETH_Snapshot_A_AfterLiquidation.eq(toBN('0')))
+      assert.isTrue(L_STETHColl_Snapshot_A_AfterLiquidation.eq(toBN('0')))
       assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
 
       // to compensate borrowing fees
@@ -3269,10 +3269,10 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
 
       // Check Alice's pending reward snapshots are zero
-      const L_ETH_Snapshot_A_afterAliceCloses = (await cdpManager.rewardSnapshots(aliceIndex))[0]
+      const L_STETHColl_Snapshot_A_afterAliceCloses = (await cdpManager.rewardSnapshots(aliceIndex))[0]
       const L_EBTCDebt_Snapshot_A_afterAliceCloses = (await cdpManager.rewardSnapshots(aliceIndex))[1]
 
-      assert.equal(L_ETH_Snapshot_A_afterAliceCloses, '0')
+      assert.equal(L_STETHColl_Snapshot_A_afterAliceCloses, '0')
       assert.equal(L_EBTCDebt_Snapshot_A_afterAliceCloses, '0')
     })
 
@@ -4443,7 +4443,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_ETH_After.eq(aliceCollAfter))
     })
 
-    it("openCdp(): records up-to-date initial snapshots of L_ETH and L_EBTCDebt", async () => {
+    it("openCdp(): records up-to-date initial snapshots of L_STETHColl and L_EBTCDebt", async () => {
       // --- SETUP ---
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("5000")});
       await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("5000")});
@@ -4465,13 +4465,13 @@ contract('BorrowerOperations', async accounts => {
       const liquidationTx = await cdpManager.liquidate(carolIndex, { from: owner });
       const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
-      /* with total stakes = 10 ether, after liquidation, L_ETH should equal 1/10 ether per-ether-staked,
+      /* with total stakes = 10 ether, after liquidation, L_STETHColl should equal 1/10 ether per-ether-staked,
        and L_EBTC should equal 18 EBTC per-ether-staked. */
 
-      const L_ETH = await cdpManager.L_ETH()
+      const L_STETHColl = await cdpManager.L_STETHColl()
       const L_EBTC = await cdpManager.L_EBTCDebt()
 
-      assert.isTrue(L_ETH.eq(toBN('0')))
+      assert.isTrue(L_STETHColl.eq(toBN('0')))
       assert.isTrue(L_EBTC.gt(toBN('0')))
 
       // Bob opens cdp
@@ -4479,12 +4479,12 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
-      // Check Bob's snapshots of L_ETH and L_EBTC equal the respective current values
+      // Check Bob's snapshots of L_STETHColl and L_EBTC equal the respective current values
       const bob_rewardSnapshot = await cdpManager.rewardSnapshots(bobIndex)
       const bob_ETHrewardSnapshot = bob_rewardSnapshot[0]
       const bob_EBTCDebtRewardSnapshot = bob_rewardSnapshot[1]
 
-      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot, L_ETH), 1000)
+      assert.isAtMost(th.getDifference(bob_ETHrewardSnapshot, L_STETHColl), 1000)
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot, L_EBTC), 1000)
     })
 

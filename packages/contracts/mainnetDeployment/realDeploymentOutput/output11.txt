@@ -579,7 +579,7 @@ CdpManager state variables:
 Total cdp stakes: 188801.710169118875210030
 Snapshot of total cdp stakes before last liq. : 137204.600258289651261017
 Snapshot of total cdp collateral before last liq. : 137204.600258289651261017
-L_ETH: .000000000000000000
+L_STETHColl: .000000000000000000
 L_EBTCDebt: .000000000000000000
 StabilityPool state variables:
 Product P: .992747893314368378

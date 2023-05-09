@@ -521,7 +521,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         }
     }
 
-    // Update borrower's snapshots of L_ETH and L_EBTCDebt to reflect the current values
+    // Update borrower's snapshots of L_STETHColl and L_EBTCDebt to reflect the current values
     function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         _applyAccumulatedFeeSplit(_cdpId);
@@ -529,15 +529,15 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
-        rewardSnapshots[_cdpId].ETH = L_ETH;
+        rewardSnapshots[_cdpId].STETHColl = L_STETHColl;
         rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
-        emit CdpSnapshotsUpdated(L_ETH, L_EBTCDebt);
+        emit CdpSnapshotsUpdated(L_STETHColl, L_EBTCDebt);
     }
 
     // get the pending stETH reward from liquidation redistribution events, for the given Cdp., earned by their stake
     function getPendingETHReward(bytes32 _cdpId) public view override returns (uint) {
-        uint snapshotETH = rewardSnapshots[_cdpId].ETH;
-        uint rewardPerUnitStaked = L_ETH - snapshotETH;
+        uint snapshotSTETHColl = rewardSnapshots[_cdpId].STETHColl;
+        uint rewardPerUnitStaked = L_STETHColl - snapshotSTETHColl;
 
         if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
             return 0;
@@ -583,7 +583,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+        return (rewardSnapshots[_cdpId].STETHColl < L_STETHColl ||
             rewardSnapshots[_cdpId].EBTCDebt < L_EBTCDebt);
     }
 

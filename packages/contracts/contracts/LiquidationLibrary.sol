@@ -1014,15 +1014,15 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
-        rewardSnapshots[_cdpId].ETH = L_ETH;
+        rewardSnapshots[_cdpId].STETHColl = L_STETHColl;
         rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
-        emit CdpSnapshotsUpdated(L_ETH, L_EBTCDebt);
+        emit CdpSnapshotsUpdated(L_STETHColl, L_EBTCDebt);
     }
 
     // get the pending stETH reward from liquidation redistribution events, for the given Cdp., earned by their stake
     function getPendingETHReward(bytes32 _cdpId) public view returns (uint) {
-        uint snapshotETH = rewardSnapshots[_cdpId].ETH;
-        uint rewardPerUnitStaked = L_ETH - snapshotETH;
+        uint snapshotSTETHColl = rewardSnapshots[_cdpId].STETHColl;
+        uint rewardPerUnitStaked = L_STETHColl - snapshotSTETHColl;
 
         if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
             return 0;
@@ -1068,7 +1068,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId].ETH < L_ETH ||
+        return (rewardSnapshots[_cdpId].STETHColl < L_STETHColl ||
             rewardSnapshots[_cdpId].EBTCDebt < L_EBTCDebt);
     }
 
@@ -1160,7 +1160,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         /*
          * Add distributed coll and debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-         * error correction, to keep the cumulative error low in the running totals L_ETH and L_EBTCDebt:
+         * error correction, to keep the cumulative error low in the running totals L_STETHColl and L_EBTCDebt:
          *
          * 1) Form numerators which compensate for the floor division errors that occurred the last time this
          * function was called.
@@ -1182,10 +1182,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             (EBTCDebtRewardPerUnitStaked * totalStakes);
 
         // Add per-unit-staked terms to the running totals
-        L_ETH = L_ETH + ETHRewardPerUnitStaked;
+        L_STETHColl = L_STETHColl + ETHRewardPerUnitStaked;
         L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
 
-        emit LTermsUpdated(L_ETH, L_EBTCDebt);
+        emit LTermsUpdated(L_STETHColl, L_EBTCDebt);
 
         // Transfer coll and debt from ActivePool to DefaultPool
         activePool.decreaseEBTCDebt(_debt);

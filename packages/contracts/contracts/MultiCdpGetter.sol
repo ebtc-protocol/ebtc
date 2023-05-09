@@ -13,7 +13,7 @@ contract MultiCdpGetter {
         uint debt;
         uint coll;
         uint stake;
-        uint snapshotETH;
+        uint snapshotSTETHColl;
         uint snapshotEBTCDebt;
     }
 
@@ -84,7 +84,7 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+            (_cdps[idx].snapshotSTETHColl, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
                 currentCdpId
             );
 
@@ -117,7 +117,7 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
+            (_cdps[idx].snapshotSTETHColl, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
                 currentCdpId
             );
 

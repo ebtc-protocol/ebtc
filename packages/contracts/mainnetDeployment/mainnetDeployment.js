@@ -499,9 +499,9 @@ async function mainnetDeploy(configParams) {
   th.logBN("Snapshot of total cdp stakes before last liq. ", totalStakesSnapshot)
   th.logBN("Snapshot of total cdp collateral before last liq. ", totalCollateralSnapshot)
 
-  const L_ETH = await ebtcCore.cdpManager.L_ETH()
+  const L_STETHColl = await ebtcCore.cdpManager.L_STETHColl()
   const L_EBTCDebt = await ebtcCore.cdpManager.L_EBTCDebt()
-  th.logBN("L_ETH", L_ETH)
+  th.logBN("L_STETHColl", L_STETHColl)
   th.logBN("L_EBTCDebt", L_EBTCDebt)
 
 

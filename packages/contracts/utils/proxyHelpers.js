@@ -227,8 +227,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('baseRate', [])
   }
 
-  async L_ETH() {
-    return this.proxyFunction('L_ETH', [])
+  async L_STETHColl() {
+    return this.proxyFunction('L_STETHColl', [])
   }
 
   async L_EBTCDebt() {

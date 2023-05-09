@@ -518,13 +518,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     Rewards-per-unit-staked from the redistribution should be:
   
     L_EBTCDebt = 1610 / 6 = 268.333 EBTC
-    L_ETH = 16.820475 /6 =  2.8034125 ether
+    L_STETHColl = 16.820475 /6 =  2.8034125 ether
     */
     const L_EBTCDebt = (await cdpManager.L_EBTCDebt()).toString()
-    const L_ETH = (await cdpManager.L_ETH()).toString()
+    const L_STETHColl = (await cdpManager.L_STETHColl()).toString()
 
     assert.isAtMost(th.getDifference(L_EBTCDebt, toBN('0').sub(toBN('0')).mul(mv._1e18BN).div(A_coll.add(D_coll))), 100)
-    assert.isAtMost(th.getDifference(L_ETH, th.applyLiquidationFee(toBN('0').sub(toBN('0').mul(toBN('0')).div(B_totalDebt)).mul(mv._1e18BN).div(A_coll.add(D_coll)))), 100)
+    assert.isAtMost(th.getDifference(L_STETHColl, th.applyLiquidationFee(toBN('0').sub(toBN('0').mul(toBN('0')).div(B_totalDebt)).mul(mv._1e18BN).div(A_coll.add(D_coll)))), 100)
   })
 
   // --- liquidate(), applied to cdp with ICR > 110% that has the lowest ICR 
@@ -582,8 +582,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-    const L_ETH = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH, '0')
+    const L_STETHColl = (await cdpManager.L_STETHColl()).toString()
+    assert.equal(L_STETHColl, '0')
 
     // Check that Bob's Cdp and stake remains active with unchanged coll and debt
     const bob_Cdp = await cdpManager.Cdps(_bobCdpId);
@@ -1209,8 +1209,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
 	
-    const L_ETH_After = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH_After, '0')
+    const L_STETHColl_After = (await cdpManager.L_STETHColl()).toString()
+    assert.equal(L_STETHColl_After, '0')
   })
 
   it("liquidate(), with ICR > 110%: ICR of non liquidated cdp does not change", async () => {
@@ -1311,8 +1311,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const _delta = (_carolDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-    const L_ETH_After = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH_After, '0')
+    const L_STETHColl_After = (await cdpManager.L_STETHColl()).toString()
+    assert.equal(L_STETHColl_After, '0')
   })
 
   it("liquidate() with ICR > 110%: total liquidated coll and debt is correct", async () => {
