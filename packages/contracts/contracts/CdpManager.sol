@@ -1679,13 +1679,12 @@ contract CdpManager is LiquityBase, Ownable, CheckContract, ICdpManager, AuthNoO
         bytes32 _cdpId
     ) public view override returns (uint pendingEBTCDebtReward) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
-        Cdp memory cdp = Cdps[_cdpId];
 
-        if (cdp.status != Status.active) {
+        if (Cdps[_cdpId].status != Status.active) {
             return 0;
         }
 
-        uint stake = cdp.stake;
+        uint stake = Cdps[_cdpId].stake;
 
         uint rewardPerUnitStaked = L_EBTCDebt - snapshotEBTCDebt;
 
