@@ -704,7 +704,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) public nonReentrantSelfAndBOps {
+    function batchLiquidateCdps(bytes32[] memory _cdpArray) external nonReentrantSelfAndBOps {
         require(
             _cdpArray.length != 0,
             "LiquidationLibrary: Calldata address array must not be empty"
@@ -967,7 +967,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _cdpId) public view returns (uint) {
+    function getNominalICR(bytes32 _cdpId) external view returns (uint) {
         (uint currentEBTCDebt, uint currentETH, , ) = getEntireDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
@@ -1290,17 +1290,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // --- Recovery Mode and TCR functions ---
 
-    // Check whether or not the system *would be* in Recovery Mode,
-    // given an ETH:USD price, and the entire system coll and debt.
-    function _checkPotentialRecoveryMode(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
-        uint _price
-    ) internal view returns (bool) {
-        uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
-        return TCR < CCR;
-    }
-
     // Calculate TCR given an price, and the entire system coll and debt.
     function _computeTCRWithGivenSystemValues(
         uint _entireSystemColl,
@@ -1459,10 +1448,6 @@ contract LiquidationLibrary is CdpManagerStorage {
             CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
             "LiquidationLibrary: Only one cdp in the system"
         );
-    }
-
-    function _requireTCRoverMCR(uint _price) internal view {
-        require(_getTCR(_price) >= MCR, "LiquidationLibrary: Cannot redeem when TCR < MCR");
     }
 
     function _requirePartialLiqDebtSize(uint _partialDebt, uint _entireDebt, uint _price) internal {
