@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 // Common interface for the SortedCdps Doubly Linked List.
 interface ISortedCdps {
