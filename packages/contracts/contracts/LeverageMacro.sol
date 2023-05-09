@@ -169,7 +169,10 @@ contract LeverageMacro {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: openCDP status check"
+            );
         }
 
         // Update CDP, Ensure the stats are as intended
@@ -178,14 +181,20 @@ contract LeverageMacro {
 
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: adjustCDP status check"
+            );
         }
 
         // Post check type: Close, ensure it has the status we want
         if (postCheckType == PostOperationCheck.isClosed) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: closeCDP status check"
+            );
         }
 
         // Sweep here
@@ -201,11 +210,11 @@ contract LeverageMacro {
             // Early return
             return;
         } else if (check.operator == Operator.gte) {
-            require(check.value >= valueToCheck);
+            require(check.value >= valueToCheck, "!LeverageMacro: gte post check");
         } else if (check.operator == Operator.lte) {
-            require(check.value <= valueToCheck);
+            require(check.value <= valueToCheck, "!LeverageMacro: let post check");
         } else if (check.operator == Operator.equal) {
-            require(check.value == valueToCheck);
+            require(check.value == valueToCheck, "!LeverageMacro: equal post check");
         } else {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");

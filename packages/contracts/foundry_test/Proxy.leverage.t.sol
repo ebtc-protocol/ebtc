@@ -51,7 +51,33 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         _openCDPViaProxy(user, netColl, proxyAddr);
     }
 
-    function test_AdjustLeveragedCDPHappy() public {}
+    function test_AdjustLeveragedCDPHappy(uint netColl, uint adjustBps) public {
+        address user = _utils.createUsers(1)[0];
+
+        vm.deal(user, type(uint96).max);
+
+        // check input
+        vm.assume(netColl < INITITAL_COLL * 5);
+        vm.assume(netColl > cdpManager.MIN_NET_COLL() * 2);
+        vm.assume(adjustBps < (MAX_SLIPPAGE / 2));
+        vm.assume(adjustBps > 100);
+
+        // deploy proxy for user
+        address proxyAddr = _createLeverageMacro(user);
+
+        // open CDP
+        dealCollateral(user, netColl);
+        bytes32 cdpId = _openCDPViaProxy(user, netColl, proxyAddr);
+
+        // adjust CDP : increase its collateral and debt
+        uint _additionalColl = (netColl * adjustBps) / MAX_SLIPPAGE;
+        dealCollateral(user, _additionalColl);
+        _increaseCDPSizeViaProxy(user, cdpId, _additionalColl, proxyAddr);
+
+        // adjust CDP : decrease its collateral and debt
+        uint _removedColl = (netColl * (MAX_SLIPPAGE / 2 - adjustBps)) / MAX_SLIPPAGE;
+        _descreaseCDPSizeViaProxy(user, cdpId, _removedColl, proxyAddr);
+    }
 
     function test_OpenAndCloseLeveragedCDPHappy(uint netColl) public {
         address user = _utils.createUsers(1)[0];
@@ -218,6 +244,239 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // check system invariants
         _ensureSystemInvariants();
+    }
+
+    function _increaseCDPSizeViaProxy(
+        address user,
+        bytes32 cdpId,
+        uint _collAdded,
+        address proxyAddr
+    ) internal {
+        vm.startPrank(user);
+
+        // leverage parameters
+        LeverageMacro.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacro.SwapOperation[] memory _levSwapsAfter;
+        LocalVar_AdjustCdp memory _adjustVars;
+        (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+        // prepare operation data
+        {
+            _adjustVars = _increaseCdpSize(cdpId, _totalColl, _collAdded, _debt);
+            _levSwapsBefore = _adjustVars._swapSteps;
+
+            LeverageMacro.LeverageMacroOperation memory operation = LeverageMacro
+                .LeverageMacroOperation(
+                    address(collateral),
+                    _adjustVars._deltaCollAmt,
+                    _levSwapsBefore,
+                    _levSwapsAfter,
+                    LeverageMacro.OperationType.AdjustCdpOperation,
+                    _adjustVars._opEncoded
+                );
+
+            LeverageMacro.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+                (_debt + _adjustVars._borrowAmt + _adjustVars._borrowFee),
+                LeverageMacro.Operator.equal,
+                (_totalColl + _collAdded),
+                LeverageMacro.Operator.equal,
+                ICdpManagerData.Status.active,
+                cdpId
+            );
+
+            // execute the leverage through proxy
+            _mock1Inch.setPrice(priceFeedMock.getPrice());
+            uint _collBal = collateral.balanceOf(user);
+            LeverageMacro(proxyAddr).doOperation(
+                LeverageMacro.FlashLoanType.eBTC,
+                _adjustVars._borrowAmt,
+                operation,
+                LeverageMacro.PostOperationCheck.cdpStats,
+                postCheckParams
+            );
+        }
+
+        vm.stopPrank();
+
+        // check system invariants
+        _ensureSystemInvariants();
+    }
+
+    function _descreaseCDPSizeViaProxy(
+        address user,
+        bytes32 cdpId,
+        uint _collRemoved,
+        address proxyAddr
+    ) internal {
+        vm.startPrank(user);
+
+        // leverage parameters
+        LeverageMacro.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacro.SwapOperation[] memory _levSwapsAfter;
+        LocalVar_AdjustCdp memory _adjustVars;
+        (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+        // prepare operation data
+        {
+            if (
+                collateral.getPooledEthByShares(_totalColl - _collRemoved) <=
+                cdpManager.MIN_NET_COLL()
+            ) {
+                uint _minShare = collateral.getSharesByPooledEth(
+                    cdpManager.MIN_NET_COLL() + 123456789
+                );
+                require(_totalColl > _minShare, "!CDP is too small to decrease size");
+                _collRemoved = _totalColl - _minShare;
+            }
+            _adjustVars = _decreaseCdpSize(cdpId, _totalColl, _collRemoved, _debt);
+            _levSwapsAfter = _adjustVars._swapSteps;
+
+            LeverageMacro.LeverageMacroOperation memory operation = LeverageMacro
+                .LeverageMacroOperation(
+                    address(collateral),
+                    0,
+                    _levSwapsBefore,
+                    _levSwapsAfter,
+                    LeverageMacro.OperationType.AdjustCdpOperation,
+                    _adjustVars._opEncoded
+                );
+
+            LeverageMacro.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+                (_debt - _adjustVars._borrowAmt),
+                LeverageMacro.Operator.equal,
+                (_totalColl - _adjustVars._deltaCollAmt),
+                LeverageMacro.Operator.equal,
+                ICdpManagerData.Status.active,
+                cdpId
+            );
+
+            // execute the leverage through proxy
+            _mock1Inch.setPrice(priceFeedMock.getPrice());
+            uint _collBal = collateral.balanceOf(user);
+            LeverageMacro(proxyAddr).doOperation(
+                LeverageMacro.FlashLoanType.eBTC,
+                _adjustVars._borrowAmt,
+                operation,
+                LeverageMacro.PostOperationCheck.cdpStats,
+                postCheckParams
+            );
+        }
+
+        vm.stopPrank();
+
+        // check system invariants
+        _ensureSystemInvariants();
+    }
+
+    struct LocalVar_AdjustCdp {
+        bytes _opEncoded;
+        LeverageMacro.SwapOperation[] _swapSteps;
+        uint _borrowAmt;
+        uint _borrowFee;
+        uint _deltaCollAmt;
+    }
+
+    function _increaseCdpSize(
+        bytes32 cdpId,
+        uint _totalColl,
+        uint _collAdded,
+        uint _debt
+    ) internal view returns (LocalVar_AdjustCdp memory) {
+        uint _price = priceFeedMock.getPrice();
+        uint _grossColl = _totalColl + _collAdded;
+        uint _targetDebt = _utils.calculateBorrowAmount(
+            _grossColl,
+            _price,
+            cdpManager.getCurrentICR(cdpId, _price)
+        );
+        require(_targetDebt > _debt, "!CDP debt already maximized thus can't increase any more");
+        uint _totalDebt = _targetDebt - _debt;
+
+        uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
+        LeverageMacro.AdjustCdpOperation memory _opData = LeverageMacro.AdjustCdpOperation(
+            cdpId,
+            0,
+            _flDebt,
+            true,
+            cdpId,
+            cdpId,
+            _collAdded
+        );
+        bytes memory _opDataEncoded = abi.encode(_opData);
+        uint _collMinOut = _convertDebtAndCollForSwap(
+            _totalDebt,
+            true,
+            _acceptedSlippage,
+            _price,
+            false
+        );
+        LeverageMacro.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
+            address(eBTCToken),
+            _totalDebt,
+            address(collateral),
+            _collMinOut
+        );
+        uint _transferInColl = _grossColl - _collMinOut - _totalColl;
+        require(
+            _transferInColl > 0,
+            "!leverage increase CDP transferIn collateral amount can't be zero"
+        );
+        return
+            LocalVar_AdjustCdp(
+                _opDataEncoded,
+                _swapSteps,
+                _totalDebt,
+                (_flDebt - _totalDebt),
+                _transferInColl
+            );
+    }
+
+    function _decreaseCdpSize(
+        bytes32 cdpId,
+        uint _totalColl,
+        uint _collRemoved,
+        uint _debt
+    ) internal view returns (LocalVar_AdjustCdp memory) {
+        uint _price = priceFeedMock.getPrice();
+        uint _grossColl = _totalColl - _collRemoved;
+        uint _targetDebt = _utils.calculateBorrowAmount(
+            _grossColl,
+            _price,
+            cdpManager.getCurrentICR(cdpId, _price)
+        );
+        require(_targetDebt < _debt, "!CDP debt already minimized thus can't decrease any more");
+        uint _totalDebt = _debt - _targetDebt;
+
+        uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
+        uint _collWithdrawn = _convertDebtAndCollForSwap(
+            _flDebt,
+            true,
+            _acceptedSlippage,
+            _price,
+            true
+        );
+        LeverageMacro.AdjustCdpOperation memory _opData = LeverageMacro.AdjustCdpOperation(
+            cdpId,
+            _collWithdrawn,
+            _totalDebt,
+            false,
+            cdpId,
+            cdpId,
+            0
+        );
+        bytes memory _opDataEncoded = abi.encode(_opData);
+        LeverageMacro.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
+            address(collateral),
+            _collWithdrawn,
+            address(eBTCToken),
+            _flDebt
+        );
+        return
+            LocalVar_AdjustCdp(
+                _opDataEncoded,
+                _swapSteps,
+                _totalDebt,
+                (_flDebt - _totalDebt),
+                _collWithdrawn
+            );
     }
 
     function _generateCalldataSwapMock1Inch(
