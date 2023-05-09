@@ -227,4 +227,18 @@ interface ICdpManagerData {
     function stFeePerUnitgError() external view returns (uint);
 
     function stFPPSg() external view returns (uint);
+
+    function calcFeeUponStakingReward(
+        uint256 _newIndex,
+        uint256 _prevIndex
+    ) external view returns (uint256, uint256, uint256);
+
+    function claimStakingSplitFee() external;
+
+    function getAccumulatedFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _stFeePerUnitg,
+        uint _stFeePerUnitgError,
+        uint _totalStakes
+    ) external view returns (uint, uint);
 }

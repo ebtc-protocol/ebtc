@@ -113,27 +113,76 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
+    /// @dev Expect internal accounting allocated to fee recipient to change, and actual token balance to stay the same.
+    /// @dev token balance would change when fee coll is claimed to fee recipient in getFeeRecipientClaimableColl()
     function _takeSplitFee(uint _totalColl, uint _expectedFee) internal {
+        uint _totalCollBefore = _totalColl;
+        uint _collateralTokensInActivePoolBefore = collateral.balanceOf(address(activePool));
+        uint _internalAccountingCollBefore = activePool.getStEthColl();
         uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
+        uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableColl();
+
         cdpManager.claimStakingSplitFee();
-        uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
+
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
-        uint _feeBalDiff = _feeBalAfter - _feeBalBefore;
+        uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));
+        uint _internalAccountingCollAfter = activePool.getStEthColl();
+        uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
+        uint _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableColl();
+        
+        /**
+        This split only updates internal accounting, all tokens remain in ActivePool, tokens are actually transfered by a pull model function to feeRecipient.
+            - The amount of tokens in ActivePool stays the same
+            - The amount of tokens in FeeRecipient stays the same
+
+            - The internal accounting value of stETH allocated to system coll decreases by the fee
+            - The total system collateral as read by CDPManager reflects this change
+            - The internal accounting value of stETH allocated to FeeRecipient increases by the fee
+        */
+
         require(
             _utils.assertApproximateEq(
-                collateral.getPooledEthByShares(_totalColl - _totalCollAfter),
-                _feeBalDiff,
+                _collateralTokensInActivePoolBefore,
+                _collateralTokensInActivePoolAfter,
                 _tolerance
             ),
-            "!SplitFeeInRecipient"
+            "Total Collateral tokens in ActivePool should not change after split fee allocation"
         );
+
+        require(
+            _utils.assertApproximateEq(
+                _feeBalAfter - _feeBalBefore,
+                0,
+                _tolerance
+            ),
+            "Split fee allocation should not change token balance of fee recipient"
+        );
+
         require(
             _utils.assertApproximateEq(
                 collateral.getPooledEthByShares(_expectedFee),
-                _feeBalDiff,
+                collateral.getPooledEthByShares(_internalAccountingCollBefore - _internalAccountingCollAfter),
                 _tolerance
             ),
-            "!ExpectedSplitFee"
+            "System Collateral internal accounting ActivePool should decrease by the expected fee"
+        );
+
+        require(
+            _utils.assertApproximateEq(
+                collateral.getPooledEthByShares(_expectedFee),
+                collateral.getPooledEthByShares(_totalCollBefore - _totalCollAfter),
+                _tolerance
+            ),
+            "Total system collateral as read by CDPManager should change in-line with internal accounting, decreasing by the expected fee"
+        );
+        
+        require(
+            _utils.assertApproximateEq(
+                collateral.getPooledEthByShares(_expectedFee),
+                collateral.getPooledEthByShares(_feeInternalAccountingAfter - _feeInternalAccountingBefore),
+                _tolerance
+            ),
+            "The amount of shares of the expected fee should be equal to the internal accounting allocated to fee recipient"
         );
     }
 

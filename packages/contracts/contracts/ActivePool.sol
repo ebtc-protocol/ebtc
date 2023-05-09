@@ -36,6 +36,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
+    uint256 internal FeeRecipientColl; // coll shares claimable by fee recipient
     ICollateralToken public collateral;
 
     // --- Contract setters ---
@@ -84,6 +85,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         return EBTCDebt;
     }
 
+    function getFeeRecipientClaimableColl() external view override returns (uint) {
+        return FeeRecipientColl;
+    }
+
     // --- Pool functionality ---
 
     function sendStEthColl(address _account, uint _shares) public override {
@@ -92,7 +97,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         StEthColl = StEthColl - _shares;
 
-        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit ActivePoolCollBalanceUpdated(StEthColl);
         emit CollateralSent(_account, _shares);
 
         _transferSharesWithContractHooks(_account, _shares);
@@ -117,12 +122,42 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         StEthColl = StEthColl - _shares;
 
-        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit ActivePoolCollBalanceUpdated(StEthColl);
         emit CollateralSent(_account, totalShares);
 
         _transferSharesWithContractHooks(_account, totalShares);
     }
 
+    /**
+        @notice Allocate stETH shares from the system to the fee recipient to claim at-will (pull model)
+        @dev Only the current fee recipient address is able to claim the shares
+        @dev If the fee recipient address is changed while outstanding claimable coll is available, only the new fee recipient will be able to claim the outstanding coll
+     */
+    function allocateFeeRecipientColl(uint _shares) external override {
+        _requireCallerIsBOorCdpM();
+
+        StEthColl = StEthColl - _shares;
+        FeeRecipientColl = FeeRecipientColl + _shares;
+
+        emit ActivePoolCollBalanceUpdated(StEthColl);
+        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+    }
+
+    /**
+        @notice Claim outstanding shares for fee recipient, updating internal accounting and transferring the shares.
+        @dev Call permissinos are managed via authority for flexibility, rather than gating call to just feeRecipient.
+        @dev Is likely safe as an open permission though caution should be taken.
+     */
+    function claimFeeRecipientColl(uint _shares) external override requiresAuth {
+        require(FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+
+        FeeRecipientColl = FeeRecipientColl - _shares;
+        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+
+        collateral.transferShares(feeRecipientAddress, _shares);
+    }
+
+    /// @dev Transfer shares to another address, ensuring to update the internal accounting of other system pools if they are the recipient
     function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferShares(_account, _shares);
@@ -131,8 +166,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
             ICollSurplusPool(_account).receiveColl(_shares);
         } else if (_account == defaultPoolAddress) {
             IDefaultPool(_account).receiveColl(_shares);
-        } else if (_account == feeRecipientAddress) {
-            IFeeRecipient(feeRecipientAddress).receiveStEthFee(_shares);
         }
     }
 
@@ -167,7 +200,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
         StEthColl = StEthColl + _value;
-        emit ActivePoolETHBalanceUpdated(StEthColl);
+        emit ActivePoolCollBalanceUpdated(StEthColl);
     }
 
     // === Flashloans === //

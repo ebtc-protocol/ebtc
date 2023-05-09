@@ -12,6 +12,12 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
+/**
+    @notice CDP Manager storage and shared functions
+    @dev CDP Manager was split to get around contract size limitations, liquidation related functions are delegated to LiquidationLibrary contract code.
+    @dev Both must maintain the same storage layout, so shared storage components where placed here
+    @dev Shared functions were also added here to de-dup code
+ */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     string public constant NAME = "CdpManager";
 
@@ -168,5 +174,241 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         _;
 
         locked = OPEN;
+    }
+
+    function _closeCdp(bytes32 _cdpId, Status closedStatus) internal {
+        _closeCdpWithoutRemovingSortedCdps(_cdpId, closedStatus);
+        sortedCdps.remove(_cdpId);
+    }
+
+    function _closeCdpWithoutRemovingSortedCdps(bytes32 _cdpId, Status closedStatus) internal {
+        assert(closedStatus != Status.nonExistent && closedStatus != Status.active);
+
+        uint CdpIdsArrayLength = CdpIds.length;
+        _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
+
+        Cdps[_cdpId].status = closedStatus;
+        Cdps[_cdpId].coll = 0;
+        Cdps[_cdpId].debt = 0;
+        Cdps[_cdpId].liquidatorRewardShares = 0;
+
+        rewardSnapshots[_cdpId].ETH = 0;
+        rewardSnapshots[_cdpId].EBTCDebt = 0;
+
+        _removeCdp(_cdpId, CdpIdsArrayLength);
+    }
+
+    /*
+     * Updates snapshots of system total stakes and total collateral,
+     * excluding a given collateral remainder from the calculation.
+     * Used in a liquidation sequence.
+     *
+     * The calculation excludes a portion of collateral that is in the ActivePool:
+     *
+     * the total ETH gas compensation from the liquidation sequence
+     *
+     * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
+     */
+    function _updateSystemSnapshots_excludeCollRemainder(uint _collRemainder) internal {
+        totalStakesSnapshot = totalStakes;
+
+        uint activeColl = activePool.getStEthColl();
+        uint liquidatedColl = defaultPool.getStEthColl();
+        totalCollateralSnapshot = (activeColl - _collRemainder) + liquidatedColl;
+
+        emit SystemSnapshotsUpdated(totalStakesSnapshot, totalCollateralSnapshot);
+    }
+
+    /*
+     * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
+     * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
+     */
+    function _removeCdp(bytes32 _cdpId, uint CdpIdsArrayLength) internal {
+        Status cdpStatus = Cdps[_cdpId].status;
+        // It’s set in caller function `_closeCdp`
+        assert(cdpStatus != Status.nonExistent && cdpStatus != Status.active);
+
+        uint128 index = Cdps[_cdpId].arrayIndex;
+        uint length = CdpIdsArrayLength;
+        uint idxLast = length - 1;
+
+        assert(index <= idxLast);
+
+        bytes32 idToMove = CdpIds[idxLast];
+
+        CdpIds[index] = idToMove;
+        Cdps[idToMove].arrayIndex = index;
+        emit CdpIndexUpdated(idToMove, index);
+
+        CdpIds.pop();
+    }
+
+    // --- Recovery Mode and TCR functions ---
+
+    // Calculate TCR given an price, and the entire system coll and debt.
+    function _computeTCRWithGivenSystemValues(
+        uint _entireSystemColl,
+        uint _entireSystemDebt,
+        uint _price
+    ) internal view returns (uint) {
+        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
+        return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
+    }
+
+    // --- Staking-Reward Fee split functions ---
+
+    // Claim split fee if there is staking-reward coming
+    // and update global index & fee-per-unit variables
+    function claimStakingSplitFee() public {
+        (uint _oldIndex, uint _newIndex) = _syncIndex();
+        if (_newIndex > _oldIndex && totalStakes > 0) {
+            (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
+                _newIndex,
+                _oldIndex
+            );
+            _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
+            _updateSystemSnapshots_excludeCollRemainder(0);
+        }
+    }
+
+    // Update the global index via collateral token
+    function _syncIndex() internal returns (uint, uint) {
+        uint _oldIndex = stFPPSg;
+        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+        if (_newIndex != _oldIndex) {
+            _requireValidUpdateInterval();
+            stFPPSg = _newIndex;
+            lastIndexTimestamp = block.timestamp;
+            emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
+        }
+        return (_oldIndex, _newIndex);
+    }
+
+    // Calculate fee for given pair of collateral indexes, following are returned values:
+    // - fee split in collateral token which will be deduced from current total system collateral
+    // - fee split increase per unit, used to update stFeePerUnitg
+    // - fee split calculation error, used to update stFeePerUnitgError
+    function calcFeeUponStakingReward(
+        uint256 _newIndex,
+        uint256 _prevIndex
+    ) public view returns (uint256, uint256, uint256) {
+        require(_newIndex > _prevIndex, "LiquidationLibrary: only take fee with bigger new index");
+        uint256 deltaIndex = _newIndex - _prevIndex;
+        uint256 deltaIndexFees = (deltaIndex * stakingRewardSplit) / MAX_REWARD_SPLIT;
+
+        // we take the fee for all CDPs immediately which is scaled by index precision
+        uint256 _deltaFeeSplit = deltaIndexFees * getEntireSystemColl();
+        uint256 _cachedAllStakes = totalStakes;
+        // return the values to update the global fee accumulator
+        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
+        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) + stFeePerUnitgError;
+        uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
+        uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
+        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
+    }
+
+    // Take the cut from staking reward
+    // and update global fee-per-unit accumulator
+    function _takeSplitAndUpdateFeePerUnit(
+        uint256 _feeTaken,
+        uint256 _deltaPerUnit,
+        uint256 _newErrorPerUnit
+    ) internal {
+        uint _oldPerUnit = stFeePerUnitg;
+        stFeePerUnitg = stFeePerUnitg + _deltaPerUnit;
+        stFeePerUnitgError = _newErrorPerUnit;
+
+        require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
+        activePool.allocateFeeRecipientColl(_feeTaken);
+
+        emit CollateralFeePerUnitUpdated(
+            _oldPerUnit,
+            stFeePerUnitg,
+            address(feeRecipient),
+            _feeTaken
+        );
+    }
+
+    // Apply accumulated fee split distributed to the CDP
+    // and update its accumulator tracker accordingly
+    function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
+        // TODO Ensure global states like stFeePerUnitg get timely updated
+        // whenever there is a CDP modification operation,
+        // such as opening, closing, adding collateral, repaying debt, or liquidating
+        // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
+        claimStakingSplitFee();
+
+        uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
+        if (_oldPerUnitCdp == 0) {
+            stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
+            return;
+        } else if (_oldPerUnitCdp == stFeePerUnitg) {
+            return;
+        }
+
+        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
+            _cdpId,
+            stFeePerUnitg,
+            stFeePerUnitgError,
+            totalStakes
+        );
+        Cdps[_cdpId].coll = _newColl;
+        stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
+
+        emit CdpFeeSplitApplied(
+            _cdpId,
+            _oldPerUnitCdp,
+            stFeePerUnitcdp[_cdpId],
+            _feeSplitDistributed,
+            Cdps[_cdpId].coll
+        );
+    }
+
+    // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
+    function getAccumulatedFeeSplitApplied(
+        bytes32 _cdpId,
+        uint _stFeePerUnitg,
+        uint _stFeePerUnitgError,
+        uint _totalStakes
+    ) public view returns (uint, uint) {
+        if (
+            stFeePerUnitcdp[_cdpId] == 0 ||
+            Cdps[_cdpId].coll == 0 ||
+            stFeePerUnitcdp[_cdpId] == _stFeePerUnitg
+        ) {
+            return (0, Cdps[_cdpId].coll);
+        }
+
+        uint _oldStake = Cdps[_cdpId].stake;
+
+        uint _diffPerUnit = _stFeePerUnitg - stFeePerUnitcdp[_cdpId];
+        uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake * _diffPerUnit : 0;
+
+        uint _scaledCdpColl = Cdps[_cdpId].coll * DECIMAL_PRECISION;
+        require(
+            _scaledCdpColl > _feeSplitDistributed,
+            "LiquidationLibrary: fee split is too big for CDP"
+        );
+
+        return (_feeSplitDistributed, (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION);
+    }
+
+    // -- Modifier functions --
+    function _requireCdpIsActive(bytes32 _cdpId) internal view {
+        require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
+    }
+
+    function _requireMoreThanOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
+        require(
+            CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
+            "CdpManager: Only one cdp in the system"
+        );
+    }
+
+    function _requireValidUpdateInterval() internal {
+        require(
+            block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
+            "CdpManager: update index too frequent"
+        );
     }
 }
