@@ -32,9 +32,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
-    // Use to convert a price answer to an 18-digit precision uint
-    uint public constant TARGET_DIGITS = 18;
-
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
 
@@ -398,7 +395,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
          * - If price decreased, the percentage deviation is in relation to the the previous price.
          * - If price increased, the percentage deviation is in relation to the current price.
          */
-        uint percentDeviation = ((maxPrice - minPrice) * DECIMAL_PRECISION) / maxPrice;
+        uint percentDeviation = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice;
 
         // Return true if price has more than doubled, or more than halved.
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
@@ -452,7 +449,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
         uint minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         uint maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint percentPriceDifference = ((maxPrice - minPrice) * DECIMAL_PRECISION) / minPrice;
+        uint percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+            minPrice;
 
         /*
          * Return true if the relative price difference is <= 3%: if so, we assume both oracles are probably reporting
@@ -539,9 +537,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         chainlinkResponse.roundStEthEthId = roundstEthEthId;
 
         // If call to Chainlink succeeds, return the response and success = true
-        chainlinkResponse.answer =
-            ((uint256(ethBtcAnswer) * DECIMAL_PRECISION) / uint256(stEthEthAnswer)) *
-            (10 ** (STETH_ETH_CL_FEED_DECIMAL - ETH_BTC_CL_FEED_DECIMAL));
+        chainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         // NOTE: stick with the `Min` for `TIMEOUT` check-ups
         chainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         chainlinkResponse.success = true;
@@ -584,11 +580,22 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         prevChainlinkResponse.roundStEthEthId = roundstEthEthId;
 
         // If call to Chainlink succeeds, return the response and success = true
-        prevChainlinkResponse.answer =
-            ((uint256(ethBtcAnswer) * DECIMAL_PRECISION) / uint256(stEthEthAnswer)) *
-            (10 ** (STETH_ETH_CL_FEED_DECIMAL - ETH_BTC_CL_FEED_DECIMAL));
+        prevChainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         // NOTE: stick with the `Min` for `TIMEOUT` check-ups
         prevChainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         prevChainlinkResponse.success = true;
+    }
+
+    // @notice Returns the price of stETH:BTC in 18 decimals denomination
+    // @param _ethBtcAnswer CL price retrieve from ETH:BTC feed
+    // @param _stEthEthAnswer CL price retrieve from stETH:BTC feed
+    // @return The aggregated calculated price for stETH:BTC
+    function _formatClAggregateAnswer(
+        int256 _ethBtcAnswer,
+        int256 _stEthEthAnswer
+    ) internal view returns (uint256) {
+        return
+            ((uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION) / uint256(_stEthEthAnswer)) *
+            (10 ** (STETH_ETH_CL_FEED_DECIMAL - ETH_BTC_CL_FEED_DECIMAL));
     }
 }
