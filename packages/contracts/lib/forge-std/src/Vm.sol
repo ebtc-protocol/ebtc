@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.2 <0.9.0;
 
-pragma experimental ABIEncoderV2;
+
 
 // Cheatcodes are marked as view/pure/none using the following rules:
 // 0. A call's observable behaviour includes its return value, logs, reverts and state writes,
