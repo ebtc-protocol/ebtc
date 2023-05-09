@@ -97,7 +97,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         deal(address(eBTCToken), address(attacker), fee * 2);
 
         uint256 feeRecipientPreviousBalance = eBTCToken.balanceOf(
-            borrowerOperations.FEE_RECIPIENT()
+            address(borrowerOperations.feeRecipient())
         );
         uint256 attackerPreviousBalance = eBTCToken.balanceOf(address(attacker));
         uint256 ebtcSupplyBefore = eBTCToken.totalSupply();
@@ -111,7 +111,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         );
 
         assertEq(
-            eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()),
+            eBTCToken.balanceOf(address(borrowerOperations.feeRecipient())),
             feeRecipientPreviousBalance + fee * 2
         );
         assertEq(eBTCToken.balanceOf(address(attacker)), attackerPreviousBalance - fee * 2);

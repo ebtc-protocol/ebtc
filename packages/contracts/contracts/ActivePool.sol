@@ -32,7 +32,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     address public immutable cdpManagerAddress;
     address public immutable defaultPoolAddress;
     address public immutable collSurplusPoolAddress;
-    address public immutable override feeRecipientAddress;
+    address public feeRecipientAddress;
 
     uint256 internal StEthColl; // deposited collateral tracker
     uint256 internal EBTCDebt;
@@ -135,6 +135,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
      */
     function allocateFeeRecipientColl(uint _shares) external override {
         _requireCallerIsBOorCdpM();
+        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
 
         StEthColl = StEthColl - _shares;
         FeeRecipientColl = FeeRecipientColl + _shares;
@@ -231,7 +232,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         collateral.transferFrom(address(receiver), address(this), amountWithFee);
 
         // Send earned fee to designated recipient
-        collateral.transfer(FEE_RECIPIENT, fee);
+        collateral.transfer(feeRecipientAddress, fee);
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it

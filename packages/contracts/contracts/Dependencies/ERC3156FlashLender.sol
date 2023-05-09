@@ -8,7 +8,6 @@ import "./AuthNoOwner.sol";
 
 abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
     // TODO: Fix / Finalize
-    address public constant FEE_RECIPIENT = address(1);
     uint256 public constant MAX_BPS = 10_000;
 
     uint256 public feeBps = 50; // 50 BPS

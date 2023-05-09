@@ -838,13 +838,12 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC
-        cachedEbtc.mint(address(receiver), amount);
+        ebtcToken.mint(address(receiver), amount);
 
         // Callback
         require(
@@ -856,10 +855,10 @@ contract BorrowerOperations is
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
+        ebtcToken.transferFrom(address(receiver), address(feeRecipient), fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
-        cachedEbtc.burn(address(FEE_RECIPIENT), amount);
+        ebtcToken.burn(address(feeRecipient), amount);
 
         return true;
     }

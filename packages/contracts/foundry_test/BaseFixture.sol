@@ -58,6 +58,12 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
     bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
+    // ActivePool
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
+    bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
+        bytes4(keccak256(bytes("claimFeeRecipientColl(uint256)")));
+
     event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
     event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
 
@@ -310,7 +316,10 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
-        authority.setRoleName(5, "BorrowerOperations: setFeeBps & setMaxFeeBps");
+        authority.setRoleName(5, "BorrowerOperations+ActivePool: setFeeBps & setMaxFeeBps");
+        authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
+
+        // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced. 
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 
@@ -329,12 +338,16 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
 
+        authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
+        authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);
+
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);
         authority.setUserRole(defaultGovernance, 2, true);
         authority.setUserRole(defaultGovernance, 3, true);
         authority.setUserRole(defaultGovernance, 4, true);
         authority.setUserRole(defaultGovernance, 5, true);
+        authority.setUserRole(defaultGovernance, 6, true);
 
         vm.stopPrank();
     }

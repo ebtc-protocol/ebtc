@@ -35,6 +35,14 @@ contract ActivePoolTester is ActivePool {
         StEthColl = StEthColl + _amount;
     }
 
+    function unprotectedAllocateFeeRecipientColl(uint _shares) external {
+        StEthColl = StEthColl - _shares;
+        FeeRecipientColl = FeeRecipientColl + _shares;
+
+        emit ActivePoolCollBalanceUpdated(StEthColl);
+        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+    }
+
     // dummy test functions for sweepToken()
     function balanceOf(address account) external view returns (uint256) {
         return 1234567890;

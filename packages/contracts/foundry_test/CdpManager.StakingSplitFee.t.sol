@@ -129,7 +129,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _internalAccountingCollAfter = activePool.getStEthColl();
         uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
         uint _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableColl();
-        
+
         /**
         This split only updates internal accounting, all tokens remain in ActivePool, tokens are actually transfered by a pull model function to feeRecipient.
             - The amount of tokens in ActivePool stays the same
@@ -150,18 +150,16 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
 
         require(
-            _utils.assertApproximateEq(
-                _feeBalAfter - _feeBalBefore,
-                0,
-                _tolerance
-            ),
+            _utils.assertApproximateEq(_feeBalAfter - _feeBalBefore, 0, _tolerance),
             "Split fee allocation should not change token balance of fee recipient"
         );
 
         require(
             _utils.assertApproximateEq(
                 collateral.getPooledEthByShares(_expectedFee),
-                collateral.getPooledEthByShares(_internalAccountingCollBefore - _internalAccountingCollAfter),
+                collateral.getPooledEthByShares(
+                    _internalAccountingCollBefore - _internalAccountingCollAfter
+                ),
                 _tolerance
             ),
             "System Collateral internal accounting ActivePool should decrease by the expected fee"
@@ -175,11 +173,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             ),
             "Total system collateral as read by CDPManager should change in-line with internal accounting, decreasing by the expected fee"
         );
-        
+
         require(
             _utils.assertApproximateEq(
                 collateral.getPooledEthByShares(_expectedFee),
-                collateral.getPooledEthByShares(_feeInternalAccountingAfter - _feeInternalAccountingBefore),
+                collateral.getPooledEthByShares(
+                    _feeInternalAccountingAfter - _feeInternalAccountingBefore
+                ),
                 _tolerance
             ),
             "The amount of shares of the expected fee should be equal to the internal accounting allocated to fee recipient"

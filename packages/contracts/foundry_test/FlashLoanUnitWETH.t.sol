@@ -56,7 +56,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
-        uint256 prevFeeBalance = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        uint256 prevFeeBalance = collateral.balanceOf(activePool.feeRecipientAddress());
         // Perform flashloan
         activePool.flashLoan(
             wethReceiver,
@@ -68,7 +68,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), _suggar);
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(collateral.balanceOf(activePool.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(collateral.balanceOf(activePool.feeRecipientAddress()), prevFeeBalance + fee);
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
