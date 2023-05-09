@@ -26,10 +26,6 @@ contract DefaultPool is IDefaultPool, ReentrancyGuard, AuthNoOwner {
     uint256 internal EBTCDebt; // debt
     ICollateralToken public collateral;
 
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SWEEP_TOKEN_SIG =
-        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
-
     // --- Dependency setters ---
 
     /**

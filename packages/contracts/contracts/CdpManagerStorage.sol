@@ -51,15 +51,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
     uint public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
 
-    // -- Permissioned Function Signatures --
-    bytes4 internal constant SET_STAKING_REWARD_SPLIT_SIG =
-        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
-    bytes4 internal constant SET_REDEMPTION_FEE_FLOOR_SIG =
-        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
-    bytes4 internal constant SET_MINUTE_DECAY_FACTOR_SIG =
-        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 internal constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
-
     // During bootsrap period redemptions are not allowed
     uint public constant BOOTSTRAP_PERIOD = 14 days;
 

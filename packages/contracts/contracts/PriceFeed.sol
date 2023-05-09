@@ -33,10 +33,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
     uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
 
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SET_FALLBACK_CALLER_SIG =
-        bytes4(keccak256(bytes("setFallbackCaller(address)")));
-
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
 
@@ -344,10 +340,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @param _fallbackCaller The new IFallbackCaller-compliant oracle address
     **/
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
-        require(
-            isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
-            "PriceFeed: sender not authorized for setFallbackCaller(address)"
-        );
         fallbackCaller = IFallbackCaller(_fallbackCaller);
         emit FallbackCallerChanged(_fallbackCaller);
     }

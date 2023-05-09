@@ -15,9 +15,6 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
 
     bytes32 public constant FLASH_SUCCESS_VALUE = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
-    bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
-    bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
-
     function setFeeBps(uint _newFee) external requiresAuth {
         require(_newFee <= maxFeeBps, "ERC3156FlashLender: _newFee should <= maxFeeBps");
 

@@ -24,10 +24,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SWEEP_TOKEN_SIG =
-        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
-
     address public immutable borrowerOperationsAddress;
     address public immutable cdpManagerAddress;
     address public immutable defaultPoolAddress;

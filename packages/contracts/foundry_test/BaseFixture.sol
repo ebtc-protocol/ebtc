@@ -319,7 +319,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(5, "BorrowerOperations+ActivePool: setFeeBps & setMaxFeeBps");
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
 
-        // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced. 
+        // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 
