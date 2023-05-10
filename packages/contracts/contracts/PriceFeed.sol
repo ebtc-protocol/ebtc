@@ -31,7 +31,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
-    uint public constant TIMEOUT_ETH_BTC = 4800; // 1 hours & 20min: 60 * 80
+    uint public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
     uint public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
 
     // -- Permissioned Function Signatures --
@@ -443,7 +443,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function _fallbackIsFrozen(
         FallbackResponse memory _fallbackResponse
     ) internal view returns (bool) {
-        return block.timestamp - _fallbackResponse.timestamp > TIMEOUT_ETH_BTC;
+        return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
     }
 
     function _bothOraclesLiveAndUnbrokenAndSimilarPrice(
@@ -543,8 +543,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data:
         (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
             .latestRoundData();
-        if (!_checkHealthyCLResponse(roundEthBtcId, ethBtcAnswer, ethBtcTimestamp, TIMEOUT_ETH_BTC))
-            return chainlinkResponse;
+        if (
+            !_checkHealthyCLResponse(
+                roundEthBtcId,
+                ethBtcAnswer,
+                ethBtcTimestamp,
+                TIMEOUT_ETH_BTC_FEED
+            )
+        ) return chainlinkResponse;
 
         (
             uint80 roundstEthEthId,
@@ -599,8 +605,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data from prev round:
         (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
             .getRoundData(_currentRoundEthBtcId - 1);
-        if (!_checkHealthyCLResponse(roundEthBtcId, ethBtcAnswer, ethBtcTimestamp, TIMEOUT_ETH_BTC))
-            return prevChainlinkResponse;
+        if (
+            !_checkHealthyCLResponse(
+                roundEthBtcId,
+                ethBtcAnswer,
+                ethBtcTimestamp,
+                TIMEOUT_ETH_BTC_FEED
+            )
+        ) return prevChainlinkResponse;
 
         (
             uint80 roundstEthEthId,

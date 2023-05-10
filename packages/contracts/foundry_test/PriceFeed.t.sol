@@ -71,8 +71,10 @@ contract PriceFeedTest is eBTCBaseFixture {
         _mockTellor.setUpdateTime(block.timestamp);
         */
 
+        _tellorCaller = new TellorCaller(address(_mockTellor));
+
         // NOTE: fork at `17210175`. my local timestamp is playing funny
-        vm.warp(1683478511 + 4000);
+        vm.warp(1683478511);
         uint256 prevRoundId = 18446744073709552244;
         // NOTE: force to mock it up, since `updateAt` was 1d old, triggers `TIMEOUT`
         vm.mockCall(
@@ -80,10 +82,7 @@ contract PriceFeedTest is eBTCBaseFixture {
             abi.encodeWithSelector(AggregatorV3Interface.getRoundData.selector, prevRoundId),
             abi.encode(prevRoundId, 966009470097829100, 1662456296, 1683478511, prevRoundId)
         );
-        _priceFeed = new PriceFeedTester(
-            0xB3B662644F8d3138df63D2F43068ea621e2981f9,
-            address(authority)
-        );
+        _priceFeed = new PriceFeedTester(address(_tellorCaller), address(authority));
     }
 
     // NOTE: now there is not mocking in constructor, since cl feeds are constants
