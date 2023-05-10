@@ -42,13 +42,14 @@ contract LeverageMacroFactory {
     function deployNewMacro(address _owner) public returns (address) {
         address addy = address(
             new LeverageMacro(
-            borrowerOperations,
-            activePool,
-            cdpManager,
-            ebtcToken,
-            sortedCdps,
-            stETH,
-            _owner)
+                borrowerOperations,
+                activePool,
+                cdpManager,
+                ebtcToken,
+                sortedCdps,
+                stETH,
+                _owner
+            )
         );
 
         emit DeployNewMacro(_owner, addy);
