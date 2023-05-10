@@ -7,6 +7,7 @@ interface IPriceFeed {
     event LastGoodPriceUpdated(uint _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
     event FallbackCallerChanged(address _oldFallbackCaller, address _newFallbackCaller);
+    event UnhealthyFallbackCaller(address _fallbackCaller, uint256 timestamp);
 
     // --- Structs ---
 
