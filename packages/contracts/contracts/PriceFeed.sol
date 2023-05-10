@@ -24,10 +24,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Chainlink oracles
     AggregatorV3Interface public constant ETH_BTC_CL_FEED =
         AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
-    uint256 internal constant ETH_BTC_CL_FEED_DECIMAL = 8;
     AggregatorV3Interface public constant STETH_ETH_CL_FEED =
         AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
-    uint256 internal constant STETH_ETH_CL_FEED_DECIMAL = 18;
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
@@ -538,6 +536,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         view
         returns (ChainlinkResponse memory chainlinkResponse)
     {
+        // Fetch decimals for both feeds:
+        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
+        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
+
         // Try to get latest prices data:
         (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
             .latestRoundData();
@@ -565,7 +567,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         chainlinkResponse.roundStEthEthId = roundstEthEthId;
 
         // If call to Chainlink succeeds, return the response and success = true
-        chainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
+        chainlinkResponse.answer = _formatClAggregateAnswer(
+            ethBtcAnswer,
+            stEthEthAnswer,
+            ethBtcDecimals,
+            stEthEthDecimals
+        );
         // NOTE: stick with the `Min` for `TIMEOUT_STETH_ETH_FEED` check-ups on Status.usingFallbackChainlinkFrozen
         chainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         chainlinkResponse.success = true;
@@ -584,6 +591,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         if (_currentRoundEthBtcId == 0 || _currentRoundStEthEthId == 0) {
             return prevChainlinkResponse;
         }
+
+        // Fetch decimals for both feeds:
+        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
+        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
 
         // Try to get latest prices data from prev round:
         (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
@@ -612,7 +623,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         prevChainlinkResponse.roundStEthEthId = roundstEthEthId;
 
         // If call to Chainlink succeeds, return the response and success = true
-        prevChainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
+        prevChainlinkResponse.answer = _formatClAggregateAnswer(
+            ethBtcAnswer,
+            stEthEthAnswer,
+            ethBtcDecimals,
+            stEthEthDecimals
+        );
         // NOTE: stick with the `Min` for `TIMEOUT_STETH_ETH_FEED` check-ups on Status.usingFallbackChainlinkFrozen
         prevChainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         prevChainlinkResponse.success = true;
@@ -640,13 +656,17 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // @notice Returns the price of stETH:BTC in 18 decimals denomination
     // @param _ethBtcAnswer CL price retrieve from ETH:BTC feed
     // @param _stEthEthAnswer CL price retrieve from stETH:BTC feed
+    // @param _ethBtcDecimals ETH:BTC feed decimals
+    // @param _stEthEthDecimals stETH:BTC feed decimalss
     // @return The aggregated calculated price for stETH:BTC
     function _formatClAggregateAnswer(
         int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer
+        int256 _stEthEthAnswer,
+        uint8 _ethBtcDecimals,
+        uint8 _stEthEthDecimals
     ) internal view returns (uint256) {
         return
             ((uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION) / uint256(_stEthEthAnswer)) *
-            (10 ** (STETH_ETH_CL_FEED_DECIMAL - ETH_BTC_CL_FEED_DECIMAL));
+            (10 ** (_stEthEthDecimals - _ethBtcDecimals));
     }
 }
