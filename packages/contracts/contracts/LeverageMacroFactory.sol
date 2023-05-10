@@ -12,7 +12,7 @@ contract LeverageMacroFactory {
     address public immutable sortedCdps;
     address public immutable stETH;
 
-    event DeployNewMacro(address indexed sender);
+    event DeployNewMacro(address indexed sender, address indexed newContractAddress);
 
     constructor(
         address _borrowerOperationsAddress,
@@ -40,7 +40,7 @@ contract LeverageMacroFactory {
     }
 
     function deployNewMacro(address _owner) public returns (address) {
-        return address(
+        address addy = address(
             new LeverageMacro(
             borrowerOperations,
             activePool,
@@ -50,5 +50,9 @@ contract LeverageMacroFactory {
             stETH,
             _owner)
         );
+
+        emit DeployNewMacro(_owner, addy);
+
+        return addy;
     }
 }
