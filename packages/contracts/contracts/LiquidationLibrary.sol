@@ -463,11 +463,12 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
-        uint _coll = Cdps[_cdpId].coll;
-        uint _debt = Cdps[_cdpId].debt;
+        Cdp storage _cdp = Cdps[_cdpId];
+        uint _coll = _cdp.coll;
+        uint _debt = _cdp.debt;
 
-        Cdps[_cdpId].coll = _coll - _partialColl;
-        Cdps[_cdpId].debt = _debt - _partialDebt;
+        _cdp.coll = _coll - _partialColl;
+        _cdp.debt = _debt - _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
 
         _updateCdpRewardSnapshots(_cdpId);
@@ -987,12 +988,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint pendingETHReward = getPendingETHReward(_cdpId);
             uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
 
-            uint prevDebt = Cdps[_cdpId].debt;
-            uint prevColl = Cdps[_cdpId].coll;
+            Cdp storage _cdp = Cdps[_cdpId];
+            uint prevDebt = _cdp.debt;
+            uint prevColl = _cdp.coll;
 
             // Apply pending rewards to cdp's state
-            Cdps[_cdpId].debt = prevDebt + pendingEBTCDebtReward;
-            Cdps[_cdpId].coll = prevColl + pendingETHReward;
+            _cdp.debt = prevDebt + pendingEBTCDebtReward;
+            _cdp.coll = prevColl + pendingETHReward;
 
             _updateCdpRewardSnapshots(_cdpId);
 
@@ -1014,8 +1016,9 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
-        rewardSnapshots[_cdpId].STETHColl = L_STETHColl;
-        rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
+        RewardSnapshot storage _rewardSnapshot = rewardSnapshots[_cdpId];
+        _rewardSnapshot.STETHColl = L_STETHColl;
+        _rewardSnapshot.EBTCDebt = L_EBTCDebt;
         emit CdpSnapshotsUpdated(L_STETHColl, L_EBTCDebt);
     }
 
@@ -1042,7 +1045,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bytes32 _cdpId
     ) public view returns (uint pendingEBTCDebtReward) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
-        Cdp memory cdp = Cdps[_cdpId];
+        Cdp storage cdp = Cdps[_cdpId];
 
         if (cdp.status != Status.active) {
             return 0;
@@ -1119,17 +1122,20 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
         (uint newStake, uint oldStake) = _updateStakeForCdp(_cdpId);
 
-        totalStakes = totalStakes + newStake - oldStake;
-        emit TotalStakesUpdated(totalStakes);
+        uint256 _totalStakes = totalStakes;
+        _totalStakes = _totalStakes + newStake - oldStake;
+        totalStakes = _totalStakes;
+        emit TotalStakesUpdated(_totalStakes);
 
         return newStake;
     }
 
     // Update borrower's stake based on their latest collateral value
     function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
-        uint newStake = _computeNewStake(Cdps[_cdpId].coll);
-        uint oldStake = Cdps[_cdpId].stake;
-        Cdps[_cdpId].stake = newStake;
+        Cdp storage _cdp = Cdps[_cdpId];
+        uint newStake = _computeNewStake(_cdp.coll);
+        uint oldStake = _cdp.stake;
+        _cdp.stake = newStake;
 
         return (newStake, oldStake);
     }
@@ -1173,13 +1179,14 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
 
         // Get the per-unit-staked terms
-        uint ETHRewardPerUnitStaked = ETHNumerator / totalStakes;
-        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
+        uint _totalStakes = totalStakes;
+        uint ETHRewardPerUnitStaked = ETHNumerator / _totalStakes;
+        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
-        lastETHError_Redistribution = ETHNumerator - (ETHRewardPerUnitStaked * totalStakes);
+        lastETHError_Redistribution = ETHNumerator - (ETHRewardPerUnitStaked * _totalStakes);
         lastEBTCDebtError_Redistribution =
             EBTCDebtNumerator -
-            (EBTCDebtRewardPerUnitStaked * totalStakes);
+            (EBTCDebtRewardPerUnitStaked * _totalStakes);
 
         // Add per-unit-staked terms to the running totals
         L_STETHColl = L_STETHColl + ETHRewardPerUnitStaked;
