@@ -12,6 +12,8 @@ contract LeverageMacroFactory {
     address public immutable sortedCdps;
     address public immutable stETH;
 
+    event DeployNewMacro(address indexed sender);
+
     constructor(
         address _borrowerOperationsAddress,
         address _activePool,
@@ -34,19 +36,10 @@ contract LeverageMacroFactory {
     }
 
     function deployNewMacro() external returns (address) {
-        return address(
-            new LeverageMacro(
-            borrowerOperations,
-            activePool,
-            cdpManager,
-            ebtcToken,
-            sortedCdps,
-            stETH,
-            msg.sender)
-        );
+        return deployNewMacro(msg.sender);
     }
 
-    function deployNewMacro(address _owner) external returns (address) {
+    function deployNewMacro(address _owner) public returns (address) {
         return address(
             new LeverageMacro(
             borrowerOperations,
