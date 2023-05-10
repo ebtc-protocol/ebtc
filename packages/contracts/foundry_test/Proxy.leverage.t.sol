@@ -40,8 +40,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.deal(user, type(uint96).max);
 
         // check input
-        vm.assume(netColl < INITITAL_COLL * 5);
-        vm.assume(netColl > cdpManager.MIN_NET_COLL());
+        _checkInputFuzzParameters(netColl, 1000);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -57,10 +56,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.deal(user, type(uint96).max);
 
         // check input
-        vm.assume(netColl < INITITAL_COLL * 5);
-        vm.assume(netColl > cdpManager.MIN_NET_COLL() * 2);
-        vm.assume(adjustBps < (MAX_SLIPPAGE / 2));
-        vm.assume(adjustBps > 100);
+        _checkInputFuzzParameters(netColl, adjustBps);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -85,8 +81,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.deal(user, type(uint96).max);
 
         // check input
-        vm.assume(netColl < INITITAL_COLL * 5);
-        vm.assume(netColl > cdpManager.MIN_NET_COLL());
+        _checkInputFuzzParameters(netColl, 1000);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -97,6 +92,67 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // close CDP
         _closeCDPViaProxy(user, cdpId, proxyAddr);
+    }
+
+    function test_MultipleUserLeveragedCDPHappy(uint userCnt, uint netColl, uint adjustBps) public {
+        // check input
+        _checkInputFuzzParameters(netColl, adjustBps);
+        vm.assume(userCnt > 1);
+        vm.assume(userCnt < 5);
+
+        address payable[] memory users = _utils.createUsers(userCnt);
+
+        // deploy proxy for user and open CDP
+        address[] memory userProxies = new address[](userCnt);
+        bytes32[] memory userCdpIds = new bytes32[](userCnt);
+        for (uint i = 0; i < users.length; ++i) {
+            address _user = users[i];
+            vm.deal(_user, type(uint96).max);
+
+            userProxies[i] = _createLeverageMacro(_user);
+            dealCollateral(_user, netColl);
+            userCdpIds[i] = _openCDPViaProxy(_user, netColl, userProxies[i]);
+        }
+
+        // adjust CDP randomly
+        for (uint i = 0; i < users.length; ++i) {
+            address _user = users[i];
+            uint _r = _utils.generateRandomNumber(i, MAX_SLIPPAGE, _user);
+            if (_r % 3 == 0) {
+                // adjust CDP : increase its collateral and debt
+                uint _additionalColl = (netColl * adjustBps) / MAX_SLIPPAGE;
+                dealCollateral(_user, _additionalColl);
+                _increaseCDPSizeViaProxy(_user, userCdpIds[i], _additionalColl, userProxies[i]);
+                // adjust CDP : decrease its collateral and debt
+                uint _removedColl = (netColl * (MAX_SLIPPAGE / 2 - adjustBps)) / MAX_SLIPPAGE;
+                _descreaseCDPSizeViaProxy(_user, userCdpIds[i], _removedColl, userProxies[i]);
+            } else if (_r % 3 == 1) {
+                // adjust CDP : increase its collateral and debt
+                uint _additionalColl = (netColl * adjustBps) / MAX_SLIPPAGE;
+                dealCollateral(_user, _additionalColl);
+                _increaseCDPSizeViaProxy(_user, userCdpIds[i], _additionalColl, userProxies[i]);
+            } else if (_r % 3 == 2) {
+                // adjust CDP : decrease its collateral and debt
+                uint _removedColl = (netColl * (MAX_SLIPPAGE / 2 - adjustBps)) / MAX_SLIPPAGE;
+                _descreaseCDPSizeViaProxy(_user, userCdpIds[i], _removedColl, userProxies[i]);
+            }
+        }
+
+        // close CDP randomly
+        for (uint i = 0; i < users.length; ++i) {
+            address _user = users[i];
+            uint _r = _utils.generateRandomNumber(i, MAX_SLIPPAGE, _user);
+            if (_r % 2 == 0) {
+                _closeCDPViaProxy(_user, userCdpIds[i], userProxies[i]);
+            }
+        }
+    }
+
+    function _checkInputFuzzParameters(uint netColl, uint adjustBps) internal {
+        vm.assume(netColl < INITITAL_COLL * 5);
+        vm.assume(netColl > cdpManager.MIN_NET_COLL() * 2);
+        vm.assume(adjustBps < (MAX_SLIPPAGE / 2));
+        vm.assume(adjustBps > 100);
     }
 
     function _openCDPViaProxy(
