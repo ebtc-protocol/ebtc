@@ -28,11 +28,6 @@ contract LeverageMacroFactory {
         ebtcToken = _ebtc;
         stETH = _coll;
         sortedCdps = _sortedCdps;
-
-        // set allowance for flashloan lender/CDP open
-        IEBTCToken(ebtcToken).approve(_borrowerOperationsAddress, type(uint256).max);
-        ICollateralToken(stETH).approve(_borrowerOperationsAddress, type(uint256).max);
-        ICollateralToken(stETH).approve(_activePool, type(uint256).max);
     }
 
     function deployNewMacro() external returns (address) {
