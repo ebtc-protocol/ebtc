@@ -11,6 +11,8 @@ const th = testHelpers.TestHelper
 
 const { dec, assertRevert, toBN, ZERO_ADDRESS } = th
 
+const hre = require("hardhat");
+
 contract('PriceFeed', async accounts => {
 
   const [owner, alice] = accounts;
