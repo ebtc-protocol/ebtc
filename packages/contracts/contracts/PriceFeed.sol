@@ -665,8 +665,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 _ethBtcDecimals,
         uint8 _stEthEthDecimals
     ) internal view returns (uint256) {
-        return
-            ((uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION) / uint256(_stEthEthAnswer)) *
-            (10 ** (_stEthEthDecimals - _ethBtcDecimals));
+        return (((10 ** (_stEthEthDecimals - _ethBtcDecimals)) *
+            (uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION)) / uint256(_stEthEthAnswer));
     }
 }
