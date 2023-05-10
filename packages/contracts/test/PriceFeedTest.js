@@ -19,6 +19,9 @@ contract('PriceFeed', async accounts => {
   const normalEthBtcPrice = dec(668056, 1)
   const normalStEthEthPrice = dec(9993566582, 8)
 
+  // Normal aggr. answer price
+  const normalStEthBtcPrice = dec(6684860650283503, 1)
+
   // CL feed decreased prices
   const decreasedEbtcPrice = dec(5000, 13);
 
@@ -56,19 +59,22 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setPrevRoundId(2)
 
       //Set current and prev prices in both oracles
-      await mockEthBtcChainlink.setPrice(dec(100, 18))
-      await mockEthBtcChainlink.setPrevPrice(dec(100, 18))
       await mockEthBtcChainlink.setPrice(normalEthBtcPrice)
+      await mockEthBtcChainlink.setPrevPrice(normalEthBtcPrice)
 
-      await mockStEthEthChainlink.setPrice(dec(100, 18))
-      await mockStEthEthChainlink.setPrevPrice(dec(100, 18))
       await mockStEthEthChainlink.setPrice(normalStEthEthPrice)
+      await mockStEthEthChainlink.setPrevPrice(normalStEthEthPrice)
+
+      await mockTellor.setPrice(normalStEthEthPrice)
 
       // Set mock price updateTimes in both oracles to very recent
       const now = await th.getLatestBlockTimestamp(web3)
       await mockEthBtcChainlink.setUpdateTime(now)
       await mockStEthEthChainlink.setUpdateTime(now)
       await mockTellor.setUpdateTime(now)
+
+      // Modify decimals for stETH:ETH feed
+      await mockStEthEthChainlink.setDecimals(18)
 
       priceFeed = await PriceFeed.new(tellorCaller.address, owner)
       PriceFeed.setAsDeployed(priceFeed)
