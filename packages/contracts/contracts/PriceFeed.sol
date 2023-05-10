@@ -339,13 +339,21 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @notice Sets a new fallback oracle 
         @param _fallbackCaller The new IFallbackCaller-compliant oracle address
     **/
-    function setFallbackCaller(address _fallbackCaller) external requiresAuth {
+    function setFallbackCaller(address _fallbackCaller) external {
         require(
             isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
             "PriceFeed: sender not authorized for setFallbackCaller(address)"
         );
-        fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit FallbackCallerChanged(_fallbackCaller);
+
+        // health check-up before officially set it up
+        IFallbackCaller newFallbackCaler = IFallbackCaller(_fallbackCaller);
+        FallbackResponse memory fallbackResponse = newFallbackCaler.getFallbackResponse();
+
+        if (!_fallbackIsBroken(fallbackResponse) && _fallbackIsFrozen(fallbackResponse)) {
+            address oldFallbackCaller = address(fallbackCaller);
+            fallbackCaller = newFallbackCaler;
+            emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
+        }
     }
 
     // --- Helper functions ---
