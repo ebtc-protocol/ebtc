@@ -946,9 +946,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // Move a Cdp's pending debt and collateral rewards from distributions, from the Default Pool to the Active Pool
     function _movePendingCdpRewardsToActivePool(uint _debt, uint _coll) internal {
-        defaultPool.decreaseEBTCDebt(_debt);
-        activePool.increaseEBTCDebt(_debt);
-        defaultPool.sendETHToActivePool(_coll);
     }
 
     // --- Helper functions ---
@@ -1186,13 +1183,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
 
         emit LTermsUpdated(L_STETHColl, L_EBTCDebt);
-
-        // Transfer coll and debt from ActivePool to DefaultPool
-        activePool.decreaseEBTCDebt(_debt);
-        defaultPool.increaseEBTCDebt(_debt);
-        if (_coll > 0) {
-            activePool.sendStEthColl(address(defaultPool), _coll);
-        }
     }
 
     // --- 'require' wrapper functions ---

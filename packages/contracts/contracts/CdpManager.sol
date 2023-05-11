@@ -125,9 +125,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // Move a Cdp's pending debt and collateral rewards from distributions, from the Default Pool to the Active Pool
     function _movePendingCdpRewardsToActivePool(uint _debt, uint _coll) internal {
-        defaultPool.decreaseEBTCDebt(_debt);
-        activePool.increaseEBTCDebt(_debt);
-        defaultPool.sendETHToActivePool(_coll);
+
     }
 
     // --- Redemption functions ---

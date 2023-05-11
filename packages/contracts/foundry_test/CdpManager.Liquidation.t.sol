@@ -256,6 +256,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _multipleCDPsLiq(uint _n, bytes32[] memory _cdps, address _liquidator) internal {
+        /// entire systme debt = activePool + defaultPool debt values
         uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
@@ -271,13 +272,27 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _debtLiquidatorAfter = eBTCToken.balanceOf(_liquidator);
         uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
 
+        // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             _leftTotalDebt = (_leftTotalDebt + cdpManager.getCdpDebt(cdpManager.CdpIds(i)));
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
+
+        console.log("_leftTotalDebt from system", _leftTotalDebt);
+
+        // add the default pool debt, which is not yet factored into CDP stored debt and will be partially processed when they are individually updated
         _leftTotalDebt = (_leftTotalDebt + defaultPool.getEBTCDebt());
         uint _liquidatedDebt = (_debtSystemBefore - _debtSystemAfter);
+
+        console.log("_debtSystemBefore", _debtSystemBefore);
+        console.log("_debtLiquidatorBefore", _debtLiquidatorBefore);
+        console.log("_debtSystemAfter", _debtSystemAfter);
+        console.log("_debtLiquidatorAfter", _debtLiquidatorAfter);
+        console.log("_leftTotalDebt", _leftTotalDebt);
+        console.log("activePool.getEBTCDebt()", activePool.getEBTCDebt());
+        console.log("defaultPool.getEBTCDebt()", defaultPool.getEBTCDebt());
+        console.log("_liquidatedDebt", _liquidatedDebt);
 
         assertEq(
             _liquidatedDebt,
@@ -285,6 +300,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             "!liquidator repayment"
         );
         assertEq(_leftTotalDebt, _debtSystemAfter, "!system debt left");
+        assert(false);
     }
 
     // Test multiple CDPs sequence liquidation with price fluctuation
