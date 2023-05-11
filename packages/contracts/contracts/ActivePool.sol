@@ -133,7 +133,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         @dev If the fee recipient address is changed while outstanding claimable coll is available, only the new fee recipient will be able to claim the outstanding coll
      */
     function allocateFeeRecipientColl(uint _shares) external override {
-        _requireCallerIsBOorCdpM();
+        _requireCallerIsCdpManager();
 
         uint _StEthColl = StEthColl;
         uint _FeeRecipientColl = FeeRecipientColl;
@@ -206,6 +206,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
             msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
             "ActivePool: Caller is neither BorrowerOperations nor CdpManager"
         );
+    }
+
+    function _requireCallerIsCdpManager() internal view {
+        require(msg.sender == cdpManagerAddress, "ActivePool: Caller is not CdpManager");
     }
 
     function receiveColl(uint _value) external override {
