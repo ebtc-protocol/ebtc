@@ -6,7 +6,6 @@ import "./ICollSurplusPool.sol";
 import "./IEBTCToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
-import "./IDefaultPool.sol";
 import "./IFeeRecipient.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
@@ -19,7 +18,6 @@ interface ICdpManagerData {
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
-    event DefaultPoolAddressChanged(address _defaultPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
@@ -59,8 +57,8 @@ interface ICdpManagerData {
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_STETHColl, uint _L_EBTCDebt);
-    event CdpSnapshotsUpdated(uint _L_STETHColl, uint _L_EBTCDebt);
+    event LTermsUpdated(uint _L_EBTCDebt);
+    event CdpSnapshotsUpdated(bytes32 _cdpId, uint _L_EBTCDebt);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
@@ -115,7 +113,6 @@ interface ICdpManagerData {
         uint256 entireDebt;
         uint256 entireColl;
         uint256 pendingDebtReward;
-        uint pendingCollReward;
     }
 
     struct LocalVar_InternalLiquidate {

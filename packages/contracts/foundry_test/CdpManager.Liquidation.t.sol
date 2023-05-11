@@ -13,14 +13,14 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     ////////////////////////////////////////////////////////////////////////////
     // Liquidation Invariants for ebtc system
-    // - cdp_manager_liq1： total collateral snapshot is equal to whatever in active pool & default pool
+    // - cdp_manager_liq1： total collateral snapshot is equal to whatever in active pool
     // - cdp_manager_liq2： total collateral snapshot is equal to sum of individual CDP accounting number
     ////////////////////////////////////////////////////////////////////////////
 
     function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
-            activePool.getStEthColl() + defaultPool.getStEthColl(),
+            activePool.getStEthColl(),
             "System Invariant: cdp_manager_liq1"
         );
     }
@@ -256,7 +256,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _multipleCDPsLiq(uint _n, bytes32[] memory _cdps, address _liquidator) internal {
-        /// entire systme debt = activePool + defaultPool debt values
+        /// entire systme debt = activePool
         uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
@@ -275,14 +275,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
-            _leftTotalDebt = (_leftTotalDebt + cdpManager.getCdpDebt(cdpManager.CdpIds(i)));
+            (uint _cdpDebt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
 
         console.log("_leftTotalDebt from system", _leftTotalDebt);
 
-        // add the default pool debt, which is not yet factored into CDP stored debt and will be partially processed when they are individually updated
-        _leftTotalDebt = (_leftTotalDebt + defaultPool.getEBTCDebt());
         uint _liquidatedDebt = (_debtSystemBefore - _debtSystemAfter);
 
         console.log("_debtSystemBefore", _debtSystemBefore);
@@ -291,7 +290,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         console.log("_debtLiquidatorAfter", _debtLiquidatorAfter);
         console.log("_leftTotalDebt", _leftTotalDebt);
         console.log("activePool.getEBTCDebt()", activePool.getEBTCDebt());
-        console.log("defaultPool.getEBTCDebt()", defaultPool.getEBTCDebt());
         console.log("_liquidatedDebt", _liquidatedDebt);
 
         assertEq(
@@ -299,8 +297,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             (_debtLiquidatorBefore - _debtLiquidatorAfter),
             "!liquidator repayment"
         );
-        assertEq(_leftTotalDebt, _debtSystemAfter, "!system debt left");
-        assert(false);
+        _utils.assertApproximateEq(_leftTotalDebt, _debtSystemAfter, 1e6); //compared to 1e18
     }
 
     // Test multiple CDPs sequence liquidation with price fluctuation

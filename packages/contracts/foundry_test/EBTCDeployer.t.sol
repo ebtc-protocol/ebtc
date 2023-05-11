@@ -11,7 +11,6 @@ import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
@@ -83,7 +82,6 @@ contract EBTCDeployerTest is eBTCBaseFixture {
             abi.encodePacked(
                 type(LiquidationLibrary).creationCode,
                 abi.encode(
-                    address(0),
                     address(0),
                     address(0),
                     address(0),

@@ -6,7 +6,6 @@ const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
-const DefaultPool = artifacts.require("./DefaultPool.sol");
 const CollSurplusPool = artifacts.require("./CollSurplusPool.sol")
 const FunctionCaller = artifacts.require("./TestContracts/FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
@@ -18,7 +17,6 @@ const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const EBTCDeployer = artifacts.require("./EBTCDeployerTester.sol")
 
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
-const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
@@ -133,8 +131,8 @@ class DeploymentHelper {
     const authority = await Governor.at(_deployedAddr);
 	  
     // deploy LiquidationLibrary 
-    _argTypes =['address','address','address','address','address','address','address','address','address'];
-    _argValues = [_addresses[3],_addresses[8],_addresses[10],_addresses[11],_addresses[5],_addresses[6],_addresses[7],_addresses[4],collateral.address];
+    _argTypes =['address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[7],_addresses[9],_addresses[10],_addresses[5],_addresses[6],_addresses[4],collateral.address];
     _code = await ebtcDeployer.liquidationLibrary_creationCode();
     _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -142,8 +140,8 @@ class DeploymentHelper {
     const liquidationLibrary = await LiquidationLibrary.at(_deployedAddr);
 	  
     // deploy CdpManager 
-    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address','a13':'address'}},'address'];
-    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11],'a13':_addresses[12]},collateral.address];
+    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address'}},'address'];
+    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11]},collateral.address];
     _code = await ebtcDeployer.cdpManager_creationCode();
     _salt = await ebtcDeployer.CDP_MANAGER();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -151,8 +149,8 @@ class DeploymentHelper {
     const cdpManager = await CdpManager.at(_deployedAddr);
 	  
     // deploy BorrowOperations 
-    _argTypes =['address','address','address','address','address','address','address','address','address'];
-    _argValues = [_addresses[2],_addresses[6],_addresses[7],_addresses[8],_addresses[4],_addresses[5],_addresses[10],_addresses[11],collateral.address];
+    _argTypes =['address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],_addresses[7],_addresses[4],_addresses[5],_addresses[9],_addresses[10],collateral.address];
     _code = await ebtcDeployer.borrowerOperations_creationCode();
     _salt = await ebtcDeployer.BORROWER_OPERATIONS();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -178,22 +176,13 @@ class DeploymentHelper {
     const sortedCdps = await SortedCdps.at(_deployedAddr);
 	  
     // deploy ActivePool 
-    _argTypes =['address','address','address','address','address','address'];
-    _argValues = [_addresses[3],_addresses[2],_addresses[7],collateral.address,_addresses[8],_addresses[11]];
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],collateral.address,_addresses[7],_addresses[10]];
     _code = await ebtcDeployer.activePool_creationCode();
     _salt = await ebtcDeployer.ACTIVE_POOL();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _addresses[6]);
     const activePool = await ActivePool.at(_deployedAddr);
-	  
-    // deploy DefaultPool 
-    _argTypes =['address','address','address'];
-    _argValues = [_addresses[2],_addresses[6],collateral.address];
-    _code = await ebtcDeployer.defaultPool_creationCode();
-    _salt = await ebtcDeployer.DEFAULT_POOL();
-    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[7]);
-    const defaultPool = await DefaultPool.at(_deployedAddr);
 	  
     // deploy CollSurplusPool 
     _argTypes =['address','address','address','address'];
@@ -201,16 +190,16 @@ class DeploymentHelper {
     _code = await ebtcDeployer.collSurplusPool_creationCode();
     _salt = await ebtcDeployer.COLL_SURPLUS_POOL();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[8]);
+    assert.isTrue(_deployedAddr == _addresses[7]);
     const collSurplusPool = await CollSurplusPool.at(_deployedAddr);
 	  
     // deploy HintHelper 
-    _argTypes =['address','address','address','address','address','address'];
-    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[7],_addresses[4]];
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[4]];
     _code = await ebtcDeployer.hintHelpers_creationCode();
     _salt = await ebtcDeployer.HINT_HELPERS();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[9]);
+    assert.isTrue(_deployedAddr == _addresses[8]);
     const hintHelpers = await HintHelpers.at(_deployedAddr);
 	  
     // deploy EBTCToken 
@@ -219,21 +208,20 @@ class DeploymentHelper {
     _code = await ebtcDeployer.ebtcToken_creationCode();
     _salt = await ebtcDeployer.EBTC_TOKEN();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[10]);
+    assert.isTrue(_deployedAddr == _addresses[9]);
     const ebtcToken = await EBTCToken.at(_deployedAddr);
 	  
     // deploy FeeRecipient 
     _argTypes =['address','address','address','address','address'];
-    _argValues = [_addresses[10],_addresses[2],_addresses[3],_addresses[6],collateral.address];
+    _argValues = [_addresses[9],_addresses[2],_addresses[3],_addresses[6],collateral.address];
     _code = await ebtcDeployer.feeRecipient_creationCode();
     _salt = await ebtcDeployer.FEE_RECIPIENT();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[11]);
+    assert.isTrue(_deployedAddr == _addresses[10]);
     const feeRecipient = await FeeRecipient.at(_deployedAddr);
 	
     // truffle migrations
     EBTCToken.setAsDeployed(ebtcToken)
-    DefaultPool.setAsDeployed(defaultPool)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
     SortedCdps.setAsDeployed(sortedCdps)
     CdpManager.setAsDeployed(cdpManager)
@@ -259,7 +247,6 @@ class DeploymentHelper {
       sortedCdps,
       cdpManager,
       activePool,
-      defaultPool,
       collSurplusPool,
       functionCaller,
       borrowerOperations,
@@ -299,8 +286,8 @@ class DeploymentHelper {
     const authority = await Governor.at(_deployedAddr);
 	  
     // deploy LiquidationLibrary 
-    _argTypes =['address','address','address','address','address','address','address','address','address'];
-    _argValues = [_addresses[3],_addresses[8],_addresses[10],_addresses[11],_addresses[5],_addresses[6],_addresses[7],_addresses[4],collateral.address];
+    _argTypes =['address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[7],_addresses[9],_addresses[10],_addresses[5],_addresses[6],_addresses[4],collateral.address];
     _code = await ebtcDeployer.liquidationLibrary_creationCode();
     _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -308,8 +295,8 @@ class DeploymentHelper {
     const liquidationLibrary = await LiquidationLibrary.at(_deployedAddr);
 	  
     // deploy CdpManagerTester
-    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address','a13':'address'}},'address'];
-    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11],'a13':_addresses[12]},collateral.address];
+    _argTypes =[{'EbtcAddresses':{'a1':'address','a2':'address','a3':'address','a4':'address','a5':'address','a6':'address','a7':'address','a8':'address','a9':'address','a10':'address','a11':'address','a12':'address'}},'address'];
+    _argValues = [{'a1':_addresses[0],'a2':_addresses[1],'a3':_addresses[2],'a4':_addresses[3],'a5':_addresses[4],'a6':_addresses[5],'a7':_addresses[6],'a8':_addresses[7],'a9':_addresses[8],'a10':_addresses[9],'a11':_addresses[10],'a12':_addresses[11]},collateral.address];
     _code = await ebtcDeployer.cdpManagerTester_creationCode();
     _salt = await ebtcDeployer.CDP_MANAGER();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -317,8 +304,8 @@ class DeploymentHelper {
     const cdpManager = await CdpManagerTester.at(_deployedAddr);
 	  
     // deploy BorrowOperationsTester
-    _argTypes =['address','address','address','address','address','address','address','address','address'];
-    _argValues = [_addresses[2],_addresses[6],_addresses[7],_addresses[8],_addresses[4],_addresses[5],_addresses[10],_addresses[11],collateral.address];
+    _argTypes =['address','address','address','address','address','address','address','address'];
+    _argValues = [_addresses[2],_addresses[6],_addresses[7],_addresses[4],_addresses[5],_addresses[9],_addresses[10],collateral.address];
     _code = await ebtcDeployer.borrowerOperationsTester_creationCode();
     _salt = await ebtcDeployer.BORROWER_OPERATIONS();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -344,22 +331,13 @@ class DeploymentHelper {
     const sortedCdps = await SortedCdps.at(_deployedAddr);
 	  
     // deploy ActivePoolTester
-    _argTypes =['address','address','address','address','address','address'];
-    _argValues = [_addresses[3],_addresses[2],_addresses[7],collateral.address,_addresses[8],_addresses[11]];
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[3],_addresses[2],collateral.address,_addresses[7],_addresses[10]];
     _code = await ebtcDeployer.activePoolTester_creationCode();
     _salt = await ebtcDeployer.ACTIVE_POOL();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _addresses[6]);
     const activePool = await ActivePoolTester.at(_deployedAddr);
-	  
-    // deploy DefaultPoolTester
-    _argTypes =['address','address','address'];
-    _argValues = [_addresses[2],_addresses[6],collateral.address];
-    _code = await ebtcDeployer.defaultPoolTester_creationCode();
-    _salt = await ebtcDeployer.DEFAULT_POOL();
-    _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[7]);
-    const defaultPool = await DefaultPoolTester.at(_deployedAddr);
 	  
     // deploy CollSurplusPool 
     _argTypes =['address','address','address','address'];
@@ -367,16 +345,16 @@ class DeploymentHelper {
     _code = await ebtcDeployer.collSurplusPool_creationCode();
     _salt = await ebtcDeployer.COLL_SURPLUS_POOL();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[8]);
+    assert.isTrue(_deployedAddr == _addresses[7]);
     const collSurplusPool = await CollSurplusPool.at(_deployedAddr);
 	  
     // deploy HintHelper 
-    _argTypes =['address','address','address','address','address','address'];
-    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[7],_addresses[4]];
+    _argTypes =['address','address','address','address','address'];
+    _argValues = [_addresses[5],_addresses[2],collateral.address,_addresses[6],_addresses[4]];
     _code = await ebtcDeployer.hintHelpers_creationCode();
     _salt = await ebtcDeployer.HINT_HELPERS();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[9]);
+    assert.isTrue(_deployedAddr == _addresses[8]);
     const hintHelpers = await HintHelpers.at(_deployedAddr);
 	  
     // deploy EBTCTokenTester 
@@ -385,16 +363,16 @@ class DeploymentHelper {
     _code = await ebtcDeployer.ebtcTokenTester_creationCode();
     _salt = await ebtcDeployer.EBTC_TOKEN();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[10]);
+    assert.isTrue(_deployedAddr == _addresses[9]);
     const ebtcToken = await EBTCTokenTester.at(_deployedAddr);
 	  
     // deploy FeeRecipient 
     _argTypes =['address','address','address','address','address'];
-    _argValues = [_addresses[10],_addresses[2],_addresses[3],_addresses[6],collateral.address];
+    _argValues = [_addresses[9],_addresses[2],_addresses[3],_addresses[6],collateral.address];
     _code = await ebtcDeployer.feeRecipient_creationCode();
     _salt = await ebtcDeployer.FEE_RECIPIENT();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
-    assert.isTrue(_deployedAddr == _addresses[11]);
+    assert.isTrue(_deployedAddr == _addresses[10]);
     const feeRecipient = await FeeRecipient.at(_deployedAddr);
 
     // Contract without testers
@@ -410,7 +388,6 @@ class DeploymentHelper {
     testerContracts.cdpManager = cdpManager
     testerContracts.borrowerOperations = borrowerOperations
     testerContracts.activePool = activePool
-    testerContracts.defaultPool = defaultPool
     testerContracts.ebtcToken = ebtcToken
 	
     return testerContracts

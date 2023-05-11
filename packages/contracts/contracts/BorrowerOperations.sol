@@ -81,14 +81,13 @@ contract BorrowerOperations is
     constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
-        address _defaultPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collTokenAddress) {
+    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
         // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
 
         // This makes impossible to open a cdp with zero withdrawn EBTC
@@ -108,7 +107,6 @@ contract BorrowerOperations is
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
-        emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
@@ -333,7 +331,11 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        _requireAtLeastMinNetColl(vars.newColl);
+        // Only check when the collateral exchange rate from share is above 1e18
+        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
+        }
 
         vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
