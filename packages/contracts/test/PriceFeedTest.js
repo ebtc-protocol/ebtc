@@ -27,25 +27,71 @@ contract('PriceFeed', async accounts => {
   // CL feed decreased prices
   const decreasedEbtcPrice = dec(5000, 13);
 
+  // PriceFeed testnet default price
+  const testnetPrice = dec(7428, 13);
+
   let priceFeedTestnet
   let priceFeed
   let mockChainlink
+  let mockEthBtcChainlink
+  let mockStEthEthChainlink
 
   const setAddresses = async () => {
     // Using tellorCaller as authority as we're not testing governance function
     await priceFeed.setAddresses(mockChainlink.address, tellorCaller.address, tellorCaller.address, { from: owner })
   }
 
-  describe('PriceFeed internal testing contract', async accounts => {
+  describe('PriceFeedTestnet basic tests', async () => {
     beforeEach(async () => {
       priceFeedTestnet = await PriceFeedTestnet.new(owner)
       PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
+    })
 
+    it("fetchPrice before setPrice should return the default price", async () => {
+      const price = await priceFeedTestnet.getPrice()
+      console.log(price)
+      console.log(testnetPrice)
+      assert.equal(price, testnetPrice)
+    })
+
+    it("should be able to fetchPrice after setPrice, output of former matching input of latter", async () => {
+      await priceFeedTestnet.setPrice(dec(100, 18))
+      const price = await priceFeedTestnet.getPrice()
+      assert.equal(price, dec(100, 18))
+    })
+  })
+
+  describe('PriceFeed internal testing contract', async accounts => {
+    beforeEach(async () => {
       // CL feeds mocks
       mockEthBtcChainlink = await MockChainlink.new()
       MockChainlink.setAsDeployed(mockEthBtcChainlink)
       mockStEthEthChainlink = await MockChainlink.new()
       MockChainlink.setAsDeployed(mockStEthEthChainlink)
+
+      // Read bytecodes to replace internal contract constants for CL's
+      const codeEthBtcCL = await hre.network.provider.send("eth_getCode", [
+        mockEthBtcChainlink.address,
+      ]);
+      const codeStEthEthBtcCL = await hre.network.provider.send("eth_getCode", [
+        mockEthBtcChainlink.address,
+      ]);
+
+      // Manipulate constants in `priceFeed` re cl oracles
+      const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
+      const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
+
+      await network.provider.send("hardhat_setCode", [ETH_BTC_CL_FEED, codeEthBtcCL]);
+      await network.provider.send("hardhat_setCode", [
+        STETH_ETH_CL_FEED,
+        codeStEthEthBtcCL,
+      ]);
+
+      mockEthBtcChainlink = await ethers.getContractAt("MockAggregator", ETH_BTC_CL_FEED)
+      mockStEthEthChainlink = await ethers.getContractAt("MockAggregator", STETH_ETH_CL_FEED);
+
+      assert.equal(mockEthBtcChainlink.address, ETH_BTC_CL_FEED)
+      assert.equal(mockStEthEthChainlink.address, STETH_ETH_CL_FEED)
       
       mockTellor = await MockTellor.new()
       MockTellor.setAsDeployed(mockTellor)
@@ -80,35 +126,6 @@ contract('PriceFeed', async accounts => {
 
       priceFeed = await PriceFeed.new(tellorCaller.address, owner)
       PriceFeed.setAsDeployed(priceFeed)
-
-      // Read bytecodes to replace internal contract constants for CL's
-      const codeEthBtcCL = await hre.network.provider.send("eth_getCode", [
-        mockEthBtcChainlink.address,
-      ]);
-      const codeStEthEthBtcCL = await hre.network.provider.send("eth_getCode", [
-        mockEthBtcChainlink.address,
-      ]);
-
-      // Manipulate constants in `priceFeed` re cl oracles
-      const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
-      const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
-
-      await network.provider.send("hardhat_setCode", [ETH_BTC_CL_FEED, codeEthBtcCL]);
-      await network.provider.send("hardhat_setCode", [
-        STETH_ETH_CL_FEED,
-        codeStEthEthBtcCL,
-      ]);
-    })
-
-    it("fetchPrice before setPrice should return the default price", async () => {
-      const price = await priceFeedTestnet.getPrice()
-      assert.equal(price, normalEbtcPrice)
-    })
-
-    it("should be able to fetchPrice after setPrice, output of former matching input of latter", async () => {
-      await priceFeedTestnet.setPrice(dec(100, 18))
-      const price = await priceFeedTestnet.getPrice()
-      assert.equal(price, dec(100, 18))
     })
 
     it("C1 Chainlink working: fetchPrice should return the correct price, taking into account the number of decimal digits on the aggregator", async () => {
