@@ -88,11 +88,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _shares, "!ActivePoolBal");
 
-        StEthColl = StEthColl - _shares;
+        uint _StEthColl = StEthColl;
+        require(_StEthColl >= _shares, "!ActivePoolBal");
 
-        emit ActivePoolCollBalanceUpdated(StEthColl);
+        StEthColl = _StEthColl - _shares;
+
+        emit ActivePoolCollBalanceUpdated(_StEthColl);
         emit CollateralSent(_account, _shares);
 
         _transferSharesWithContractHooks(_account, _shares);
@@ -112,12 +114,14 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         uint _liquidatorRewardShares
     ) external override {
         _requireCallerIsBOorCdpM();
-        require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+
+        uint _StEthColl = StEthColl;
+        require(_StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
         uint totalShares = _shares + _liquidatorRewardShares;
 
-        StEthColl = StEthColl - _shares;
+        StEthColl = _StEthColl - _shares;
 
-        emit ActivePoolCollBalanceUpdated(StEthColl);
+        emit ActivePoolCollBalanceUpdated(_StEthColl);
         emit CollateralSent(_account, totalShares);
 
         _transferSharesWithContractHooks(_account, totalShares);
@@ -130,13 +134,17 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
      */
     function allocateFeeRecipientColl(uint _shares) external override {
         _requireCallerIsBOorCdpM();
+
+        uint _StEthColl = StEthColl;
+        uint _FeeRecipientColl = FeeRecipientColl;
+
         require(StEthColl >= _shares, "ActivePool: Insufficient collateral shares");
 
-        StEthColl = StEthColl - _shares;
-        FeeRecipientColl = FeeRecipientColl + _shares;
+        StEthColl = _StEthColl - _shares;
+        FeeRecipientColl = _FeeRecipientColl + _shares;
 
-        emit ActivePoolCollBalanceUpdated(StEthColl);
-        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+        emit ActivePoolCollBalanceUpdated(_StEthColl);
+        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
     }
 
     /**
@@ -145,10 +153,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         @dev Is likely safe as an open permission though caution should be taken.
      */
     function claimFeeRecipientColl(uint _shares) external override requiresAuth {
-        require(FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+        uint _FeeRecipientColl = FeeRecipientColl;
+        require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
-        FeeRecipientColl = FeeRecipientColl - _shares;
-        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+        FeeRecipientColl = _FeeRecipientColl - _shares;
+        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }
@@ -167,14 +176,20 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt + _amount;
-        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
+
+        uint _EBTCDebt = EBTCDebt;
+
+        EBTCDebt = _EBTCDebt + _amount;
+        emit ActivePoolEBTCDebtUpdated(_EBTCDebt);
     }
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
-        EBTCDebt = EBTCDebt - _amount;
-        emit ActivePoolEBTCDebtUpdated(EBTCDebt);
+
+        uint _EBTCDebt = EBTCDebt;
+
+        EBTCDebt = _EBTCDebt - _amount;
+        emit ActivePoolEBTCDebtUpdated(_EBTCDebt);
     }
 
     // --- 'require' functions ---
@@ -195,8 +210,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperationsOrDefaultPool();
-        StEthColl = StEthColl + _value;
-        emit ActivePoolCollBalanceUpdated(StEthColl);
+
+        uint _StEthColl = StEthColl;
+        StEthColl = _StEthColl + _value;
+        emit ActivePoolCollBalanceUpdated(_StEthColl);
     }
 
     // === Flashloans === //
