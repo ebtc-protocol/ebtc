@@ -448,11 +448,12 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
-        uint _coll = Cdps[_cdpId].coll;
-        uint _debt = Cdps[_cdpId].debt;
+        Cdp storage _cdp = Cdps[_cdpId];
+        uint _coll = _cdp.coll;
+        uint _debt = _cdp.debt;
 
-        Cdps[_cdpId].coll = _coll - _partialColl;
-        Cdps[_cdpId].debt = _debt - _partialDebt;
+        _cdp.coll = _coll - _partialColl;
+        _cdp.debt = _debt - _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
 
         _updateCdpRewardSnapshots(_cdpId);
@@ -1011,11 +1012,12 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
 
         // Get the per-unit-staked terms
-        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
+        uint _totalStakes = totalStakes;
+        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
         lastEBTCDebtError_Redistribution =
             EBTCDebtNumerator -
-            (EBTCDebtRewardPerUnitStaked * totalStakes);
+            (EBTCDebtRewardPerUnitStaked * _totalStakes);
 
         // Add per-unit-staked terms to the running totals
         L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;

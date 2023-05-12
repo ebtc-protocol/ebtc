@@ -206,7 +206,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId
     ) internal view returns (uint pendingEBTCDebtReward) {
         uint snapshotEBTCDebt = rewardSnapshots[_cdpId];
-        Cdp memory cdp = Cdps[_cdpId];
+        Cdp storage cdp = Cdps[_cdpId];
 
         if (cdp.status != Status.active) {
             return 0;
@@ -250,11 +250,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             // Compute pending rewards
             uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
 
-            uint prevDebt = Cdps[_cdpId].debt;
-            uint prevColl = Cdps[_cdpId].coll;
+            Cdp storage _cdp = Cdps[_cdpId];
+            uint prevDebt = _cdp.debt;
+            uint prevColl = _cdp.coll;
 
             // Apply pending rewards to cdp's state
-            Cdps[_cdpId].debt = prevDebt + pendingEBTCDebtReward;
+            _cdp.debt = prevDebt + pendingEBTCDebtReward;
 
             _updateCdpRewardSnapshots(_cdpId);
 
@@ -293,9 +294,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Update borrower's stake based on their latest collateral value
     function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
-        uint newStake = _computeNewStake(Cdps[_cdpId].coll);
-        uint oldStake = Cdps[_cdpId].stake;
-        Cdps[_cdpId].stake = newStake;
+        Cdp storage _cdp = Cdps[_cdpId];
+        uint newStake = _computeNewStake(_cdp.coll);
+        uint oldStake = _cdp.stake;
+        _cdp.stake = newStake;
 
         return (newStake, oldStake);
     }
