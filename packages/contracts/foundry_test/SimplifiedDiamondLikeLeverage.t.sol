@@ -199,92 +199,93 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
     }
 
     function test_openWithLeverage() public {
-        // // Same as above, but:
-        // // Swap data
-        // // Flashloan
-        // // Etc..
+        // Same as above, but:
+        // Swap data
+        // Flashloan
+        // Etc..
 
 
-        // // PROB Change the macro to not sweep
+        // PROB Change the macro to not sweep
 
-        // // Set the macro for callback
+        // Set the macro for callback
 
-        // // Create the Sweep Module
+        // Create the Sweep Module
 
-        // // User.Approve col
-        // vm.startPrank(user);
-        // collateral.approve(address(wallet), type(uint256).max);
-        // uint256 collBall = collateral.balanceOf(user);
+        // User.Approve col
+        vm.startPrank(user);
+        collateral.approve(address(wallet), type(uint256).max);
+        uint256 collBall = collateral.balanceOf(user);
 
-        // // 0) Set the callback to onFlashloan
-        // wallet.enableCallbackForCall();
-
-
-        // // TODO: CDP MACRO APPROVALS 3
-        // // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        // // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
-        // // 3) stETH.approve(_activePool, type(uint256).max);
-
-        // // In macro
-        // // 4) Delegate to LeverageMacroDelegateTarget
-        // SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](4);
-
-        // // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        // data[0] = SimplifiedDiamondLike.Operation({
-        //     to: address(address(ebtcToken)),
-        //     checkSuccess: true,
-        //     value: 0,
-        //     gas: 9999999,
-        //     capGas: false,
-        //     opType: SimplifiedDiamondLike.OperationType.call,
-        //     data: abi.encodeCall(ebtcToken.approve, (borrowerOperations, type(uint256).max))
-        // });
-
-        // // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
-        // data[1] = SimplifiedDiamondLike.Operation({
-        //     to: address(address(collateral)),
-        //     checkSuccess: true,
-        //     value: 0,
-        //     gas: 9999999,
-        //     capGas: false,
-        //     opType: SimplifiedDiamondLike.OperationType.call,
-        //     data: abi.encodeCall(ebtcToken.approve, (borrowerOperations, type(uint256).max))
-        // });
-
-        // // 3) stETH.approve(_activePool, type(uint256).max);
-        // data[2] = SimplifiedDiamondLike.Operation({
-        //     to: address(address(collateral)),
-        //     checkSuccess: true,
-        //     value: 0,
-        //     gas: 9999999,
-        //     capGas: false,
-        //     opType: SimplifiedDiamondLike.OperationType.call,
-        //     data: abi.encodeCall(ebtcToken.approve, (activePool, type(uint256).max))
-        // });
+        // 0) Set the callback to onFlashloan
+        wallet.enableCallbackForCall();
 
 
-        // data[3] = SimplifiedDiamondLike.Operation({
-        //     to: address(address(macro_reference)),
-        //     checkSuccess: true,
-        //     value: 0,
-        //     gas: 9999999,
-        //     capGas: false,
-        //     opType: SimplifiedDiamondLike.OperationType.delegatecall,
-        //     data: abi.encodeCall(
-        //         // TODO: 1 hr of work prob XD
-        //     )
-        // });
-        // wallet.execute(data);
+        // TODO: CDP MACRO APPROVALS 3
+        // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
+        // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
+        // 3) stETH.approve(_activePool, type(uint256).max);
 
-        // // NOTE: We don't sweep to caller, but instead leave in SC wallet
+        // In macro
+        // 4) Delegate to LeverageMacroDelegateTarget
+        SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](4);
 
-        // // Verify CDP Was Open
-        // // IsCDPOpen
-        // vm.stopPrank();
+        // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
+        data[0] = SimplifiedDiamondLike.Operation({
+            to: address(address(eBTCToken)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(eBTCToken.approve, (address(borrowerOperations), type(uint256).max))
+        });
 
-        // // Verify token balance to user
-        // assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
+        // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
+        data[1] = SimplifiedDiamondLike.Operation({
+            to: address(address(collateral)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            // NOTE: same sig
+            data: abi.encodeCall(eBTCToken.approve, (address(borrowerOperations), type(uint256).max))
+        });
 
-        // // TODO: Verify there's debt
+        // 3) stETH.approve(_activePool, type(uint256).max);
+        data[2] = SimplifiedDiamondLike.Operation({
+            to: address(address(collateral)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(eBTCToken.approve, (address(activePool), type(uint256).max))
+        });
+
+
+        data[3] = SimplifiedDiamondLike.Operation({
+            to: address(address(macro_reference)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.delegatecall,
+            data: abi.encodeCall(
+                // TODO: 1 hr of work prob XD
+            )
+        });
+        wallet.execute(data);
+
+        // NOTE: We don't sweep to caller, but instead leave in SC wallet
+
+        // Verify CDP Was Open
+        // IsCDPOpen
+        vm.stopPrank();
+
+        // Verify token balance to user
+        assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
+
+        // TODO: Verify there's debt
     }
 }
