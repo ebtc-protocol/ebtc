@@ -287,11 +287,12 @@ contract('PriceFeed', async accounts => {
       await priceFeed.setLastGoodPrice(dec(999, 18))
 
       const now = await th.getLatestBlockTimestamp(web3)
-      const future = toBN(now).add(toBN('1000'))
+      const future = now + 1000
 
       await mockTellor.setPrice(normalEbtcPrice)
       await mockEthBtcChainlink.setUpdateTime(future)
 
+      console.log("status after printinggggg:")
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '1') // status 1: using Fallback, Chainlink untrusted
@@ -310,7 +311,7 @@ contract('PriceFeed', async accounts => {
       await priceFeed.setLastGoodPrice(dec(999, 18))
 
       const now = await th.getLatestBlockTimestamp(web3)
-      const future = toBN(now).add(toBN('1000'))
+      const future = now + 1000
 
       await mockTellor.setPrice(normalEbtcPrice)
       await mockStEthEthChainlink.setUpdateTime(future)
