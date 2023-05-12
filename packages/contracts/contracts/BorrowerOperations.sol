@@ -7,7 +7,6 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
@@ -29,7 +28,7 @@ contract BorrowerOperations is
 
     ICollSurplusPool public immutable collSurplusPool;
 
-    IFeeRecipient public immutable feeRecipient;
+    address public feeRecipientAddress;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -98,7 +97,7 @@ contract BorrowerOperations is
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        feeRecipient = IFeeRecipient(_feeRecipientAddress);
+        feeRecipientAddress = _feeRecipientAddress;
 
         address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
         if (_authorityAddress != address(0)) {
@@ -832,6 +831,17 @@ contract BorrowerOperations is
         return newTCR;
     }
 
+    // === Governed Functions ==
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        require(
+            _feeRecipientAddress != address(0),
+            "BorrowerOperations: cannot set fee recipient to zero address"
+        );
+        feeRecipientAddress = _feeRecipientAddress;
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
     // === Flash Loans === //
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -857,10 +867,10 @@ contract BorrowerOperations is
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        ebtcToken.transferFrom(address(receiver), address(feeRecipient), fee + amount);
+        ebtcToken.transferFrom(address(receiver), feeRecipientAddress, fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
-        ebtcToken.burn(address(feeRecipient), amount);
+        ebtcToken.burn(feeRecipientAddress, amount);
 
         return true;
     }

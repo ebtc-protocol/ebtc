@@ -62,6 +62,10 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
         bytes4(keccak256(bytes("claimFeeRecipientColl(uint256)")));
 
+    // Fee Recipient
+    bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
+        bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
+
     event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
     event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
 
@@ -296,7 +300,10 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
-        authority.setRoleName(5, "BorrowerOperations+ActivePool: setFeeBps & setMaxFeeBps");
+        authority.setRoleName(
+            5,
+            "BorrowerOperations+ActivePool: setFeeBps, setMaxFeeBps, setFeeRecipientAddress"
+        );
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
 
         // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
@@ -314,9 +321,16 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(
+            5,
+            address(borrowerOperations),
+            SET_FEE_RECIPIENT_ADDRESS_SIG,
+            true
+        );
 
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
 
         authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
         authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);

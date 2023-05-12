@@ -132,16 +132,16 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         ebtcToken.unprotectedMint(address(this), _fee);
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = ebtcToken.balanceOf(address(borrowerOperations.feeRecipient()));
+        uint _balBefore = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         borrowerOperations.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(ebtcToken),
             _amount,
             abi.encodePacked(uint256(0))
         );
-        uint _balAfter = ebtcToken.balanceOf(address(borrowerOperations.feeRecipient()));
+        uint _balAfter = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         require(_balAfter - _balBefore == _fee, "!flFeeEBTC");
-        ebtcToken.unprotectedBurn(address(borrowerOperations.feeRecipient()), _fee);
+        ebtcToken.unprotectedBurn(borrowerOperations.feeRecipientAddress(), _fee);
     }
 
     function openCdpPrx(

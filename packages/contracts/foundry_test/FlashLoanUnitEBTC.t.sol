@@ -66,7 +66,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
 
-        uint256 prevFeeBalance = eBTCToken.balanceOf(address(borrowerOperations.feeRecipient()));
+        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
 
         // Perform flashloan
         borrowerOperations.flashLoan(
@@ -78,7 +78,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         // Check fees were sent and balance increased exactly by the expected fee amount
         assertEq(
-            eBTCToken.balanceOf(address(borrowerOperations.feeRecipient())),
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
             prevFeeBalance + fee
         );
     }
