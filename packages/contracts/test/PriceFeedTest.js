@@ -381,6 +381,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockEthBtcChainlink.setDecimalsRevert()
     })
 
     it("C1 chainlinkWorking: Chainlink broken - decimals call reverted on Feed 2, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -401,6 +404,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockStEthEthChainlink.setDecimalsRevert()
     })
 
     it("C1 chainlinkWorking: Chainlink broken - latest round call reverted on Feed 1, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -421,6 +427,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockEthBtcChainlink.setLatestRevert()
     })
 
     it("C1 chainlinkWorking: Chainlink broken - latest round call reverted on Feed 2, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -441,6 +450,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockStEthEthChainlink.setLatestRevert()
     })
 
     it("C1 chainlinkWorking: previous round call reverted on Feed 1, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -461,6 +473,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockEthBtcChainlink.setPrevRevert()
     })
 
     it("C1 chainlinkWorking: previous round call reverted on Feed 2, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -481,6 +496,9 @@ contract('PriceFeed', async accounts => {
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
+
+      // Needs to re-revert state, otherwise mess state for next test
+      await mockStEthEthChainlink.setPrevRevert()
     })
 
     // --- Chainlink timeout ---
