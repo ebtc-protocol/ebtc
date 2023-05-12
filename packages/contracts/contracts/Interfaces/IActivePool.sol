@@ -33,4 +33,6 @@ interface IActivePool is IPool {
     function feeRecipientAddress() external view returns (address);
 
     function getFeeRecipientClaimableColl() external view returns (uint);
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external;
 }

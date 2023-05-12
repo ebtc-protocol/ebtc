@@ -291,4 +291,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         IERC20(token).safeTransfer(feeRecipientAddress, amount);
     }
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        require(
+            _feeRecipientAddress != address(0),
+            "ActivePool: cannot set fee recipient to zero address"
+        );
+        feeRecipientAddress = _feeRecipientAddress;
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
 }
