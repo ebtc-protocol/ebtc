@@ -14,12 +14,25 @@ interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
+interface IOwnerLike {
+    function owner() external view returns (address);
+}
+
 /**
  * LeverageMacroDelegateTarget - Meant to be DelegateCalled from the SC Wallet
  * Delegate call to doOperation to start
  * Set the DelegateCallBack for onFlashLoan in your SC Wallet to handle the FL Callback
  * NOTE: `_sweepToCaller` is removed, can always add it back at no particular risk
+
+
  */
+ /**
+ SETUP
+        // YOUR SC WALLET MUST HAVE DONE THE FOLLOWING
+        ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
+        stETH.approve(_borrowerOperationsAddress, type(uint256).max);
+        stETH.approve(_activePool, type(uint256).max);
+  */
 contract LeverageMacroDelegateTarget {
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
@@ -27,8 +40,6 @@ contract LeverageMacroDelegateTarget {
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
-
-    address public immutable owner;
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -41,8 +52,7 @@ contract LeverageMacroDelegateTarget {
         address _cdpManager,
         address _ebtc,
         address _coll,
-        address _sortedCdps,
-        address _owner
+        address _sortedCdps
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         activePool = IActivePool(_activePool);
@@ -50,13 +60,6 @@ contract LeverageMacroDelegateTarget {
         ebtcToken = IEBTCToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
-
-        owner = _owner;
-
-        // set allowance for flashloan lender/CDP open
-        ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        stETH.approve(_borrowerOperationsAddress, type(uint256).max);
-        stETH.approve(_activePool, type(uint256).max);
     }
 
     enum FlashLoanType {
@@ -91,6 +94,12 @@ contract LeverageMacroDelegateTarget {
         ICdpManagerData.Status expectedStatus;
     }
 
+    function assertOwner() internal {
+        // Since we delegate call we should have access to this if we call ourselves back
+        address owner = IOwnerLike(address(this)).owner();
+        require(owner == msg.sender, "Must be owner");
+    }
+
     /**
      * FL Setup
      *         - Validate Caller
@@ -112,7 +121,7 @@ contract LeverageMacroDelegateTarget {
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
     ) external {
-        require(msg.sender == owner, "LeverageMacroReference: not owner!");
+        assertOwner();
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
