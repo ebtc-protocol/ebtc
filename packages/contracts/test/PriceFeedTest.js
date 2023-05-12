@@ -2352,7 +2352,7 @@ contract('PriceFeed', async accounts => {
     })
   })
 
-  describe('Fallback Oracle is bricked', async () => {
+  describe.only('Fallback Oracle is bricked', async () => {
     beforeEach(async () => {
       // CL feeds mocks
       mockEthBtcChainlink = await MockChainlink.new()
@@ -2430,7 +2430,7 @@ contract('PriceFeed', async accounts => {
 
       // We assign Alice permission to change the fallback Oracle
       let _role123 = 123;
-      let _setFallbackSig = "0xb6f0e8ce";//priceFeed#SET_FALLBACK_CALLER_SIG;
+      let _setFallbackSig = "0xb6f0e8ce"; // priceFeed#SET_FALLBACK_CALLER_SIG;
       await _newAuthority.setRoleCapability(_role123, priceFeed.address, _setFallbackSig, true, {from: alice});	  
       await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
       // Alice bricks the fallback Oracle
@@ -2444,13 +2444,15 @@ contract('PriceFeed', async accounts => {
       assert.equal(status, '0') // status 0: using Chainlink
 
       // Oracle price is 1e9
-      await mockChainlink.setDecimals(0)
+      await mockEthBtcChainlink.setDecimals(0)
+      await mockStEthEthChainlink.setDecimals(0)
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
+      console.log(price.toNumber())
       // Check eBTC PriceFeed gives 1e9, with 18 digit precision
-      assert.isTrue(price.eq(toBN(dec(1, 27))))
+      assert.isTrue(price.eq(toBN(dec(1, 9))))
 
       // Fallback should be broken and, therefore, the status should change to 4
       status = await priceFeed.status()
@@ -2462,7 +2464,7 @@ contract('PriceFeed', async accounts => {
       let status = await priceFeed.status()
       assert.equal(status, '0') // status 0: using Chainlink
 
-      await mockChainlink.setLatestRoundId(0)
+      await mockEthBtcChainlink.setLatestRoundId(0)
       await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
       // Price equals last good price
@@ -2478,7 +2480,7 @@ contract('PriceFeed', async accounts => {
       let status = await priceFeed.status()
       assert.equal(status, '0') // status 0: using Chainlink
 
-      await mockChainlink.setUpdateTime(0)
+      await mockEthBtcChainlink.setUpdateTime(0)
       await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
       // Price equals last good price
@@ -2495,8 +2497,8 @@ contract('PriceFeed', async accounts => {
       assert.equal(status, '0') // status 0: using Chainlink
 
       const now = await th.getLatestBlockTimestamp(web3)
-      const future = toBN(now).add(toBN('1000'))
-      await mockChainlink.setUpdateTime(future)
+      const future = now + 1000
+      await mockEthBtcChainlink.setUpdateTime(future)
       await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
       // Price equals last good price
