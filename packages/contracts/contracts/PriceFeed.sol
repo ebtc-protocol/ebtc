@@ -348,22 +348,29 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         IFallbackCaller newFallbackCaler = IFallbackCaller(_fallbackCaller);
         FallbackResponse memory fallbackResponse;
 
-        try newFallbackCaler.getFallbackResponse() returns (
-            uint256 answer,
-            uint256 timestampRetrieved,
-            bool success
-        ) {
-            fallbackResponse.answer = answer;
-            fallbackResponse.timestamp = timestampRetrieved;
-            fallbackResponse.success = success;
+        if (_fallbackCaller != address(0)) {
+            try newFallbackCaler.getFallbackResponse() returns (
+                uint256 answer,
+                uint256 timestampRetrieved,
+                bool success
+            ) {
+                fallbackResponse.answer = answer;
+                fallbackResponse.timestamp = timestampRetrieved;
+                fallbackResponse.success = success;
 
-            if (!_fallbackIsBroken(fallbackResponse) && _fallbackIsFrozen(fallbackResponse)) {
-                address oldFallbackCaller = address(fallbackCaller);
-                fallbackCaller = newFallbackCaler;
-                emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
+                if (!_fallbackIsBroken(fallbackResponse) && _fallbackIsFrozen(fallbackResponse)) {
+                    address oldFallbackCaller = address(fallbackCaller);
+                    fallbackCaller = newFallbackCaler;
+                    emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
+                }
+            } catch {
+                emit UnhealthyFallbackCaller(_fallbackCaller, block.timestamp);
             }
-        } catch {
-            emit UnhealthyFallbackCaller(_fallbackCaller, block.timestamp);
+        } else {
+            address oldFallbackCaller = address(fallbackCaller);
+            // NOTE: assume intentionally bricking fallback!!!
+            fallbackCaller = newFallbackCaler;
+            emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
         }
     }
 
