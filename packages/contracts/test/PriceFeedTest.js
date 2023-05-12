@@ -563,7 +563,7 @@ contract('PriceFeed', async accounts => {
       assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
 
       let price = await priceFeed.lastGoodPrice()
-      assert.equal(price, normalEbtcPrice)
+      assert.equal(price, dec(999, 18))
     })
 
     it("C1 chainlinkWorking: Chainlink frozen by Feed 2, Fallback frozen: switch to usingFallbackChainlinkFrozen", async () => {
@@ -592,7 +592,7 @@ contract('PriceFeed', async accounts => {
       assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
 
       let price = await priceFeed.lastGoodPrice()
-      assert.equal(price, normalEbtcPrice)
+      assert.equal(price, dec(999, 18))
     })
 
     it("C1 chainlinkWorking: Chainlink times out, Fallback broken by 0 price: switch to usingChainlinkFallbackUntrusted", async () => {
@@ -613,6 +613,7 @@ contract('PriceFeed', async accounts => {
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '4') // status 4: using Chainlink, Fallback untrusted
 
+      let price = await priceFeed.lastGoodPrice()
       assert.equal(price, dec(999, 18))
     })
 
@@ -628,6 +629,7 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '0') // status 0: Chainlink working
+      
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, dec(1234, 18))
     })
@@ -2133,7 +2135,6 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
 
       const price = await priceFeed.lastGoodPrice()
-      console.log(price.toString())
       assert.equal(price, '50320670000000000') // last good price
     })
 
@@ -2450,7 +2451,7 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
-      console.log(price.toNumber())
+
       // Check eBTC PriceFeed gives 1e9, with 18 digit precision
       assert.isTrue(price.eq(toBN(dec(1, 9))))
 
