@@ -113,7 +113,7 @@ contract LeverageMacro {
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
     ) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "LeverageMacro: not owner!");
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
@@ -133,7 +133,7 @@ contract LeverageMacro {
         if (postCheckType == PostOperationCheck.openCdp) {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
-            initialCdpIndex = sortedCdps.cdpCountOf(msg.sender);
+            initialCdpIndex = sortedCdps.cdpCountOf(address(this));
         }
 
         // Take eBTC or stETH FlashLoan
@@ -163,13 +163,16 @@ contract LeverageMacro {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             // initialCdpIndex is initialCdpIndex + 1
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, initialCdpIndex);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), initialCdpIndex);
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: openCDP status check"
+            );
         }
 
         // Update CDP, Ensure the stats are as intended
@@ -178,14 +181,20 @@ contract LeverageMacro {
 
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: adjustCDP status check"
+            );
         }
 
         // Post check type: Close, ensure it has the status we want
         if (postCheckType == PostOperationCheck.isClosed) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacro: closeCDP status check"
+            );
         }
 
         // Sweep here
@@ -201,11 +210,11 @@ contract LeverageMacro {
             // Early return
             return;
         } else if (check.operator == Operator.gte) {
-            require(check.value >= valueToCheck);
+            require(check.value >= valueToCheck, "!LeverageMacro: gte post check");
         } else if (check.operator == Operator.lte) {
-            require(check.value <= valueToCheck);
+            require(check.value <= valueToCheck, "!LeverageMacro: let post check");
         } else if (check.operator == Operator.equal) {
-            require(check.value == valueToCheck);
+            require(check.value == valueToCheck, "!LeverageMacro: equal post check");
         } else {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");
@@ -403,7 +412,8 @@ contract LeverageMacro {
                 // > because if you don't want to check for 0, just don't have the check
                 require(
                     IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) >
-                        swapChecks[i].expectedMinOut
+                        swapChecks[i].expectedMinOut,
+                    "LeverageMacro: swap check failure!"
                 );
             }
         }
@@ -414,6 +424,7 @@ contract LeverageMacro {
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
         require(addy != address(activePool));
+        require(addy != address(cdpManager));
         require(addy != address(this)); // If it could call this it could fake the forwarded caller
     }
 
