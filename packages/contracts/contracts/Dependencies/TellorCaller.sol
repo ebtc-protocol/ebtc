@@ -28,7 +28,7 @@ contract TellorCaller is IFallbackCaller {
     constructor(address _tellorMasterAddress) public {
         tellor = ITellor(_tellorMasterAddress);
         // NOTE: random value for completeness purposes
-        timeOut = 86400;
+        timeOut = 4800;
     }
 
     /*

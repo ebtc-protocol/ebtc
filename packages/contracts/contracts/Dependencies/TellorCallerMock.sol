@@ -17,7 +17,7 @@ contract TellorCallerMock is IFallbackCaller {
         tellor = ITellor(_tellorMasterAddress);
 
         // NOTE: random value for completeness purposes
-        timeOut = 86400;
+        timeOut = 4800;
     }
 
     // Mock price data

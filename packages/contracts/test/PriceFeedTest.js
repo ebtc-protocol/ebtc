@@ -94,6 +94,8 @@ contract('PriceFeed', async accounts => {
       const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
       const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
 
+      // We set the code of the CL aggregators to that of our MockAggregator given their
+      // addresses immutability
       await network.provider.send("hardhat_setCode", [ETH_BTC_CL_FEED, codeEthBtcCL]);
       await network.provider.send("hardhat_setCode", [
         STETH_ETH_CL_FEED,
@@ -483,8 +485,8 @@ contract('PriceFeed', async accounts => {
 
     // --- Chainlink timeout ---
 
-    it("C1 chainlinkWorking: Chainlink frozen, Fallback working: switch to usingFallbackChainlinkFrozen", async () => {
-      
+    it("C1 chainlinkWorking: Chainlink frozen from Feed 1, Fallback working: switch to usingFallbackChainlinkFrozen", async () => {
+
       const statusBefore = await priceFeed.status()
       assert.equal(statusBefore, '0') // status 0: Chainlink working
 
@@ -492,19 +494,50 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
       await priceFeed.setLastGoodPrice(dec(999, 18))
 
-      await th.fastForwardTime(14400, web3.currentProvider) // fast forward 4 hours
+      await th.fastForwardTime(4800 + 1, web3.currentProvider) // fast forward timeout length + 1
       const now = await th.getLatestBlockTimestamp(web3)
 
       // Fallback price is recent
       await mockTellor.setUpdateTime(now)
       await mockTellor.setPrice(normalEbtcPrice)
+      // The second feed is recent
+      await mockStEthEthChainlink.setUpdateTime(now)
 
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen 
+      assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
+      
+      let price = await priceFeed.lastGoodPrice()
+      assert.equal(price, normalEbtcPrice)
     })
 
-    it("C1 chainlinkWorking: Chainlink frozen, Fallback working: return Fallback price", async () => {
+    it("C1 chainlinkWorking: Chainlink frozen from Feed 2, Fallback working: switch to usingFallbackChainlinkFrozen", async () => {
+
+      const statusBefore = await priceFeed.status()
+      assert.equal(statusBefore, '0') // status 0: Chainlink working
+
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
+      await priceFeed.setLastGoodPrice(dec(999, 18))
+
+      await th.fastForwardTime(90000 + 1, web3.currentProvider) // fast forward timeout length + 1
+      const now = await th.getLatestBlockTimestamp(web3)
+
+      // Fallback price is recent
+      await mockTellor.setUpdateTime(now)
+      await mockTellor.setPrice(normalEbtcPrice)
+      // The first feed is recent
+      await mockEthBtcChainlink.setUpdateTime(now)
+
+      await priceFeed.fetchPrice()
+      const statusAfter = await priceFeed.status()
+      assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
+      
+      let price = await priceFeed.lastGoodPrice()
+      assert.equal(price, normalEbtcPrice)
+    })
+
+    it("C1 chainlinkWorking: Chainlink frozen by Feed 1, Fallback frozen: switch to usingFallbackChainlinkFrozen", async () => {
       
       const statusBefore = await priceFeed.status()
       assert.equal(statusBefore, '0') // status 0: Chainlink working
@@ -513,19 +546,27 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
       await priceFeed.setLastGoodPrice(dec(999, 18))
 
-      await th.fastForwardTime(14400, web3.currentProvider) // Fast forward 4 hours
-      const now = await th.getLatestBlockTimestamp(web3)
-      // Fallback price is recent
-      await mockTellor.setUpdateTime(now)
       await mockTellor.setPrice(normalEbtcPrice)
 
-      const priceFetchTx = await priceFeed.fetchPrice()
+      await th.fastForwardTime(4800 + 1, web3.currentProvider) // fast forward timeout length + 1
+
+      // check Fallback price timestamp is out of date by > its timout (4800)
+      const now = await th.getLatestBlockTimestamp(web3)
+      const tellorUpdateTime = await mockTellor.getUpdateTime()
+      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(4800 + 1))))
+
+      // The second feed is recent
+      await mockStEthEthChainlink.setUpdateTime(now)
+
+      await priceFeed.fetchPrice()
+      const statusAfter = await priceFeed.status()
+      assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
 
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
     })
 
-    it("C1 chainlinkWorking: Chainlink frozen, Fallback frozen: switch to usingFallbackChainlinkFrozen", async () => {
+    it("C1 chainlinkWorking: Chainlink frozen by Feed 2, Fallback frozen: switch to usingFallbackChainlinkFrozen", async () => {
       
       const statusBefore = await priceFeed.status()
       assert.equal(statusBefore, '0') // status 0: Chainlink working
@@ -536,42 +577,22 @@ contract('PriceFeed', async accounts => {
 
       await mockTellor.setPrice(normalEbtcPrice)
 
-      await th.fastForwardTime(14400, web3.currentProvider) // fast forward 4 hours
+      await th.fastForwardTime(90000 + 1, web3.currentProvider) // fast forward timeout length + 1
 
-      // check Fallback price timestamp is out of date by > 4 hours
+      // check Fallback price timestamp is out of date by > its timout (4800)
       const now = await th.getLatestBlockTimestamp(web3)
       const tellorUpdateTime = await mockTellor.getUpdateTime()
-      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(90000 + 1))))
+
+      // The first feed is recent
+      await mockEthBtcChainlink.setUpdateTime(now)
 
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
-    })
 
-    it("C1 chainlinkWorking: Chainlink frozen, Fallback frozen: return last good price", async () => {
-      
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await priceFeed.setLastGoodPrice(dec(999, 18))
-
-      await mockTellor.setPrice(normalEbtcPrice)
-
-      await th.fastForwardTime(14400, web3.currentProvider) // Fast forward 4 hours
-
-      // check Fallback price timestamp is out of date by > 4 hours
-      const now = await th.getLatestBlockTimestamp(web3)
-      const tellorUpdateTime = await mockTellor.getUpdateTime()
-      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
-
-      await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
-      // Expect lastGoodPrice has not updated
-      assert.equal(price, dec(999, 18))
-      const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '3') // status 3: using Fallback, Chainlink frozen
+      assert.equal(price, normalEbtcPrice)
     })
 
     it("C1 chainlinkWorking: Chainlink times out, Fallback broken by 0 price: switch to usingChainlinkFallbackUntrusted", async () => {
