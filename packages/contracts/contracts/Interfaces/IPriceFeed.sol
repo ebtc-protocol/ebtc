@@ -15,7 +15,8 @@ interface IPriceFeed {
         uint80 roundEthBtcId;
         uint80 roundStEthEthId;
         uint256 answer;
-        uint256 timestamp;
+        uint256 timestampEthBtc;
+        uint256 timestampStEthEth;
         bool success;
     }
 
