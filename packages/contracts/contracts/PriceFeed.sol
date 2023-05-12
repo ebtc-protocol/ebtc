@@ -77,7 +77,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         require(
             !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
-                !_chainlinkIsFrozen(chainlinkResponse.timestamp, TIMEOUT_STETH_ETH_FEED),
+                !_chainlinkIsFrozen(chainlinkResponse),
             "PriceFeed: Chainlink must be working and current"
         );
 
@@ -129,7 +129,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             }
 
             // If Chainlink is frozen, try Fallback
-            if (_chainlinkIsFrozen(chainlinkResponse.timestamp, TIMEOUT_STETH_ETH_FEED)) {
+            if (_chainlinkIsFrozen(chainlinkResponse)) {
                 // If Fallback is broken too, remember Fallback broke, and return last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
@@ -256,7 +256,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 return _storeFallbackPrice(fallbackResponse);
             }
 
-            if (_chainlinkIsFrozen(chainlinkResponse.timestamp, TIMEOUT_STETH_ETH_FEED)) {
+            if (_chainlinkIsFrozen(chainlinkResponse)) {
                 // if Chainlink is frozen and Fallback is broken, remember Fallback broke, and return last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
@@ -304,7 +304,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             }
 
             // If Chainlink is frozen, return last good price (no status change)
-            if (_chainlinkIsFrozen(chainlinkResponse.timestamp, TIMEOUT_STETH_ETH_FEED)) {
+            if (_chainlinkIsFrozen(chainlinkResponse)) {
                 return lastGoodPrice;
             }
 
@@ -390,19 +390,23 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return true;
         }
 
-        // Check for an invalid timeStamp that is 0, or in the future
-        if (_response.timestamp == 0 || _response.timestamp > block.timestamp) {
+        // Check for an invalid timestamp that is 0, or in the future
+        if (
+            _response.timestampEthBtc == 0 ||
+            _response.timestampEthBtc > block.timestamp ||
+            _response.timestampStEthEth == 0 ||
+            _response.timestampStEthEth > block.timestamp
+        ) {
             return true;
         }
 
         return false;
     }
 
-    function _chainlinkIsFrozen(
-        uint256 _updateTime,
-        uint256 _maxStalePeriod
-    ) internal view returns (bool) {
-        return block.timestamp - _updateTime > _maxStalePeriod;
+    function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
+        return
+            block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
+            block.timestamp - _response.timestampEthBtc > TIMEOUT_STETH_ETH_FEED;
     }
 
     function _chainlinkPriceChangeAboveMax(
@@ -456,7 +460,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             _fallbackIsBroken(_fallbackResponse) ||
             _fallbackIsFrozen(_fallbackResponse) ||
             _chainlinkIsBroken(_chainlinkResponse, _prevChainlinkResponse) ||
-            _chainlinkIsFrozen(_chainlinkResponse.timestamp, TIMEOUT_STETH_ETH_FEED)
+            _chainlinkIsFrozen(_chainlinkResponse)
         ) {
             return false;
         }
@@ -537,50 +541,69 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         returns (ChainlinkResponse memory chainlinkResponse)
     {
         // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
-        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
+        uint8 ethBtcDecimals;
+        uint8 stEthEthDecimals;
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            ethBtcDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
+
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            stEthEthDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
 
         // Try to get latest prices data:
-        (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
-            .latestRoundData();
+        int256 ethBtcAnswer;
+        int256 stEthEthAnswer;
+        try ETH_BTC_CL_FEED.latestRoundData() returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            ethBtcAnswer = answer;
+            chainlinkResponse.roundEthBtcId = roundId;
+            chainlinkResponse.timestampEthBtc = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
+
+        try STETH_ETH_CL_FEED.latestRoundData() returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            stEthEthAnswer = answer;
+            chainlinkResponse.roundStEthEthId = roundId;
+            chainlinkResponse.timestampStEthEth = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
+
         if (
-            !_checkHealthyCLResponse(
-                roundEthBtcId,
+            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            chainlinkResponse.answer = _formatClAggregateAnswer(
                 ethBtcAnswer,
-                ethBtcTimestamp,
-                TIMEOUT_ETH_BTC_FEED
-            )
-        ) return chainlinkResponse;
-
-        (
-            uint80 roundstEthEthId,
-            int256 stEthEthAnswer,
-            ,
-            uint256 stEthEtTimestamp,
-
-        ) = STETH_ETH_CL_FEED.latestRoundData();
-        if (
-            !_checkHealthyCLResponse(
-                roundstEthEthId,
                 stEthEthAnswer,
-                stEthEtTimestamp,
-                TIMEOUT_STETH_ETH_FEED
-            )
-        ) return chainlinkResponse;
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        }
 
-        // NOTE: after initial checks then we write into memory
-        chainlinkResponse.roundEthBtcId = roundEthBtcId;
-        chainlinkResponse.roundStEthEthId = roundstEthEthId;
-
-        // If call to Chainlink succeeds, return the response and success = true
-        chainlinkResponse.answer = _formatClAggregateAnswer(
-            ethBtcAnswer,
-            stEthEthAnswer,
-            ethBtcDecimals,
-            stEthEthDecimals
-        );
-        // NOTE: stick with the `Min` for `TIMEOUT_STETH_ETH_FEED` check-ups on Status.usingFallbackChainlinkFrozen
-        chainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         chainlinkResponse.success = true;
 
         return chainlinkResponse;
@@ -599,67 +622,78 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
 
         // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
-        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
+        uint8 ethBtcDecimals;
+        uint8 stEthEthDecimals;
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            ethBtcDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            stEthEthDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
 
         // Try to get latest prices data from prev round:
-        (uint80 roundEthBtcId, int256 ethBtcAnswer, , uint256 ethBtcTimestamp, ) = ETH_BTC_CL_FEED
-            .getRoundData(_currentRoundEthBtcId - 1);
+        int256 ethBtcAnswer;
+        int256 stEthEthAnswer;
+        try ETH_BTC_CL_FEED.getRoundData(_currentRoundEthBtcId - 1) returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            ethBtcAnswer = answer;
+            prevChainlinkResponse.roundEthBtcId = roundId;
+            prevChainlinkResponse.timestampEthBtc = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
+        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            stEthEthAnswer = answer;
+            prevChainlinkResponse.roundStEthEthId = roundId;
+            prevChainlinkResponse.timestampStEthEth = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
         if (
-            !_checkHealthyCLResponse(
-                roundEthBtcId,
+            _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(
                 ethBtcAnswer,
-                ethBtcTimestamp,
-                TIMEOUT_ETH_BTC_FEED
-            )
-        ) return prevChainlinkResponse;
-
-        (
-            uint80 roundstEthEthId,
-            int256 stEthEthAnswer,
-            ,
-            uint256 stEthEtTimestamp,
-
-        ) = STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1);
-        if (
-            !_checkHealthyCLResponse(
-                roundstEthEthId,
                 stEthEthAnswer,
-                stEthEtTimestamp,
-                TIMEOUT_STETH_ETH_FEED
-            )
-        ) return prevChainlinkResponse;
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        }
 
-        // NOTE: after initial checks then we write into memory
-        prevChainlinkResponse.roundEthBtcId = roundEthBtcId;
-        prevChainlinkResponse.roundStEthEthId = roundstEthEthId;
-
-        // If call to Chainlink succeeds, return the response and success = true
-        prevChainlinkResponse.answer = _formatClAggregateAnswer(
-            ethBtcAnswer,
-            stEthEthAnswer,
-            ethBtcDecimals,
-            stEthEthDecimals
-        );
-        // NOTE: stick with the `Min` for `TIMEOUT_STETH_ETH_FEED` check-ups on Status.usingFallbackChainlinkFrozen
-        prevChainlinkResponse.timestamp = LiquityMath._min(ethBtcTimestamp, stEthEtTimestamp);
         prevChainlinkResponse.success = true;
     }
 
-    // @notice Returns if the CL feed is healthy or not, based on: negative value, staleness and null round
+    // @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
     // @param _roundId The aggregator round of the target CL feed
     // @param _answer CL price price reported for target feeds
-    // @param _timestamp Timestamp of block in which report from given CL feed round was transmitted
-    // @param _maxStalePeriod Amount of seconds where the response is considered stale
-    // @return The boolean state indicating CL response health
-    function _checkHealthyCLResponse(
-        uint80 _roundId,
-        int256 _answer,
-        uint256 _timestamp,
-        uint256 _maxStalePeriod
-    ) internal view returns (bool) {
+    // @return The boolean state indicating CL response health for aggregation
+    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
         if (_answer < 0) return false;
-        if (_chainlinkIsFrozen(_timestamp, _maxStalePeriod)) return false;
         if (_roundId == 0) return false;
 
         return true;
