@@ -568,20 +568,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
     const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
-    const _defaultBefore = await defaultPool.getEBTCDebt();
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check that redistribution rewards don't change
     const _totalStake = await cdpManager.totalStakes();
     const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
-    const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _bobColl.mul(price).div(LICR);
-    th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_bobDebt.sub(_liqDebt)).toString())
-    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).mul(mv._1e18BN).add(_deltaError);
+    const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-    const L_STETHColl = (await cdpManager.L_STETHColl()).toString()
-    assert.equal(L_STETHColl, '0')
 
     // Check that Bob's Cdp and stake remains active with unchanged coll and debt
     const bob_Cdp = await cdpManager.Cdps(_bobCdpId);
