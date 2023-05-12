@@ -31,16 +31,22 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
     function test_happyOpen() public {
         address user = _utils.createUsers(1)[0];
-
         vm.deal(user, type(uint96).max);
 
         // check input
         uint256 netColl = 1e20;
-
         // deploy proxy for user
         SimplifiedDiamondLike wallet = SimplifiedDiamondLike(_createNewWalletForUser(user));
 
-        // open CDP
+        /// == OPEN CDP FLOW == ///
+        // User:
+        // Approve the Wallet
+
+        // SC Wallet
+        // Approve Coll for borrowersOperations
+        // TransferFrom
+        // OpenCdp
+        // Transfer To user
         uint256 collBall = dealCollateral(user, netColl);
 
         // User.Approve col
@@ -76,7 +82,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
                 gas: 9999999,
                 capGas: false,
                 opType: SimplifiedDiamondLike.OperationType.call,
-                data: abi.encodeCall(collateral.approve, (address(borrowerOperations), collBall)) // TODO: Max reverts??
+                data: abi.encodeCall(collateral.approve, (address(borrowerOperations), type(uint256).max)) // TODO: Max reverts??
         });
 
         // Open CDP
@@ -121,25 +127,17 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
     }
 
-    function copyPasta() public {
+    function test_openWithLeverage() public {
+        // TODO: 
 
+        // Same as above, but:
+        // Swap data
+        // Flashloan
+        // Etc..
 
-        // Sweep it away
+        // PROB Change the macro to not sweep
 
-        // address recipient = address(99);
-
-        // SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](1);
-        // data[0] = SimplifiedDiamondLike.Operation({
-        //         to: address(address(token)),
-        //         checkSuccess: true,
-        //         value: 0,
-        //         gas: 9999999,
-        //         capGas: false,
-        //         opType: SimplifiedDiamondLike.OperationType.call,
-        //         data: abi.encodeCall(FakeERC20.transfer, (recipient, 123))
-        // });
-
-
-
+        // Create the Sweep Module
+        
     }
 }
