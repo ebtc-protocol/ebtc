@@ -604,7 +604,7 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
       await priceFeed.setLastGoodPrice(dec(999, 18))
 
-      await th.fastForwardTime(14400, web3.currentProvider) // Fast forward 4 hours
+      await th.fastForwardTime(4800, web3.currentProvider) // Fast forward Feed's 1 timeout Threshold
 
       // Fallback breaks by 0 price
       await mockTellor.setPrice(0)
@@ -612,57 +612,23 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '4') // status 4: using Chainlink, Fallback untrusted
-    })
 
-    it("C1 chainlinkWorking: Chainlink times out, Fallback broken by 0 price: return last good price", async () => {
-      
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await priceFeed.setLastGoodPrice(dec(999, 18))
-
-      await th.fastForwardTime(14400, web3.currentProvider) // Fast forward 4 hours
-
-      await mockTellor.setPrice(dec(0))
-
-      await priceFeed.fetchPrice()
-      let price = await priceFeed.lastGoodPrice()
-
-      // Expect lastGoodPrice has not updated
       assert.equal(price, dec(999, 18))
-      const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '4') // status 4: using chainlink; tellor untrusted
     })
 
-    it("C1 chainlinkWorking: Chainlink is out of date by <3hrs: remain chainlinkWorking", async () => {
+    it("C1 chainlinkWorking: Chainlink is out of date by <1hr20: remain chainlinkWorking", async () => {
       
       const statusBefore = await priceFeed.status()
       assert.equal(statusBefore, '0') // status 0: Chainlink working
 
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
-      await th.fastForwardTime(10740, web3.currentProvider) // fast forward 2hrs 59 minutes 
+      await th.fastForwardTime(4740, web3.currentProvider) // fast forward 1hrs 19 minutes 
 
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '0') // status 0: Chainlink working
-    })
-
-    it("C1 chainlinkWorking: Chainlink is out of date by <3hrs: return Chainklink price", async () => {
-      
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      const decimals = await mockChainlink.decimals()
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
-      await th.fastForwardTime(10740, web3.currentProvider) // fast forward 2hrs 59 minutes
-
-      await priceFeed.fetchPrice()
-      const price = await priceFeed.lastGoodPrice()
+      let price = await priceFeed.lastGoodPrice()
       assert.equal(price, dec(1234, 18))
     })
 
@@ -682,21 +648,6 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '1') // status 1: using Fallback, Chainlink untrusted
-    })
-
-    it("C1 chainlinkWorking: Chainlink price drop of >50%, return the Fallback price", async () => {
-      
-      priceFeed.setLastGoodPrice(normalEbtcPrice)
-
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      await mockTellor.setPrice(normalEbtcPrice)
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(2, 8))  // price = 2
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, 99999999)  // price drops to 0.99999999: a drop of > 50% from previous
-
-      const priceFetchTx = await priceFeed.fetchPrice()
-
       let price = await priceFeed.lastGoodPrice()
       assert.equal(price, normalEbtcPrice)
     })
