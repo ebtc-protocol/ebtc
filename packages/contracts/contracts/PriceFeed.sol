@@ -413,7 +413,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
         return
             block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
-            block.timestamp - _response.timestampEthBtc > TIMEOUT_STETH_ETH_FEED;
+            block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
     }
 
     function _chainlinkPriceChangeAboveMax(
