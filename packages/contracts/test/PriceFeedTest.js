@@ -2352,7 +2352,7 @@ contract('PriceFeed', async accounts => {
     })
   })
 
-  describe.only('Fallback Oracle is bricked', async () => {
+  describe('Fallback Oracle is bricked', async () => {
     beforeEach(async () => {
       // CL feeds mocks
       mockEthBtcChainlink = await MockChainlink.new()
