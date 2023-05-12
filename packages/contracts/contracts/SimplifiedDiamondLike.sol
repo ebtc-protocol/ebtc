@@ -44,7 +44,7 @@ contract SimplifiedDiamondLike {
         s.callbackHandler[sig] = handler;
     }
 
-    function setOnlyCallbackMode(bool allowNonCallbacks) external {
+    function setAllowAnyCall(bool allowNonCallbacks) external {
         require(msg.sender == owner);
 
         DiamondLikeStorage storage s = getStorage();
@@ -128,7 +128,7 @@ contract SimplifiedDiamondLike {
 
         // If we don't allow callback
         if (!ds.settings.allowNonCallback) {
-            require(ds.settings.callbackEnabledForCall);
+            require(ds.settings.callbackEnabledForCall, "Only Enabled Callbacks");
             // NOTE: May also act as reEntrancy guard
             ds.settings.callbackEnabledForCall = false;
         }
