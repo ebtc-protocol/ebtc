@@ -59,14 +59,14 @@ contract SCTestBasic is Test {
 
         // Cannot set callback mode
         vm.expectRevert();
-        contractWallet.setOnlyCallbackMode(true);
+        contractWallet.setAllowAnyCall(true);
         
         vm.stopPrank();
 
         // Owner can
         vm.startPrank(user_1);
         contractWallet.execute(data);
-        contractWallet.setOnlyCallbackMode(true);
+        contractWallet.setAllowAnyCall(true);
         contractWallet.setFallbackHandler(bytes4(0x12312312), address(123));
         vm.stopPrank();
     }
