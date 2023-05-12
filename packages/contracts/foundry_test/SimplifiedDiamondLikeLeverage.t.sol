@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
-import {LeverageMacro} from "../contracts/LeverageMacro.sol";
+import {LeverageMacroReference} from "../contracts/LeverageMacroReference.sol";
 
 contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
     mapping(bytes32 => bool) private _cdpIdsExist;

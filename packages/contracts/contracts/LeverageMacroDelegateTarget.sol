@@ -15,13 +15,12 @@ interface ICdpCdps {
 }
 
 /**
- * Allows specifying arbitrary operations to lever up
- *     NOTE: Due to security concenrs
- *     LeverageMacro accepts allowances and transfers token to FlashLoanMacroReceiver
- *     // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
- *     LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
+ * LeverageMacroDelegateTarget - Meant to be DelegateCalled from the SC Wallet
+ * Delegate call to doOperation to start
+ * Set the DelegateCallBack for onFlashLoan in your SC Wallet to handle the FL Callback
+ * NOTE: `_sweepToCaller` is removed, can always add it back at no particular risk
  */
-contract LeverageMacro {
+contract LeverageMacroDelegateTarget {
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
     ICdpCdps public immutable cdpManager;
@@ -113,7 +112,7 @@ contract LeverageMacro {
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
     ) external {
-        require(msg.sender == owner, "LeverageMacro: not owner!");
+        require(msg.sender == owner, "LeverageMacroReference: not owner!");
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
@@ -171,7 +170,7 @@ contract LeverageMacro {
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
-                "!LeverageMacro: openCDP status check"
+                "!LeverageMacroReference: openCDP status check"
             );
         }
 
@@ -183,7 +182,7 @@ contract LeverageMacro {
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
-                "!LeverageMacro: adjustCDP status check"
+                "!LeverageMacroReference: adjustCDP status check"
             );
         }
 
@@ -193,12 +192,9 @@ contract LeverageMacro {
 
             require(
                 cdpInfo.status == checkParams.expectedStatus,
-                "!LeverageMacro: closeCDP status check"
+                "!LeverageMacroReference: closeCDP status check"
             );
         }
-
-        // Sweep here
-        _sweepToCaller();
     }
 
     /// @dev Assumes that
@@ -210,11 +206,11 @@ contract LeverageMacro {
             // Early return
             return;
         } else if (check.operator == Operator.gte) {
-            require(check.value >= valueToCheck, "!LeverageMacro: gte post check");
+            require(check.value >= valueToCheck, "!LeverageMacroReference: gte post check");
         } else if (check.operator == Operator.lte) {
-            require(check.value <= valueToCheck, "!LeverageMacro: let post check");
+            require(check.value <= valueToCheck, "!LeverageMacroReference: let post check");
         } else if (check.operator == Operator.equal) {
-            require(check.value == valueToCheck, "!LeverageMacro: equal post check");
+            require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
         } else {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");
@@ -250,23 +246,6 @@ contract LeverageMacro {
         OpenCdpOperation,
         AdjustCdpOperation,
         CloseCdpOperation
-    }
-
-    function _sweepToCaller() internal {
-        /**
-         * SWEEP TO CALLER *
-         */
-        // Safe unchecked because known tokens
-        uint256 ebtcBal = ebtcToken.balanceOf(address(this));
-        uint256 collateralBal = stETH.balanceOf(address(this));
-
-        if (ebtcBal > 0) {
-            ebtcToken.transfer(msg.sender, ebtcBal);
-        }
-
-        if (collateralBal > 0) {
-            stETH.transfer(msg.sender, collateralBal);
-        }
     }
 
     /// @dev Must be memory since we had to decode it
@@ -329,19 +308,19 @@ contract LeverageMacro {
         bytes calldata data
     ) external returns (bytes32) {
         // Verify we started the FL
-        require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
+        require(initiator == address(this), "LeverageMacroReference: wrong initiator for flashloan");
 
         // Ensure the caller is the intended contract
         if (token == address(ebtcToken)) {
             require(
                 msg.sender == address(borrowerOperations),
-                "LeverageMacro: wrong lender for eBTC flashloan"
+                "LeverageMacroReference: wrong lender for eBTC flashloan"
             );
         } else {
             // Enforce that this is either eBTC or stETH
             require(
                 msg.sender == address(activePool),
-                "LeverageMacro: wrong lender for stETH flashloan"
+                "LeverageMacroReference: wrong lender for stETH flashloan"
             );
         }
 
@@ -413,7 +392,7 @@ contract LeverageMacro {
                 require(
                     IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) >
                         swapChecks[i].expectedMinOut,
-                    "LeverageMacro: swap check failure!"
+                    "LeverageMacroReference: swap check failure!"
                 );
             }
         }

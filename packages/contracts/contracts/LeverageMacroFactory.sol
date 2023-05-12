@@ -1,6 +1,6 @@
 pragma solidity 0.8.17;
 
-import {LeverageMacro} from "./LeverageMacro.sol";
+import {LeverageMacroReference} from "./LeverageMacroReference.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Interfaces/IEBTCToken.sol";
 
@@ -36,7 +36,7 @@ contract LeverageMacroFactory {
 
     function deployNewMacro(address _owner) public returns (address) {
         address addy = address(
-            new LeverageMacro(
+            new LeverageMacroReference(
                 borrowerOperations,
                 activePool,
                 cdpManager,
