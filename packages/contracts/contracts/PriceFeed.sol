@@ -474,6 +474,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     ) internal pure returns (bool) {
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
         uint minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
+        if (minPrice == 0) return false;
         uint maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
         uint percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
             minPrice;

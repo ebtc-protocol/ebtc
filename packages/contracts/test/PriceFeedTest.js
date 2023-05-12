@@ -291,8 +291,7 @@ contract('PriceFeed', async accounts => {
 
       await mockTellor.setPrice(normalEbtcPrice)
       await mockEthBtcChainlink.setUpdateTime(future)
-
-      console.log("status after printinggggg:")
+      
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '1') // status 1: using Fallback, Chainlink untrusted
