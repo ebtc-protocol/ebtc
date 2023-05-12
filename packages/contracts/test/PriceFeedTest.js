@@ -2354,9 +2354,37 @@ contract('PriceFeed', async accounts => {
 
   describe('Fallback Oracle is bricked', async () => {
     beforeEach(async () => {
-      // Deploy 
-      mockChainlink = await MockChainlink.new()
-      MockChainlink.setAsDeployed(mockChainlink)
+      // CL feeds mocks
+      mockEthBtcChainlink = await MockChainlink.new()
+      MockChainlink.setAsDeployed(mockEthBtcChainlink)
+      mockStEthEthChainlink = await MockChainlink.new()
+      MockChainlink.setAsDeployed(mockStEthEthChainlink)
+
+      // Read bytecodes to replace internal contract constants for CL's
+      const codeEthBtcCL = await hre.network.provider.send("eth_getCode", [
+        mockEthBtcChainlink.address,
+      ]);
+      const codeStEthEthBtcCL = await hre.network.provider.send("eth_getCode", [
+        mockEthBtcChainlink.address,
+      ]);
+
+      // Manipulate constants in `priceFeed` re cl oracles
+      const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
+      const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
+
+      // We set the code of the CL aggregators to that of our MockAggregator given their
+      // addresses immutability
+      await network.provider.send("hardhat_setCode", [ETH_BTC_CL_FEED, codeEthBtcCL]);
+      await network.provider.send("hardhat_setCode", [
+        STETH_ETH_CL_FEED,
+        codeStEthEthBtcCL,
+      ]);
+
+      mockEthBtcChainlink = await ethers.getContractAt("MockAggregator", ETH_BTC_CL_FEED)
+      mockStEthEthChainlink = await ethers.getContractAt("MockAggregator", STETH_ETH_CL_FEED);
+
+      assert.equal(mockEthBtcChainlink.address, ETH_BTC_CL_FEED)
+      assert.equal(mockStEthEthChainlink.address, STETH_ETH_CL_FEED)
 
       mockTellor = await MockTellor.new()
       MockTellor.setAsDeployed(mockTellor)
@@ -2365,25 +2393,32 @@ contract('PriceFeed', async accounts => {
       TellorCaller.setAsDeployed(tellorCaller)
 
       // Set Chainlink latest and prev round Id's to non-zero
-      await mockChainlink.setLatestRoundId(3)
-      await mockChainlink.setPrevRoundId(2)
+      await mockEthBtcChainlink.setLatestRoundId(3)
+      await mockEthBtcChainlink.setPrevRoundId(2)
+
+      await mockStEthEthChainlink.setLatestRoundId(3)
+      await mockStEthEthChainlink.setPrevRoundId(2)
+
+      // Modify decimals for both feeds
+      await mockEthBtcChainlink.setDecimals(8)
+      await mockStEthEthChainlink.setDecimals(18)
 
       //Set current and prev prices in both oracles
-      await mockChainlink.setDecimals(8)
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await mockTellor.setPrice(normalEbtcPrice)
 
       // Set mock price updateTimes in both oracles to very recent
       const now = await th.getLatestBlockTimestamp(web3)
-      await mockChainlink.setUpdateTime(now)
+      await mockEthBtcChainlink.setUpdateTime(now)
+      await mockStEthEthChainlink.setUpdateTime(now)
       await mockTellor.setUpdateTime(now)
 
       // Deploy the Authority contract
       let _newAuthority = await GovernorTester.new(alice);
 
       // Deploy PriceFeed and set it up
-      priceFeed = await PriceFeed.new(mockChainlink.address, tellorCaller.address, _newAuthority.address)
+      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
       PriceFeed.setAsDeployed(priceFeed)
       assert.isTrue(_newAuthority.address == (await priceFeed.authority()));
 
