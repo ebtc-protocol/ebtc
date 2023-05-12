@@ -7,8 +7,6 @@ import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroDelegateTarget} from "../contracts/LeverageMacroDelegateTarget.sol";
 
-
-
 interface IOwnerLike {
     function owner() external view returns (address);
 }
@@ -16,6 +14,7 @@ interface IOwnerLike {
 // Basic test to ensure delegate call will maintain the owner as we'd expect
 contract LeverageMacroOwnerCheck {
     event DebugOwner(address);
+
     function getOwner() external returns (address) {
         // Since we delegate call we should have access to this if we call ourselves back
         address owner = IOwnerLike(address(this)).owner();
@@ -28,10 +27,10 @@ contract LeverageMacroOwnerCheck {
 contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
-    uint public _acceptedSlippage = 50;
-    uint public constant MAX_SLIPPAGE = 10000;
+    uint256 public _acceptedSlippage = 50;
+    uint256 public constant MAX_SLIPPAGE = 10000;
     bytes32 public constant DUMMY_CDP_ID = bytes32(0);
-    uint public constant INITITAL_COLL = 10000 ether;
+    uint256 public constant INITITAL_COLL = 10000 ether;
 
     address user = address(0xbad455);
 
@@ -39,7 +38,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
     LeverageMacroOwnerCheck owner_check;
 
     SimplifiedDiamondLike wallet;
-
 
     function _createNewWalletForUser(address _user) internal returns (address payable) {
         SimplifiedDiamondLike contractWallet = new SimplifiedDiamondLike(_user);
@@ -62,7 +60,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         );
         owner_check = new LeverageMacroOwnerCheck();
 
-
         vm.deal(user, type(uint96).max);
 
         // check input
@@ -83,7 +80,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // TransferFrom
         // OpenCdp
         // Transfer To user
-        
 
         // User.Approve col
         vm.startPrank(user);
@@ -94,64 +90,62 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // TransferFrom
         // OpenCdp
         // Transfer To
-    
+
         SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](4);
 
         // TransferFrom
         data[0] = SimplifiedDiamondLike.Operation({
-                to: address(address(collateral)),
-                checkSuccess: true,
-                value: 0,
-                gas: 9999999,
-                capGas: false,
-                opType: SimplifiedDiamondLike.OperationType.call,
-                data: abi.encodeCall(collateral.transferFrom, (user, address(wallet), collBall))
+            to: address(address(collateral)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(collateral.transferFrom, (user, address(wallet), collBall))
         });
 
         // BO
         // Approve as one off for BO
         data[1] = SimplifiedDiamondLike.Operation({
-                to: address(address(collateral)),
-                checkSuccess: true,
-                value: 0,
-                gas: 9999999,
-                capGas: false,
-                opType: SimplifiedDiamondLike.OperationType.call,
-                data: abi.encodeCall(collateral.approve, (address(borrowerOperations), type(uint256).max)) // TODO: Max reverts??
+            to: address(address(collateral)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(collateral.approve, (address(borrowerOperations), type(uint256).max)) // TODO: Max reverts??
         });
 
         // Open CDP
         /**
-            uint _EBTCAmount,
-            bytes32 _upperHint,
-            bytes32 _lowerHint,
-            uint _collAmount
+         * uint _EBTCAmount,
+         *         bytes32 _upperHint,
+         *         bytes32 _lowerHint,
+         *         uint _collAmount
          */
         data[2] = SimplifiedDiamondLike.Operation({
-                to: address(address(borrowerOperations)),
-                checkSuccess: true,
-                value: 0,
-                gas: 9999999,
-                capGas: false,
-                opType: SimplifiedDiamondLike.OperationType.call,
-                data: abi.encodeCall(borrowerOperations.openCdp, (2e18, bytes32(0), bytes32(0), collBall))
+            to: address(address(borrowerOperations)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(borrowerOperations.openCdp, (2e18, bytes32(0), bytes32(0), collBall))
         });
-
 
         // Transfer to Caller
         data[3] = SimplifiedDiamondLike.Operation({
-                to: address(address(eBTCToken)),
-                checkSuccess: true,
-                value: 0,
-                gas: 9999999,
-                capGas: false,
-                opType: SimplifiedDiamondLike.OperationType.call,
-                data: abi.encodeCall(eBTCToken.transfer, (address(user), 2e18)) // NOTE: This is hardcoded before the call
+            to: address(address(eBTCToken)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(eBTCToken.transfer, (address(user), 2e18)) // NOTE: This is hardcoded before the call
                 // To make this dynamic you'd need to delegate call to a sweep contract
         });
 
         wallet.execute(data);
-
 
         // Verify CDP Was Open
         // IsCDPOpen
@@ -159,7 +153,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Verify token balance to user
         assertTrue(eBTCToken.balanceOf(user) > 0);
-
     }
 
     function test_ownerCheckWithDelegateCall() public {
@@ -167,13 +160,13 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // TransferFrom
         data[0] = SimplifiedDiamondLike.Operation({
-                to: address(address(owner_check)),
-                checkSuccess: true,
-                value: 0,
-                gas: 9999999,
-                capGas: false,
-                opType: SimplifiedDiamondLike.OperationType.delegatecall,
-                data: abi.encodeCall(owner_check.getOwner, ())
+            to: address(address(owner_check)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.delegatecall,
+            data: abi.encodeCall(owner_check.getOwner, ())
         });
 
         vm.startPrank(user);
@@ -181,7 +174,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         vm.stopPrank();
 
         // TODO: Add test here to check event matches
-        
     }
 
     function test_openWithLeverage() public {
@@ -195,6 +187,5 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // Set the macro for callback
 
         // Create the Sweep Module
-        
     }
 }
