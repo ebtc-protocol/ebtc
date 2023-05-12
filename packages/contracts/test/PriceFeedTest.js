@@ -949,7 +949,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now)
+      await mockEthBtcChainlink.setUpdateTime(now)
+      await mockStEthEthChainlink.setUpdateTime(now)
 
       await priceFeed.fetchPrice()
 
@@ -976,7 +977,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now)
+      await mockStEthEthChainlink.setUpdateTime(now)
+      await mockEthBtcChainlink.setUpdateTime(now)
       await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
 
@@ -1170,7 +1172,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now) // Chainlink's price is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink's price is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink's price is current
 
       const priceFetchTx = await priceFeed.fetchPrice()
 
@@ -1198,7 +1201,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now) // Chainlink's price is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink's price is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink's price is current
 
       const priceFetchTx = await priceFeed.fetchPrice()
       let price = await priceFeed.lastGoodPrice()
@@ -1401,7 +1405,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now)
+      await mockStEthEthChainlink.setUpdateTime(now)
+      await mockEthBtcChainlink.setUpdateTime(now)
 
       await priceFeed.fetchPrice()
 
@@ -1427,7 +1432,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now)
+      await mockStEthEthChainlink.setUpdateTime(now)
+      await mockEthBtcChainlink.setUpdateTime(now)
 
       await priceFeed.fetchPrice()
       const price = await priceFeed.lastGoodPrice()
@@ -1847,7 +1853,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // set tellor broken
@@ -1872,7 +1878,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // set tellor broken
@@ -1901,7 +1907,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // set Fallback to current time
@@ -1928,7 +1934,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // set Fallback to current time
@@ -1955,7 +1961,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // check Fallback price timestamp is out of date by > 4 hours
@@ -1983,7 +1989,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       // check Fallback price timestamp is out of date by > 4 hours
@@ -2003,7 +2009,8 @@ contract('PriceFeed', async accounts => {
       priceFeed.setStatus(3) // status 3: using Fallback, Chainlink frozen
 
       const now = await th.getLatestBlockTimestamp(web3)
-      await mockChainlink.setUpdateTime(now) // Chainlink is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink is current
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1234, 8))
       await priceFeed.setLastGoodPrice(dec(1234, 18))
@@ -2176,7 +2183,8 @@ contract('PriceFeed', async accounts => {
       const tellorUpdateTime = await mockTellor.getUpdateTime()
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
-      await mockChainlink.setUpdateTime(now) // Chainlink is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink is current
 
       await priceFeed.fetchPrice()
 
@@ -2203,7 +2211,8 @@ contract('PriceFeed', async accounts => {
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec('7432067'))
-      await mockChainlink.setUpdateTime(now) // Chainlink is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink is current
 
       await priceFeed.fetchPrice()
 
@@ -2230,7 +2239,7 @@ contract('PriceFeed', async accounts => {
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '3032067') // >50% price drop from previous Chainlink price
-      await mockChainlink.setUpdateTime(now) // Chainlink is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
 
       await priceFeed.fetchPrice()
 
@@ -2257,7 +2266,8 @@ contract('PriceFeed', async accounts => {
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '3032067')
-      await mockChainlink.setUpdateTime(now) // Chainlink is current
+      await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink is current
 
       await priceFeed.fetchPrice()
 
@@ -2280,7 +2290,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
@@ -2304,7 +2314,7 @@ contract('PriceFeed', async accounts => {
 
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
-      const chainlinkUpdateTime = (await mockChainlink.latestRoundData())[3]
+      const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
       assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
@@ -2323,7 +2333,7 @@ contract('PriceFeed', async accounts => {
 
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec('7432067'))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '5032067')
-      await mockChainlink.setUpdateTime(0)  // Chainlink breaks by 0 timestamp
+      await mockStEthEthChainlink.setUpdateTime(0)  // Chainlink breaks by 0 timestamp
 
       await mockTellor.setPrice(dec(5500, 13))
 
@@ -2341,7 +2351,7 @@ contract('PriceFeed', async accounts => {
 
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec('7432067'))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '7432067')
-      await mockChainlink.setUpdateTime(0)  // Chainlink breaks by 0 timestamp
+      await mockStEthEthChainlink.setUpdateTime(0)  // Chainlink breaks by 0 timestamp
 
       await mockTellor.setPrice(dec(5500, 13))
 
