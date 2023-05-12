@@ -1091,8 +1091,6 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: erin } })
     await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: dec(1, 23), extraParams: { from: flyn } })
 
-    const EBTCinDefaultPool_0 = await defaultPool.getEBTCDebt()
-
     // price drops to 200 
     await priceFeed.setPrice(dec(200, 18))
     const price = await priceFeed.getPrice()

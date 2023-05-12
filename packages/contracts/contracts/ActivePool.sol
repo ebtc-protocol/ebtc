@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IActivePool.sol";
-import "./Interfaces/IDefaultPool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralToken.sol";
@@ -25,7 +24,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     address public immutable borrowerOperationsAddress;
     address public immutable cdpManagerAddress;
-    address public immutable defaultPoolAddress;
     address public immutable collSurplusPoolAddress;
     address public feeRecipientAddress;
 
@@ -39,14 +37,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
     ) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
-        defaultPoolAddress = _defaultPoolAddress;
         collateral = ICollateralToken(_collTokenAddress);
         collSurplusPoolAddress = _collSurplusAddress;
         feeRecipientAddress = _feeRecipientAddress;
@@ -59,7 +55,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
         emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit CollateralAddressChanged(_collTokenAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
@@ -169,8 +164,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         if (_account == collSurplusPoolAddress) {
             ICollSurplusPool(_account).receiveColl(_shares);
-        } else if (_account == defaultPoolAddress) {
-            IDefaultPool(_account).receiveColl(_shares);
         }
     }
 
@@ -194,9 +187,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     // --- 'require' functions ---
 
-    function _requireCallerIsBorrowerOperationsOrDefaultPool() internal view {
+    function _requireCallerIsBorrowerOperations() internal view {
         require(
-            msg.sender == borrowerOperationsAddress || msg.sender == defaultPoolAddress,
+            msg.sender == borrowerOperationsAddress,
             "ActivePool: Caller is neither BO nor Default Pool"
         );
     }
@@ -213,7 +206,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     }
 
     function receiveColl(uint _value) external override {
-        _requireCallerIsBorrowerOperationsOrDefaultPool();
+        _requireCallerIsBorrowerOperations();
 
         uint _StEthColl = StEthColl;
         StEthColl = _StEthColl + _value;

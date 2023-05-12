@@ -54,18 +54,13 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function syncUpdateIndexInterval() external returns (uint);
 
-    function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
-
     function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
     function getEntireDebtAndColl(
         bytes32 _cdpId
-    )
-        external
-        view
-        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward);
+    ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 
     function closeCdp(bytes32 _cdpId) external;
 

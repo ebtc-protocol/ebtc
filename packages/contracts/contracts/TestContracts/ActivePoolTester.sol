@@ -8,7 +8,6 @@ contract ActivePoolTester is ActivePool {
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
@@ -16,7 +15,6 @@ contract ActivePoolTester is ActivePool {
         ActivePool(
             _borrowerOperationsAddress,
             _cdpManagerAddress,
-            _defaultPoolAddress,
             _collTokenAddress,
             _collSurplusAddress,
             _feeRecipientAddress

@@ -4,7 +4,6 @@ const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
-const DefaultPool = artifacts.require("./DefaultPool.sol");
 const StabilityPool = artifacts.require("./StabilityPool.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
@@ -16,7 +15,6 @@ const HintHelpers = artifacts.require("./HintHelpers.sol")
 
 const CommunityIssuanceTester = artifacts.require("./LQTY/CommunityIssuanceTester.sol")
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
-const DefaultPoolTester = artifacts.require("./DefaultPoolTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
@@ -35,7 +33,6 @@ const coreContractABIs = [
   CdpManager,
   ActivePool,
   StabilityPool,
-  DefaultPool,
   FunctionCaller,
   HintHelpers,
 ]
@@ -49,7 +46,6 @@ const LQTYContractABIs = [
 const TesterContractABIs  = [
   CommunityIssuanceTester,
   ActivePoolTester,
-  DefaultPoolTester,
   LiquityMathTester,
   BorrowerOperationsTester,
   CdpManagerTester,

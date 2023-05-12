@@ -18,7 +18,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         address _feeRecipient,
         address _sortedCdps,
         address _activePool,
-        address _defaultPool,
         address _priceFeed,
         address _collateral
     )
@@ -31,7 +30,6 @@ contract LiquidationLibrary is CdpManagerStorage {
             _feeRecipient,
             _sortedCdps,
             _activePool,
-            _defaultPool,
             _priceFeed,
             _collateral
         )
@@ -325,17 +323,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (
-            uint256 entireDebt,
-            uint256 entireColl,
-            uint256 pendingDebtReward,
-            uint pendingCollReward
-        ) = getEntireDebtAndColl(_cdpId);
-
-        // move around distributed debt and collateral if any
-        if (pendingDebtReward > 0 || pendingCollReward > 0) {
-            _movePendingCdpRewardsToActivePool(pendingDebtReward, pendingCollReward);
-        }
+        (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getEntireDebtAndColl(
+            _cdpId
+        );
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
@@ -377,24 +367,19 @@ contract LiquidationLibrary is CdpManagerStorage {
             return (0, 0);
         }
 
-        // If we have coll remaining, it must meet minimum CDP size requirements
-        _requirePartialLiqCollSize(newColl);
+        // If we have coll remaining, it must meet minimum CDP size requirements:
+        // Only check when the collateral exchange rate from share is above 1e18
+        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+            _requirePartialLiqCollSize(collateral.getPooledEthByShares(newColl));
+        }
 
-        // apply pending debt and collateral if any
-        // and update CDP internal accounting for debt and collateral
+        // apply pending debt if any
+        // and update CDP internal accounting for debt
         // if there is liquidation redistribution
         {
             if (_debtAndColl.pendingDebtReward > 0) {
                 Cdps[_cdpId].debt = Cdps[_cdpId].debt + _debtAndColl.pendingDebtReward;
-            }
-            if (_debtAndColl.pendingCollReward > 0) {
-                Cdps[_cdpId].coll = Cdps[_cdpId].coll + _debtAndColl.pendingCollReward;
-            }
-            if (_debtAndColl.pendingDebtReward > 0 || _debtAndColl.pendingCollReward > 0) {
-                _movePendingCdpRewardsToActivePool(
-                    _debtAndColl.pendingDebtReward,
-                    _debtAndColl.pendingCollReward
-                );
             }
         }
 
@@ -523,7 +508,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
-            _redistributeDebtAndColl(totalDebtToRedistribute, 0);
+            _redistributeDebt(totalDebtToRedistribute);
         }
 
         // burn the debt from liquidator
@@ -944,19 +929,12 @@ contract LiquidationLibrary is CdpManagerStorage {
         return newTotals;
     }
 
-    // Move a Cdp's pending debt and collateral rewards from distributions, from the Default Pool to the Active Pool
-    function _movePendingCdpRewardsToActivePool(uint _debt, uint _coll) internal {
-        defaultPool.decreaseEBTCDebt(_debt);
-        activePool.increaseEBTCDebt(_debt);
-        defaultPool.sendETHToActivePool(_coll);
-    }
-
     // --- Helper functions ---
 
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, , ) = getEntireDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -965,74 +943,11 @@ contract LiquidationLibrary is CdpManagerStorage {
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getCurrentICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, , ) = getEntireDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
         return ICR;
-    }
-
-    // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
-    function _applyPendingRewards(
-        IActivePool _activePool,
-        IDefaultPool _defaultPool,
-        bytes32 _cdpId
-    ) internal {
-        _applyAccumulatedFeeSplit(_cdpId);
-
-        if (hasPendingRewards(_cdpId)) {
-            _requireCdpIsActive(_cdpId);
-
-            // Compute pending rewards
-            uint pendingETHReward = getPendingETHReward(_cdpId);
-            uint pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
-
-            uint prevDebt = Cdps[_cdpId].debt;
-            uint prevColl = Cdps[_cdpId].coll;
-
-            // Apply pending rewards to cdp's state
-            Cdps[_cdpId].debt = prevDebt + pendingEBTCDebtReward;
-            Cdps[_cdpId].coll = prevColl + pendingETHReward;
-
-            _updateCdpRewardSnapshots(_cdpId);
-
-            // Transfer from DefaultPool to ActivePool
-            _movePendingCdpRewardsToActivePool(pendingEBTCDebtReward, pendingETHReward);
-
-            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
-            emit CdpUpdated(
-                _cdpId,
-                _borrower,
-                prevDebt,
-                prevColl,
-                Cdps[_cdpId].debt,
-                Cdps[_cdpId].coll,
-                Cdps[_cdpId].stake,
-                CdpManagerOperation.applyPendingRewards
-            );
-        }
-    }
-
-    function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
-        rewardSnapshots[_cdpId].STETHColl = L_STETHColl;
-        rewardSnapshots[_cdpId].EBTCDebt = L_EBTCDebt;
-        emit CdpSnapshotsUpdated(L_STETHColl, L_EBTCDebt);
-    }
-
-    // get the pending stETH reward from liquidation redistribution events, for the given Cdp., earned by their stake
-    function getPendingETHReward(bytes32 _cdpId) public view returns (uint) {
-        uint snapshotSTETHColl = rewardSnapshots[_cdpId].STETHColl;
-        uint rewardPerUnitStaked = L_STETHColl - snapshotSTETHColl;
-
-        if (rewardPerUnitStaked == 0 || Cdps[_cdpId].status != Status.active) {
-            return 0;
-        }
-
-        uint stake = Cdps[_cdpId].stake;
-
-        uint pendingETHReward = (stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
-
-        return pendingETHReward;
     }
 
     /**
@@ -1041,55 +956,28 @@ contract LiquidationLibrary is CdpManagerStorage {
     function getPendingEBTCDebtReward(
         bytes32 _cdpId
     ) public view returns (uint pendingEBTCDebtReward) {
-        uint snapshotEBTCDebt = rewardSnapshots[_cdpId].EBTCDebt;
-        Cdp memory cdp = Cdps[_cdpId];
-
-        if (cdp.status != Status.active) {
-            return 0;
-        }
-
-        uint stake = cdp.stake;
-
-        uint rewardPerUnitStaked = L_EBTCDebt - snapshotEBTCDebt;
-
-        if (rewardPerUnitStaked > 0) {
-            pendingEBTCDebtReward = (stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
-        }
+        return _getRedistributedEBTCDebt(_cdpId);
     }
 
     function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
-        /*
-         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
-         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
-         * pending rewards
-         */
-        if (Cdps[_cdpId].status != Status.active) {
-            return false;
-        }
-
-        // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId].STETHColl < L_STETHColl ||
-            rewardSnapshots[_cdpId].EBTCDebt < L_EBTCDebt);
+        return _hasRedistributedDebt(_cdpId);
     }
 
     // Return the Cdps entire debt and coll struct
     function _getEntireDebtAndColl(
         bytes32 _cdpId
     ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (
-            uint256 entireDebt,
-            uint256 entireColl,
-            uint pendingDebtReward,
-            uint pendingCollReward
-        ) = getEntireDebtAndColl(_cdpId);
-        return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward, pendingCollReward);
+        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getEntireDebtAndColl(
+            _cdpId
+        );
+        return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
     function getEntireDebtAndColl(
         bytes32 _cdpId
-    ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward) {
+    ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;
         (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
             _cdpId,
@@ -1100,67 +988,18 @@ contract LiquidationLibrary is CdpManagerStorage {
         coll = _newColl;
 
         pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
-        pendingETHReward = getPendingETHReward(_cdpId);
 
         debt = debt + pendingEBTCDebtReward;
-        coll = coll + pendingETHReward;
     }
 
-    // Remove borrower's stake from the totalStakes sum, and set their stake to 0
-    function _removeStake(bytes32 _cdpId) internal {
-        uint stake = Cdps[_cdpId].stake;
-        totalStakes = totalStakes - stake;
-        Cdps[_cdpId].stake = 0;
-        emit TotalStakesUpdated(totalStakes);
-    }
-
-    // Update borrower's stake based on their latest collateral value
-    // and update otalStakes accordingly as well
-    function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
-        (uint newStake, uint oldStake) = _updateStakeForCdp(_cdpId);
-
-        totalStakes = totalStakes + newStake - oldStake;
-        emit TotalStakesUpdated(totalStakes);
-
-        return newStake;
-    }
-
-    // Update borrower's stake based on their latest collateral value
-    function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
-        uint newStake = _computeNewStake(Cdps[_cdpId].coll);
-        uint oldStake = Cdps[_cdpId].stake;
-        Cdps[_cdpId].stake = newStake;
-
-        return (newStake, oldStake);
-    }
-
-    // Calculate a new stake based on the snapshots of the totalStakes and totalCollateral taken at the last liquidation
-    function _computeNewStake(uint _coll) internal view returns (uint) {
-        uint stake;
-        if (totalCollateralSnapshot == 0) {
-            stake = _coll;
-        } else {
-            /*
-             * The following assert() holds true because:
-             * - The system always contains >= 1 cdp
-             * - When we close or liquidate a cdp, we redistribute the pending rewards,
-             * so if all cdps were closed/liquidated,
-             * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
-             */
-            assert(totalStakesSnapshot > 0);
-            stake = (_coll * totalStakesSnapshot) / totalCollateralSnapshot;
-        }
-        return stake;
-    }
-
-    function _redistributeDebtAndColl(uint _debt, uint _coll) internal {
+    function _redistributeDebt(uint _debt) internal {
         if (_debt == 0) {
             return;
         }
 
         /*
-         * Add distributed coll and debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-         * error correction, to keep the cumulative error low in the running totals L_STETHColl and L_EBTCDebt:
+         * Add distributed debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
+         * error correction, to keep the cumulative error low in the running totals L_EBTCDebt:
          *
          * 1) Form numerators which compensate for the floor division errors that occurred the last time this
          * function was called.
@@ -1169,30 +1008,19 @@ contract LiquidationLibrary is CdpManagerStorage {
          * 4) Store these errors for use in the next correction when this function is called.
          * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
          */
-        uint ETHNumerator = (_coll * DECIMAL_PRECISION) + lastETHError_Redistribution;
         uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
 
         // Get the per-unit-staked terms
-        uint ETHRewardPerUnitStaked = ETHNumerator / totalStakes;
         uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
 
-        lastETHError_Redistribution = ETHNumerator - (ETHRewardPerUnitStaked * totalStakes);
         lastEBTCDebtError_Redistribution =
             EBTCDebtNumerator -
             (EBTCDebtRewardPerUnitStaked * totalStakes);
 
         // Add per-unit-staked terms to the running totals
-        L_STETHColl = L_STETHColl + ETHRewardPerUnitStaked;
         L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
 
-        emit LTermsUpdated(L_STETHColl, L_EBTCDebt);
-
-        // Transfer coll and debt from ActivePool to DefaultPool
-        activePool.decreaseEBTCDebt(_debt);
-        defaultPool.increaseEBTCDebt(_debt);
-        if (_coll > 0) {
-            activePool.sendStEthColl(address(defaultPool), _coll);
-        }
+        emit LTermsUpdated(L_EBTCDebt);
     }
 
     // --- 'require' wrapper functions ---

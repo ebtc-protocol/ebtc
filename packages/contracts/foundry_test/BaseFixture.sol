@@ -9,7 +9,6 @@ import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
@@ -73,7 +72,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     CdpManager cdpManager;
     WETH9 weth;
     ActivePool activePool;
-    DefaultPool defaultPool;
     CollSurplusPool collSurplusPool;
     FunctionCaller functionCaller;
     BorrowerOperations borrowerOperations;
@@ -97,7 +95,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         uint256 debt;
         uint256 coll;
         uint256 pendingEBTCDebtReward;
-        uint256 pendingETHReward;
     }
 
     /* setUp() - basic function to call when setting up new Foundry test suite
@@ -128,12 +125,11 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             4: priceFeed
             5; sortedCdps
             6: activePool
-            7: defaultPool
-            8: collSurplusPool
-            9: hintHelpers
-            10: eBTCToken
-            11: feeRecipient
-            12: multiCdpGetter
+            7: collSurplusPool
+            8: hintHelpers
+            9: eBTCToken
+            10: feeRecipient
+            11: multiCdpGetter
         */
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
@@ -161,7 +157,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.feeRecipientAddress,
                 addr.sortedCdpsAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress,
                 address(collateral)
             );
@@ -186,7 +181,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.priceFeedAddress,
                 addr.sortedCdpsAddress,
@@ -223,7 +217,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             args = abi.encode(
                 addr.borrowerOperationsAddress,
                 addr.cdpManagerAddress,
-                addr.defaultPoolAddress,
                 address(collateral),
                 addr.collSurplusPoolAddress,
                 addr.feeRecipientAddress
@@ -231,17 +224,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             activePool = ActivePool(
                 ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
-            );
-
-            // Default Pool
-            creationCode = type(DefaultPool).creationCode;
-            args = abi.encode(addr.cdpManagerAddress, addr.activePoolAddress, address(collateral));
-
-            defaultPool = DefaultPool(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.DEFAULT_POOL(),
-                    abi.encodePacked(creationCode, args)
-                )
             );
 
             // Coll Surplus Pool
@@ -267,7 +249,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.cdpManagerAddress,
                 address(collateral),
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress
             );
 
@@ -366,13 +347,9 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     ////////////////////////////////////////////////////////////////////////////
 
     function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return CdpState(debt, coll, pendingEBTCDebtReward, pendingETHReward);
+        (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
+            .getEntireDebtAndColl(cdpId);
+        return CdpState(debt, coll, pendingEBTCDebtReward);
     }
 
     function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {

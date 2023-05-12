@@ -27,7 +27,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let cdpManager
   let nameRegistry
   let activePool
-  let defaultPool
   let functionCaller
   let borrowerOperations
 
@@ -44,7 +43,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     cdpManager = coreContracts.cdpManager
     nameRegistry = coreContracts.nameRegistry
     activePool = coreContracts.activePool
-    defaultPool = coreContracts.defaultPool
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
 
@@ -233,55 +231,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       // Attempt call from alice
       try {
         const txAlice = await web3.eth.sendTransaction({ from: alice, to: activePool.address, value: 100 })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")// no receive or fallback function
-      }
-    })
-  })
-
-  describe('DefaultPool', async accounts => {
-    // sendETHToActivePool
-    it("sendETHToActivePool(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.sendETHToActivePool(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // increaseEBTC	
-    it("increaseEBTCDebt(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.increaseEBTCDebt(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // decreaseEBTC	
-    it("decreaseEBTC(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.decreaseEBTCDebt(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // fallback (payment)	
-    it("fallback(): reverts when called by an account that is not the Active Pool", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await web3.eth.sendTransaction({ from: alice, to: defaultPool.address, value: 100 })
         
       } catch (err) {
         assert.include(err.message, "revert")// no receive or fallback function

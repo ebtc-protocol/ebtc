@@ -10,7 +10,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
     constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
-        address _defaultPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedCdpsAddress,
@@ -21,7 +20,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
         BorrowerOperations(
             _cdpManagerAddress,
             _activePoolAddress,
-            _defaultPoolAddress,
             _collSurplusPoolAddress,
             _priceFeedAddress,
             _sortedCdpsAddress,
@@ -85,6 +83,10 @@ contract BorrowerOperationsTester is BorrowerOperations {
         address _lowerHint
     ) external {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
+    }
+
+    function unprotectedActivePoolReceiveColl(uint _amt) external {
+        activePool.receiveColl(_amt);
     }
 
     // Payable fallback function

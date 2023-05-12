@@ -77,25 +77,23 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
     uint public totalStakesSnapshot;
 
-    // Snapshot of the total collateral across the ActivePool and DefaultPool, immediately after the latest liquidation and split fee claim
+    // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation and split fee claim
     uint public totalCollateralSnapshot;
 
     /*
-     * L_STETHColl and L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
      * During its lifetime, each stake earns:
      *
-     * An ETH gain of ( stake * [L_STETHColl - L_STETHColl(0)] )
      * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
      *
-     * Where L_STETHColl(0) and L_EBTCDebt(0) are snapshots of L_STETHColl and L_EBTCDebt
+     * Where L_EBTCDebt(0) are snapshots of L_EBTCDebt
      * for the active Cdp taken at the instant the stake was made
      */
-    uint public L_STETHColl;
     uint public L_EBTCDebt;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
-    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_STETHColl & L_EBTCdebt */
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_EBTCDebt */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
@@ -105,14 +103,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint256 lastIndexTimestamp;
     /* Global Index update minimal interval, typically it is updated once per day  */
     uint256 public INDEX_UPD_INTERVAL;
-    // Map active cdps to their RewardSnapshot
-    mapping(bytes32 => RewardSnapshot) public rewardSnapshots;
-
-    // Object containing the ETH and EBTC snapshots for a given active cdp
-    struct RewardSnapshot {
-        uint STETHColl;
-        uint EBTCDebt;
-    }
+    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
+    mapping(bytes32 => uint) public rewardSnapshots;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
@@ -130,10 +122,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         address _feeRecipient,
         address _sortedCdps,
         address _activePool,
-        address _defaultPool,
         address _priceFeed,
         address _collateral
-    ) LiquityBase(_activePool, _defaultPool, _priceFeed, _collateral) {
+    ) LiquityBase(_activePool, _priceFeed, _collateral) {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
@@ -183,8 +174,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        rewardSnapshots[_cdpId].STETHColl = 0;
-        rewardSnapshots[_cdpId].EBTCDebt = 0;
+        rewardSnapshots[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -204,10 +194,129 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         totalStakesSnapshot = totalStakes;
 
         uint activeColl = activePool.getStEthColl();
-        uint liquidatedColl = defaultPool.getStEthColl();
-        totalCollateralSnapshot = (activeColl - _collRemainder) + liquidatedColl;
+        totalCollateralSnapshot = (activeColl - _collRemainder);
 
         emit SystemSnapshotsUpdated(totalStakesSnapshot, totalCollateralSnapshot);
+    }
+
+    /**
+    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
+    */
+    function _getRedistributedEBTCDebt(
+        bytes32 _cdpId
+    ) internal view returns (uint pendingEBTCDebtReward) {
+        uint snapshotEBTCDebt = rewardSnapshots[_cdpId];
+        Cdp memory cdp = Cdps[_cdpId];
+
+        if (cdp.status != Status.active) {
+            return 0;
+        }
+
+        uint stake = cdp.stake;
+
+        uint rewardPerUnitStaked = L_EBTCDebt - snapshotEBTCDebt;
+
+        if (rewardPerUnitStaked > 0) {
+            pendingEBTCDebtReward = (stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
+        }
+    }
+
+    function _hasRedistributedDebt(bytes32 _cdpId) internal view returns (bool) {
+        /*
+         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
+         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
+         * pending rewards
+         */
+        if (Cdps[_cdpId].status != Status.active) {
+            return false;
+        }
+
+        // Returns true if there have been any redemptions
+        return (rewardSnapshots[_cdpId] < L_EBTCDebt);
+    }
+
+    function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
+        rewardSnapshots[_cdpId] = L_EBTCDebt;
+        emit CdpSnapshotsUpdated(_cdpId, L_EBTCDebt);
+    }
+
+    // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
+    function _applyPendingRewards(bytes32 _cdpId) internal {
+        _applyAccumulatedFeeSplit(_cdpId);
+
+        if (_hasRedistributedDebt(_cdpId)) {
+            _requireCdpIsActive(_cdpId);
+
+            // Compute pending rewards
+            uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
+
+            uint prevDebt = Cdps[_cdpId].debt;
+            uint prevColl = Cdps[_cdpId].coll;
+
+            // Apply pending rewards to cdp's state
+            Cdps[_cdpId].debt = prevDebt + pendingEBTCDebtReward;
+
+            _updateCdpRewardSnapshots(_cdpId);
+
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
+            emit CdpUpdated(
+                _cdpId,
+                _borrower,
+                prevDebt,
+                prevColl,
+                Cdps[_cdpId].debt,
+                prevColl,
+                Cdps[_cdpId].stake,
+                CdpManagerOperation.applyPendingRewards
+            );
+        }
+    }
+
+    // Remove borrower's stake from the totalStakes sum, and set their stake to 0
+    function _removeStake(bytes32 _cdpId) internal {
+        uint stake = Cdps[_cdpId].stake;
+        totalStakes = totalStakes - stake;
+        Cdps[_cdpId].stake = 0;
+        emit TotalStakesUpdated(totalStakes);
+    }
+
+    // Update borrower's stake based on their latest collateral value
+    // and update otalStakes accordingly as well
+    function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
+        (uint newStake, uint oldStake) = _updateStakeForCdp(_cdpId);
+
+        totalStakes = totalStakes + newStake - oldStake;
+        emit TotalStakesUpdated(totalStakes);
+
+        return newStake;
+    }
+
+    // Update borrower's stake based on their latest collateral value
+    function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
+        uint newStake = _computeNewStake(Cdps[_cdpId].coll);
+        uint oldStake = Cdps[_cdpId].stake;
+        Cdps[_cdpId].stake = newStake;
+
+        return (newStake, oldStake);
+    }
+
+    // Calculate a new stake based on the snapshots of the totalStakes and totalCollateral taken at the last liquidation
+    function _computeNewStake(uint _coll) internal view returns (uint) {
+        uint stake;
+        if (totalCollateralSnapshot == 0) {
+            stake = _coll;
+        } else {
+            /*
+             * The following assert() holds true because:
+             * - The system always contains >= 1 cdp
+             * - When we close or liquidate a cdp, we redistribute the pending rewards,
+             * so if all cdps were closed/liquidated,
+             * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
+             */
+            assert(totalStakesSnapshot > 0);
+            stake = (_coll * totalStakesSnapshot) / totalCollateralSnapshot;
+        }
+        return stake;
     }
 
     /*

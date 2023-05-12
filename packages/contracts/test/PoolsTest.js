@@ -1,5 +1,4 @@
 const ActivePool = artifacts.require("./ActivePoolTester.sol")
-const DefaultPool = artifacts.require("./DefaultPoolTester.sol")
 const CDPMgr = artifacts.require("./CdpManagerTester.sol")
 const NonPayable = artifacts.require("./NonPayable.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
@@ -17,7 +16,7 @@ const _minus_1_Ether = web3.utils.toWei('-1', 'ether')
 
 contract('ActivePool', async accounts => {
 	
-  let defaultPool, activePool, cdpManager, collToken
+  let activePool, cdpManager, collToken, borrowerOperations
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
@@ -26,7 +25,7 @@ contract('ActivePool', async accounts => {
     activePool = coreContracts.activePool
     collToken = coreContracts.collateral;
     cdpManager = coreContracts.cdpManager;
-    defaultPool = coreContracts.defaultPool;
+    borrowerOperations = coreContracts.borrowerOperations;
 	  
     activePoolAuthority = coreContracts.authority;
   })
@@ -103,9 +102,8 @@ contract('ActivePool', async accounts => {
 	  
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
     
-    await collToken.transfer(defaultPool.address, _amount, {from: alice});
-    await defaultPool.unprotectedReceiveColl(_amount);
-    await cdpManager.defaultPoolSendToActivePool(_amount);
+    await collToken.transfer(activePool.address, _amount, {from: alice});
+    await borrowerOperations.unprotectedActivePoolReceiveColl(_amount);
 	
     await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
 	
@@ -238,154 +236,5 @@ contract('ActivePool', async accounts => {
   })
 })
 
-contract('DefaultPool', async accounts => {
- 
-  let defaultPool, cdpManager, activePool, collToken
-
-  const [owner, alice] = accounts;
-  beforeEach(async () => {
-    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
-	  
-    defaultPool = coreContracts.defaultPool    
-    activePool = coreContracts.activePool	  
-    collToken = coreContracts.collateral
-    cdpManager = coreContracts.cdpManager;
-    defaultPoolAuthority = coreContracts.authority;
-  })
-
-  it('getStEthColl(): gets the recorded EBTC balance', async () => {
-    const recordedETHBalance = await defaultPool.getStEthColl()
-    assert.equal(recordedETHBalance, 0)
-  })
-
-  it('getEBTCDebt(): gets the recorded EBTC balance', async () => {
-    const recordedETHBalance = await defaultPool.getEBTCDebt()
-    assert.equal(recordedETHBalance, 0)
-  })
- 
-  it('increaseEBTC(): increases the recorded EBTC balance by the correct amount', async () => {
-    const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
-    assert.equal(recordedEBTC_balanceBefore, 0)
-    const tx = await cdpManager.defaultPoolIncreaseEBTCDebt('0x64')
-    assert.isTrue(tx.receipt.status)
-
-    const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
-    assert.equal(recordedEBTC_balanceAfter, 100)
-  })
-  
-  it('decreaseEBTC(): decreases the recorded EBTC balance by the correct amount', async () => {
-    // start the pool on 100 wei
-    const tx1 = await cdpManager.defaultPoolIncreaseEBTCDebt('0x64')
-    assert.isTrue(tx1.receipt.status)
-
-    const recordedEBTC_balanceBefore = await defaultPool.getEBTCDebt()
-    assert.equal(recordedEBTC_balanceBefore, 100)
-	  
-    const tx2 = await cdpManager.defaultPoolDecreaseEBTCDebt('0x64')
-    assert.isTrue(tx2.receipt.status)
-
-    const recordedEBTC_balanceAfter = await defaultPool.getEBTCDebt()
-    assert.equal(recordedEBTC_balanceAfter, 0)
-  })
-
-  // send raw ether
-  it('sendETHToActivePool(): decreases the recorded ETH balance by the correct amount', async () => {
-    // setup: give pool 2 ether
-    const defaultPool_initialBalance = web3.utils.toBN(await web3.eth.getBalance(defaultPool.address))
-    assert.equal(defaultPool_initialBalance, 0)
-
-    // start pool with 2 ether
-    //await web3.eth.sendTransaction({ from: mockActivePool.address, to: defaultPool.address, value: dec(2, 'ether') })
-    let _amt = dec(2, 'ether');
-    await collToken.deposit({ from: owner, value: _amt });  
-    const tx1 = await collToken.transfer(defaultPool.address, _amt, { from: owner, value: 0 })
-    assert.isTrue(tx1.receipt.status)
-    await defaultPool.unprotectedReceiveColl(_amt);
-
-    const defaultPool_BalanceBeforeTx = web3.utils.toBN(await collToken.balanceOf(defaultPool.address))
-    const activePool_Balance_BeforeTx = web3.utils.toBN(await collToken.balanceOf(activePool.address))
-
-    assert.equal(defaultPool_BalanceBeforeTx, dec(2, 'ether'))
-
-    // send ether from pool
-    const tx2 = await cdpManager.defaultPoolSendToActivePool(web3.utils.toHex(dec(1, 'ether')))
-    assert.isTrue(tx2.receipt.status)
-
-    const defaultPool_BalanceAfterTx = web3.utils.toBN(await collToken.balanceOf(defaultPool.address))
-    const activePool_Balance_AfterTx = web3.utils.toBN(await collToken.balanceOf(activePool.address))
-
-    const activePool_BalanceChange = activePool_Balance_AfterTx.sub(activePool_Balance_BeforeTx)
-    const defaultPool_BalanceChange = defaultPool_BalanceAfterTx.sub(defaultPool_BalanceBeforeTx)
-    assert.equal(activePool_BalanceChange, dec(1, 'ether'))
-    assert.equal(defaultPool_BalanceChange, _minus_1_Ether)
-  })
- 
-  it('sweepToken(): move unprotected token to fee recipient', async () => {
-    let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
-    let _amt = 123456789;
-
-    // expect reverts
-    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
-	
-    defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);  
-    await th.assertRevert(defaultPool.sweepToken(collToken.address, _amt), 'DefaultPool: Cannot Sweep Collateral');	  
-	  
-    let _dustToken = await CollateralTokenTester.new()  
-    await th.assertRevert(defaultPool.sweepToken(_dustToken.address, _amt), 'DefaultPool: Attempt to sweep more than balance');	
-	  
-    // expect recipient get dust  
-    await _dustToken.deposit({value: _amt});
-    await _dustToken.transfer(defaultPool.address, _amt); 
-    let _feeRecipient = await defaultPool.feeRecipientAddress();	
-    let _balRecipient = await _dustToken.balanceOf(_feeRecipient);
-    await defaultPool.sweepToken(_dustToken.address, _amt);
-    let _balRecipientAfter = await _dustToken.balanceOf(_feeRecipient);
-    let _diff = _balRecipientAfter.sub(_balRecipient);
-    assert.isTrue(_diff.toNumber() == _amt);
-	
-  })
- 
-  it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
-    let _sweepTokenFunc = await defaultPool.FUNC_SIG1();
-    let _amt = 123456789;
-	  
-    defaultPoolAuthority.setPublicCapability(defaultPool.address, _sweepTokenFunc, true);
-    let _dustToken = await ReentrancyToken.new();
-	  
-    // expect guard against reentrancy
-    await _dustToken.deposit({value: _amt, from: owner});
-    await _dustToken.transferFrom(owner, defaultPool.address, _amt);
-    try {
-      _dustToken.setSweepPool(defaultPool.address);
-      await defaultPool.sweepToken(_dustToken.address, _amt)
-    } catch (err) {
-      console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
-    }
-	
-    // expect revert on failed safeTransfer() case 1: transfer() returns false
-    try {
-      _dustToken.setSweepPool("0x0000000000000000000000000000000000000000");
-      await defaultPool.sweepToken(_dustToken.address, _amt)
-    } catch (err) {
-      //console.log("errMsg=" + err.message)
-      assert.include(err.message, "SafeERC20: ERC20 operation did not succeed")
-    }
-	
-    // expect revert on failed safeTransfer() case 2: no transfer() exist
-    try {
-      _dustToken = defaultPool;
-      await defaultPool.sweepToken(_dustToken.address, _amt)
-    } catch (err) {
-      //console.log("errMsg=" + err.message)
-      assert.include(err.message, "SafeERC20: low-level call failed")
-    }	
-	
-    // expect safeTransfer() works with non-standard transfer() like USDT
-    // https://etherscan.io/token/0xdac17f958d2ee523a2206206994597c13d831ec7#code#L126
-    _dustToken = await SimpleLiquidationTester.new();
-    await defaultPool.sweepToken(_dustToken.address, _amt);	
-  })
-})
 
 contract('Reset chain state', async accounts => {})
