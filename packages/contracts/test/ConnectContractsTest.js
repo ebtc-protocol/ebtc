@@ -131,47 +131,4 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     const recordedActivePoolAddress = await borrowerOperations.activePool()
     assert.equal(activePoolAddress, recordedActivePoolAddress)
   })
-
-
-  // --- LQTY Staking ---
-
-  // Sets ActivePool in FeeRecipient
-  it('Sets the correct ActivePool address in FeeRecipient', async () => {
-    const activePoolAddress = activePool.address
-
-    const recordedActivePoolAddress = await feeRecipient.activePoolAddress()
-    assert.equal(activePoolAddress, recordedActivePoolAddress)
-  })
-
-  // Sets EBTCToken in FeeRecipient
-  it('Sets the correct ActivePool address in FeeRecipient', async () => {
-    const ebtcTokenAddress = ebtcToken.address
-
-    const recordedEBTCTokenAddress = await feeRecipient.ebtcToken()
-    assert.equal(ebtcTokenAddress, recordedEBTCTokenAddress)
-  })
-
-  // Sets CdpManager in FeeRecipient
-  it('Sets the correct ActivePool address in FeeRecipient', async () => {
-    const cdpManagerAddress = cdpManager.address
-
-    const recordedCdpManagerAddress = await feeRecipient.cdpManagerAddress()
-    assert.equal(cdpManagerAddress, recordedCdpManagerAddress)
-  })
-
-  // Sets BorrowerOperations in FeeRecipient
-  it('Sets the correct BorrowerOperations address in FeeRecipient', async () => {
-    const borrowerOperationsAddress = borrowerOperations.address
-
-    const recordedBorrowerOperationsAddress = await feeRecipient.borrowerOperationsAddress()
-    assert.equal(borrowerOperationsAddress, recordedBorrowerOperationsAddress)
-  })
-
-  // Sets CollateralToken in FeeRecipient
-  it('Sets the correct CollateralToken address in FeeRecipient', async () => {
-    const borrowerOperationsAddress = borrowerOperations.address
-
-    const recordedBorrowerOperationsAddress = await feeRecipient.borrowerOperationsAddress()
-    assert.equal(borrowerOperationsAddress, recordedBorrowerOperationsAddress)
-  })
 })

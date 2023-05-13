@@ -140,8 +140,8 @@ class DeploymentHelper {
     const liquidationLibrary = await LiquidationLibrary.at(_deployedAddr);
 
     // deploy CdpManager 
-    _argTypes = [{ 'EbtcAddresses': { 'a1': 'address', 'a2': 'address', 'a3': 'address', 'a4': 'address', 'a5': 'address', 'a6': 'address', 'a7': 'address', 'a8': 'address', 'a9': 'address', 'a10': 'address', 'a11': 'address', 'a12': 'address' } }, 'address'];
-    _argValues = [{ 'a1': _addresses[0], 'a2': _addresses[1], 'a3': _addresses[2], 'a4': _addresses[3], 'a5': _addresses[4], 'a6': _addresses[5], 'a7': _addresses[6], 'a8': _addresses[7], 'a9': _addresses[8], 'a10': _addresses[9], 'a11': _addresses[10], 'a12': _addresses[11] }, collateral.address];
+    _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
+    _argValues = [_addresses[3], _addresses[7], _addresses[9], _addresses[10], _addresses[5], _addresses[6], _addresses[4], collateral.address];
     _code = await ebtcDeployer.cdpManager_creationCode();
     _salt = await ebtcDeployer.CDP_MANAGER();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
@@ -276,6 +276,23 @@ class DeploymentHelper {
     testerContracts.collateral = collateral;
     testerContracts.math = await LiquityMathTester.new()
 
+    /**
+     struct EbtcAddresses {
+      address authorityAddress; 0
+      address liquidationLibraryAddress; 1
+      address cdpManagerAddress; 2
+      address borrowerOperationsAddress; 3
+      address priceFeedAddress; 4
+      address sortedCdpsAddress; 5
+      address activePoolAddress; 6
+      address collSurplusPoolAddress; 7
+      address hintHelpersAddress; 8
+      address ebtcTokenAddress; 9
+      address feeRecipientAddress; 10
+      address multiCdpGetterAddress; 11
+    }
+     */
+
     // deploy Governor as Authority 
     let _argTypes = ['address'];
     let _argValues = [accounts[0]];
@@ -286,8 +303,8 @@ class DeploymentHelper {
     const authority = await Governor.at(_deployedAddr);
 
     // deploy LiquidationLibrary 
-    _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    _argValues = [_addresses[3], _addresses[7], _addresses[9], _addresses[10], _addresses[5], _addresses[6], _addresses[4], collateral.address];
+    _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address'];
+    _argValues = [_addresses[3], _addresses[7], _addresses[9], _addresses[5], _addresses[6], _addresses[4], collateral.address];
     _code = await ebtcDeployer.liquidationLibrary_creationCode();
     _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
     _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
