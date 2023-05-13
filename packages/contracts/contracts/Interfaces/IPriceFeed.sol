@@ -6,15 +6,18 @@ interface IPriceFeed {
     // --- Events ---
     event LastGoodPriceUpdated(uint _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
-    event FallbackCallerChanged(address _fallbackCaller);
+    event FallbackCallerChanged(address _oldFallbackCaller, address _newFallbackCaller);
+    event UnhealthyFallbackCaller(address _fallbackCaller, uint256 timestamp);
 
     // --- Structs ---
+
     struct ChainlinkResponse {
-        uint80 roundId;
-        int256 answer;
-        uint256 timestamp;
+        uint80 roundEthBtcId;
+        uint80 roundStEthEthId;
+        uint256 answer;
+        uint256 timestampEthBtc;
+        uint256 timestampStEthEth;
         bool success;
-        uint8 decimals;
     }
 
     struct FallbackResponse {
@@ -22,6 +25,8 @@ interface IPriceFeed {
         uint256 timestamp;
         bool success;
     }
+
+    // --- Enum ---
 
     enum Status {
         chainlinkWorking,
