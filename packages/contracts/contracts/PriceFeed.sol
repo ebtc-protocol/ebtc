@@ -9,7 +9,6 @@ import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
-import "../../../node_modules/hardhat/console.sol";
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
  * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
@@ -358,13 +357,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
-
-                console.log(fallbackResponse.success);
-                console.log(fallbackResponse.answer);
-                console.log(fallbackResponse.timestamp);
-
                 if (!_fallbackIsBroken(fallbackResponse) && !_fallbackIsFrozen(fallbackResponse)) {
-                    console.log("erererefefefefe");
                     address oldFallbackCaller = address(fallbackCaller);
                     fallbackCaller = newFallbackCaler;
                     emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
@@ -616,11 +609,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 ethBtcDecimals,
                 stEthEthDecimals
             );
+        } else {
+            return chainlinkResponse;
         }
 
         chainlinkResponse.success = true;
-
-        return chainlinkResponse;
     }
 
     function _getPrevChainlinkResponse(
@@ -697,6 +690,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 ethBtcDecimals,
                 stEthEthDecimals
             );
+        } else {
+            return prevChainlinkResponse;
         }
 
         prevChainlinkResponse.success = true;
@@ -707,7 +702,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // @param _answer CL price price reported for target feeds
     // @return The boolean state indicating CL response health for aggregation
     function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
-        if (_answer < 0) return false;
+        if (_answer <= 0) return false;
         if (_roundId == 0) return false;
 
         return true;

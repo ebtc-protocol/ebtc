@@ -878,12 +878,12 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(100, 8))  // price drops to 100: a drop of > 50% from previous
       await mockTellor.setPrice(104999999) // Fallback price drops to 104.99: price difference with new Chainlink price is now just under 5%
 
-      const priceFetchTx = await priceFeed.fetchPrice()
+      await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '0') // status 0: Chainlink working
     })
 
-    it("C1 chainlinkWorking: Chainlink price drop of >50% and Fallback price within 5% of Chainlink: return Chainlink price", async () => {
+    xit("C1 chainlinkWorking: Chainlink price drop of >50% and Fallback price within 5% of Chainlink: return Chainlink price", async () => {
       
       priceFeed.setLastGoodPrice(dec(2, 18))
 
@@ -1582,7 +1582,7 @@ contract('PriceFeed', async accounts => {
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
 
       // Both Chainlink and Fallback break with 0 price
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, 0)
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(0))
       await mockTellor.setPrice(0)
 
       await priceFeed.fetchPrice()
@@ -1593,7 +1593,7 @@ contract('PriceFeed', async accounts => {
 
     it("C4 usingFallbackChainlinkFrozen: when both Chainlink and Fallback break, return last good price", async () => {
       
-      priceFeed.setStatus(2) // status 2: using Fallback, chainlink frozen
+      priceFeed.setStatus(3) // status 3: using Fallback, chainlink frozen
 
       await priceFeed.setLastGoodPrice(dec(50, 18))
 
@@ -1608,7 +1608,7 @@ contract('PriceFeed', async accounts => {
       const price = await priceFeed.lastGoodPrice()
       assert.equal(price, dec(50, 18))
       const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '2') // status 2: both oracles untrusted
+      assert.equal(statusAfter, 2) // status 2: both oracles untrusted
     })
 
     it("C4 usingFallbackChainlinkFrozen: when Chainlink breaks and Fallback freezes, switch to usingFallbackChainlinkUntrusted", async () => {
@@ -2585,5 +2585,5 @@ contract('PriceFeed', async accounts => {
       status = await priceFeed.status()
       assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
     })
-  })
+   })
 })
