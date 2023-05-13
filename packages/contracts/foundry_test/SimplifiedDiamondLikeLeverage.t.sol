@@ -6,6 +6,8 @@ import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroDelegateTarget} from "../contracts/LeverageMacroDelegateTarget.sol";
+import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
+
 
 interface IOwnerLike {
     function owner() external view returns (address);
@@ -43,6 +45,9 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
     SimplifiedDiamondLike wallet;
 
+    Mock1Inch public _mock1Inch;
+
+
     function _createNewWalletForUser(address _user) internal returns (address payable) {
         SimplifiedDiamondLike contractWallet = new SimplifiedDiamondLike(_user);
         return payable(contractWallet);
@@ -72,6 +77,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         wallet = SimplifiedDiamondLike(_createNewWalletForUser(user));
 
         uint256 collBall = dealCollateral(user, netColl);
+
+        // SWAP
+        _mock1Inch = new Mock1Inch(address(eBTCToken), address(collateral));
+        _setupSwapDex(address(_mock1Inch));
     }
 
     function test_happyOpen() public {
@@ -208,29 +217,38 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // PROB Change the macro to not sweep
 
         // Set the macro for callback
-
-        // Create the Sweep Module
-
-        // User.Approve col
         vm.startPrank(user);
+        wallet.setFallbackHandler(LeverageMacroDelegateTarget.onFlashLoan.selector, address(macro_reference));
+
+        // Approve col for SC Wallet usage    
         collateral.approve(address(wallet), type(uint256).max);
         uint256 collBall = collateral.balanceOf(user);
 
-        // 0) Set the callback to onFlashloan
-        wallet.enableCallbackForCall();
+        // Step 0
+        // Enable Callback for the FL
 
-
-        // TODO: CDP MACRO APPROVALS 3
+        // CDP MACRO APPROVALS 3
         // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
         // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
         // 3) stETH.approve(_activePool, type(uint256).max);
 
         // In macro
         // 4) Delegate to LeverageMacroDelegateTarget
-        SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](4);
+        SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](5);
+
+        
+        data[0] = SimplifiedDiamondLike.Operation({
+            to: address(address(wallet)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.call,
+            data: abi.encodeCall(SimplifiedDiamondLike.enableCallbackForCall, ()) // Empty tuple for no params
+        });
 
         // 1) ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        data[0] = SimplifiedDiamondLike.Operation({
+        data[1] = SimplifiedDiamondLike.Operation({
             to: address(address(eBTCToken)),
             checkSuccess: true,
             value: 0,
@@ -263,7 +281,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             data: abi.encodeCall(eBTCToken.approve, (address(activePool), type(uint256).max))
         });
 
-
+        // 4) Leverage Operation on Macro Reference
         data[3] = SimplifiedDiamondLike.Operation({
             to: address(address(macro_reference)),
             checkSuccess: true,
@@ -271,11 +289,16 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             gas: 9999999,
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.delegatecall,
-            data: abi.encodeCall(
-                // TODO: 1 hr of work prob XD
-            )
+            data: getEncodedOpenCdpData()
         });
+
+        uint cdpCntBefore = sortedCdps.cdpCountOf(address(wallet));
+        _mock1Inch.setPrice(priceFeedMock.getPrice());
+
         wallet.execute(data);
+
+        // Verify new cdp is opened
+        bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(wallet), cdpCntBefore);
 
         // NOTE: We don't sweep to caller, but instead leave in SC wallet
 
@@ -286,6 +309,126 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // Verify token balance to user
         assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
 
-        // TODO: Verify there's debt
     }
+
+    function getEncodedOpenCdpData() internal returns (bytes memory) {
+        // Swaps b4 and after
+        LeverageMacroDelegateTarget.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacroDelegateTarget.SwapOperation[] memory _levSwapsAfter;
+        
+        uint256 netColl = collateral.balanceOf(user) / 2; // TODO: Make generic
+        
+        uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
+
+        // leverage parameters
+        uint debt = _utils.calculateBorrowAmount(
+            grossColl,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+
+        // Swaps b4
+        _levSwapsBefore = _generateCalldataSwapMock1InchOneStep(
+            address(eBTCToken),
+            debt,
+            address(collateral),
+            0 // TODO _collMinOut
+        );
+
+        // Open CDP
+        LeverageMacroDelegateTarget.OpenCdpOperation memory _opData = LeverageMacroDelegateTarget.OpenCdpOperation(
+            debt,
+            DUMMY_CDP_ID,
+            DUMMY_CDP_ID,
+            grossColl
+        );
+
+        bytes memory _opDataEncoded = abi.encode(_opData);
+
+        // Operation
+        LeverageMacroDelegateTarget.LeverageMacroOperation memory operation = LeverageMacroDelegateTarget.LeverageMacroOperation(
+            address(collateral),
+            (grossColl - 0),
+            _levSwapsBefore,
+            _levSwapsAfter,
+            LeverageMacroDelegateTarget.OperationType.OpenCdpOperation,
+            _opDataEncoded
+        );
+
+
+        // Post check params
+        LeverageMacroDelegateTarget.PostCheckParams memory postCheckParams; // TODO MAKE IT ALL SKIP FOR NOW
+
+        // return this as encoded call since we're one level of abstraction deeper
+        return abi.encodeCall(LeverageMacroDelegateTarget.doOperation, (
+            LeverageMacroDelegateTarget.FlashLoanType.eBTC,
+            debt,
+            operation,
+            LeverageMacroDelegateTarget.PostOperationCheck.openCdp,
+            postCheckParams
+        ));
+    }
+
+
+
+    // TODO: Refactor to separate file to reuse code
+    function _setupSwapDex(address _dex) internal {
+        // sugardaddy eBTCToken
+        address _setupOwner = _utils.createUsers(1)[0];
+        vm.deal(_setupOwner, INITITAL_COLL);
+        dealCollateral(_setupOwner, type(uint128).max);
+        uint _coll = collateral.balanceOf(_setupOwner);
+        uint _debt = _utils.calculateBorrowAmount(
+            _coll,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO * 2
+        );
+        _openTestCDP(_setupOwner, _coll, _debt);
+        uint _sugarDebt = eBTCToken.balanceOf(_setupOwner);
+        vm.prank(_setupOwner);
+        eBTCToken.transfer(_dex, _sugarDebt);
+
+        // sugardaddy collateral
+        vm.deal(_dex, INITITAL_COLL);
+        dealCollateral(_dex, type(uint128).max);
+    }
+
+        function _generateCalldataSwapMock1InchOneStep(
+        address _inToken,
+        uint256 _inAmt,
+        address _outToken,
+        uint _minOut
+    ) internal view returns (LeverageMacroDelegateTarget.SwapOperation[] memory) {
+        LeverageMacroDelegateTarget.SwapOperation[] memory _oneStep = new LeverageMacroDelegateTarget.SwapOperation[](1);
+        _oneStep[0] = _generateCalldataSwapMock1Inch(_inToken, _inAmt, _outToken, _minOut);
+        return _oneStep;
+    }
+
+        function _generateCalldataSwapMock1Inch(
+        address _inToken,
+        uint256 _inAmt,
+        address _outToken,
+        uint _minOut
+    ) internal view returns (LeverageMacroDelegateTarget.SwapOperation memory) {
+        LeverageMacroDelegateTarget.SwapCheck[] memory _swapChecks = new LeverageMacroDelegateTarget.SwapCheck[](1);
+        _swapChecks[0] = LeverageMacroDelegateTarget.SwapCheck(_outToken, _minOut);
+
+        bytes memory _swapData = abi.encodeWithSelector(
+            Mock1Inch.swap.selector,
+            _inToken,
+            _outToken,
+            _inAmt
+        );
+        return
+            LeverageMacroDelegateTarget.SwapOperation(
+                _inToken,
+                address(_mock1Inch),
+                _inAmt,
+                address(_mock1Inch),
+                _swapData,
+                _swapChecks
+            );
+    }
+
+    
 }
