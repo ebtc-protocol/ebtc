@@ -2239,7 +2239,9 @@ contract('PriceFeed', async accounts => {
       assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
 
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '3032067') // >50% price drop from previous Chainlink price
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, '2516033') // >50% price drop from previous Chainlink price
       await mockStEthEthChainlink.setUpdateTime(now) // Chainlink is current
+      await mockEthBtcChainlink.setUpdateTime(now) // Chainlink is current
 
       await priceFeed.fetchPrice()
 

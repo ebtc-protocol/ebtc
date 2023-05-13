@@ -9,6 +9,7 @@ import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
+import "../../../node_modules/hardhat/console.sol";
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
  * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
@@ -358,7 +359,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
 
+                console.log(fallbackResponse.success);
+                console.log(fallbackResponse.answer);
+                console.log(fallbackResponse.timestamp);
+
                 if (!_fallbackIsBroken(fallbackResponse) && !_fallbackIsFrozen(fallbackResponse)) {
+                    console.log("erererefefefefe");
                     address oldFallbackCaller = address(fallbackCaller);
                     fallbackCaller = newFallbackCaler;
                     emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
