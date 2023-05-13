@@ -1854,7 +1854,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // set tellor broken
       await mockTellor.setPrice(0)
@@ -1879,7 +1879,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // set tellor broken
       await mockTellor.setPrice(0)
@@ -1908,7 +1908,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // set Fallback to current time
       await mockTellor.setUpdateTime(now)
@@ -1935,7 +1935,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // set Fallback to current time
       await mockTellor.setUpdateTime(now)
@@ -1962,11 +1962,11 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // check Fallback price timestamp is out of date by > 4 hours
       const tellorUpdateTime = await mockTellor.getUpdateTime()
-      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(tellorUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
 
@@ -1990,11 +1990,11 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       // check Fallback price timestamp is out of date by > 4 hours
       const tellorUpdateTime = await mockTellor.getUpdateTime()
-      assert.isTrue(tellorUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(tellorUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
 
@@ -2291,7 +2291,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
 
@@ -2315,7 +2315,7 @@ contract('PriceFeed', async accounts => {
       // check Chainlink price timestamp is out of date by > 4 hours
       const now = await th.getLatestBlockTimestamp(web3)
       const chainlinkUpdateTime = (await mockStEthEthChainlink.latestRoundData())[3]
-      assert.isTrue(chainlinkUpdateTime.lt(toBN(now).sub(toBN(14400))))
+      assert.isTrue(toBN(chainlinkUpdateTime).lt(toBN(now).sub(toBN(14400))))
 
       await priceFeed.fetchPrice()
 
@@ -2365,19 +2365,21 @@ contract('PriceFeed', async accounts => {
     
     it("SetFallbackCaller() should only allow authorized caller", async() => {
       let _newAuthority = await GovernorTester.new(alice);    
-      let myPriceFeed = await PriceFeed.new(mockChainlink.address, tellorCaller.address, _newAuthority.address)
+      let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
       
       await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
           
       assert.isTrue(_newAuthority.address == (await myPriceFeed.authority()));
       let _role123 = 123;
-      let _setFallbackSig = "0xb6f0e8ce";//myPriceFeed#SET_FALLBACK_CALLER_SIG;
+      let _setFallbackSig = "0xb6f0e8ce"; // myPriceFeed#SET_FALLBACK_CALLER_SIG;
       await _newAuthority.setRoleCapability(_role123, myPriceFeed.address, _setFallbackSig, true, {from: alice});	  
       await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
       assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setFallbackSig)));
+
+      // TODO: now this has health-checks, needs to be some healthy "fallback"
       await myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}); 
-      assert.isTrue(_newAuthority.address == (await myPriceFeed.fallbackCaller())); 
+      assert.isTrue(_newAuthority.address == (await myPriceFeed.fallbackCaller().address)); 
     })
   })
 
