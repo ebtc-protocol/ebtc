@@ -527,7 +527,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _totalColToSend,
         bool _fullLiquidation,
         uint _liquidatorReward
-    ) private returns (uint cappedColPortion, uint collSurplus, uint debtToRedistribute) {
+    ) private view returns (uint cappedColPortion, uint collSurplus, uint debtToRedistribute) {
         // Calculate liquidation incentive for liquidator:
         // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
         // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt * min(ICR, 110%) / price
@@ -1024,14 +1024,18 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // --- 'require' wrapper functions ---
 
-    function _requirePartialLiqDebtSize(uint _partialDebt, uint _entireDebt, uint _price) internal {
+    function _requirePartialLiqDebtSize(
+        uint _partialDebt,
+        uint _entireDebt,
+        uint _price
+    ) internal view {
         require(
             (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_COLL, _price)) <= _entireDebt,
             "LiquidationLibrary: Partial debt liquidated must be less than total debt"
         );
     }
 
-    function _requirePartialLiqCollSize(uint _entireColl) internal {
+    function _requirePartialLiqCollSize(uint _entireColl) internal pure {
         require(
             _entireColl >= MIN_NET_COLL,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"

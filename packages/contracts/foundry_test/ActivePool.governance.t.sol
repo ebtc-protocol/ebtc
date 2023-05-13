@@ -198,6 +198,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
         // user sets recipient address
         vm.expectRevert("Auth: UNAUTHORIZED");
+        vm.prank(user);
         activePool.setFeeRecipientAddress(_newRecipient);
         assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
     }

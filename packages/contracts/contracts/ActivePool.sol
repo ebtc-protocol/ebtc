@@ -141,21 +141,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
     }
 
-    /**
-        @notice Claim outstanding shares for fee recipient, updating internal accounting and transferring the shares.
-        @dev Call permissinos are managed via authority for flexibility, rather than gating call to just feeRecipient.
-        @dev Is likely safe as an open permission though caution should be taken.
-     */
-    function claimFeeRecipientColl(uint _shares) external override requiresAuth {
-        uint _FeeRecipientColl = FeeRecipientColl;
-        require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
-
-        FeeRecipientColl = _FeeRecipientColl - _shares;
-        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
-
-        collateral.transferShares(feeRecipientAddress, _shares);
-    }
-
     /// @dev Transfer shares to another address, ensuring to update the internal accounting of other system pools if they are the recipient
     function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -278,6 +263,21 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     }
 
     // === Governed Functions === //
+
+    /**
+        @notice Claim outstanding shares for fee recipient, updating internal accounting and transferring the shares.
+        @dev Call permissinos are managed via authority for flexibility, rather than gating call to just feeRecipient.
+        @dev Is likely safe as an open permission though caution should be taken.
+     */
+    function claimFeeRecipientColl(uint _shares) external override requiresAuth {
+        uint _FeeRecipientColl = FeeRecipientColl;
+        require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+
+        FeeRecipientColl = _FeeRecipientColl - _shares;
+        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
+
+        collateral.transferShares(feeRecipientAddress, _shares);
+    }
 
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)

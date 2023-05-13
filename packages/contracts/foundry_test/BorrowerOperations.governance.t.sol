@@ -46,6 +46,7 @@ contract BorrowerOperationsGovernanceTest is eBTCBaseFixture {
 
         // user sets recipient address
         vm.expectRevert("Auth: UNAUTHORIZED");
+        vm.prank(user);
         borrowerOperations.setFeeRecipientAddress(_newRecipient);
         assertEq(oldFeeRecipient, borrowerOperations.feeRecipientAddress());
     }

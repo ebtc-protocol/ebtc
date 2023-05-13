@@ -497,7 +497,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         );
     }
 
-    function _requireValidUpdateInterval() internal {
+    function _requireValidUpdateInterval() internal view {
         require(
             block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
             "CdpManager: update index too frequent"

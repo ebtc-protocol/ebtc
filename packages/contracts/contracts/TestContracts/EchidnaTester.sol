@@ -320,7 +320,7 @@ contract EchidnaTester {
     // Helper functions
     ///////////////////////////////////////////////////////
 
-    function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal {
+    function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
         (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
@@ -329,7 +329,7 @@ contract EchidnaTester {
         require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
     }
 
-    function _getRandomActor(uint _i) internal view returns (uint) {
+    function _getRandomActor(uint _i) internal pure returns (uint) {
         return _i % NUMBER_OF_ACTORS;
     }
 
@@ -555,7 +555,6 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
         require(1 == cdpManager.getCdpStatus(_cdpId), "!closeCdpExtActive");
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         echidnaProxies[actor].closeCdpPrx(_cdpId);
     }
 

@@ -78,11 +78,7 @@ contract SortedCdps is ISortedCdps {
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
-    constructor(
-        uint256 _size,
-        address _cdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) public {
+    constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
         if (_size == 0) {
             _size = type(uint256).max;
         }
@@ -120,7 +116,7 @@ contract SortedCdps is ISortedCdps {
         return cdpOwners[cdpId];
     }
 
-    function nonExistId() public view override returns (bytes32) {
+    function nonExistId() public pure override returns (bytes32) {
         return dummyId;
     }
 

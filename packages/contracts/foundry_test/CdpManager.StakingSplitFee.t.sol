@@ -55,9 +55,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
     }
 
-    function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal {
+    function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal view {
         uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _prevTotalStake;
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
             uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.coll;
@@ -99,7 +98,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
         uint _stFeePerUnitgError = cdpManager.stFeePerUnitgError();
         uint _totalStake = cdpManager.totalStakes();
-        (uint _feeSplitDistributed, uint _newColl) = cdpManager.getAccumulatedFeeSplitApplied(
+        (uint _feeSplitDistributed, ) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
             _stFeePerUnitg,
             _stFeePerUnitgError,
@@ -192,7 +191,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.coll);
     }
 
-    function _ensureDebtAmountValidity(uint _debtAmt) internal {
+    function _ensureDebtAmountValidity(uint _debtAmt) internal pure {
         vm.assume(_debtAmt > 1e18);
         vm.assume(_debtAmt < 10000e18);
     }

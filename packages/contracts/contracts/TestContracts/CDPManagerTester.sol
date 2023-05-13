@@ -73,10 +73,6 @@ contract CdpManagerTester is CdpManager {
         baseRate = _baseRate;
     }
 
-    function callGetRedemptionFee(uint _ETHDrawn) external view returns (uint) {
-        _getRedemptionFee(_ETHDrawn);
-    }
-
     /// @dev No more concept of composite debt. Just return debt. Maintaining for test compatiblity
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
         return _debtVal;

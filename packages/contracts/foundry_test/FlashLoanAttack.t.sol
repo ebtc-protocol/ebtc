@@ -16,7 +16,7 @@ contract FlashAttack {
     IERC3156FlashLender public immutable lender;
     uint256 public counter;
 
-    constructor(IERC20 _want, IERC3156FlashLender _lender) public {
+    constructor(IERC20 _want, IERC3156FlashLender _lender) {
         want = _want;
         lender = _lender;
 

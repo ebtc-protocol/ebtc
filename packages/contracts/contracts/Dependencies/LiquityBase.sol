@@ -109,14 +109,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     // Convert ETH/BTC price to BTC/ETH price
-    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+    function _getPriceReciprocal(uint _price) internal pure returns (uint) {
         return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
     }
 
     // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
     // _debt is denominated in BTC
     // _price is ETH/BTC
-    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal pure returns (uint) {
         uint priceReciprocal = _getPriceReciprocal(_price);
         return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
@@ -124,7 +124,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
-    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
 }

@@ -32,14 +32,14 @@ contract PriceFeedTester is PriceFeed {
         return _getCurrentChainlinkResponse();
     }
 
-    function scaleChainlinkPriceByDigits(uint _price, uint _decimals) public view returns (uint256) {
+    function scaleChainlinkPriceByDigits(uint _price, uint _decimals) public pure returns (uint256) {
         return _scaleChainlinkPriceByDigits(_price, _decimals);
     }
 
     function bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
         FallbackResponse memory _fallbackResponse
-    ) public view returns (bool) {
+    ) public pure returns (bool) {
         return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 }

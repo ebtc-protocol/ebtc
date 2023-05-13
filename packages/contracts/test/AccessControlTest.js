@@ -239,7 +239,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   })
 
   describe('EBTCToken', async accounts => {
-
     //    mint
     it("mint(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
@@ -312,79 +311,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
   })
-
-  xdescribe('LockupContract', async accounts => {
-    it("withdrawLQTY(): reverts when caller is not beneficiary", async () => {
-      // deploy new LC with Carol as beneficiary
-      const unlockTime = (await cdpManager.getDeploymentStartTime()).add(toBN(timeValues.SECONDS_IN_ONE_YEAR))
-      const deployedLCtx = await lockupContractFactory.deployLockupContract(
-        carol, 
-        unlockTime,
-        { from: owner })
-
-      const LC = await th.getLCFromDeploymentTx(deployedLCtx)
-
-      // LQTY Multisig funds the LC
-      await lqtyToken.transfer(LC.address, dec(100, 18), { from: multisig })
-
-      // Fast-forward one year, so that beneficiary can withdraw
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-
-      // Bob attempts to withdraw LQTY
-      try {
-        const txBob = await LC.withdrawLQTY({ from: bob })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-
-      // Confirm beneficiary, Carol, can withdraw
-      const txCarol = await LC.withdrawLQTY({ from: carol })
-      assert.isTrue(txCarol.receipt.status)
-    })
-  })
-
-  describe('FeeRecipient', async accounts => {
-    it("receiveEbtcFee(): reverts when caller is not CdpManager or BorrowerOperations", async () => {
-      try {
-        const txAlice = await feeRecipient.receiveEbtcFee(dec(1, 18), { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-    })
-  })
-
-  // LQTY Token no longer present
-  xdescribe('LQTYToken', async accounts => {
-    it("sendToLQTYStaking(): reverts when caller is not the LQTYSstaking", async () => {
-      // Check multisig has some LQTY
-      assert.isTrue((await lqtyToken.balanceOf(multisig)).gt(toBN('0')))
-
-      // multisig tries to call it
-      try {
-        const tx = await lqtyToken.sendToLQTYStaking(multisig, 1, { from: multisig })
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-
-      // FF >> time one year
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-
-      // Owner transfers 1 LQTY to bob
-      await lqtyToken.transfer(bob, dec(1, 18), { from: multisig })
-      assert.equal((await lqtyToken.balanceOf(bob)), dec(1, 18))
-
-      // Bob tries to call it
-      try {
-        const tx = await lqtyToken.sendToLQTYStaking(bob, dec(1, 18), { from: bob })
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-    })
-  })
-
-  
 })
 
 

@@ -101,7 +101,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
       let _feeBalBefore = await activePool.getFeeRecipientClaimableColl();
-      await splitFeeRecipient.claimStakingSplitFee();  
+      await cdpManager.claimStakingSplitFee();  
       let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _fees[0]);

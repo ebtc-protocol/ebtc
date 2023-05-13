@@ -73,14 +73,6 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     assert.equal(activePoolAddress, recordedActivePoolAddresss)
   })
 
-  // LQTY Staking in CdpM
-  it('Sets the correct FeeRecipient address in CdpManager', async () => {
-    const lqtyStakingAddress = feeRecipient.address
-
-    const recordedLQTYStakingAddress = await cdpManager.feeRecipient()
-    assert.equal(lqtyStakingAddress, recordedLQTYStakingAddress)
-  })
-
   // Active Pool
 
   it('Sets the correct BorrowerOperations address in ActivePool', async () => {

@@ -45,7 +45,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         );
     }
 
-    function _assert_active_pool_invariant_4() internal {
+    function _assert_active_pool_invariant_4() internal view {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
@@ -58,7 +58,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         );
     }
 
-    function _assert_active_pool_invariant_5() internal {
+    function _assert_active_pool_invariant_5() internal view {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {

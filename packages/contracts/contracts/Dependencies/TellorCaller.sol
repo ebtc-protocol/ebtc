@@ -23,7 +23,7 @@ contract TellorCaller is IFallbackCaller {
     // default 15 minutes, soft governance might help to change this default configuration if required
     uint256 public tellorQueryBufferSeconds = 901;
 
-    constructor(address _tellorMasterAddress) public {
+    constructor(address _tellorMasterAddress) {
         tellor = ITellor(_tellorMasterAddress);
     }
 

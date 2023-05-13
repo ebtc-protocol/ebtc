@@ -26,7 +26,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         CollateralTokenTester _collateral,
         ActivePool _activePool,
         PriceFeedTestnet _priceFeed
-    ) public payable {
+    ) payable {
         cdpManager = _cdpManager;
         borrowerOperations = _borrowerOperations;
         ebtcToken = _ebtcToken;

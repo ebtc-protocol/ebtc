@@ -29,7 +29,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _sumColl;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (uint _debt, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            (, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(
@@ -57,12 +57,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         users = _utils.createUsers(4);
     }
 
-    function _ensureDebtAmountValidity(uint _debtAmt) internal {
+    function _ensureDebtAmountValidity(uint _debtAmt) internal pure {
         vm.assume(_debtAmt > 1e18);
         vm.assume(_debtAmt < 10000e18);
     }
 
-    function _ensureCollAmountValidity(uint _collAmt) internal {
+    function _ensureCollAmountValidity(uint _collAmt) internal pure {
         vm.assume(_collAmt > 22e17);
         vm.assume(_collAmt < 10000e18);
     }

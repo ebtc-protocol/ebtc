@@ -110,7 +110,7 @@ contract Utilities is Test {
         uint256 amount,
         uint gasCompensation,
         uint borrowingRate
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
         return
             mulDivUp(

@@ -64,7 +64,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) public {
+    ) {
         _initializeAuthority(_authorityAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
@@ -293,23 +293,23 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Optional functions ---
 
-    function name() external view override returns (string memory) {
+    function name() external pure override returns (string memory) {
         return _NAME;
     }
 
-    function symbol() external view override returns (string memory) {
+    function symbol() external pure override returns (string memory) {
         return _SYMBOL;
     }
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
 
-    function version() external view override returns (string memory) {
+    function version() external pure override returns (string memory) {
         return _VERSION;
     }
 
-    function permitTypeHash() external view override returns (bytes32) {
+    function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
     }
 }

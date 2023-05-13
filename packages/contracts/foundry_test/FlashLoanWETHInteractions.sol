@@ -25,7 +25,7 @@ contract FlashWithDeposit {
         IERC3156FlashLender _lender,
         BorrowerOperations _borrowerOperations,
         address collTokenAddress
-    ) public {
+    ) {
         want = _want;
         lender = _lender;
         borrowerOperations = _borrowerOperations;

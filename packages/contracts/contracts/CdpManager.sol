@@ -434,7 +434,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _start,
         uint _total,
         bytes32 _end
-    ) internal returns (bytes32[] memory) {
+    ) internal view returns (bytes32[] memory) {
         uint _cnt = _total;
         bytes32 _id = _start;
         bytes32[] memory _toRemoveIds = new bytes32[](_total);

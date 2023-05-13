@@ -35,7 +35,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         console.log("debt %s", debt);
 
-        bytes32 cdpId1 = _openTestCDP(user, 10000 ether, debt);
+        _openTestCDP(user, 10000 ether, debt);
 
         vm.startPrank(user);
         assertEq(cdpManager.getBorrowingRateWithDecay(), 0);

@@ -42,7 +42,7 @@ contract ActivePoolTester is ActivePool {
     }
 
     // dummy test functions for sweepToken()
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external pure returns (uint256) {
         return 1234567890;
     }
 }

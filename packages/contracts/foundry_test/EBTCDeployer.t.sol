@@ -104,7 +104,7 @@ contract EBTCDeployerTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function _printAddresses(address[] memory addresses) internal {
+    function _printAddresses(address[] memory addresses) internal view {
         for (uint i = 0; i < addresses.length; i++) {
             console.log("address %s: %s", i, addresses[i]);
         }

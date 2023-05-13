@@ -42,7 +42,7 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _owner) public RolesAuthority(_owner, Authority(address(this))) {}
+    constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS
@@ -94,7 +94,7 @@ contract Governor is RolesAuthority {
         }
     }
 
-    function getRolesFromByteMap(bytes32 byteMap) public view returns (uint8[] memory roleIds) {
+    function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
         uint count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
             bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
@@ -116,7 +116,7 @@ contract Governor is RolesAuthority {
     }
 
     // helper function to generate bytes32 cache data for given roleIds array
-    function getByteMapFromRoles(uint8[] memory roleIds) public view returns (bytes32) {
+    function getByteMapFromRoles(uint8[] memory roleIds) public pure returns (bytes32) {
         bytes32 _data;
         for (uint8 i = 0; i < roleIds.length; i++) {
             _data |= bytes32(1 << uint(roleIds[i]));
