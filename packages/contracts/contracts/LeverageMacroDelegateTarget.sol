@@ -90,8 +90,8 @@ contract LeverageMacroDelegateTarget {
         CheckValueAndType expectedCollateral;
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
-        // Used only if isClosed
-        ICdpManagerData.Status expectedStatus;
+        // Used only to check status
+        ICdpManagerData.Status expectedStatus; // TODO: THIS IS SUPERFLUOUS
     }
 
     function assertOwner() internal {

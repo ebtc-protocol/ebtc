@@ -7,7 +7,7 @@ import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroDelegateTarget} from "../contracts/LeverageMacroDelegateTarget.sol";
 import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
-
+import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
 
 interface IOwnerLike {
     function owner() external view returns (address);
@@ -259,7 +259,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         });
 
         // 2) stETH.approve(_borrowerOperationsAddress, type(uint256).max);
-        data[1] = SimplifiedDiamondLike.Operation({
+        data[2] = SimplifiedDiamondLike.Operation({
             to: address(address(collateral)),
             checkSuccess: true,
             value: 0,
@@ -271,7 +271,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         });
 
         // 3) stETH.approve(_activePool, type(uint256).max);
-        data[2] = SimplifiedDiamondLike.Operation({
+        data[3] = SimplifiedDiamondLike.Operation({
             to: address(address(collateral)),
             checkSuccess: true,
             value: 0,
@@ -282,7 +282,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         });
 
         // 4) Leverage Operation on Macro Reference
-        data[3] = SimplifiedDiamondLike.Operation({
+        data[4] = SimplifiedDiamondLike.Operation({
             to: address(address(macro_reference)),
             checkSuccess: true,
             value: 0,
@@ -319,6 +319,9 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         uint256 netColl = collateral.balanceOf(user) / 2; // TODO: Make generic
         
         uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
+
+        // TODO: FIX THIS // Donation breaks invariants but ensures we have enough to pay without figuring out issue with swap
+        deal(address(eBTCToken), address(wallet), 1e23);
 
         // leverage parameters
         uint debt = _utils.calculateBorrowAmount(
@@ -357,7 +360,14 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
 
         // Post check params
-        LeverageMacroDelegateTarget.PostCheckParams memory postCheckParams; // TODO MAKE IT ALL SKIP FOR NOW
+        LeverageMacroDelegateTarget.PostCheckParams memory postCheckParams = LeverageMacroDelegateTarget.PostCheckParams({
+            expectedDebt: LeverageMacroDelegateTarget.CheckValueAndType({value: 0, operator: LeverageMacroDelegateTarget.Operator.skip}),
+            expectedCollateral: LeverageMacroDelegateTarget.CheckValueAndType({value: 0, operator: LeverageMacroDelegateTarget.Operator.skip}),
+            // NOTE: Unused
+            cdpId: bytes32(0),
+            // NOTE: Superfluous
+            expectedStatus: ICdpManagerData.Status.active
+        });
 
         // return this as encoded call since we're one level of abstraction deeper
         return abi.encodeCall(LeverageMacroDelegateTarget.doOperation, (
