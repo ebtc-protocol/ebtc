@@ -2378,8 +2378,20 @@ contract('PriceFeed', async accounts => {
       assert.isTrue((await _newAuthority.canCall(alice, myPriceFeed.address, _setFallbackSig)));
 
       // TODO: now this has health-checks, needs to be some healthy "fallback"
-      await myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}); 
-      assert.isTrue(_newAuthority.address == (await myPriceFeed.fallbackCaller().address)); 
+      let mockTellorRandom = await MockTellor.new()
+      MockTellor.setAsDeployed(mockTellorRandom)
+
+      let tellorCallerRandom = await TellorCaller.new(mockTellorRandom.address)
+      TellorCaller.setAsDeployed(tellorCallerRandom)
+
+      await mockTellorRandom.setPrice(normalStEthEthPrice)
+
+      // Set mock price updateTimes in both oracles to very recent
+      const now = await th.getLatestBlockTimestamp(web3)
+      await mockTellorRandom.setUpdateTime(now)
+
+      await myPriceFeed.setFallbackCaller(tellorCallerRandom.address, {from: alice}); 
+      assert.isTrue(tellorCallerRandom.address == (await myPriceFeed.fallbackCaller())); 
     })
   })
 
