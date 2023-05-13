@@ -876,14 +876,14 @@ contract('PriceFeed', async accounts => {
 
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1000, 8))  // prev price = 1000
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(100, 8))  // price drops to 100: a drop of > 50% from previous
-      await mockTellor.setPrice(104999999) // Fallback price drops to 104.99: price difference with new Chainlink price is now just under 5%
+      await mockTellor.setPrice(dec(104, 8)) // Fallback price drops to 104.99: price difference with new Chainlink price is now just under 5%
 
       await priceFeed.fetchPrice()
       const statusAfter = await priceFeed.status()
       assert.equal(statusAfter, '0') // status 0: Chainlink working
     })
 
-    xit("C1 chainlinkWorking: Chainlink price drop of >50% and Fallback price within 5% of Chainlink: return Chainlink price", async () => {
+    it("C1 chainlinkWorking: Chainlink price drop of >50% and Fallback price within 5% of Chainlink: return Chainlink price", async () => {
       
       priceFeed.setLastGoodPrice(dec(2, 18))
 
