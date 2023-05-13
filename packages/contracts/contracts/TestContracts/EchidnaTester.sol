@@ -167,7 +167,6 @@ contract EchidnaTester {
                 addr.borrowerOperationsAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
-                addr.feeRecipientAddress,
                 addr.sortedCdpsAddress,
                 addr.activePoolAddress,
                 addr.priceFeedAddress,

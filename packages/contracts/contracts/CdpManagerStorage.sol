@@ -6,7 +6,6 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
@@ -28,8 +27,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     ICollSurplusPool immutable collSurplusPool;
 
     IEBTCToken public immutable override ebtcToken;
-
-    IFeeRecipient public immutable override feeRecipient;
 
     address public immutable liquidationLibrary;
 
@@ -119,7 +116,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         address _borrowerOperationsAddress,
         address _collSurplusPool,
         address _ebtcToken,
-        address _feeRecipient,
         address _sortedCdps,
         address _activePool,
         address _priceFeed,
@@ -134,7 +130,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         borrowerOperationsAddress = _borrowerOperationsAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPool);
         ebtcToken = IEBTCToken(_ebtcToken);
-        feeRecipient = IFeeRecipient(_feeRecipient);
         sortedCdps = ISortedCdps(_sortedCdps);
 
         emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
@@ -423,12 +418,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
         activePool.allocateFeeRecipientColl(_feeTaken);
 
-        emit CollateralFeePerUnitUpdated(
-            _oldPerUnit,
-            stFeePerUnitg,
-            address(feeRecipient),
-            _feeTaken
-        );
+        emit CollateralFeePerUnitUpdated(_oldPerUnit, stFeePerUnitg, _feeTaken);
     }
 
     // Apply accumulated fee split distributed to the CDP

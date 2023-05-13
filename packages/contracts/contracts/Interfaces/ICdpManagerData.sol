@@ -6,7 +6,6 @@ import "./ICollSurplusPool.sol";
 import "./IEBTCToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
-import "./IFeeRecipient.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 // Common interface for the Cdp Manager.
@@ -62,12 +61,7 @@ interface ICdpManagerData {
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
-    event CollateralFeePerUnitUpdated(
-        uint _oldPerUnit,
-        uint _newPerUnit,
-        address _feeRecipient,
-        uint _feeTaken
-    );
+    event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,
         uint _oldPerUnitCdp,
@@ -216,8 +210,6 @@ interface ICdpManagerData {
     function totalStakes() external view returns (uint);
 
     function ebtcToken() external view returns (IEBTCToken);
-
-    function feeRecipient() external view returns (IFeeRecipient);
 
     function stFeePerUnitg() external view returns (uint);
 

@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";

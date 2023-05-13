@@ -47,7 +47,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         checkContract(ebtcTokenCached);
         ebtcToken = IERC20(ebtcTokenCached);
 
-        IFeeRecipient lqtyStakingCached = cdpManagerCached.feeRecipient();
+        IFeeRecipient lqtyStakingCached = IFeeRecipient(borrowerOperations.feeRecipientAddress());
         require(
             _feeRecipientAddress == address(lqtyStakingCached),
             "BorrowerWrappersScript: Wrong FeeRecipient address"

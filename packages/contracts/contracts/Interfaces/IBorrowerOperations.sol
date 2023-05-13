@@ -97,4 +97,6 @@ interface IBorrowerOperations {
     ) external;
 
     function claimCollateral() external;
+
+    function feeRecipientAddress() external view returns (address);
 }

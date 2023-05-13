@@ -158,7 +158,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.borrowerOperationsAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
-                addr.feeRecipientAddress,
                 addr.sortedCdpsAddress,
                 addr.activePoolAddress,
                 addr.priceFeedAddress,
@@ -174,7 +173,17 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // CDP Manager
             creationCode = type(CdpManager).creationCode;
-            args = abi.encode(addr, address(collateral));
+            args = abi.encode(
+                addr.liquidationLibraryAddress,
+                addr.authorityAddress,
+                addr.borrowerOperationsAddress,
+                addr.collSurplusPoolAddress,
+                addr.ebtcTokenAddress,
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
+            );
 
             cdpManager = CdpManager(
                 ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
@@ -277,13 +286,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // Fee Recipieint
             creationCode = type(FeeRecipient).creationCode;
-            args = abi.encode(
-                addr.ebtcTokenAddress,
-                addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress,
-                addr.activePoolAddress,
-                address(collateral)
-            );
+            args = abi.encode(defaultGovernance, addr.authorityAddress);
 
             feeRecipient = FeeRecipient(
                 ebtcDeployer.deploy(

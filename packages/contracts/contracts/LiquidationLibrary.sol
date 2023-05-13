@@ -6,7 +6,6 @@ import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 
@@ -15,7 +14,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         address _borrowerOperationsAddress,
         address _collSurplusPool,
         address _ebtcToken,
-        address _feeRecipient,
         address _sortedCdps,
         address _activePool,
         address _priceFeed,
@@ -27,7 +25,6 @@ contract LiquidationLibrary is CdpManagerStorage {
             _borrowerOperationsAddress,
             _collSurplusPool,
             _ebtcToken,
-            _feeRecipient,
             _sortedCdps,
             _activePool,
             _priceFeed,

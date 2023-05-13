@@ -6,7 +6,6 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 import "./EBTCDeployer.sol";
@@ -14,31 +13,37 @@ import "./Dependencies/Proxy.sol";
 
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Dependency setter ---
+
     constructor(
-        EBTCDeployer.EbtcAddresses memory _addresses,
-        address collTokenAddress
+        address _liquidationLibraryAddress,
+        address _authorityAddress,
+        address _borrowerOperationsAddress,
+        address _collSurplusPoolAddress,
+        address _ebtcTokenAddress,
+        address _sortedCdpsAddress,
+        address _activePoolAddress,
+        address _priceFeedAddress,
+        address _collTokenAddress
     )
         CdpManagerStorage(
-            _addresses.liquidationLibraryAddress,
-            _addresses.authorityAddress,
-            _addresses.borrowerOperationsAddress,
-            _addresses.collSurplusPoolAddress,
-            _addresses.ebtcTokenAddress,
-            _addresses.feeRecipientAddress,
-            _addresses.sortedCdpsAddress,
-            _addresses.activePoolAddress,
-            _addresses.priceFeedAddress,
-            collTokenAddress
+            _liquidationLibraryAddress,
+            _authorityAddress,
+            _borrowerOperationsAddress,
+            _collSurplusPoolAddress,
+            _ebtcTokenAddress,
+            _sortedCdpsAddress,
+            _activePoolAddress,
+            _priceFeedAddress,
+            _collTokenAddress
         )
     {
-        emit BorrowerOperationsAddressChanged(_addresses.borrowerOperationsAddress);
-        emit ActivePoolAddressChanged(_addresses.activePoolAddress);
-        emit CollSurplusPoolAddressChanged(_addresses.collSurplusPoolAddress);
-        emit PriceFeedAddressChanged(_addresses.priceFeedAddress);
-        emit EBTCTokenAddressChanged(_addresses.ebtcTokenAddress);
-        emit SortedCdpsAddressChanged(_addresses.sortedCdpsAddress);
-        emit FeeRecipientAddressChanged(_addresses.feeRecipientAddress);
-        emit CollateralAddressChanged(collTokenAddress);
+        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
+        emit ActivePoolAddressChanged(_activePoolAddress);
+        emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
+        emit PriceFeedAddressChanged(_priceFeedAddress);
+        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
+        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
+        emit CollateralAddressChanged(_collTokenAddress);
 
         stakingRewardSplit = 2500;
         // Emit initial value for analytics
