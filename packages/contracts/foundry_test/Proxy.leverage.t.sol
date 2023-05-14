@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroReference} from "../contracts/LeverageMacroReference.sol";
+import {LeverageMacroBase} from "../contracts/LeverageMacroBase.sol";
 import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
 import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
 
@@ -170,12 +171,12 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        LeverageMacroReference.SwapOperation[] memory _levSwapsBefore;
-        LeverageMacroReference.SwapOperation[] memory _levSwapsAfter;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
 
         // prepare operation data
         uint _cdpDebt = _getTotalAmountForFlashLoan(debt, true);
-        LeverageMacroReference.OpenCdpOperation memory _opData = LeverageMacroReference.OpenCdpOperation(
+        LeverageMacroBase.OpenCdpOperation memory _opData = LeverageMacroBase.OpenCdpOperation(
             _cdpDebt,
             DUMMY_CDP_ID,
             DUMMY_CDP_ID,
@@ -199,20 +200,20 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             (grossColl - _collMinOut) > 0,
             "!leverage Open CDP transferIn collateral amount can't be zero"
         );
-        LeverageMacroReference.LeverageMacroOperation memory operation = LeverageMacroReference.LeverageMacroOperation(
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase.LeverageMacroOperation(
             address(collateral),
             (grossColl - _collMinOut),
             _levSwapsBefore,
             _levSwapsAfter,
-            LeverageMacroReference.OperationType.OpenCdpOperation,
+            LeverageMacroBase.OperationType.OpenCdpOperation,
             _opDataEncoded
         );
 
-        LeverageMacroReference.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+        LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
             _cdpDebt,
-            LeverageMacroReference.Operator.equal,
+            LeverageMacroBase.Operator.equal,
             netColl,
-            LeverageMacroReference.Operator.equal,
+            LeverageMacroBase.Operator.equal,
             ICdpManagerData.Status.active,
             DUMMY_CDP_ID
         );
@@ -220,11 +221,11 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         // execute the leverage through proxy
         uint cdpCntBefore = sortedCdps.cdpCountOf(proxyAddr);
         _mock1Inch.setPrice(priceFeedMock.getPrice());
-        LeverageMacroReference(proxyAddr).doOperation(
-            LeverageMacroReference.FlashLoanType.eBTC,
+        LeverageMacroBase(proxyAddr).doOperation(
+            LeverageMacroBase.FlashLoanType.eBTC,
             debt,
             operation,
-            LeverageMacroReference.PostOperationCheck.openCdp,
+            LeverageMacroBase.PostOperationCheck.openCdp,
             postCheckParams
         );
 
@@ -240,8 +241,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.startPrank(user);
 
         // leverage parameters
-        LeverageMacroReference.SwapOperation[] memory _levSwapsBefore;
-        LeverageMacroReference.SwapOperation[] memory _levSwapsAfter;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         bytes memory _opDataEncoded;
         uint _totalDebt;
 
@@ -250,7 +251,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
             _totalDebt = _debt;
             uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
-            LeverageMacroReference.CloseCdpOperation memory _opData = LeverageMacroReference.CloseCdpOperation(cdpId);
+            LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(cdpId);
             _opDataEncoded = abi.encode(_opData);
             uint _collRequired = _convertDebtAndCollForSwap(
                 _flDebt,
@@ -268,31 +269,31 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
                 _flDebt
             );
         }
-        LeverageMacroReference.LeverageMacroOperation memory operation = LeverageMacroReference.LeverageMacroOperation(
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase.LeverageMacroOperation(
             address(collateral),
             0,
             _levSwapsBefore,
             _levSwapsAfter,
-            LeverageMacroReference.OperationType.CloseCdpOperation,
+            LeverageMacroBase.OperationType.CloseCdpOperation,
             _opDataEncoded
         );
 
-        LeverageMacroReference.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+        LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
             0,
-            LeverageMacroReference.Operator.equal,
+            LeverageMacroBase.Operator.equal,
             0,
-            LeverageMacroReference.Operator.equal,
+            LeverageMacroBase.Operator.equal,
             ICdpManagerData.Status.closedByOwner,
             cdpId
         );
 
         // execute the leverage through proxy
         _mock1Inch.setPrice(priceFeedMock.getPrice());
-        LeverageMacroReference(proxyAddr).doOperation(
-            LeverageMacroReference.FlashLoanType.eBTC,
+        LeverageMacroBase(proxyAddr).doOperation(
+            LeverageMacroBase.FlashLoanType.eBTC,
             _totalDebt,
             operation,
-            LeverageMacroReference.PostOperationCheck.isClosed,
+            LeverageMacroBase.PostOperationCheck.isClosed,
             postCheckParams
         );
 
@@ -311,8 +312,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.startPrank(user);
 
         // leverage parameters
-        LeverageMacroReference.SwapOperation[] memory _levSwapsBefore;
-        LeverageMacroReference.SwapOperation[] memory _levSwapsAfter;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
         (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
         // prepare operation data
@@ -320,21 +321,21 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             _adjustVars = _increaseCdpSize(cdpId, _totalColl, _collAdded, _debt);
             _levSwapsBefore = _adjustVars._swapSteps;
 
-            LeverageMacroReference.LeverageMacroOperation memory operation = LeverageMacroReference
+            LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
                 .LeverageMacroOperation(
                     address(collateral),
                     _adjustVars._deltaCollAmt,
                     _levSwapsBefore,
                     _levSwapsAfter,
-                    LeverageMacroReference.OperationType.AdjustCdpOperation,
+                    LeverageMacroBase.OperationType.AdjustCdpOperation,
                     _adjustVars._opEncoded
                 );
 
-            LeverageMacroReference.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+            LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
                 (_debt + _adjustVars._borrowAmt + _adjustVars._borrowFee),
-                LeverageMacroReference.Operator.equal,
+                LeverageMacroBase.Operator.equal,
                 (_totalColl + _collAdded),
-                LeverageMacroReference.Operator.equal,
+                LeverageMacroBase.Operator.equal,
                 ICdpManagerData.Status.active,
                 cdpId
             );
@@ -342,11 +343,11 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             // execute the leverage through proxy
             _mock1Inch.setPrice(priceFeedMock.getPrice());
             uint _collBal = collateral.balanceOf(user);
-            LeverageMacroReference(proxyAddr).doOperation(
-                LeverageMacroReference.FlashLoanType.eBTC,
+            LeverageMacroBase(proxyAddr).doOperation(
+                LeverageMacroBase.FlashLoanType.eBTC,
                 _adjustVars._borrowAmt,
                 operation,
-                LeverageMacroReference.PostOperationCheck.cdpStats,
+                LeverageMacroBase.PostOperationCheck.cdpStats,
                 postCheckParams
             );
         }
@@ -366,8 +367,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.startPrank(user);
 
         // leverage parameters
-        LeverageMacroReference.SwapOperation[] memory _levSwapsBefore;
-        LeverageMacroReference.SwapOperation[] memory _levSwapsAfter;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
+        LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
         (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
         // prepare operation data
@@ -385,21 +386,21 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             _adjustVars = _decreaseCdpSize(cdpId, _totalColl, _collRemoved, _debt);
             _levSwapsAfter = _adjustVars._swapSteps;
 
-            LeverageMacroReference.LeverageMacroOperation memory operation = LeverageMacroReference
+            LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
                 .LeverageMacroOperation(
                     address(collateral),
                     0,
                     _levSwapsBefore,
                     _levSwapsAfter,
-                    LeverageMacroReference.OperationType.AdjustCdpOperation,
+                    LeverageMacroBase.OperationType.AdjustCdpOperation,
                     _adjustVars._opEncoded
                 );
 
-            LeverageMacroReference.PostCheckParams memory postCheckParams = _preparePostCheckParams(
+            LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
                 (_debt - _adjustVars._borrowAmt),
-                LeverageMacroReference.Operator.equal,
+                LeverageMacroBase.Operator.equal,
                 (_totalColl - _adjustVars._deltaCollAmt),
-                LeverageMacroReference.Operator.equal,
+                LeverageMacroBase.Operator.equal,
                 ICdpManagerData.Status.active,
                 cdpId
             );
@@ -407,11 +408,11 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             // execute the leverage through proxy
             _mock1Inch.setPrice(priceFeedMock.getPrice());
             uint _collBal = collateral.balanceOf(user);
-            LeverageMacroReference(proxyAddr).doOperation(
-                LeverageMacroReference.FlashLoanType.eBTC,
+            LeverageMacroBase(proxyAddr).doOperation(
+                LeverageMacroBase.FlashLoanType.eBTC,
                 _adjustVars._borrowAmt,
                 operation,
-                LeverageMacroReference.PostOperationCheck.cdpStats,
+                LeverageMacroBase.PostOperationCheck.cdpStats,
                 postCheckParams
             );
         }
@@ -424,7 +425,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
     struct LocalVar_AdjustCdp {
         bytes _opEncoded;
-        LeverageMacroReference.SwapOperation[] _swapSteps;
+        LeverageMacroBase.SwapOperation[] _swapSteps;
         uint _borrowAmt;
         uint _borrowFee;
         uint _deltaCollAmt;
@@ -447,7 +448,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint _totalDebt = _targetDebt - _debt;
 
         uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
-        LeverageMacroReference.AdjustCdpOperation memory _opData = LeverageMacroReference.AdjustCdpOperation(
+        LeverageMacroBase.AdjustCdpOperation memory _opData = LeverageMacroBase.AdjustCdpOperation(
             cdpId,
             0,
             _flDebt,
@@ -464,7 +465,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             _price,
             false
         );
-        LeverageMacroReference.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
+        LeverageMacroBase.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
             address(eBTCToken),
             _totalDebt,
             address(collateral),
@@ -509,7 +510,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             _price,
             true
         );
-        LeverageMacroReference.AdjustCdpOperation memory _opData = LeverageMacroReference.AdjustCdpOperation(
+        LeverageMacroBase.AdjustCdpOperation memory _opData = LeverageMacroBase.AdjustCdpOperation(
             cdpId,
             _collWithdrawn,
             _totalDebt,
@@ -519,7 +520,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             0
         );
         bytes memory _opDataEncoded = abi.encode(_opData);
-        LeverageMacroReference.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
+        LeverageMacroBase.SwapOperation[] memory _swapSteps = _generateCalldataSwapMock1InchOneStep(
             address(collateral),
             _collWithdrawn,
             address(eBTCToken),
@@ -540,9 +541,9 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _inAmt,
         address _outToken,
         uint _minOut
-    ) internal view returns (LeverageMacroReference.SwapOperation memory) {
-        LeverageMacroReference.SwapCheck[] memory _swapChecks = new LeverageMacroReference.SwapCheck[](1);
-        _swapChecks[0] = LeverageMacroReference.SwapCheck(_outToken, _minOut);
+    ) internal view returns (LeverageMacroBase.SwapOperation memory) {
+        LeverageMacroBase.SwapCheck[] memory _swapChecks = new LeverageMacroBase.SwapCheck[](1);
+        _swapChecks[0] = LeverageMacroBase.SwapCheck(_outToken, _minOut);
 
         bytes memory _swapData = abi.encodeWithSelector(
             Mock1Inch.swap.selector,
@@ -551,7 +552,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             _inAmt
         );
         return
-            LeverageMacroReference.SwapOperation(
+            LeverageMacroBase.SwapOperation(
                 _inToken,
                 address(_mock1Inch),
                 _inAmt,
@@ -566,8 +567,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _inAmt,
         address _outToken,
         uint _minOut
-    ) internal view returns (LeverageMacroReference.SwapOperation[] memory) {
-        LeverageMacroReference.SwapOperation[] memory _oneStep = new LeverageMacroReference.SwapOperation[](1);
+    ) internal view returns (LeverageMacroBase.SwapOperation[] memory) {
+        LeverageMacroBase.SwapOperation[] memory _oneStep = new LeverageMacroBase.SwapOperation[](1);
         _oneStep[0] = _generateCalldataSwapMock1Inch(_inToken, _inAmt, _outToken, _minOut);
         return _oneStep;
     }
@@ -593,26 +594,26 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
     function _preparePostCheckParams(
         uint _expectedDebt,
-        LeverageMacroReference.Operator _debtOperator,
+        LeverageMacroBase.Operator _debtOperator,
         uint _expectedColl,
-        LeverageMacroReference.Operator _collOperator,
+        LeverageMacroBase.Operator _collOperator,
         ICdpManagerData.Status _expectedStatus,
         bytes32 _cdpId
-    ) internal view returns (LeverageMacroReference.PostCheckParams memory) {
+    ) internal view returns (LeverageMacroBase.PostCheckParams memory) {
         // confirm debt is expected
-        LeverageMacroReference.CheckValueAndType memory expectedDebt = LeverageMacroReference.CheckValueAndType(
+        LeverageMacroBase.CheckValueAndType memory expectedDebt = LeverageMacroBase.CheckValueAndType(
             _expectedDebt,
             _debtOperator
         );
 
         // confirm coll is expected
-        LeverageMacroReference.CheckValueAndType memory expectedCollateral = LeverageMacroReference.CheckValueAndType(
+        LeverageMacroBase.CheckValueAndType memory expectedCollateral = LeverageMacroBase.CheckValueAndType(
             _expectedColl,
             _collOperator
         );
 
         return
-            LeverageMacroReference.PostCheckParams(expectedDebt, expectedCollateral, _cdpId, _expectedStatus);
+            LeverageMacroBase.PostCheckParams(expectedDebt, expectedCollateral, _cdpId, _expectedStatus);
     }
 
     function _getTotalAmountForFlashLoan(
@@ -631,7 +632,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
     function _createLeverageMacro(address _user) internal returns (address) {
         vm.startPrank(_user);
 
-        LeverageMacroReference proxy = new LeverageMacroReference(
+        LeverageMacroBase proxy = new LeverageMacroReference(
             address(borrowerOperations),
             address(activePool),
             address(cdpManager),
