@@ -249,7 +249,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // prepare operation data
         {
-            (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+            (uint _debt, uint _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
             _totalDebt = _debt;
             uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
             LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(
@@ -319,7 +319,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint _debt, uint _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
         // prepare operation data
         {
             _adjustVars = _increaseCdpSize(cdpId, _totalColl, _collAdded, _debt);
@@ -374,7 +374,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint _debt, uint _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
         // prepare operation data
         {
             if (
