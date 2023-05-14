@@ -46,9 +46,12 @@ contract SimplifiedDiamondLike {
     }
 
     /// === HARDCODED SETTERS === ///
+    /// @notice Given a funsig and a implementation address
+    ///     Set the handler to the logic we will delegatecall to
     function setFallbackHandler(bytes4 sig, address handler) external {
         require(msg.sender == owner);
 
+        // NOTE: We prob don't need this due to how solidity works
         // "execute((address,bool,uint128,uint128,bool,uint8,bytes)[])": "94b24d09"
         require(sig != 0x94b24d09);
 
