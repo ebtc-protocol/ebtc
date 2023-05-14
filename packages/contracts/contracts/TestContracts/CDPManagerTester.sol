@@ -16,9 +16,28 @@ contract CdpManagerTester is CdpManager {
     event SomeFunc1Called(address _caller);
 
     constructor(
-        EBTCDeployer.EbtcAddresses memory _addresses,
+        address _liquidationLibraryAddress,
+        address _authorityAddress,
+        address _borrowerOperationsAddress,
+        address _collSurplusPoolAddress,
+        address _ebtcTokenAddress,
+        address _sortedCdpsAddress,
+        address _activePoolAddress,
+        address _priceFeedAddress,
         address _collTokenAddress
-    ) public CdpManager(_addresses, _collTokenAddress) {}
+    )
+        CdpManager(
+            _liquidationLibraryAddress,
+            _authorityAddress,
+            _borrowerOperationsAddress,
+            _collSurplusPoolAddress,
+            _ebtcTokenAddress,
+            _sortedCdpsAddress,
+            _activePoolAddress,
+            _priceFeedAddress,
+            _collTokenAddress
+        )
+    {}
 
     function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
@@ -54,10 +73,6 @@ contract CdpManagerTester is CdpManager {
         baseRate = _baseRate;
     }
 
-    function callGetRedemptionFee(uint _ETHDrawn) external view returns (uint) {
-        _getRedemptionFee(_ETHDrawn);
-    }
-
     /// @dev No more concept of composite debt. Just return debt. Maintaining for test compatiblity
     function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
         return _debtVal;
@@ -79,20 +94,8 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 
-    function defaultPoolSendToActivePool(uint _ETH) external {
-        defaultPool.sendETHToActivePool(_ETH);
-    }
-
-    function defaultPoolIncreaseEBTCDebt(uint _amount) external {
-        defaultPool.increaseEBTCDebt(_amount);
-    }
-
     function activePoolIncreaseEBTCDebt(uint _amount) external {
         activePool.increaseEBTCDebt(_amount);
-    }
-
-    function defaultPoolDecreaseEBTCDebt(uint _amount) external {
-        defaultPool.decreaseEBTCDebt(_amount);
     }
 
     function activePoolDecreaseEBTCDebt(uint _amount) external {

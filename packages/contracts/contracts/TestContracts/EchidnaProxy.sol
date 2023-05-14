@@ -26,7 +26,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         CollateralTokenTester _collateral,
         ActivePool _activePool,
         PriceFeedTestnet _priceFeed
-    ) public payable {
+    ) payable {
         cdpManager = _cdpManager;
         borrowerOperations = _borrowerOperations;
         ebtcToken = _ebtcToken;
@@ -111,14 +111,14 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         collateral.deposit{value: _fee}();
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         activePool.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(collateral),
             _amount,
             abi.encodePacked(uint256(0))
         );
-        uint _balAfter = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         require(_balAfter - _balBefore == _fee, "!flFeeColl");
     }
 
@@ -132,16 +132,16 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         ebtcToken.unprotectedMint(address(this), _fee);
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = ebtcToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint _balBefore = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         borrowerOperations.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(ebtcToken),
             _amount,
             abi.encodePacked(uint256(0))
         );
-        uint _balAfter = ebtcToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint _balAfter = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         require(_balAfter - _balBefore == _fee, "!flFeeEBTC");
-        ebtcToken.unprotectedBurn(borrowerOperations.FEE_RECIPIENT(), _fee);
+        ebtcToken.unprotectedBurn(borrowerOperations.feeRecipientAddress(), _fee);
     }
 
     function openCdpPrx(

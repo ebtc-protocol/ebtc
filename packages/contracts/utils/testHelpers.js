@@ -514,11 +514,9 @@ class TestHelper {
     // console.log(`account: ${account}`)
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
-    const pendingETHReward = await contracts.cdpManager.getPendingETHReward(account)
     const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))
-    const entireColl = rawColl.add(pendingETHReward)
     const entireDebt = rawDebt.add(pendingEBTCDebtReward)
-
+    let entireColl = rawColl;
     return { entireColl, entireDebt }
   }
 

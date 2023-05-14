@@ -518,13 +518,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     Rewards-per-unit-staked from the redistribution should be:
   
     L_EBTCDebt = 1610 / 6 = 268.333 EBTC
-    L_ETH = 16.820475 /6 =  2.8034125 ether
+    L_STETHColl = 16.820475 /6 =  2.8034125 ether
     */
     const L_EBTCDebt = (await cdpManager.L_EBTCDebt()).toString()
-    const L_ETH = (await cdpManager.L_ETH()).toString()
 
     assert.isAtMost(th.getDifference(L_EBTCDebt, toBN('0').sub(toBN('0')).mul(mv._1e18BN).div(A_coll.add(D_coll))), 100)
-    assert.isAtMost(th.getDifference(L_ETH, th.applyLiquidationFee(toBN('0').sub(toBN('0').mul(toBN('0')).div(B_totalDebt)).mul(mv._1e18BN).div(A_coll.add(D_coll)))), 100)
   })
 
   // --- liquidate(), applied to cdp with ICR > 110% that has the lowest ICR 
@@ -570,20 +568,15 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
     const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
-    const _defaultBefore = await defaultPool.getEBTCDebt();
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check that redistribution rewards don't change
     const _totalStake = await cdpManager.totalStakes();
     const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
-    const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _bobColl.mul(price).div(LICR);
-    th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_bobDebt.sub(_liqDebt)).toString())
     const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-    const L_ETH = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH, '0')
 
     // Check that Bob's Cdp and stake remains active with unchanged coll and debt
     const bob_Cdp = await cdpManager.Cdps(_bobCdpId);
@@ -1195,22 +1188,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
     const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
-    const _defaultBefore = await defaultPool.getEBTCDebt();
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* For this Recovery Mode test case with ICR > 110%, there should be no redistribution of remainder to active Cdps. 
     Redistribution rewards-per-unit-staked should be zero. */
     const _totalStake = await cdpManager.totalStakes();
     const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
-    const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _bobColl.mul(toBN(_newPrice)).div(LICR);
-    th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_bobDebt.sub(_liqDebt)).toString())
     const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-	
-    const L_ETH_After = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH_After, '0')
   })
 
   it("liquidate(), with ICR > 110%: ICR of non liquidated cdp does not change", async () => {
@@ -1289,7 +1276,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
     const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
     const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
-    const _defaultBefore = await defaultPool.getEBTCDebt();
     await cdpManager.liquidate(_carolCdpId)
     // Check Carol's collateral and debt remains the same
 //    const carol_Coll_After = (await cdpManager.Cdps(_carolCdpId))[1]
@@ -1305,14 +1291,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     //Confirm liquidations have led to some debt redistributions to cdps
     const _totalStake = await cdpManager.totalStakes();
     const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
-    const _defaultAfter = await defaultPool.getEBTCDebt();
     const _liqDebt = _carolColl.mul(price).div(LICR);
-    th.assertIsApproximatelyEqual(_defaultAfter.sub(_defaultBefore).toString(), (_carolDebtOriginal.sub(_liqDebt)).toString())
     const _delta = (_carolDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
     const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
-    const L_ETH_After = (await cdpManager.L_ETH()).toString()
-    assert.equal(L_ETH_After, '0')
   })
 
   it("liquidate() with ICR > 110%: total liquidated coll and debt is correct", async () => {
@@ -2618,7 +2600,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
 
     // Check A's collateral and debt remain the same
-    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1].add(await cdpManager.getPendingETHReward(_aliceCdpId))
+    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
     const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')
@@ -4013,9 +3995,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(bob)))
     const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(carol)))
 
-    const dennisColl_After = (await cdpManager.Cdps(_dennisCdpId))[1].add(await cdpManager.getPendingETHReward(dennis))  
-    const bobColl_After = (await cdpManager.Cdps(_bobCdpId))[1].add(await cdpManager.getPendingETHReward(bob))
-    const carolColl_After = (await cdpManager.Cdps(_carolCdpId))[1].add(await cdpManager.getPendingETHReward(carol))
+    const dennisColl_After = (await cdpManager.Cdps(_dennisCdpId))[1]  
+    const bobColl_After = (await cdpManager.Cdps(_bobCdpId))[1]
+    const carolColl_After = (await cdpManager.Cdps(_carolCdpId))[1]
 
     assert.isTrue(dennisColl_After.lt(dennisColl_Before))
     assert.isTrue(bobColl_After.lt(bobColl_Before))
@@ -4314,7 +4296,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
 
     // Check A's collateral and debt are the same
-    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1].add(await cdpManager.getPendingETHReward(_aliceCdpId))
+    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
     const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')

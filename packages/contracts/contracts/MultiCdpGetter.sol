@@ -12,18 +12,25 @@ contract MultiCdpGetter {
         uint debt;
         uint coll;
         uint stake;
-        uint snapshotETH;
         uint snapshotEBTCDebt;
     }
 
     CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
     ISortedCdps public sortedCdps;
 
+    /// @notice Creates a new MultiCdpGetter contract
+    /// @param _cdpManager The CdpManager contract
+    /// @param _sortedCdps The ISortedCdps contract
     constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) public {
         cdpManager = _cdpManager;
         sortedCdps = _sortedCdps;
     }
 
+    /// @notice Retrieves multiple sorted Cdps
+    /// @param _startIdx The start index for the linked list. The sign determines whether to start from the head or tail of the list.
+    /// @dev Positive values start from the _head_ of the list and walk towards the _tail_, negative values start from the _tail_ of the list and walk towards the _head_
+    /// @param _count The count of Cdps to retrieve. If the requested count exceeds the number of available CDPs starting from the _startIdx, the function will only retrieve the available CDPs.
+    /// @return _cdps An array of CombinedCdpData structs
     function getMultipleSortedCdps(
         int _startIdx,
         uint _count
@@ -58,6 +65,10 @@ contract MultiCdpGetter {
         }
     }
 
+    /// @notice Internal function to retrieve multiple sorted Cdps from head
+    /// @param _startIdx The start index
+    /// @param _count The count of Cdps to retrieve
+    /// @return _cdps An array of CombinedCdpData structs
     function _getMultipleSortedCdpsFromHead(
         uint _startIdx,
         uint _count
@@ -83,14 +94,16 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
-                currentCdpId
-            );
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(currentCdpId);
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
     }
 
+    /// @notice Internal function to retrieve multiple sorted Cdps from tail
+    /// @param _startIdx The start index
+    /// @param _count The count of Cdps to retrieve
+    /// @return _cdps An array of CombinedCdpData structs
     function _getMultipleSortedCdpsFromTail(
         uint _startIdx,
         uint _count
@@ -116,9 +129,7 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotETH, _cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(
-                currentCdpId
-            );
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(currentCdpId);
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }

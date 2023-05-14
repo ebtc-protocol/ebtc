@@ -16,7 +16,7 @@ contract FlashAttack {
     IERC3156FlashLender public immutable lender;
     uint256 public counter;
 
-    constructor(IERC20 _want, IERC3156FlashLender _lender) public {
+    constructor(IERC20 _want, IERC3156FlashLender _lender) {
         want = _want;
         lender = _lender;
 
@@ -96,7 +96,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         deal(address(eBTCToken), address(attacker), fee * 2);
 
         uint256 feeRecipientPreviousBalance = eBTCToken.balanceOf(
-            borrowerOperations.FEE_RECIPIENT()
+            borrowerOperations.feeRecipientAddress()
         );
         uint256 attackerPreviousBalance = eBTCToken.balanceOf(address(attacker));
         uint256 ebtcSupplyBefore = eBTCToken.totalSupply();
@@ -110,7 +110,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         );
 
         assertEq(
-            eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()),
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
             feeRecipientPreviousBalance + fee * 2
         );
         assertEq(eBTCToken.balanceOf(address(attacker)), attackerPreviousBalance - fee * 2);

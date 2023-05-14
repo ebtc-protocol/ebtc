@@ -18,7 +18,7 @@ contract UselessFlashReceiver is IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external override returns (bytes32) {
+    ) external pure override returns (bytes32) {
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }

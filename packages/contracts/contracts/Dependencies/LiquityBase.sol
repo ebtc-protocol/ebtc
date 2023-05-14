@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
 import "../Interfaces/IActivePool.sol";
-import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILiquityBase.sol";
 import "../Dependencies/ICollateralToken.sol";
@@ -45,21 +44,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     IActivePool public immutable activePool;
 
-    IDefaultPool public immutable defaultPool;
-
     IPriceFeed public immutable override priceFeed;
 
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;
 
-    constructor(
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _priceFeedAddress,
-        address _collateralAddress
-    ) {
+    constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
         activePool = IActivePool(_activePoolAddress);
-        defaultPool = IDefaultPool(_defaultPoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
         collateral = ICollateralToken(_collateralAddress);
     }
@@ -77,25 +68,19 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     /**
         @notice Get the entire system collateral
-        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
         @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
      */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
-        uint activeColl = activePool.getStEthColl();
-        uint liquidatedColl = defaultPool.getStEthColl();
-
-        return (activeColl + liquidatedColl);
+        return (activePool.getStEthColl());
     }
 
     /**
         @notice Get the entire system debt
-        @notice Entire system collateral = collateral stored in ActivePool and DefaultPool, using their internal accounting
+        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
      */
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
-        uint activeDebt = activePool.getEBTCDebt();
-        uint closedDebt = defaultPool.getEBTCDebt();
-
-        return (activeDebt + closedDebt);
+        return (activePool.getEBTCDebt());
     }
 
     function _getTCR(uint256 _price) internal view returns (uint TCR) {
@@ -124,14 +109,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     // Convert ETH/BTC price to BTC/ETH price
-    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+    function _getPriceReciprocal(uint _price) internal pure returns (uint) {
         return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
     }
 
     // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
     // _debt is denominated in BTC
     // _price is ETH/BTC
-    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal pure returns (uint) {
         uint priceReciprocal = _getPriceReciprocal(_price);
         return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
@@ -139,7 +124,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
-    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
 }

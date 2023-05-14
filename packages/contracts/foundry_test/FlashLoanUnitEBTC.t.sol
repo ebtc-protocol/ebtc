@@ -66,7 +66,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
 
-        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
 
         // Perform flashloan
         borrowerOperations.flashLoan(
@@ -77,7 +77,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         );
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
+            prevFeeBalance + fee
+        );
     }
 
     /// @dev Can take a 0 flashloan, nothing happens

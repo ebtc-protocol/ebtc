@@ -50,25 +50,9 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function applyPendingRewards(bytes32 _cdpId) external;
 
-    function claimStakingSplitFee() external;
-
-    function getAccumulatedFeeSplitApplied(
-        bytes32 _cdpId,
-        uint _stFeePerUnitg,
-        uint _stFeePerUnitgError,
-        uint _totalStakes
-    ) external view returns (uint, uint);
-
     function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
-    function calcFeeUponStakingReward(
-        uint256 _newIndex,
-        uint256 _prevIndex
-    ) external view returns (uint256, uint256, uint256);
-
     function syncUpdateIndexInterval() external returns (uint);
-
-    function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
 
     function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
@@ -76,10 +60,7 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getEntireDebtAndColl(
         bytes32 _cdpId
-    )
-        external
-        view
-        returns (uint debt, uint coll, uint pendingEBTCDebtReward, uint pendingETHReward);
+    ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 
     function closeCdp(bytes32 _cdpId) external;
 

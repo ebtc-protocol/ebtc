@@ -8,7 +8,6 @@ contract ActivePoolTester is ActivePool {
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _defaultPoolAddress,
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
@@ -16,7 +15,6 @@ contract ActivePoolTester is ActivePool {
         ActivePool(
             _borrowerOperationsAddress,
             _cdpManagerAddress,
-            _defaultPoolAddress,
             _collTokenAddress,
             _collSurplusAddress,
             _feeRecipientAddress
@@ -35,8 +33,16 @@ contract ActivePoolTester is ActivePool {
         StEthColl = StEthColl + _amount;
     }
 
+    function unprotectedAllocateFeeRecipientColl(uint _shares) external {
+        StEthColl = StEthColl - _shares;
+        FeeRecipientColl = FeeRecipientColl + _shares;
+
+        emit ActivePoolCollBalanceUpdated(StEthColl);
+        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+    }
+
     // dummy test functions for sweepToken()
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external pure returns (uint256) {
         return 1234567890;
     }
 }

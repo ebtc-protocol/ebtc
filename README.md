@@ -3,7 +3,7 @@
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
 
-eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with no counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
+eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
 
@@ -1058,6 +1058,9 @@ Leverage Macro is divided into multiple contracts:
   The smart contract version that can be deployed as a contract / proxy which will open a CDP via FLashloan on behalf of it's owner
 
 ### SimplifiedDiamondLike
+A reference implementation of a smart contract wallet that uses configurable callbacks to use leverage macro natively, rather than as a separate support contract.
+Demonstrates how this can also be achieved by other SC wallets with configurable callbacks such as Gnosis Safe.
+
 A mix of a DSProxy and a Diamond
 -> `execute` is heavily inspired by Gnosis Safe
 -> `_fallback` is basically a diamon proxy with the extra check for callback being enabled

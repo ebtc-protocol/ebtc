@@ -35,7 +35,6 @@ contract('Governor - access control entrypoint to permissioned functions', async
     sortedCdps = contracts.sortedCdps
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
-    defaultPool = contracts.defaultPool;
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;

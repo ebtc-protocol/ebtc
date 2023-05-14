@@ -7,7 +7,6 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/IFeeRecipient.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
@@ -29,7 +28,7 @@ contract BorrowerOperations is
 
     ICollSurplusPool public immutable collSurplusPool;
 
-    IFeeRecipient public immutable feeRecipient;
+    address public feeRecipientAddress;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -81,14 +80,13 @@ contract BorrowerOperations is
     constructor(
         address _cdpManagerAddress,
         address _activePoolAddress,
-        address _defaultPoolAddress,
         address _collSurplusPoolAddress,
         address _priceFeedAddress,
         address _sortedCdpsAddress,
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collTokenAddress) {
+    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
         // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
 
         // This makes impossible to open a cdp with zero withdrawn EBTC
@@ -99,7 +97,7 @@ contract BorrowerOperations is
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         ebtcToken = IEBTCToken(_ebtcTokenAddress);
-        feeRecipient = IFeeRecipient(_feeRecipientAddress);
+        feeRecipientAddress = _feeRecipientAddress;
 
         address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
         if (_authorityAddress != address(0)) {
@@ -108,7 +106,6 @@ contract BorrowerOperations is
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
-        emit DefaultPoolAddressChanged(_defaultPoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
         emit PriceFeedAddressChanged(_priceFeedAddress);
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
@@ -369,7 +366,7 @@ contract BorrowerOperations is
                 _isDebtIncrease,
                 vars.netDebtChange
             );
-            _processTokenMovesFromAdjustment(activePool, ebtcToken, _varMvTokens);
+            _processTokenMovesFromAdjustment(_varMvTokens);
         }
     }
 
@@ -439,7 +436,7 @@ contract BorrowerOperations is
         emit CdpCreated(_cdpId, _borrower, msg.sender, vars.arrayIndex);
 
         // Mint the full EBTCAmount to the borrower
-        _withdrawEBTC(activePool, ebtcToken, _borrower, _EBTCAmount, _EBTCAmount);
+        _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
 
         /** 
             Note that only NET coll (as shares) is considered part of the CDP. 
@@ -499,7 +496,7 @@ contract BorrowerOperations is
         emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
 
         // Burn the repaid EBTC from the user's balance
-        _repayEBTC(activePool, ebtcToken, msg.sender, debt);
+        _repayEBTC(msg.sender, debt);
 
         // CEI: Send the collateral and liquidator reward shares back to the user
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
@@ -559,22 +556,14 @@ contract BorrowerOperations is
         @notice Handles the cases of a debt increase / decrease, and/or a collateral increase / decrease.
      */
     function _processTokenMovesFromAdjustment(
-        IActivePool _activePool,
-        IEBTCToken _ebtcToken,
         LocalVariables_moveTokens memory _varMvTokens
     ) internal {
         // Debt increase: mint change value of new eBTC to user, increment ActivePool eBTC internal accounting
         if (_varMvTokens.isDebtIncrease) {
-            _withdrawEBTC(
-                _activePool,
-                _ebtcToken,
-                _varMvTokens.user,
-                _varMvTokens.EBTCChange,
-                _varMvTokens.netDebtChange
-            );
+            _withdrawEBTC(_varMvTokens.user, _varMvTokens.EBTCChange, _varMvTokens.netDebtChange);
         } else {
             // Debt decrease: burn change value of eBTC from user, decrement ActivePool eBTC internal accounting
-            _repayEBTC(_activePool, _ebtcToken, _varMvTokens.user, _varMvTokens.EBTCChange);
+            _repayEBTC(_varMvTokens.user, _varMvTokens.EBTCChange);
         }
 
         if (_varMvTokens.isCollIncrease) {
@@ -582,7 +571,7 @@ contract BorrowerOperations is
             _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange, 0);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
-            _activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
+            activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 
@@ -601,26 +590,15 @@ contract BorrowerOperations is
 
     // Issue the specified amount of EBTC to _account and increases
     // the total active debt
-    function _withdrawEBTC(
-        IActivePool _activePool,
-        IEBTCToken _ebtcToken,
-        address _account,
-        uint _EBTCAmount,
-        uint _netDebtIncrease
-    ) internal {
-        _activePool.increaseEBTCDebt(_netDebtIncrease);
-        _ebtcToken.mint(_account, _EBTCAmount);
+    function _withdrawEBTC(address _account, uint _EBTCAmount, uint _netDebtIncrease) internal {
+        activePool.increaseEBTCDebt(_netDebtIncrease);
+        ebtcToken.mint(_account, _EBTCAmount);
     }
 
     // Burn the specified amount of EBTC from _account and decreases the total active debt
-    function _repayEBTC(
-        IActivePool _activePool,
-        IEBTCToken _ebtcToken,
-        address _account,
-        uint _EBTC
-    ) internal {
-        _activePool.decreaseEBTCDebt(_EBTC);
-        _ebtcToken.burn(_account, _EBTC);
+    function _repayEBTC(address _account, uint _EBTC) internal {
+        activePool.decreaseEBTCDebt(_EBTC);
+        ebtcToken.burn(_account, _EBTC);
     }
 
     // --- 'Require' wrapper functions ---
@@ -853,6 +831,17 @@ contract BorrowerOperations is
         return newTCR;
     }
 
+    // === Governed Functions ==
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        require(
+            _feeRecipientAddress != address(0),
+            "BorrowerOperations: cannot set fee recipient to zero address"
+        );
+        feeRecipientAddress = _feeRecipientAddress;
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
     // === Flash Loans === //
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -878,10 +867,10 @@ contract BorrowerOperations is
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        ebtcToken.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
+        ebtcToken.transferFrom(address(receiver), feeRecipientAddress, fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
-        ebtcToken.burn(address(FEE_RECIPIENT), amount);
+        ebtcToken.burn(feeRecipientAddress, amount);
 
         return true;
     }

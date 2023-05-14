@@ -9,18 +9,16 @@ import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../SortedCdps.sol";
 import "../ActivePool.sol";
-import "../DefaultPool.sol";
 import "../CollSurplusPool.sol";
 import "../HintHelpers.sol";
 import "../EBTCToken.sol";
-import "../LQTY/FeeRecipient.sol";
+import "../FeeRecipient.sol";
 
 // tester imports
 import "./CDPManagerTester.sol";
 import "./BorrowerOperationsTester.sol";
 import "./testnet/PriceFeedTestnet.sol";
 import "./ActivePoolTester.sol";
-import "./DefaultPoolTester.sol";
 import "./EBTCTokenTester.sol";
 
 contract EBTCDeployerTester is EBTCDeployer {
@@ -31,7 +29,6 @@ contract EBTCDeployerTester is EBTCDeployer {
     bytes public borrowerOperations_creationCode = type(BorrowerOperations).creationCode;
     bytes public sortedCdps_creationCode = type(SortedCdps).creationCode;
     bytes public activePool_creationCode = type(ActivePool).creationCode;
-    bytes public defaultPool_creationCode = type(DefaultPool).creationCode;
     bytes public collSurplusPool_creationCode = type(CollSurplusPool).creationCode;
     bytes public hintHelpers_creationCode = type(HintHelpers).creationCode;
     bytes public ebtcToken_creationCode = type(EBTCToken).creationCode;
@@ -42,7 +39,6 @@ contract EBTCDeployerTester is EBTCDeployer {
     bytes public borrowerOperationsTester_creationCode = type(BorrowerOperationsTester).creationCode;
     bytes public priceFeedTestnet_creationCode = type(PriceFeedTestnet).creationCode;
     bytes public activePoolTester_creationCode = type(ActivePoolTester).creationCode;
-    bytes public defaultPoolTester_creationCode = type(DefaultPoolTester).creationCode;
     bytes public ebtcTokenTester_creationCode = type(EBTCTokenTester).creationCode;
 
     function deployWithCreationCodeAndConstructorArgs(

@@ -278,13 +278,13 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(account)
     }
 
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
@@ -327,13 +327,13 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(account)
     }
 
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
@@ -376,13 +376,13 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(account)
 
     }
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
@@ -426,13 +426,13 @@ contract('CdpManager', async accounts => {
     }
 
     // check (DefaultPool  - totalRewards)
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
@@ -480,13 +480,13 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(account)
     }
     // check (DefaultPool - totalRewards from distribution)
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards_Distribution = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards_Distribution = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards_Distribution = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
@@ -528,13 +528,13 @@ contract('CdpManager', async accounts => {
        await cdpManager.liquidate(account)
      }
      // check (DefaultPool - totalRewards from distribution)
-     const L_ETH = await cdpManager.L_ETH()
+     const L_STETHColl = await cdpManager.L_STETHColl()
      const L_EBTCDebt = await cdpManager.L_EBTCDebt()
  
      const totalColl = await activePool.getStEthColl()
  
      const _1e18_BN = web3.utils.toBN(dec(1, 18))
-     const totalETHRewards_Distribution = (totalColl.mul(L_ETH)).div(_1e18_BN)
+     const totalETHRewards_Distribution = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
      const totalEBTCRewards_Distribution = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
  
      const defaultPoolETH = await defaultPool.getStEthColl()
@@ -1094,13 +1094,13 @@ it("11 accounts with random ETH and proportional EBTC (180:1). 10 liquidations. 
     await cdpManager.liquidate(account)
   }
 
-  const L_ETH = await cdpManager.L_ETH()
+  const L_STETHColl = await cdpManager.L_STETHColl()
   const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
   const totalColl = await activePool.getStEthColl()
 
   const _1e18_BN = web3.utils.toBN(dec(1, 18))
-  const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+  const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
   const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
   const defaultPoolETH = await defaultPool.getStEthColl()
@@ -1139,13 +1139,13 @@ it("11 accounts with random ETH and proportional EBTC (180:1). 10 liquidations. 
     }
 
     // check (DefaultPool  - totalRewards)
-    const L_ETH = await cdpManager.L_ETH()
+    const L_STETHColl = await cdpManager.L_STETHColl()
     const L_EBTCDebt = await cdpManager.L_EBTCDebt()
 
     const totalColl = await activePool.getStEthColl()
 
     const _1e18_BN = web3.utils.toBN(dec(1, 18))
-    const totalETHRewards = (totalColl.mul(L_ETH)).div(_1e18_BN)
+    const totalETHRewards = (totalColl.mul(L_STETHColl)).div(_1e18_BN)
     const totalEBTCRewards = (totalColl.mul(L_EBTCDebt)).div(_1e18_BN)
 
     const defaultPoolETH = await defaultPool.getStEthColl()
