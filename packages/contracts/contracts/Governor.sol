@@ -138,7 +138,9 @@ contract Governor is RolesAuthority {
     }
 
     /// @notice return all role IDs that have at least one capability enabled
-    function getActiveRoles() external view returns (Role[] memory activeRoles) {}
+    function getActiveRoles() external view returns (Role[] memory activeRoles) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     // If a role exists, flip enabled
 
@@ -146,11 +148,15 @@ contract Governor is RolesAuthority {
 
     function getCapabilitiesForTarget(
         address target
-    ) external view returns (Capability[] memory capabilities) {}
+    ) external view returns (Capability[] memory capabilities) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     function getCapabilitiesByRole(
         uint8 role
-    ) external view returns (Capability[] memory capabilities) {}
+    ) external view returns (Capability[] memory capabilities) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     function getRoleName(uint8 role) external view returns (string memory roleName) {
         return roleNames[role];
