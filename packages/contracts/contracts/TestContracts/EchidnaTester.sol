@@ -11,7 +11,7 @@ import "../ActivePool.sol";
 import "../CollSurplusPool.sol";
 import "../SortedCdps.sol";
 import "../HintHelpers.sol";
-import "../LQTY/FeeRecipient.sol";
+import "../FeeRecipient.sol";
 import "./testnet/PriceFeedTestnet.sol";
 import "./CollateralTokenTester.sol";
 import "./EchidnaProxy.sol";

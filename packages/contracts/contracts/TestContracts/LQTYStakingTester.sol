@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "../LQTY/FeeRecipient.sol";
+import "../FeeRecipient.sol";
 
 contract LQTYStakingTester is FeeRecipient {
     constructor(

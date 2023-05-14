@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.17;
 
-import "../Dependencies/Ownable.sol";
-import "../Dependencies/AuthNoOwner.sol";
-import "../Dependencies/IERC20.sol";
-import "../Dependencies/SafeERC20.sol";
+import "./Dependencies/Ownable.sol";
+import "./Dependencies/AuthNoOwner.sol";
+import "./Dependencies/IERC20.sol";
+import "./Dependencies/SafeERC20.sol";
 
 /**
     @notice Minimal fee recipient

@@ -8,7 +8,7 @@ const StabilityPool = artifacts.require("./StabilityPool.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
-const FeeRecipient = artifacts.require("./LQTY/FeeRecipient.sol")
+const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const LockupContractFactory = artifacts.require("./LQTY/LockupContractFactory.sol")
 const CommunityIssuance = artifacts.require("./LQTY/CommunityIssuance.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")

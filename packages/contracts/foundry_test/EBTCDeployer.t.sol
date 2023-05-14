@@ -12,7 +12,7 @@ import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
-import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
+import {FeeRecipient} from "../contracts/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";

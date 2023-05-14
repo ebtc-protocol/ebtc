@@ -12,7 +12,7 @@ import "../ActivePool.sol";
 import "../CollSurplusPool.sol";
 import "../HintHelpers.sol";
 import "../EBTCToken.sol";
-import "../LQTY/FeeRecipient.sol";
+import "../FeeRecipient.sol";
 
 // tester imports
 import "./CDPManagerTester.sol";
