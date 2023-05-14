@@ -335,7 +335,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         @param _fallbackCaller The new IFallbackCaller-compliant oracle address
     **/
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
-
         // health check-up before officially set it up
         IFallbackCaller newFallbackCaler = IFallbackCaller(_fallbackCaller);
         FallbackResponse memory fallbackResponse;
