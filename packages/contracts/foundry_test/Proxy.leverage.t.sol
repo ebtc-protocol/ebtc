@@ -200,14 +200,15 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             (grossColl - _collMinOut) > 0,
             "!leverage Open CDP transferIn collateral amount can't be zero"
         );
-        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase.LeverageMacroOperation(
-            address(collateral),
-            (grossColl - _collMinOut),
-            _levSwapsBefore,
-            _levSwapsAfter,
-            LeverageMacroBase.OperationType.OpenCdpOperation,
-            _opDataEncoded
-        );
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
+            .LeverageMacroOperation(
+                address(collateral),
+                (grossColl - _collMinOut),
+                _levSwapsBefore,
+                _levSwapsAfter,
+                LeverageMacroBase.OperationType.OpenCdpOperation,
+                _opDataEncoded
+            );
 
         LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
             _cdpDebt,
@@ -251,7 +252,9 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             (uint _debt, uint _totalColl, , ) = cdpManager.getEntireDebtAndColl(cdpId);
             _totalDebt = _debt;
             uint _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
-            LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(cdpId);
+            LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(
+                cdpId
+            );
             _opDataEncoded = abi.encode(_opData);
             uint _collRequired = _convertDebtAndCollForSwap(
                 _flDebt,
@@ -269,14 +272,15 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
                 _flDebt
             );
         }
-        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase.LeverageMacroOperation(
-            address(collateral),
-            0,
-            _levSwapsBefore,
-            _levSwapsAfter,
-            LeverageMacroBase.OperationType.CloseCdpOperation,
-            _opDataEncoded
-        );
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
+            .LeverageMacroOperation(
+                address(collateral),
+                0,
+                _levSwapsBefore,
+                _levSwapsAfter,
+                LeverageMacroBase.OperationType.CloseCdpOperation,
+                _opDataEncoded
+            );
 
         LeverageMacroBase.PostCheckParams memory postCheckParams = _preparePostCheckParams(
             0,
@@ -601,19 +605,20 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         bytes32 _cdpId
     ) internal view returns (LeverageMacroBase.PostCheckParams memory) {
         // confirm debt is expected
-        LeverageMacroBase.CheckValueAndType memory expectedDebt = LeverageMacroBase.CheckValueAndType(
-            _expectedDebt,
-            _debtOperator
-        );
+        LeverageMacroBase.CheckValueAndType memory expectedDebt = LeverageMacroBase
+            .CheckValueAndType(_expectedDebt, _debtOperator);
 
         // confirm coll is expected
-        LeverageMacroBase.CheckValueAndType memory expectedCollateral = LeverageMacroBase.CheckValueAndType(
-            _expectedColl,
-            _collOperator
-        );
+        LeverageMacroBase.CheckValueAndType memory expectedCollateral = LeverageMacroBase
+            .CheckValueAndType(_expectedColl, _collOperator);
 
         return
-            LeverageMacroBase.PostCheckParams(expectedDebt, expectedCollateral, _cdpId, _expectedStatus);
+            LeverageMacroBase.PostCheckParams(
+                expectedDebt,
+                expectedCollateral,
+                _cdpId,
+                _expectedStatus
+            );
     }
 
     function _getTotalAmountForFlashLoan(

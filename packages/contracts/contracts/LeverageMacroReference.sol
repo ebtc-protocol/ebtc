@@ -21,16 +21,17 @@ contract LeverageMacroReference is LeverageMacroBase {
         address _coll,
         address _sortedCdps,
         address _owner
-    ) LeverageMacroBase(
-        _borrowerOperationsAddress,
-        _activePool,
-        _cdpManager,
-        _ebtc,
-        _coll,
-        _sortedCdps,
-        true // Sweep to caller since this is not supposed to hold funds
-    ) {
-
+    )
+        LeverageMacroBase(
+            _borrowerOperationsAddress,
+            _activePool,
+            _cdpManager,
+            _ebtc,
+            _coll,
+            _sortedCdps,
+            true // Sweep to caller since this is not supposed to hold funds
+        )
+    {
         theOwner = _owner;
 
         // set allowance for flashloan lender/CDP open

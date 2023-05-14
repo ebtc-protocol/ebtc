@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 import {LeverageMacroReference} from "./LeverageMacroReference.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Interfaces/IEBTCToken.sol";
+
 /**
  * @title Factory for deploying LeverageMacros
  */

@@ -14,7 +14,7 @@ interface IOwnerLike {
  * You can `delegatecall` to it as part of `execute` as a way to use it in SC Wallet
  */
 
- /**
+/**
  SETUP
     // YOUR SC WALLET MUST HAVE DONE THE FOLLOWING
     ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
@@ -44,21 +44,23 @@ contract LeverageMacroDelegateTarget is LeverageMacroBase {
         address _ebtc,
         address _coll,
         address _sortedCdps
-    ) LeverageMacroBase(
-        _borrowerOperationsAddress,
-        _activePool,
-        _cdpManager,
-        _ebtc,
-        _coll,
-        _sortedCdps,
-        false // Do not sweep to caller
-    ) {
+    )
+        LeverageMacroBase(
+            _borrowerOperationsAddress,
+            _activePool,
+            _cdpManager,
+            _ebtc,
+            _coll,
+            _sortedCdps,
+            false // Do not sweep to caller
+        )
+    {
         // Approves are done via `execute` since this is a contract you delegatecall into
     }
 
     /// @dev Call self, since this is called via delegate call, and get owner
     function owner() public override returns (address) {
-      address _owner = IOwnerLike(address(this)).owner();
-      return _owner;
+        address _owner = IOwnerLike(address(this)).owner();
+        return _owner;
     }
 }

@@ -16,11 +16,11 @@ pragma solidity 0.8.17;
  *  Per solidity, hardcoded functions are switched into, meaning they cannot be overriden (although you could set a callbackHandler that cannot be reached)
  *  All other functions will reach the `fallback`
  *  This is basically a diamond, with an extra check for safety / extra control from the owner
-*
+ *
  * @dev Explicit Callback Handling
  *  All SimplifiedDiamondLike are deployed with `allowNonCallback` set to `false`
  *  This ensures that nobody can call this contract unless the owner sets this to `true` via the scary `setAllowAnyCall`
- *  
+ *
  */
 contract SimplifiedDiamondLike {
     // SIMPLIFIED STRUCT
@@ -70,7 +70,6 @@ contract SimplifiedDiamondLike {
         s.settings.allowNonCallback = allowNonCallbacks;
     }
 
-
     /// @notice Allows one callback for this call
     ///     This is a VERY DANGEROUS setting
     ///     Ensure you use the callback in the same call as you set it, or this may be used to attack this wallet
@@ -115,7 +114,7 @@ contract SimplifiedDiamondLike {
         require(msg.sender == owner, "Must be owner");
 
         uint256 length = ops.length;
-        for (uint256 i; i < length;) {
+        for (uint256 i; i < length; ) {
             _executeOne(ops[i], i);
 
             unchecked {
@@ -181,8 +180,12 @@ contract SimplifiedDiamondLike {
             let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
-            case 0 { revert(0, returndatasize()) }
-            default { return(0, returndatasize()) }
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
         }
     }
 }

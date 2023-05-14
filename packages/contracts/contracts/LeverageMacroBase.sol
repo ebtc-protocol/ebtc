@@ -14,7 +14,6 @@ interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
-
 /**
  * @title Base implementation of the LeverageMacro
  * @notice Do not use this contract as a end users
@@ -35,11 +34,11 @@ contract LeverageMacroBase {
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
     function owner() public virtual returns (address) {
-      revert("Must be overridden");
+        revert("Must be overridden");
     }
 
     function _assertOwner() internal {
-        // Reference will compare to variable, 
+        // Reference will compare to variable,
         require(owner() == msg.sender, "Must be owner");
     }
 
@@ -96,8 +95,6 @@ contract LeverageMacroBase {
         // Used only to check status
         ICdpManagerData.Status expectedStatus; // TODO: THIS IS SUPERFLUOUS
     }
-
-
 
     /**
      * FL Setup
@@ -205,14 +202,14 @@ contract LeverageMacroBase {
         }
 
         // Sweep here if it's Reference, do not if it's delegate
-        if(willSweep) {
-          sweepToCaller();
+        if (willSweep) {
+            sweepToCaller();
         }
     }
 
     // Make this public so you can delegate call to it and sweep to self
     function sweepToCaller() public {
-      _assertOwner();
+        _assertOwner();
         /**
          * SWEEP TO CALLER *
          */

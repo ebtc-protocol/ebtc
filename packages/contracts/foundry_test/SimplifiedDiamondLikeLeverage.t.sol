@@ -48,7 +48,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
     Mock1Inch public _mock1Inch;
 
-
     function _createNewWalletForUser(address _user) internal returns (address payable) {
         SimplifiedDiamondLike contractWallet = new SimplifiedDiamondLike(_user);
         return payable(contractWallet);
@@ -61,12 +60,12 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         connectLQTYContractsToCore();
 
         macro_reference = new LeverageMacroDelegateTarget(
-        address(borrowerOperations),
-        address(activePool),
-        address(cdpManager),
-        address(eBTCToken),
-        address(collateral),
-        address(sortedCdps)
+            address(borrowerOperations),
+            address(activePool),
+            address(cdpManager),
+            address(eBTCToken),
+            address(collateral),
+            address(sortedCdps)
         );
         owner_check = new LeverageMacroOwnerCheck();
 
@@ -127,7 +126,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             gas: 9999999,
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.call,
-            data: abi.encodeCall(collateral.approve, (address(borrowerOperations), type(uint256).max)) // TODO: Max reverts??
+            data: abi.encodeCall(
+                collateral.approve,
+                (address(borrowerOperations), type(uint256).max)
+            ) // TODO: Max reverts??
         });
 
         // Open CDP
@@ -144,7 +146,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             gas: 9999999,
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.call,
-            data: abi.encodeCall(borrowerOperations.openCdp, (2e18, bytes32(0), bytes32(0), collBall))
+            data: abi.encodeCall(
+                borrowerOperations.openCdp,
+                (2e18, bytes32(0), bytes32(0), collBall)
+            )
         });
 
         // Transfer to Caller
@@ -156,7 +161,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.call,
             data: abi.encodeCall(eBTCToken.transfer, (address(user), 2e18)) // NOTE: This is hardcoded before the call
-                // To make this dynamic you'd need to delegate call to a sweep contract
+            // To make this dynamic you'd need to delegate call to a sweep contract
         });
 
         wallet.execute(data);
@@ -189,20 +194,19 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // TODO: Add test here to check event matches
     }
-    
+
     function test_protectedCallbackCannotWork() public {
         // Set a callback
         vm.startPrank(user);
         wallet.setFallbackHandler(FakeCall.fakeFunction.selector, address(123));
 
         // Protection is set by default
-        
+
         // Expect revert
         vm.expectRevert("Only Enabled Callbacks");
         // Call it
         FakeCall(address(wallet)).fakeFunction();
 
-        
         // Will not revert due to no contract size check
         wallet.setAllowAnyCall(true);
         FakeCall(address(wallet)).fakeFunction();
@@ -214,14 +218,13 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // Flashloan
         // Etc..
 
-
         // PROB Change the macro to not sweep
 
         // Set the macro for callback
         vm.startPrank(user);
         wallet.setFallbackHandler(LeverageMacroBase.onFlashLoan.selector, address(macro_reference));
 
-        // Approve col for SC Wallet usage    
+        // Approve col for SC Wallet usage
         collateral.approve(address(wallet), type(uint256).max);
         uint256 collBall = collateral.balanceOf(user);
 
@@ -237,7 +240,6 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // 4) Delegate to LeverageMacroBase
         SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](5);
 
-        
         data[0] = SimplifiedDiamondLike.Operation({
             to: address(address(wallet)),
             checkSuccess: true,
@@ -309,16 +311,15 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Verify token balance to user
         assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
-
     }
 
     function getEncodedOpenCdpData() internal returns (bytes memory) {
         // Swaps b4 and after
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
-        
+
         uint256 netColl = collateral.balanceOf(user) / 2; // TODO: Make generic
-        
+
         uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
 
         // TODO: FIX THIS // Donation breaks invariants but ensures we have enough to pay without figuring out issue with swap
@@ -350,37 +351,46 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         bytes memory _opDataEncoded = abi.encode(_opData);
 
         // Operation
-        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase.LeverageMacroOperation(
-            address(collateral),
-            (grossColl - 0),
-            _levSwapsBefore,
-            _levSwapsAfter,
-            LeverageMacroBase.OperationType.OpenCdpOperation,
-            _opDataEncoded
-        );
-
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
+            .LeverageMacroOperation(
+                address(collateral),
+                (grossColl - 0),
+                _levSwapsBefore,
+                _levSwapsAfter,
+                LeverageMacroBase.OperationType.OpenCdpOperation,
+                _opDataEncoded
+            );
 
         // Post check params
-        LeverageMacroBase.PostCheckParams memory postCheckParams = LeverageMacroBase.PostCheckParams({
-            expectedDebt: LeverageMacroBase.CheckValueAndType({value: 0, operator: LeverageMacroBase.Operator.skip}),
-            expectedCollateral: LeverageMacroBase.CheckValueAndType({value: 0, operator: LeverageMacroBase.Operator.skip}),
-            // NOTE: Unused
-            cdpId: bytes32(0),
-            // NOTE: Superfluous
-            expectedStatus: ICdpManagerData.Status.active
-        });
+        LeverageMacroBase.PostCheckParams memory postCheckParams = LeverageMacroBase
+            .PostCheckParams({
+                expectedDebt: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                expectedCollateral: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                // NOTE: Unused
+                cdpId: bytes32(0),
+                // NOTE: Superfluous
+                expectedStatus: ICdpManagerData.Status.active
+            });
 
         // return this as encoded call since we're one level of abstraction deeper
-        return abi.encodeCall(LeverageMacroBase.doOperation, (
-            LeverageMacroBase.FlashLoanType.eBTC,
-            debt,
-            operation,
-            LeverageMacroBase.PostOperationCheck.openCdp,
-            postCheckParams
-        ));
+        return
+            abi.encodeCall(
+                LeverageMacroBase.doOperation,
+                (
+                    LeverageMacroBase.FlashLoanType.eBTC,
+                    debt,
+                    operation,
+                    LeverageMacroBase.PostOperationCheck.openCdp,
+                    postCheckParams
+                )
+            );
     }
-
-
 
     // TODO: Refactor to separate file to reuse code
     function _setupSwapDex(address _dex) internal {
@@ -404,7 +414,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         dealCollateral(_dex, type(uint128).max);
     }
 
-        function _generateCalldataSwapMock1InchOneStep(
+    function _generateCalldataSwapMock1InchOneStep(
         address _inToken,
         uint256 _inAmt,
         address _outToken,
@@ -415,7 +425,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         return _oneStep;
     }
 
-        function _generateCalldataSwapMock1Inch(
+    function _generateCalldataSwapMock1Inch(
         address _inToken,
         uint256 _inAmt,
         address _outToken,
@@ -440,6 +450,4 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
                 _swapChecks
             );
     }
-
-    
 }
