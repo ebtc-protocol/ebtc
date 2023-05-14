@@ -7,6 +7,20 @@ pragma solidity 0.8.17;
  * @notice handles callbacks via a DiamondLike Pattern
  * @notice CallbackOnly, only when toggled on, unless explicitly changed
  * @notice Due to the additional complexity, it's best used with a TX Simulator
+ *
+ * @dev Diamond Like Storage
+ *  Because of risk of clash, we must place storage at a pseudo-random location (see DIAMOND EIP)
+ *  Add to `OurSettings` to extend the eternal storage with custom fields
+ *
+ * @dev Hardcoded Functions
+ *  Per solidity, hardcoded functions are switched into, meaning they cannot be overriden (although you could set a callbackHandler that cannot be reached)
+ *  All other functions will reach the `fallback`
+ *  This is basically a diamond, with an extra check for safety / extra control from the owner
+*
+ * @dev Explicit Callback Handling
+ *  All SimplifiedDiamondLike are deployed with `allowNonCallback` set to `false`
+ *  This ensures that nobody can call this contract unless the owner sets this to `true` via the scary `setAllowAnyCall`
+ *  
  */
 contract SimplifiedDiamondLike {
     // SIMPLIFIED STRUCT
@@ -31,55 +45,64 @@ contract SimplifiedDiamondLike {
         owner = _owner;
     }
 
-    // SIMPLIFIED ACCESS
-    function getStorage() internal pure returns (DiamondLikeStorage storage ds) {
-        bytes32 position = DIAMOND_STORAGE_POSITION;
-        assembly {
-            ds.slot := position
-        }
-    }
-
-    // Hardcoded setters
+    /// === HARDCODED SETTERS === ///
     function setFallbackHandler(bytes4 sig, address handler) external {
         require(msg.sender == owner);
 
         // "execute((address,bool,uint128,uint128,bool,uint8,bytes)[])": "94b24d09"
         require(sig != 0x94b24d09);
 
-        DiamondLikeStorage storage s = getStorage();
+        DiamondLikeStorage storage s = _getStorage();
 
         s.callbackHandler[sig] = handler;
     }
 
+    /// @notice Do you want to allow any caller to call this contract?
+    ///     This is a VERY DANGEROUS setting
+    ///     Do not call this unless you know what you are doing
     function setAllowAnyCall(bool allowNonCallbacks) external {
         require(msg.sender == owner);
 
-        DiamondLikeStorage storage s = getStorage();
+        DiamondLikeStorage storage s = _getStorage();
         s.settings.allowNonCallback = allowNonCallbacks;
     }
 
+
+    /// @notice Allows one callback for this call
+    function enableCallbackForCall() external {
+        require(msg.sender == address(this)); // Must call this via `execute` to explicitly set the flag
+
+        DiamondLikeStorage storage ds = _getStorage();
+
+        ds.settings.callbackEnabledForCall = true;
+    }
+
+    /// === DIAMOND LIKE STORAGE === ///
+    /// @dev Get pointer to storage
+    function _getStorage() internal pure returns (DiamondLikeStorage storage ds) {
+        bytes32 position = DIAMOND_STORAGE_POSITION;
+        assembly {
+            ds.slot := position
+        }
+    }
+
+    /// === DS LIKE === ////
+
     // Hardcoded Generic Function
+    // NOTE: If you don't know what these are, be scared
     enum OperationType {
         call,
         delegatecall
     }
 
     struct Operation {
-        address to;
-        bool checkSuccess;
-        uint128 value;
-        uint128 gas; // Prob can be smallers
-        bool capGas; //  TODO: add
-        OperationType opType;
-        bytes data;
-    }
-
-    function enableCallbackForCall() external {
-        require(msg.sender == address(this)); // Must call this via `execute` to explicitly set the flag
-
-        DiamondLikeStorage storage ds = getStorage();
-
-        ds.settings.callbackEnabledForCall = true;
+        address to; // Target to call
+        bool checkSuccess; // If false we will ignore a revert
+        uint128 value; // How much ETH to send
+        uint128 gas; // How much gas to send
+        bool capGas; //  TODO: add || Ideally we send gasleft
+        OperationType opType; // See `OperationType`
+        bytes data; // Calldata to send (funsig + data)
     }
 
     /// @notice Execute a list of operations in sequence
@@ -96,7 +119,7 @@ contract SimplifiedDiamondLike {
         }
     }
 
-    /// @notice Execute one tx
+    /// @dev Execute one tx
     function _executeOne(Operation calldata op, uint256 counter) internal {
         bool success;
         bytes memory data = op.data;
@@ -121,6 +144,8 @@ contract SimplifiedDiamondLike {
         }
     }
 
+    /// === DIAMOND LIKE Functions === ///
+
     receive() external payable {
         // PHP is my favourite language
     }
@@ -129,20 +154,23 @@ contract SimplifiedDiamondLike {
         _fallback();
     }
 
-    // DiamondLike Fallback
+    /// @dev DiamondLike Fallback
+    ///     With extra check
     function _fallback() internal {
-        DiamondLikeStorage storage ds = getStorage();
+        DiamondLikeStorage storage ds = _getStorage();
 
         // If we don't allow callback
         if (!ds.settings.allowNonCallback) {
             require(ds.settings.callbackEnabledForCall, "Only Enabled Callbacks");
             // NOTE: May also act as reEntrancy guard
+            // But wouldn't just count on it
             ds.settings.callbackEnabledForCall = false;
         }
 
         // Diamond like fallback if programmed
         address facet = ds.callbackHandler[msg.sig];
         require(facet != address(0), "Diamond: Function does not exist");
+
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
