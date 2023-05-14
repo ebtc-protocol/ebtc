@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+/**
+ * @title A multi-purpose Smart Contract Wallet
+ * @notice `execute`s just like DSProxy
+ * @notice handles callbacks via a DiamondLike Pattern
+ * @notice CallbackOnly, only when toggled on, unless explicitly changed
+ * @notice Due to the additional complexity, it's best used with a TX Simulator
+ */
 contract SimplifiedDiamondLike {
     // SIMPLIFIED STRUCT
     // We add our settings to the diamond logic to extend it
