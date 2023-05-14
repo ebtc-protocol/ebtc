@@ -711,53 +711,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return stake;
     }
 
-    function _redistributeDebtAndColl(
-        IActivePool _activePool,
-        IDefaultPool _defaultPool,
-        uint _debt,
-        uint _coll
-    ) internal {
-        if (_debt == 0) {
-            return;
-        }
-
-        /*
-         * Add distributed coll and debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-         * error correction, to keep the cumulative error low in the running totals L_ETH and L_EBTCDebt:
-         *
-         * 1) Form numerators which compensate for the floor division errors that occurred the last time this
-         * function was called.
-         * 2) Calculate "per-unit-staked" ratios.
-         * 3) Multiply each ratio back by its denominator, to reveal the current floor division error.
-         * 4) Store these errors for use in the next correction when this function is called.
-         * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
-         */
-        uint ETHNumerator = (_coll * DECIMAL_PRECISION) + lastETHError_Redistribution;
-        uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
-
-        // Get the per-unit-staked terms
-        uint ETHRewardPerUnitStaked = ETHNumerator / totalStakes;
-        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / totalStakes;
-
-        lastETHError_Redistribution = ETHNumerator - (ETHRewardPerUnitStaked * totalStakes);
-        lastEBTCDebtError_Redistribution =
-            EBTCDebtNumerator -
-            (EBTCDebtRewardPerUnitStaked * totalStakes);
-
-        // Add per-unit-staked terms to the running totals
-        L_ETH = L_ETH + ETHRewardPerUnitStaked;
-        L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
-
-        emit LTermsUpdated(L_ETH, L_EBTCDebt);
-
-        // Transfer coll and debt from ActivePool to DefaultPool
-        _activePool.decreaseEBTCDebt(_debt);
-        _defaultPool.increaseEBTCDebt(_debt);
-        if (_coll > 0) {
-            _activePool.sendStEthColl(address(_defaultPool), _coll);
-        }
-    }
-
     function closeCdp(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         return _closeCdp(_cdpId, Status.closedByOwner);

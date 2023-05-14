@@ -333,7 +333,11 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        _requireAtLeastMinNetColl(vars.newColl);
+        // Only check when the collateral exchange rate from share is above 1e18
+        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
+        }
 
         vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
 
@@ -857,13 +861,12 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        IEBTCToken cachedEbtc = ebtcToken;
-        require(token == address(cachedEbtc), "BorrowerOperations: EBTC Only");
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC
-        cachedEbtc.mint(address(receiver), amount);
+        ebtcToken.mint(address(receiver), amount);
 
         // Callback
         require(
@@ -875,10 +878,10 @@ contract BorrowerOperations is
         // Safe to use transferFrom and unchecked as it's a standard token
         // Also saves gas
         // Send both fee and amount to FEE_RECIPIENT, to burn allowance per EIP-3156
-        cachedEbtc.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
+        ebtcToken.transferFrom(address(receiver), FEE_RECIPIENT, fee + amount);
 
         // Burn amount, from FEE_RECIPIENT
-        cachedEbtc.burn(address(FEE_RECIPIENT), amount);
+        ebtcToken.burn(address(FEE_RECIPIENT), amount);
 
         return true;
     }
