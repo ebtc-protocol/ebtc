@@ -15,23 +15,32 @@ interface ICdpCdps {
 }
 
 /**
- * Allows specifying arbitrary operations to lever up
- *     NOTE: Due to security concenrs
- *     LeverageMacro accepts allowances and transfers token to FlashLoanMacroReceiver
- *     // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
- *     LeverageMacro on the other hand is safe to approve as it cannot move your funds without your consent
+ * @title Base implementation of the LeverageMacro
+ * @notice Do not use this contract as a end users
+ * @dev You must extend this contract and override `owner()` to allow this to work:
+ *      - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
+ *      - As a deployed copy (LeverageMacroReference)
+ *      - Via delegate call (LeverageMacroDelegateTarget)
  */
-contract LeverageMacro {
+contract LeverageMacroBase {
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
     ICdpCdps public immutable cdpManager;
     IEBTCToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
-
-    address public immutable owner;
+    bool internal immutable willSweep;
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+
+    function owner() public virtual returns (address) {
+        revert("Must be overridden");
+    }
+
+    function _assertOwner() internal {
+        // Reference will compare to variable,
+        require(owner() == msg.sender, "Must be owner");
+    }
 
     // Leverage Macro should receive a request and set that data
     // Then perform the request
@@ -43,7 +52,7 @@ contract LeverageMacro {
         address _ebtc,
         address _coll,
         address _sortedCdps,
-        address _owner
+        bool _sweepToCaller
     ) {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         activePool = IActivePool(_activePool);
@@ -52,12 +61,7 @@ contract LeverageMacro {
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
 
-        owner = _owner;
-
-        // set allowance for flashloan lender/CDP open
-        ebtcToken.approve(_borrowerOperationsAddress, type(uint256).max);
-        stETH.approve(_borrowerOperationsAddress, type(uint256).max);
-        stETH.approve(_activePool, type(uint256).max);
+        willSweep = _sweepToCaller;
     }
 
     enum FlashLoanType {
@@ -88,8 +92,8 @@ contract LeverageMacro {
         CheckValueAndType expectedCollateral;
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
-        // Used only if isClosed
-        ICdpManagerData.Status expectedStatus;
+        // Used only to check status
+        ICdpManagerData.Status expectedStatus; // TODO: THIS IS SUPERFLUOUS
     }
 
     /**
@@ -113,7 +117,7 @@ contract LeverageMacro {
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
     ) external {
-        require(msg.sender == owner);
+        _assertOwner();
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
@@ -133,7 +137,7 @@ contract LeverageMacro {
         if (postCheckType == PostOperationCheck.openCdp) {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
-            initialCdpIndex = sortedCdps.cdpCountOf(msg.sender);
+            initialCdpIndex = sortedCdps.cdpCountOf(address(this));
         }
 
         // Take eBTC or stETH FlashLoan
@@ -163,13 +167,16 @@ contract LeverageMacro {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             // initialCdpIndex is initialCdpIndex + 1
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(msg.sender, initialCdpIndex);
+            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), initialCdpIndex);
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacroReference: openCDP status check"
+            );
         }
 
         // Update CDP, Ensure the stats are as intended
@@ -178,18 +185,45 @@ contract LeverageMacro {
 
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
             _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacroReference: adjustCDP status check"
+            );
         }
 
         // Post check type: Close, ensure it has the status we want
         if (postCheckType == PostOperationCheck.isClosed) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            require(cdpInfo.status == checkParams.expectedStatus);
+            require(
+                cdpInfo.status == checkParams.expectedStatus,
+                "!LeverageMacroReference: closeCDP status check"
+            );
         }
 
-        // Sweep here
-        _sweepToCaller();
+        // Sweep here if it's Reference, do not if it's delegate
+        if (willSweep) {
+            sweepToCaller();
+        }
+    }
+
+    // Make this public so you can delegate call to it and sweep to self
+    function sweepToCaller() public {
+        _assertOwner();
+        /**
+         * SWEEP TO CALLER *
+         */
+        // Safe unchecked because known tokens
+        uint256 ebtcBal = ebtcToken.balanceOf(address(this));
+        uint256 collateralBal = stETH.balanceOf(address(this));
+
+        if (ebtcBal > 0) {
+            ebtcToken.transfer(msg.sender, ebtcBal);
+        }
+
+        if (collateralBal > 0) {
+            stETH.transfer(msg.sender, collateralBal);
+        }
     }
 
     /// @dev Assumes that
@@ -201,11 +235,11 @@ contract LeverageMacro {
             // Early return
             return;
         } else if (check.operator == Operator.gte) {
-            require(check.value >= valueToCheck);
+            require(check.value >= valueToCheck, "!LeverageMacroReference: gte post check");
         } else if (check.operator == Operator.lte) {
-            require(check.value <= valueToCheck);
+            require(check.value <= valueToCheck, "!LeverageMacroReference: let post check");
         } else if (check.operator == Operator.equal) {
-            require(check.value == valueToCheck);
+            require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
         } else {
             // TODO: If proof OOB enum, then we can remove this
             revert("Operator not found");
@@ -241,23 +275,6 @@ contract LeverageMacro {
         OpenCdpOperation,
         AdjustCdpOperation,
         CloseCdpOperation
-    }
-
-    function _sweepToCaller() internal {
-        /**
-         * SWEEP TO CALLER *
-         */
-        // Safe unchecked because known tokens
-        uint256 ebtcBal = ebtcToken.balanceOf(address(this));
-        uint256 collateralBal = stETH.balanceOf(address(this));
-
-        if (ebtcBal > 0) {
-            ebtcToken.transfer(msg.sender, ebtcBal);
-        }
-
-        if (collateralBal > 0) {
-            stETH.transfer(msg.sender, collateralBal);
-        }
     }
 
     /// @dev Must be memory since we had to decode it
@@ -320,19 +337,19 @@ contract LeverageMacro {
         bytes calldata data
     ) external returns (bytes32) {
         // Verify we started the FL
-        require(initiator == address(this), "LeverageMacro: wrong initiator for flashloan");
+        require(initiator == address(this), "LeverageMacroReference: wrong initiator for flashloan");
 
         // Ensure the caller is the intended contract
         if (token == address(ebtcToken)) {
             require(
                 msg.sender == address(borrowerOperations),
-                "LeverageMacro: wrong lender for eBTC flashloan"
+                "LeverageMacroReference: wrong lender for eBTC flashloan"
             );
         } else {
             // Enforce that this is either eBTC or stETH
             require(
                 msg.sender == address(activePool),
-                "LeverageMacro: wrong lender for stETH flashloan"
+                "LeverageMacroReference: wrong lender for stETH flashloan"
             );
         }
 
@@ -403,7 +420,8 @@ contract LeverageMacro {
                 // > because if you don't want to check for 0, just don't have the check
                 require(
                     IERC20(swapChecks[i].tokenToCheck).balanceOf(address(this)) >
-                        swapChecks[i].expectedMinOut
+                        swapChecks[i].expectedMinOut,
+                    "LeverageMacroReference: swap check failure!"
                 );
             }
         }
@@ -414,6 +432,7 @@ contract LeverageMacro {
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
         require(addy != address(activePool));
+        require(addy != address(cdpManager));
         require(addy != address(this)); // If it could call this it could fake the forwarded caller
     }
 

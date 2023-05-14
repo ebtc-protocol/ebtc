@@ -17,6 +17,8 @@ import "./ITellor.sol";
  */
 contract TellorCaller is IFallbackCaller {
     ITellor public tellor;
+    uint256 timeOut;
+
     // TODO: Use new Tellor query ID for stETH/BTC when available
     bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =
         0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
@@ -25,6 +27,8 @@ contract TellorCaller is IFallbackCaller {
 
     constructor(address _tellorMasterAddress) {
         tellor = ITellor(_tellorMasterAddress);
+        // NOTE: random value for completeness purposes
+        timeOut = 4800;
     }
 
     /*
@@ -46,5 +50,15 @@ contract TellorCaller is IFallbackCaller {
         } else {
             return (_val, _timestampRetrieved, true);
         }
+    }
+
+    function fallbackTimeout() external view returns (uint256) {
+        return timeOut;
+    }
+
+    function setFallbackTimeout(uint256 _newFallbackTimeout) external {
+        uint256 oldTimeOut = timeOut;
+        timeOut = _newFallbackTimeout;
+        emit FallbackTimeOutChanged(oldTimeOut, _newFallbackTimeout);
     }
 }

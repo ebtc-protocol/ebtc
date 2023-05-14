@@ -69,8 +69,9 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     }
 
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
+        address oldFallbackCaller = address(fallbackCaller);
         fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit FallbackCallerChanged(_fallbackCaller);
+        emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
     }
 
     // --- Oracle response wrapper functions ---

@@ -380,7 +380,8 @@ contract('CdpManager', async accounts => {
    
    L_STETHColl = (0.995 / 20) + (10.4975*0.995  / 10) = 1.09425125 ETH
    L_EBTCDebt = (180 / 20) + (890 / 10) = 98 EBTC */
-    const L_EBTCDebt_AfterBobLiquidated = (await cdpManager.L_EBTCDebt())
+    const L_ETH_AfterBobLiquidated = await cdpManager.L_ETH()
+    const L_EBTCDebt_AfterBobLiquidated = (await cdpManager.L_EBTCDebt()).div(mv._1e18BN)
 
     const L_EBTCDebt_expected_2 = L_EBTCDebt_expected_1.add((_bobTotalDebt.sub(B_collateral.mul(price).div(LICR))).mul(mv._1e18BN).div(await cdpManager.totalStakes()))
     assert.isAtMost(th.getDifference(L_EBTCDebt_AfterBobLiquidated, L_EBTCDebt_expected_2), 1000)
