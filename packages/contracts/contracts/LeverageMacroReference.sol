@@ -3,11 +3,9 @@ pragma solidity 0.8.17;
 import {LeverageMacroBase} from "./LeverageMacroBase.sol";
 
 /**
- * Allows specifying arbitrary operations to lever up
- *     NOTE: Due to security concenrs
- *     LeverageMacroReference accepts allowances and transfers token to FlashLoanMacroReceiver
- *     // FlashLoanMacroReceiver can perform ARBITRARY CALLS YOU WILL LOSE ALL ASSETS IF YOU APPROVE IT
- *     LeverageMacroReference on the other hand is safe to approve as it cannot move your funds without your consent
+ * @title Reference implementation of LeverageMacro
+ * @notice Deploy a copy of this via `LeverageMacroFactory` to use it for yourself
+ * @dev You can deploy a copy of this via a clone or similar to save users gas
  */
 contract LeverageMacroReference is LeverageMacroBase {
     address internal immutable theOwner;

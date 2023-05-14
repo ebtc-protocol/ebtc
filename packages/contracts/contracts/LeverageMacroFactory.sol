@@ -3,7 +3,9 @@ pragma solidity 0.8.17;
 import {LeverageMacroReference} from "./LeverageMacroReference.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Interfaces/IEBTCToken.sol";
-
+/**
+ * @title Factory for deploying LeverageMacros
+ */
 contract LeverageMacroFactory {
     address public immutable borrowerOperations;
     address public immutable activePool;
@@ -30,10 +32,12 @@ contract LeverageMacroFactory {
         sortedCdps = _sortedCdps;
     }
 
+    /// @notice Deploys a new macro for you
     function deployNewMacro() external returns (address) {
         return deployNewMacro(msg.sender);
     }
 
+    /// @notice Deploys a new macro for an owner, only they can operate the macro
     function deployNewMacro(address _owner) public returns (address) {
         address addy = address(
             new LeverageMacroReference(

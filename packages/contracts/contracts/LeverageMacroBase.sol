@@ -15,6 +15,14 @@ interface ICdpCdps {
 }
 
 
+/**
+ * @title Base implementation of the LeverageMacro
+ * @notice Do not use this contract as a end users
+ * @dev You must extend this contract and override `owner()` to allow this to work:
+ *      - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
+ *      - As a deployed copy (LeverageMacroReference)
+ *      - Via delegate call (LeverageMacroDelegateTarget)
+ */
 contract LeverageMacroBase {
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
