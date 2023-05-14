@@ -42,13 +42,21 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
+
+    /// @notice The contract constructor initializes RolesAuthority with the given owner.
+    /// @param _owner The address of the owner, who gains all permissions by default.
     constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Convenience function intended for off-chain
+    /// @notice Returns a list of users that are assigned a specific role.
+    /// @dev This function searches all users and checks if they are assigned the given role.
+    /// @dev Intended for off-chain utility only due to inefficiency.
+    /// @param role The role ID to find users for.
+    /// @return usersWithRole An array of addresses that are assigned the given role.
+
     function getUsersByRole(uint8 role) external view returns (address[] memory usersWithRole) {
         // Search over all users: O(n) * 2
         uint count;
@@ -73,6 +81,12 @@ contract Governor is RolesAuthority {
             }
         }
     }
+
+    /// @notice Returns a list of roles that an address has.
+    /// @dev This function searches all roles and checks if they are assigned to the given user.
+    /// @dev Intended for off-chain utility only due to inefficiency.
+    /// @param user The address of the user.
+    /// @return rolesForUser An array of role IDs that the user has.
 
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled

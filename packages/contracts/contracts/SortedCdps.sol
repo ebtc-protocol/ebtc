@@ -168,10 +168,8 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) internal {
-        ICdpManager cdpManagerCached = cdpManager;
-
-        _requireCallerIsBOorCdpM(cdpManagerCached);
-        _insert(cdpManagerCached, _id, _NICR, _prevId, _nextId);
+        _requireCallerIsBOorCdpM();
+        _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
         nextCdpNonce += 1;
         cdpOwners[_id] = owner;
@@ -331,9 +329,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external override {
-        ICdpManager cdpManagerCached = cdpManager;
-
-        _requireCallerIsBOorCdpM(cdpManagerCached);
+        _requireCallerIsBOorCdpM();
         // List must contain the node
         require(contains(_id), "SortedCdps: List does not contain the id");
         // NICR must be non-zero
@@ -342,7 +338,7 @@ contract SortedCdps is ISortedCdps {
         // Remove node from the list
         _remove(_id);
 
-        _insert(cdpManagerCached, _id, _newNICR, _prevId, _nextId);
+        _insert(cdpManager, _id, _newNICR, _prevId, _nextId);
     }
 
     /**
@@ -378,8 +374,10 @@ contract SortedCdps is ISortedCdps {
         _ownedCount[from] = lastCdpIndex;
     }
 
-    /*
-     * @dev Checks if the list contains a node
+    /**
+     * @dev Checks if the list contains a given node
+     * @param _id The ID of the node
+     * @return true if the node exists, false otherwise
      */
     function contains(bytes32 _id) public view override returns (bool) {
         bool _exist = _id != dummyId && (data.head == _id || data.tail == _id);
@@ -390,59 +388,67 @@ contract SortedCdps is ISortedCdps {
         return _exist;
     }
 
-    /*
+    /**
      * @dev Checks if the list is full
+     * @return true if the list is full, false otherwise
      */
     function isFull() public view override returns (bool) {
         return data.size == data.maxSize;
     }
 
-    /*
+    /**
      * @dev Checks if the list is empty
+     * @return true if the list is empty, false otherwise
      */
     function isEmpty() public view override returns (bool) {
         return data.size == 0;
     }
 
-    /*
+    /**
      * @dev Returns the current size of the list
+     * @return The current size of the list
      */
     function getSize() external view override returns (uint256) {
         return data.size;
     }
 
-    /*
+    /**
      * @dev Returns the maximum size of the list
+     * @return The maximum size of the list
      */
     function getMaxSize() external view override returns (uint256) {
         return data.maxSize;
     }
 
-    /*
+    /**
      * @dev Returns the first node in the list (node with the largest NICR)
+     * @return The ID of the first node
      */
     function getFirst() external view override returns (bytes32) {
         return data.head;
     }
 
-    /*
+    /**
      * @dev Returns the last node in the list (node with the smallest NICR)
+     * @return The ID of the last node
      */
     function getLast() external view override returns (bytes32) {
         return data.tail;
     }
 
-    /*
+    /**
      * @dev Returns the next node (with a smaller NICR) in the list for a given node
-     * @param _id Node's id
+     * @param _id The ID of the node
+     * @return The ID of the next node
      */
     function getNext(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].nextId;
     }
 
-    /*
+    /**
      * @dev Returns the previous node (with a larger NICR) in the list for a given node
-     * @param _id Node's id
+     * @param _id The ID of the node
+     * @return The ID of the previous node
      */
     function getPrev(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].prevId;
@@ -453,6 +459,7 @@ contract SortedCdps is ISortedCdps {
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
+     * @return true if the position is valid, false otherwise
      */
     function validInsertPosition(
         uint256 _NICR,
@@ -547,6 +554,7 @@ contract SortedCdps is ISortedCdps {
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
+     * @return The IDs of the previous and next nodes for the insert position
      */
     function findInsertPosition(
         uint256 _NICR,
@@ -596,13 +604,15 @@ contract SortedCdps is ISortedCdps {
 
     // --- 'require' functions ---
 
+    /// @dev Asserts that the caller of the function is the CdpManager
     function _requireCallerIsCdpManager() internal view {
         require(msg.sender == address(cdpManager), "SortedCdps: Caller is not the CdpManager");
     }
 
-    function _requireCallerIsBOorCdpM(ICdpManager _cdpManager) internal view {
+    /// @dev Asserts that the caller of the function is either the BorrowerOperations contract or the CdpManager
+    function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress || msg.sender == address(_cdpManager),
+            msg.sender == borrowerOperationsAddress || msg.sender == address(cdpManager),
             "SortedCdps: Caller is neither BO nor CdpM"
         );
     }

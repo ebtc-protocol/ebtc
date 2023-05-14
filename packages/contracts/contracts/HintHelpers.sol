@@ -240,10 +240,12 @@ contract HintHelpers is LiquityBase {
         }
     }
 
+    /// @notice Compute nominal CR for a specified collateral and debt amount
     function computeNominalCR(uint _coll, uint _debt) external pure returns (uint) {
         return LiquityMath._computeNominalCR(_coll, _debt);
     }
 
+    /// @notice Compute CR for a specified collateral and debt amount
     function computeCR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
