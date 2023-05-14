@@ -1058,6 +1058,9 @@ Leverage Macro is divided into multiple contracts:
   The smart contract version that can be deployed as a contract / proxy which will open a CDP via FLashloan on behalf of it's owner
 
 ### SimplifiedDiamondLike
+A reference implementation of a smart contract wallet that uses configurable callbacks to use leverage macro natively, rather than as a separate support contract.
+Demonstrates how this can also be achieved by other SC wallets with configurable callbacks such as Gnosis Safe.
+
 A mix of a DSProxy and a Diamond
 -> `execute` is heavily inspired by Gnosis Safe
 -> `_fallback` is basically a diamon proxy with the extra check for callback being enabled
