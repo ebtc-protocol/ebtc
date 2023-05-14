@@ -72,6 +72,8 @@ contract SimplifiedDiamondLike {
 
 
     /// @notice Allows one callback for this call
+    ///     This is a VERY DANGEROUS setting
+    ///     Ensure you use the callback in the same call as you set it, or this may be used to attack this wallet
     function enableCallbackForCall() external {
         require(msg.sender == address(this)); // Must call this via `execute` to explicitly set the flag
 
