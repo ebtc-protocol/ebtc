@@ -51,12 +51,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     // --- Dependency setters ---
 
-    /*
-        @notice Sets the addresses of the contracts and initializes the system
-        @param _fallbackCallerAddress The address of the Fallback oracle contract
-        @param _authorityAddress The address of the Authority contract
-        @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
-    **/
+    /// @notice Sets the addresses of the contracts and initializes the system
+    /// @param _fallbackCallerAddress The address of the Fallback oracle contract
+    /// @param _authorityAddress The address of the Authority contract
+    /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
     constructor(address _fallbackCallerAddress, address _authorityAddress) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
@@ -84,14 +82,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     }
 
     // --- Functions ---
-    /*
-        @notice Returns the latest price obtained from the Oracle
-        @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
-        @dev Non-view function - it stores the last good price seen by eBTC.
-        @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
-        @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
-        @return The latest price fetched from the Oracle
-    **/
+
+    /// @notice Returns the latest price obtained from the Oracle
+    /// @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
+    /// @dev Non-view function - it stores the last good price seen by eBTC.
+    /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
+    /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
+    /// @return The latest price fetched from the Oracle
     function fetchPrice() external override returns (uint) {
         // Get current and previous price data from Chainlink, and current price data from Fallback
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -330,10 +327,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     }
 
     // --- Governance Functions ---
-    /*
-        @notice Sets a new fallback oracle 
-        @param _fallbackCaller The new IFallbackCaller-compliant oracle address
-    **/
+    /// @notice Sets a new fallback oracle
+    /// @dev Healthy response of new oracle is checked, with extra event emitted on failure
+    /// @param _fallbackCaller The address of the new IFallbackCaller compliant oracle\
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
         // health check-up before officially set it up
         IFallbackCaller newFallbackCaler = IFallbackCaller(_fallbackCaller);
@@ -366,20 +362,24 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     // --- Helper functions ---
 
-    /* Chainlink is considered broken if its current or previous round data is in any way bad. We check the previous round
-     * for two reasons:
-     *
-     * 1) It is necessary data for the price deviation check in case 1,
-     * and
-     * 2) Chainlink is the PriceFeed's preferred primary oracle - having two consecutive valid round responses adds
-     * peace of mind when using or returning to Chainlink.
-     */
+    /// @notice Checks if Chainlink oracle is broken by checking both the current and previous responses
+    /// @dev Chainlink is considered broken if its current or previous round data is in any way bad. We check the previous round for two reasons.
+    /// @dev 1. It is necessary data for the price deviation check in case 1
+    /// @dev 2. Chainlink is the PriceFeed's preferred primary oracle - having two consecutive valid round responses adds peace of mind when using or returning to Chainlink.
+    /// @param _currentResponse The latest response from the Chainlink oracle
+    /// @param _prevResponse The previous response from the Chainlink oracle
+    /// @return A boolean indicating whether the Chainlink oracle is broken
     function _chainlinkIsBroken(
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
     ) internal view returns (bool) {
         return _badChainlinkResponse(_currentResponse) || _badChainlinkResponse(_prevResponse);
     }
+
+    /// @notice Checks for a bad response from the Chainlink oracle
+    /// @dev A response is considered bad if the success value reports failure, or if the timestamp is invalid (0 or in the future)
+    /// @param _response The response from the Chainlink oracle to evaluate
+    /// @return A boolean indicating whether the Chainlink oracle response is bad
 
     function _badChainlinkResponse(ChainlinkResponse memory _response) internal view returns (bool) {
         // Check for response call reverted
@@ -400,12 +400,20 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return false;
     }
 
+    /// @notice Checks if the Chainlink oracle is frozen
+    /// @dev The oracle is considered frozen if either of the feed timestamps are older than the threshold specified by the static timeout thresholds
+    /// @param _response The response from the Chainlink oracle to evaluate
+    /// @return A boolean indicating whether the Chainlink oracle is frozen
     function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
         return
             block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
             block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
     }
 
+    /// @notice Checks if the price change between Chainlink oracle rounds is above the maximum threshold allowed
+    /// @param _currentResponse The latest response from the Chainlink oracle
+    /// @param _prevResponse The previous response from the Chainlink oracle
+    /// @return A boolean indicating whether the price change from Chainlink oracle is above the maximum threshold allowed
     function _chainlinkPriceChangeAboveMax(
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
@@ -441,11 +449,20 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return false;
     }
 
+    /// @notice Checks if the fallback oracle is frozen by comparing the current timestamp with the timeout value.
+    /// @param _fallbackResponse Response from the fallback oracle to check
+    /// @return A boolean indicating whether the fallback oracle is frozen.
     function _fallbackIsFrozen(
         FallbackResponse memory _fallbackResponse
     ) internal view returns (bool) {
         return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
     }
+
+    /// @notice Checks if both the Chainlink and fallback oracles are live, unbroken, and reporting similar prices.
+    /// @param _chainlinkResponse The latest response from the Chainlink oracle.
+    /// @param _prevChainlinkResponse The previous response from the Chainlink oracle.
+    /// @param _fallbackResponse The latest response from the fallback oracle.
+    /// @return A boolean indicating whether both oracles are live, unbroken, and reporting similar prices.
 
     function _bothOraclesLiveAndUnbrokenAndSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
@@ -465,6 +482,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 
+    /// @notice Checks if the prices reported by the Chainlink and fallback oracles are similar, within the maximum deviation specified by MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES.
+    /// @param _chainlinkResponse The response from the Chainlink oracle.
+    /// @param _fallbackResponse The response from the fallback oracle.
+    /// @return A boolean indicating whether the prices reported by both oracles are similar.
+
     function _bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
         FallbackResponse memory _fallbackResponse
@@ -483,21 +505,31 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return percentPriceDifference <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES;
     }
 
+    /// @notice Changes the status of the oracle state machine
+    /// @param _status The new status of the contract.
     function _changeStatus(Status _status) internal {
         status = _status;
         emit PriceFeedStatusChanged(_status);
     }
 
+    /// @notice Stores the latest valid price.
+    /// @param _currentPrice The price to be stored.
     function _storePrice(uint _currentPrice) internal {
         lastGoodPrice = _currentPrice;
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
+    /// @notice Stores the price reported by the fallback oracle.
+    /// @param _fallbackResponse The latest response from the fallback oracle.
+    /// @return The price reported by the fallback oracle.
     function _storeFallbackPrice(FallbackResponse memory _fallbackResponse) internal returns (uint) {
         _storePrice(_fallbackResponse.answer);
         return _fallbackResponse.answer;
     }
 
+    /// @notice Stores the price reported by the Chainlink oracle.
+    /// @param _answer The latest price reported by the Chainlink oracle.
+    /// @return The price reported by the Chainlink oracle.
     function _storeChainlinkPrice(uint256 _answer) internal returns (uint) {
         _storePrice(_answer);
 
@@ -505,10 +537,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     }
 
     // --- Oracle response wrapper functions ---
-    /*
-     * "_getCurrentFallbackResponse" fetches stETH/BTC price from Fallback, and returns them as a
-     * FallbackResponse struct. If the Fallback is set to the ADDRESS_ZERO, return failing struct.
-     */
+
+    /// @notice Retrieves the latest response from the fallback oracle. If the fallback oracle address is set to the zero address, it returns a failing struct.
+    /// @return fallbackResponse The latest response from the fallback oracle.
+
     function _getCurrentFallbackResponse()
         internal
         view
@@ -532,6 +564,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return fallbackResponse;
         }
     }
+
+    /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
+    /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
     function _getCurrentChainlinkResponse()
         internal
@@ -606,6 +641,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         chainlinkResponse.success = true;
     }
+
+    /// @notice Fetches Chainlink responses for the previous round of data for both ETH-BTC and stETH-ETH price feeds.
+    /// @param _currentRoundEthBtcId The current round ID for the ETH-BTC price feed.
+    /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
+    /// @return prevChainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
     function _getPrevChainlinkResponse(
         uint80 _currentRoundEthBtcId,
@@ -688,10 +728,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         prevChainlinkResponse.success = true;
     }
 
-    // @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
-    // @param _roundId The aggregator round of the target CL feed
-    // @param _answer CL price price reported for target feeds
-    // @return The boolean state indicating CL response health for aggregation
+    /// @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
+    /// @param _roundId The aggregator round of the target CL feed
+    /// @param _answer CL price price reported for target feeds
+    /// @return The boolean state indicating CL response health for aggregation
     function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
         if (_answer <= 0) return false;
         if (_roundId == 0) return false;

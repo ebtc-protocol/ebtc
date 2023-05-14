@@ -14,6 +14,19 @@ import "./Dependencies/Proxy.sol";
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Dependency setter ---
 
+    /**
+     * @notice Constructor for CdpManager contract.
+     * @dev Sets up dependencies and initial staking reward split.
+     * @param _liquidationLibraryAddress Address of the liquidation library.
+     * @param _authorityAddress Address of the authority.
+     * @param _borrowerOperationsAddress Address of BorrowerOperations.
+     * @param _collSurplusPoolAddress Address of CollSurplusPool.
+     * @param _ebtcTokenAddress Address of the eBTC token.
+     * @param _sortedCdpsAddress Address of the SortedCDPs.
+     * @param _activePoolAddress Address of the ActivePool.
+     * @param _priceFeedAddress Address of the price feed.
+     * @param _collTokenAddress Address of the collateral token.
+     */
     constructor(
         address _liquidationLibraryAddress,
         address _authorityAddress,
@@ -56,10 +69,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Getters ---
 
+    /**
+     * @notice Get the count of CDPs in the system
+     * @return The number of CDPs.
+     */
+
     function getCdpIdsCount() external view override returns (uint) {
         return CdpIds.length;
     }
 
+    /**
+     * @notice Get the CdpId at a given index in the CdpIds array.
+     * @param _index Index of the CdpIds array.
+     * @return CDP ID.
+     */
     function getIdFromCdpIdsArray(uint _index) external view override returns (bytes32) {
         return CdpIds[_index];
     }
@@ -82,17 +105,21 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     //                |  liquidator could get collateral of (repaidDebt * max(LICR, min(ICR, MCR)) / price)
     // -----------------------------------------------------------------
 
-    // Single CDP liquidation function (fully).
-    /**
-    callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).  
-    @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-     */
+    /// @notice Fully liquidate a single CDP by ID. CDP must meet the criteria for liquidation at the time of execution.
+    /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the CDP to liquidate.
+
     function liquidate(bytes32 _cdpId) external override {
         _delegate(liquidationLibrary);
     }
 
-    // Single CDP liquidation function (partially).
+    /// @notice Partially liquidate a single CDP.
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the CDP to partially liquidate.
+    /// @param _partialAmount Amount to partially liquidate.
+    /// @param _upperPartialHint Upper hint for reinsertion of the CDP into the linked list.
+    /// @param _lowerPartialHint Lower hint for reinsertion of the CDP into the linked list.
     function partiallyLiquidate(
         bytes32 _cdpId,
         uint256 _partialAmount,
@@ -104,31 +131,28 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Batch/Sequence liquidation functions ---
 
-    /*
-     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR or CR < TCR in reocvery mode,
-     * starting from the one with the lowest collateral ratio in the system, and moving upwards
-
-     callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
-
-     @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-     */
+    /// @notice Liquidate a sequence of cdps.
+    /// @notice Closes a maximum number of n cdps with their CR < MCR in normla mode, or CR < TCR in recovery mode, starting from the one with the lowest collateral ratio in the system, and moving upwards.
+    /// @notice Callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _n Maximum number of CDPs to liquidate.
     function liquidateCdps(uint _n) external override {
         _delegate(liquidationLibrary);
     }
 
-    /*
-     * Attempt to liquidate a custom list of cdps provided by the caller.
-
-     callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
-     @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-     */
+    /// @notice Attempt to liquidate a custom list of CDPs provided by the caller
+    /// @notice Callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpArray Array of CDPs to liquidate.
     function batchLiquidateCdps(bytes32[] memory _cdpArray) external override {
         _delegate(liquidationLibrary);
     }
 
     // --- Redemption functions ---
 
-    // Redeem as much collateral as possible from given Cdp in exchange for EBTC up to _maxEBTCamount
+    /// @notice // Redeem as much collateral as possible from given Cdp in exchange for EBTC up to specified maximum
+    /// @param _redeemColFromCdp Struct containing variables for redeeming collateral.
+    /// @return singleRedemption Struct containing redemption values.
     function _redeemCollateralFromCdp(
         LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp
     ) internal returns (SingleRedemptionValues memory singleRedemption) {

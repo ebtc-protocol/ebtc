@@ -10,12 +10,11 @@ import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
-/*
+/**
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
  *
  * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
- *
  */
 contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -32,6 +31,14 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     ICollateralToken public collateral;
 
     // --- Contract setters ---
+
+    /// @notice Constructor for the ActivePool contract
+    /// @dev Initializes the contract with the borrowerOperationsAddress, cdpManagerAddress, collateral token address, collSurplusAddress, and feeRecipientAddress
+    /// @param _borrowerOperationsAddress The address of the Borrower Operations contract
+    /// @param _cdpManagerAddress The address of the Cdp Manager contract
+    /// @param _collTokenAddress The address of the collateral token
+    /// @param _collSurplusAddress The address of the collateral surplus pool
+    /// @param _feeRecipientAddress The address of the fee recipient
 
     constructor(
         address _borrowerOperationsAddress,
@@ -61,24 +68,35 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     // --- Getters for public variables. Required by IPool interface ---
 
-    /*
-     * Returns the StEthColl state variable.
-     *
-     *Not necessarily equal to the the contract's raw StEthColl balance - ether can be forcibly sent to contracts.
-     */
+    /// @notice Amount of stETH collateral shares in the contract
+    /// @dev Not necessarily equal to the the contract's raw StEthColl balance - tokens can be forcibly sent to contracts
+    /// @return uint The amount of StEthColl allocated to the pool
+
     function getStEthColl() external view override returns (uint) {
         return StEthColl;
     }
 
+    /// @notice Returns the EBTCDebt state variable
+    /// @dev The amount of EBTC debt in the pool. Like StEthColl, this is not necessarily equal to the contract's EBTC token balance - tokens can be forcibly sent to contracts
+    /// @return uint The amount of EBTC debt in the pool
+
     function getEBTCDebt() external view override returns (uint) {
         return EBTCDebt;
     }
+
+    /// @notice The amount of stETH collateral shares claimable by the fee recipient
+    /// @return uint The amount of collateral shares claimable by the fee recipient
 
     function getFeeRecipientClaimableColl() external view override returns (uint) {
         return FeeRecipientColl;
     }
 
     // --- Pool functionality ---
+
+    /// @notice Sends stETH collateral shares to a specified account
+    /// @dev Only for use by system contracts, the caller must be either BorrowerOperations or CdpManager
+    /// @param _account The address of the account to send stETH to
+    /// @param _shares The amount of stETH shares to send
 
     function sendStEthColl(address _account, uint _shares) public override {
         _requireCallerIsBOorCdpM();
@@ -94,14 +112,17 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         _transferSharesWithContractHooks(_account, _shares);
     }
 
-    /**
-        @notice Send shares
-        @notice Liquidator reward shares are not tracked via internal accoutning in the active pool and are assumed to be present in expected amount as part of the intended behavior of bops and cdpm
-        @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
-        @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
-        @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the 
-        @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP. 
-     */
+    /// @notice Sends stETH to a specified account, drawing from both core shares and liquidator rewards shares
+    /// @notice Liquidator reward shares are not tracked via internal accounting in the active pool and are assumed to be present in expected amount as part of the intended behavior of BorowerOperations and CdpManager
+    /// @dev Liquidator reward shares are added when a cdp is opened, and removed when it is closed
+    /// @dev closeCdp() or liqudations result in the actor (borrower or liquidator respectively) receiving the liquidator reward shares
+    /// @dev Redemptions result in the shares being sent to the coll surplus pool for claiming by the CDP owner
+    /// @dev Note that funds in the coll surplus pool, just like liquidator reward shares, are not tracked as part of the system CR or coll of a CDP.
+    /// @dev Requires that the caller is either BorrowerOperations or CdpManager
+    /// @param _account The address of the account to send StEthColl and the liquidator reward to
+    /// @param _shares The amount of StEthColl to send
+    /// @param _liquidatorRewardShares The amount of the liquidator reward shares to send
+
     function sendStEthCollAndLiquidatorReward(
         address _account,
         uint _shares,
@@ -121,11 +142,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         _transferSharesWithContractHooks(_account, totalShares);
     }
 
-    /**
-        @notice Allocate stETH shares from the system to the fee recipient to claim at-will (pull model)
-        @dev Only the current fee recipient address is able to claim the shares
-        @dev If the fee recipient address is changed while outstanding claimable coll is available, only the new fee recipient will be able to claim the outstanding coll
-     */
+    /// @notice Allocate stETH shares from the system to the fee recipient to claim at-will (pull model)
+    /// @dev Requires that the caller is CdpManager
+    /// @dev Only the current fee recipient address is able to claim the shares
+    /// @dev If the fee recipient address is changed while outstanding claimable coll is available, only the new fee recipient will be able to claim the outstanding coll
+    /// @param _shares The amount of StEthColl to allocate to the fee recipient
+
     function allocateFeeRecipientColl(uint _shares) external override {
         _requireCallerIsCdpManager();
 
@@ -141,7 +163,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
     }
 
-    /// @dev Transfer shares to another address, ensuring to update the internal accounting of other system pools if they are the recipient
+    /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
+    /// @param _account The address to transfer shares to
+    /// @param _shares The amount of shares to transfer
+
     function _transferSharesWithContractHooks(address _account, uint _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferShares(_account, _shares);
@@ -151,6 +176,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         }
     }
 
+    /// @notice Increases the tracked EBTC debt of the system by a specified amount
+    /// @dev Managed by system contracts - requires that the caller is either BorrowerOperations or CdpManager
+    /// @param _amount: The amount to increase the system EBTC debt by
+
     function increaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
 
@@ -159,6 +188,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         EBTCDebt = _EBTCDebt + _amount;
         emit ActivePoolEBTCDebtUpdated(_EBTCDebt);
     }
+
+    /// @notice Decreases the tracked EBTC debt of the system by a specified amount
+    /// @dev Managed by system contracts - requires that the caller is either BorrowerOperations or CdpManager
+    /// @param _amount: The amount to decrease the system EBTC debt by
 
     function decreaseEBTCDebt(uint _amount) external override {
         _requireCallerIsBOorCdpM();
@@ -171,13 +204,15 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     // --- 'require' functions ---
 
+    /// @notice Checks if the caller is BorrowerOperations
     function _requireCallerIsBorrowerOperations() internal view {
         require(
             msg.sender == borrowerOperationsAddress,
-            "ActivePool: Caller is neither BO nor Default Pool"
+            "ActivePool: Caller is not BorrowerOperations"
         );
     }
 
+    /// @notice Checks if the caller is either BorrowerOperations or CdpManager
     function _requireCallerIsBOorCdpM() internal view {
         require(
             msg.sender == borrowerOperationsAddress || msg.sender == cdpManagerAddress,
@@ -185,9 +220,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         );
     }
 
+    /// @notice Checks if the caller is CdpManager
     function _requireCallerIsCdpManager() internal view {
         require(msg.sender == cdpManagerAddress, "ActivePool: Caller is not CdpManager");
     }
+
+    /// @notice Notify that stETH collateral shares have been recieved, updating internal accounting accordingly
+    /// @param _value The amount of collateral to receive
 
     function receiveColl(uint _value) external override {
         _requireCallerIsBorrowerOperations();
@@ -198,6 +237,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     }
 
     // === Flashloans === //
+
+    /// @notice Borrow assets with a flash loan
+    /// @param receiver The address to receive the flash loan
+    /// @param token The address of the token to loan
+    /// @param amount The amount of tokens to loan
+    /// @param data Additional data
+    /// @return A boolean value indicating whether the operation was successful
 
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -247,13 +293,21 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         return true;
     }
 
+    /// @notice Calculate the flash loan fee for a given token and amount loaned
+    /// @param token The address of the token to calculate the fee for
+    /// @param amount The amount of tokens to calculate the fee for
+    /// @return The amount of the flash loan fee
+
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
         return (amount * feeBps) / MAX_BPS;
     }
 
-    /// @dev Max flashloan, exclusively in collateral token equals to the current balance
+    /// @notice Get the maximum flash loan amount for a specific token
+    /// @dev Exclusively used here for stETH collateral, equal to the current balance of the pool
+    /// @param token The address of the token to get the maximum flash loan amount for
+    /// @return The maximum flash loan amount for the token
     function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(collateral)) {
             return 0;
@@ -264,11 +318,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     // === Governed Functions === //
 
-    /**
-        @notice Claim outstanding shares for fee recipient, updating internal accounting and transferring the shares.
-        @dev Call permissinos are managed via authority for flexibility, rather than gating call to just feeRecipient.
-        @dev Is likely safe as an open permission though caution should be taken.
-     */
+    /// @notice Claim outstanding shares for fee recipient, updating internal accounting and transferring the shares.
+    /// @dev Call permissinos are managed via authority for flexibility, rather than gating call to just feeRecipient.
+    /// @dev Is likely safe as an open permission though caution should be taken.
+    /// @param _shares The amount of shares to claim to feeRecipient
+
     function claimFeeRecipientColl(uint _shares) external override requiresAuth {
         uint _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
@@ -282,6 +336,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
+
     function sweepToken(address token, uint amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
 

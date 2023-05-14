@@ -3,7 +3,7 @@
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
 
-eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with no counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
+eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
 

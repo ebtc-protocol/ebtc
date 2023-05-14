@@ -90,7 +90,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
-        vm.expectRevert("ActivePool: Caller is neither BO nor Default Pool");
+        vm.expectRevert("ActivePool: Caller is not BorrowerOperations");
         payable(address(activePool)).call{value: amount}("");
     }
 
