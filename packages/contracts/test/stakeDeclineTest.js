@@ -31,7 +31,6 @@ contract('CdpManager', async accounts => {
   let cdpManager
   let activePool
   let collSurplusPool
-  let defaultPool
   let borrowerOperations
   let hintHelpers
 
@@ -55,21 +54,15 @@ contract('CdpManager', async accounts => {
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCTokenTester.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address,
-      contracts.authority.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     ebtcToken = contracts.ebtcToken
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    defaultPool = contracts.defaultPool
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
     hintHelpers = contracts.hintHelpers
@@ -78,7 +71,6 @@ contract('CdpManager', async accounts => {
     feeRecipient = LQTYContracts.feeRecipient
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it("A given cdp's stake decline is negligible with adjustments and tiny liquidations", async () => {
@@ -135,7 +127,6 @@ contract('CdpManager', async accounts => {
     console.log(`totalStakesSnapshot after L1: ${await cdpManager.totalStakesSnapshot()}`)
     console.log(`totalCollateralSnapshot after L1: ${await cdpManager.totalCollateralSnapshot()}`)
     console.log(`Snapshots ratio after L1: ${await getSnapshotsRatio()}`)
-    console.log(`B pending ETH reward after L1: ${await cdpManager.getPendingETHReward(B)}`)
     console.log(`B stake after L1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
 
     // adjust cdp B 1 wei: apply rewards

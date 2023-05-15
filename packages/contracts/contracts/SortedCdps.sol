@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/IBorrowerOperations.sol";
-import "./Dependencies/SafeMath.sol";
-import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
  *
- * Nodes map to active Cdps in the system - the ID property is the address of a Cdp owner.
+ * Nodes map to active Cdps in the system by ID.
  * Nodes are ordered according to their current nominal individual collateral ratio (NICR),
  * which is like the ICR but without the price, i.e., just collateral / debt.
  *
@@ -43,18 +39,15 @@ import "./Dependencies/CheckContract.sol";
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
-contract SortedCdps is Ownable, CheckContract, ISortedCdps {
-    using SafeMath for uint256;
-
+contract SortedCdps is ISortedCdps {
     string public constant NAME = "SortedCdps";
 
-    address public borrowerOperationsAddress;
+    address public immutable borrowerOperationsAddress;
 
-    ICdpManager public cdpManager;
+    ICdpManager public immutable cdpManager;
 
     // Information for a node in the list
     struct Node {
-        bool exists;
         bytes32 nextId; // Id of next node (smaller NICR) in the list
         bytes32 prevId; // Id of previous node (larger NICR) in the list
     }
@@ -85,15 +78,10 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
     mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
-
-    function setParams(
-        uint256 _size,
-        address _cdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) external override onlyOwner {
-        require(_size > 0, "SortedCdps: Size can't be zero");
-        checkContract(_cdpManagerAddress);
-        checkContract(_borrowerOperationsAddress);
+    constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
+        if (_size == 0) {
+            _size = type(uint256).max;
+        }
 
         data.maxSize = _size;
 
@@ -102,8 +90,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-
-        renounceOwnership();
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
@@ -130,7 +116,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         return cdpOwners[cdpId];
     }
 
-    function nonExistId() public view override returns (bytes32) {
+    function nonExistId() public pure override returns (bytes32) {
         return dummyId;
     }
 
@@ -160,29 +146,30 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         bytes32 _nextId
     ) external override returns (bytes32) {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
-        insert(owner, _id, _NICR, _prevId, _nextId);
+        require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
+
+        _insertWithGeneratedId(owner, _id, _NICR, _prevId, _nextId);
         return _id;
     }
 
     /*
      * @dev Add a node to the list
+     * @param owner cdp owner
      * @param _id Node's id
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
 
-    function insert(
+    function _insertWithGeneratedId(
         address owner,
         bytes32 _id,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
-    ) public override {
-        ICdpManager cdpManagerCached = cdpManager;
-
-        _requireCallerIsBOorCdpM(cdpManagerCached);
-        _insert(cdpManagerCached, _id, _NICR, _prevId, _nextId);
+    ) internal {
+        _requireCallerIsBOorCdpM();
+        _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
         nextCdpNonce += 1;
         cdpOwners[_id] = owner;
@@ -214,8 +201,6 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
             (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
         }
 
-        data.nodes[_id].exists = true;
-
         if (prevId == dummyId && nextId == dummyId) {
             // Insert as head and tail
             data.head = _id;
@@ -238,7 +223,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
             data.nodes[nextId].prevId = _id;
         }
 
-        data.size = data.size.add(1);
+        data.size = data.size + 1;
         emit NodeAdded(_id, _NICR);
     }
 
@@ -249,6 +234,45 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         address _owner = cdpOwners[_id];
         _removeCdpFromOwnerEnumeration(_owner, _id);
         delete cdpOwners[_id];
+    }
+
+    function batchRemove(bytes32[] memory _ids) external override {
+        _requireCallerIsCdpManager();
+        uint _len = _ids.length;
+        require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
+
+        bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
+        bytes32 _lastNext = data.nodes[_ids[_len - 1]].nextId;
+
+        require(
+            _firstPrev != dummyId || _lastNext != dummyId,
+            "SortedCdps: batchRemove() leave ZERO node left!"
+        );
+
+        for (uint i = 0; i < _len; ++i) {
+            require(contains(_ids[i]), "SortedCdps: List does not contain the id");
+        }
+
+        // orphan nodes in between to save gas
+        if (_firstPrev != dummyId) {
+            data.nodes[_firstPrev].nextId = _lastNext;
+        } else {
+            data.head = _lastNext;
+        }
+        if (_lastNext != dummyId) {
+            data.nodes[_lastNext].prevId = _firstPrev;
+        } else {
+            data.tail = _firstPrev;
+        }
+
+        // delete node & owner storages to get gas refund
+        for (uint i = 0; i < _len; ++i) {
+            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
+            delete cdpOwners[_ids[i]];
+            delete data.nodes[_ids[i]];
+            emit NodeRemoved(_ids[i]);
+        }
+        data.size = data.size - _len;
     }
 
     /*
@@ -288,7 +312,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         }
 
         delete data.nodes[_id];
-        data.size = data.size.sub(1);
+        data.size = data.size - 1;
         emit NodeRemoved(_id);
     }
 
@@ -305,9 +329,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external override {
-        ICdpManager cdpManagerCached = cdpManager;
-
-        _requireCallerIsBOorCdpM(cdpManagerCached);
+        _requireCallerIsBOorCdpM();
         // List must contain the node
         require(contains(_id), "SortedCdps: List does not contain the id");
         // NICR must be non-zero
@@ -316,7 +338,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         // Remove node from the list
         _remove(_id);
 
-        _insert(cdpManagerCached, _id, _newNICR, _prevId, _nextId);
+        _insert(cdpManager, _id, _newNICR, _prevId, _nextId);
     }
 
     /**
@@ -352,66 +374,81 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
         _ownedCount[from] = lastCdpIndex;
     }
 
-    /*
-     * @dev Checks if the list contains a node
+    /**
+     * @dev Checks if the list contains a given node
+     * @param _id The ID of the node
+     * @return true if the node exists, false otherwise
      */
     function contains(bytes32 _id) public view override returns (bool) {
-        return data.nodes[_id].exists;
+        bool _exist = _id != dummyId && (data.head == _id || data.tail == _id);
+        if (!_exist) {
+            Node memory _node = data.nodes[_id];
+            _exist = _id != dummyId && (_node.nextId != dummyId && _node.prevId != dummyId);
+        }
+        return _exist;
     }
 
-    /*
+    /**
      * @dev Checks if the list is full
+     * @return true if the list is full, false otherwise
      */
     function isFull() public view override returns (bool) {
         return data.size == data.maxSize;
     }
 
-    /*
+    /**
      * @dev Checks if the list is empty
+     * @return true if the list is empty, false otherwise
      */
     function isEmpty() public view override returns (bool) {
         return data.size == 0;
     }
 
-    /*
+    /**
      * @dev Returns the current size of the list
+     * @return The current size of the list
      */
     function getSize() external view override returns (uint256) {
         return data.size;
     }
 
-    /*
+    /**
      * @dev Returns the maximum size of the list
+     * @return The maximum size of the list
      */
     function getMaxSize() external view override returns (uint256) {
         return data.maxSize;
     }
 
-    /*
+    /**
      * @dev Returns the first node in the list (node with the largest NICR)
+     * @return The ID of the first node
      */
     function getFirst() external view override returns (bytes32) {
         return data.head;
     }
 
-    /*
+    /**
      * @dev Returns the last node in the list (node with the smallest NICR)
+     * @return The ID of the last node
      */
     function getLast() external view override returns (bytes32) {
         return data.tail;
     }
 
-    /*
+    /**
      * @dev Returns the next node (with a smaller NICR) in the list for a given node
-     * @param _id Node's id
+     * @param _id The ID of the node
+     * @return The ID of the next node
      */
     function getNext(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].nextId;
     }
 
-    /*
+    /**
      * @dev Returns the previous node (with a larger NICR) in the list for a given node
-     * @param _id Node's id
+     * @param _id The ID of the node
+     * @return The ID of the previous node
      */
     function getPrev(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].prevId;
@@ -422,6 +459,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
+     * @return true if the position is valid, false otherwise
      */
     function validInsertPosition(
         uint256 _NICR,
@@ -516,6 +554,7 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
      * @param _NICR Node's NICR
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
+     * @return The IDs of the previous and next nodes for the insert position
      */
     function findInsertPosition(
         uint256 _NICR,
@@ -565,13 +604,15 @@ contract SortedCdps is Ownable, CheckContract, ISortedCdps {
 
     // --- 'require' functions ---
 
+    /// @dev Asserts that the caller of the function is the CdpManager
     function _requireCallerIsCdpManager() internal view {
         require(msg.sender == address(cdpManager), "SortedCdps: Caller is not the CdpManager");
     }
 
-    function _requireCallerIsBOorCdpM(ICdpManager _cdpManager) internal view {
+    /// @dev Asserts that the caller of the function is either the BorrowerOperations contract or the CdpManager
+    function _requireCallerIsBOorCdpM() internal view {
         require(
-            msg.sender == borrowerOperationsAddress || msg.sender == address(_cdpManager),
+            msg.sender == borrowerOperationsAddress || msg.sender == address(cdpManager),
             "SortedCdps: Caller is neither BO nor CdpM"
         );
     }

@@ -74,13 +74,8 @@ contract('SortedCdps', async accounts => {
 	
     beforeEach(async () => {
       contracts = await deploymentHelper.deployTesterContractsHardhat()
-      contracts.cdpManager = await CdpManagerTester.new()
-      contracts.ebtcToken = await EBTCToken.new(
-        contracts.cdpManager.address,
-        contracts.borrowerOperations.address,
-        contracts.authority.address
-      )
-      const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+      let LQTYContracts = {}
+      LQTYContracts.feeRecipient = contracts.feeRecipient;
 
       priceFeed = contracts.priceFeedTestnet
       sortedCdps = contracts.sortedCdps
@@ -89,8 +84,7 @@ contract('SortedCdps', async accounts => {
       ebtcToken = contracts.ebtcToken
 
       await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-      await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
-	
+	  
       ownerSigner = await ethers.provider.getSigner(owner);
       let _ownerBal = await web3.eth.getBalance(owner);
       let _bn8Bal = await web3.eth.getBalance(bn8);
@@ -110,6 +104,96 @@ contract('SortedCdps', async accounts => {
       }
     })
 
+    it('batchRemove(): batch remove nodes from the list', async () => {
+      await openCdp({ ICR: toBN(dec(30, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await checkCdpId(_aCdpId, A);
+      await openCdp({ ICR: toBN(dec(25, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await checkCdpId(_bCdpId, B);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await checkCdpId(_cCdpId, C);
+      await openCdp({ ICR: toBN(dec(15, 18)), extraParams: { from: D } })
+      let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+      await checkCdpId(_dCdpId, D);
+
+      // Confirm ordering
+      let _first = await sortedCdps.getFirst();
+      let _second = await sortedCdps.getNext(_first);
+      let _third = await sortedCdps.getNext(_second);
+      let _last = await sortedCdps.getNext(_third);
+      assert.isTrue(_first == _aCdpId)
+      assert.isTrue(_second == _bCdpId)
+      assert.isTrue(_third == _cCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(4 == (await sortedCdps.getSize()))
+      assert.isTrue(await sortedCdps.contains(_bCdpId))
+      assert.isTrue(await sortedCdps.contains(_cCdpId))
+	  
+      // batch remove revert case
+      let _toRemoveIds = [_second];	  
+      await th.assertRevert(cdpManager.sortedCdpsBatchRemove(_toRemoveIds), 'SortedCdps: batchRemove() only apply to multiple cdpIds!')
+      _toRemoveIds = [_first, _last];	  
+      await th.assertRevert(cdpManager.sortedCdpsBatchRemove(_toRemoveIds), 'SortedCdps: batchRemove() leave ZERO node left!')
+	  
+      // batch remove happy case
+      _toRemoveIds = [_second, _third];
+      await cdpManager.sortedCdpsBatchRemove(_toRemoveIds);
+      _first = await sortedCdps.getFirst();
+      _last = await sortedCdps.getNext(_first);
+      assert.isTrue(_first == _aCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(_first == (await sortedCdps.getPrev(_last)))
+      assert.isTrue(2 == (await sortedCdps.getSize()))
+      assert.isFalse(await sortedCdps.contains(_bCdpId))
+      assert.isFalse(await sortedCdps.contains(_cCdpId))
+    })
+
+    it('batchRemove(): batch remove the first N', async () => {
+      await openCdp({ ICR: toBN(dec(30, 18)), extraParams: { from: A } })
+      let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+      await checkCdpId(_aCdpId, A);
+      await openCdp({ ICR: toBN(dec(25, 18)), extraParams: { from: B } })
+      let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+      await checkCdpId(_bCdpId, B);
+      await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: C } })
+      let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+      await checkCdpId(_cCdpId, C);
+      await openCdp({ ICR: toBN(dec(15, 18)), extraParams: { from: D } })
+      let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+      await checkCdpId(_dCdpId, D);
+
+      // Confirm ordering
+      let _first = await sortedCdps.getFirst();
+      let _second = await sortedCdps.getNext(_first);
+      let _third = await sortedCdps.getNext(_second);
+      let _last = await sortedCdps.getNext(_third);
+      assert.isTrue(_first == _aCdpId)
+      assert.isTrue(_second == _bCdpId)
+      assert.isTrue(_third == _cCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(4 == (await sortedCdps.getSize()))
+      assert.isTrue(await sortedCdps.contains(_bCdpId))
+      assert.isTrue(await sortedCdps.contains(_cCdpId))
+	  
+      // batch remove happy case
+      _toRemoveIds = [_first, _second];
+      await cdpManager.sortedCdpsBatchRemove(_toRemoveIds);
+      _first = await sortedCdps.getFirst();
+      _last = await sortedCdps.getNext(_first);
+      assert.isTrue(_first == _cCdpId)
+      assert.isTrue(_last == _dCdpId)
+      assert.isTrue(_last == (await sortedCdps.getLast()))
+      assert.isTrue(_first == (await sortedCdps.getPrev(_last)))
+      assert.isTrue(2 == (await sortedCdps.getSize()))
+      assert.isFalse(await sortedCdps.contains(_aCdpId))
+      assert.isFalse(await sortedCdps.contains(_bCdpId))
+    })
+
     it('contains(): returns true for addresses that have opened cdps', async () => {
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
@@ -122,14 +206,15 @@ contract('SortedCdps', async accounts => {
       await checkCdpId(_carolCdpId, carol);
 
       // Confirm cdp statuses became active
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '1')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '1')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '1')
 
       // Check sorted list contains cdps
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
       assert.isTrue(await sortedCdps.contains(_bobCdpId))
       assert.isTrue(await sortedCdps.contains(_carolCdpId))
+      assert.isFalse(await sortedCdps.contains(th.DUMMY_BYTES32))
     })
 
     it('contains(): returns false for addresses that have not opened cdps', async () => {
@@ -170,9 +255,9 @@ contract('SortedCdps', async accounts => {
       await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '2')
 
       // Check sorted list does not contain cdps
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -205,9 +290,9 @@ contract('SortedCdps', async accounts => {
       await borrowerOperations.closeCdp(_carolCdpId, { from:carol })
 
       // Confirm cdp statuses became closed
-      assert.equal((await cdpManager.Cdps(_aliceCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_bobCdpId))[3], '2')
-      assert.equal((await cdpManager.Cdps(_carolCdpId))[3], '2')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_bobCdpId))[4], '2')
+      assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '2')
 
       await openCdp({ ICR: toBN(dec(1000, 16)), extraParams: { from: alice } })
       let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
@@ -220,9 +305,9 @@ contract('SortedCdps', async accounts => {
       await checkCdpId(_carolCdpId2, carol);
 
       // Confirm cdp statuses became open again
-      assert.equal((await cdpManager.Cdps(_aliceCdpId2))[3], '1')
-      assert.equal((await cdpManager.Cdps(_bobCdpId2))[3], '1')
-      assert.equal((await cdpManager.Cdps(_carolCdpId2))[3], '1')
+      assert.equal((await cdpManager.Cdps(_aliceCdpId2))[4], '1')
+      assert.equal((await cdpManager.Cdps(_bobCdpId2))[4], '1')
+      assert.equal((await cdpManager.Cdps(_carolCdpId2))[4], '1')
 
       // Check sorted list does  contain cdps
       assert.isTrue(await sortedCdps.contains(_aliceCdpId2))
@@ -369,21 +454,15 @@ contract('SortedCdps', async accounts => {
     let sortedCdpsTester
 
     beforeEach(async () => {
-      sortedCdps = await SortedCdps.new()
       sortedCdpsTester = await SortedCdpsTester.new()
+      sortedCdps = await SortedCdps.new(2, sortedCdpsTester.address, sortedCdpsTester.address)
 
       await sortedCdpsTester.setSortedCdps(sortedCdps.address)
     })
 
-    context('when params are wrongly set', () => {
-      it('setParams(): reverts if size is zero', async () => {
-        await th.assertRevert(sortedCdps.setParams(0, sortedCdpsTester.address, sortedCdpsTester.address), 'SortedCdps: Size can’t be zero')
-      })
-    })
-
     context('when params are properly set', () => {
-      beforeEach('set params', async() => {
-        await sortedCdps.setParams(2, sortedCdpsTester.address, sortedCdpsTester.address)
+      beforeEach('', async() => {
+        
       })
 
       it('insert(): fails if list is full', async () => {
@@ -401,10 +480,6 @@ contract('SortedCdps', async accounts => {
         await sortedCdpsTester.insert(alice, 1, alice, alice)
         _aliceCdps = await sortedCdps.cdpCountOf(alice);
         assert.equal(_aliceCdps, 2);
-      })
-
-      it('insert(): fails if id is zero', async () => {
-        await th.assertRevert(sortedCdpsTester.insert(alice, th.DUMMY_BYTES32, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32), 'SortedCdps: Id cannot be zero')
       })
 
       it('insert(): fails if NICR is zero', async () => {

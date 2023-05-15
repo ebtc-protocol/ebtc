@@ -57,7 +57,7 @@ async function testnetDeploy(configParams) {
 
   // Deploy or load mock WETH and collateral token contracts
   const wethTokenFactory = await mdh.getFactory("WethMock")
-  const collateralTokenFactory = await mdh.getFactory("CollateralMock")
+  const collateralTokenFactory = await mdh.getFactory("StETHMock")
 
   const wethToken = await mdh.loadOrDeploy(wethTokenFactory, 'wethToken', deploymentState)
   const collateralToken = await mdh.loadOrDeploy(collateralTokenFactory, 'collateralToken', deploymentState, [wethToken.address])
@@ -101,7 +101,7 @@ async function testnetDeploy(configParams) {
   console.log("\n == PRICEFEED CHECKS ==")
   // Check Pricefeed's status and last good price
   const lastGoodPrice = await ebtcCore.priceFeed.fetchPrice()
-  const priceFeedInitialTellorStatus = await ebtcCore.priceFeed._useTellor()
+  const priceFeedInitialTellorStatus = await ebtcCore.priceFeed._useFallback()
   th.logBN('PriceFeed first stored price', lastGoodPrice)
   console.log(`PriceFeed initial Tellor status: ${priceFeedInitialTellorStatus}`)
 

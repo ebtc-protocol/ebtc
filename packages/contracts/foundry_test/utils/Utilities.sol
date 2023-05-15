@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
@@ -85,10 +84,10 @@ contract Utilities is Test {
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;
-        // Randomly shrink random number
-        if (result % 4 == 0) {
-            result /= 100;
-        }
+        //        // Randomly shrink random number
+        //        if (result % 4 == 0) {
+        //            result /= 100;
+        //        }
         return result;
     }
 
@@ -111,7 +110,7 @@ contract Utilities is Test {
         uint256 amount,
         uint gasCompensation,
         uint borrowingRate
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
         return
             mulDivUp(

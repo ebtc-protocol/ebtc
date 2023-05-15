@@ -62,8 +62,7 @@ contract('Gas cost tests', async accounts => {
     functionCaller = contracts.functionCaller
 
     feeRecipient = LQTYContracts.feeRecipient
-
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
+	  
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
@@ -74,49 +73,64 @@ contract('Gas cost tests', async accounts => {
     assert.equal(th.getDifference('2000', '1000'), 1000)
   })
 
-  it("helper - getBorrowerOpsListHint(): returns the right position in the list", async () => {
+  it.only("helper - getBorrowerOpsListHint(): returns the right position in the list", async () => {
     // Accounts A - J open cdps at sequentially lower ICR
-    await borrowerOperations.openCdp(dec(100, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: A, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(102, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: B, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(104, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: C, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(106, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: D, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(108, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: E, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(110, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: F, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(112, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: G, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(114, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: H, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(116, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: I, value: dec(10, 'ether') })
-    await borrowerOperations.openCdp(dec(118, 18), ZERO_ADDRESS, ZERO_ADDRESS, { from: J, value: dec(10, 'ether') })
-  
-    for (account of [A,B,C,D,E,F,G,H,I,J]) {
-      console.log(th.squeezeAddr(account))
-    }
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: A, value: dec(35, 'ether') }})	
+    let _cdpIdA = await sortedCdps.cdpOfOwnerByIndex(A, 0);
+    console.log("_cdpIdA=" + _cdpIdA + ",icr=" + (await cdpManager.getNominalICR(_cdpIdA)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: B, value: dec(37, 'ether') }})	
+    let _cdpIdB = await sortedCdps.cdpOfOwnerByIndex(B, 0);
+    console.log("_cdpIdB=" + _cdpIdB + ",icr=" + (await cdpManager.getNominalICR(_cdpIdB)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: C, value: dec(39, 'ether') }})	
+    let _cdpIdC = await sortedCdps.cdpOfOwnerByIndex(C, 0);
+    console.log("_cdpIdC=" + _cdpIdC + ",icr=" + (await cdpManager.getNominalICR(_cdpIdC)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: D, value: dec(41, 'ether') }})	
+    let _cdpIdD = await sortedCdps.cdpOfOwnerByIndex(D, 0);
+    console.log("_cdpIdD=" + _cdpIdD + ",icr=" + (await cdpManager.getNominalICR(_cdpIdD)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: E, value: dec(43, 'ether') }})	
+    let _cdpIdE = await sortedCdps.cdpOfOwnerByIndex(E, 0);
+    console.log("_cdpIdE=" + _cdpIdE + ",icr=" + (await cdpManager.getNominalICR(_cdpIdE)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: F, value: dec(45, 'ether') }})	
+    let _cdpIdF = await sortedCdps.cdpOfOwnerByIndex(F, 0);
+    console.log("_cdpIdF=" + _cdpIdF + ",icr=" + (await cdpManager.getNominalICR(_cdpIdF)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: G, value: dec(47, 'ether') }})	
+    let _cdpIdG = await sortedCdps.cdpOfOwnerByIndex(G, 0);
+    console.log("_cdpIdG=" + _cdpIdG + ",icr=" + (await cdpManager.getNominalICR(_cdpIdG)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: H, value: dec(49, 'ether') }})	
+    let _cdpIdH = await sortedCdps.cdpOfOwnerByIndex(H, 0);
+    console.log("_cdpIdH=" + _cdpIdH + ",icr=" + (await cdpManager.getNominalICR(_cdpIdH)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: I, value: dec(51, 'ether') }})	
+    let _cdpIdI = await sortedCdps.cdpOfOwnerByIndex(I, 0);
+    console.log("_cdpIdI=" + _cdpIdI + ",icr=" + (await cdpManager.getNominalICR(_cdpIdI)));
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: J, value: dec(53, 'ether') }})	
+    let _cdpIdJ = await sortedCdps.cdpOfOwnerByIndex(J, 0);
+    console.log("_cdpIdJ=" + _cdpIdJ + ",icr=" + (await cdpManager.getNominalICR(_cdpIdJ)));
 
     // Between F and G
-    let amount = dec(111, 18)
+    let amount = dec(1, 18)
     let fee = await cdpManager.getBorrowingFee(amount)
     let debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
-    let {upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt)  
-
-    assert.equal(upperHint, F)
-    assert.equal(lowerHint, G)
+    let {upperHint, lowerHint, newNICR} = await th.getBorrowerOpsListHint(contracts, dec(40, 'ether'), debt)  
+    assert.equal(upperHint, _cdpIdG)
+    assert.equal(lowerHint, _cdpIdF)
 
     // Bottom of the list
-    amount = dec(120, 18)
+    amount = dec(1, 18)
     fee = await cdpManager.getBorrowingFee(amount)
-    debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
-    ;({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt))
+    debt = (await th.getCompositeDebt(contracts, amount)).add(fee);
+    ({upperHint, lowerHint, newNICR} = await th.getBorrowerOpsListHint(contracts, dec(60, 'ether'), debt)) 
      
-    assert.equal(upperHint, J)
-    assert.equal(lowerHint, ZERO_ADDRESS)
+    assert.equal(upperHint, th.DUMMY_BYTES32)
+    assert.equal(lowerHint, _cdpIdJ)
 
     // Top of the list
-    amount = dec(98, 18)
+    amount = dec(1, 18)
     fee = await cdpManager.getBorrowingFee(amount)
-    debt = (await th.getCompositeDebt(contracts, amount)).add(fee)
-    ;({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(10, 'ether'), debt))
+    debt = (await th.getCompositeDebt(contracts, amount)).add(fee);
+    ({upperHint, lowerHint} = await th.getBorrowerOpsListHint(contracts, dec(30, 'ether'), debt))
      
-    assert.equal(upperHint, ZERO_ADDRESS)
-    assert.equal(lowerHint, A)
+    assert.equal(upperHint, _cdpIdA)
+    assert.equal(lowerHint, th.DUMMY_BYTES32)
   })
 
   // --- Cdp Manager function calls ---
@@ -182,9 +196,7 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'openCdp(), 50 accounts, each account adds random ether and random EBTC'
-    const amountETH = dec(10, 'ether')
-    const amountEBTC = 0
-    const gasResults = await th.openCdp_allAccounts_randomETH_randomEBTC(1, 9, _50_Accounts, contracts, 2, 100, true)
+    const gasResults = await th.openCdp_allAccounts_randomETH_randomEBTC(150, 290, _50_Accounts, contracts, 0.05428, 0.05428, true)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -267,13 +279,20 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'adjustCdp(). 40 accounts, each account adjusts up by random amounts. HAS size range transition'
-    await borrowerOperations.openCdp(0, accounts[999], ZERO_ADDRESS, { from: accounts[999], value: dec(100, 'ether') })
 
-    const amountETH = dec(9, 'ether')
-    const amountEBTC = dec(100, 18)
+    const amountETH = dec(100, 'ether')
+    const amountEBTC = dec(1, 18)
     await th.openCdp_allAccounts(_40_Accounts, contracts, amountETH, amountEBTC)
-    // Randomly add between 1-9 ETH, and withdraw 1-100 EBTC
-    const gasResults = await th.adjustCdp_allAccounts_randomAmount(_40_Accounts, contracts, 1, 9, 1, 100)
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _40_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    // Randomly add between 1-9 ETH, and withdraw 1-1.5 EBTC
+    const gasResults = await th.adjustCdp_allAccounts_randomAmount(_40_Accounts, contracts, 1, 9, 1, 1.5, _allCdpIds)
 
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
@@ -286,13 +305,10 @@ contract('Gas cost tests', async accounts => {
   it("", async () => {
     const message = 'closeCdp(), 10 accounts, 1 account closes its cdp'
 
-    await th.openCdp_allAccounts_decreasingEBTCAmounts(_10_Accounts, contracts, dec(10, 'ether'), 200)
+    await th.openCdp_allAccounts_decreasingEBTCAmounts(_10_Accounts, contracts, dec(400, 'ether'), 21)
+    let _cdpId = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
 
-    for (account of _10_Accounts ) {
-      await ebtcToken.unprotectedMint(account, dec(1000, 18))
-    }
-
-    const tx = await borrowerOperations.closeCdp({ from: accounts[1] })
+    const tx = await borrowerOperations.closeCdp(_cdpId, { from: accounts[1] })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
@@ -302,13 +318,22 @@ contract('Gas cost tests', async accounts => {
   it("", async () => {
     const message = 'closeCdp(), 20 accounts, each account adds 10 ether and issues less EBTC than the previous one. First 10 accounts close their cdp. '
 
-    await th.openCdp_allAccounts_decreasingEBTCAmounts(_20_Accounts, contracts, dec(10, 'ether'), 200)
-
-    for (account of _20_Accounts ) {
-      await ebtcToken.unprotectedMint(account, dec(1000, 18))
+    await th.openCdp_allAccounts_decreasingEBTCAmounts(_20_Accounts, contracts, dec(400, 'ether'), 21)
+    
+    let _allCdpIds = [];
+    let _allCdpOwners = [];
+    for (let i = 0;i < _20_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);
+         _allCdpOwners.push(account);	
+         if (i >= 10){
+             break;
+         } 
     }
     
-    const gasResults = await th.closeCdp_allAccounts(_20_Accounts.slice(1), contracts)
+    const gasResults = await th.closeCdp_allAccounts(_allCdpOwners, contracts, _allCdpIds)
 
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
@@ -355,9 +380,17 @@ contract('Gas cost tests', async accounts => {
   it("", async () => {
     const message = 'addColl(), second deposit, 30 accounts, each account adds random amount. No size range transition'
     const amount = dec(10, 'ether')
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
 
-    const gasResults = await th.addColl_allAccounts_randomAmount(0.000000001, 10000, _30_Accounts, contracts)
+    const gasResults = await th.addColl_allAccounts_randomAmount(0.000000001, 10000, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -402,9 +435,17 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'withdrawColl(), first withdrawal, 30 accounts, each account withdraws random amount. HAS size range transition'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
 
-    const gasResults = await th.withdrawColl_allAccounts_randomAmount(1, 8, _30_Accounts, contracts)
+    const gasResults = await th.withdrawColl_allAccounts_randomAmount(1, 8, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -413,10 +454,18 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'withdrawColl(), second withdrawal, 10 accounts, each account withdraws random amount'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawColl_allAccounts(_10_Accounts, contracts, dec(1, 'ether'))
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _10_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    await th.withdrawColl_allAccounts(_10_Accounts, contracts, dec(1, 'ether'), _allCdpIds)
 
-    const gasResults = await th.withdrawColl_allAccounts_randomAmount(1, 8, _10_Accounts, contracts)
+    const gasResults = await th.withdrawColl_allAccounts_randomAmount(1, 1.5, _10_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -450,9 +499,17 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'withdrawEBTC(), first withdrawal, 30 accounts, each account withdraws a random EBTC amount'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
 
-    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _30_Accounts, contracts)
+    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 1.8, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -461,10 +518,18 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'withdrawEBTC(), second withdrawal, 30 accounts, each account withdraws a random EBTC amount'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 70, _30_Accounts, contracts)
+    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -499,11 +564,19 @@ contract('Gas cost tests', async accounts => {
   // })
 
   it("", async () => {
-    const message = 'repayEBTC(), partial repayment, 30 accounts, repay random amount of EBTC (of 100 EBTC)'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
+    const message = 'repayEBTC(), partial repayment, 30 accounts, repay random amount of EBTC'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.repayEBTC_allAccounts_randomAmount(1, 99, _30_Accounts, contracts)
+    const gasResults = await th.repayEBTC_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -523,12 +596,20 @@ contract('Gas cost tests', async accounts => {
   // })
 
   it("", async () => {
-    const message = 'repayEBTC(), first repayment, 30 accounts, repay in full (50 of 50 EBTC)'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
-    await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(50, 18))
+    const message = 'repayEBTC(), first repayment, 30 accounts, repay in full'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _30_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+	
+    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(50, 18))
+    const gasResults = await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -540,9 +621,10 @@ contract('Gas cost tests', async accounts => {
   it("", async () => {
     const message = 'single getCurrentICR() call'
 
-    await th.openCdp_allAccounts([accounts[1]], contracts, dec(10, 'ether'), 0)
-    const randEBTCAmount = th.randAmountInWei(1, 180)
-    await borrowerOperations.withdrawEBTC(_100pct, randEBTCAmount, accounts[1], ZERO_ADDRESS, { from: accounts[1] })
+    await th.openCdp_allAccounts([accounts[1]], contracts, dec(200, 'ether'), dec(1, 18))
+    let _cdpId = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
+    const randEBTCAmount = th.randAmountInWei(1, 10)
+    await borrowerOperations.withdrawEBTC(_cdpId, randEBTCAmount, accounts[1], accounts[1], { from: accounts[1] })
 
     const price = await priceFeed.getPrice()
     const tx = await functionCaller.cdpManager_getCurrentICR(accounts[1], price)
@@ -552,19 +634,8 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), new Cdps with 10 ether and no withdrawals'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  it("", async () => {
     const message = 'getCurrentICR(), Cdps with 10 ether and 100 EBTC withdrawn'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
 
     const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
@@ -575,9 +646,17 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'getCurrentICR(), Cdps with 10 ether and random EBTC amount withdrawn'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts_randomAmount(1, 1300, _10_Accounts, contracts)
-
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
+    
+    let _allCdpIds = [];
+    for (let i = 0;i < _10_Accounts.length;i++){ 
+         let account = accounts[i];
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    await th.withdrawEBTC_allAccounts_randomAmount(1, 10, _10_Accounts, contracts, _allCdpIds)
+	
     const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
@@ -590,18 +669,26 @@ contract('Gas cost tests', async accounts => {
   it("", async () => {
     const message = 'single getCurrentICR() call, WITH pending rewards'
 
-    const randEBTCAmount = th.randAmountInWei(1, 180)
-    await borrowerOperations.openCdp(randEBTCAmount, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(10, 'ether') })
+    const randEBTCAmount = th.randAmountInWei(1, 10)
+    let _randColl = toBN(randEBTCAmount.toString()).div(await priceFeed.getPrice()).mul(toBN('2000000000000000000'));
+    await th.openCdp(contracts, {extraEBTCAmount: randEBTCAmount, extraParams: { from: accounts[1], value: _randColl }})
+    let _cdpId = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
 
-    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
-    await borrowerOperations.openCdp(dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999], value: dec(1, 'ether') })
+    // acct 500 adds coll, withdraws EBTC
+    await th.openCdp(contracts, {extraEBTCAmount: dec(2, 18), extraParams: { from: accounts[500], value: dec(35, 'ether') }})
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[500], 0);
 
-    // Price drops, account[999]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[999], { from: accounts[0] })
+    // Whale opens cdp to get enough debt to liquidate
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+
+    // Price drops, account[555]'s ICR falls below MCR, and gets liquidated
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     const price = await priceFeed.getPrice()
-    const tx = await functionCaller.cdpManager_getCurrentICR(accounts[1], price)
+    const tx = await functionCaller.cdpManager_getCurrentICR(_cdpId, price)
 
     const gas = th.gasUsed(tx) - 21000
     th.logGas(gas, message)
@@ -611,16 +698,28 @@ contract('Gas cost tests', async accounts => {
 
   it("", async () => {
     const message = 'getCurrentICR(), new Cdps with 10 ether and no withdrawals,  WITH pending rewards'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(100, 18))
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(3, 18))
 
-    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
-    await borrowerOperations.openCdp(dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999], value: dec(1, 'ether') })
+    // acct 500 adds coll, withdraws EBTC
+    await th.openCdp(contracts, {extraEBTCAmount: dec(2, 18), extraParams: { from: accounts[500], value: dec(35, 'ether') }})
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[500], 0);
 
-    // Price drops, account[999]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[999], { from: accounts[0] })
+    // Whale opens cdp to get enough debt to liquidate
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
+    // Price drops, account[555]'s ICR falls below MCR, and gets liquidated
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    
+    let _allCdpIds = [];
+    for (account of _10_Accounts){ 
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -628,18 +727,29 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether and 100 EBTC withdrawn, WITH pending rewards'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(100, 18))
+    const message = 'getCurrentICR(), Cdps with 10 ether and 2 EBTC withdrawn, WITH pending rewards'
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
 
-    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
-    await borrowerOperations.openCdp(dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999], value: dec(1, 'ether') })
+    // acct 500 adds coll, withdraws EBTC
+    await th.openCdp(contracts, {extraEBTCAmount: dec(2, 18), extraParams: { from: accounts[500], value: dec(35, 'ether') }})
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[500], 0);
 
+    // Whale opens cdp to get enough debt to liquidate
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // Price drops, account[999]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[999], { from: accounts[0] })
-
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
+    // Price drops, account[555]'s ICR falls below MCR, and gets liquidated
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    
+    let _allCdpIds = [];
+    for (account of _10_Accounts){ 
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -647,17 +757,29 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether and random EBTC amount withdrawn, WITH pending rewards'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(100, 18))
+    const message = 'getCurrentICR(), Cdps with 10 ether WITH pending rewards'
+    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(2, 18))
 
-    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
-    await borrowerOperations.openCdp(dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999], value: dec(1, 'ether') })
+    // acct 500 adds coll, withdraws EBTC
+    await th.openCdp(contracts, {extraEBTCAmount: dec(2, 18), extraParams: { from: accounts[500], value: dec(35, 'ether') }})
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[500], 0);
 
-    // Price drops, account[999]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[999], { from: accounts[0] })
+    // Whale opens cdp to get enough debt to liquidate
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
+    // Price drops, account[555]'s ICR falls below MCR, and gets liquidated
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    
+    let _allCdpIds = [];
+    for (account of _10_Accounts){ 
+         let _cdpId = await sortedCdps.cdpOfOwnerByIndex(account, 0);
+         assert.isTrue(await sortedCdps.contains(_cdpId))  
+         _allCdpIds.push(_cdpId);		
+    }
+    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -666,130 +788,121 @@ contract('Gas cost tests', async accounts => {
 
   // --- redeemCollateral() ---
   it("", async () => {
-    const message = 'redeemCollateral(), redeems 50 EBTC, redemption hits 1 Cdp. One account in system, partial redemption'
-    await th.openCdp_allAccounts([accounts[0]], contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts([accounts[0]], contracts, dec(100, 18))
+    const message = 'redeemCollateral(), redemption hits 1 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
 
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+    
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(accounts[0], contracts, dec(50, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(2, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeems 50 EBTC, redemption hits 1 Cdp. No pending rewards. 3 accounts in system, partial redemption'
+    const message = 'redeemCollateral(), redemption hits 1 Cdp. No pending rewards. 3 accounts in system, partial redemption'
     // 3 accounts add coll
-    await th.openCdp_allAccounts(accounts.slice(0, 3), contracts, dec(10, 'ether'), 0)
-    // 3 accounts withdraw successively less EBTC
-    await borrowerOperations.withdrawEBTC(_100pct, dec(100, 18), accounts[0], ZERO_ADDRESS, { from: accounts[0] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(90, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(80, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
+    await th.openCdp_allAccounts(accounts.slice(0, 3), contracts, dec(100, 'ether'), dec(2, 18)) 
 
-    /* Account 2 redeems 50 EBTC. It is redeemed from account 0's Cdp, 
-    leaving the Cdp active with 30 EBTC and ((200 *10 - 50 ) / 200 ) = 9.75 ETH. 
-    
-    It's ICR jumps from 2500% to 6500% and it is reinserted at the top of the list.
-    */
-
-   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(accounts[2], contracts, dec(50, 18))
-    th.logGas(gas, message)
-
-    th.appendData({ gas: gas }, message, data)
-  })
-
-  it("", async () => {
-    const message = 'redeemCollateral(), redeemed 101 EBTC, redemption hits 2 Cdps, last redemption is partial'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
-
-    // Whale adds 200 ether, withdraws 500 EBTC, redeems 101 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(500, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(101, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(2, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 500 EBTC, redemption hits 5 Cdps, all full redemptions'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+    const message = 'redeemCollateral(), redemption hits 2 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
 
-    // Whale adds 200 ether, withdraws 500 EBTC, redeems 500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(500, 18), whale, ZERO_ADDRESS, { from: whale })
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(500, 18))
-    th.logGas(gas, message)
-
-    th.appendData({ gas: gas }, message, data)
-  })
-
-  it("", async () => {
-    const message = 'redeemCollateral(), redeemed 450 EBTC, redemption hits 5 Cdps,  last redemption is partial (50 of 100 EBTC)'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
-
-    // Whale adds 200 ether, withdraws 450 EBTC, redeems 500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(450, 18), whale, ZERO_ADDRESS, { from: whale })
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(450, 18))
-    th.logGas(gas, message)
-
-    th.appendData({ gas: gas }, message, data)
-  })
-
-  it("", async () => {
-    const message = 'redeemCollateral(), redeemed 1000 EBTC, redemption hits 10 Cdps'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
-
-    // Whale adds 200 ether, withdraws 1000 EBTC, redeems 500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(1000, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
     
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(1000, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(4, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 1500 EBTC, redemption hits 15 Cdps'
-    await th.openCdp_allAccounts(_20_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_20_Accounts, contracts, dec(100, 18))
+    const message = 'redeemCollateral(), redemption hits 3 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
 
-    // Whale adds 200 ether, withdraws 1500 EBTC, redeems 1500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(1500, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
     
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(1500, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(6, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 2000 EBTC, redemption hits 20 Cdps'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
+    const message = 'redeemCollateral(), redemption hits 5 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
 
-    // Whale adds 200 ether, withdraws 2000 EBTC, redeems 2000 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(2000, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
     
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(2000, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(10, 18))
+    th.logGas(gas, message)
+
+    th.appendData({ gas: gas }, message, data)
+  })
+
+  it("", async () => {
+    const message = 'redeemCollateral(), redemption hits 10 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
+
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+    
+    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(20, 18))
+    th.logGas(gas, message)
+
+    th.appendData({ gas: gas }, message, data)
+  })
+
+  it("", async () => {
+    const message = 'redeemCollateral(), redemption hits 15 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
+
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+    
+    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(30, 18))
+    th.logGas(gas, message)
+
+    th.appendData({ gas: gas }, message, data)
+  })
+
+  it("", async () => {
+    const message = 'redeemCollateral(), redemption hits 20 Cdps'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(2, 18)) 
+
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+    
+    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(40, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
@@ -812,20 +925,26 @@ contract('Gas cost tests', async accounts => {
   // --- redeemCollateral(), with pending redistribution rewards --- 
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeems 50 EBTC, redemption hits 1 Cdp, WITH pending rewards. One account in system'
-    await th.openCdp_allAccounts([accounts[1]], contracts, dec(10, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(100, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
+    const message = 'Test,redeemCollateral(), redemption hits 1 Cdp, WITH pending rewards. One account in system'
+    await th.openCdp_allAccounts([accounts[1]], contracts, dec(100, 'ether'), dec(2, 18))  
+    let _cdpId1 = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0); 
 
-    // acct 998 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(30, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(7028, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
+	console.log('tcr='+ (await cdpManager.getTCR(_droppedPrice)));
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(accounts[1], contracts, dec(50, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(2, 18))
 
     th.logGas(gas, message)
 
@@ -833,126 +952,123 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeems 50 EBTC, redemption hits 1 Cdp. WITH pending rewards. 3 accounts in system.'
-    // 3 accounts add coll
-    await th.openCdp_allAccounts(accounts.slice(0, 3), contracts, dec(10, 'ether'), 0)
-    // 3 accounts withdraw successively less EBTC
-    await borrowerOperations.withdrawEBTC(_100pct, dec(100, 18), accounts[0], ZERO_ADDRESS, { from: accounts[0] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(90, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(80, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
+    const message = 'Test,redeemCollateral(), redeemed (hits 1 Cdps) WITH pending rewards'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(200, 'ether'), dec(2, 18))    
 
-    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(60, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
-    /* Account 2 redeems 50 EBTC. It is redeemed from account 0's Cdp, 
-    leaving the Cdp active with 30 EBTC and ((200 *10 - 50 ) / 200 ) = 9.75 ETH. 
-    
-    It's ICR jumps from 2500% to 6500% and it is reinserted at the top of the list.
-    */
-
-   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(accounts[2], contracts, dec(50, 18))
+    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
+	let _first = await sortedCdps.getFirst();
+	let _firstDebtAndColl = await cdpManager.getEntireDebtAndColl(_first);
+    const gas = await th.redeemCollateral(_liquidator, contracts, _firstDebtAndColl[0])
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 500 EBTC, WITH pending rewards, redemption hits 5 Cdps, WITH pending rewards'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+    const message = 'Test,redeemCollateral(), redeemed (hits 5 Cdps) WITH pending rewards'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(200, 'ether'), dec(2, 18))    
 
-    // Whale adds 200 ether, withdraws 500 EBTC, redeems 500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(500, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // acct 998 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(60, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(500, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(10, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 1000 EBTC, WITH pending rewards, redemption hits 10 Cdps, WITH pending rewards'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+    const message = 'Test,redeemCollateral(), redeemed (hits 10 Cdps) WITH pending rewards'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(200, 'ether'), dec(2, 18))    
 
-    // Whale adds 200 ether, withdraws 1000 EBTC, redeems 500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(1000, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // acct 998 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(60, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(1000, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(20, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 1500 EBTC, WITH pending rewards, redemption hits 15 Cdps, WITH pending rewards'
-    await th.openCdp_allAccounts(_20_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_20_Accounts, contracts, dec(100, 18))
+    const message = 'Test,redeemCollateral(), redeemed (hits 15 Cdps) WITH pending rewards'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(200, 'ether'), dec(2, 18))    
 
-    // Whale adds 200 ether, withdraws 1500 EBTC, redeems 1500 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(1500, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    //  // acct 998 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(60, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(1500, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(30, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
   it("", async () => {
-    const message = 'redeemCollateral(), redeemed 2000 EBTC, WITH pending rewards, redemption hits 20 Cdps, WITH pending rewards'
-    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
+    const message = 'Test,redeemCollateral(), redeemed (hits 20 Cdps) WITH pending rewards'
+    await th.openCdp_allAccounts(_30_Accounts, contracts, dec(200, 'ether'), dec(2, 18))    
 
-    // Whale adds 200 ether, withdraws 2000 EBTC, redeems 2000 EBTC
-    await borrowerOperations.openCdp(0, whale, ZERO_ADDRESS, { from: whale, value: dec(200, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(2000, 18), whale, ZERO_ADDRESS, { from: whale })
+    // Whale opens cdp to get enough debt to redeem
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // acct 998 adds coll, withdraws EBTC, sits at 111% ICR
-    await th.openCdp_allAccounts([accounts[998]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[998], ZERO_ADDRESS, { from: accounts[998] })
+    // acct 998 adds coll, withdraws EBTC
+    await th.openCdp_allAccounts([accounts[998]], contracts, dec(60, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[998], 0);
 
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[998], { from: accounts[0] })
+    let _droppedPrice = dec(3314, 13);
+    await priceFeed.setPrice(_droppedPrice)	
+	console.log('icr='+ (await cdpManager.getCurrentICR(_cdpIdLiq, _droppedPrice)));
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
-    const gas = await th.redeemCollateral(whale, contracts, dec(2000, 18))
+    const gas = await th.redeemCollateral(_liquidator, contracts, dec(40, 18))
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
@@ -1131,374 +1247,6 @@ contract('Gas cost tests', async accounts => {
   //   th.appendData(gasResults, message, data)
   // })
 
-  it("", async () => {
-    const message = 'provideToSP(), No pending rewards, all accounts withdraw 180 EBTC, all make first deposit, random EBTC amount'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
-
-    // first funds provided
-    const gasResults = await th.provideToSP_allAccounts_randomAmount(1, 129, _10_Accounts, stabilityPool)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-     // --- Top-up deposit ---
-
-  it("", async () => {
-    const message = 'provideToSP(), No pending rewards, deposit part of issued EBTC: all accounts withdraw 180 EBTC, all make second deposit, provide 50 EBTC'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
-    await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(50, 18))
-
-    // >>FF time and one account tops up, triggers LQTY gains for all
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-    await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: _10_Accounts[0] })
-
-    // Check the other accounts have LQTY gain
-    for (account of _10_Accounts.slice(1)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // top-up of StabilityPool Deposit
-    const gasResults = await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(50, 18))
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  // it("", async () => {
-  //   const message = 'provideToSP(), No pending rewards, deposit all issued EBTC: all accounts withdraw 180 EBTC, make second deposit, provide 90 EBTC'
-  //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
-  //   await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(50, 18))
-
-  //   // >> FF time and one account tops up, triggers LQTY gains for all
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-  //   await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: _10_Accounts[0] })
-
-  //   // Check the other accounts have LQTY gain
-  //   for (account of _10_Accounts.slice(1)) {
-  //     const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-  //     assert.isTrue(LQTYGain.gt(toBN('0')))
-  //   }
-
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // top-up of StabilityPool Deposit
-  //   const gasResults = await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(50, 18))
-  //   th.logGasMetrics(gasResults, message)
-  //   th.logAllGasCosts(gasResults)
-
-  //   th.appendData(gasResults, message, data)
-  // })
-
-  it("", async () => {
-    const message = 'provideToSP(), No pending rewards, all accounts withdraw 180 EBTC, make second deposit, random EBTC amount'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
-    await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(50, 18))
-
-    // >>FF time and one account tops up, triggers LQTY gains for all
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-    await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: _10_Accounts[0] })
-
-    // Check the other accounts have LQTY gain
-    for (account of _10_Accounts.slice(1)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // top-up of StabilityPool Deposit
-    const gasResults = await th.provideToSP_allAccounts_randomAmount(1, 50, _10_Accounts, stabilityPool)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  //   // --- provideToSP(): Pending rewards
-
-  //   // --- Top-up deposit ---
-
-  // it("", async () => {
-  //   const message = 'provideToSP(), with pending rewards in system. deposit part of issued EBTC: all accounts make second deposit, provide 50 EBTC'
-  //   // 9 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 50 EBTC to Stability Pool
-  //   await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(accounts.slice(2, 12), contracts, dec(130, 18))
-  //   await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(50, 18))
-
-  //   //1 acct open Cdp with 1 ether and withdraws 170 EBTC
-  //   await borrowerOperations.openCdp(dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-
-  //   // >>FF time and one account tops up, triggers LQTY gains for all
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // Price drops, account 1 liquidated
-  //   await priceFeed.setPrice(dec(100, 18))
-  //   await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-  //   assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-  //   // Check accounts have LQTY gains from liquidations
-  //   for (account of accounts.slice(2, 12)) {
-  //     const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-  //     assert.isTrue(LQTYGain.gt(toBN('0')))
-  //   }
-
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // 9 active Cdps top up their Stability Pool deposits with 50 EBTC
-  //   const gasResults = await th.provideToSP_allAccounts(accounts.slice(2, 11), stabilityPool, dec(50, 18))
-  //   th.logGasMetrics(gasResults, message)
-  //   th.logAllGasCosts(gasResults)
-
-  //   th.appendData(gasResults, message, data)
-  // })
-
-  // it("", async () => {
-  //   const message = 'provideToSP(), with pending rewards in system. deposit all issued EBTC: all accounts make second deposit, provide 90 EBTC'
-  //   // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 90 EBTC to Stability Pool
-  //   await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(accounts.slice(2, 12), contracts, dec(130, 18))
-  //   await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(50, 18))
-
-  //   //1 acct open Cdp with 1 ether and withdraws 180 EBTC
-  //   await borrowerOperations.openCdp(dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-
-  //   // >>FF time and one account tops up, triggers LQTY gains for all
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // Price drops, account[1] is liquidated
-  //   await priceFeed.setPrice(dec(100, 18))
-  //   await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-  //   assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-  //   // Check accounts have LQTY gains from liquidations
-  //   for (account of accounts.slice(2, 12)) {
-  //     const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-  //     assert.isTrue(LQTYGain.gt(toBN('0')))
-  //   }
-
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // 5 active Cdps top up their Stability Pool deposits with 90 EBTC, using up all their issued EBTC
-  //   const gasResults = await th.provideToSP_allAccounts(accounts.slice(7, 12), stabilityPool, dec(50, 18))
-  //   th.logGasMetrics(gasResults, message)
-  //   th.logAllGasCosts(gasResults)
-
-  //   th.appendData(gasResults, message, data)
-  // })
-
-  it("", async () => {
-    const message = 'provideToSP(), with pending rewards in system. deposit part of issued EBTC: all make second deposit, provide random EBTC amount'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 90 EBTC to Stability Pool
-    await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), dec(130, 18))
-    await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(50, 18))
-
-    //1 acct open Cdp with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-
-    // >>FF time and one account tops up, triggers LQTY gains for all
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // Price drops, account[1] is liquidated
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-    // Check accounts have LQTY gains from liquidations
-    for (account of accounts.slice(2, 12)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // 5 active Cdps top up their Stability Pool deposits with a random EBTC amount
-    const gasResults = await th.provideToSP_allAccounts_randomAmount(1, 49, accounts.slice(7, 12), stabilityPool)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  // --- withdrawFromSP() ---
-
-  // --- No pending rewards ---
-
-  // partial
-  // it("", async () => {
-  //   const message = 'withdrawFromSP(), no pending rewards. Stability Pool depositors make partial withdrawal - 90 EBTC of 180 EBTC deposit'
-  //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(190, 18))
-  //   await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(130, 18))
-
-  //   // >>FF time and one account tops up, triggers LQTY gains for all
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-  //   await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: _10_Accounts[0] })
-
-  //   // Check the other accounts have LQTY gain
-  //   for (account of _10_Accounts.slice(1)) {
-  //     const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-  //     assert.isTrue(LQTYGain.gt(toBN('0')))
-  //   }
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   const gasResults = await th.withdrawFromSP_allAccounts(_10_Accounts, stabilityPool, dec(90, 18))
-  //   th.logGasMetrics(gasResults, message)
-  //   th.logAllGasCosts(gasResults)
-
-  //   th.appendData(gasResults, message, data)
-  // })
-
-  // full
-  it("", async () => {
-    const message = 'withdrawFromSP(), no pending rewards. Stability Pool depositors make full withdrawal - 130 EBTC of 130 EBTC deposit'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(190, 18))
-    await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(130, 18))
-
-    // >>FF time and one account tops up, triggers LQTY gains for all
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-    await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: _10_Accounts[0] })
-
-    // Check the other accounts have LQTY gain
-    for (account of _10_Accounts.slice(1)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    const gasResults = await th.withdrawFromSP_allAccounts(_10_Accounts, stabilityPool, dec(130, 18))
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  // random amount
-  it("", async () => {
-    const message = 'withdrawFromSP(), no pending rewards. Stability Pool depositors make partial withdrawal - random EBTC amount, less than 180 EBTC deposit'
-    await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), dec(130, 18))
-    await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(130, 18))
-
-    const gasResults = await th.withdrawFromSP_allAccounts_randomAmount(1, 129, _10_Accounts, stabilityPool)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-
-  // // --- withdrawFromSP() ---
-
-  // // --- Pending rewards in system ---
-
-  // it("", async () => {
-  //   const message = 'withdrawFromSP(), pending rewards in system. Stability Pool depositors make partial withdrawal - 90 EBTC of 130 EBTC deposit'
-  //   // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 180 EBTC to Stability Pool
-  //   await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), dec(130, 18))
-  //   await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(130, 18))
-
-  //   //1 acct open Cdp with 1 ether and withdraws 170 EBTC
-  //   await borrowerOperations.openCdp(0, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-  //   await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // Price drops, account[0]'s ICR falls below MCR
-  //   await priceFeed.setPrice(dec(100, 18))
-  //   await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-  //   assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-  //   // Check accounts have LQTY gains from liquidations
-  //   for (account of accounts.slice(2, 12)) {
-  //     const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-  //     assert.isTrue(LQTYGain.gt(toBN('0')))
-  //   }
-
-  //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-  //   // 5 active Cdps reduce their Stability Pool deposit by 90 EBTC
-  //   const gasResults = await th.withdrawFromSP_allAccounts(accounts.slice(7, 12), stabilityPool, dec(90, 18))
-  //   th.logGasMetrics(gasResults, message)
-  //   th.logAllGasCosts(gasResults)
-
-  //   th.appendData(gasResults, message, data)
-  // })
-
-  it("", async () => {
-    const message = 'withdrawFromSP(), pending rewards in system. Stability Pool depositors make full withdrawal - 130 EBTC of 130 EBTC deposit'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 180 EBTC to Stability Pool
-    await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), dec(130, 18))
-    await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(130, 18))
-
-    //1 acct open Cdp with 1 ether and withdraws 170 EBTC
-    await borrowerOperations.openCdp(0, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // Price drops, account[0]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-    // Check accounts have LQTY gains from liquidations
-    for (account of accounts.slice(2, 12)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // 5 active Cdps reduce their Stability Pool deposit by 130 EBTC
-    const gasResults = await th.withdrawFromSP_allAccounts(accounts.slice(7, 12), stabilityPool, dec(130, 18))
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
-  it("", async () => {
-    const message = 'withdrawFromSP(), pending rewards in system. Stability Pool depositors make partial withdrawal - random amount of EBTC'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 130 EBTC to Stability Pool
-    await th.openCdp_allAccounts(accounts.slice(2, 12), contracts, dec(10, 'ether'), dec(130, 18))
-    await th.provideToSP_allAccounts(accounts.slice(2, 12), stabilityPool, dec(130, 18))
-
-    //1 acct open Cdp with 1 ether and withdraws 170 EBTC
-    await borrowerOperations.openCdp(0, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // Price drops, account[0]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-    // Check accounts have LQTY gains from liquidations
-    for (account of accounts.slice(2, 12)) {
-      const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-      assert.isTrue(LQTYGain.gt(toBN('0')))
-    }
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    // 5 active Cdps reduce their Stability Pool deposit by random amount
-    const gasResults = await th.withdrawFromSP_allAccounts_randomAmount(1, 129, accounts.slice(7, 12), stabilityPool)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
   // --- withdrawETHGainToCdp() ---
 
   // --- withdrawETHGainToCdp() - deposit has pending rewards ---
@@ -1535,418 +1283,205 @@ contract('Gas cost tests', async accounts => {
   //   th.appendData(gasResults, message, data)
   // })
 
-  it("", async () => {
-    const message = 'withdrawETHGainToCdp(), pending rewards in system. Accounts withdraw 180 EBTC, provide a random amount, then withdraw all to SP after a liquidation'
-    // 20 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 180 EBTC to Stability Pool
-    await th.openCdp_allAccounts(accounts.slice(2, 22), contracts, dec(10, 'ether'), dec(130, 18))
-    await await th.provideToSP_allAccounts_randomAmount(1, 129, accounts.slice(2, 22), stabilityPool)
-
-    //1 acct open Cdp with 1 ether and withdraws 180 EBTC
-    await borrowerOperations.openCdp(0, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-  
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-    await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-
-       // Check accounts have LQTY gains from liquidations
-       for (account of accounts.slice(2, 22)) {
-        const LQTYGain = await stabilityPool.getDepositorLQTYGain(account)
-        assert.isTrue(LQTYGain.gt(toBN('0')))
-      }
-  
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-  
-    // 5 active Cdps withdraw their ETH gain to their cdp
-    const gasResults = await th.withdrawETHGainToCdp_allAccounts(accounts.slice(2, 22), contracts)
-    th.logGasMetrics(gasResults, message)
-    th.logAllGasCosts(gasResults)
-
-    th.appendData(gasResults, message, data)
-  })
-
   // --- liquidate() ---
 
-  // Pure redistribution WITH pending rewards
+  // Full liquidation with NO pending rewards
   it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has pending rewards. Pure redistribution'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
-
-    //6s acct open Cdp with 1 ether and withdraw 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(0, 6), contracts, dec(1, 'ether'), dec(130, 18))
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-
-    // Initial distribution liquidations make system reward terms and Default Pool non-zero
-    const tx1 = await cdpManager.liquidate(accounts[2], { from: accounts[0] })
-    // const gas1 = th.gasUsed(tx1)
-    // th.logGas(gas1, message)
-    const tx2 = await cdpManager.liquidate(accounts[3], { from: accounts[0] })
-    // const gas2 = th.gasUsed(tx2)
-    // th.logGas(gas2, message)
-
-    assert.isTrue(await sortedCdps.contains(accounts[1]))
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    const tx5 = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-    const gas5 = th.gasUsed(tx5)
-    th.logGas(gas5, message)
-
-    th.appendData({ gas: gas5 }, message, data)
-  })
-
-  it("", async () => {
-    const message = 'Series of liquidate() calls. Liquidee has pending rewards. Pure redistribution'
-    // 100 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 200), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 200), contracts, dec(130, 18))
-
-    const liquidationAcctRange = accounts.slice(1, 10)
-
-    // Accts open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(liquidationAcctRange, contracts, dec(1, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(liquidationAcctRange, contracts, dec(130, 18))
-
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-
-    // All cdps are liquidated
-    for (account of liquidationAcctRange) {
-      const hasPendingRewards = await cdpManager.hasPendingRewards(account)
-      console.log("Liquidee has pending rewards: " + hasPendingRewards)
-
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-      const tx = await cdpManager.liquidate(account, { from: accounts[0] })
-      assert.isFalse(await sortedCdps.contains(account))
-
-      const gas = th.gasUsed(tx)
-      th.logGas(gas, message)
-    }
-
-    // th.appendData({gas: gas}, message, data)
-  })
-
-  // Pure redistribution with NO pending rewards
-  it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has NO pending rewards. Pure redistribution'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
-
-    //2 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(2, 4), contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[3], ZERO_ADDRESS, { from: accounts[3] })
-
-    // Price drops
-    await priceFeed.setPrice(dec(100, 18))
-
-    // Initial distribution liquidations make system reward terms and DefaultPool non-zero
-    const tx1 = await cdpManager.liquidate(accounts[2], { from: accounts[0] })
-    const tx2 = await cdpManager.liquidate(accounts[3], { from: accounts[0] })
-
-    // Account 1 opens cdp
-    await borrowerOperations.openCdp(dec(40, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(50, 18))
-
-    assert.isTrue(await sortedCdps.contains(accounts[1]))
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-    const tx3 = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
-
-    assert.isFalse(await sortedCdps.contains(accounts[1]))
-    const gas = th.gasUsed(tx3)
-    th.logGas(gas, message)
-
-    th.appendData({ gas: gas }, message, data)
-  })
-
-  it("", async () => {
-    const message = 'Series of liquidate() calls. Liquidee has NO pending rewards. Pure redistribution'
-
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
-
-    const liquidationAcctRange = accounts.slice(1, 20)
-
-    for (account of liquidationAcctRange) {
-      await priceFeed.setPrice(dec(200, 18))
-      await borrowerOperations.openCdp(dec(130, 18), account, ZERO_ADDRESS, { from: account, value: dec(1, 'ether') })
-
-      const hasPendingRewards = await cdpManager.hasPendingRewards(account)
-      console.log("Liquidee has pending rewards: " + hasPendingRewards)
-
-      await priceFeed.setPrice(dec(100, 18))
-
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-
-      const tx = await cdpManager.liquidate(account, { from: accounts[0] })
-
-      assert.isFalse(await sortedCdps.contains(account))
-
-      const gas = th.gasUsed(tx)
-      th.logGas(gas, message)
-    }
-
-    // th.appendData({gas: gas}, message, data)
-  })
-
-  // Pure offset with NO pending rewards
-  it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has NO pending rewards. Pure offset with SP'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
+    const message = 'Test,Single liquidate() call. Liquidee has NO pending rewards. Pure offset with SP'
+    // 10 accts each open Cdps
+    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(200, 'ether'), dec(2, 18))
 
     //3 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(0, 4), contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[3], ZERO_ADDRESS, { from: accounts[3] })
+    await th.openCdp_allAccounts(accounts.slice(0, 4), contracts, dec(30, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[2], 0);
+    let _cdpIdLiq2 = await sortedCdps.cdpOfOwnerByIndex(accounts[3], 0);
+    let _cdpIdLiq3 = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
 
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    // Acct 999 as liquidator
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // Account 100 provides 600 EBTC to pool
-    await borrowerOperations.withdrawEBTC(_100pct, dec(600, 18), accounts[100], ZERO_ADDRESS, { from: accounts[100] })
-    await stabilityPool.provideToSP(dec(600, 18), ZERO_ADDRESS, { from: accounts[100] })
+    // Price drops
+    let _droppedPrice = dec(7218, 13);
+    await priceFeed.setPrice(_droppedPrice)
 
-    // Initial liquidations - full offset - makes SP reward terms and SP non-zero
-    await cdpManager.liquidate(accounts[2], { from: accounts[0] })
-    await cdpManager.liquidate(accounts[3], { from: accounts[0] })
+    // Initial liquidations - full liquidation
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(accounts[1])
-    console.log("Liquidee has pending rewards: " + hasPendingRewards)
+    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
+    assert.isFalse(hasPendingRewards)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Account 1 liquidated - full offset
-    const tx = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
+    // Account 1 liquidated - liquidation
+    const tx = await cdpManager.liquidate(_cdpIdLiq3, { from: _liquidator })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
-  // Pure offset WITH pending rewards
+  // Full liquidation WITH pending rewards
   it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has pending rewards. Pure offset with SP'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
+    const message = 'Test,Single liquidate() call. Liquidee has pending rewards'
+    // 10 accts each open Cdps
+    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(200, 'ether'), dec(2, 18))
 
-    // 5 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(0, 5), contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[3], ZERO_ADDRESS, { from: accounts[3] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[4], ZERO_ADDRESS, { from: accounts[4] })
+    // 4 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
+    await th.openCdp_allAccounts(accounts.slice(0, 5), contracts, dec(30, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[2], 0);
+    let _cdpIdLiq2 = await sortedCdps.cdpOfOwnerByIndex(accounts[3], 0);
+    let _cdpIdLiq3 = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
+    let _cdpIdLiq4 = await sortedCdps.cdpOfOwnerByIndex(accounts[4], 0);
 
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    // Acct 999 as liquidator
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    // Account 100 provides 360 EBTC to SP
-    await borrowerOperations.withdrawEBTC(_100pct, dec(600, 18), accounts[100], ZERO_ADDRESS, { from: accounts[100] })
-    await stabilityPool.provideToSP(dec(360, 18), ZERO_ADDRESS, { from: accounts[100] })
+    // Price drops
+    let _droppedPrice = dec(7218, 13);
+    await priceFeed.setPrice(_droppedPrice)
 
-    // Initial liquidations - full offset - makes SP reward terms and SP non-zero
-    await cdpManager.liquidate(accounts[2], { from: accounts[0] })
-    await cdpManager.liquidate(accounts[3], { from: accounts[0] })
+    // Initial liquidations - full liquidation
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    // Pure redistribution - creates pending dist. rewards for account 1
-    await cdpManager.liquidate(accounts[4], { from: accounts[0] })
+    // redistribution - creates pending dist. rewards for account 1
+    await priceFeed.setPrice(dec(3014, 13))
+    await cdpManager.liquidate(_cdpIdLiq4, { from: _liquidator })
 
-    // Account 5 provides another 200 to the SP
-    await stabilityPool.provideToSP(dec(200, 18), ZERO_ADDRESS, { from: accounts[100] })
-
-    const hasPendingRewards = await cdpManager.hasPendingRewards(accounts[1])
-    console.log("Liquidee has pending rewards: " + hasPendingRewards)
+    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
+    assert.isTrue(hasPendingRewards)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // Account 1 liquidated - full offset
-    const tx = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
+    // Account 1 liquidated - full liquidation
+    const tx = await cdpManager.liquidate(_cdpIdLiq3, { from: _liquidator })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
-  // Partial offset + redistribution WITH pending rewards
+  // WITH pending rewards
   it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has pending rewards. Partial offset + redistribution'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
+    const message = 'Test,Single liquidate() call. Liquidee has pending rewards'
+    // 10 accts each open Cdps
+    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(200, 'ether'), dec(2, 18))
 
-    //4 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(0, 4), contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[3], ZERO_ADDRESS, { from: accounts[3] })
+    // 3 acct open Cdps
+    await th.openCdp_allAccounts(accounts.slice(0, 4), contracts, dec(30, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[2], 0);
+    let _cdpIdLiq2 = await sortedCdps.cdpOfOwnerByIndex(accounts[3], 0);
+    let _cdpIdLiq3 = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
 
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    // Acct 999 as liquidator
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+
+    // Price drops
+    let _droppedPrice = dec(3014, 13);
+    await priceFeed.setPrice(_droppedPrice)
 
     // Set up some "previous" liquidations triggering partial offsets, and pending rewards for all cdps
-    await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: accounts[100] })
-    await cdpManager.liquidate(accounts[2], { from: accounts[0] })
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: accounts[101] })
-    await cdpManager.liquidate(accounts[3], { from: accounts[0] })
-
-    // pool refilled with 100 EBTC
-    await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: accounts[102] })
-
-    const hasPendingRewards = await cdpManager.hasPendingRewards(accounts[1])
-    console.log("Liquidee has pending rewards: " + hasPendingRewards)
+    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
+    assert.isTrue(hasPendingRewards)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // account 1 180 EBTC liquidated  - partial offset
-    const tx = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
+    // account 1 liquidated
+    const tx = await cdpManager.liquidate(_cdpIdLiq3, { from: _liquidator })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
-  // Partial offset + redistribution with NO pending rewards
+  // NO pending rewards
   it("", async () => {
-    const message = 'Single liquidate() call. Liquidee has NO pending rewards. Partial offset + redistribution'
-    // 10 accts each open Cdp with 10 ether, withdraw 180 EBTC
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 110), contracts, dec(130, 18))
+    const message = 'Test,Single liquidate() call. Liquidee has NO pending rewards'
+    // 10 accts each open Cdps
+    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(200, 'ether'), dec(2, 18))
 
-    //2 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts(accounts.slice(2, 4), contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[2], ZERO_ADDRESS, { from: accounts[2] })
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[3], ZERO_ADDRESS, { from: accounts[3] })
+    //2 acct open Cdp
+    await th.openCdp_allAccounts(accounts.slice(2, 4), contracts, dec(30, 'ether'), dec(2, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[2], 0);
+    let _cdpIdLiq2 = await sortedCdps.cdpOfOwnerByIndex(accounts[3], 0);
 
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    // Acct 999 as liquidator
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
+	
+    // Price drops
+    let _droppedPrice = dec(3014, 13);
+    await priceFeed.setPrice(_droppedPrice)
+
+    // Account 1 opens cdp
+    await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: accounts[1], value: dec(75, 'ether') }})
+    let _cdpIdLiq3 = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
 
     // Set up some "previous" liquidations that trigger partial offsets, 
     //and create pending rewards for all cdps
-    await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: accounts[100] })
-    await cdpManager.liquidate(accounts[2], { from: accounts[0] })
+    await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    await stabilityPool.provideToSP(dec(100, 18), ZERO_ADDRESS, { from: accounts[101] })
-    await cdpManager.liquidate(accounts[3], { from: accounts[0] })
+    // Price drops
+    await priceFeed.setPrice(dec(1500, 13))
 
-    // Pool refilled with 50 EBTC
-    await stabilityPool.provideToSP(dec(50, 18), ZERO_ADDRESS, { from: accounts[102] })
-
-    // Account 1 opens cdp
-    await borrowerOperations.openCdp(dec(30, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(50, 18))
-
-    const hasPendingRewards = await cdpManager.hasPendingRewards(accounts[1])
-    console.log("Liquidee has pending rewards: " + hasPendingRewards)
+    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
+    assert.isTrue(hasPendingRewards)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    // account 1 70 EBTC liquidated  - partial offset against 50 EBTC in SP
-    const tx = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
+    // account 1 liquidated
+    const tx = await cdpManager.liquidate(_cdpIdLiq3, { from: _liquidator })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
     th.appendData({ gas: gas }, message, data)
   })
 
-  // With pending dist. rewards and SP gains (still closes) - partial offset (Highest gas cost scenario in Normal Mode)
+  // With pending dist. rewards (Highest gas cost scenario in Normal Mode)
   it("", async () => {
-    const message = 'liquidate() 1 Cdp, liquidated Cdp has pending SP rewards and redistribution rewards, offset + redistribution.'
-    // 10 accts each open Cdp with 10 ether
-    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(10, 'ether'), 0)
+    const message = 'Test,liquidate() liquidated Cdp has redistribution rewards.'
+    // 10 accts each open Cdps
+    await th.openCdp_allAccounts(accounts.slice(100, 110), contracts, dec(200, 'ether'), dec(2, 18))
 
-    //Account 99 and 98 each open Cdp with 1 ether, and withdraw 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts([accounts[99]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[99], ZERO_ADDRESS, { from: accounts[99] })
-    await th.openCdp_allAccounts([accounts[98]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[98], ZERO_ADDRESS, { from: accounts[98] })
+    //Account 99 and 98 each open Cdp
+    await th.openCdp_allAccounts([accounts[99]], contracts, dec(28, 'ether'), dec(1, 18))
+    let _cdpIdLiq = await sortedCdps.cdpOfOwnerByIndex(accounts[99], 0);
+    await th.openCdp_allAccounts([accounts[98]], contracts, dec(28, 'ether'), dec(1, 18))
+    let _cdpIdLiq2 = await sortedCdps.cdpOfOwnerByIndex(accounts[98], 0);
 
-    // Acct 99 deposits 1 EBTC to SP
-    await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: accounts[99] })
+    // Acct 999 as liquidator
+    let _liquidator = accounts[999];
+    await th.openCdp(contracts, {extraEBTCAmount: dec(100, 18), extraParams: { from: _liquidator, value: dec(3000, 'ether') }})
 
-    //Account 97 opens Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts([accounts[97]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[97], ZERO_ADDRESS, { from: accounts[97] })
+    //Account 97 opens Cdp
+    await th.openCdp_allAccounts([accounts[97]], contracts, dec(32, 'ether'), dec(1, 18))
+    let _cdpIdLiq3 = await sortedCdps.cdpOfOwnerByIndex(accounts[97], 0);
 
-    // Acct 100 withdraws 1800 EBTC and deposits it to the SP
-    await borrowerOperations.withdrawEBTC(_100pct, dec(1750, 18), accounts[100], ZERO_ADDRESS, { from: accounts[100] })
-    await stabilityPool.provideToSP(dec(1750, 18), ZERO_ADDRESS, { from: accounts[100] })
-
-    // Price drops too $100, accounts 99 and 100 ICR fall below MCR
-    await priceFeed.setPrice(dec(100, 18))
+    // Price drops too $100, accounts 99 and 100 ICR fall below MCR	
+    let _droppedPrice = dec(3014, 13);
+    await priceFeed.setPrice(_droppedPrice)
     const price = await priceFeed.getPrice()
 
-    /* Liquidate account 97. Account 97 is completely offset against SP and removed from system.
-    This creates SP gains for accounts 99 and 7. */
-    await cdpManager.liquidate(accounts[97], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[97]))
+    /* Liquidate account 97 */
+    await cdpManager.liquidate(_cdpIdLiq3, { from: _liquidator })
+    assert.isFalse(await sortedCdps.contains(_cdpIdLiq3))
 
-    // Price rises again to 200
-    await priceFeed.setPrice(dec(200, 18))
-
-    // Acct 100 withdraws deposit and gains from SP
-    await stabilityPool.withdrawFromSP(dec(1750, 18), { from: accounts[100] })
-
-     // Price drops again to 100
-     await priceFeed.setPrice(dec(100, 18))
-
-    // Account 98 is liquidated, with nothing in SP pool.  This creates pending rewards from distribution.
-    await cdpManager.liquidate(accounts[98], { from: accounts[0] })
-
-    // Account 7 deposits 1 EBTC in the Stability Pool
-    await stabilityPool.provideToSP(dec(1, 18), ZERO_ADDRESS, { from: accounts[100] })
+    // Account 98 is liquidated which creates pending rewards from distribution.
+    await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
-    const tx = await cdpManager.liquidate(accounts[99], { from: accounts[0] })
-    assert.isFalse(await sortedCdps.contains(accounts[99]))
+    const tx = await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
+    assert.isFalse(await sortedCdps.contains(_cdpIdLiq))
 
-    const gas = th.gasUsed(tx)
-    th.logGas(gas, message)
-
-    th.appendData({ gas: gas }, message, data)
-  })
-
-  // pure offset
-  it("", async () => {
-    const message = 'liquidate() 1 Cdp Normal Mode, 30 active Cdps, no ETH gain in pool, pure offset with SP'
-    // 30 accts each open Cdp with 10 ether, withdraw 180 EBTC, and provide 180 EBTC to Stability Pool
-    await th.openCdp_allAccounts(accounts.slice(100, 130), contracts, dec(10, 'ether'), 0)
-    await th.withdrawEBTC_allAccounts(accounts.slice(100, 130), contracts, dec(130, 18))
-
-    await stabilityPool.provideToSP(dec(130, 18), ZERO_ADDRESS, { from: accounts[100] })
-
-    //1 acct open Cdp with 1 ether and withdraws 180 EBTC (inc gas comp)
-    await th.openCdp_allAccounts([accounts[1]], contracts, dec(1, 'ether'), 0)
-    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
-
-    // Price drops, account[1]'s ICR falls below MCR
-    await priceFeed.setPrice(dec(100, 18))
-
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
-    
-    const tx = await cdpManager.liquidate(accounts[1], { from: accounts[0] })
     const gas = th.gasUsed(tx)
     th.logGas(gas, message)
 
@@ -2050,10 +1585,20 @@ contract('Gas cost tests', async accounts => {
   // --- Write test output data to CSV file
 
   it("Export test data", async () => {
-    fs.writeFile('gasTest/outputs/gasTestData.csv', data, (err) => {
-      if (err) { console.log(err) } else {
-        console.log("Gas test data written to gasTest/outputs/gasTestData.csv")
-      }
+    let _lineCnt = 1;
+    let _content = '';
+    for(let i = 0;i < dataOneMonth.length;i++){
+        console.log('#L' + _lineCnt + ':' + dataOneMonth[i]);
+        _lineCnt = _lineCnt + 1;	
+        _content = _content + dataOneMonth[i]	
+    }
+	
+    fs.writeFile('gasTest/outputs/gasTestData.csv', _content, (err) => {
+        if (err) { 
+            console.log(err) 
+        } else {
+            console.log("Gas test data written to gasTest/outputs/gasTestData.csv")
+        }
     })
   })
 

@@ -19,6 +19,7 @@ contract RolesAuthority is Auth, Authority {
     event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
 
     event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
+    event CapabilityBurned(address indexed target, bytes4 indexed functionSig);
 
     event RoleCapabilityUpdated(
         uint8 indexed role,
@@ -26,6 +27,12 @@ contract RolesAuthority is Auth, Authority {
         bytes4 indexed functionSig,
         bool enabled
     );
+
+    enum CapabilityFlag {
+        None,
+        Public,
+        Burned
+    }
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -45,7 +52,7 @@ contract RolesAuthority is Auth, Authority {
 
     mapping(address => bytes32) public getUserRoles;
 
-    mapping(address => mapping(bytes4 => bool)) public isCapabilityPublic;
+    mapping(address => mapping(bytes4 => CapabilityFlag)) public capabilityFlag;
 
     mapping(address => mapping(bytes4 => bytes32)) public getRolesWithCapability;
 
@@ -61,17 +68,28 @@ contract RolesAuthority is Auth, Authority {
         return (uint256(getRolesWithCapability[target][functionSig]) >> role) & 1 != 0;
     }
 
+    function isPublicCapability(address target, bytes4 functionSig) public view returns (bool) {
+        return capabilityFlag[target][functionSig] == CapabilityFlag.Public;
+    }
+
     /*//////////////////////////////////////////////////////////////
                            AUTHORIZATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /**
+        @notice A user can call a given function signature on a given target address if:
+            - The capability has not been burned
+            - That capability is public, or the user has a role that has been granted the capability to call the function
+     */
     function canCall(
         address user,
         address target,
         bytes4 functionSig
     ) public view virtual override returns (bool) {
+        CapabilityFlag flag = capabilityFlag[target][functionSig];
+
         return
-            isCapabilityPublic[target][functionSig] ||
+            (flag != CapabilityFlag.Burned && flag == CapabilityFlag.Public) ||
             bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
     }
 
@@ -79,16 +97,29 @@ contract RolesAuthority is Auth, Authority {
                    ROLE CAPABILITY CONFIGURATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Set a capability flag as public, meaning any account can call it. Or revoke this capability.
+    /// @dev A capability cannot be made public if it has been burned.
     function setPublicCapability(
         address target,
         bytes4 functionSig,
         bool enabled
     ) public virtual requiresAuth {
-        isCapabilityPublic[target][functionSig] = enabled;
+        require(
+            capabilityFlag[target][functionSig] != CapabilityFlag.Burned,
+            "RolesAuthority: capability burned"
+        );
+
+        if (enabled) {
+            capabilityFlag[target][functionSig] = CapabilityFlag.Public;
+        } else {
+            capabilityFlag[target][functionSig] = CapabilityFlag.None;
+        }
 
         emit PublicCapabilityUpdated(target, functionSig, enabled);
     }
 
+    /// @notice Grant a specified role the ability to call a function on a target.
+    /// @notice Has no effect
     function setRoleCapability(
         uint8 role,
         address target,
@@ -113,6 +144,13 @@ contract RolesAuthority is Auth, Authority {
         }
 
         emit RoleCapabilityUpdated(role, target, functionSig, enabled);
+    }
+
+    /// @notice Permanently burns a capability for a target.
+    function burnCapability(address target, bytes4 functionSig) public virtual requiresAuth {
+        capabilityFlag[target][functionSig] = CapabilityFlag.Burned;
+
+        emit CapabilityBurned(target, functionSig);
     }
 
     /*//////////////////////////////////////////////////////////////

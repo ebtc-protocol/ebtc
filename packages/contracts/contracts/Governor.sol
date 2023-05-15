@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0;
-pragma experimental ABIEncoderV2;
 
 import {EnumerableSet} from "./Dependencies/EnumerableSet.sol";
 import {Authority} from "./Dependencies/Auth.sol";
@@ -43,13 +42,21 @@ contract Governor is RolesAuthority {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _owner) public RolesAuthority(_owner, Authority(address(this))) {}
+
+    /// @notice The contract constructor initializes RolesAuthority with the given owner.
+    /// @param _owner The address of the owner, who gains all permissions by default.
+    constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) {}
 
     /*//////////////////////////////////////////////////////////////
                             GETTERS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Convenience function intended for off-chain
+    /// @notice Returns a list of users that are assigned a specific role.
+    /// @dev This function searches all users and checks if they are assigned the given role.
+    /// @dev Intended for off-chain utility only due to inefficiency.
+    /// @param role The role ID to find users for.
+    /// @return usersWithRole An array of addresses that are assigned the given role.
+
     function getUsersByRole(uint8 role) external view returns (address[] memory usersWithRole) {
         // Search over all users: O(n) * 2
         uint count;
@@ -75,6 +82,12 @@ contract Governor is RolesAuthority {
         }
     }
 
+    /// @notice Returns a list of roles that an address has.
+    /// @dev This function searches all roles and checks if they are assigned to the given user.
+    /// @dev Intended for off-chain utility only due to inefficiency.
+    /// @param user The address of the user.
+    /// @return rolesForUser An array of role IDs that the user has.
+
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
         uint count;
@@ -95,7 +108,7 @@ contract Governor is RolesAuthority {
         }
     }
 
-    function getRolesFromByteMap(bytes32 byteMap) public view returns (uint8[] memory roleIds) {
+    function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
         uint count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
             bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
@@ -117,7 +130,7 @@ contract Governor is RolesAuthority {
     }
 
     // helper function to generate bytes32 cache data for given roleIds array
-    function getByteMapFromRoles(uint8[] memory roleIds) public view returns (bytes32) {
+    function getByteMapFromRoles(uint8[] memory roleIds) public pure returns (bytes32) {
         bytes32 _data;
         for (uint8 i = 0; i < roleIds.length; i++) {
             _data |= bytes32(1 << uint(roleIds[i]));
@@ -139,7 +152,9 @@ contract Governor is RolesAuthority {
     }
 
     /// @notice return all role IDs that have at least one capability enabled
-    function getActiveRoles() external view returns (Role[] memory activeRoles) {}
+    function getActiveRoles() external view returns (Role[] memory activeRoles) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     // If a role exists, flip enabled
 
@@ -147,11 +162,15 @@ contract Governor is RolesAuthority {
 
     function getCapabilitiesForTarget(
         address target
-    ) external view returns (Capability[] memory capabilities) {}
+    ) external view returns (Capability[] memory capabilities) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     function getCapabilitiesByRole(
         uint8 role
-    ) external view returns (Capability[] memory capabilities) {}
+    ) external view returns (Capability[] memory capabilities) {
+        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
+    }
 
     function getRoleName(uint8 role) external view returns (string memory roleName) {
         return roleNames[role];

@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "./BaseMath.sol";
 import "./LiquityMath.sol";
 import "../Interfaces/IActivePool.sol";
-import "../Interfaces/IDefaultPool.sol";
 import "../Interfaces/IPriceFeed.sol";
 import "../Interfaces/ILiquityBase.sol";
 import "../Dependencies/ICollateralToken.sol";
@@ -29,13 +28,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Critical system collateral ratio. If the system's total collateral ratio (TCR) falls below the CCR, Recovery Mode is triggered.
     uint public constant CCR = 1250000000000000000; // 125%
 
-    // Amount of EBTC to be locked in gas pool on opening cdps
-    uint public constant EBTC_GAS_COMPENSATION = 1e16;
-
+    // Amount of stETH collateral to be locked in active pool on opening cdps
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
-    // Minimum amount of net EBTC debt denominated in ETH a cdp must have
-    uint public constant MIN_NET_DEBT = 2e18;
+    // Minimum amount of stETH collateral a CDP must have
+    uint public constant MIN_NET_COLL = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -45,24 +42,23 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant MAX_REWARD_SPLIT = 10_000;
 
-    IActivePool public activePool;
+    IActivePool public immutable activePool;
 
-    IDefaultPool public defaultPool;
-
-    IPriceFeed public override priceFeed;
+    IPriceFeed public immutable override priceFeed;
 
     // the only collateral token allowed in CDP
-    ICollateralToken public collateral;
+    ICollateralToken public immutable collateral;
+
+    constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
+        activePool = IActivePool(_activePoolAddress);
+        priceFeed = IPriceFeed(_priceFeedAddress);
+        collateral = ICollateralToken(_collateralAddress);
+    }
 
     // --- Gas compensation functions ---
 
-    // Returns the composite debt (drawn debt + gas compensation) of a cdp, for the purpose of ICR calculation
-    function _getCompositeDebt(uint _debt) internal pure returns (uint) {
-        return (_debt + EBTC_GAS_COMPENSATION);
-    }
-
-    function _getNetDebt(uint _debt) internal pure returns (uint) {
-        return (_debt - EBTC_GAS_COMPENSATION);
+    function _getNetColl(uint _coll) internal pure returns (uint) {
+        return _coll - LIQUIDATOR_REWARD;
     }
 
     // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
@@ -70,18 +66,21 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _entireColl / PERCENT_DIVISOR;
     }
 
+    /**
+        @notice Get the entire system collateral
+        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
+        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
+     */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
-        uint activeColl = activePool.getStEthColl();
-        uint liquidatedColl = defaultPool.getStEthColl();
-
-        return (activeColl + liquidatedColl);
+        return (activePool.getStEthColl());
     }
 
+    /**
+        @notice Get the entire system debt
+        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
+     */
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
-        uint activeDebt = activePool.getEBTCDebt();
-        uint closedDebt = defaultPool.getEBTCDebt();
-
-        return (activeDebt + closedDebt);
+        return (activePool.getEBTCDebt());
     }
 
     function _getTCR(uint256 _price) internal view returns (uint TCR) {
@@ -110,14 +109,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     // Convert ETH/BTC price to BTC/ETH price
-    function _getPriceReciprocal(uint _price) internal view returns (uint) {
+    function _getPriceReciprocal(uint _price) internal pure returns (uint) {
         return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
     }
 
     // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
     // _debt is denominated in BTC
     // _price is ETH/BTC
-    function _convertDebtDenominationToEth(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToEth(uint _debt, uint _price) internal pure returns (uint) {
         uint priceReciprocal = _getPriceReciprocal(_price);
         return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
@@ -125,7 +124,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
-    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal view returns (uint) {
+    function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
 }

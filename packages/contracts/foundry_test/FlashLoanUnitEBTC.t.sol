@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -67,7 +66,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
 
-        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
 
         // Perform flashloan
         borrowerOperations.flashLoan(
@@ -78,7 +77,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         );
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
+            prevFeeBalance + fee
+        );
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
@@ -146,11 +148,11 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * borrowerOperations.FEE_AMT()) / borrowerOperations.MAX_BPS());
+        assertEq(fee, (amount * borrowerOperations.feeBps()) / borrowerOperations.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
 

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -56,7 +55,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
-        uint256 prevFeeBalance = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        uint256 prevFeeBalance = collateral.balanceOf(activePool.feeRecipientAddress());
         // Perform flashloan
         activePool.flashLoan(
             wethReceiver,
@@ -68,7 +67,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), _suggar);
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(collateral.balanceOf(activePool.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(collateral.balanceOf(activePool.feeRecipientAddress()), prevFeeBalance + fee);
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
@@ -91,7 +90,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
-        vm.expectRevert("ActivePool: Caller is neither BO nor Default Pool");
+        vm.expectRevert("ActivePool: Caller is not BorrowerOperations");
         payable(address(activePool)).call{value: amount}("");
     }
 
@@ -157,11 +156,11 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.FEE_AMT()) / activePool.MAX_BPS());
+        assertEq(fee, (amount * activePool.feeBps()) / activePool.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
         activePool.flashFee(randomToken, amount);
 
