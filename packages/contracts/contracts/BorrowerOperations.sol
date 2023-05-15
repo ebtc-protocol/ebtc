@@ -35,47 +35,6 @@ contract BorrowerOperations is
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
-    /* --- Variable container structs  ---
-
-    Used to hold, return and assign variables inside a function, in order to avoid the error:
-    "CompilerError: Stack too deep". */
-
-    // struct LocalVariables_adjustCdp {
-    //     uint price;
-    //     uint collChange;
-    //     uint netDebtChange;
-    //     bool isCollIncrease;
-    //     uint debt;
-    //     uint coll;
-    //     uint oldICR;
-    //     uint newICR;
-    //     uint newTCR;
-    //     uint newDebt;
-    //     uint newColl;
-    //     uint stake;
-    // }
-
-    // struct LocalVariables_openCdp {
-    //     uint price;
-    //     uint debt;
-    //     uint totalColl;
-    //     uint netColl;
-    //     uint ICR;
-    //     uint NICR;
-    //     uint stake;
-    //     uint arrayIndex;
-    // }
-
-    struct LocalVariables_moveTokens {
-        address user;
-        uint collChange;
-        uint collAddUnderlying; // ONLY for isCollIncrease=true
-        bool isCollIncrease;
-        uint EBTCChange;
-        bool isDebtIncrease;
-        uint netDebtChange;
-    }
-
     // --- Dependency setters ---
     constructor(
         address _cdpManagerAddress,
@@ -268,111 +227,122 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
-        _requireCdpisActive(cdpManager, _cdpId);
+        {
+            _requireCdpisActive(cdpManager, _cdpId);
 
-        uint256 price = priceFeed.fetchPrice();
-
-        // Reversed BTC/ETH price
-        bool isRecoveryMode = _checkRecoveryMode(price);
-
-        if (_isDebtIncrease) {
-            _requireNonZeroDebtChange(_EBTCChange);
+            if (_isDebtIncrease) {
+                _requireNonZeroDebtChange(_EBTCChange);
+            }
+            _requireSingularCollChange(_collAddAmount, _collWithdrawal);
+            _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
         }
-        _requireSingularCollChange(_collAddAmount, _collWithdrawal);
-        _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
-
-        // Confirm the operation is either a borrower adjusting their own cdp
-        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        assert(msg.sender == _borrower);
-
-        cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
         (uint256 collChange, bool isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
-        uint256 netDebtChange = _EBTCChange;
-
         uint256 debt = cdpManager.getCdpDebt(_cdpId);
         uint256 coll = cdpManager.getCdpColl(_cdpId);
-
-        // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
-        uint _cdpCollAmt = collateral.getPooledEthByShares(coll);
-        uint256 oldICR = LiquityMath._computeCR(_cdpCollAmt, debt, price);
-        uint256 newICR = _getNewICRFromCdpChange(
-            coll,
-            debt,
-            collChange,
-            isCollIncrease,
-            netDebtChange,
-            _isDebtIncrease,
-            price
-        );
-        assert(_collWithdrawal <= _cdpCollAmt);
-
-        // Check the adjustment satisfies all conditions for the current system mode
-        _requireValidAdjustmentInCurrentMode(
-            isRecoveryMode,
-            _collWithdrawal,
-            _isDebtIncrease,
-            isCollIncrease,
-            price,
-            collChange,
-            netDebtChange,
-            oldICR,
-            newICR
-        );
-
-        // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
-        if (!_isDebtIncrease && _EBTCChange > 0) {
-            _requireValidEBTCRepayment(debt, netDebtChange);
-            _requireSufficientEBTCBalance(ebtcToken, _borrower, netDebtChange);
-            _requireNonZeroDebt(debt - netDebtChange);
-        }
-
-        (uint256 newColl, uint256 newDebt) = _updateCdpFromAdjustment(
-            cdpManager,
-            _cdpId,
-            collChange,
-            isCollIncrease,
-            netDebtChange,
-            _isDebtIncrease
-        );
-
-        // Only check when the collateral exchange rate from share is above 1e18
-        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
-        if (collateral.getPooledEthByShares(1e18) >= 1e18) {
-            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(newColl));
-        }
-
-        uint256 stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
-
-        // Re-insert cdp in to the sorted list
+        uint256 netDebtChange = _EBTCChange;
         {
-            uint newNICR = _getNewNominalICRFromCdpChange(
-                _isDebtIncrease,
-                isCollIncrease,
+            // Load variables into local scope
+            uint256 price = priceFeed.fetchPrice();
+            bytes32 __cdpId = _cdpId;
+            bool __isDebtIncrease = _isDebtIncrease;
+            uint256 __collWithdrawal = _collWithdrawal;
+            uint256 _collChange = collChange;
+
+            // Confirm the operation is either a borrower adjusting their own cdp
+            assert(msg.sender == sortedCdps.getOwnerAddress(__cdpId));
+
+            cdpManager.applyPendingRewards(__cdpId);
+
+            // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
+            uint _cdpCollAmt = collateral.getPooledEthByShares(coll);
+            uint256 oldICR = LiquityMath._computeCR(_cdpCollAmt, debt, price);
+            uint256 newICR = _getNewICRFromCdpChange(
                 coll,
                 debt,
-                collChange,
-                netDebtChange
+                _collChange,
+                isCollIncrease,
+                netDebtChange,
+                __isDebtIncrease,
+                price
             );
-            sortedCdps.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
+            assert(__collWithdrawal <= _cdpCollAmt);
+
+            // Check the adjustment satisfies all conditions for the current system mode
+            _requireValidAdjustmentInCurrentMode(
+                _checkRecoveryMode(price),
+                __collWithdrawal,
+                __isDebtIncrease,
+                isCollIncrease,
+                price,
+                _collChange,
+                netDebtChange,
+                oldICR,
+                newICR
+            );
+
+            // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
+            if (!__isDebtIncrease && netDebtChange > 0) {
+                _requireValidEBTCRepayment(debt, netDebtChange);
+                _requireSufficientEBTCBalance(ebtcToken, msg.sender, netDebtChange);
+                _requireNonZeroDebt(debt - netDebtChange);
+            }
         }
 
-        emit CdpUpdated(
-            _cdpId,
-            _borrower,
-            debt,
-            coll,
-            newDebt,
-            newColl,
-            stake,
-            BorrowerOperation.adjustCdp
-        );
+        {
+            bool __isDebtIncrease = _isDebtIncrease;
+            bytes32 __cdpId = _cdpId;
+            bytes32 __upperHint = _upperHint;
+            bytes32 __lowerHint = _lowerHint;
+            uint256 _collChange = collChange;
+
+            (uint256 newColl, uint256 newDebt) = _updateCdpFromAdjustment(
+                cdpManager,
+                __cdpId,
+                _collChange,
+                isCollIncrease,
+                netDebtChange,
+                __isDebtIncrease
+            );
+
+            // Only check when the collateral exchange rate from share is above 1e18
+            // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
+            if (collateral.getPooledEthByShares(1e18) >= 1e18) {
+                _requireAtLeastMinNetColl(collateral.getPooledEthByShares(newColl));
+            }
+
+            uint256 stake = cdpManager.updateStakeAndTotalStakes(__cdpId);
+
+            // Re-insert cdp in to the sorted list
+            {
+                uint newNICR = _getNewNominalICRFromCdpChange(
+                    __isDebtIncrease,
+                    isCollIncrease,
+                    coll,
+                    debt,
+                    _collChange,
+                    netDebtChange
+                );
+                sortedCdps.reInsert(__cdpId, newNICR, __upperHint, __lowerHint);
+            }
+
+            emit CdpUpdated(
+                __cdpId,
+                msg.sender,
+                debt,
+                coll,
+                newDebt,
+                newColl,
+                stake,
+                BorrowerOperation.adjustCdp
+            );
+        }
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         {
-            LocalVariables_moveTokens memory _varMvTokens = LocalVariables_moveTokens(
+            _processTokenMovesFromAdjustment(
                 msg.sender,
                 collChange,
                 (isCollIncrease ? _collAddAmount : 0),
@@ -381,7 +351,6 @@ contract BorrowerOperations is
                 _isDebtIncrease,
                 netDebtChange
             );
-            _processTokenMovesFromAdjustment(_varMvTokens);
         }
     }
 
@@ -565,22 +534,28 @@ contract BorrowerOperations is
         @notice Handles the cases of a debt increase / decrease, and/or a collateral increase / decrease.
      */
     function _processTokenMovesFromAdjustment(
-        LocalVariables_moveTokens memory _varMvTokens
+        address user,
+        uint256 collChange,
+        uint256 collAddUnderlying,
+        bool isCollIncrease,
+        uint256 EBTCChange,
+        bool isDebtIncrease,
+        uint256 netDebtChange
     ) internal {
         // Debt increase: mint change value of new eBTC to user, increment ActivePool eBTC internal accounting
-        if (_varMvTokens.isDebtIncrease) {
-            _withdrawEBTC(_varMvTokens.user, _varMvTokens.EBTCChange, _varMvTokens.netDebtChange);
+        if (isDebtIncrease) {
+            _withdrawEBTC(user, EBTCChange, netDebtChange);
         } else {
             // Debt decrease: burn change value of eBTC from user, decrement ActivePool eBTC internal accounting
-            _repayEBTC(_varMvTokens.user, _varMvTokens.EBTCChange);
+            _repayEBTC(user, EBTCChange);
         }
 
-        if (_varMvTokens.isCollIncrease) {
+        if (isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange, 0);
+            _activePoolAddColl(collAddUnderlying, collChange, 0);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
-            activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
+            activePool.sendStEthColl(user, collChange);
         }
     }
 
