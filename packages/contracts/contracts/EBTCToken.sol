@@ -87,7 +87,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     /**
      * @notice Mint new tokens
      * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens 
+     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
      * @param _account The address to receive the newly minted tokens
      * @param _amount The amount of tokens to mint
      */
@@ -98,7 +98,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     /**
      * @notice Burn existing tokens
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager 
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
      * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
      * @param _account The address to burn tokens from
      * @param _amount The amount of tokens to burn
