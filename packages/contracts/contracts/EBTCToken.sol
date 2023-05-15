@@ -84,16 +84,37 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Functions for intra-Liquity calls ---
 
+    /**
+     * @notice Mint new tokens
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
+     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens 
+     * @param _account The address to receive the newly minted tokens
+     * @param _amount The amount of tokens to mint
+     */
     function mint(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _mint(_account, _amount);
     }
 
+    /**
+     * @notice Burn existing tokens
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager 
+     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+     * @param _account The address to burn tokens from
+     * @param _amount The amount of tokens to burn
+     */
     function burn(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
     }
 
+    /**
+     * @dev Return tokens from a system pool to a specified address
+     * @dev Internal system accouting function - only callable by CDPManager
+     * @param _poolAddress The address of the pool
+     * @param _receiver The address to receive the tokens
+     * @param _amount The amount of tokens to return
+     */
     function returnFromPool(
         address _poolAddress,
         address _receiver,
