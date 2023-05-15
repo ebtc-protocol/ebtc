@@ -181,7 +181,17 @@ contract EchidnaTester {
 
             // CDP Manager
             creationCode = type(CdpManager).creationCode;
-            args = abi.encode(addr, address(collateral));
+            args = abi.encode(
+                addr.liquidationLibraryAddress,
+                addr.authorityAddress,
+                addr.borrowerOperationsAddress,
+                addr.collSurplusPoolAddress,
+                addr.ebtcTokenAddress,
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
+            );
 
             cdpManager = CdpManager(
                 ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
@@ -264,7 +274,6 @@ contract EchidnaTester {
                 addr.cdpManagerAddress,
                 address(collateral),
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress
             );
 
