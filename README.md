@@ -15,8 +15,7 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 Most of the `/Dependency` files are copy-pastes, but some are custom:
 `/packages/contracts/contracts/Dependencies/LiquityBase.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
-
-`/packages/contracts/contracts/LQTY/feeRecipient`
+`/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
 
 ## Other Notes
 We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer pools to access on-chain liquidity. Potential economic attacks should be considered taking this into account.
