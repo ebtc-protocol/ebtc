@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
@@ -10,9 +9,8 @@ import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
-import {DefaultPool} from "../contracts/DefaultPool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
-import {FeeRecipient} from "../contracts/LQTY/FeeRecipient.sol";
+import {FeeRecipient} from "../contracts/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
@@ -58,6 +56,16 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
     bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
+    // ActivePool
+    bytes4 private constant SWEEP_TOKEN_SIG =
+        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
+    bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
+        bytes4(keccak256(bytes("claimFeeRecipientColl(uint256)")));
+
+    // Fee Recipient
+    bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
+        bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
+
     event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
     event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
 
@@ -68,7 +76,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     CdpManager cdpManager;
     WETH9 weth;
     ActivePool activePool;
-    DefaultPool defaultPool;
     CollSurplusPool collSurplusPool;
     FunctionCaller functionCaller;
     BorrowerOperations borrowerOperations;
@@ -92,7 +99,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         uint256 debt;
         uint256 coll;
         uint256 pendingEBTCDebtReward;
-        uint256 pendingETHReward;
     }
 
     /* setUp() - basic function to call when setting up new Foundry test suite
@@ -123,12 +129,11 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             4: priceFeed
             5; sortedCdps
             6: activePool
-            7: defaultPool
-            8: collSurplusPool
-            9: hintHelpers
-            10: eBTCToken
-            11: feeRecipient
-            12: multiCdpGetter
+            7: collSurplusPool
+            8: hintHelpers
+            9: eBTCToken
+            10: feeRecipient
+            11: multiCdpGetter
         */
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
@@ -153,10 +158,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.borrowerOperationsAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
-                addr.feeRecipientAddress,
                 addr.sortedCdpsAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress,
                 address(collateral)
             );
@@ -170,7 +173,17 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // CDP Manager
             creationCode = type(CdpManager).creationCode;
-            args = abi.encode(addr, address(collateral));
+            args = abi.encode(
+                addr.liquidationLibraryAddress,
+                addr.authorityAddress,
+                addr.borrowerOperationsAddress,
+                addr.collSurplusPoolAddress,
+                addr.ebtcTokenAddress,
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
+            );
 
             cdpManager = CdpManager(
                 ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
@@ -181,7 +194,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.priceFeedAddress,
                 addr.sortedCdpsAddress,
@@ -218,7 +230,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             args = abi.encode(
                 addr.borrowerOperationsAddress,
                 addr.cdpManagerAddress,
-                addr.defaultPoolAddress,
                 address(collateral),
                 addr.collSurplusPoolAddress,
                 addr.feeRecipientAddress
@@ -226,17 +237,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             activePool = ActivePool(
                 ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
-            );
-
-            // Default Pool
-            creationCode = type(DefaultPool).creationCode;
-            args = abi.encode(addr.cdpManagerAddress, addr.activePoolAddress, address(collateral));
-
-            defaultPool = DefaultPool(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.DEFAULT_POOL(),
-                    abi.encodePacked(creationCode, args)
-                )
             );
 
             // Coll Surplus Pool
@@ -262,7 +262,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
                 addr.cdpManagerAddress,
                 address(collateral),
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress
             );
 
@@ -287,13 +286,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
             // Fee Recipieint
             creationCode = type(FeeRecipient).creationCode;
-            args = abi.encode(
-                addr.ebtcTokenAddress,
-                addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress,
-                addr.activePoolAddress,
-                address(collateral)
-            );
+            args = abi.encode(defaultGovernance, addr.authorityAddress);
 
             feeRecipient = FeeRecipient(
                 ebtcDeployer.deploy(
@@ -310,7 +303,13 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
-        authority.setRoleName(5, "BorrowerOperations: setFeeBps & setMaxFeeBps");
+        authority.setRoleName(
+            5,
+            "BorrowerOperations+ActivePool: setFeeBps, setMaxFeeBps, setFeeRecipientAddress"
+        );
+        authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
+
+        // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
 
@@ -325,9 +324,19 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(
+            5,
+            address(borrowerOperations),
+            SET_FEE_RECIPIENT_ADDRESS_SIG,
+            true
+        );
 
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
+
+        authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
+        authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);
 
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);
@@ -335,6 +344,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setUserRole(defaultGovernance, 3, true);
         authority.setUserRole(defaultGovernance, 4, true);
         authority.setUserRole(defaultGovernance, 5, true);
+        authority.setUserRole(defaultGovernance, 6, true);
 
         vm.stopPrank();
     }
@@ -354,13 +364,9 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     ////////////////////////////////////////////////////////////////////////////
 
     function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return CdpState(debt, coll, pendingEBTCDebtReward, pendingETHReward);
+        (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
+            .getEntireDebtAndColl(cdpId);
+        return CdpState(debt, coll, pendingEBTCDebtReward);
     }
 
     function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {

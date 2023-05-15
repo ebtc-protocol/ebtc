@@ -100,11 +100,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
-      await splitFeeRecipient.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
+      let _feeBalBefore = await activePool.getFeeRecipientClaimableColl();
+      await cdpManager.claimStakingSplitFee();  
+      let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
 	  
-      th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee);
+      th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _fees[0]);
 	  
       // apply accumulated fee split to CDP	upon user operations  	  
       let _expectedFeeShare = _fees[0];
@@ -194,13 +194,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);  
           let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
-          let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address); 
+          let _feeBalBefore = await activePool.getFeeRecipientClaimableColl(); 
           await cdpManager.claimStakingSplitFee();  	 
-          let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
+          let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
           //console.log('i[' + i + ']:_totalCollBeforeAdded=' + _totalCollBeforeAdded + ',_totalColl=' + _totalColl + ',diff=' + (_totalColl.sub(_totalCollBeforeAdded)) + ',_aliceColl=' + _aliceColl + ',_bobColl=' + _bobColl + ',_expectedFee=' + _expectedFee + ',_feeBalDelta=' + _actualFee + ',diffFee=' + (_actualFee.sub(_expectedFee))); 
-          th.assertIsApproximatelyEqual(_actualFee, _expectedFee, _errorTolerance);
+          th.assertIsApproximatelyEqual(_actualFee, _expectedFeeShare, _errorTolerance);
 	  
           // get collateral after applying accumulated split fee
           let _aliceCollAfter = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1]; 
@@ -323,9 +323,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFeeShare = _fees[0];
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
 	  
-      let _feeBalBefore = await collToken.balanceOf(splitFeeRecipient.address);
+      let _feeBalBefore = await activePool.getFeeRecipientClaimableColl();
       await cdpManager.claimStakingSplitFee();  
-      let _feeBalAfter = await collToken.balanceOf(splitFeeRecipient.address);
+      let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
 	  
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
       let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
@@ -333,7 +333,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
       let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
 	  
-      th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFee, _errorTolerance);
+      th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFeeShare, _errorTolerance);
 	  
       // check after accumulated fee split applied to CDPs
       let _aliceCollAfter = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[1];

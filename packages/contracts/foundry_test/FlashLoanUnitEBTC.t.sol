@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -67,7 +66,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
 
-        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
 
         // Perform flashloan
         borrowerOperations.flashLoan(
@@ -78,7 +77,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         );
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
+            prevFeeBalance + fee
+        );
     }
 
     /// @dev Can take a 0 flashloan, nothing happens

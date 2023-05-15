@@ -17,7 +17,6 @@ contract EBTCDeployer is Ownable {
     string public constant SORTED_CDPS = "ebtc.v1.sortedCdps";
 
     string public constant ACTIVE_POOL = "ebtc.v1.activePool";
-    string public constant DEFAULT_POOL = "ebtc.v1.defaultPool";
     string public constant COLL_SURPLUS_POOL = "ebtc.v1.collSurplusPool";
 
     string public constant HINT_HELPERS = "ebtc.v1.hintHelpers";
@@ -35,7 +34,6 @@ contract EBTCDeployer is Ownable {
         address priceFeedAddress;
         address sortedCdpsAddress;
         address activePoolAddress;
-        address defaultPoolAddress;
         address collSurplusPoolAddress;
         address hintHelpersAddress;
         address ebtcTokenAddress;
@@ -54,12 +52,11 @@ contract EBTCDeployer is Ownable {
     4: priceFeed
     5; sortedCdps
     6: activePool
-    7: defaultPool
-    8: collSurplusPool
-    9: hintHelpers
-    10: eBTCToken
-    11: feeRecipient
-    12: multiCdpGetter
+    7: collSurplusPool
+    8: hintHelpers
+    9: eBTCToken
+    10: feeRecipient
+    11: multiCdpGetter
 
 
      */
@@ -72,7 +69,6 @@ contract EBTCDeployer is Ownable {
             Create3.addressOf(keccak256(abi.encodePacked(PRICE_FEED))),
             Create3.addressOf(keccak256(abi.encodePacked(SORTED_CDPS))),
             Create3.addressOf(keccak256(abi.encodePacked(ACTIVE_POOL))),
-            Create3.addressOf(keccak256(abi.encodePacked(DEFAULT_POOL))),
             Create3.addressOf(keccak256(abi.encodePacked(COLL_SURPLUS_POOL))),
             Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS))),
             Create3.addressOf(keccak256(abi.encodePacked(EBTC_TOKEN))),

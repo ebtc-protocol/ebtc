@@ -160,9 +160,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colDecreasedSystem = toBN(_colSystemPre.toString()).sub(toBN(_colSystemPost.toString())); 
       assert.equal(_colDecreasedSystem.toString(), _colDeposited.toString(), '!system collateral balance');	
       let _debtDecreasedActivePool = toBN(_debtInActivePoolPre.toString()).sub(toBN(_debtInActivePoolPost.toString())); 
-      assert.equal(_debtDecreasedActivePool.toString(), _debtBorrowed.toString(), '!activePool debt balance');
-      let _debtDefaultPool = await defaultPool.getEBTCDebt(); 
-      assert.equal(_debtDefaultPool.toString(), _debtBorrowed.sub(_expectedDebtRepaid).toString(), '!defaultPool debt balance');
+      assert.equal(_debtDecreasedActivePool.toString(), _expectedDebtRepaid.toString(), '!activePool debt balance');
       let _colDecreasedActivePool = toBN(_collInActivePoolPre.toString()).sub(toBN(_collInActivePoolPost.toString())); 
       assert.equal(_colDecreasedActivePool.toString(), _colDeposited.toString(), '!activePool collateral balance');
 
@@ -228,9 +226,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colDecreasedSystem = toBN(_colSystemPre.toString()).sub(toBN(_colSystemPost.toString())); 
       assert.equal(_colDecreasedSystem.toString(), _colDeposited.toString(), '!system collateral balance');	
       let _debtDecreasedActivePool = toBN(_debtInActivePoolPre.toString()).sub(toBN(_debtInActivePoolPost.toString())); 
-      assert.equal(_debtDecreasedActivePool.toString(), _debtBorrowed.toString(), '!activePool debt balance');
-      let _debtDefaultPool = await defaultPool.getEBTCDebt(); 
-      assert.equal(_debtDefaultPool.toString(), _debtBorrowed.sub(_expectedDebtRepaid).toString(), '!defaultPool debt balance');
+      assert.equal(_debtDecreasedActivePool.toString(), _expectedDebtRepaid.toString(), '!activePool debt balance');
       let _colDecreasedActivePool = toBN(_collInActivePoolPre.toString()).sub(toBN(_collInActivePoolPost.toString())); 
       assert.equal(_colDecreasedActivePool.toString(), _colDeposited.toString(), '!activePool collateral balance');
 
@@ -531,8 +527,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.transfer(owner, toBN(_ownerDebt.toString()).sub(toBN((await debtToken.balanceOf(owner)).toString())), {from: alice});	
       await cdpManager.liquidateCdps(1, {from: owner});
       assert.isFalse(await sortedCdps.contains(_ownerCdpId));
-      let _rewardETH = await cdpManager.getPendingETHReward(_aliceCdpId);
-      assert.isTrue(toBN(_rewardETH.toString()).eq(toBN('0')));
       let _rewardEBTCDebt = await cdpManager.getPendingEBTCDebtReward(_aliceCdpId);
       assert.isTrue(toBN(_rewardEBTCDebt.toString()).gt(toBN('0')));	
 	  
@@ -554,14 +548,14 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colSystemPre = await cdpManager.getEntireSystemColl();
       let _ethLiquidatorPre = await web3.eth.getBalance(bob);	
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
-      let _debtInAllPoolPre = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPre = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
+      let _debtInAllPoolPre = toBN((await activePool.getEBTCDebt()).toString()).toString();
+      let _collInAllPoolPre = toBN((await activePool.getStEthColl()).toString()).toString();
       const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmount, _aliceCdpId, _aliceCdpId, {from: bob}) 
       let _collRemaining = await cdpManager.getCdpColl(_aliceCdpId); 
       let _stakeRemaining = await cdpManager.getCdpStake(_aliceCdpId);
       let _debtRemaining = await cdpManager.getCdpDebt(_aliceCdpId);
-      let _debtInAllPoolPost = toBN((await activePool.getEBTCDebt()).toString()).add(toBN((await defaultPool.getEBTCDebt()).toString()));
-      let _collInAllPoolPost = toBN((await activePool.getStEthColl()).toString()).add(toBN((await defaultPool.getStEthColl()).toString()));
+      let _debtInAllPoolPost = toBN((await activePool.getEBTCDebt()).toString()).toString();
+      let _collInAllPoolPost = toBN((await activePool.getStEthColl()).toString()).toString();
       let _additionalCol = dec(1, 'ether');
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
       await contracts.collateral.deposit({from: alice, value: _additionalCol});
@@ -694,9 +688,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colDecreasedSystem = toBN(_colSystemPre.toString()).sub(toBN(_colSystemPost.toString())); 
       assert.equal(_colDecreasedSystem.toString(), _colDeposited.toString(), '!system collateral balance');
       let _debtDecreasedActivePool = toBN(_debtInActivePoolPre.toString()).sub(toBN(_debtInActivePoolPost.toString())); 
-      assert.equal(_debtDecreasedActivePool.toString(), _debtBorrowed.toString(), '!activePool debt balance');	
-      let _debtDefaultPool = await defaultPool.getEBTCDebt(); 
-      assert.equal(_debtDefaultPool.toString(), _debtBorrowed.sub(_expectedDebtRepaid).toString(), '!defaultPool debt balance');
+      assert.equal(_debtDecreasedActivePool.toString(), _expectedDebtRepaid.toString(), '!activePool debt balance');
       let _colDecreasedActivePool = toBN(_collInActivePoolPre.toString()).sub(toBN(_collInActivePoolPost.toString())); 
       assert.equal(_colDecreasedActivePool.toString(), _colDeposited.toString(), '!activePool collateral balance');
 

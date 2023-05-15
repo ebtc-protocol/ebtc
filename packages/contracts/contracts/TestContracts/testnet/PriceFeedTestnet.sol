@@ -14,10 +14,6 @@ import "../../Dependencies/AuthNoOwner.sol";
    the manual price.
  */
 contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SET_FALLBACK_CALLER_SIG =
-        bytes4(keccak256(bytes("setFallbackCaller(address)")));
-
     // --- variables ---
 
     uint256 private _price = 7428 * 1e13; // stETH/BTC price == ~15.8118 ETH per BTC
@@ -73,8 +69,9 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     }
 
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
+        address oldFallbackCaller = address(fallbackCaller);
         fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit FallbackCallerChanged(_fallbackCaller);
+        emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
     }
 
     // --- Oracle response wrapper functions ---

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture, BorrowerOperations} from "./BaseFixture.sol";
@@ -26,7 +25,7 @@ contract FlashWithDeposit {
         IERC3156FlashLender _lender,
         BorrowerOperations _borrowerOperations,
         address collTokenAddress
-    ) public {
+    ) {
         want = _want;
         lender = _lender;
         borrowerOperations = _borrowerOperations;

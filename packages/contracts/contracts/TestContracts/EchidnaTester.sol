@@ -8,11 +8,10 @@ import "../CdpManager.sol";
 import "../LiquidationLibrary.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
-import "../DefaultPool.sol";
 import "../CollSurplusPool.sol";
 import "../SortedCdps.sol";
 import "../HintHelpers.sol";
-import "../LQTY/FeeRecipient.sol";
+import "../FeeRecipient.sol";
 import "./testnet/PriceFeedTestnet.sol";
 import "./CollateralTokenTester.sol";
 import "./EchidnaProxy.sol";
@@ -56,7 +55,6 @@ contract EchidnaTester {
     CdpManager private cdpManager;
     BorrowerOperations private borrowerOperations;
     ActivePool private activePool;
-    DefaultPool private defaultPool;
     CollSurplusPool private collSurplusPool;
     EBTCTokenTester private eBTCToken;
     SortedCdps private sortedCdps;
@@ -168,10 +166,8 @@ contract EchidnaTester {
                 addr.borrowerOperationsAddress,
                 addr.collSurplusPoolAddress,
                 addr.ebtcTokenAddress,
-                addr.feeRecipientAddress,
                 addr.sortedCdpsAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.priceFeedAddress,
                 address(collateral)
             );
@@ -196,7 +192,6 @@ contract EchidnaTester {
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.activePoolAddress,
-                addr.defaultPoolAddress,
                 addr.collSurplusPoolAddress,
                 addr.priceFeedAddress,
                 addr.sortedCdpsAddress,
@@ -237,7 +232,6 @@ contract EchidnaTester {
             args = abi.encode(
                 addr.borrowerOperationsAddress,
                 addr.cdpManagerAddress,
-                addr.defaultPoolAddress,
                 address(collateral),
                 addr.collSurplusPoolAddress,
                 addr.feeRecipientAddress
@@ -245,17 +239,6 @@ contract EchidnaTester {
 
             activePool = ActivePool(
                 ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
-            );
-
-            // Default Pool
-            creationCode = type(DefaultPool).creationCode;
-            args = abi.encode(addr.cdpManagerAddress, addr.activePoolAddress, address(collateral));
-
-            defaultPool = DefaultPool(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.DEFAULT_POOL(),
-                    abi.encodePacked(creationCode, args)
-                )
             );
 
             // Coll Surplus Pool
@@ -371,16 +354,16 @@ contract EchidnaTester {
     // Helper functions
     ///////////////////////////////////////////////////////
 
-    function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal {
+    function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
-        (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
         uint _debt = entireDebt.add(_change.debtAddition).sub(_change.debtReduction);
         uint _coll = entireColl.add(_change.collAddition).sub(_change.collReduction);
         require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
     }
 
-    function _getRandomActor(uint _i) internal view returns (uint) {
+    function _getRandomActor(uint _i) internal pure returns (uint) {
         return _i % NUMBER_OF_ACTORS;
     }
 
@@ -425,7 +408,7 @@ contract EchidnaTester {
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             echidnaProxy.liquidatePrx(_cdpId);
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
         }
@@ -445,10 +428,10 @@ contract EchidnaTester {
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_partialAmount < entireDebt, "!_partialAmount");
             echidnaProxy.partialLiquidatePrx(_cdpId, _partialAmount);
-            (uint256 _newEntireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
         }
 
@@ -595,7 +578,7 @@ contract EchidnaTester {
         EchidnaProxy echidnaProxy = echidnaProxies[actor];
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
-        (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         require(_amount <= entireDebt, "!repayEBTC_amount");
         echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
     }
@@ -606,7 +589,6 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
         require(1 == cdpManager.getCdpStatus(_cdpId), "!closeCdpExtActive");
-        (uint256 entireDebt, , , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         echidnaProxies[actor].closeCdpPrx(_cdpId);
     }
 
@@ -621,7 +603,7 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
-        (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
         require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
 
         uint price = priceFeedTestnet.getPrice();
@@ -774,10 +756,6 @@ contract EchidnaTester {
             return false;
         }
 
-        if (collateral.sharesOf(address(defaultPool)) < defaultPool.getStEthColl()) {
-            return false;
-        }
-
         if (collateral.balanceOf(address(borrowerOperations)) > 0) {
             return false;
         }
@@ -813,9 +791,7 @@ contract EchidnaTester {
         bytes32 currentCdp = sortedCdps.getFirst();
         uint cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, , ) = cdpManager.getEntireDebtAndColl(
-                currentCdp
-            );
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(currentCdp);
             cdpsBalance = cdpsBalance.add(entireDebt);
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -831,13 +807,12 @@ contract EchidnaTester {
     // Basic Invariants for ebtc system
     // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
     // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
-    // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
+    // - active_pool_3： sum of EBTC debt accounting numbers in active pool is equal to EBTC total supply
     // - active_pool_4： total collateral in active pool should be equal to the sum of all individual CDP collateral
+    // - active_pool_5： sum of debt accounting in active pool should be equal to sum of debt accounting of individual CDPs
     // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
     // - cdp_manager_2： sum of active CDPs stake is equal to totalStakes
     // - cdp_manager_3： stFeePerUnit tracker for individual CDP is equal to or less than the global variable
-    // - default_pool_1： collateral balance in default pool is greater than or equal to its accounting number
-    // - default_pool_2： sum of debt accounting in default pool and active pool should be equal to sum of debt accounting of individual CDPs
     // - coll_surplus_pool_1： collateral balance in collSurplus pool is greater than or equal to its accounting number
     // - sorted_list_1： NICR ranking in the sorted list should follow descending order
     // - sorted_list_2： the first(highest) ICR in the sorted list should be bigger or equal to TCR
@@ -858,7 +833,7 @@ contract EchidnaTester {
     }
 
     function echidna_active_pool_invariant_3() public view returns (bool) {
-        if (eBTCToken.totalSupply() != activePool.getEBTCDebt().add(defaultPool.getEBTCDebt())) {
+        if (eBTCToken.totalSupply() != (activePool.getEBTCDebt())) {
             return false;
         }
         return true;
@@ -868,13 +843,26 @@ contract EchidnaTester {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (, uint _coll, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (, uint _coll, ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum.add(_coll);
         }
         uint _activeColl = activePool.getStEthColl();
         uint _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
         uint _divisor = _sum > _activeColl ? _sum : _activeColl;
         if (_diff * 1e18 > diff_tolerance * _activeColl) {
+            return false;
+        }
+        return true;
+    }
+
+    function echidna_active_pool_invariant_5() public view returns (bool) {
+        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _sum;
+        for (uint i = 0; i < _cdpCount; ++i) {
+            (uint _debt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            _sum = _sum.add(_debt);
+        }
+        if (!_assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance)) {
             return false;
         }
         return true;
@@ -906,26 +894,6 @@ contract EchidnaTester {
             if (_stFeePerUnitg < cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i))) {
                 return false;
             }
-        }
-        return true;
-    }
-
-    function echidna_default_pool_invariant_1() public view returns (bool) {
-        if (collateral.sharesOf(address(defaultPool)) < defaultPool.getStEthColl()) {
-            return false;
-        }
-        return true;
-    }
-
-    function echidna_default_pool_invariant_2() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = _sum.add(_debt);
-        }
-        if (!_assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance)) {
-            return false;
         }
         return true;
     }

@@ -111,11 +111,11 @@ contract MockAggregator is AggregatorV3Interface {
         return (prevRoundId, prevPrice, 0, updateTime, 0);
     }
 
-    function description() external view override returns (string memory) {
+    function description() external pure override returns (string memory) {
         return "";
     }
 
-    function version() external view override returns (uint256) {
+    function version() external pure override returns (uint256) {
         return 1;
     }
 }

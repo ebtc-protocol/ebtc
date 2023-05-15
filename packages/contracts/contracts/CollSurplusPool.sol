@@ -25,10 +25,6 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     // Collateral surplus claimable by cdp owners
     mapping(address => uint) internal balances;
 
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SWEEP_TOKEN_SIG =
-        bytes4(keccak256(bytes("sweepToken(address,uint256)")));
-
     // --- Contract setters ---
 
     /**

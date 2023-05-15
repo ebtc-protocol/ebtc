@@ -31,9 +31,8 @@ contract HintHelpers is LiquityBase {
         address _cdpManagerAddress,
         address _collateralAddress,
         address _activePoolAddress,
-        address _defaultPoolAddress,
         address _priceFeedAddress
-    ) LiquityBase(_activePoolAddress, _defaultPoolAddress, _priceFeedAddress, _collateralAddress) {
+    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
 
@@ -43,18 +42,6 @@ contract HintHelpers is LiquityBase {
     }
 
     // --- Functions ---
-
-    /*
-        @notice Helper function for finding the right hints to pass to redeemCollateral().
-        @dev It simulates a redemption of `_EBTCamount` to figure out where the redemption sequence will start and what state the final Cdp of the sequence will end up in.
-        @param _EBTCamount The amount of EBTC to redeem.
-        @param _price The assumed price value for eBTC/stETH.
-        @param _maxIterations The number of Cdps to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
-        @return firstRedemptionHint The address of the first Cdp with ICR >= MCR (i.e. the first Cdp that will be redeemed).
-        @return partialRedemptionHintNICR The final nominal ICR of the last Cdp of the sequence after being hit by partial redemption, or zero in case of no partial redemption.
-        @return truncatedEBTCamount The maximum amount that can be redeemed out of the the provided `_EBTCamount`. This can be lower than `_EBTCamount` when redeeming the full amount would leave the last Cdp of the redemption sequence with less net debt than the minimum allowed value (i.e. MIN_NET_DEBT).
-        @return partialRedemptionNewColl The amount of collateral that will be left in the last Cdp of the sequence after being hit by partial redemption, or zero in case of no partial redemption.
-     **/
 
     /**
      * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
@@ -160,7 +147,7 @@ contract HintHelpers is LiquityBase {
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, newColl, , ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, newColl, ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
@@ -253,10 +240,12 @@ contract HintHelpers is LiquityBase {
         }
     }
 
+    /// @notice Compute nominal CR for a specified collateral and debt amount
     function computeNominalCR(uint _coll, uint _debt) external pure returns (uint) {
         return LiquityMath._computeNominalCR(_coll, _debt);
     }
 
+    /// @notice Compute CR for a specified collateral and debt amount
     function computeCR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }

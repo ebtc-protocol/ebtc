@@ -5,37 +5,34 @@ pragma solidity 0.8.17;
 import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/IFallbackCaller.sol";
 import "./Dependencies/AggregatorV3Interface.sol";
-import "./Dependencies/SafeMath.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/LiquityMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
- * PriceFeed for mainnet deployment, to be connected to Chainlink's live stETH:BTC aggregator reference
- * contracts (ETH/BTC + stETH/ETH), and allows for the connection to a fallback Oracle source.
+ * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
+ * stETH:ETH, which are used to aggregate the price feed of stETH:BTC in conjuction.
+ * It also allows for a fallback oracle to intervene in case that the primary Chainlink oracle fails.
  *
- * The PriceFeed uses Chainlink as primary oracle, and Tellor as the current fallback. It contains logic for
+ * The PriceFeed uses Chainlink as primary oracle and allows for an optional fallback source. It contains logic for
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
- * Chainlink oracle. The fallback Oracle can be switched or removed by the Authority.
+ * Chainlink oracle. In addition, it contains the mechanism to add or remove the fallback oracle through governance.
  */
 contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
-    using SafeMath for uint256;
-
     string public constant NAME = "PriceFeed";
 
-    // TODO: Make priceAggregator immutable when we move to 0.8
-    AggregatorV3Interface public priceAggregator; // Mainnet Chainlink aggregator
+    // Chainlink oracles
+    AggregatorV3Interface public constant ETH_BTC_CL_FEED =
+        AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
+    AggregatorV3Interface public constant STETH_ETH_CL_FEED =
+        AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
+
+    // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
-    // Use to convert a price answer to an 18-digit precision uint
-    uint public constant TARGET_DIGITS = 18;
-
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
-    uint public constant TIMEOUT = 14400; // 4 hours: 60 * 60 * 4
-
-    // -- Permissioned Function Signatures --
-    bytes4 private constant SET_FALLBACK_CALLER_SIG =
-        bytes4(keccak256(bytes("setFallbackCaller(address)")));
+    uint public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
+    uint public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -49,38 +46,27 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // The last good price seen from an oracle by Liquity
     uint public lastGoodPrice;
 
-    // The current status of the PricFeed, which determines the conditions for the next price fetch attempt
+    // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
     // --- Dependency setters ---
 
-    /*
-        @notice Sets the addresses of the contracts and initializes the system
-        @param _priceAggregatorAddress The address of the Chainlink oracle contract
-        @param _fallbackCallerAddress The address of the Fallback oracle contract
-        @param _authorityAddress The address of the Authority contract
-        @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization. 
-    **/
-    constructor(
-        address _priceAggregatorAddress,
-        address _fallbackCallerAddress,
-        address _authorityAddress
-    ) {
-        priceAggregator = AggregatorV3Interface(_priceAggregatorAddress);
+    /// @notice Sets the addresses of the contracts and initializes the system
+    /// @param _fallbackCallerAddress The address of the Fallback oracle contract
+    /// @param _authorityAddress The address of the Authority contract
+    /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
+    constructor(address _fallbackCallerAddress, address _authorityAddress) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
-        emit FallbackCallerChanged(_fallbackCallerAddress);
-
-        // Explicitly set initial system status
-        status = Status.chainlinkWorking;
+        emit FallbackCallerChanged(address(0), _fallbackCallerAddress);
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
         ChainlinkResponse memory prevChainlinkResponse = _getPrevChainlinkResponse(
-            chainlinkResponse.roundId,
-            chainlinkResponse.decimals
+            chainlinkResponse.roundEthBtcId,
+            chainlinkResponse.roundStEthEthId
         );
 
         require(
@@ -89,24 +75,26 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             "PriceFeed: Chainlink must be working and current"
         );
 
-        _storeChainlinkPrice(chainlinkResponse);
+        _storeChainlinkPrice(chainlinkResponse.answer);
+
+        // Explicitly set initial system status after `require` checks
+        status = Status.chainlinkWorking;
     }
 
     // --- Functions ---
-    /*
-        @notice Returns the latest price obtained from the Oracle
-        @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
-        @dev Non-view function - it stores the last good price seen by eBTC.
-        @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
-        @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
-        @return The latest price fetched from the Oracle
-    **/
+
+    /// @notice Returns the latest price obtained from the Oracle
+    /// @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
+    /// @dev Non-view function - it stores the last good price seen by eBTC.
+    /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
+    /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
+    /// @return The latest price fetched from the Oracle
     function fetchPrice() external override returns (uint) {
         // Get current and previous price data from Chainlink, and current price data from Fallback
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
         ChainlinkResponse memory prevChainlinkResponse = _getPrevChainlinkResponse(
-            chainlinkResponse.roundId,
-            chainlinkResponse.decimals
+            chainlinkResponse.roundEthBtcId,
+            chainlinkResponse.roundStEthEthId
         );
         FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
 
@@ -121,7 +109,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 }
                 /*
                  * If Fallback is only frozen but otherwise returning valid data, return the last good price.
-                 * If Fallback is Tellor, it may need to be tipped to return current data.
+                 * Fallback may need to be tipped to return current data.
                  */
                 if (_fallbackIsFrozen(fallbackResponse)) {
                     _changeStatus(Status.usingFallbackChainlinkUntrusted);
@@ -171,7 +159,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                  * two consecutive rounds was likely a legitmate market price movement, and so continue using Chainlink
                  */
                 if (_bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse)) {
-                    return _storeChainlinkPrice(chainlinkResponse);
+                    return _storeChainlinkPrice(chainlinkResponse.answer);
                 }
 
                 // If Fallback is live but the oracles differ too much in price, conclude that Chainlink's initial price deviation was
@@ -186,7 +174,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             }
 
             // If Chainlink is working, return Chainlink current price (no status change)
-            return _storeChainlinkPrice(chainlinkResponse);
+            return _storeChainlinkPrice(chainlinkResponse.answer);
         }
 
         // --- CASE 2: The system fetched last price from Fallback ---
@@ -200,7 +188,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
-                return _storeChainlinkPrice(chainlinkResponse);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             if (_fallbackIsBroken(fallbackResponse)) {
@@ -234,7 +222,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
-                return _storeChainlinkPrice(chainlinkResponse);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             // Otherwise, return the last good price - both oracles are still untrusted (no status change)
@@ -280,7 +268,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // if Chainlink is live and Fallback is broken, remember Fallback broke, and return Chainlink price
             if (_fallbackIsBroken(fallbackResponse)) {
                 _changeStatus(Status.usingChainlinkFallbackUntrusted);
-                return _storeChainlinkPrice(chainlinkResponse);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             // If Chainlink is live and Fallback is frozen, just use last good price (no status change) since we have no basis for comparison
@@ -292,7 +280,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // if prices are within 5%, and return Chainlink price.
             if (_bothOraclesSimilarPrice(chainlinkResponse, fallbackResponse)) {
                 _changeStatus(Status.chainlinkWorking);
-                return _storeChainlinkPrice(chainlinkResponse);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             // Otherwise if Chainlink is live but price not within 5% of Fallback, distrust Chainlink, and return Fallback price
@@ -322,7 +310,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 )
             ) {
                 _changeStatus(Status.chainlinkWorking);
-                return _storeChainlinkPrice(chainlinkResponse);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             // If Chainlink is live but deviated >50% from it's previous price and Fallback is still untrusted, switch
@@ -334,34 +322,53 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
             // Otherwise if Chainlink is live and deviated <50% from it's previous price and Fallback is still untrusted,
             // return Chainlink price (no status change)
-            return _storeChainlinkPrice(chainlinkResponse);
+            return _storeChainlinkPrice(chainlinkResponse.answer);
         }
     }
 
     // --- Governance Functions ---
-    /*
-        @notice Sets a new fallback oracle 
-        @param _fallbackCaller The new IFallbackCaller-compliant oracle address
-    **/
+    /// @notice Sets a new fallback oracle
+    /// @dev Healthy response of new oracle is checked, with extra event emitted on failure
+    /// @param _fallbackCaller The address of the new IFallbackCaller compliant oracle\
     function setFallbackCaller(address _fallbackCaller) external requiresAuth {
-        require(
-            isAuthorized(msg.sender, SET_FALLBACK_CALLER_SIG),
-            "PriceFeed: sender not authorized for setFallbackCaller(address)"
-        );
-        fallbackCaller = IFallbackCaller(_fallbackCaller);
-        emit FallbackCallerChanged(_fallbackCaller);
+        // health check-up before officially set it up
+        IFallbackCaller newFallbackCaler = IFallbackCaller(_fallbackCaller);
+        FallbackResponse memory fallbackResponse;
+
+        if (_fallbackCaller != address(0)) {
+            try newFallbackCaler.getFallbackResponse() returns (
+                uint256 answer,
+                uint256 timestampRetrieved,
+                bool success
+            ) {
+                fallbackResponse.answer = answer;
+                fallbackResponse.timestamp = timestampRetrieved;
+                fallbackResponse.success = success;
+                if (!_fallbackIsBroken(fallbackResponse) && !_fallbackIsFrozen(fallbackResponse)) {
+                    address oldFallbackCaller = address(fallbackCaller);
+                    fallbackCaller = newFallbackCaler;
+                    emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
+                }
+            } catch {
+                emit UnhealthyFallbackCaller(_fallbackCaller, block.timestamp);
+            }
+        } else {
+            address oldFallbackCaller = address(fallbackCaller);
+            // NOTE: assume intentionally bricking fallback!!!
+            fallbackCaller = newFallbackCaler;
+            emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
+        }
     }
 
     // --- Helper functions ---
 
-    /* Chainlink is considered broken if its current or previous round data is in any way bad. We check the previous round
-     * for two reasons:
-     *
-     * 1) It is necessary data for the price deviation check in case 1,
-     * and
-     * 2) Chainlink is the PriceFeed's preferred primary oracle - having two consecutive valid round responses adds
-     * peace of mind when using or returning to Chainlink.
-     */
+    /// @notice Checks if Chainlink oracle is broken by checking both the current and previous responses
+    /// @dev Chainlink is considered broken if its current or previous round data is in any way bad. We check the previous round for two reasons.
+    /// @dev 1. It is necessary data for the price deviation check in case 1
+    /// @dev 2. Chainlink is the PriceFeed's preferred primary oracle - having two consecutive valid round responses adds peace of mind when using or returning to Chainlink.
+    /// @param _currentResponse The latest response from the Chainlink oracle
+    /// @param _prevResponse The previous response from the Chainlink oracle
+    /// @return A boolean indicating whether the Chainlink oracle is broken
     function _chainlinkIsBroken(
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
@@ -369,53 +376,57 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return _badChainlinkResponse(_currentResponse) || _badChainlinkResponse(_prevResponse);
     }
 
+    /// @notice Checks for a bad response from the Chainlink oracle
+    /// @dev A response is considered bad if the success value reports failure, or if the timestamp is invalid (0 or in the future)
+    /// @param _response The response from the Chainlink oracle to evaluate
+    /// @return A boolean indicating whether the Chainlink oracle response is bad
+
     function _badChainlinkResponse(ChainlinkResponse memory _response) internal view returns (bool) {
         // Check for response call reverted
         if (!_response.success) {
             return true;
         }
-        // Check for an invalid roundId that is 0
-        if (_response.roundId == 0) {
-            return true;
-        }
-        // Check for an invalid timeStamp that is 0, or in the future
-        if (_response.timestamp == 0 || _response.timestamp > block.timestamp) {
-            return true;
-        }
-        // Check for non-positive price
-        if (_response.answer <= 0) {
+
+        // Check for an invalid timestamp that is 0, or in the future
+        if (
+            _response.timestampEthBtc == 0 ||
+            _response.timestampEthBtc > block.timestamp ||
+            _response.timestampStEthEth == 0 ||
+            _response.timestampStEthEth > block.timestamp
+        ) {
             return true;
         }
 
         return false;
     }
 
+    /// @notice Checks if the Chainlink oracle is frozen
+    /// @dev The oracle is considered frozen if either of the feed timestamps are older than the threshold specified by the static timeout thresholds
+    /// @param _response The response from the Chainlink oracle to evaluate
+    /// @return A boolean indicating whether the Chainlink oracle is frozen
     function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
-        return block.timestamp.sub(_response.timestamp) > TIMEOUT;
+        return
+            block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
+            block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
     }
 
+    /// @notice Checks if the price change between Chainlink oracle rounds is above the maximum threshold allowed
+    /// @param _currentResponse The latest response from the Chainlink oracle
+    /// @param _prevResponse The previous response from the Chainlink oracle
+    /// @return A boolean indicating whether the price change from Chainlink oracle is above the maximum threshold allowed
     function _chainlinkPriceChangeAboveMax(
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
     ) internal pure returns (bool) {
-        uint currentScaledPrice = _scaleChainlinkPriceByDigits(
-            uint256(_currentResponse.answer),
-            _currentResponse.decimals
-        );
-        uint prevScaledPrice = _scaleChainlinkPriceByDigits(
-            uint256(_prevResponse.answer),
-            _prevResponse.decimals
-        );
-
-        uint minPrice = LiquityMath._min(currentScaledPrice, prevScaledPrice);
-        uint maxPrice = LiquityMath._max(currentScaledPrice, prevScaledPrice);
+        uint minPrice = LiquityMath._min(_currentResponse.answer, _prevResponse.answer);
+        uint maxPrice = LiquityMath._max(_currentResponse.answer, _prevResponse.answer);
 
         /*
          * Use the larger price as the denominator:
          * - If price decreased, the percentage deviation is in relation to the the previous price.
          * - If price increased, the percentage deviation is in relation to the current price.
          */
-        uint percentDeviation = maxPrice.sub(minPrice).mul(DECIMAL_PRECISION).div(maxPrice);
+        uint percentDeviation = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice;
 
         // Return true if price has more than doubled, or more than halved.
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
@@ -438,11 +449,20 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return false;
     }
 
+    /// @notice Checks if the fallback oracle is frozen by comparing the current timestamp with the timeout value.
+    /// @param _fallbackResponse Response from the fallback oracle to check
+    /// @return A boolean indicating whether the fallback oracle is frozen.
     function _fallbackIsFrozen(
         FallbackResponse memory _fallbackResponse
     ) internal view returns (bool) {
-        return block.timestamp.sub(_fallbackResponse.timestamp) > TIMEOUT;
+        return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
     }
+
+    /// @notice Checks if both the Chainlink and fallback oracles are live, unbroken, and reporting similar prices.
+    /// @param _chainlinkResponse The latest response from the Chainlink oracle.
+    /// @param _prevChainlinkResponse The previous response from the Chainlink oracle.
+    /// @param _fallbackResponse The latest response from the fallback oracle.
+    /// @return A boolean indicating whether both oracles are live, unbroken, and reporting similar prices.
 
     function _bothOraclesLiveAndUnbrokenAndSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
@@ -462,19 +482,21 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 
+    /// @notice Checks if the prices reported by the Chainlink and fallback oracles are similar, within the maximum deviation specified by MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES.
+    /// @param _chainlinkResponse The response from the Chainlink oracle.
+    /// @param _fallbackResponse The response from the fallback oracle.
+    /// @return A boolean indicating whether the prices reported by both oracles are similar.
+
     function _bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
         FallbackResponse memory _fallbackResponse
     ) internal pure returns (bool) {
-        uint scaledChainlinkPrice = _scaleChainlinkPriceByDigits(
-            uint256(_chainlinkResponse.answer),
-            _chainlinkResponse.decimals
-        );
-
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint minPrice = LiquityMath._min(_fallbackResponse.answer, scaledChainlinkPrice);
-        uint maxPrice = LiquityMath._max(_fallbackResponse.answer, scaledChainlinkPrice);
-        uint percentPriceDifference = maxPrice.sub(minPrice).mul(DECIMAL_PRECISION).div(minPrice);
+        uint minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
+        if (minPrice == 0) return false;
+        uint maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+            minPrice;
 
         /*
          * Return true if the relative price difference is <= 3%: if so, we assume both oracles are probably reporting
@@ -483,59 +505,42 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         return percentPriceDifference <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES;
     }
 
-    function _scaleChainlinkPriceByDigits(
-        uint _price,
-        uint _answerDigits
-    ) internal pure returns (uint) {
-        /*
-         * Convert the price returned by the Chainlink oracle to an 18-digit decimal for use by Liquity.
-         * At date of Liquity launch, Chainlink uses an 8-digit price, but we also handle the possibility of
-         * future changes.
-         *
-         */
-        uint price;
-        if (_answerDigits >= TARGET_DIGITS) {
-            // Scale the returned price value down to Liquity's target precision
-            price = _price.div(10 ** (_answerDigits - TARGET_DIGITS));
-        } else if (_answerDigits < TARGET_DIGITS) {
-            // Scale the returned price value up to Liquity's target precision
-            price = _price.mul(10 ** (TARGET_DIGITS - _answerDigits));
-        }
-        return price;
-    }
-
+    /// @notice Changes the status of the oracle state machine
+    /// @param _status The new status of the contract.
     function _changeStatus(Status _status) internal {
         status = _status;
         emit PriceFeedStatusChanged(_status);
     }
 
+    /// @notice Stores the latest valid price.
+    /// @param _currentPrice The price to be stored.
     function _storePrice(uint _currentPrice) internal {
         lastGoodPrice = _currentPrice;
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
+    /// @notice Stores the price reported by the fallback oracle.
+    /// @param _fallbackResponse The latest response from the fallback oracle.
+    /// @return The price reported by the fallback oracle.
     function _storeFallbackPrice(FallbackResponse memory _fallbackResponse) internal returns (uint) {
         _storePrice(_fallbackResponse.answer);
         return _fallbackResponse.answer;
     }
 
-    function _storeChainlinkPrice(
-        ChainlinkResponse memory _chainlinkResponse
-    ) internal returns (uint) {
-        uint scaledChainlinkPrice = _scaleChainlinkPriceByDigits(
-            uint256(_chainlinkResponse.answer),
-            _chainlinkResponse.decimals
-        );
-        _storePrice(scaledChainlinkPrice);
+    /// @notice Stores the price reported by the Chainlink oracle.
+    /// @param _answer The latest price reported by the Chainlink oracle.
+    /// @return The price reported by the Chainlink oracle.
+    function _storeChainlinkPrice(uint256 _answer) internal returns (uint) {
+        _storePrice(_answer);
 
-        return scaledChainlinkPrice;
+        return _answer;
     }
 
     // --- Oracle response wrapper functions ---
-    /*
-     * "_getCurrentFallbackResponse" fetches stETH/BTC price from Fallback, and returns them as a
-     * FallbackResponse struct. If the Fallback is set to the ADDRESS_ZERO, return failing struct.
-     */
+
+    /// @notice Retrieves the latest response from the fallback oracle. If the fallback oracle address is set to the zero address, it returns a failing struct.
+    /// @return fallbackResponse The latest response from the fallback oracle.
+
     function _getCurrentFallbackResponse()
         internal
         view
@@ -560,74 +565,193 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
     }
 
+    /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
+    /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
+
     function _getCurrentChainlinkResponse()
         internal
         view
         returns (ChainlinkResponse memory chainlinkResponse)
     {
-        // First, try to get current decimal precision:
-        try priceAggregator.decimals() returns (uint8 decimals) {
+        // Fetch decimals for both feeds:
+        uint8 ethBtcDecimals;
+        uint8 stEthEthDecimals;
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
-            chainlinkResponse.decimals = decimals;
+            ethBtcDecimals = decimals;
         } catch {
             // If call to Chainlink aggregator reverts, return a zero response with success = false
             return chainlinkResponse;
         }
 
-        // Secondly, try to get latest price data:
-        try priceAggregator.latestRoundData() returns (
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            stEthEthDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
+
+        // Try to get latest prices data:
+        int256 ethBtcAnswer;
+        int256 stEthEthAnswer;
+        try ETH_BTC_CL_FEED.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
-            // If call to Chainlink succeeds, return the response and success = true
-            chainlinkResponse.roundId = roundId;
-            chainlinkResponse.answer = answer;
-            chainlinkResponse.timestamp = timestamp;
-            chainlinkResponse.success = true;
-            return chainlinkResponse;
+            ethBtcAnswer = answer;
+            chainlinkResponse.roundEthBtcId = roundId;
+            chainlinkResponse.timestampEthBtc = timestamp;
         } catch {
             // If call to Chainlink aggregator reverts, return a zero response with success = false
             return chainlinkResponse;
         }
+
+        try STETH_ETH_CL_FEED.latestRoundData() returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            stEthEthAnswer = answer;
+            chainlinkResponse.roundStEthEthId = roundId;
+            chainlinkResponse.timestampStEthEth = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return chainlinkResponse;
+        }
+
+        if (
+            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            chainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        } else {
+            return chainlinkResponse;
+        }
+
+        chainlinkResponse.success = true;
     }
 
-    function _getPrevChainlinkResponse(
-        uint80 _currentRoundId,
-        uint8 _currentDecimals
-    ) internal view returns (ChainlinkResponse memory prevChainlinkResponse) {
-        /*
-         * NOTE: Chainlink only offers a current decimals() value - there is no way to obtain the decimal precision used in a
-         * previous round.  We assume the decimals used in the previous round are the same as the current round.
-         */
+    /// @notice Fetches Chainlink responses for the previous round of data for both ETH-BTC and stETH-ETH price feeds.
+    /// @param _currentRoundEthBtcId The current round ID for the ETH-BTC price feed.
+    /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
+    /// @return prevChainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
+    function _getPrevChainlinkResponse(
+        uint80 _currentRoundEthBtcId,
+        uint80 _currentRoundStEthEthId
+    ) internal view returns (ChainlinkResponse memory prevChainlinkResponse) {
         // If first round, early return
-        // Handles revert from underflow in _currentRoundId - 1
+        // Handles revert from underflow in _currentRoundEthBtcId - 1
+        // and _currentRoundStEthEthId - 1
         // Behavior should be indentical to following block if this revert was caught
-        if (_currentRoundId == 0) {
+        if (_currentRoundEthBtcId == 0 || _currentRoundStEthEthId == 0) {
             return prevChainlinkResponse;
         }
 
-        // Try to get the price data from the previous round:
-        try priceAggregator.getRoundData(_currentRoundId - 1) returns (
+        // Fetch decimals for both feeds:
+        uint8 ethBtcDecimals;
+        uint8 stEthEthDecimals;
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            ethBtcDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+            // If call to Chainlink succeeds, record the current decimal precision
+            stEthEthDecimals = decimals;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
+        // Try to get latest prices data from prev round:
+        int256 ethBtcAnswer;
+        int256 stEthEthAnswer;
+        try ETH_BTC_CL_FEED.getRoundData(_currentRoundEthBtcId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
-            // If call to Chainlink succeeds, return the response and success = true
-            prevChainlinkResponse.roundId = roundId;
-            prevChainlinkResponse.answer = answer;
-            prevChainlinkResponse.timestamp = timestamp;
-            prevChainlinkResponse.decimals = _currentDecimals;
-            prevChainlinkResponse.success = true;
-            return prevChainlinkResponse;
+            ethBtcAnswer = answer;
+            prevChainlinkResponse.roundEthBtcId = roundId;
+            prevChainlinkResponse.timestampEthBtc = timestamp;
         } catch {
             // If call to Chainlink aggregator reverts, return a zero response with success = false
             return prevChainlinkResponse;
         }
+
+        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 timestamp,
+            uint80 /* answeredInRound */
+        ) {
+            stEthEthAnswer = answer;
+            prevChainlinkResponse.roundStEthEthId = roundId;
+            prevChainlinkResponse.timestampStEthEth = timestamp;
+        } catch {
+            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            return prevChainlinkResponse;
+        }
+
+        if (
+            _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        } else {
+            return prevChainlinkResponse;
+        }
+
+        prevChainlinkResponse.success = true;
+    }
+
+    /// @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
+    /// @param _roundId The aggregator round of the target CL feed
+    /// @param _answer CL price price reported for target feeds
+    /// @return The boolean state indicating CL response health for aggregation
+    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
+        if (_answer <= 0) return false;
+        if (_roundId == 0) return false;
+
+        return true;
+    }
+
+    // @notice Returns the price of stETH:BTC in 18 decimals denomination
+    // @param _ethBtcAnswer CL price retrieve from ETH:BTC feed
+    // @param _stEthEthAnswer CL price retrieve from stETH:BTC feed
+    // @param _ethBtcDecimals ETH:BTC feed decimals
+    // @param _stEthEthDecimals stETH:BTC feed decimalss
+    // @return The aggregated calculated price for stETH:BTC
+    function _formatClAggregateAnswer(
+        int256 _ethBtcAnswer,
+        int256 _stEthEthAnswer,
+        uint8 _ethBtcDecimals,
+        uint8 _stEthEthDecimals
+    ) internal view returns (uint256) {
+        return (((10 ** (_stEthEthDecimals - _ethBtcDecimals)) *
+            (uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION)) / uint256(_stEthEthAnswer));
     }
 }

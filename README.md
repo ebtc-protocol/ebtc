@@ -3,7 +3,7 @@
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
 
-eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with no counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
+eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
 
@@ -113,6 +113,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
 - [Known Issues](#known-issues)
   - [Front-running issues](#front-running-issues)
 - [Disclaimer](#disclaimer)
+- [Periphery](#Periphery)
 
 ## eBTC Overview
 eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Lido's stETH and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
@@ -1041,3 +1042,35 @@ In case of a redemption, the “last” CDP affected by the transaction may end 
 An attacker trying to DoS redemptions could be bypassed by redeeming an amount that exactly corresponds to the debt of the affected CDP(s).
 
 Finally, this DoS could be avoided if the initial transaction avoids the public gas auction entirely and is sent direct-to-miner, via (for example) Flashbots.
+
+## Periphery
+
+### Leverage Macro
+
+Leverage Macro is divided into multiple contracts:
+- LeverageMacroBase
+  The base reference contract, that allows to perform an Open, Close or Adjust of a CDP as a callback of a flashloan
+
+- LeverageMacroDelegatTarget
+  The variant of the Leverage Macro that is meant to be used as a delegatecall target
+
+- LeverageMacroReference
+  The smart contract version that can be deployed as a contract / proxy which will open a CDP via FLashloan on behalf of it's owner
+
+### SimplifiedDiamondLike
+A reference implementation of a smart contract wallet that uses configurable callbacks to use leverage macro natively, rather than as a separate support contract.
+Demonstrates how this can also be achieved by other SC wallets with configurable callbacks such as Gnosis Safe.
+
+A mix of a DSProxy and a Diamond
+-> `execute` is heavily inspired by Gnosis Safe
+-> `_fallback` is basically a diamon proxy with the extra check for callback being enabled
+
+Allows arbitrary call execution by it's owner, both via call and delegate call
+-> Arbitrary calls can be performed via `execute`
+-> This can be further extended by setting up `callbackHandler`s
+
+Adds a check to allow callbacks or allow any call to be handled by it's fallback
+-> Non callback must be explicitly allowed via `setAllowAnyCall` which ensures that the owner of the proxy is explicitly taking on the extra risks
+
+Allows to specify a different implementation for each function selector
+-> Thanks to `callbackHandler` any function sig (beside ones clashing with the basic ones), can be added to the proxy, instead of having a proxy by proxy upgrade pattern

@@ -12,7 +12,7 @@ contract EBTCTokenTester is EBTCToken {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) public EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
+    ) EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
 
     function unprotectedMint(address _account, uint256 _amount) external {
         // No check on caller here
@@ -42,11 +42,7 @@ contract EBTCTokenTester is EBTCToken {
         _transfer(_poolAddress, _receiver, _amount);
     }
 
-    function callInternalApprove(
-        address owner,
-        address spender,
-        uint256 amount
-    ) external returns (bool) {
+    function callInternalApprove(address owner, address spender, uint256 amount) external {
         _approve(owner, spender, amount);
     }
 

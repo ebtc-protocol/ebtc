@@ -31,7 +31,6 @@ contract('CdpManager', async accounts => {
   let cdpManager
   let activePool
   let collSurplusPool
-  let defaultPool
   let borrowerOperations
   let hintHelpers
 
@@ -64,7 +63,6 @@ contract('CdpManager', async accounts => {
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
     activePool = contracts.activePool
-    defaultPool = contracts.defaultPool
     collSurplusPool = contracts.collSurplusPool
     borrowerOperations = contracts.borrowerOperations
     hintHelpers = contracts.hintHelpers
@@ -129,7 +127,6 @@ contract('CdpManager', async accounts => {
     console.log(`totalStakesSnapshot after L1: ${await cdpManager.totalStakesSnapshot()}`)
     console.log(`totalCollateralSnapshot after L1: ${await cdpManager.totalCollateralSnapshot()}`)
     console.log(`Snapshots ratio after L1: ${await getSnapshotsRatio()}`)
-    console.log(`B pending ETH reward after L1: ${await cdpManager.getPendingETHReward(B)}`)
     console.log(`B stake after L1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
 
     // adjust cdp B 1 wei: apply rewards

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
-pragma experimental ABIEncoderV2;
+
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
@@ -35,7 +35,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         console.log("debt %s", debt);
 
-        bytes32 cdpId1 = _openTestCDP(user, 10000 ether, debt);
+        _openTestCDP(user, 10000 ether, debt);
 
         vm.startPrank(user);
         assertEq(cdpManager.getBorrowingRateWithDecay(), 0);

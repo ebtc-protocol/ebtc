@@ -42,10 +42,6 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     bytes32 private constant _TYPE_HASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-    // -- Permissioned Function Signatures --
-    bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
-    bytes4 private constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
-
     // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
     // invalidate the cached domain separator if the chain id changes.
     bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
@@ -68,7 +64,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) public {
+    ) {
         _initializeAuthority(_authorityAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
@@ -88,16 +84,37 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Functions for intra-Liquity calls ---
 
+    /**
+     * @notice Mint new tokens
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
+     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
+     * @param _account The address to receive the newly minted tokens
+     * @param _amount The amount of tokens to mint
+     */
     function mint(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorCdpMOrAuth(MINT_SIG);
+        _requireCallerIsBOorCdpMOrAuth();
         _mint(_account, _amount);
     }
 
+    /**
+     * @notice Burn existing tokens
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
+     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+     * @param _account The address to burn tokens from
+     * @param _amount The amount of tokens to burn
+     */
     function burn(address _account, uint256 _amount) external override {
-        _requireCallerIsBOorCdpMOrAuth(BURN_SIG);
+        _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
     }
 
+    /**
+     * @dev Return tokens from a system pool to a specified address
+     * @dev Internal system accouting function - only callable by CDPManager
+     * @param _poolAddress The address of the pool
+     * @param _receiver The address to receive the tokens
+     * @param _amount The amount of tokens to return
+     */
     function returnFromPool(
         address _poolAddress,
         address _receiver,
@@ -282,11 +299,11 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     /// @dev authority check last to short-circuit in the case of use by usual immutable addresses
-    function _requireCallerIsBOorCdpMOrAuth(bytes4 sig) internal view {
+    function _requireCallerIsBOorCdpMOrAuth() internal view {
         require(
             msg.sender == borrowerOperationsAddress ||
                 msg.sender == cdpManagerAddress ||
-                isAuthorized(msg.sender, sig),
+                isAuthorized(msg.sender, msg.sig),
             "EBTC: Caller is neither BorrowerOperations nor CdpManager nor authorized"
         );
     }
@@ -297,23 +314,23 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Optional functions ---
 
-    function name() external view override returns (string memory) {
+    function name() external pure override returns (string memory) {
         return _NAME;
     }
 
-    function symbol() external view override returns (string memory) {
+    function symbol() external pure override returns (string memory) {
         return _SYMBOL;
     }
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
 
-    function version() external view override returns (string memory) {
+    function version() external pure override returns (string memory) {
         return _VERSION;
     }
 
-    function permitTypeHash() external view override returns (bytes32) {
+    function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
     }
 }
