@@ -342,6 +342,8 @@ class MainnetDeploymentHelper {
         constructorArguments,
       })
     } catch (error) {
+      console.log(`Error verifying: ${error.name}`)
+      console.log(error)	  
       // if it was already verified, it’s like a success, so let’s move forward and save it
       if (error.name != 'NomicLabsHardhatPluginError') {
         console.error(`Error verifying: ${error.name}`)
