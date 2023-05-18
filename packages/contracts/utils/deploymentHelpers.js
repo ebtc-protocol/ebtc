@@ -55,7 +55,25 @@ const MINT_SIG = dummyRoleHash
 const BURN_SIG = dummyRoleHash
 const SET_STAKING_REWARD_SPLIT_SIG = dummyRoleHash
 
+const delay = ms => new Promise(res => setTimeout(res, ms));
+const waitFunction = async () => {
+  return delay(DeploymentHelper.deployWait);
+}
+
 class DeploymentHelper {
+  // use setter below in testnet/mainnet deployment
+  static deployGasPrice = 0;
+  static deployWait = 0;
+	
+  static async setDeployWait(waitTime) {
+	DeploymentHelper.deployWait = waitTime;
+	console.log("set deployment waitTime=" + (waitTime / 1000) + " seconds");
+  }
+	
+  static async setDeployGasPrice(price) {
+	DeploymentHelper.deployGasPrice = price;
+	console.log("set deployment gasPrice=" + (price / 1000000000) + ' GWEI');
+  }
 
   static async deployLiquityCore() {
     let blockNumber = await ethers.provider.getBlockNumber();
@@ -95,22 +113,63 @@ class DeploymentHelper {
 
   static async deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt) {
     let _deployTx;
+	
+    let _txParams = {gasPrice: 0};
+    if (DeploymentHelper.deployGasPrice > 0){
+        _txParams = {gasPrice: DeploymentHelper.deployGasPrice};
+    }
+	
     if (_argTypes.length > 0 && _argValues.length > 0) {
-      let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
-      _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg);
+        let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
+        _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg, _txParams);
     } else {
-      _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code);
+        _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code, _txParams);
     }
-
+	
     let _deployedAddr;
-    for (let i = 0; i < _deployTx.logs.length; i++) {
-      if (_deployTx.logs[i].event === "ContractDeployed") {
-        _deployedAddr = _deployTx.logs[i].args[0]
-        break;
-      }
+    if (DeploymentHelper.deployWait > 0){
+        console.log(_salt + '_deployedTx=' + _deployTx["hash"] + ":wait deploy complete..." + (DeploymentHelper.deployWait / 1000) + " seconds");
+        await waitFunction();
+        _deployedAddr = await DeploymentHelper.mapSaltToAddress(_salt, ebtcDeployer);
+    } else {	
+        for (let i = 0; i < _deployTx.logs.length; i++) {
+             if (_deployTx.logs[i].event === "ContractDeployed") {
+                 _deployedAddr = _deployTx.logs[i].args[0]
+                 break;
+             }
+        }
+        //console.log(_salt + '_deployedAddr=' + _deployedAddr);		
     }
-    //console.log(_salt + '_deployedAddr=' + _deployedAddr);
     return _deployedAddr;
+  }
+  
+  static async mapSaltToAddress(salt, ebtcDeployer){
+    let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();	 
+    if (salt === (await ebtcDeployer.AUTHORITY())){
+        return _expectedAddr[0];
+    } else if (salt === (await ebtcDeployer.LIQUIDATION_LIBRARY())){
+        return _expectedAddr[1];
+    } else if (salt === (await ebtcDeployer.CDP_MANAGER())){
+        return _expectedAddr[2];
+    } else if (salt === (await ebtcDeployer.BORROWER_OPERATIONS())){
+        return _expectedAddr[3];
+    } else if (salt === (await ebtcDeployer.PRICE_FEED())){
+        return _expectedAddr[4];
+    } else if (salt === (await ebtcDeployer.SORTED_CDPS())){
+        return _expectedAddr[5];
+    } else if (salt === (await ebtcDeployer.ACTIVE_POOL())){
+        return _expectedAddr[6];
+    } else if (salt === (await ebtcDeployer.COLL_SURPLUS_POOL())){
+        return _expectedAddr[7];
+    } else if (salt === (await ebtcDeployer.HINT_HELPERS())){
+        return _expectedAddr[8];
+    } else if (salt === (await ebtcDeployer.EBTC_TOKEN())){
+        return _expectedAddr[9];
+    } else if (salt === (await ebtcDeployer.FEE_RECIPIENT())){
+        return _expectedAddr[10];
+    } else if (salt === (await ebtcDeployer.MULTI_CDP_GETTER())){
+        return _expectedAddr[11];
+    }
   }
 
   static async deployGovernor(ebtcDeployer, _expectedAddr, ownerAddress) {
@@ -286,8 +345,8 @@ class DeploymentHelper {
   }
 
   static async deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddress) {
-    const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[10], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateral.address];
+    const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
+    const _argValues = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddress];
     
     const contractFactory = await ethers.getContractFactory("CdpManager", (await ethers.getSigners())[0])
     const _code = contractFactory.bytecode
@@ -301,7 +360,7 @@ class DeploymentHelper {
 
   static async deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddress){
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateral.address];
+    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateralAddress];
       
     const contractFactory = await ethers.getContractFactory("BorrowerOperations", (await ethers.getSigners())[0])
     const _code = contractFactory.bytecode
@@ -315,7 +374,7 @@ class DeploymentHelper {
 
   static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress){
     const _argTypes = ['address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateral.address, _expectedAddr[7], _expectedAddr[10]];
+    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], _expectedAddr[10]];
     
     const contractFactory = await ethers.getContractFactory("ActivePool", (await ethers.getSigners())[0])
     const _code = contractFactory.bytecode

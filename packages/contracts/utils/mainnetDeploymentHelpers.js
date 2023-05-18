@@ -342,11 +342,14 @@ class MainnetDeploymentHelper {
         constructorArguments,
       })
     } catch (error) {
-      console.log(`Error verifying: ${error.name}`)
-      console.log(error)	  
+      console.log(`Error verifying: ${error.name}-${error.message}`)	  
       // if it was already verified, it’s like a success, so let’s move forward and save it
-      if (error.name != 'NomicLabsHardhatPluginError') {
-        console.error(`Error verifying: ${error.name}`)
+      if (error.name != 'NomicLabsHardhatPluginError' 
+          || error.message.includes('Unable to verify')
+          || error.message.includes('The constructor for')
+          || error.message.includes('More than one contract was found')
+      ) {
+        console.error(`Error stop verifying: ${error.name}`)
         console.error(error)
         return
       }

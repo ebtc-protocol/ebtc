@@ -13,12 +13,8 @@ const testAccounts = ["0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128", "0xc2E345f74
 
 const OUTPUT_FILE = './mainnetDeployment/eBTCGoerliDeploymentOutput.json'
 
-const delay = ms => new Promise(res => setTimeout(res, ms));
-const waitFunction = async () => {
-  return delay(90000) // wait 90s
-}
-
-const GAS_PRICE = 1000000000 // 1 Gwei
+const DEPLOY_WAIT = 120000 // milli-seocnds
+const GAS_PRICE = 80000000000 // x Gwei
 const MAX_FEE_PER_GAS = 100833966421
 const TX_CONFIRMATIONS = 1
 
@@ -27,7 +23,7 @@ const ETHERSCAN_BASE_URL = 'https://goerli.etherscan.io/address'
 module.exports = {
   externalAddrs,
   OUTPUT_FILE,
-  waitFunction,
+  DEPLOY_WAIT,
   GAS_PRICE,
   MAX_FEE_PER_GAS,
   TX_CONFIRMATIONS,
