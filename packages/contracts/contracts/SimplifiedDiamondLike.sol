@@ -121,6 +121,11 @@ contract SimplifiedDiamondLike {
                 ++i;
             }
         }
+
+        // Toggle `callbackEnabledForCall` to false
+        // NOTE: We could check calldata to see if this has to be done, but this is fine for a reference impl
+        DiamondLikeStorage storage ds = _getStorage();
+        ds.settings.callbackEnabledForCall = false; // Even if no-op, this ensures we never allow a callback if in that mode
     }
 
     /// @dev Execute one tx
