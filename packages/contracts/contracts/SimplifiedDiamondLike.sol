@@ -114,7 +114,7 @@ contract SimplifiedDiamondLike {
         require(msg.sender == owner, "Must be owner");
 
         uint256 length = ops.length;
-        for (uint256 i; i < length; ) {
+        for (uint256 i; i < length;) {
             _executeOne(ops[i], i);
 
             unchecked {
@@ -127,7 +127,7 @@ contract SimplifiedDiamondLike {
     function _executeOne(Operation calldata op, uint256 counter) internal {
         bool success;
         bytes memory data = op.data;
-        uint256 txGas = op.gas;
+        uint256 txGas = op.capGas ? op.gas : gasleft();
         address to = op.to;
         uint256 value = op.value;
 
@@ -180,12 +180,8 @@ contract SimplifiedDiamondLike {
             let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
-            case 0 {
-                revert(0, returndatasize())
-            }
-            default {
-                return(0, returndatasize())
-            }
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
         }
     }
 }
