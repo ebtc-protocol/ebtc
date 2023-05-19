@@ -21,11 +21,18 @@ import "./Dependencies/AuthNoOwner.sol";
 contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
 
-    // Chainlink oracles
+    // Chainlink oracles in mainnet
     AggregatorV3Interface public constant ETH_BTC_CL_FEED =
         AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
     AggregatorV3Interface public constant STETH_ETH_CL_FEED =
         AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
+
+    // Chainlink oracles in goerli (used by testnet deployment):
+    // https://docs.chain.link/data-feeds/price-feeds/addresses#Goerli%20Testnet
+    AggregatorV3Interface public constant ETH_BTC_CL_FEED_GOERLI =
+        AggregatorV3Interface(0x779877A7B0D9E8603169DdbD7836e478b4624789);
+    AggregatorV3Interface public constant LINK_ETH_CL_FEED_GOERLI =
+        AggregatorV3Interface(0xb4c4a493AB6356497713A78FFA6c60FB53517c63);
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
@@ -565,6 +572,16 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
     }
 
+    // @return AggregatorV3Interface for current chain
+    function _getCLFeedByChain(bool _ethBTC) internal view returns (AggregatorV3Interface) {
+        uint _chainId = block.chainid;
+        if (_chainId == 5) {
+            return _ethBTC ? ETH_BTC_CL_FEED_GOERLI : LINK_ETH_CL_FEED_GOERLI;
+        } else {
+            return _ethBTC ? ETH_BTC_CL_FEED : STETH_ETH_CL_FEED;
+        }
+    }
+
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
@@ -576,7 +593,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+
+        AggregatorV3Interface _ethBTCFeed = _getCLFeedByChain(true);
+        AggregatorV3Interface _collETHFeed = _getCLFeedByChain(false);
+
+        try _ethBTCFeed.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
         } catch {
@@ -584,7 +605,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+        try _collETHFeed.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             stEthEthDecimals = decimals;
         } catch {
@@ -595,7 +616,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
-        try ETH_BTC_CL_FEED.latestRoundData() returns (
+        try _ethBTCFeed.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -610,7 +631,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.latestRoundData() returns (
+        try _collETHFeed.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -662,7 +683,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+
+        AggregatorV3Interface _ethBTCFeed = _getCLFeedByChain(true);
+        AggregatorV3Interface _collETHFeed = _getCLFeedByChain(false);
+
+        try _ethBTCFeed.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
         } catch {
@@ -670,7 +695,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+        try _collETHFeed.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             stEthEthDecimals = decimals;
         } catch {
@@ -681,7 +706,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data from prev round:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
-        try ETH_BTC_CL_FEED.getRoundData(_currentRoundEthBtcId - 1) returns (
+        try _ethBTCFeed.getRoundData(_currentRoundEthBtcId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -696,7 +721,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
+        try _collETHFeed.getRoundData(_currentRoundStEthEthId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,

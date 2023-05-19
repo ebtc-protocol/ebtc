@@ -114,10 +114,7 @@ class DeploymentHelper {
   static async deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt) {
     let _deployTx;
 	
-    let _txParams = {gasPrice: 0};
-    if (DeploymentHelper.deployGasPrice > 0){
-        _txParams = {gasPrice: DeploymentHelper.deployGasPrice};
-    }
+    let _txParams = {gasPrice: DeploymentHelper.deployGasPrice};
 	
     if (_argTypes.length > 0 && _argValues.length > 0) {
         let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
@@ -400,13 +397,15 @@ class DeploymentHelper {
     return await EBTCToken.at(_deployedAddr);
   }
   
-  static async deployCollateralTestnet(){  
-    const collateral = await CollateralTokenTester.new();
+  static async deployCollateralTestnet(){ 
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);  
+    const collateral = await CollateralTokenTester.new({gasPrice: DeploymentHelper.deployGasPrice * 2, nonce: _nonce});
     return collateral;
   }
   
   static async deployEBTCDeployer(){  
-    const eBTCDeployer = await EBTCDeployer.new();
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
+    const eBTCDeployer = await EBTCDeployer.new({gasPrice: DeploymentHelper.deployGasPrice * 2, nonce: _nonce});
     return eBTCDeployer;
   }
 
