@@ -427,7 +427,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_diff.lt(_target));  
   })
   
-  it.only("Test fee split claim before TCR calculation for Borrower Operations", async() => {	  
+  it("Test fee split claim before TCR calculation for Borrower Operations", async() => {	  
       await openCdp({ ICR: toBN(dec(130, 16)), extraParams: { from: owner } });
 	  
       // make some fee to claim
