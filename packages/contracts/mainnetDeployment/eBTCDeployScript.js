@@ -20,209 +20,161 @@ const _eBTCDeployerStateName = 'eBTCDeployer';
 const _collateralStateName = 'collateral';
 let configParams;
  
-async function eBTCDeployCore(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, governanceAddr, authorityOwner, feeRecipientOwner, collateralAddr) {
+async function verifyState(_checkExistDeployment, _stateName, mainnetDeploymentHelper, deploymentState, _constructorArgs){
+	
+    if (_checkExistDeployment['_toVerify']){
+        console.log('verifying ' + _stateName + '...');
+        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
+    }
+}
+
+async function deployStateViaHelper(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, _expectedAddr, authorityOwner, feeRecipientOwner, collateralAddr){
+    let _deployedState;
+    console.log('deploying ' + _stateName + '...');
+    if (_stateName == _governorStateName){
+        _deployedState = await DeploymentHelper.deployGovernor(ebtcDeployer, _expectedAddr, authorityOwner);
+    } else if(_stateName == _liquidationLibraryStateName){
+        _deployedState = await DeploymentHelper.deployLiquidationLibrary(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _cdpManagerStateName){
+        _deployedState = await DeploymentHelper.deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _borrowerOperationsStateName){
+        _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _eBTCTokenStateName){
+        _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
+    } else if(_stateName == _priceFeedStateName){
+        _deployedState = testnet? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) : 
+                                  await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr);
+    } else if(_stateName == _activePoolStateName){
+        _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _collSurplusPoolStateName){
+        _deployedState = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _sortedCdpsStateName){
+        _deployedState = await DeploymentHelper.deploySortedCdps(ebtcDeployer, _expectedAddr);
+    } else if(_stateName == _hintHelpersStateName){
+        _deployedState = await DeploymentHelper.deployHintHelper(ebtcDeployer, _expectedAddr, collateralAddr);
+    } else if(_stateName == _feeRecipientStateName){
+        _deployedState = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, feeRecipientOwner)
+    } else if(_stateName == _eBTCDeployerStateName){
+        _deployedState = await DeploymentHelper.deployEBTCDeployer();
+    } else if(_stateName == _collateralStateName){
+        _deployedState = await DeploymentHelper.deployCollateralTestnet();
+    }
+    await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, _deployedState);
+    return _deployedState;
+}
+
+async function loadDeployedState(testnet, deploymentState, _stateName){
+    let _deployedState;
+    if (_stateName == _governorStateName){
+        _deployedState = await (await ethers.getContractFactory("Governor")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: authority.owner()=' + (await _deployedState.owner()));		
+    } else if(_stateName == _liquidationLibraryStateName){
+        _deployedState = await (await ethers.getContractFactory("LiquidationLibrary")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: liquidationLibrary.LIQUIDATOR_REWARD()=' + (await _deployedState.LIQUIDATOR_REWARD()));
+    } else if(_stateName == _cdpManagerStateName){
+        _deployedState = await (await ethers.getContractFactory("CdpManager")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: cdpManager.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _borrowerOperationsStateName){
+        _deployedState = await (await ethers.getContractFactory("BorrowerOperations")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: borrowerOperations.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _eBTCTokenStateName){
+        _deployedState = await (await ethers.getContractFactory("EBTCToken")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: ebtcToken.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _priceFeedStateName){
+        let contractName = testnet? "PriceFeedTestnet" : "PriceFeed";
+        _deployedState = await (await ethers.getContractFactory(contractName)).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: priceFeed.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _activePoolStateName){
+        _deployedState = await (await ethers.getContractFactory("ActivePool")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: activePool.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _collSurplusPoolStateName){
+        _deployedState = await (await ethers.getContractFactory("CollSurplusPool")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: collSurplusPool.authority()=' + (await _deployedState.authority()));
+    } else if(_stateName == _sortedCdpsStateName){
+        _deployedState = await (await ethers.getContractFactory("SortedCdps")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: sortedCdps.NAME()=' + (await _deployedState.NAME()));
+    } else if(_stateName == _hintHelpersStateName){
+        _deployedState = await (await ethers.getContractFactory("HintHelpers")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: hintHelpers.NAME()=' + (await _deployedState.NAME()));
+    } else if(_stateName == _feeRecipientStateName){
+        _deployedState = await (await ethers.getContractFactory("FeeRecipient")).attach(deploymentState[_stateName]["address"])
+        console.log('Sanity checking: feeRecipient.NAME()=' + (await _deployedState.NAME()));
+    } else if(_stateName == _eBTCDeployerStateName){
+        _deployedState = await (await ethers.getContractFactory("EBTCDeployerTester")).attach(deploymentState[_eBTCDeployerStateName]["address"])
+    }
+    return _deployedState;
+}
+
+async function deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, _expectedAddr, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs){
+    let _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
+    let _deployedState;
+    if (_checkExistDeployment['_toDeploy']) {
+        _deployedState = await deployStateViaHelper(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, _expectedAddr, authorityOwner, feeRecipientOwner, collateralAddr);
+    } else{
+        _deployedState = await loadDeployedState(testnet, deploymentState, _stateName)
+    }
+    await verifyState(_checkExistDeployment, _stateName, mainnetDeploymentHelper, deploymentState, _constructorArgs);
+    return _deployedState;
+}
+
+async function eBTCDeployCore(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, authorityOwner, feeRecipientOwner, collateralAddr) {
 
     let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();	
     
     // deploy authority(Governor)
     let _stateName = _governorStateName;
     let _constructorArgs = [authorityOwner];
-    let _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let authority;
-    if (_checkExistDeployment['_toDeploy']) {
-        console.log('deploying ' + _stateName + '...');
-        authority = await DeploymentHelper.deployGovernor(ebtcDeployer, _expectedAddr, authorityOwner);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, authority);
-    } else{
-        authority = await (await ethers.getContractFactory("Governor")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: authorityOwner=' + authorityOwner + ', authority.owner()=' + (await authority.owner()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
-
+    let authority = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
+	
     // deploy liquidationLibrary
     _stateName = _liquidationLibraryStateName;
     _constructorArgs = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddr];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let liquidationLibrary;
-    if (_checkExistDeployment['_toDeploy']) {
-        console.log('deploying ' + _stateName + '...');	
-        liquidationLibrary = await DeploymentHelper.deployLiquidationLibrary(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, liquidationLibrary);
-    } else{
-        liquidationLibrary = await (await ethers.getContractFactory("LiquidationLibrary")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: liquidationLibrary.LIQUIDATOR_REWARD()=' + (await liquidationLibrary.LIQUIDATOR_REWARD()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let liquidationLibrary = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy cdpManager
     _stateName = _cdpManagerStateName;
     _constructorArgs = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddr];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let cdpManager;
-    if (_checkExistDeployment['_toDeploy'])	{	
-        console.log('deploying ' + _stateName + '...');	
-        cdpManager = await DeploymentHelper.deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, cdpManager);
-    } else{
-        cdpManager = await (await ethers.getContractFactory("CdpManager")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: cdpManager.authority()=' + (await cdpManager.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let cdpManager = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy borrowerOperations
     _stateName = _borrowerOperationsStateName;
     _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateralAddr];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let borrowerOperations;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        borrowerOperations = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, borrowerOperations);
-    } else{
-        borrowerOperations = await (await ethers.getContractFactory("BorrowerOperations")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: borrowerOperations.authority()=' + (await borrowerOperations.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let borrowerOperations = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy eBTCToken
     _stateName = _eBTCTokenStateName;
     _constructorArgs = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let ebtcToken;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        ebtcToken = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, ebtcToken);
-    } else{
-        ebtcToken = await (await ethers.getContractFactory("EBTCToken")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: ebtcToken.authority()=' + (await ebtcToken.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let ebtcToken = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy priceFeed
     _stateName = _priceFeedStateName;
     _constructorArgs = testnet? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let priceFeed;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        priceFeed = testnet? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) : 
-                             await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, priceFeed);
-    } else{
-        let contractName = testnet? "PriceFeedTestnet" : "PriceFeed";
-        priceFeed = await (await ethers.getContractFactory(contractName)).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: priceFeed.authority()=' + (await priceFeed.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let priceFeed = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy activePool
     _stateName = _activePoolStateName;
     _constructorArgs = [_expectedAddr[3], _expectedAddr[2], collateralAddr, _expectedAddr[7], _expectedAddr[10]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let activePool;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        activePool = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, activePool);
-    } else{
-        activePool = await (await ethers.getContractFactory("ActivePool")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: activePool.authority()=' + (await activePool.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let activePool = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy collSurplusPool
     _stateName = _collSurplusPoolStateName;
     _constructorArgs = [_expectedAddr[3], _expectedAddr[2], _expectedAddr[6], collateralAddr];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let collSurplusPool;
-    if (_checkExistDeployment['_toDeploy'])	{	
-        console.log('deploying ' + _stateName + '...');	
-        collSurplusPool = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, collSurplusPool);
-    } else{
-        collSurplusPool = await (await ethers.getContractFactory("CollSurplusPool")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: collSurplusPool.authority()=' + (await collSurplusPool.authority()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let collSurplusPool = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy sortedCdps
     _stateName = _sortedCdpsStateName;
     _constructorArgs = [0, _expectedAddr[2], _expectedAddr[3]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let sortedCdps;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        sortedCdps = await DeploymentHelper.deploySortedCdps(ebtcDeployer, _expectedAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, sortedCdps);
-    } else{
-        sortedCdps = await (await ethers.getContractFactory("SortedCdps")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: sortedCdps.NAME()=' + (await sortedCdps.NAME()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let sortedCdps = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy hintHelpers
     _stateName = _hintHelpersStateName;
     _constructorArgs = [_expectedAddr[5], _expectedAddr[2], collateralAddr, _expectedAddr[6], _expectedAddr[4]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let hintHelpers;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        hintHelpers = await DeploymentHelper.deployHintHelper(ebtcDeployer, _expectedAddr, collateralAddr);
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, hintHelpers);
-    } else{
-        hintHelpers = await (await ethers.getContractFactory("HintHelpers")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: hintHelpers.NAME()=' + (await hintHelpers.NAME()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let hintHelpers = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     // deploy feeRecipient
     _stateName = _feeRecipientStateName;
     _constructorArgs = [feeRecipientOwner, _expectedAddr[1]];
-    _checkExistDeployment = checkExistingDeployment(_stateName, deploymentState);
-    let feeRecipient;
-    if (_checkExistDeployment['_toDeploy'])	{
-        console.log('deploying ' + _stateName + '...');		
-        feeRecipient = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, feeRecipientOwner)
-        await saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, feeRecipient);
-    } else{
-        feeRecipient = await (await ethers.getContractFactory("FeeRecipient")).attach(deploymentState[_stateName]["address"])
-        console.log('Sanity checking: feeRecipient.NAME()=' + (await feeRecipient.NAME()));
-    }
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying ' + _stateName + '...');
-        await verifyContractsViaPlugin(mainnetDeploymentHelper, _stateName, deploymentState, _constructorArgs);			
-    }
+    let feeRecipient = await deployOrLoadState(testnet, mainnetDeploymentHelper, deploymentState, ebtcDeployer, _stateName, authorityOwner, feeRecipientOwner, collateralAddr, _constructorArgs);
 
     const coreContracts = {
       authority,
@@ -281,7 +233,7 @@ async function main() {
     // Flag if testnet or mainnet deployment:
     // To simulate mainnet deployment on testnet for gas-saving,
     // simply set it to "false" but still run with "--network goerli"	
-    let _testnet = false;
+    let _testnet = true;
     configParams = _testnet? configParamsGoerli : configParamsMainnet;
     console.log('deploy to ' + (_testnet? 'testnet(goerli)' : (chainId.chainId == 5? 'mainnet (simulate with goerli)' : 'mainnet')));
   
@@ -290,7 +242,6 @@ async function main() {
     const maxFeePerGas = configParams.MAX_FEE_PER_GAS
 	
     // read from config
-    let _governance = checkValidItem(configParams.externalAddress['governance'])? configParams.externalAddress['governance'] : _deployer.address;
     let _authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner'])? configParams.externalAddress['authorityOwner'] : _deployer.address;
     let _feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner'])? configParams.externalAddress['feeRecipientOwner'] : _deployer.address;
     let _gasPrice = configParams.GAS_PRICE;
@@ -307,37 +258,22 @@ async function main() {
     // get collateral
     let _checkExistDeployment = checkExistingDeployment(_collateralStateName, deploymentState);
     if (_checkExistDeployment['_toDeploy'] && _testnet) {
-        console.log('deploying collateral token contract...');
-        _collateral = await DeploymentHelper.deployCollateralTestnet();
-        await saveToDeploymentStateFile(mdh, _collateralStateName, deploymentState, _collateral);		
+        _collateral = await deployStateViaHelper(_testnet, mdh, deploymentState, ebtcDeployer, _testnet, [], _authorityOwner, _feeRecipientOwner, _collateral.address);
     } else if(_testnet){
         _collateral = await (await ethers.getContractFactory("CollateralTokenTester")).attach(deploymentState[_collateralStateName]["address"])		
     } else{
         _collateral = await ethers.getContractAt("ICollateralToken", configParams.externalAddress[_collateralStateName])
         console.log('collateral.getOracle()=' + (await _collateral.getOracle()));		
-    }	
-    if (_checkExistDeployment['_toVerify'] && _testnet){
-        console.log('verifying collateral token contract...');
-        await verifyContractsViaPlugin(mdh, _collateralStateName, deploymentState, []);		
+    }
+    if (_testnet){
+        await verifyState(_checkExistDeployment, _collateralStateName, mdh, deploymentState, []);	
     }
 	
     // deploy ebtcDeployer contract to blockchain
-    let ebtcDeployer;
-    _checkExistDeployment = checkExistingDeployment(_eBTCDeployerStateName, deploymentState);
-    if (_checkExistDeployment['_toDeploy']) {
-        console.log('deploying eBTCDeployer contract...');		
-        ebtcDeployer = await DeploymentHelper.deployEBTCDeployer();
-        await saveToDeploymentStateFile(mdh, _eBTCDeployerStateName, deploymentState, ebtcDeployer);	
-    } else{
-        ebtcDeployer = await (await ethers.getContractFactory("EBTCDeployerTester")).attach(deploymentState[_eBTCDeployerStateName]["address"])
-    }	
-    if (_checkExistDeployment['_toVerify']){
-        console.log('verifying eBTCDeployer contract...');
-        await verifyContractsViaPlugin(mdh, _eBTCDeployerStateName, deploymentState, []);	
-    }	
+    let ebtcDeployer = await deployOrLoadState(_testnet, mdh, deploymentState, "", _eBTCDeployerStateName, _authorityOwner, _feeRecipientOwner, _collateral.address, []);
   
     // deploy core contracts to blockchain	
-    let coreContracts = await eBTCDeployCore(_testnet, mdh, deploymentState, ebtcDeployer, _governance, _authorityOwner, _feeRecipientOwner, _collateral.address)
+    let coreContracts = await eBTCDeployCore(_testnet, mdh, deploymentState, ebtcDeployer, _authorityOwner, _feeRecipientOwner, _collateral.address)
 }
 
 function checkExistingDeployment(stateName, deploymentState){

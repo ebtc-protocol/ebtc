@@ -1,7 +1,6 @@
 const externalAddress  = {
   "collateral": "0xAFAcA5B8C0e5d6e0A48Dc35E46E98648c7fB3274",//goerli
 //  "collateral": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",//mainnet
-  "governance": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
   "authorityOwner": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
   "feeRecipientOwner": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
 }
