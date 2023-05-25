@@ -184,8 +184,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.coll - ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)) <=
-                cdpManager.MIN_NET_COLL()
+                (_cdpState.coll - cdpManager.MIN_NET_COLL()) <=
+                ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
                     _cdpState.debt -

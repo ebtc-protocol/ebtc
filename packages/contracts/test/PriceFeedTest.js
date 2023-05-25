@@ -140,7 +140,7 @@ contract('PriceFeed', async accounts => {
       await mockEthBtcChainlink.setDecimals(8)
       await mockStEthEthChainlink.setDecimals(18)
 
-      priceFeed = await PriceFeed.new(tellorCaller.address, owner)
+      priceFeed = await PriceFeed.new(tellorCaller.address, owner, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       PriceFeed.setAsDeployed(priceFeed)
     })
 
@@ -2366,8 +2366,10 @@ contract('PriceFeed', async accounts => {
     })
     
     it("SetFallbackCaller() should only allow authorized caller", async() => {
+      const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
+      const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
       let _newAuthority = await GovernorTester.new(alice);    
-      let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
+      let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       
       await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
@@ -2463,7 +2465,7 @@ contract('PriceFeed', async accounts => {
       let _newAuthority = await GovernorTester.new(alice);
 
       // Deploy PriceFeed and set it up
-      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
+      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       PriceFeed.setAsDeployed(priceFeed)
       assert.isTrue(_newAuthority.address == (await priceFeed.authority()));
 
