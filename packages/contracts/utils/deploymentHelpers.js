@@ -170,10 +170,11 @@ class DeploymentHelper {
   }
 
   static async deployGovernor(ebtcDeployer, _expectedAddr, ownerAddress) {
+    console.log("deployGovernor: expected at " + _expectedAddr[0] + ", owner=" + ownerAddress)
     // deploy Governor as Authority 
     const _argTypes = ['address'];
     const _argValues = [ownerAddress];
-    
+     
     const contractFactory = await ethers.getContractFactory("Governor", (await ethers.getSigners())[0])
     const _code = contractFactory.bytecode
     //assert.isTrue(_code == (await ebtcDeployer.authority_creationCode()));
