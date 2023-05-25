@@ -283,12 +283,17 @@ async function main() {
     // also specify which parameter config file to use
     let useMockCollateral = false;
     let useMockPriceFeed = false;
+
     let configParams = configParamsLocal;
 //    let configParams = configParamsGoerli;
 //    let configParams = configParamsMainnet;
+
+    // flag override: always use mock price feed on local as no feed will exist
     if (configParams == configParamsLocal){
         useMockPriceFeed = true;
     }
+
+    // flag override: always use mock collateral if not on mainnet as collateral will not exist
     if (configParams != configParamsMainnet){
         useMockCollateral = true;
     }
