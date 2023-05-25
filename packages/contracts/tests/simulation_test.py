@@ -132,7 +132,8 @@ def add_accounts():
 @pytest.fixture
 def contracts():
     contracts = Contracts()
-
+    ## TODO: Fix deployment by allowing to deploy new values
+    ## NOTE: Just scrape from Foundry Fixture, fairly easy to do
     contracts.priceFeedTestnet = PriceFeedTestnet.deploy({'from': accounts[0]})  # noqa
     contracts.sortedCdps = SortedCdps.deploy({'from': accounts[0]})  # noqa
     contracts.cdpManager = CdpManager.deploy({'from': accounts[0]})  # noqa
