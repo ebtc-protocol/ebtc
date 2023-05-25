@@ -125,7 +125,7 @@ class DeploymentHelper {
 	
     let _deployedAddr;
     if (DeploymentHelper.deployWait > 0){
-        console.log(_salt + '_deployedTx=' + _deployTx["hash"] + ":wait deploy complete..." + (DeploymentHelper.deployWait / 1000) + " seconds");
+        console.log(_salt + '_deployedTx=' + DeploymentHelper.getTxHash(_deployTx) + ":wait deploy complete..." + (DeploymentHelper.deployWait / 1000) + " seconds");
         await waitFunction();
         _deployedAddr = await DeploymentHelper.mapSaltToAddress(_salt, ebtcDeployer);
     } else {	
@@ -138,6 +138,24 @@ class DeploymentHelper {
         //console.log(_salt + '_deployedAddr=' + _deployedAddr);		
     }
     return _deployedAddr;
+  }
+
+  static checkValidItem(item) {
+    return (item != undefined && typeof item != "undefined" && item != null && item != "");
+  }
+  
+  static getTxHash(tx){
+    let _hash = tx["hash"];
+    if (!DeploymentHelper.checkValidItem(_hash)){
+        _hash = tx["tx"];
+    }
+    if (!DeploymentHelper.checkValidItem(_hash)){
+        let _receipt = tx["receipt"];
+        if (DeploymentHelper.checkValidItem(_receipt)){
+            _hash = _receipt["transactionHash"];
+        }
+    }
+    return _hash;
   }
   
   static async mapSaltToAddress(salt, ebtcDeployer){
@@ -243,9 +261,9 @@ class DeploymentHelper {
 
   }
 
-  static async deployPriceFeed(ebtcDeployer, _expectedAddr) {
-    const _argTypes = ['address', 'address'];
-    const _argValues = [ethers.constants.AddressZero, _expectedAddr[0]];// use address(0) for IFallbackCaller
+  static async deployPriceFeed(ebtcDeployer, _expectedAddr, _collEthCLFeed, _ethBtcCLFeed) {
+    const _argTypes = ['address', 'address', 'address', 'address'];
+    const _argValues = [ethers.constants.AddressZero, _expectedAddr[0], _collEthCLFeed, _ethBtcCLFeed];// use address(0) for IFallbackCaller
     
     const contractFactory = await ethers.getContractFactory("PriceFeed", (await ethers.getSigners())[0])
     const _code = contractFactory.bytecode

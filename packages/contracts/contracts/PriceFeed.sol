@@ -22,17 +22,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
 
     // Chainlink oracles in mainnet
-    AggregatorV3Interface public constant ETH_BTC_CL_FEED =
-        AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
-    AggregatorV3Interface public constant STETH_ETH_CL_FEED =
-        AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
-
-    // Chainlink oracles in goerli (used by testnet deployment):
-    // https://docs.chain.link/data-feeds/price-feeds/addresses#Goerli%20Testnet
-    AggregatorV3Interface public constant ETH_BTC_CL_FEED_GOERLI =
-        AggregatorV3Interface(0x779877A7B0D9E8603169DdbD7836e478b4624789);
-    AggregatorV3Interface public constant LINK_ETH_CL_FEED_GOERLI =
-        AggregatorV3Interface(0xb4c4a493AB6356497713A78FFA6c60FB53517c63);
+    AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
+    AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
@@ -61,13 +52,23 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Sets the addresses of the contracts and initializes the system
     /// @param _fallbackCallerAddress The address of the Fallback oracle contract
     /// @param _authorityAddress The address of the Authority contract
+    /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
+    /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
     /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
-    constructor(address _fallbackCallerAddress, address _authorityAddress) {
+    constructor(
+        address _fallbackCallerAddress,
+        address _authorityAddress,
+        address _collEthCLFeed,
+        address _ethBtcCLFeed
+    ) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
         emit FallbackCallerChanged(address(0), _fallbackCallerAddress);
+
+        ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
+        STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -572,16 +573,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
     }
 
-    // @return AggregatorV3Interface for current chain
-    function _getCLFeedByChain(bool _ethBTC) internal view returns (AggregatorV3Interface) {
-        uint _chainId = block.chainid;
-        if (_chainId == 5) {
-            return _ethBTC ? ETH_BTC_CL_FEED_GOERLI : LINK_ETH_CL_FEED_GOERLI;
-        } else {
-            return _ethBTC ? ETH_BTC_CL_FEED : STETH_ETH_CL_FEED;
-        }
-    }
-
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
@@ -594,10 +585,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
 
-        AggregatorV3Interface _ethBTCFeed = _getCLFeedByChain(true);
-        AggregatorV3Interface _collETHFeed = _getCLFeedByChain(false);
-
-        try _ethBTCFeed.decimals() returns (uint8 decimals) {
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
         } catch {
@@ -605,7 +593,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try _collETHFeed.decimals() returns (uint8 decimals) {
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             stEthEthDecimals = decimals;
         } catch {
@@ -616,7 +604,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
-        try _ethBTCFeed.latestRoundData() returns (
+        try ETH_BTC_CL_FEED.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -631,7 +619,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try _collETHFeed.latestRoundData() returns (
+        try STETH_ETH_CL_FEED.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -684,10 +672,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
 
-        AggregatorV3Interface _ethBTCFeed = _getCLFeedByChain(true);
-        AggregatorV3Interface _collETHFeed = _getCLFeedByChain(false);
-
-        try _ethBTCFeed.decimals() returns (uint8 decimals) {
+        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
         } catch {
@@ -695,7 +680,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try _collETHFeed.decimals() returns (uint8 decimals) {
+        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             stEthEthDecimals = decimals;
         } catch {
@@ -706,7 +691,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Try to get latest prices data from prev round:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
-        try _ethBTCFeed.getRoundData(_currentRoundEthBtcId - 1) returns (
+        try ETH_BTC_CL_FEED.getRoundData(_currentRoundEthBtcId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,
@@ -721,7 +706,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try _collETHFeed.getRoundData(_currentRoundStEthEthId - 1) returns (
+        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256 /* startedAt */,

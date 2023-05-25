@@ -1,6 +1,7 @@
 const DeploymentHelper = require('../utils/deploymentHelpers.js')
 const configParamsGoerli = require("./eBTCDeploymentParams.goerli.js")
 const configParamsMainnet = require("./eBTCDeploymentParams.mainnet.js")
+const configParamsLocal = require("./eBTCDeploymentParams.local.js")
 
 const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js")
 const MainnetDeploymentHelper = require("../utils/mainnetDeploymentHelpers.js")
@@ -24,16 +25,22 @@ const chalk = require('chalk');
 let configParams;
 
 class EBTCDeployerScript {
-    constructor(testnet, mainnetDeploymentHelper, deploymentState, authorityOwner, feeRecipientOwner) {
-        this.testnet = testnet;
+    constructor(useMockCollateral, useMockPriceFeed, mainnetDeploymentHelper, deploymentState, configParams, deployerWallet) {
+        this.useMockCollateral = useMockCollateral;
+        this.useMockPriceFeed = useMockPriceFeed;
         this.mainnetDeploymentHelper = mainnetDeploymentHelper;
         this.deploymentState = deploymentState;
-        this.authorityOwner = authorityOwner;
-        this.feeRecipientOwner = feeRecipientOwner;
 
         this.ebtcDeployer = false;
         this.collateral = false;
         this.collateralAddr = false;
+        this.configParams = configParams;		
+		
+        this.authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : deployerWallet.address;
+        this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;		
+		
+        this.collEthCLFeed = checkValidItem(configParams.externalAddress['collEthCLFeed']) ? configParams.externalAddress['collEthCLFeed'] : deployerWallet.address;
+        this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;		
     }
 
     async verifyState(_checkExistDeployment, _stateName, _constructorArgs) {
@@ -47,7 +54,7 @@ class EBTCDeployerScript {
     }
 
     async deployStateViaHelper(_stateName, _expectedAddr) {
-        let testnet = this.testnet
+        let useMockPriceFeed = this.useMockPriceFeed
         let mainnetDeploymentHelper = this.mainnetDeploymentHelper
         let deploymentState = this.deploymentState
         let ebtcDeployer = this.ebtcDeployer
@@ -68,8 +75,8 @@ class EBTCDeployerScript {
         } else if (_stateName == EBTC_TOKEN_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
-            _deployedState = testnet ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
-                await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr);
+            _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
+                                                await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
@@ -90,7 +97,7 @@ class EBTCDeployerScript {
     }
 
     async loadDeployedState(_stateName) {
-        let testnet = this.testnet
+        let useMockPriceFeed = this.useMockPriceFeed
         let deploymentState = this.deploymentState
         let _deployedState;
         if (_stateName == GOVERNOR_STATE_NAME) {
@@ -109,7 +116,7 @@ class EBTCDeployerScript {
             _deployedState = await (await ethers.getContractFactory("EBTCToken")).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: ebtcToken.authority()=' + (await _deployedState.authority()));
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
-            let contractName = testnet ? "PriceFeedTestnet" : "PriceFeed";
+            let contractName = useMockPriceFeed ? "PriceFeedTestnet" : "PriceFeed";
             _deployedState = await (await ethers.getContractFactory(contractName)).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: priceFeed.authority()=' + (await _deployedState.authority()));
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
@@ -155,19 +162,19 @@ class EBTCDeployerScript {
         let _collateral;
 
         // get collateral
+        console.log(chalk.cyan("[Collateral]"))
         let _checkExistDeployment = checkExistingDeployment(COLLATERAL_STATE_NAME, this.deploymentState);
 
-        console.log(chalk.cyan("[Collateral]"))
-        if (_checkExistDeployment['_toDeploy'] && this.testnet) { // testnet, not deployed
+        if (_checkExistDeployment['_toDeploy'] && this.useMockCollateral) { // mock collateral to be deployed
             _collateral = await this.deployStateViaHelper(COLLATERAL_STATE_NAME, "");
-        } else if (this.testnet) { // testnet, already deployed
+        } else if (this.useMockCollateral) { // mock collateral already deployed
             _collateral = await (await ethers.getContractFactory("CollateralTokenTester")).attach(this.deploymentState[COLLATERAL_STATE_NAME]["address"])
         } else { // mainnet
             _collateral = await ethers.getContractAt("ICollateralToken", configParams.externalAddress[COLLATERAL_STATE_NAME])
             console.log('collateral.getOracle()=' + (await _collateral.getOracle()));
         }
 
-        if (this.testnet) {
+        if (this.useMockCollateral) {
             await this.verifyState(_checkExistDeployment, COLLATERAL_STATE_NAME, this.mainnetDeploymentHelper, this.deploymentState, []);
         }
         this.collateral = _collateral;
@@ -205,7 +212,7 @@ class EBTCDeployerScript {
 
         // deploy priceFeed
         console.log(chalk.cyan("[PriceFeed]"))
-        _constructorArgs = this.testnet ? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0]];
+        _constructorArgs = this.useMockPriceFeed ? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0], this.collEthCLFeed, this.ethBtcCLFeed];
         let priceFeed = await this.deployOrLoadState(PRICE_FEED_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy activePool
@@ -250,8 +257,8 @@ class EBTCDeployerScript {
     }
 
     async verifyContractsViaPlugin(mainnetDeploymentHelper, name, deploymentState, constructorArgs) {
-        if (!configParams.ETHERSCAN_BASE_URL) {
-            console.log('No Etherscan Url defined, skipping verification\n')
+        if (!this.configParams.VERIFY_ETHERSCAN) {
+            console.log('Verification disabled by config\n')
         } else {
             await mainnetDeploymentHelper.verifyContract(name, deploymentState, constructorArgs)
             if (!checkValidItem(deploymentState[name]["verification"])) {
@@ -272,10 +279,19 @@ class EBTCDeployerScript {
 }
 
 async function main() {
-    // Flag if testnet or mainnet deployment:
-    // To simulate mainnet deployment on testnet for gas-saving,
-    // simply set it to "false" but still run with "--network goerli"	
-    let _testnet = true;
+    // Flag if useMockCollateral and useMockPriceFeed 
+    // also specify which parameter config file to use
+    let useMockCollateral = false;
+    let useMockPriceFeed = false;
+    let configParams = configParamsLocal;
+//    let configParams = configParamsGoerli;
+//    let configParams = configParamsMainnet;
+    if (configParams == configParamsLocal){
+        useMockPriceFeed = true;
+    }
+    if (configParams != configParamsMainnet){
+        useMockCollateral = true;
+    }
 
     const date = new Date()
     console.log(date.toUTCString())
@@ -285,32 +301,30 @@ async function main() {
     let _deployer = deployerWallet;
 
     // Log deployer properties and basic chain stats
-    console.log(`deployer address: ${_deployer.address}`)
+    console.log(`deployer EOA: ${_deployer.address}`)
     let deployerETHBalance = await ethers.provider.getBalance(_deployer.address)
-    console.log(`deployerETHBalance before: ${deployerETHBalance}`)
+    console.log(`deployer EOA ETH Balance before: ${deployerETHBalance}`)
 
     let latestBlock = await ethers.provider.getBlockNumber()
-    console.log('block number:', latestBlock)
     const chainId = await ethers.provider.getNetwork()
-    console.log('ChainId:', chainId.chainId)
-    
-    configParams = _testnet ? configParamsGoerli : configParamsMainnet;
-    console.log('deploy to ' + (_testnet ? 'testnet(goerli)' : (chainId.chainId == 5 ? 'mainnet (simulate with goerli)' : 'mainnet')));
+    console.log('ChainId=' + chainId.chainId + ',block number=' + latestBlock)
+    console.log('deploy with ' + (useMockCollateral? 'mock collateral & ' : ' existing collateral & ') + (useMockPriceFeed? 'mock feed' : 'original feed'));    
 
     const mdh = new MainnetDeploymentHelper(configParams, _deployer)
     
     // read from config
-    let _authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : _deployer.address;
-    let _feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : _deployer.address;
     let _gasPrice = configParams.GAS_PRICE;
     let _deployWaitMilliSeonds = configParams.DEPLOY_WAIT;
 
     // load deployment state
     let deploymentState = mdh.loadPreviousDeployment();
+    if (configParams == configParamsLocal){
+        deploymentState = {};// always redeploy if localhost
+    }
     await DeploymentHelper.setDeployGasPrice(_gasPrice);
     await DeploymentHelper.setDeployWait(_deployWaitMilliSeonds);
 
-    let eds = new EBTCDeployerScript(_testnet, mdh, deploymentState, _authorityOwner, _feeRecipientOwner)
+    let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer)
     await eds.loadOrDeployEBTCDeployer();
     await eds.loadOrDeployCollateral();
     await eds.eBTCDeployCore();
@@ -344,7 +358,8 @@ function checkValidItem(item) {
 
 // cd <eBTCRoot>/packages/contracts
 // you may need to clean folder <./artifacts> to get a fresh new running 
-// npx hardhat run ./mainnetDeployment/eBTCDeployScript.js --network <goerli|mainnet>
+// npx hardhat run ./mainnetDeployment/eBTCDeployScript.js --network <goerli|mainnet|localhost>
+// assuming you have above network configurations in hardhat.config.js
 main()
     .then(() => process.exit(0))
     .catch(error => {
