@@ -95,7 +95,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         vm.prank(spender);
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
         eBTCToken.transferFrom(owner, spender, FAKE_MINTING_AMOUNT);
-        vm.stopPrank();
     }
 
     function test_transferFromPostPermit() public {
@@ -115,7 +114,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
         vm.prank(spender);
         eBTCToken.transferFrom(owner, spender, FAKE_MINTING_AMOUNT);
-        vm.stopPrank();
 
         assertEq(eBTCToken.balanceOf(owner), 0);
         assertEq(eBTCToken.balanceOf(spender), FAKE_MINTING_AMOUNT * 2);
@@ -129,7 +127,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
         vm.prank(address(cdpManager));
         eBTCToken.returnFromPool(address(activePool), owner, 5e18);
-        vm.stopPrank();
 
         assertGt(eBTCToken.balanceOf(owner), FAKE_MINTING_AMOUNT);
         assertLt(poolInitialBal, 5e18);
@@ -141,7 +138,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         vm.prank(address(owner));
         vm.expectRevert();
         eBTCToken.increaseAllowance(address(0), 1 ether);
-        vm.stopPrank();
     }
 
     // -------- `decreaseAllowance` when not prev approve --------
@@ -150,7 +146,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         vm.prank(address(owner));
         vm.expectRevert("ERC20: decreased allowance below zero");
         eBTCToken.decreaseAllowance(address(cdpManager), 1 ether);
-        vm.stopPrank();
     }
 }
 
