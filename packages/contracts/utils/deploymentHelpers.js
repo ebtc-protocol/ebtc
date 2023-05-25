@@ -2,6 +2,7 @@ const { ethers } = require("hardhat");
 
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
+const PriceFeed = artifacts.require("./PriceFeed.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
@@ -54,7 +55,25 @@ const MINT_SIG = dummyRoleHash
 const BURN_SIG = dummyRoleHash
 const SET_STAKING_REWARD_SPLIT_SIG = dummyRoleHash
 
+const delay = ms => new Promise(res => setTimeout(res, ms));
+const waitFunction = async () => {
+  return delay(DeploymentHelper.deployWait);
+}
+
 class DeploymentHelper {
+  // use setter below in testnet/mainnet deployment
+  static deployGasPrice = 0;
+  static deployWait = 0;
+	
+  static async setDeployWait(waitTime) {
+	DeploymentHelper.deployWait = waitTime;
+	console.log("set deployment waitTime=" + (waitTime / 1000) + " seconds");
+  }
+	
+  static async setDeployGasPrice(price) {
+	DeploymentHelper.deployGasPrice = price;
+	console.log("set deployment gasPrice=" + (price / 1000000000) + ' GWEI');
+  }
 
   static async deployLiquityCore() {
     let blockNumber = await ethers.provider.getBlockNumber();
@@ -94,29 +113,90 @@ class DeploymentHelper {
 
   static async deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt) {
     let _deployTx;
+	
+    let _txParams = {gasPrice: DeploymentHelper.deployGasPrice};
+	
     if (_argTypes.length > 0 && _argValues.length > 0) {
-      let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
-      _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg);
+        let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
+        _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg, _txParams);
     } else {
-      _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code);
+        _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code, _txParams);
     }
-
+	
     let _deployedAddr;
-    for (let i = 0; i < _deployTx.logs.length; i++) {
-      if (_deployTx.logs[i].event === "ContractDeployed") {
-        _deployedAddr = _deployTx.logs[i].args[0]
-        break;
-      }
+    if (DeploymentHelper.deployWait > 0){
+        console.log(_salt + '_deployedTx=' + DeploymentHelper.getTxHash(_deployTx) + ":wait deploy complete..." + (DeploymentHelper.deployWait / 1000) + " seconds");
+        await waitFunction();
+        _deployedAddr = await DeploymentHelper.mapSaltToAddress(_salt, ebtcDeployer);
+    } else {	
+        for (let i = 0; i < _deployTx.logs.length; i++) {
+             if (_deployTx.logs[i].event === "ContractDeployed") {
+                 _deployedAddr = _deployTx.logs[i].args[0]
+                 break;
+             }
+        }
+        //console.log(_salt + '_deployedAddr=' + _deployedAddr);		
     }
-    //console.log(_salt + '_deployedAddr=' + _deployedAddr);
     return _deployedAddr;
   }
 
+  static checkValidItem(item) {
+    return (item != undefined && typeof item != "undefined" && item != null && item != "");
+  }
+  
+  static getTxHash(tx){
+    let _hash = tx["hash"];
+    if (!DeploymentHelper.checkValidItem(_hash)){
+        _hash = tx["tx"];
+    }
+    if (!DeploymentHelper.checkValidItem(_hash)){
+        let _receipt = tx["receipt"];
+        if (DeploymentHelper.checkValidItem(_receipt)){
+            _hash = _receipt["transactionHash"];
+        }
+    }
+    return _hash;
+  }
+  
+  static async mapSaltToAddress(salt, ebtcDeployer){
+    let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();	 
+    if (salt === (await ebtcDeployer.AUTHORITY())){
+        return _expectedAddr[0];
+    } else if (salt === (await ebtcDeployer.LIQUIDATION_LIBRARY())){
+        return _expectedAddr[1];
+    } else if (salt === (await ebtcDeployer.CDP_MANAGER())){
+        return _expectedAddr[2];
+    } else if (salt === (await ebtcDeployer.BORROWER_OPERATIONS())){
+        return _expectedAddr[3];
+    } else if (salt === (await ebtcDeployer.PRICE_FEED())){
+        return _expectedAddr[4];
+    } else if (salt === (await ebtcDeployer.SORTED_CDPS())){
+        return _expectedAddr[5];
+    } else if (salt === (await ebtcDeployer.ACTIVE_POOL())){
+        return _expectedAddr[6];
+    } else if (salt === (await ebtcDeployer.COLL_SURPLUS_POOL())){
+        return _expectedAddr[7];
+    } else if (salt === (await ebtcDeployer.HINT_HELPERS())){
+        return _expectedAddr[8];
+    } else if (salt === (await ebtcDeployer.EBTC_TOKEN())){
+        return _expectedAddr[9];
+    } else if (salt === (await ebtcDeployer.FEE_RECIPIENT())){
+        return _expectedAddr[10];
+    } else if (salt === (await ebtcDeployer.MULTI_CDP_GETTER())){
+        return _expectedAddr[11];
+    }
+  }
+
   static async deployGovernor(ebtcDeployer, _expectedAddr, ownerAddress) {
+    console.log("deployGovernor: expected at " + _expectedAddr[0] + ", owner=" + ownerAddress)
     // deploy Governor as Authority 
     const _argTypes = ['address'];
     const _argValues = [ownerAddress];
-    const _code = await ebtcDeployer.authority_creationCode();
+     
+    const contractFactory = await ethers.getContractFactory("Governor", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.authority_creationCode()));
+	  
     const _salt = await ebtcDeployer.AUTHORITY();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[0]);
@@ -126,7 +206,11 @@ class DeploymentHelper {
   static async deployLiquidationLibrary(ebtcDeployer, _expectedAddr, collateralAddress) {
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddress];
-    const _code = await ebtcDeployer.liquidationLibrary_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("LiquidationLibrary", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.liquidationLibrary_creationCode()));
+	  
     const _salt = await ebtcDeployer.LIQUIDATION_LIBRARY();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[1]);
@@ -136,7 +220,11 @@ class DeploymentHelper {
   static async deployCdpManagerTester(ebtcDeployer, _expectedAddr, collateralAddress) {
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddress];
-    const _code = await ebtcDeployer.cdpManagerTester_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("CdpManagerTester", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.cdpManagerTester_creationCode()));
+	  
     const _salt = await ebtcDeployer.CDP_MANAGER();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[2]);
@@ -147,7 +235,11 @@ class DeploymentHelper {
     // deploy BorrowOperationsTester
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateralAddress];
-    const _code = await ebtcDeployer.borrowerOperationsTester_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("BorrowerOperationsTester", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.borrowerOperationsTester_creationCode()));
+	  
     const _salt = await ebtcDeployer.BORROWER_OPERATIONS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[3]);
@@ -157,7 +249,26 @@ class DeploymentHelper {
   static async deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) {
     const _argTypes = ['address'];
     const _argValues = [_expectedAddr[0]];
-    const _code = await ebtcDeployer.priceFeedTestnet_creationCode();
+	
+    const contractFactory = await ethers.getContractFactory("PriceFeedTestnet", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.priceFeedTestnet_creationCode()));
+	  
+    const _salt = await ebtcDeployer.PRICE_FEED();
+    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _expectedAddr[4]);
+    return await PriceFeedTestnet.at(_deployedAddr);
+
+  }
+
+  static async deployPriceFeed(ebtcDeployer, _expectedAddr, _collEthCLFeed, _ethBtcCLFeed) {
+    const _argTypes = ['address', 'address', 'address', 'address'];
+    const _argValues = [ethers.constants.AddressZero, _expectedAddr[0], _collEthCLFeed, _ethBtcCLFeed];// use address(0) for IFallbackCaller
+    
+    const contractFactory = await ethers.getContractFactory("PriceFeed", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.priceFeed_creationCode()));
+	  
     const _salt = await ebtcDeployer.PRICE_FEED();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[4]);
@@ -168,7 +279,11 @@ class DeploymentHelper {
   static async deploySortedCdps(ebtcDeployer, _expectedAddr) {
     const _argTypes = ['uint256', 'address', 'address'];
     const _argValues = [0, _expectedAddr[2], _expectedAddr[3]];
-    const _code = await ebtcDeployer.sortedCdps_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("SortedCdps", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.sortedCdps_creationCode()));
+	  
     const _salt = await ebtcDeployer.SORTED_CDPS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[5]);
@@ -178,7 +293,11 @@ class DeploymentHelper {
   static async deployActivePoolTester(ebtcDeployer, _expectedAddr, collateralAddress) {
     const _argTypes = ['address', 'address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], _expectedAddr[10]];
-    const _code = await ebtcDeployer.activePoolTester_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("ActivePoolTester", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.activePoolTester_creationCode()));
+	  
     const _salt = await ebtcDeployer.ACTIVE_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[6]);
@@ -188,7 +307,11 @@ class DeploymentHelper {
   static async deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddress) {
     const _argTypes = ['address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[3], _expectedAddr[2], _expectedAddr[6], collateralAddress];
-    const _code = await ebtcDeployer.collSurplusPool_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("CollSurplusPool", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.collSurplusPool_creationCode()));
+	  
     const _salt = await ebtcDeployer.COLL_SURPLUS_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[7]);
@@ -198,7 +321,11 @@ class DeploymentHelper {
   static async deployHintHelper(ebtcDeployer, _expectedAddr, collateralAddress) {
     const _argTypes = ['address', 'address', 'address', 'address', 'address'];
     const _argValues = [_expectedAddr[5], _expectedAddr[2], collateralAddress, _expectedAddr[6], _expectedAddr[4]];
-    const _code = await ebtcDeployer.hintHelpers_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("HintHelpers", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.hintHelpers_creationCode()));
+	  
     const _salt = await ebtcDeployer.HINT_HELPERS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[8]);
@@ -208,7 +335,11 @@ class DeploymentHelper {
   static async deployEBTCTokenTester(ebtcDeployer, _expectedAddr) {
     const _argTypes = ['address', 'address', 'address'];
     const _argValues = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
-    const _code = await ebtcDeployer.ebtcTokenTester_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("EBTCTokenTester", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.ebtcTokenTester_creationCode()));
+	  
     const _salt = await ebtcDeployer.EBTC_TOKEN();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[9]);
@@ -218,7 +349,11 @@ class DeploymentHelper {
   static async deployFeeRecipient(ebtcDeployer, _expectedAddr, ownerAddress) {
     const _argTypes = ['address', 'address'];
     const _argValues = [ownerAddress, _expectedAddr[1]];
-    const _code = await ebtcDeployer.feeRecipient_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("FeeRecipient", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.feeRecipient_creationCode()));
+	  
     const _salt = await ebtcDeployer.FEE_RECIPIENT();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[10]);
@@ -226,9 +361,13 @@ class DeploymentHelper {
   }
 
   static async deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddress) {
-    const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[10], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateral.address];
-    const _code = await ebtcDeployer.cdpManager_creationCode();
+    const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
+    const _argValues = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], collateralAddress];
+    
+    const contractFactory = await ethers.getContractFactory("CdpManager", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.cdpManager_creationCode()));
+	  
     const _salt = await ebtcDeployer.CDP_MANAGER();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[2]);
@@ -237,8 +376,12 @@ class DeploymentHelper {
 
   static async deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddress){
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateral.address];
-    const _code = await ebtcDeployer.borrowerOperations_creationCode();
+    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateralAddress];
+      
+    const contractFactory = await ethers.getContractFactory("BorrowerOperations", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.borrowerOperations_creationCode()));
+
     const _salt = await ebtcDeployer.BORROWER_OPERATIONS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[3]);
@@ -247,8 +390,12 @@ class DeploymentHelper {
 
   static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress){
     const _argTypes = ['address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateral.address, _expectedAddr[7], _expectedAddr[10]];
-    const _code = await ebtcDeployer.activePool_creationCode();
+    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], _expectedAddr[10]];
+    
+    const contractFactory = await ethers.getContractFactory("ActivePool", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.activePool_creationCode()));
+	  
     const _salt = await ebtcDeployer.ACTIVE_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[6]);
@@ -258,11 +405,27 @@ class DeploymentHelper {
   static async deployEBTCToken(ebtcDeployer, _expectedAddr){
     const _argTypes = ['address', 'address', 'address'];
     const _argValues = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
-    const _code = await ebtcDeployer.ebtcToken_creationCode();
+    
+    const contractFactory = await ethers.getContractFactory("EBTCToken", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.ebtcToken_creationCode()));
+	  
     const _salt = await ebtcDeployer.EBTC_TOKEN();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[9]);
     return await EBTCToken.at(_deployedAddr);
+  }
+  
+  static async deployCollateralTestnet(){ 
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);  
+    const collateral = await CollateralTokenTester.new({gasPrice: DeploymentHelper.deployGasPrice * 2, nonce: _nonce});
+    return collateral;
+  }
+  
+  static async deployEBTCDeployer(){  
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
+    const eBTCDeployer = await EBTCDeployer.new({gasPrice: DeploymentHelper.deployGasPrice * 2, nonce: _nonce});
+    return eBTCDeployer;
   }
 
   /**  
@@ -272,10 +435,10 @@ class DeploymentHelper {
   static async deployLiquityCoreHardhat() {
     const accounts = await web3.eth.getAccounts()
 
-    const ebtcDeployer = await EBTCDeployer.new();
+    const ebtcDeployer = await DeploymentHelper.deployEBTCDeployer();
     let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();
 
-    const collateral = await CollateralTokenTester.new();
+    const collateral = await DeploymentHelper.deployCollateralTestnet();
     const functionCaller = await FunctionCaller.new();
 
     const authority = await DeploymentHelper.deployGovernor(ebtcDeployer, _expectedAddr, accounts[0]);
@@ -351,10 +514,10 @@ class DeploymentHelper {
   static async deployTesterContractsHardhat() {
     const accounts = await web3.eth.getAccounts()
 
-    const ebtcDeployer = await EBTCDeployer.new();
+    const ebtcDeployer = await DeploymentHelper.deployEBTCDeployer();
     let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();
 
-    const collateral = await CollateralTokenTester.new();
+    const collateral = await DeploymentHelper.deployCollateralTestnet();
 
     const testerContracts = {}
     testerContracts.weth = await WETH9.new()

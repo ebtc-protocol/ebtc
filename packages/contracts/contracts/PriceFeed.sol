@@ -21,11 +21,9 @@ import "./Dependencies/AuthNoOwner.sol";
 contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
 
-    // Chainlink oracles
-    AggregatorV3Interface public constant ETH_BTC_CL_FEED =
-        AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
-    AggregatorV3Interface public constant STETH_ETH_CL_FEED =
-        AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
+    // Chainlink oracles in mainnet
+    AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
+    AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
@@ -54,13 +52,23 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Sets the addresses of the contracts and initializes the system
     /// @param _fallbackCallerAddress The address of the Fallback oracle contract
     /// @param _authorityAddress The address of the Authority contract
+    /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
+    /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
     /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
-    constructor(address _fallbackCallerAddress, address _authorityAddress) {
+    constructor(
+        address _fallbackCallerAddress,
+        address _authorityAddress,
+        address _collEthCLFeed,
+        address _ethBtcCLFeed
+    ) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
         emit FallbackCallerChanged(address(0), _fallbackCallerAddress);
+
+        ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
+        STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -576,6 +584,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
+
         try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
@@ -662,6 +671,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
+
         try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;

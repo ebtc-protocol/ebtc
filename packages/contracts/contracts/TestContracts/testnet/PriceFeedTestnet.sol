@@ -20,6 +20,10 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     bool public _useFallback;
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Fallback system
 
+    constructor(address _authorityAddress) {
+        _initializeAuthority(_authorityAddress);
+    }
+
     // --- Dependency setters ---
 
     function setAddresses(
