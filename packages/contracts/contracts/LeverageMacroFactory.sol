@@ -46,8 +46,8 @@ contract LeverageMacroFactory {
                 activePool,
                 cdpManager,
                 ebtcToken,
-                sortedCdps,
                 stETH,
+                sortedCdps,
                 _owner
             )
         );
