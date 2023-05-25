@@ -850,7 +850,7 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        require(amount < maxFlashLoan(token), "BorrowerOperations: aboveMax");
+        require(amount <= maxFlashLoan(token), "BorrowerOperations: aboveMax");
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
