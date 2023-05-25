@@ -49,8 +49,8 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     /// @dev Basic happy path test
-    /// @notice We cap to uint128 avoid multiplication overflow
-    function testBasicLoanEBTC(uint128 loanAmount) public {
+    /// @notice We cap to uint112 avoid multiplication overflow (and cause it's the cap)
+    function testBasicLoanEBTC(uint112 loanAmount) public {
         require(address(ebtcReceiver) != address(0));
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
@@ -99,24 +99,22 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     /// @dev Amount too high, we overflow when computing fees
+    /// @dev NOTE: It now reverts due to `maxFlashLoan` check
     function testOverflowCaseEBTC() public {
         // Zero Overflow Case
-        uint256 loanAmount = type(uint256).max;
+        uint256 loanAmount = type(uint112).max;
 
-        try
+        vm.expectRevert();
             borrowerOperations.flashLoan(
                 ebtcReceiver,
                 address(eBTCToken),
                 loanAmount,
                 abi.encodePacked(uint256(0))
-            )
-        {} catch Panic(uint _errorCode) {
-            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
-        }
+            );
     }
 
     /// @dev Do nothing (no fee), check that it reverts
-    function testEBTCRevertsIfUnpaid(uint128 loanAmount) public {
+    function testEBTCRevertsIfUnpaid(uint112 loanAmount) public {
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
@@ -136,7 +134,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev This test converts the MUST into assets from the spec
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
-    function testEBTCSpec(uint128 amount, address randomToken) public {
+    function testEBTCSpec(uint112 amount, address randomToken) public {
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
 
@@ -157,7 +155,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         borrowerOperations.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("BorrowerOperations: EBTC Only");
+        vm.expectRevert("BorrowerOperations: Too much");
         borrowerOperations.flashLoan(
             specReceiver,
             randomToken,
