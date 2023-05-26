@@ -43,6 +43,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
     // -------- EIP-2612 permit corner cases --------
 
+    /// @notice This test checks if the permit function reverts when the nonce is invalid.
     function testRevert_invalidNonce() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
             owner: owner,
@@ -60,6 +61,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         eBTCToken.permit(permit.owner, permit.spender, permit.value, permit.deadline, v, r, s);
     }
 
+    /// @notice This test checks if the permit function reverts when the specified owner and signer are different (invalid).
     function testRevert_invalidSigner() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
             owner: owner,
@@ -77,6 +79,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         eBTCToken.permit(permit.owner, permit.spender, permit.value, permit.deadline, v, r, s);
     }
 
+    /// @notice This test checks if the transferFrom function reverts after the permit function is used to add an allowance lower than the tranfer amount.
     function testRevert_transferFromPostPermitLowerAllowance() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
             owner: owner,
@@ -97,6 +100,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         eBTCToken.transferFrom(owner, spender, FAKE_MINTING_AMOUNT);
     }
 
+    /// @notice This test checks if the transferFrom function successfully completes after a valid allowance is given via permit.
     function test_transferFromPostPermit() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
             owner: owner,
@@ -122,6 +126,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
     // -------- `returnFromPool` happy path - called from `cdpManager` --------
 
+    /// @notice This test checks if the returnFromPool function successfully returns the tokens from the pool when called by a valid caller (cdpManager)
     function test_returnFromPool() public {
         uint256 poolInitialBal = 0;
 
@@ -134,6 +139,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
     // -------- `increaseAllowance` for address(0) --------
 
+    /// @notice This test checks if the increaseAllowance function reverts when the spender address is the zero address.
     function testRevert_increaseAllowanceZeroAddr() public {
         vm.prank(address(owner));
         vm.expectRevert();
@@ -142,6 +148,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
 
     // -------- `decreaseAllowance` when not prev approve --------
 
+    /// @notice This test checks if the decreaseAllowance function reverts when there was no prior approval for the given spender.
     function testRevert_decreaseAllowanceNotPriorApprove() public {
         vm.prank(address(owner));
         vm.expectRevert("ERC20: decreased allowance below zero");
