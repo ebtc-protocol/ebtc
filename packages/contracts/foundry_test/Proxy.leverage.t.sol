@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
+import {LeverageMacroFactory} from "../contracts/LeverageMacroFactory.sol";
 import {LeverageMacroReference} from "../contracts/LeverageMacroReference.sol";
 import {LeverageMacroBase} from "../contracts/LeverageMacroBase.sol";
 import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
@@ -74,6 +75,20 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         // adjust CDP : decrease its collateral and debt
         uint _removedColl = (netColl * (MAX_SLIPPAGE / 2 - adjustBps)) / MAX_SLIPPAGE;
         _descreaseCDPSizeViaProxy(user, cdpId, _removedColl, proxyAddr);
+    }
+
+    function test_macroAndFactoryEquivalence(address user) public {
+        LeverageMacroBase fromFactory = LeverageMacroBase(_createLeverageMacroWithFactory(user));
+        LeverageMacroBase fromReference = LeverageMacroBase(_createLeverageMacro(user));
+
+        // Equivalence of settings
+        assertEq(address(fromFactory.borrowerOperations()), address(fromReference.borrowerOperations()));
+        assertEq(address(fromFactory.activePool()), address(fromReference.activePool()));
+        assertEq(address(fromFactory.cdpManager()), address(fromReference.cdpManager()));
+        assertEq(address(fromFactory.ebtcToken()), address(fromReference.ebtcToken()));
+        assertEq(address(fromFactory.sortedCdps()), address(fromReference.sortedCdps()));
+        assertEq(address(fromFactory.stETH()), address(fromReference.stETH()));
+        assertEq(address(fromFactory.owner()), address(fromReference.owner()));
     }
 
     function test_OpenAndCloseLeveragedCDPHappy(uint netColl) public {
@@ -646,6 +661,29 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             address(sortedCdps),
             _user
         );
+
+        // approve tokens for proxy
+        collateral.approve(address(proxy), type(uint256).max);
+        eBTCToken.approve(address(proxy), type(uint256).max);
+
+        vm.stopPrank();
+
+        return address(proxy);
+    }
+
+    function _createLeverageMacroWithFactory(address _user) internal returns (address) {
+        vm.startPrank(_user);
+
+        LeverageMacroFactory factory = new LeverageMacroFactory(
+                        address(borrowerOperations),
+            address(activePool),
+            address(cdpManager),
+            address(eBTCToken),
+            address(collateral),
+            address(sortedCdps)
+        );
+        
+        address proxy = factory.deployNewMacro();
 
         // approve tokens for proxy
         collateral.approve(address(proxy), type(uint256).max);
