@@ -13,7 +13,7 @@ interface IActivePool is IPool {
     event CollateralAddressChanged(address _collTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusAddress);
-    event ActivePoolFeeRecipientClaimableCollUpdated(uint _coll);
+    event ActivePoolFeeRecipientClaimableCollUpdated(uint _coll, uint _fee);
 
     // --- Functions ---
     function sendStEthColl(address _account, uint _amount) external;
