@@ -160,7 +160,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         FeeRecipientColl = _FeeRecipientColl + _shares;
 
         emit ActivePoolCollBalanceUpdated(_StEthColl);
-        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl, _shares);
+        emit ActivePoolFeeRecipientClaimableCollIncreased(FeeRecipientColl, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -330,7 +330,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
         FeeRecipientColl = _FeeRecipientColl - _shares;
-        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl, _shares);
+        emit ActivePoolFeeRecipientClaimableCollDecreased(FeeRecipientColl, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }

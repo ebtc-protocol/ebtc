@@ -13,7 +13,8 @@ interface IActivePool is IPool {
     event CollateralAddressChanged(address _collTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusAddress);
-    event ActivePoolFeeRecipientClaimableCollUpdated(uint _coll, uint _fee);
+    event ActivePoolFeeRecipientClaimableCollIncreased(uint _coll, uint _fee);
+    event ActivePoolFeeRecipientClaimableCollDecreased(uint _coll, uint _fee);
     event FlashLoanSuccess(address _initiator, address _token, uint _amount, uint _fee);
     event SweepTokenSuccess(address _token, uint _amount, address _recipient);
 
