@@ -14,6 +14,7 @@ interface IBorrowerOperations {
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
+    event FlashLoanSuccess(address _initiator, address _token, uint _amount, uint _fee);
 
     event CdpCreated(
         bytes32 indexed _cdpId,

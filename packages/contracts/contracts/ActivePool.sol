@@ -290,6 +290,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
             "ActivePool: Should keep same collateral share rate"
         );
 
+        emit FlashLoanSuccess(address(receiver), token, amount, fee);
+
         return true;
     }
 
