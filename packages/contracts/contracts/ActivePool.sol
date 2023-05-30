@@ -346,6 +346,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
 
         IERC20(token).safeTransfer(feeRecipientAddress, amount);
+
+        emit SweepTokenSuccess(token, amount, feeRecipientAddress);
     }
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
