@@ -105,12 +105,12 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         uint256 loanAmount = type(uint112).max;
 
         vm.expectRevert();
-            borrowerOperations.flashLoan(
-                ebtcReceiver,
-                address(eBTCToken),
-                loanAmount,
-                abi.encodePacked(uint256(0))
-            );
+        borrowerOperations.flashLoan(
+            ebtcReceiver,
+            address(eBTCToken),
+            loanAmount,
+            abi.encodePacked(uint256(0))
+        );
     }
 
     /// @dev Do nothing (no fee), check that it reverts

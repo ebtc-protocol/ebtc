@@ -114,7 +114,7 @@ contract SimplifiedDiamondLike {
         require(msg.sender == owner, "Must be owner");
 
         uint256 length = ops.length;
-        for (uint256 i; i < length;) {
+        for (uint256 i; i < length; ) {
             _executeOne(ops[i], i);
 
             unchecked {
@@ -185,8 +185,12 @@ contract SimplifiedDiamondLike {
             let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
-            case 0 { revert(0, returndatasize()) }
-            default { return(0, returndatasize()) }
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
         }
     }
 }
