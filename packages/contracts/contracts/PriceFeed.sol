@@ -72,11 +72,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
-        ChainlinkResponse memory prevChainlinkResponse =
-            _getPrevChainlinkResponse(chainlinkResponse.roundEthBtcId, chainlinkResponse.roundStEthEthId);
+        ChainlinkResponse memory prevChainlinkResponse = _getPrevChainlinkResponse(
+            chainlinkResponse.roundEthBtcId,
+            chainlinkResponse.roundStEthEthId
+        );
 
         require(
-            !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) && !_chainlinkIsFrozen(chainlinkResponse),
+            !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
+                !_chainlinkIsFrozen(chainlinkResponse),
             "PriceFeed: Chainlink must be working and current"
         );
 
@@ -97,8 +100,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function fetchPrice() external override returns (uint256) {
         // Get current and previous price data from Chainlink, and current price data from Fallback
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
-        ChainlinkResponse memory prevChainlinkResponse =
-            _getPrevChainlinkResponse(chainlinkResponse.roundEthBtcId, chainlinkResponse.roundStEthEthId);
+        ChainlinkResponse memory prevChainlinkResponse = _getPrevChainlinkResponse(
+            chainlinkResponse.roundEthBtcId,
+            chainlinkResponse.roundStEthEthId
+        );
         FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
 
         // --- CASE 1: System fetched last price from Chainlink  ---
@@ -183,8 +188,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // --- CASE 2: The system fetched last price from Fallback ---
         if (status == Status.usingFallbackChainlinkUntrusted) {
             // If both Fallback and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink
-            if (_bothOraclesLiveAndUnbrokenAndSimilarPrice(chainlinkResponse, prevChainlinkResponse, fallbackResponse))
-            {
+            if (
+                _bothOraclesLiveAndUnbrokenAndSimilarPrice(
+                    chainlinkResponse,
+                    prevChainlinkResponse,
+                    fallbackResponse
+                )
+            ) {
                 _changeStatus(Status.chainlinkWorking);
                 return _storeChainlinkPrice(chainlinkResponse.answer);
             }
@@ -214,8 +224,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             if (address(fallbackCaller) == address(0)) {
                 // If CL has resumed working
                 if (
-                    !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse)
-                        && !_chainlinkIsFrozen(chainlinkResponse)
+                    !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
+                    !_chainlinkIsFrozen(chainlinkResponse)
                 ) {
                     _changeStatus(Status.chainlinkWorking);
                     return _storeChainlinkPrice(chainlinkResponse.answer);
@@ -226,8 +236,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
              * If both oracles are now live, unbroken and similar price, we assume that they are reporting
              * accurately, and so we switch back to Chainlink.
              */
-            if (_bothOraclesLiveAndUnbrokenAndSimilarPrice(chainlinkResponse, prevChainlinkResponse, fallbackResponse))
-            {
+            if (
+                _bothOraclesLiveAndUnbrokenAndSimilarPrice(
+                    chainlinkResponse,
+                    prevChainlinkResponse,
+                    fallbackResponse
+                )
+            ) {
                 _changeStatus(Status.chainlinkWorking);
                 return _storeChainlinkPrice(chainlinkResponse.answer);
             }
@@ -309,8 +324,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             }
 
             // If Chainlink and Fallback are both live, unbroken and similar price, switch back to chainlinkWorking and return Chainlink price
-            if (_bothOraclesLiveAndUnbrokenAndSimilarPrice(chainlinkResponse, prevChainlinkResponse, fallbackResponse))
-            {
+            if (
+                _bothOraclesLiveAndUnbrokenAndSimilarPrice(
+                    chainlinkResponse,
+                    prevChainlinkResponse,
+                    fallbackResponse
+                )
+            ) {
                 _changeStatus(Status.chainlinkWorking);
                 return _storeChainlinkPrice(chainlinkResponse.answer);
             }
@@ -339,7 +359,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         if (_fallbackCaller != address(0)) {
             try newFallbackCaler.getFallbackResponse() returns (
-                uint256 answer, uint256 timestampRetrieved, bool success
+                uint256 answer,
+                uint256 timestampRetrieved,
+                bool success
             ) {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
@@ -369,11 +391,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _currentResponse The latest response from the Chainlink oracle
     /// @param _prevResponse The previous response from the Chainlink oracle
     /// @return A boolean indicating whether the Chainlink oracle is broken
-    function _chainlinkIsBroken(ChainlinkResponse memory _currentResponse, ChainlinkResponse memory _prevResponse)
-        internal
-        view
-        returns (bool)
-    {
+    function _chainlinkIsBroken(
+        ChainlinkResponse memory _currentResponse,
+        ChainlinkResponse memory _prevResponse
+    ) internal view returns (bool) {
         return _badChainlinkResponse(_currentResponse) || _badChainlinkResponse(_prevResponse);
     }
 
@@ -390,8 +411,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // Check for an invalid timestamp that is 0, or in the future
         if (
-            _response.timestampEthBtc == 0 || _response.timestampEthBtc > block.timestamp
-                || _response.timestampStEthEth == 0 || _response.timestampStEthEth > block.timestamp
+            _response.timestampEthBtc == 0 ||
+            _response.timestampEthBtc > block.timestamp ||
+            _response.timestampStEthEth == 0 ||
+            _response.timestampStEthEth > block.timestamp
         ) {
             return true;
         }
@@ -404,8 +427,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _response The response from the Chainlink oracle to evaluate
     /// @return A boolean indicating whether the Chainlink oracle is frozen
     function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
-        return block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED
-            || block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
+        return
+            block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
+            block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
     }
 
     /// @notice Checks if the price change between Chainlink oracle rounds is above the maximum threshold allowed
@@ -424,7 +448,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
          * - If price decreased, the percentage deviation is in relation to the the previous price.
          * - If price increased, the percentage deviation is in relation to the current price.
          */
-        uint256 percentDeviation = maxPrice > 0 ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice : 0;
+        uint256 percentDeviation = maxPrice > 0
+            ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice
+            : 0;
 
         // Return true if price has more than doubled, or more than halved.
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
@@ -450,7 +476,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Checks if the fallback oracle is frozen by comparing the current timestamp with the timeout value.
     /// @param _fallbackResponse Response from the fallback oracle to check
     /// @return A boolean indicating whether the fallback oracle is frozen.
-    function _fallbackIsFrozen(FallbackResponse memory _fallbackResponse) internal view returns (bool) {
+    function _fallbackIsFrozen(
+        FallbackResponse memory _fallbackResponse
+    ) internal view returns (bool) {
         return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
     }
 
@@ -467,8 +495,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     ) internal view returns (bool) {
         // Return false if either oracle is broken or frozen
         if (
-            _fallbackIsBroken(_fallbackResponse) || _fallbackIsFrozen(_fallbackResponse)
-                || _chainlinkIsBroken(_chainlinkResponse, _prevChainlinkResponse) || _chainlinkIsFrozen(_chainlinkResponse)
+            _fallbackIsBroken(_fallbackResponse) ||
+            _fallbackIsFrozen(_fallbackResponse) ||
+            _chainlinkIsBroken(_chainlinkResponse, _prevChainlinkResponse) ||
+            _chainlinkIsFrozen(_chainlinkResponse)
         ) {
             return false;
         }
@@ -489,7 +519,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint256 minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         if (minPrice == 0) return false;
         uint256 maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / minPrice;
+        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+            minPrice;
 
         /*
          * Return true if the relative price difference is <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES: if so, we assume both oracles are probably reporting
@@ -515,7 +546,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Stores the price reported by the fallback oracle.
     /// @param _fallbackResponse The latest response from the fallback oracle.
     /// @return The price reported by the fallback oracle.
-    function _storeFallbackPrice(FallbackResponse memory _fallbackResponse) internal returns (uint256) {
+    function _storeFallbackPrice(
+        FallbackResponse memory _fallbackResponse
+    ) internal returns (uint256) {
         _storePrice(_fallbackResponse.answer);
         return _fallbackResponse.answer;
     }
@@ -534,10 +567,17 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Retrieves the latest response from the fallback oracle. If the fallback oracle address is set to the zero address, it returns a failing struct.
     /// @return fallbackResponse The latest response from the fallback oracle.
 
-    function _getCurrentFallbackResponse() internal view returns (FallbackResponse memory fallbackResponse) {
+    function _getCurrentFallbackResponse()
+        internal
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
         if (address(fallbackCaller) != address(0)) {
-            try fallbackCaller.getFallbackResponse() returns (uint256 answer, uint256 timestampRetrieved, bool success)
-            {
+            try fallbackCaller.getFallbackResponse() returns (
+                uint256 answer,
+                uint256 timestampRetrieved,
+                bool success
+            ) {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
@@ -554,7 +594,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
-    function _getCurrentChainlinkResponse() internal view returns (ChainlinkResponse memory chainlinkResponse) {
+    function _getCurrentChainlinkResponse()
+        internal
+        view
+        returns (ChainlinkResponse memory chainlinkResponse)
+    {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
@@ -611,11 +655,15 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
 
         if (
-            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer)
-                && _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
+            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            chainlinkResponse.answer =
-                _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer, ethBtcDecimals, stEthEthDecimals);
+            chainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
         } else {
             return chainlinkResponse;
         }
@@ -628,11 +676,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
     /// @return prevChainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
 
-    function _getPrevChainlinkResponse(uint80 _currentRoundEthBtcId, uint80 _currentRoundStEthEthId)
-        internal
-        view
-        returns (ChainlinkResponse memory prevChainlinkResponse)
-    {
+    function _getPrevChainlinkResponse(
+        uint80 _currentRoundEthBtcId,
+        uint80 _currentRoundStEthEthId
+    ) internal view returns (ChainlinkResponse memory prevChainlinkResponse) {
         // If first round, early return
         // Handles revert from underflow in _currentRoundEthBtcId - 1
         // and _currentRoundStEthEthId - 1
@@ -697,11 +744,15 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
 
         if (
-            _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer)
-                && _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
+            _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            prevChainlinkResponse.answer =
-                _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer, ethBtcDecimals, stEthEthDecimals);
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
         } else {
             return prevChainlinkResponse;
         }
@@ -732,9 +783,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 _ethBtcDecimals,
         uint8 _stEthEthDecimals
     ) internal view returns (uint256) {
-        return (
-            ((10 ** (_stEthEthDecimals - _ethBtcDecimals)) * (uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer)))
-                / LiquityMath.DECIMAL_PRECISION
-        );
+        return (((10 ** (_stEthEthDecimals - _ethBtcDecimals)) *
+            (uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer))) / LiquityMath.DECIMAL_PRECISION);
     }
 }
