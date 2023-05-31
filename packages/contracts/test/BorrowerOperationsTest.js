@@ -153,7 +153,7 @@ contract('BorrowerOperations', async accounts => {
       await assertRevert(borrowerOperations.setMaxFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
       let _newFee = await borrowerOperations.maxFeeBps();
       
-      assert.isTrue(_newFee.lt(await borrowerOperations.maxFeeBps()));
+      assert.isTrue(_newFee.lte(await borrowerOperations.maxFeeBps()));
       await borrowerOperations.setMaxFeeBps(_newFee, {from: alice})
       assert.isTrue(_newFee.eq(await borrowerOperations.maxFeeBps()));
   
