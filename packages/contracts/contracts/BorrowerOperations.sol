@@ -887,10 +887,6 @@ contract BorrowerOperations is
         if (token != address(ebtcToken)) {
             return 0;
         }
-
-        // TODO: Decide if max, or w/e
-        // For now return 112 which is UniV3 compatible
-        // Source: I made it up
         return type(uint112).max;
     }
 }
