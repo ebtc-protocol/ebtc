@@ -185,10 +185,10 @@ contract('PriceFeed', async accounts => {
       // Decimals for second feed change
       await mockEthBtcChainlink.setDecimals(8)
       await mockStEthEthChainlink.setDecimals(8)
-      await mockEthBtcChainlink.setPrice(dec(1, 9))
-      await mockStEthEthChainlink.setPrice(dec(1, 8))
-      await mockEthBtcChainlink.setPrevPrice(dec(1, 9))
-      await mockStEthEthChainlink.setPrevPrice(dec(1, 8))
+      await mockEthBtcChainlink.setPrice(dec(10, 18))
+      await mockStEthEthChainlink.setPrice(dec(1, 18))
+      await mockEthBtcChainlink.setPrevPrice(dec(10, 18))
+      await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
       // Check eBTC PriceFeed gives 10, with 18 digit precision

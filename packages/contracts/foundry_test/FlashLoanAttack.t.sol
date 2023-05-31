@@ -72,6 +72,8 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testEBTCAttack(uint128 amount) public {
+        vm.assume(amount < borrowerOperations.maxFlashLoan(address(eBTCToken)));
+
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
         vm.assume(fee > 0);

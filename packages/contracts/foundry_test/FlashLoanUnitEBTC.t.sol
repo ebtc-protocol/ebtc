@@ -51,6 +51,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     function testBasicLoanEBTC(uint128 loanAmount) public {
+        vm.assume(loanAmount < borrowerOperations.maxFlashLoan(address(eBTCToken)));
         require(address(ebtcReceiver) != address(0));
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
@@ -101,7 +102,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev Amount too high, we overflow when computing fees
     function testOverflowCaseEBTC() public {
         // Zero Overflow Case
-        uint256 loanAmount = type(uint256).max;
+        uint256 loanAmount = borrowerOperations.maxFlashLoan(address(eBTCToken)) - 1; //type(uint256).max;
+        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
+
+        deal(address(eBTCToken), address(ebtcReceiver), fee);
 
         try
             borrowerOperations.flashLoan(
@@ -117,6 +121,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
     /// @dev Do nothing (no fee), check that it reverts
     function testEBTCRevertsIfUnpaid(uint128 loanAmount) public {
+        vm.assume(loanAmount < borrowerOperations.maxFlashLoan(address(eBTCToken)));
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
@@ -137,6 +142,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
     function testEBTCSpec(uint128 amount, address randomToken) public {
+        vm.assume(amount < borrowerOperations.maxFlashLoan(address(eBTCToken)));
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
 

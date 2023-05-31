@@ -434,7 +434,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
          * - If price decreased, the percentage deviation is in relation to the the previous price.
          * - If price increased, the percentage deviation is in relation to the current price.
          */
-        uint percentDeviation = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice;
+        uint percentDeviation = maxPrice > 0
+            ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice
+            : 0;
 
         // Return true if price has more than doubled, or more than halved.
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
