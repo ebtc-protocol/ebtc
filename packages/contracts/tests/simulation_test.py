@@ -135,7 +135,7 @@ def contracts():
     """
     contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
         contracts.ebtcDeployer.BORROWER_OPERATIONS(),
-        contracts.ebtcDeployer.borrowerOperations_creationCode(),
+        contracts.ebtcDeployer.borrowerOperationsTester_creationCode(), ## NOTE: Tester
         encode_abi(
             ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'],
             [_addresses[2], _addresses[6], _addresses[7], _addresses[4], _addresses[5], _addresses[9], _addresses[10], contracts.collateral.address]

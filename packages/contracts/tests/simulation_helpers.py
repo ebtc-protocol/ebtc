@@ -374,7 +374,7 @@ def pending_liquidations(contracts, price_ether_current):
     if not is_recovery_mode(contracts, price_ether_current):
         return False
 
-    stability_pool_balance = contracts.stabilityPool.getTotalEBTCDeposits()
+    stability_pool_balance = 0 ## Stability Pool is gone
     cdp = last_cdp
     for i in range(NUM_LIQUIDATIONS):
         debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
@@ -422,8 +422,8 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
     if len(active_accounts) == 0:
         return [0, 0]
 
-    stability_pool_previous = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
-    stability_pool_eth_previous = contracts.stabilityPool.getStEthColl() / 1e18
+    stability_pool_previous = 0 ## Stability Pool is gone / 1e18
+    stability_pool_eth_previous = 0 ## Stability Pool is gone / 1e18
 
     while pending_liquidations(contracts, price_ether_current):
         try:
@@ -435,7 +435,7 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
                                         tx.events['CdpLiquidated'], '_borrower')
         except:
             print(f"TM: {contracts.cdpManager.address}")
-            stability_pool_balance = contracts.stabilityPool.getTotalEBTCDeposits()
+            stability_pool_balance = 0 ## Stability Pool is gone
             print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
             cdp = last_cdp
             for i in range(NUM_LIQUIDATIONS):
@@ -447,8 +447,8 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
                 cdp = contracts.sortedCdps.getPrev(cdp)
                 icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
                 print(f"ICR: {icr}")
-    stability_pool_current = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
-    stability_pool_eth_current = contracts.stabilityPool.getStEthColl() / 1e18
+    stability_pool_current = 0 ## Stability Pool is gone / 1e18
+    stability_pool_eth_current = 0 ## Stability Pool is gone / 1e18
 
     debt_liquidated = stability_pool_current - stability_pool_previous
     ether_liquidated = stability_pool_eth_current - stability_pool_eth_previous
@@ -464,7 +464,7 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
 
 
 def calculate_stability_return(contracts, price_EBTC, data, index):
-    stability_pool_previous = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
+    stability_pool_previous = 0 ## Stability Pool is gone / 1e18
     if index == 0:
         return_stability = initial_return
     elif stability_pool_previous == 0:
@@ -486,10 +486,12 @@ def calculate_stability_return(contracts, price_EBTC, data, index):
 def is_new_tcr_above_ccr(
         contracts, coll_change, is_coll_increase, debt_change, is_debt_increase, price
 ) -> bool:
-    new_tcr = contracts.borrowerOperations.getNewTCRFromCdpChange(
-        coll_change, is_coll_increase, debt_change, is_debt_increase, price
-    )
-    return new_tcr >= Wei(1.5 * 1e18)
+    ## TODO FIX / ADD STATIC MATH CAUSE WHY IS THIS A CONTRACT CALL?
+    # new_tcr = contracts.borrowerOperations.getNewTCRFromCdpChange(
+    #     coll_change, is_coll_increase, debt_change, is_debt_increase, price
+    # )
+    # return new_tcr >= Wei(1.5 * 1e18)
+    return True
 
 
 def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
@@ -626,6 +628,10 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
 
     for i, working_cdp in enumerate(active_accounts):
         account = accounts[working_cdp['index']]
+        ## TODO:Need to add CDP id so we can track that
+
+        ## Find
+
         current_icr = contracts.cdpManager.getCurrentICR(account,
                                                            floatToWei(price_ether_current)) / 1e18
         amounts = contracts.cdpManager.getEntireDebtAndColl(account)
@@ -702,11 +708,17 @@ def open_cdp(accounts, contracts, active_accounts, inactive_accounts, supply_cdp
     ebtc = get_ebtc_amount_from_net_debt(contracts, floatToWei(supply_cdp))
     if is_new_tcr_above_ccr(contracts, coll, True, debt_change, True,
                             floatToWei(price_ether_current)):
-        contracts.borrowerOperations.openCdp(MAX_FEE, ebtc, hints[0], hints[1],
-                                               {'from': accounts[inactive_accounts[0]],
-                                                'value': coll})
+        ## TODO: They prob need to approve and we also need to tweak the value
+        current_user = accounts[inactive_accounts[0]]
+        bal_b4 = contracts.collateral.balanceOf(current_user)
+        contracts.collateral.deposit({"from": current_user, "value": coll})
+        bal_after = contracts.collateral.balanceOf(current_user) - bal_b4
+        contracts.collateral.approve(contracts.borrowerOperations, bal_after, {"from": current_user})
+
+        cdp_id_tx = contracts.borrowerOperations.openCdp(ebtc, hints[0], hints[1], bal_after,
+                                               {'from': current_user})
         new_account = {"index": inactive_accounts[0], "CR_initial": cr_ratio,
-                       "Rational_inattention": rational_inattention}
+                       "Rational_inattention": rational_inattention, "cdp_id": cdp_id_tx.return_value}
         active_accounts.insert(hints[2], new_account)
         inactive_accounts.pop(0)
         return True
@@ -757,8 +769,9 @@ def open_cdps(accounts, contracts, active_accounts, inactive_accounts, price_eth
 
 
 def stability_update(accounts, contracts, active_accounts, return_stability, index):
+    return ## TODO: Stability pool is gone
     supply = contracts.ebtcToken.totalSupply() / 1e18
-    stability_pool_previous = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
+    stability_pool_previous = 0 ## Stability Pool is gone / 1e18
 
     np.random.seed(27 + 3 * index)
     shock_stability = np.random.normal(0, sd_stability)
@@ -942,7 +955,7 @@ def redeem_cdp(accounts, contracts, i, price_ether_current):
 
 def price_stabilizer(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
                      price_ebtc, index):
-    stability_pool = contracts.stabilityPool.getTotalEBTCDeposits() / 1e18
+    stability_pool = 0 ## Stability Pool is gone / 1e18
     redemption_pool = 0
     redemption_fee = 0
     issuance_ebtc_stabilizer = 0
