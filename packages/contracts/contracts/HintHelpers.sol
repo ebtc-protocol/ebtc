@@ -100,6 +100,7 @@ contract HintHelpers is LiquityBase {
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
+                    uint _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
                     (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
                         vars,
                         currentCdpDebt,
@@ -109,6 +110,8 @@ contract HintHelpers is LiquityBase {
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
                     if (partialRedemptionNewColl < MIN_NET_COLL) {
+                        partialRedemptionHintNICR = 0; //reset to 0 as there is no partial redemption in this case
+                        vars.remainingEbtcToRedeem = _cachedEbtcToRedeem;
                         break;
                     }
                 } else {
@@ -155,12 +158,10 @@ contract HintHelpers is LiquityBase {
             (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
         );
 
+        uint _newCollAfter = newColl - collToReceive;
         return (
-            newColl,
-            LiquityMath._computeNominalCR(
-                newColl - collToReceive,
-                currentCdpDebt - maxRedeemableEBTC
-            )
+            _newCollAfter,
+            LiquityMath._computeNominalCR(_newCollAfter, currentCdpDebt - maxRedeemableEBTC)
         );
     }
 

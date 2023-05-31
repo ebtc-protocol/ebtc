@@ -507,7 +507,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             minPrice;
 
         /*
-         * Return true if the relative price difference is <= 3%: if so, we assume both oracles are probably reporting
+         * Return true if the relative price difference is <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES: if so, we assume both oracles are probably reporting
          * the honest market price, as it is unlikely that both have been broken/hacked and are still in-sync.
          */
         return percentPriceDifference <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES;
@@ -762,6 +762,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 _stEthEthDecimals
     ) internal view returns (uint256) {
         return (((10 ** (_stEthEthDecimals - _ethBtcDecimals)) *
-            (uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION)) / uint256(_stEthEthAnswer));
+            (uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer))) / LiquityMath.DECIMAL_PRECISION);
     }
 }

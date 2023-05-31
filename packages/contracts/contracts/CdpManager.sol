@@ -757,7 +757,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
-            lastFeeOperationTime = block.timestamp;
+            // Using the effective elapsed time that is consumed so far to update lastFeeOperationTime
+            // instead block.timestamp for consistency with _calcDecayedBaseRate()
+            lastFeeOperationTime += _minutesPassedSinceLastFeeOp() * SECONDS_IN_ONE_MINUTE;
             emit LastFeeOpTimeUpdated(block.timestamp);
         }
     }

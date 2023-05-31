@@ -123,6 +123,13 @@ contract('BorrowerOperations', async accounts => {
       
     })	  
 	  
+    it("BorrowerOperations flashloan checks", async() => {
+      let _maxFlashLoanAlloweed = await borrowerOperations.maxFlashLoan(ebtcToken.address);	
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, 0, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: 0 Amount");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, borrowerOperations.address, _maxFlashLoanAlloweed, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: EBTC Only");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, _maxFlashLoanAlloweed, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: too much flashLoan amount");
+    })  
+	  
     it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
 	  await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
