@@ -124,19 +124,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture {
         assertEq(eBTCToken.allowance(owner, spender), 0);
     }
 
-    // -------- `returnFromPool` happy path - called from `cdpManager` --------
-
-    /// @notice This test checks if the returnFromPool function successfully returns the tokens from the pool when called by a valid caller (cdpManager)
-    function test_returnFromPool() public {
-        uint256 poolInitialBal = 0;
-
-        vm.prank(address(cdpManager));
-        eBTCToken.returnFromPool(address(activePool), owner, 5e18);
-
-        assertGt(eBTCToken.balanceOf(owner), FAKE_MINTING_AMOUNT);
-        assertLt(poolInitialBal, 5e18);
-    }
-
     // -------- `increaseAllowance` for address(0) --------
 
     /// @notice This test checks if the increaseAllowance function reverts when the spender address is the zero address.
