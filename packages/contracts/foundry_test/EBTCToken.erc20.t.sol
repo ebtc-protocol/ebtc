@@ -10,7 +10,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
  * Test around basic erc20 functionality which are missing in JS suite
  * and get tested in isolation in this file for further coverage
  */
-contract EBTCTokenErc20Test is eBTCBaseFixture{
+contract EBTCTokenErc20Test is eBTCBaseFixture {
     SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
