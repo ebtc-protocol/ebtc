@@ -165,7 +165,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("ActivePool: collateral Only");
+        vm.expectRevert("ActivePool: Too much");
         activePool.flashLoan(specReceiver, randomToken, amount, abi.encodePacked(uint256(0)));
 
         if (fee > 0) {

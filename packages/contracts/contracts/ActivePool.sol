@@ -251,9 +251,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(token == address(collateral), "ActivePool: collateral Only");
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
+        // NOTE: Check for `token` is implicit in the requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
         uint256 amountWithFee = amount + fee;

@@ -850,7 +850,8 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+        require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
+        // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
@@ -884,14 +885,10 @@ contract BorrowerOperations is
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(address token) external view override returns (uint256) {
+    function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(ebtcToken)) {
             return 0;
         }
-
-        // TODO: Decide if max, or w/e
-        // For now return 112 which is UniV3 compatible
-        // Source: I made it up
         return type(uint112).max;
     }
 }
