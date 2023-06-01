@@ -131,7 +131,7 @@ contract EBTCTokenErc20Test is eBTCBaseFixture{
     function testRevert_increaseAllowanceZeroAddr() public {
         vm.prank(address(owner));
         vm.expectRevert();
-        eBTCToken.increaseAllowance(address(0), 1 ether);
+        eBTCToken.increaseAllowance(address(0), 1 wei);
     }
 
     // -------- `decreaseAllowance` when not prev approve --------
@@ -140,6 +140,6 @@ contract EBTCTokenErc20Test is eBTCBaseFixture{
     function testRevert_decreaseAllowanceNotPriorApprove() public {
         vm.prank(address(owner));
         vm.expectRevert("ERC20: decreased allowance below zero");
-        eBTCToken.decreaseAllowance(address(cdpManager), 1 ether);
+        eBTCToken.decreaseAllowance(address(cdpManager), 1 wei);
     }
 }
