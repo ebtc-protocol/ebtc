@@ -13,8 +13,8 @@ contract LeverageMacroFactory {
     address public immutable activePool;
     address public immutable cdpManager;
     address public immutable ebtcToken;
-    address public immutable sortedCdps;
     address public immutable stETH;
+    address public immutable sortedCdps;
 
     event DeployNewMacro(address indexed sender, address indexed newContractAddress);
 
@@ -47,8 +47,8 @@ contract LeverageMacroFactory {
                 activePool,
                 cdpManager,
                 ebtcToken,
-                sortedCdps,
                 stETH,
+                sortedCdps,
                 _owner
             )
         );

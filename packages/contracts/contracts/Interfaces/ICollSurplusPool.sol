@@ -13,6 +13,8 @@ interface ICollSurplusPool {
     event CollBalanceUpdated(address indexed _account, uint _newBalance);
     event CollateralSent(address _to, uint _amount);
 
+    event SweepTokenSuccess(address _token, uint _amount, address _recipient);
+
     // --- Contract setters ---
 
     function getStEthColl() external view returns (uint);
