@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 
 import "../../Interfaces/IPriceFeed.sol";
 import "../../Interfaces/IFallbackCaller.sol";
-import "./../../Dependencies/Ownable.sol";
-import "./../../Dependencies/CheckContract.sol";
-import "./../../Dependencies/AuthNoOwner.sol";
+import "../../Dependencies/Ownable.sol";
+import "../../Dependencies/CheckContract.sol";
+import "../../Dependencies/AuthNoOwner.sol";
 
 /*
  * PriceFeed placeholder for testnet and development. The price can be manually input or fetched from

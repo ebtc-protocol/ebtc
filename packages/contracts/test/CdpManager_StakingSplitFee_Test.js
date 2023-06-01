@@ -427,5 +427,31 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_diff.lt(_target));  
   })
   
+  it("Test first ICR compared to TCR when there is staking reward", async() => {
+      let _errorTolerance = toBN("10000000000000");//1e13 compared to 1e18
+	  
+      // open several CDPs
+      let _collAmt = toBN("1000000000000000000000");
+      let _ebtcAmt = toBN("6400");
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await collToken.deposit({from: owner, value: _collAmt});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      await collToken.deposit({from: owner, value: _collAmt});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+	  
+      // rewarding: increaseCollateralRate(1022581370615858762)	  	  
+      await ethers.provider.send("evm_increaseTime", [44823]);
+      await ethers.provider.send("evm_mine");  
+      let _newIndex = toBN("1022581370615858762");
+      await collToken.setEthPerShare(_newIndex); 
+	  
+      // final check
+      let _price = await priceFeed.getPrice();
+      let _firstId = await sortedCdps.getFirst();
+      let _firstICR = await cdpManager.getCurrentICR(_firstId, _price);
+      let _tcr = await cdpManager.getTCR(_price);
+      th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
+  })
+  
   
 })

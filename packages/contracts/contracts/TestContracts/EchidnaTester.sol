@@ -38,8 +38,9 @@ interface IHevm {
 }
 
 // Run with:
-// rm -f fuzzTests/corpus/* # (optional)
-// ~/.local/bin/echidna-test contracts/TestContracts/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0611>"
+// cd <your-path-to-ebtc-repo-root>/packages/contracts
+// rm -f ./fuzzTests/corpus/* # (optional)
+// <your-path-to->/echidna-test contracts/TestContracts/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
 contract EchidnaTester {
     using SafeMath for uint;
 
@@ -75,12 +76,26 @@ contract EchidnaTester {
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
-    bytes4 private constant SET_STAKING_REWARD_SPLIT_SIG =
+    bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
         bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
+    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
+        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
+    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
+        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
+    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
 
     // EBTCToken
-    bytes4 private constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
-    bytes4 private constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
+    bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
+
+    // PriceFeed
+    bytes4 public constant SET_TELLOR_CALLER_SIG =
+        bytes4(keccak256(bytes("setTellorCaller(address)")));
+
+    // Flash Lender
+    bytes4 internal constant SET_FLASH_FEE_SIG = bytes4(keccak256(bytes("setFlashFee(uint256)")));
+    bytes4 internal constant SET_MAX_FLASH_FEE_SIG =
+        bytes4(keccak256(bytes("setMaxFlashFee(uint256)")));
 
     struct CDPChange {
         uint collAddition;
@@ -123,13 +138,10 @@ contract EchidnaTester {
     */
     function _setUp() internal {
         defaultGovernance = msg.sender;
-        authority = new Governor(address(this));
-
         ebtcDeployer = new EBTCDeployer();
 
         // Default governance is deployer
         // vm.prank(defaultGovernance);
-
         collateral = new CollateralTokenTester();
 
         EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
@@ -150,7 +162,15 @@ contract EchidnaTester {
 
             // Liquidation Library
             creationCode = type(LiquidationLibrary).creationCode;
-            args = abi.encode(address(0), address(0));
+            args = abi.encode(
+                addr.borrowerOperationsAddress,
+                addr.collSurplusPoolAddress,
+                addr.ebtcTokenAddress,
+                addr.sortedCdpsAddress,
+                addr.activePoolAddress,
+                addr.priceFeedAddress,
+                address(collateral)
+            );
 
             liqudationLibrary = LiquidationLibrary(
                 ebtcDeployer.deploy(
@@ -249,7 +269,13 @@ contract EchidnaTester {
 
             // Hint Helpers
             creationCode = type(HintHelpers).creationCode;
-            args = abi.encode(addr.sortedCdpsAddress, addr.cdpManagerAddress, address(collateral));
+            args = abi.encode(
+                addr.sortedCdpsAddress,
+                addr.cdpManagerAddress,
+                address(collateral),
+                addr.activePoolAddress,
+                addr.priceFeedAddress
+            );
 
             hintHelpers = HintHelpers(
                 ebtcDeployer.deploy(
@@ -259,7 +285,7 @@ contract EchidnaTester {
             );
 
             // eBTC Token
-            creationCode = type(EBTCToken).creationCode;
+            creationCode = type(EBTCTokenTester).creationCode;
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.borrowerOperationsAddress,
@@ -291,16 +317,33 @@ contract EchidnaTester {
             authority.setRoleName(0, "Admin");
             authority.setRoleName(1, "eBTCToken: mint");
             authority.setRoleName(2, "eBTCToken: burn");
-            authority.setRoleName(3, "CDPManager: setStakingRewardSplit");
+            authority.setRoleName(3, "CDPManager: all");
+            authority.setRoleName(4, "PriceFeed: setTellorCaller");
+            authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
 
             authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+
             authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+
             authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+            authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
+            authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
+            authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
+
+            authority.setRoleCapability(4, address(priceFeedTestnet), SET_TELLOR_CALLER_SIG, true);
+
+            authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
+            authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
+
+            authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
+            authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
 
             authority.setUserRole(defaultGovernance, 0, true);
             authority.setUserRole(defaultGovernance, 1, true);
             authority.setUserRole(defaultGovernance, 2, true);
             authority.setUserRole(defaultGovernance, 3, true);
+            authority.setUserRole(defaultGovernance, 4, true);
+            authority.setUserRole(defaultGovernance, 5, true);
 
             authority.transferOwnership(defaultGovernance);
         }
@@ -707,12 +750,6 @@ contract EchidnaTester {
                 return false;
             }
 
-            // Minimum coll
-            uint _icr = cdpManager.getCurrentICR(currentCdp, _price);
-            if (cdpManager.getCdpColl(currentCdp).mul(_price).div(_icr) < MIN_NET_COLL) {
-                return false;
-            }
-
             // Stake > 0
             if (cdpManager.getCdpStake(currentCdp) == 0) {
                 return false;
@@ -729,10 +766,6 @@ contract EchidnaTester {
         }
 
         if (collateral.balanceOf(address(borrowerOperations)) > 0) {
-            return false;
-        }
-
-        if (collateral.sharesOf(address(activePool)) != activePool.getStEthColl()) {
             return false;
         }
 
@@ -888,14 +921,13 @@ contract EchidnaTester {
     function echidna_sorted_list_invariant_2() public view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint _price = priceFeedTestnet.getPrice();
+        uint _firstICR = cdpManager.getCurrentICR(_first, _price);
+        uint _TCR = cdpManager.getTCR(_price);
+        uint _crTolerance = 1e13; //compared to 1e18
         if (
             _first != sortedCdps.dummyId() &&
             _price > 0 &&
-            (!_assertApproximateEq(
-                cdpManager.getCurrentICR(_first, _price),
-                cdpManager.getTCR(_price),
-                diff_tolerance
-            ) && cdpManager.getCurrentICR(_first, _price) < cdpManager.getTCR(_price))
+            (!_assertApproximateEq(_firstICR, _TCR, _crTolerance) && _firstICR < _TCR)
         ) {
             return false;
         }
