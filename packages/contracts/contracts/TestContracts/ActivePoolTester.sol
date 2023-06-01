@@ -38,7 +38,7 @@ contract ActivePoolTester is ActivePool {
         FeeRecipientColl = FeeRecipientColl + _shares;
 
         emit ActivePoolCollBalanceUpdated(StEthColl);
-        emit ActivePoolFeeRecipientClaimableCollUpdated(FeeRecipientColl);
+        emit ActivePoolFeeRecipientClaimableCollIncreased(FeeRecipientColl, _shares);
     }
 
     // dummy test functions for sweepToken()

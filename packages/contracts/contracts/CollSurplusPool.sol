@@ -137,5 +137,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(amount <= balance, "CollSurplusPool: Attempt to sweep more than balance");
 
         IERC20(token).safeTransfer(feeRecipientAddress, amount);
+
+        emit SweepTokenSuccess(token, amount, feeRecipientAddress);
     }
 }
