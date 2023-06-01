@@ -125,9 +125,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
       // ensure the index update interval is respected
-      _newIndex = _newIndex.add(_deltaIndex);
-      await collToken.setEthPerShare(_newIndex);  
-      await assertRevert(cdpManager.claimStakingSplitFee(), "CdpManager: update index too frequent");	
+//      _newIndex = _newIndex.add(_deltaIndex);
+//      await collToken.setEthPerShare(_newIndex);  
+//      await assertRevert(cdpManager.claimStakingSplitFee(), "CdpManager: update index too frequent");	
   })
   
   it("Sync update interval", async() => {	  

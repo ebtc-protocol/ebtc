@@ -498,8 +498,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     function _requireValidUpdateInterval() internal view {
+        // To avoid unforeseen ways to a more frequent change than expected in the Lido index,
+        // relax this requirement since no clear downside as the rebase cannot be performed by anyone except Lido
         require(
-            block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
+            block.timestamp - lastIndexTimestamp > (INDEX_UPD_INTERVAL - INDEX_UPD_INTERVAL),
             "CdpManager: update index too frequent"
         );
     }
