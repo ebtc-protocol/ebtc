@@ -18,8 +18,4 @@ contract EBTCTokenCaller {
     function ebtcBurn(address _account, uint _amount) external {
         EBTC.burn(_account, _amount);
     }
-
-    function ebtcReturnFromPool(address _poolAddress, address _receiver, uint256 _amount) external {
-        EBTC.returnFromPool(_poolAddress, _receiver, _amount);
-    }
 }
