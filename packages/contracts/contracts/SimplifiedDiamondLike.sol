@@ -75,10 +75,7 @@ contract SimplifiedDiamondLike {
     ///     Ensure you use the callback in the same call as you set it, or this may be used to attack this wallet
     function enableCallbackForCall() external {
         require(msg.sender == address(this)); // Must call this via `execute` to explicitly set the flag
-
-        DiamondLikeStorage storage ds = _getStorage();
-
-        ds.settings.callbackEnabledForCall = true;
+        _setCallbackEnabledForCall(_getStorage(), true);
     }
 
     /// === DIAMOND LIKE STORAGE === ///
@@ -104,7 +101,7 @@ contract SimplifiedDiamondLike {
         bool checkSuccess; // If false we will ignore a revert
         uint128 value; // How much ETH to send
         uint128 gas; // How much gas to send
-        bool capGas; //  TODO: add || Ideally we send gasleft
+        bool capGas; // true to use above "gas" setting or we send gasleft()
         OperationType opType; // See `OperationType`
         bytes data; // Calldata to send (funsig + data)
     }
@@ -124,8 +121,13 @@ contract SimplifiedDiamondLike {
 
         // Toggle `callbackEnabledForCall` to false
         // NOTE: We could check calldata to see if this has to be done, but this is fine for a reference impl
-        DiamondLikeStorage storage ds = _getStorage();
-        ds.settings.callbackEnabledForCall = false; // Even if no-op, this ensures we never allow a callback if in that mode
+        // Even if no-op, this ensures we never allow a callback if in that mode
+        _setCallbackEnabledForCall(_getStorage(), false);
+    }
+
+    /// @dev toggle callbackEnabledForCall in OurSetting
+    function _setCallbackEnabledForCall(DiamondLikeStorage storage ds, bool _enabled) internal {
+        ds.settings.callbackEnabledForCall = _enabled;
     }
 
     /// @dev Execute one tx
@@ -173,7 +175,7 @@ contract SimplifiedDiamondLike {
             require(ds.settings.callbackEnabledForCall, "Only Enabled Callbacks");
             // NOTE: May also act as reEntrancy guard
             // But wouldn't just count on it
-            ds.settings.callbackEnabledForCall = false;
+            _setCallbackEnabledForCall(ds, false);
         }
 
         // Diamond like fallback if programmed
