@@ -366,7 +366,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
-                if (!_fallbackIsBroken(fallbackResponse) && !_fallbackIsFrozen(fallbackResponse)) {
+                if (
+                    !_fallbackIsBroken(fallbackResponse) &&
+                    !(block.timestamp - fallbackResponse.timestamp >
+                        newFallbackCaler.fallbackTimeout())
+                ) {
                     address oldFallbackCaller = address(fallbackCaller);
                     fallbackCaller = newFallbackCaler;
                     emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
