@@ -794,7 +794,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function checkIfDeltaIndexTriggerRM(uint _price) external view override returns (bool) {
         uint _oldIndex = stFPPSg;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
-        if (_newIndex != _oldIndex) {
+        if (_newIndex > _oldIndex) {
             uint _requiredDelta = _computeDeltaIndexToTriggerRM(
                 _newIndex,
                 _price,

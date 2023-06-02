@@ -139,6 +139,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint _tcr = _getTCR(_price);
         if (_tcr <= CCR) {
             return 0;
+        } else if (_tcr == LiquityMath.MAX_TCR) {
+            return type(uint256).max; // system cold start
         } else {
             uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingSplit;
             return (_splitIndex * (_tcr - CCR)) / _tcr;
