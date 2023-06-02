@@ -2597,5 +2597,74 @@ contract('PriceFeed', async accounts => {
       _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
       assert.isTrue(_combinedPrice.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
     })
-   })
+
+    it("Chainlink working, Chainlink broken, Fallback bricked, Chainlink recovers, Fallback added", async () => {
+      // Status should be 0
+      let status = await priceFeed.status()
+      assert.equal(status, '0') // status 0: using Chainlink
+
+      await mockEthBtcChainlink.setLatestRoundId(0)
+      await priceFeed.fetchPrice()
+      let price = await priceFeed.lastGoodPrice()
+      // Price equals last good price
+      assert.equal(price, dec(10, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '2') // status 2: bothOraclesUntrusted
+
+      // ChainLink recovers and changes price
+      await mockEthBtcChainlink.setLatestRoundId(4)
+      await mockEthBtcChainlink.setPrevRoundId(3)
+      await mockStEthEthChainlink.setLatestRoundId(4)
+      await mockStEthEthChainlink.setPrevRoundId(3)
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(2, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(2, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 2e9, with 18 digit precision
+      assert.equal(price, dec(20, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
+
+      // Chainlink price updates and there's no status change
+      await mockEthBtcChainlink.setLatestRoundId(5)
+      await mockEthBtcChainlink.setPrevRoundId(4)
+      await mockStEthEthChainlink.setLatestRoundId(5)
+      await mockStEthEthChainlink.setPrevRoundId(4)
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(3, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(3, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 3e9, with 18 digit precision
+      assert.equal(price, dec(30, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
+
+      // A Fallback Oracle is added and it reports a valid value, same as CL
+      const now = await th.getLatestBlockTimestamp(web3)
+      await mockTellor.setUpdateTime(now)
+      await mockTellor.setPrice(dec(40, 18))
+      await priceFeed.setFallbackCaller(tellorCaller.address, {from: alice})
+      assert.equal(await priceFeed.fallbackCaller(), tellorCaller.address)
+
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(4, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(4, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 4e9, with 18 digit precision
+      assert.equal(price, dec(40, 18))
+
+      // Both oracles are live and reporting a simiar value
+      status = await priceFeed.status()
+      assert.equal(status, '0') // status 0: chainlinkWorking
+    })
+  })
 })
