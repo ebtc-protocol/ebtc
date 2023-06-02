@@ -227,7 +227,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                     !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
                     !_chainlinkIsFrozen(chainlinkResponse)
                 ) {
-                    _changeStatus(Status.chainlinkWorking);
+                    _changeStatus(Status.usingChainlinkFallbackUntrusted);
                     return _storeChainlinkPrice(chainlinkResponse.answer);
                 }
             }
