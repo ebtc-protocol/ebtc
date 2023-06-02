@@ -20,8 +20,6 @@ import "./Dependencies/AuthNoOwner.sol";
  * 1) Transfer protection: blacklist of addresses that are invalid recipients (i.e. core Liquity contracts) in external
  * transfer() and transferFrom() calls. The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity
  * core contract, when they should rather call the right function.
- *
- * 2) sendToPool() and returnFromPool(): functions callable only Liquity core contracts, which move EBTC tokens between Liquity <-> user.
  */
 
 contract EBTCToken is IEBTCToken, AuthNoOwner {
@@ -106,22 +104,6 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     function burn(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
-    }
-
-    /**
-     * @dev Return tokens from a system pool to a specified address
-     * @dev Internal system accouting function - only callable by CDPManager
-     * @param _poolAddress The address of the pool
-     * @param _receiver The address to receive the tokens
-     * @param _amount The amount of tokens to return
-     */
-    function returnFromPool(
-        address _poolAddress,
-        address _receiver,
-        uint256 _amount
-    ) external override {
-        _requireCallerIsCdpM();
-        _transfer(_poolAddress, _receiver, _amount);
     }
 
     // --- External functions ---

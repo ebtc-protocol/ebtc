@@ -709,9 +709,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
 	  
-      // liquidator bob coming in 
-      await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});     
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "!maxDebtByPartialLiq"); 
+      // liquidator bob coming in
+      await debtToken.transfer(bob, (await debtToken.balanceOf(alice)), {from: alice});
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, _debtBorrowed, _aliceCdpId, _aliceCdpId, {from: bob}), "LiquidationLibrary: Partial debt liquidated must be less than total debt"); 
   })  
   
   it("Test sequence liquidation with extreme slashing case", async() => {
@@ -870,8 +870,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(_debtAfter.add(_liquidatedDebt).toString(), _debtBefore.toString(), '!liquidated debt');
       let _ownerPendingDebt = await cdpManager.getPendingEBTCDebtReward(_ownerCdpId);
       let _bobPendingDebt = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
-      th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString());  
-	  
+      th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString()); 
   })
   
 })

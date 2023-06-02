@@ -266,28 +266,6 @@ contract('EBTCToken', async accounts => {
         assert.equal(bob_BalanceAfter, 25)
       })
 
-      it('returnFromPool(): changes balances of Stability pool and user by the correct amounts', async () => {
-        /// --- SETUP --- give pool 100 EBTC
-        await ebtcTokenTester.unprotectedMint(gasPool.address, 100)
-
-        /// --- TEST ---
-        const  gasPool_BalanceBefore = await ebtcTokenTester.balanceOf(gasPool.address)
-        const  bob_BalanceBefore = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(gasPool_BalanceBefore, 100)
-        assert.equal(bob_BalanceBefore, 100)
-
-        await ebtcTokenTester.unprotectedReturnFromPool(gasPool.address, bob, 75)
-
-        const gasPool_BalanceAfter = await ebtcTokenTester.balanceOf(gasPool.address)
-        const bob_BalanceAfter = await ebtcTokenTester.balanceOf(bob)
-        assert.equal(gasPool_BalanceAfter, 25)
-        assert.equal(bob_BalanceAfter, 175)
-      })
-
-      it('returnFromPool(): should revert if caller is not CdpManager', async () => {
-        await assertRevert(ebtcTokenTester.returnFromPool(gasPool.address, bob, 75, {from: owner}), 'EBTC: Caller is not CdpManager')
-      })
-
       it('burn(): should revert if caller is neither BorrowerOperations nor CdpManager', async () => {
         await assertRevert(ebtcTokenTester.burn(bob, 75, {from: owner}), 'EBTC: Caller is neither BorrowerOperations nor CdpManager')
       })
