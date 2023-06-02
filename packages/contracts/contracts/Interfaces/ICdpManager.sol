@@ -54,6 +54,8 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function syncUpdateIndexInterval() external returns (uint);
 
+    function checkIfDeltaIndexTriggerRM(uint _price) external view returns (bool);
+
     function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);

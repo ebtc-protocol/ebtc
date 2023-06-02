@@ -47,6 +47,14 @@ contract CdpManagerTester is CdpManager {
         return _getCollGasCompensation(_coll);
     }
 
+    function getDeltaIndexToTriggerRM(
+        uint _currentIndex,
+        uint _price,
+        uint _stakingRewardSplit
+    ) external view returns (uint) {
+        return _computeDeltaIndexToTriggerRM(_currentIndex, _price, _stakingRewardSplit);
+    }
+
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {
         baseRate = _calcDecayedBaseRate();
         assert(baseRate >= 0 && baseRate <= DECIMAL_PRECISION);

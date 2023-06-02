@@ -433,6 +433,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
+      let _oldIndex = web3.utils.toBN('1000000000000000000');
       let _newIndex = web3.utils.toBN('1500000000000000000');
       await collToken.setEthPerShare(_newIndex);
 	  
@@ -457,7 +458,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // open CDP will revert due to TCR reduce after fee claim
       let _collAmt = toBN("19751958561574716850");
       let _ebtcAmt = toBN("1158960105069686413");
-      await collToken.deposit({from: owner, value: _collAmt});      
+      await collToken.deposit({from: owner, value: _collAmt});    
+      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
       await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and open CDP  
@@ -468,6 +471,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
+      _oldIndex = _newIndex;
       _newIndex = web3.utils.toBN('1750000000000000000');
       await collToken.setEthPerShare(_newIndex);
 	  
@@ -476,7 +480,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
 	  
       // adjust CDP will revert due to TCR reduce after fee claim	   
-      let _moreDebt = toBN("708960105069686413");	  
+      let _moreDebt = toBN("708960105069686413");	 
+      _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
       await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and adjust CDP  
@@ -486,12 +492,16 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
+      _oldIndex = _newIndex;
       _newIndex = web3.utils.toBN('1950000000000000000');
       await collToken.setEthPerShare(_newIndex);
 	  
       // price drop deeper and closeCdp revert due to TCR reduce after claim fee
-      await priceFeed.setPrice(dec(6000,13));
+      _newPrice = dec(6000,13)
+      await priceFeed.setPrice(_newPrice);
       assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
+      _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));
       await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOps: Operation not permitted during Recovery Mode")
   })
   

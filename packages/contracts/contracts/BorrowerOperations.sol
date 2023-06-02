@@ -276,7 +276,7 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reversed BTC/ETH price
-        ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+        _checkDeltaIndexAndClaimFee(vars.price);
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         if (_isDebtIncrease) {
@@ -392,7 +392,7 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reverse ETH/BTC price to BTC/ETH
-        ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+        _checkDeltaIndexAndClaimFee(vars.price);
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         vars.debt = _EBTCAmount;
@@ -473,7 +473,7 @@ contract BorrowerOperations is
 
         _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
-        ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+        _checkDeltaIndexAndClaimFee(price);
         _requireNotInRecoveryMode(price);
 
         cdpManager.applyPendingRewards(_cdpId);
@@ -895,5 +895,13 @@ contract BorrowerOperations is
         // For now return 112 which is UniV3 compatible
         // Source: I made it up
         return type(uint112).max;
+    }
+
+    // @dev only claim fee if delta index is big enough to trigger recovery mode
+    function _checkDeltaIndexAndClaimFee(uint _price) internal {
+        bool _triggerRecoveryMode = cdpManager.checkIfDeltaIndexTriggerRM(_price);
+        if (_triggerRecoveryMode) {
+            ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+        }
     }
 }

@@ -127,4 +127,21 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
+
+    // @dev this function is to calculate how much delta index required to introduce a possible recovery mode triggering:
+    // @dev deltaI = (currentIndex / split) * (1 - CCR / currentTCR)
+    // @dev return delta index required to trigger recovery mode in current index denomination
+    function _computeDeltaIndexToTriggerRM(
+        uint _currentIndex,
+        uint _price,
+        uint _stakingSplit
+    ) internal view returns (uint) {
+        uint _tcr = _getTCR(_price);
+        if (_tcr <= CCR) {
+            return 0;
+        } else {
+            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingSplit;
+            return (_splitIndex * (_tcr - CCR)) / _tcr;
+        }
+    }
 }
