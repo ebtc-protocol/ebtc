@@ -103,7 +103,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev NOTE: It now reverts due to `maxFlashLoan` check
     function testOverflowCaseEBTC() public {
         // Zero Overflow Case
-        uint256 loanAmount = borrowerOperations.maxFlashLoan(address(eBTCToken)); //type(uint256).max;
+        uint256 loanAmount = borrowerOperations.maxFlashLoan(address(eBTCToken)) + 1; //type(uint256).max;
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
@@ -161,7 +161,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         borrowerOperations.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("BorrowerOperations: Too much");
+        vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashLoan(
             specReceiver,
             randomToken,
