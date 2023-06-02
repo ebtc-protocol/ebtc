@@ -238,41 +238,58 @@ contract SortedCdps is ISortedCdps {
 
     function batchRemove(bytes32[] memory _ids) external override {
         _requireCallerIsCdpManager();
-        uint _len = _ids.length;
+        uint256 _len = _ids.length;
         require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
 
-        bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
-        bytes32 _lastNext = data.nodes[_ids[_len - 1]].nextId;
+        Data storage listData = data; // Cache data struct
+        mapping(bytes32 => Node) storage nodes = listData.nodes; // Cache nodes mapping
+
+        bytes32 _firstPrev = nodes[_ids[0]].prevId;
+        bytes32 _lastNext = nodes[_ids[_len - 1]].nextId;
 
         require(
             _firstPrev != dummyId || _lastNext != dummyId,
             "SortedCdps: batchRemove() leave ZERO node left!"
         );
 
-        for (uint i = 0; i < _len; ++i) {
+        for (uint256 i = 0; i < _len; ) {
             require(contains(_ids[i]), "SortedCdps: List does not contain the id");
+            unchecked {
+                ++i;
+            }
         }
 
-        // orphan nodes in between to save gas
+        // Orphan nodes in between to save gas
         if (_firstPrev != dummyId) {
-            data.nodes[_firstPrev].nextId = _lastNext;
+            nodes[_firstPrev].nextId = _lastNext;
         } else {
-            data.head = _lastNext;
+            listData.head = _lastNext;
         }
         if (_lastNext != dummyId) {
-            data.nodes[_lastNext].prevId = _firstPrev;
+            nodes[_lastNext].prevId = _firstPrev;
         } else {
-            data.tail = _firstPrev;
+            listData.tail = _firstPrev;
         }
 
-        // delete node & owner storages to get gas refund
-        for (uint i = 0; i < _len; ++i) {
-            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
-            delete cdpOwners[_ids[i]];
-            delete data.nodes[_ids[i]];
-            emit NodeRemoved(_ids[i]);
+        // Delete node & owner storages to get gas refund
+        for (uint256 i = 0; i < _len; ) {
+            bytes32 id = _ids[i];
+            _removeCdpFromOwnerEnumeration(cdpOwners[id], id);
+            delete cdpOwners[id];
+            emit NodeRemoved(id);
+            unchecked {
+                ++i;
+            }
         }
-        data.size = data.size - _len;
+
+        // Reset struct members using delete
+        for (uint256 i = 0; i < _len; ) {
+            delete nodes[_ids[i]];
+            unchecked {
+                ++i;
+            }
+        }
+        listData.size -= _len;
     }
 
     /*
