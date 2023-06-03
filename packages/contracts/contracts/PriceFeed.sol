@@ -151,12 +151,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // If Chainlink price has changed by > 50% between two consecutive rounds, compare it to Fallback's price
             if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
                 // If Fallback is broken, both oracles are untrusted, and return last good price
+                // We don't trust CL for now given this large price differential
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Fallback is frozen, switch to Fallback and return last good price
+                // We don't trust CL for now given this large price differential
                 if (_fallbackIsFrozen(fallbackResponse)) {
                     _changeStatus(Status.usingFallbackChainlinkUntrusted);
                     return lastGoodPrice;
