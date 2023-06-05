@@ -169,7 +169,11 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         return true;
     }
 
-    // --- EIP 2612 Functionality ---
+    // --- EIP 2612 Functionality (https://eips.ethereum.org/EIPS/eip-2612) ---
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return domainSeparator();
+    }
 
     function domainSeparator() public view override returns (bytes32) {
         if (_chainID() == _CACHED_CHAIN_ID) {

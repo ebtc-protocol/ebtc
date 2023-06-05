@@ -850,6 +850,7 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
         require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
