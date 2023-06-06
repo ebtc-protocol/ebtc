@@ -355,7 +355,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   it("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
       await assertRevert(cdpManager.setStakingRewardSplit(1, {from: alice}), "Auth: UNAUTHORIZED");   
       await assertRevert(cdpManager.setStakingRewardSplit(10001, {from: owner}), "CDPManager: new staking reward split exceeds max");
-      assert.isTrue(2500 == (await cdpManager.stakingRewardSplit())); 
+      assert.isTrue(5000 == (await cdpManager.stakingRewardSplit())); 
 	  	  
       assert.isTrue(authority.address == (await cdpManager.authority()));
       const accounts = await web3.eth.getAccounts()
