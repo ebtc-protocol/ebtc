@@ -58,7 +58,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        stakingRewardSplit = 2500;
+        stakingRewardSplit = 5000;
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
