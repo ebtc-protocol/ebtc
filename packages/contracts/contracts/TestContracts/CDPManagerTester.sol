@@ -52,7 +52,12 @@ contract CdpManagerTester is CdpManager {
         uint _price,
         uint _stakingRewardSplit
     ) external view returns (uint) {
-        return _computeDeltaIndexToTriggerRM(_currentIndex, _price, _stakingRewardSplit);
+        (uint deltaIdx, ) = _computeDeltaIndexToTriggerRM(
+            _currentIndex,
+            _price,
+            _stakingRewardSplit
+        );
+        return deltaIdx;
     }
 
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {

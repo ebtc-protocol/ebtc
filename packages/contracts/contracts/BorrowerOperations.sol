@@ -276,8 +276,8 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reversed BTC/ETH price
-        _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -392,8 +392,8 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reverse ETH/BTC price to BTC/ETH
-        _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
         vars.debt = _EBTCAmount;
 
@@ -473,8 +473,8 @@ contract BorrowerOperations is
 
         _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
-        _checkDeltaIndexAndClaimFee(price);
-        _requireNotInRecoveryMode(price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(price);
+        _requireNotInRecoveryMode(_tcr);
 
         cdpManager.applyPendingRewards(_cdpId);
 
@@ -651,9 +651,9 @@ contract BorrowerOperations is
         require(_EBTCChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
     }
 
-    function _requireNotInRecoveryMode(uint _price) internal view {
+    function _requireNotInRecoveryMode(uint _tcr) internal view {
         require(
-            !_checkRecoveryMode(_price),
+            !_checkRecoveryModeForTCR(_tcr),
             "BorrowerOps: Operation not permitted during Recovery Mode"
         );
     }
@@ -898,10 +898,12 @@ contract BorrowerOperations is
     }
 
     // @dev only claim fee if delta index is big enough to trigger recovery mode
-    function _checkDeltaIndexAndClaimFee(uint _price) internal {
-        bool _triggerRecoveryMode = cdpManager.checkIfDeltaIndexTriggerRM(_price);
+    function _checkDeltaIndexAndClaimFee(uint _price) internal returns (uint) {
+        (uint _tcr, bool _triggerRecoveryMode) = cdpManager.checkIfDeltaIndexTriggerRM(_price);
         if (_triggerRecoveryMode) {
             ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+            _tcr = _getTCR(_price);
         }
+        return _tcr;
     }
 }
