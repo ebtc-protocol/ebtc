@@ -17,4 +17,56 @@ contract PriceFeedTester is PriceFeed {
     function setStatus(Status _status) external {
         status = _status;
     }
+
+    function getCurrentFallbackResponse()
+        public
+        view
+        returns (FallbackResponse memory fallbackResponse)
+    {
+        return _getCurrentFallbackResponse();
+    }
+
+    function getCurrentChainlinkResponse() public view returns (ChainlinkResponse memory) {
+        return _getCurrentChainlinkResponse();
+    }
+
+    function getPrevChainlinkResponse(
+        uint80 _currentRoundEthBtcId,
+        uint80 _currentRoundStEthEthId
+    ) public view returns (ChainlinkResponse memory) {
+        return _getPrevChainlinkResponse(_currentRoundEthBtcId, _currentRoundStEthEthId);
+    }
+
+    function bothOraclesSimilarPrice(
+        ChainlinkResponse memory _chainlinkResponse,
+        FallbackResponse memory _fallbackResponse
+    ) public pure returns (bool) {
+        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
+    }
+
+    function chainlinkIsFrozen(ChainlinkResponse memory _response) public view returns (bool) {
+        return _chainlinkIsFrozen(_response);
+    }
+
+    function chainlinkIsBroken(
+        ChainlinkResponse memory _currentResponse,
+        ChainlinkResponse memory _prevResponse
+    ) public view returns (bool) {
+        return _chainlinkIsBroken(_currentResponse, _prevResponse);
+    }
+
+    function fallbackIsFrozen(FallbackResponse memory _fallbackResponse) public view returns (bool) {
+        return _fallbackIsFrozen(_fallbackResponse);
+    }
+
+    function fallbackIsBroken(FallbackResponse memory _response) public view returns (bool) {
+        return _fallbackIsBroken(_response);
+    }
+
+    function chainlinkPriceChangeAboveMax(
+        ChainlinkResponse memory _currentResponse,
+        ChainlinkResponse memory _prevResponse
+    ) public view returns (bool) {
+        return _chainlinkPriceChangeAboveMax(_currentResponse, _prevResponse);
+    }
 }
