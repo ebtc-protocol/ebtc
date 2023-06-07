@@ -122,12 +122,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @param _account The address of the account to send StEthColl and the liquidator reward to
     /// @param _shares The amount of StEthColl to send
     /// @param _liquidatorRewardShares The amount of the liquidator reward shares to send
+    /// @return The total amount of shares received by the liquidator
 
     function sendStEthCollAndLiquidatorReward(
         address _account,
         uint _shares,
         uint _liquidatorRewardShares
-    ) external override {
+    ) external override returns (uint256) {
         _requireCallerIsBOorCdpM();
 
         uint _StEthColl = StEthColl;
@@ -140,6 +141,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         emit CollateralSent(_account, totalShares);
 
         _transferSharesWithContractHooks(_account, totalShares);
+
+        return totalShares;
     }
 
     /// @notice Allocate stETH shares from the system to the fee recipient to claim at-will (pull model)

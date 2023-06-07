@@ -27,7 +27,7 @@ interface IActivePool is IPool {
         address _account,
         uint _shares,
         uint _liquidatorRewardShares
-    ) external;
+    ) external returns (uint256);
 
     function allocateFeeRecipientColl(uint _shares) external;
 

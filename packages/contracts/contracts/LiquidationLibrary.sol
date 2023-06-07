@@ -34,8 +34,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     /// @notice Single CDP liquidation function (fully).
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
-    function liquidate(bytes32 _cdpId) external nonReentrantSelfAndBOps {
-        _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
+    function liquidate(
+        bytes32 _cdpId
+    ) external nonReentrantSelfAndBOps returns (uint256 totalCollToSend_) {
+        totalCollToSend_ = _liquidateSingle(_cdpId, 0, _cdpId, _cdpId);
     }
 
     // Single CDP liquidation function (partially).
@@ -44,8 +46,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) external nonReentrantSelfAndBOps {
-        _liquidateSingle(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
+    ) external nonReentrantSelfAndBOps returns (uint256 totalCollToSend_) {
+        totalCollToSend_ = _liquidateSingle(
+            _cdpId,
+            _partialAmount,
+            _upperPartialHint,
+            _lowerPartialHint
+        );
     }
 
     // Single CDP liquidation function.
@@ -54,7 +61,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) internal {
+    ) internal returns (uint256 totalCollToSend_) {
         _requireCdpIsActive(_cdpId);
 
         _applyAccumulatedFeeSplit(_cdpId);
@@ -99,7 +106,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             false
         );
 
-        _liquidateSingleCDP(_liqState, _rs);
+        totalCollToSend_ = _liquidateSingleCDP(_liqState, _rs);
     }
 
     // liquidate given CDP by repaying debt in full or partially if its ICR is below MCR or TCR in recovery mode.
@@ -107,7 +114,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _liquidateSingleCDP(
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
-    ) internal {
+    ) internal returns (uint256 totalCollToSend_) {
         uint256 totalDebtToBurn;
         uint256 totalColToSend;
         uint256 totalDebtToRedistribute;
@@ -133,7 +140,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             }
         }
 
-        _finalizeExternalLiquidation(
+        totalCollToSend_ = _finalizeExternalLiquidation(
             totalDebtToBurn,
             totalColToSend,
             totalDebtToRedistribute,
@@ -493,12 +500,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
     }
 
+    /// @return totalCollToSend_ The total amount of shares received by the liquidator
     function _finalizeExternalLiquidation(
         uint256 totalDebtToBurn,
         uint256 totalColToSend,
         uint256 totalDebtToRedistribute,
         uint256 totalColReward
-    ) internal {
+    ) internal returns (uint256 totalCollToSend_) {
         // update the staking and collateral snapshots
         _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
 
@@ -516,7 +524,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         activePool.decreaseEBTCDebt(totalDebtToBurn);
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
-        activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
+        totalCollToSend_ = activePool.sendStEthCollAndLiquidatorReward(
+            msg.sender,
+            totalColToSend,
+            totalColReward
+        );
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -561,7 +573,9 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
      */
-    function liquidateCdps(uint _n) external nonReentrantSelfAndBOps {
+    function liquidateCdps(
+        uint _n
+    ) external nonReentrantSelfAndBOps returns (uint256 totalCollToSend_) {
         require(_n > 0, "LiquidationLibrary: can't liquidate zero CDP in sequence");
 
         LocalVariables_OuterLiquidationFunction memory vars;
@@ -599,7 +613,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
         }
 
-        _finalizeExternalLiquidation(
+        totalCollToSend_ = _finalizeExternalLiquidation(
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
@@ -680,7 +694,9 @@ contract LiquidationLibrary is CdpManagerStorage {
 
      callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
      */
-    function batchLiquidateCdps(bytes32[] memory _cdpArray) external nonReentrantSelfAndBOps {
+    function batchLiquidateCdps(
+        bytes32[] memory _cdpArray
+    ) external nonReentrantSelfAndBOps returns (uint256 totalCollToSend_) {
         require(
             _cdpArray.length != 0,
             "LiquidationLibrary: Calldata address array must not be empty"
@@ -717,7 +733,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
         }
 
-        _finalizeExternalLiquidation(
+        totalCollToSend_ = _finalizeExternalLiquidation(
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,

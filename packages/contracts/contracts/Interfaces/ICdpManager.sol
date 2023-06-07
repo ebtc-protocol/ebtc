@@ -19,18 +19,18 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
-    function liquidate(bytes32 _cdpId) external;
+    function liquidate(bytes32 _cdpId) external returns (uint256);
 
     function partiallyLiquidate(
         bytes32 _cdpId,
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
-    ) external;
+    ) external returns (uint256);
 
-    function liquidateCdps(uint _n) external;
+    function liquidateCdps(uint _n) external returns (uint256);
 
-    function batchLiquidateCdps(bytes32[] calldata _cdpArray) external;
+    function batchLiquidateCdps(bytes32[] calldata _cdpArray) external returns (uint256);
 
     function redeemCollateral(
         uint _EBTCAmount,
