@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity 0.8.17;
 
 /// @notice A generic interface for a contract which provides authorization data to an Auth instance.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/Auth.sol)

@@ -41,6 +41,8 @@ class MainnetDeploymentHelper {
 
   async loadOrDeploy(factory, name, deploymentState, params=[]) {
     console.log("loadOrDeploy: ", name, deploymentState[name])
+
+    // If the deployment exists in file already and has an address, load it
     if (deploymentState[name] && deploymentState[name].address) {
       console.log(`Using previously deployed ${name} contract at address ${deploymentState[name].address}`)
       return new ethers.Contract(
@@ -50,6 +52,7 @@ class MainnetDeploymentHelper {
       );
     }
 
+    // Otherwise, deploy it
     const contract = await factory.deploy(...params, {maxFeePerGas: this.configParams.MAX_FEE_PER_GAS})
     console.log(`Deployed new ${name} contract at address ${contract.address}`)
     await this.deployerWallet.provider.waitForTransaction(contract.deployTransaction.hash, this.configParams.TX_CONFIRMATIONS)
@@ -342,9 +345,14 @@ class MainnetDeploymentHelper {
         constructorArguments,
       })
     } catch (error) {
+      console.log(`Error verifying: ${error.name}-${error.message}`)	  
       // if it was already verified, it’s like a success, so let’s move forward and save it
-      if (error.name != 'NomicLabsHardhatPluginError') {
-        console.error(`Error verifying: ${error.name}`)
+      if (error.name != 'NomicLabsHardhatPluginError' 
+          || error.message.includes('Unable to verify')
+          || error.message.includes('The constructor for')
+          || error.message.includes('More than one contract was found')
+      ) {
+        console.error(`Error stop verifying: ${error.name}`)
         console.error(error)
         return
       }

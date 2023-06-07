@@ -11,7 +11,7 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender, AuthNoOwner {
     uint256 public constant MAX_BPS = 10_000;
 
     uint256 public feeBps = 50; // 50 BPS
-    uint256 public maxFeeBps = MAX_BPS; // 1000 BPS
+    uint256 public maxFeeBps = 1_000; // 10%
 
     bytes32 public constant FLASH_SUCCESS_VALUE = keccak256("ERC3156FlashBorrower.onFlashLoan");
 

@@ -67,6 +67,10 @@ contract CdpManagerTester is CdpManager {
         return _minutesPassedSinceLastFeeOp();
     }
 
+    function unprotectedUpdateLastFeeOpTime() external {
+        _updateLastFeeOpTime();
+    }
+
     function setLastFeeOpTimeToNow() external {
         lastFeeOperationTime = block.timestamp;
     }

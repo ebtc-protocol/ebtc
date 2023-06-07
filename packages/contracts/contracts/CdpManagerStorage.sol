@@ -373,7 +373,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _oldIndex = stFPPSg;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
-            _requireValidUpdateInterval();
             stFPPSg = _newIndex;
             lastIndexTimestamp = block.timestamp;
             emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
@@ -494,13 +493,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(
             CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
             "CdpManager: Only one cdp in the system"
-        );
-    }
-
-    function _requireValidUpdateInterval() internal view {
-        require(
-            block.timestamp - lastIndexTimestamp > INDEX_UPD_INTERVAL,
-            "CdpManager: update index too frequent"
         );
     }
 }

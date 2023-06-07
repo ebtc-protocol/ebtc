@@ -21,30 +21,28 @@ import "./Dependencies/AuthNoOwner.sol";
 contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
 
-    // Chainlink oracles
-    AggregatorV3Interface public constant ETH_BTC_CL_FEED =
-        AggregatorV3Interface(0xAc559F25B1619171CbC396a50854A3240b6A4e99);
-    AggregatorV3Interface public constant STETH_ETH_CL_FEED =
-        AggregatorV3Interface(0x86392dC19c0b719886221c78AB11eb8Cf5c52812);
+    // Chainlink oracles in mainnet
+    AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
+    AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
-    uint public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
-    uint public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
+    uint256 public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
+    uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
-    uint public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
+    uint256 public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
 
     /*
      * The maximum relative price difference between two oracle responses allowed in order for the PriceFeed
      * to return to using the Chainlink oracle. 18-digit precision.
      */
-    uint public constant MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES = 5e16; // 5%
+    uint256 public constant MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES = 5e16; // 5%
 
     // The last good price seen from an oracle by Liquity
-    uint public lastGoodPrice;
+    uint256 public lastGoodPrice;
 
     // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
     Status public status;
@@ -54,13 +52,23 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Sets the addresses of the contracts and initializes the system
     /// @param _fallbackCallerAddress The address of the Fallback oracle contract
     /// @param _authorityAddress The address of the Authority contract
+    /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
+    /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
     /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
-    constructor(address _fallbackCallerAddress, address _authorityAddress) {
+    constructor(
+        address _fallbackCallerAddress,
+        address _authorityAddress,
+        address _collEthCLFeed,
+        address _ethBtcCLFeed
+    ) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);
 
         emit FallbackCallerChanged(address(0), _fallbackCallerAddress);
+
+        ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
+        STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -89,7 +97,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
     /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
     /// @return The latest price fetched from the Oracle
-    function fetchPrice() external override returns (uint) {
+    function fetchPrice() external override returns (uint256) {
         // Get current and previous price data from Chainlink, and current price data from Fallback
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
         ChainlinkResponse memory prevChainlinkResponse = _getPrevChainlinkResponse(
@@ -143,12 +151,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // If Chainlink price has changed by > 50% between two consecutive rounds, compare it to Fallback's price
             if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
                 // If Fallback is broken, both oracles are untrusted, and return last good price
+                // We don't trust CL for now given this large price differential
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
                     return lastGoodPrice;
                 }
 
                 // If Fallback is frozen, switch to Fallback and return last good price
+                // We don't trust CL for now given this large price differential
                 if (_fallbackIsFrozen(fallbackResponse)) {
                     _changeStatus(Status.usingFallbackChainlinkUntrusted);
                     return lastGoodPrice;
@@ -210,6 +220,20 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // --- CASE 3: Both oracles were untrusted at the last price fetch ---
         if (status == Status.bothOraclesUntrusted) {
+            /*
+             * If there's no fallback, only use Chainlink
+             */
+            if (address(fallbackCaller) == address(0)) {
+                // If CL has resumed working
+                if (
+                    !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
+                    !_chainlinkIsFrozen(chainlinkResponse)
+                ) {
+                    _changeStatus(Status.usingChainlinkFallbackUntrusted);
+                    return _storeChainlinkPrice(chainlinkResponse.answer);
+                }
+            }
+
             /*
              * If both oracles are now live, unbroken and similar price, we assume that they are reporting
              * accurately, and so we switch back to Chainlink.
@@ -344,7 +368,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
-                if (!_fallbackIsBroken(fallbackResponse) && !_fallbackIsFrozen(fallbackResponse)) {
+                if (
+                    !_fallbackIsBroken(fallbackResponse) &&
+                    !(block.timestamp - fallbackResponse.timestamp >
+                        newFallbackCaler.fallbackTimeout())
+                ) {
                     address oldFallbackCaller = address(fallbackCaller);
                     fallbackCaller = newFallbackCaler;
                     emit FallbackCallerChanged(oldFallbackCaller, _fallbackCaller);
@@ -418,15 +446,17 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
     ) internal pure returns (bool) {
-        uint minPrice = LiquityMath._min(_currentResponse.answer, _prevResponse.answer);
-        uint maxPrice = LiquityMath._max(_currentResponse.answer, _prevResponse.answer);
+        uint256 minPrice = LiquityMath._min(_currentResponse.answer, _prevResponse.answer);
+        uint256 maxPrice = LiquityMath._max(_currentResponse.answer, _prevResponse.answer);
 
         /*
          * Use the larger price as the denominator:
          * - If price decreased, the percentage deviation is in relation to the the previous price.
          * - If price increased, the percentage deviation is in relation to the current price.
          */
-        uint percentDeviation = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice;
+        uint256 percentDeviation = maxPrice > 0
+            ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice
+            : 0;
 
         // Return true if price has more than doubled, or more than halved.
         return percentDeviation > MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND;
@@ -492,14 +522,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         FallbackResponse memory _fallbackResponse
     ) internal pure returns (bool) {
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         if (minPrice == 0) return false;
-        uint maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+        uint256 maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
             minPrice;
 
         /*
-         * Return true if the relative price difference is <= 3%: if so, we assume both oracles are probably reporting
+         * Return true if the relative price difference is <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES: if so, we assume both oracles are probably reporting
          * the honest market price, as it is unlikely that both have been broken/hacked and are still in-sync.
          */
         return percentPriceDifference <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES;
@@ -514,7 +544,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     /// @notice Stores the latest valid price.
     /// @param _currentPrice The price to be stored.
-    function _storePrice(uint _currentPrice) internal {
+    function _storePrice(uint256 _currentPrice) internal {
         lastGoodPrice = _currentPrice;
         emit LastGoodPriceUpdated(_currentPrice);
     }
@@ -522,7 +552,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Stores the price reported by the fallback oracle.
     /// @param _fallbackResponse The latest response from the fallback oracle.
     /// @return The price reported by the fallback oracle.
-    function _storeFallbackPrice(FallbackResponse memory _fallbackResponse) internal returns (uint) {
+    function _storeFallbackPrice(
+        FallbackResponse memory _fallbackResponse
+    ) internal returns (uint256) {
         _storePrice(_fallbackResponse.answer);
         return _fallbackResponse.answer;
     }
@@ -530,7 +562,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Stores the price reported by the Chainlink oracle.
     /// @param _answer The latest price reported by the Chainlink oracle.
     /// @return The price reported by the Chainlink oracle.
-    function _storeChainlinkPrice(uint256 _answer) internal returns (uint) {
+    function _storeChainlinkPrice(uint256 _answer) internal returns (uint256) {
         _storePrice(_answer);
 
         return _answer;
@@ -576,6 +608,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
+
         try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
@@ -598,7 +631,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         try ETH_BTC_CL_FEED.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
-            uint256 /* startedAt */,
+            uint256,
+            /* startedAt */
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
@@ -613,7 +647,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         try STETH_ETH_CL_FEED.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
-            uint256 /* startedAt */,
+            uint256,
+            /* startedAt */
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
@@ -662,6 +697,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Fetch decimals for both feeds:
         uint8 ethBtcDecimals;
         uint8 stEthEthDecimals;
+
         try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
             // If call to Chainlink succeeds, record the current decimal precision
             ethBtcDecimals = decimals;
@@ -684,7 +720,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         try ETH_BTC_CL_FEED.getRoundData(_currentRoundEthBtcId - 1) returns (
             uint80 roundId,
             int256 answer,
-            uint256 /* startedAt */,
+            uint256,
+            /* startedAt */
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
@@ -699,7 +736,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
             uint80 roundId,
             int256 answer,
-            uint256 /* startedAt */,
+            uint256,
+            /* startedAt */
             uint256 timestamp,
             uint80 /* answeredInRound */
         ) {
@@ -752,6 +790,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 _stEthEthDecimals
     ) internal view returns (uint256) {
         return (((10 ** (_stEthEthDecimals - _ethBtcDecimals)) *
-            (uint256(_ethBtcAnswer) * LiquityMath.DECIMAL_PRECISION)) / uint256(_stEthEthAnswer));
+            (uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer))) / LiquityMath.DECIMAL_PRECISION);
     }
 }

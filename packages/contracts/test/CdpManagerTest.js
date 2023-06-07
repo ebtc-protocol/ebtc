@@ -3909,13 +3909,14 @@ contract('CdpManager', async accounts => {
     th.fastForwardTime(45, web3.currentProvider)
 
     // Borrower A triggers a fee
+    let _m = await cdpManager.minutesPassedSinceLastFeeOp();
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
     const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
 
     // Check that the last fee operation time did not update, as borrower A's 2nd redemption occured
     // since before minimum interval had passed 
-    assert.isTrue(lastFeeOpTime_2.eq(lastFeeOpTime_1))
+    assert.isTrue(lastFeeOpTime_2.eq(lastFeeOpTime_1.add(toBN(_m * 60))))
 
     // 15 seconds passes
     th.fastForwardTime(15, web3.currentProvider)
@@ -4780,6 +4781,94 @@ contract('CdpManager', async accounts => {
       assert.isTrue(_updatedBaseRate.eq(await cdpManager.baseRate()));
 	  
   })
+  
+  it("CDPManager _updateLastFeeOpTime(): use elapsed minutes instead block.timestamp", async() => {
+	  
+      // advance to sometime later to update lastFeeOperationTime
+      await cdpManager.setLastFeeOpTimeToNow();
+      let _opLastBefore = await cdpManager.lastFeeOperationTime();
+	  
+      let _minutes = 100
+      let _seconds = 12 // this should not be included in updated lastFeeOperationTime
+      await network.provider.send("evm_increaseTime", [_minutes * 60 + _seconds])
+      await network.provider.send("evm_mine") 
+	  
+      // update to elapsed minute
+      await cdpManager.unprotectedUpdateLastFeeOpTime();
+      let _opLastAfter = await cdpManager.lastFeeOperationTime();
+	  
+      // final check
+      let _expectedTime = _opLastBefore.add(toBN(_minutes * 60))
+      assert.isTrue(_expectedTime.eq(_opLastAfter));
+	  
+  })  
+
+  it("check on HintHelpers.getRedemptionHints() during redemption: should return correct values if partial redemption occur", async () => {
+    const { collateral: W_coll, totalDebt: W_totalDebt  } = await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
+
+    // Alice opens cdp and transfers 1000 EBTC each to Erin, Flyn, Graham
+    await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("270000")});
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(127, 16)), extraEBTCAmount: dec(1, 17), extraParams: { from: alice } })
+
+    // B, C, D open cdp
+    await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("150000")});
+    await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("150000")});
+    await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("150000")});
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(126, 16)), extraEBTCAmount: dec(1590, 18), extraParams: { from: bob } })
+    const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(600, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: carol } })
+    const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(800, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: dennis } })
+    let _aCdpID = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+    let _bCdpID = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+    let _cCdpID = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+    let _dCdpID = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+
+    const totalDebt = W_totalDebt.add(A_totalDebt).add(B_totalDebt).add(C_totalDebt).add(D_totalDebt)
+
+    const price = await priceFeed.getPrice()
+
+    const _partialRedeem_EBTC = B_totalDebt.add(toBN('123456789'))
+
+    let firstRedemptionHint
+    let partialRedemptionHintNICR
+    let truncatedEBTCamount
+    let partialRedemptionNewColl
+
+    // redeems hint with CDP ordering from lowest ICR: B < A < C < D < W
+    ({
+      firstRedemptionHint,
+      partialRedemptionHintNICR,
+      truncatedEBTCamount,
+      partialRedemptionNewColl
+    } = await hintHelpers.getRedemptionHints(_partialRedeem_EBTC, price, 0))
+	
+    assert.isTrue(firstRedemptionHint == _bCdpID);
+    assert.isTrue(truncatedEBTCamount.eq(toBN(_partialRedeem_EBTC)));
+	
+    // A will be partially redeemed
+    let _partialDebt = toBN(_partialRedeem_EBTC).sub(B_totalDebt)
+    let _partialNewColl = A_coll.sub(_partialDebt.mul(mv._1e18BN).div(price));
+    let _newPartialNICR = _partialNewColl.mul(toBN(dec(1,20))).div(A_totalDebt.sub(_partialDebt))
+    assert.isTrue(partialRedemptionNewColl.eq(_partialNewColl));
+    assert.isTrue(partialRedemptionHintNICR.eq(_newPartialNICR));
+
+    // redeems only with full redemption of CDP, skip partially due to minimum CDP size check
+    const _onlyFullRedeem_EBTC = B_totalDebt.add(A_totalDebt).sub(toBN('1234567890'));
+	
+    let _hints = await hintHelpers.getRedemptionHints(_onlyFullRedeem_EBTC, price, 0)
+    let firstRedemptionHint2 = _hints[0]
+    let partialRedemptionHintNICR2 = _hints[1]
+    let truncatedEBTCamount2 = _hints[2]
+    let partialRedemptionNewColl2 = _hints[3]
+
+    assert.isTrue(firstRedemptionHint2 == _bCdpID);
+	
+    // A will be skipped
+    assert.isTrue(partialRedemptionHintNICR2.eq(toBN('0')));
+	
+    // only part of full redemption
+    assert.isTrue(truncatedEBTCamount2.eq(B_totalDebt));
+	
+  });
 })
 
 contract('Reset chain state', async accounts => { })

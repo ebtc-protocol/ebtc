@@ -135,9 +135,9 @@ contract BorrowerOperations is
     // --- Borrower Cdp Operations ---
 
     /**
-    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral. 
-    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). 
-    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation. 
+    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral.
+    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode).
+    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation.
     */
     function openCdp(
         uint _EBTCAmount,
@@ -159,7 +159,7 @@ contract BorrowerOperations is
     }
 
     /**
-    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%. 
+    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%.
     */
     function withdrawColl(
         bytes32 _cdpId,
@@ -441,8 +441,8 @@ contract BorrowerOperations is
         // Mint the full EBTCAmount to the borrower
         _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
 
-        /** 
-            Note that only NET coll (as shares) is considered part of the CDP. 
+        /**
+            Note that only NET coll (as shares) is considered part of the CDP.
             The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
             The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
         */
@@ -466,7 +466,7 @@ contract BorrowerOperations is
     }
 
     /**
-    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC. 
+    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
@@ -855,6 +855,8 @@ contract BorrowerOperations is
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+        require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
+        // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
@@ -876,6 +878,8 @@ contract BorrowerOperations is
         // Burn amount, from FEE_RECIPIENT
         ebtcToken.burn(feeRecipientAddress, amount);
 
+        emit FlashLoanSuccess(address(receiver), token, amount, fee);
+
         return true;
     }
 
@@ -886,14 +890,10 @@ contract BorrowerOperations is
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(address token) external view override returns (uint256) {
+    function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(ebtcToken)) {
             return 0;
         }
-
-        // TODO: Decide if max, or w/e
-        // For now return 112 which is UniV3 compatible
-        // Source: I made it up
         return type(uint112).max;
     }
 
