@@ -5,6 +5,8 @@ const { toBN, dec, ZERO_ADDRESS } = th
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
 const EBTCToken = artifacts.require("./EBTCToken.sol")
 
+const batchLiquidateCdpsFuncABI = '[{"inputs":[{"internalType":"bytes32[]","name":"_cdpArray","type":"bytes32[]"}],"name":"batchLiquidateCdps","outputs":[{"internalType":"uint256","name":"totalCollToSend_","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]'
+
 contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async accounts => {
   const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)
   const [
@@ -30,6 +32,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
     debtToken = contracts.ebtcToken;
+    collToken = contracts.collateral;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
   })
@@ -94,7 +97,16 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-      const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId, _bobCdpId, _carolCdpId])
+	  
+      const cdpMgrContract = new ethers.Contract(cdpManager.address, batchLiquidateCdpsFuncABI, (await ethers.provider.getSigner(owner)));
+      const _staticReturn = await cdpMgrContract.callStatic.batchLiquidateCdps([_aliceCdpId, _bobCdpId, _carolCdpId], {from: owner})
+	  
+      let _collLiquidatorPre = await collToken.sharesOf(owner);
+      const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId, _bobCdpId, _carolCdpId])	  
+      let _collLiquidatorPost = await collToken.sharesOf(owner);
+      let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
+      let _shareToTransferAmtToShare = await collToken.getSharesByPooledEth(await collToken.getPooledEthByShares(_staticReturn));
+      assert.equal(_shareToTransferAmtToShare.toString(), _ethSeizedByLiquidator.toString(), '!batch liquidation collateral change in liquidator static');
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
