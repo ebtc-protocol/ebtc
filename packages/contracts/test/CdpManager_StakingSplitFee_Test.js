@@ -437,6 +437,84 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_diff.lt(_target));  
   })
   
+  it("Test fee split claim before TCR calculation for Borrower Operations", async() => {	  
+      await openCdp({ ICR: toBN(dec(130, 16)), extraParams: { from: owner } });
+	  
+      // make some fee to claim
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      let _oldIndex = web3.utils.toBN('1000000000000000000');
+      let _newIndex = web3.utils.toBN('1500000000000000000');
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // price drops
+      let _originalPrice = await priceFeed.getPrice();	  
+      let _newPrice = dec(7000, 13);
+      await priceFeed.setPrice(_newPrice);
+      assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
+	  	  
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _splitRewardSig = "0xb6fe918a";//cdpManager#SET_STAKING_REWARD_SPLIT_SIG;
+      await authority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
+      let _newSplitFee = 9999;
+      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
+      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));  
+	  
+      // open CDP will revert due to TCR reduce after fee claim
+      let _collAmt = toBN("19751958561574716850");
+      let _ebtcAmt = toBN("1158960105069686413");
+      await collToken.deposit({from: owner, value: _collAmt});    
+      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+	  
+      // price rebounce and open CDP  
+      await priceFeed.setPrice(_originalPrice);    
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+	  
+      // make some fee to claim
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      _oldIndex = _newIndex;
+      _newIndex = web3.utils.toBN('1750000000000000000');
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // price drop again
+      await priceFeed.setPrice(_newPrice);
+      assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
+	  
+      // adjust CDP will revert due to TCR reduce after fee claim	   
+      let _moreDebt = toBN("708960105069686413");	 
+      _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
+      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+	  
+      // price rebounce and adjust CDP  
+      await priceFeed.setPrice(_originalPrice);
+      borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+	  	  
+      // make some fee to claim
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      _oldIndex = _newIndex;
+      _newIndex = web3.utils.toBN('1950000000000000000');
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // price drop deeper and closeCdp revert due to TCR reduce after claim fee
+      _newPrice = dec(6000,13)
+      await priceFeed.setPrice(_newPrice);
+      assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
+      _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));
+      await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOps: Operation not permitted during Recovery Mode")
+  })
+  
   it("Test first ICR compared to TCR when there is staking reward", async() => {
       let _errorTolerance = toBN("10000000000000");//1e13 compared to 1e18
 	  

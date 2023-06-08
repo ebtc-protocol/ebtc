@@ -792,6 +792,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
     }
 
+    // @dev return current TCR for given price and true if delta index is big enough to trigger recovery mode, otherwise false.
+    function checkIfDeltaIndexTriggerRM(uint _price) external view override returns (uint, bool) {
+        uint _oldIndex = stFPPSg;
+        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+        if (_newIndex > _oldIndex) {
+            (uint _requiredDelta, uint _tcr) = _computeDeltaIndexToTriggerRM(
+                _newIndex,
+                _price,
+                stakingRewardSplit
+            );
+            return (_tcr, (_newIndex - _oldIndex) >= _requiredDelta);
+        } else {
+            return (_getTCR(_price), false);
+        }
+    }
+
     // --- 'require' wrapper functions ---
 
     function _requireCallerIsBorrowerOperations() internal view {
