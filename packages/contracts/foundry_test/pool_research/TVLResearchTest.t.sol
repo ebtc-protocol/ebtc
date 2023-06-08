@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import {console2 as console} from "forge-std/console2.sol";
@@ -14,18 +14,19 @@ import "../../contracts/Dependencies/IERC20.sol";
 
 contract TVLResearchTest is eBTCBaseFixture {
     // ebtc test inheritance
-    Utilities internal _utils;
+    Utilities internal _utilsTvl;
 
     // ebtc cdp pos.
     uint256 LEV_BPS = 4_000;
 
     // misc.
-    uint256 MAX_BPS = 10_000;
     uint256 SLIPPAGE_CONTROL = 9_700;
 
     // balancer
-    IStablePoolFactory STABLE_POOL_FACTORY = IStablePoolFactory(0x8df6EfEc5547e31B0eb7d1291B511FF8a2bf987c);
-    IBalancerVault BALANCER_VAULT = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+    IStablePoolFactory STABLE_POOL_FACTORY =
+        IStablePoolFactory(0x8df6EfEc5547e31B0eb7d1291B511FF8a2bf987c);
+    IBalancerVault BALANCER_VAULT =
+        IBalancerVault(payable(0xBA12222222228d8Ba445958a75a0704d566BF2C8));
     uint256 AMPLIFICATION_FACTOR = 25;
 
     // tokens
@@ -53,25 +54,31 @@ contract TVLResearchTest is eBTCBaseFixture {
 
         // ebtc system hook-up
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
+        _utilsTvl = new Utilities();
 
         // balancer pool creation
         string memory name = "Balancer eBTC Stable Pool";
         string memory symbol = "B-eBTC-STABLE";
         address[] memory tokens = new address[](2);
         // Careful with unsorted_array err code. BAL#101
-        tokens[0] = address(eBTCToken);
-        tokens[1] = WBTC;
+        // https://docs.balancer.fi/reference/contracts/error-codes.html#input
+        tokens[0] = WBTC;
+        tokens[1] = address(eBTCToken);
         uint256 amplificationParameter = AMPLIFICATION_FACTOR;
         uint256 swapFeePercentage = 6000000000000000;
         address poolOwner = address(0);
 
         vm.startPrank(seeder_agent);
-        address pool =
-            STABLE_POOL_FACTORY.create(name, symbol, tokens, amplificationParameter, swapFeePercentage, poolOwner);
+        address pool = STABLE_POOL_FACTORY.create(
+            name,
+            symbol,
+            tokens,
+            amplificationParameter,
+            swapFeePercentage,
+            poolOwner
+        );
         vm.stopPrank();
 
         balancerPool = IBalancerPool(pool);
@@ -86,10 +93,10 @@ contract TVLResearchTest is eBTCBaseFixture {
     }
 
     function test_pool_config() public {
-        (address[] memory tokens,,) = BALANCER_VAULT.getPoolTokens(poolId);
+        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(poolId);
 
-        assertEq(tokens[0], address(eBTCToken));
-        assertEq(tokens[1], WBTC);
+        assertEq(tokens[0], WBTC);
+        assertEq(tokens[1], address(eBTCToken));
 
         assertEq(eBTCToken.balanceOf(seeder_agent), FAKE_MINTING_AMOUNT);
     }
@@ -100,12 +107,12 @@ contract TVLResearchTest is eBTCBaseFixture {
         uint256 amountOut;
 
         // sim case for A=25
-        while (amountOut < TARGET_WBTC_AMOUNT * SLIPPAGE_CONTROL / MAX_BPS) {
+        while (amountOut < (TARGET_WBTC_AMOUNT * SLIPPAGE_CONTROL) / MAX_BPS) {
             amountOut = _swap(seeder_agent, EBTC_SWAP_AMOUNT);
             _addLiquidity(LIQ_STEP_WBTC, LIQ_STEP_EBTC, false);
         }
 
-        (, uint256[] memory balances,) = BALANCER_VAULT.getPoolTokens(poolId);
+        (, uint256[] memory balances, ) = BALANCER_VAULT.getPoolTokens(poolId);
 
         // explore file in path: `packages/contracts/foundry_test/pool_research/pool_optimal_liquidity.json`
         _jsonCreation(balances[0], balances[1], AMPLIFICATION_FACTOR);
@@ -135,11 +142,11 @@ contract TVLResearchTest is eBTCBaseFixture {
         IERC20(WBTC).approve(address(BALANCER_VAULT), wbtcAmount);
         eBTCToken.approve(address(BALANCER_VAULT), ebtcAmount);
 
-        (address[] memory tokens,,) = BALANCER_VAULT.getPoolTokens(poolId);
+        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(poolId);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[0] = ebtcAmount;
-        amountsIn[1] = wbtcAmount;
+        amountsIn[0] = wbtcAmount;
+        amountsIn[1] = ebtcAmount;
 
         bytes memory userData;
         // https://docs.balancer.fi/reference/joins-and-exits/pool-joins.html
@@ -191,10 +198,10 @@ contract TVLResearchTest is eBTCBaseFixture {
 
         uint256 currentPrice = priceFeedMock.getPrice();
 
-        uint256 debtAmount = ((collAmount * currentPrice) / 1 ether) * LEV_BPS / MAX_BPS;
+        uint256 debtAmount = (((collAmount * currentPrice) / 1 ether) * LEV_BPS) / MAX_BPS;
 
         assertEq(eBTCToken.balanceOf(agent), 0);
-        borrowerOperations.openCdp(1e18, debtAmount, bytes32(0), bytes32(0), collAmount);
+        borrowerOperations.openCdp(debtAmount, bytes32(0), bytes32(0), collAmount);
 
         assertGt(eBTCToken.balanceOf(agent), 0);
         vm.stopPrank();
@@ -207,7 +214,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         vm.serializeUint(key1, "balance0", balance0);
         vm.serializeUint(key1, "balance1", balance1);
 
-        uint256 usdValue = balance0 / 1e18 * btcPrice + balance1 / 1e8 * btcPrice;
+        uint256 usdValue = (balance0 / 1e18) * btcPrice + (balance1 / 1e8) * btcPrice;
         vm.serializeUint(key1, "usd_value", usdValue);
 
         string memory key2 = "key2";

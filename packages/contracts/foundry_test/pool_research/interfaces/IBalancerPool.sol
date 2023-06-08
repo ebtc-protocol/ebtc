@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 interface IBalancerPool {
@@ -29,11 +29,17 @@ interface IBalancerPool {
 
     function getActionId(bytes4 selector) external view returns (bytes32);
 
-    function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
+    function getAmplificationParameter()
+        external
+        view
+        returns (uint256 value, bool isUpdating, uint256 precision);
 
     function getAuthorizer() external view returns (address);
 
-    function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp);
+    function getLastInvariant()
+        external
+        view
+        returns (uint256 lastInvariant, uint256 lastInvariantAmp);
 
     function getOwner() external view returns (address);
 
@@ -87,14 +93,23 @@ interface IBalancerPool {
         uint256 indexOut
     ) external returns (uint256);
 
-    function onSwap(IPoolSwapStructs.SwapRequest memory request, uint256 balanceTokenIn, uint256 balanceTokenOut)
-        external
-        returns (uint256);
+    function onSwap(
+        IPoolSwapStructs.SwapRequest memory request,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) external returns (uint256);
 
     function pause() external;
 
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external;
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 
     function queryExit(
         bytes32 poolId,
