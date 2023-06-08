@@ -520,7 +520,8 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
     for i in range(0, len(drops)):
         account_index = active_accounts[drops[i]]['index']
         account = accounts[account_index]
-        amounts = contracts.cdpManager.getEntireDebtAndColl(account)
+        cdp_id = active_accounts[drops[i]]['cdp_id']
+        amounts = contracts.cdpManager.getEntireDebtAndColl(cdp_id)
         coll = amounts['coll']
         debt = amounts['debt']
         pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
@@ -528,7 +529,7 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
         if pending == 0:
             if is_new_tcr_above_ccr(contracts, coll, False, debt, False,
                                     floatToWei(price_ether_current)):
-                contracts.borrowerOperations.closeCdp({'from': account})
+                contracts.borrowerOperations.closeCdp(cdp_id, {'from': account})
                 inactive_accounts.append(account_index)
                 active_accounts.pop(drops[i])
         if is_recovery_mode(contracts, price_ether_current):
@@ -599,7 +600,7 @@ def get_hints_from_amounts(accounts, contracts, active_accounts, coll, debt, pri
 
 # def get_address_from_active_index(accounts, active_accounts, index):
 def index2address(accounts, active_accounts, index):
-    return accounts[active_accounts[index]['index']]
+    return active_accounts[index]['cdp_id']
 
 
 def get_hints_from_icr(accounts, contracts, active_accounts, icr, nicr):
@@ -628,13 +629,14 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
 
     for i, working_cdp in enumerate(active_accounts):
         account = accounts[working_cdp['index']]
+        cdp_id = working_cdp['cdp_id']
         ## TODO:Need to add CDP id so we can track that
 
         ## Find
 
-        current_icr = contracts.cdpManager.getCurrentICR(account,
+        current_icr = contracts.cdpManager.getCurrentICR(cdp_id,
                                                            floatToWei(price_ether_current)) / 1e18
-        amounts = contracts.cdpManager.getEntireDebtAndColl(account)
+        amounts = contracts.cdpManager.getEntireDebtAndColl(cdp_id)
         coll = amounts['coll'] / 1e18
         debt = amounts['debt'] / 1e18
 
