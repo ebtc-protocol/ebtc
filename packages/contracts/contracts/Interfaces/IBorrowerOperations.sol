@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 // Common interface for the Cdp Manager.
 interface IBorrowerOperations {
@@ -8,43 +8,39 @@ interface IBorrowerOperations {
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
     event ActivePoolAddressChanged(address _activePoolAddress);
-    event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
     event PriceFeedAddressChanged(address _newPriceFeedAddress);
     event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
 
-    event CdpCreated(bytes32 indexed _cdpId, address indexed _borrower, uint arrayIndex);
+    event CdpCreated(
+        bytes32 indexed _cdpId,
+        address indexed _borrower,
+        address indexed _creator,
+        uint arrayIndex
+    );
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        uint _oldDebt,
+        uint _oldColl,
         uint _debt,
         uint _coll,
-        uint stake,
-        uint8 operation
+        uint _stake,
+        BorrowerOperation _operation
     );
-    event EBTCBorrowingFeePaid(bytes32 indexed _cdpId, uint _EBTCFee);
+
+    enum BorrowerOperation {
+        openCdp,
+        closeCdp,
+        adjustCdp
+    }
 
     // --- Functions ---
 
-    function setAddresses(
-        address _cdpManagerAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _sortedCdpsAddress,
-        address _ebtcTokenAddress,
-        address _lqtyStakingAddress,
-        address _collTokenAddress
-    ) external;
-
     function openCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -67,7 +63,6 @@ interface IBorrowerOperations {
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -84,7 +79,6 @@ interface IBorrowerOperations {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -94,7 +88,6 @@ interface IBorrowerOperations {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -105,5 +98,5 @@ interface IBorrowerOperations {
 
     function claimCollateral() external;
 
-    function getCompositeDebt(uint _debt) external pure returns (uint);
+    function feeRecipientAddress() external view returns (address);
 }

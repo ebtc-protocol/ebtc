@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../PriceFeed.sol";
 
@@ -48,7 +48,7 @@ contract MockTellor {
 
     function getDataBefore(
         bytes32 _queryId,
-        uint256 _timestamp
+        uint256 //_timestamp // unused
     ) external view returns (bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved) {
         if (revertRequest) {
             require(1 == 0, "Tellor request reverted");

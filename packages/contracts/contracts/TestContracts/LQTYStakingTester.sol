@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
-import "../LQTY/LQTYStaking.sol";
+import "../FeeRecipient.sol";
 
-contract LQTYStakingTester is LQTYStaking {
-    function requireCallerIsCdpManager() external view {
-        _requireCallerIsCdpManager();
-    }
+contract LQTYStakingTester is FeeRecipient {
+    constructor(
+        address _ownerAddress,
+        address _authorityAddress
+    ) FeeRecipient(_ownerAddress, _authorityAddress) {}
 }

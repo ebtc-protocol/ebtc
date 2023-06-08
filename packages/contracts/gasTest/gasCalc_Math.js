@@ -3,7 +3,7 @@ const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
-
+const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 const th = testHelpers.TestHelper
 
 const timeValues = testHelpers.TimeValues
@@ -19,7 +19,8 @@ contract('Gas costs for math functions', async accounts => {
   let mathTester
 
   before(async () => {
-    cdpManagerTester = await CdpManagerTester.new()
+    liquidationLibrary = await LiquidationLibrary.new()
+    cdpManagerTester = await CdpManagerTester.new(liquidationLibrary.address)
     CdpManagerTester.setAsDeployed(cdpManagerTester)
 
     mathTester = await LiquityMathTester.new()
@@ -27,7 +28,7 @@ contract('Gas costs for math functions', async accounts => {
   })
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
     const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress)
 
     priceFeed = contracts.priceFeedTestnet
@@ -41,12 +42,8 @@ contract('Gas costs for math functions', async accounts => {
     hintHelpers = contracts.hintHelpers
 
     gtStaking = LQTYContracts.gtStaking
-    lqtyToken = LQTYContracts.lqtyToken
-    communityIssuance = LQTYContracts.communityIssuance
-    lockupContractFactory = LQTYContracts.lockupContractFactory
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
@@ -148,11 +145,21 @@ contract('Gas costs for math functions', async accounts => {
     }
 
     // console.log(data)
-
-    fs.writeFile('gasTest/outputs/exponentiationCostsOneMonth.csv', dataOneMonth, (err) => {
-      if (err) { console.log(err) } else {
-        console.log("Gas test data written to gasTest/outputs/exponentiationCostsOneMonth.csv")
-      }
+    
+    let _lineCnt = 1;
+    let _content = '';
+    for(let i = 0;i < dataOneMonth.length;i++){
+        console.log('#L' + _lineCnt + ':' + dataOneMonth[i]);
+        _lineCnt = _lineCnt + 1;	
+        _content = _content + dataOneMonth[i]	
+    }
+	
+    fs.writeFile('gasTest/outputs/exponentiationCostsOneMonth.csv', _content, (err) => {
+        if (err) { 
+            console.log(err) 
+        } else {
+            console.log("Gas test data written to gasTest/outputs/exponentiationCostsOneMonth.csv")
+        }
     })
   })
 
@@ -176,11 +183,21 @@ contract('Gas costs for math functions', async accounts => {
 
       data50Years.push(n + "," + gasResults.medianGas + '\n')
     }
-
-    fs.writeFile('gasTest/outputs/exponentiationCosts30Years.csv', data50Years, (err) => {
-      if (err) { console.log(err) } else {
-        console.log("Gas test data written to gasTest/outputs/exponentiationCosts30Years.csv")
-      }
+    
+    let _lineCnt = 1;
+    let _content = '';
+    for(let i = 0;i < data50Years.length;i++){
+        console.log('#L' + _lineCnt + ':' + data50Years[i]);
+        _lineCnt = _lineCnt + 1;	
+        _content = _content + data50Years[i]	
+    }
+	
+    fs.writeFile('gasTest/outputs/exponentiationCosts30Years.csv', _content, (err) => {
+        if (err) { 
+            console.log(err) 
+        } else {
+            console.log("Gas test data written to gasTest/outputs/exponentiationCosts30Years.csv")
+        }
     })
   })
 

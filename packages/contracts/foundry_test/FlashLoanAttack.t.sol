@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 import "../contracts/Dependencies/IERC20.sol";
 import "../contracts/Interfaces/IERC3156FlashLender.sol";
@@ -18,7 +16,7 @@ contract FlashAttack {
     IERC3156FlashLender public immutable lender;
     uint256 public counter;
 
-    constructor(IERC20 _want, IERC3156FlashLender _lender) public {
+    constructor(IERC20 _want, IERC3156FlashLender _lender) {
         want = _want;
         lender = _lender;
 
@@ -48,15 +46,12 @@ contract FlashAttack {
 }
 
 contract FlashLoanAttack is eBTCBaseFixture {
-    Utilities internal _utils;
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;
@@ -72,7 +67,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
 
@@ -101,7 +96,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         deal(address(eBTCToken), address(attacker), fee * 2);
 
         uint256 feeRecipientPreviousBalance = eBTCToken.balanceOf(
-            borrowerOperations.FEE_RECIPIENT()
+            borrowerOperations.feeRecipientAddress()
         );
         uint256 attackerPreviousBalance = eBTCToken.balanceOf(address(attacker));
         uint256 ebtcSupplyBefore = eBTCToken.totalSupply();
@@ -115,7 +110,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         );
 
         assertEq(
-            eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()),
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
             feeRecipientPreviousBalance + fee * 2
         );
         assertEq(eBTCToken.balanceOf(address(attacker)), attackerPreviousBalance - fee * 2);
@@ -123,8 +118,9 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint128 amount) public {
-        uint256 _maxAvailable = activePool.getETH();
-        vm.assume(amount * 2 < _maxAvailable);
+        uint256 _maxAvailable = activePool.getStEthColl();
+        vm.assume(amount < (_maxAvailable / 2));
+        vm.assume(amount > cdpManager.LIQUIDATOR_REWARD());
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
@@ -151,7 +147,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         dealCollateral(address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
-        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getETH());
+        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getStEthColl());
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),

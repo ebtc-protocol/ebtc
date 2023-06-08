@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, WETHFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 
 /*
@@ -14,8 +12,6 @@ import {UselessFlashReceiver, WETHFlashReceiver, FlashLoanSpecReceiver, FlashLoa
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitWETH is eBTCBaseFixture {
-    Utilities internal _utils;
-
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
     WETHFlashReceiver internal wethReceiver;
@@ -25,7 +21,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
 
@@ -52,14 +48,14 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // Cannot deal if not enough
         vm.assume(fee > 1800e18);
 
-        deal(address(collateral), address(wethReceiver), fee);
+        dealCollateral(address(wethReceiver), fee);
 
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
         uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
-        deal(address(collateral), address(activePool), _suggar);
+        dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
-        uint256 prevFeeBalance = collateral.balanceOf(activePool.FEE_RECIPIENT());
+        uint256 prevFeeBalance = collateral.balanceOf(activePool.feeRecipientAddress());
         // Perform flashloan
         activePool.flashLoan(
             wethReceiver,
@@ -71,7 +67,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), _suggar);
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(collateral.balanceOf(activePool.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(collateral.balanceOf(activePool.feeRecipientAddress()), prevFeeBalance + fee);
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
@@ -90,28 +86,31 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     /// @dev Cannot send ETH to ActivePool
-    function testCannotSendEth(uint256 amount) public {
+    function testCannotsendStEthColl(uint256 amount) public {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
-        vm.expectRevert("ActivePool: Caller is neither BO nor Default Pool");
+        vm.expectRevert("ActivePool: Caller is not BorrowerOperations");
         payable(address(activePool)).call{value: amount}("");
     }
 
     /// @dev Amount too high, we overflow when computing fees
     function testOverflowCaseWETH() public {
         // Zero Overflow Case
-        uint256 loanAmount = type(uint256).max;
+        uint256 loanAmount = type(uint256).max / 1e18;
 
-        deal(address(collateral), address(activePool), loanAmount);
+        dealCollateral(address(activePool), loanAmount);
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        activePool.flashLoan(
-            wethReceiver,
-            address(collateral),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            activePool.flashLoan(
+                wethReceiver,
+                address(collateral),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     // Do nothing (no fee), check that it reverts
@@ -143,7 +142,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         vm.assume(amount > 0);
 
         // NOTE: Send funds for flashloan to be doable
-        deal(address(collateral), address(activePool), amount);
+        dealCollateral(address(activePool), amount);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
         // In this case the balance of the pool
@@ -157,11 +156,11 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.FEE_AMT()) / activePool.MAX_BPS());
+        assertEq(fee, (amount * activePool.feeBps()) / activePool.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
         activePool.flashFee(randomToken, amount);
 
@@ -170,7 +169,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         activePool.flashLoan(specReceiver, randomToken, amount, abi.encodePacked(uint256(0)));
 
         if (fee > 0) {
-            deal(address(collateral), address(specReceiver), fee);
+            dealCollateral(address(specReceiver), fee);
         }
 
         // Set amount already there to ensure delta is amount received
@@ -213,7 +212,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
     function testWETHReturnValue() public {
         // NOTE: Send funds for spec
-        deal(address(collateral), address(activePool), 123);
+        dealCollateral(address(activePool), 123);
 
         vm.expectRevert("ActivePool: IERC3156: Callback failed");
         activePool.flashLoan(

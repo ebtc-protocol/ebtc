@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../BorrowerOperations.sol";
 
 /* Tester contract inherits from BorrowerOperations, and provides external functions 
 for testing the parent's internal functions. */
 contract BorrowerOperationsTester is BorrowerOperations {
+    constructor(
+        address _cdpManagerAddress,
+        address _activePoolAddress,
+        address _collSurplusPoolAddress,
+        address _priceFeedAddress,
+        address _sortedCdpsAddress,
+        address _ebtcTokenAddress,
+        address _feeRecipientAddress,
+        address _collTokenAddress
+    )
+        BorrowerOperations(
+            _cdpManagerAddress,
+            _activePoolAddress,
+            _collSurplusPoolAddress,
+            _priceFeedAddress,
+            _sortedCdpsAddress,
+            _ebtcTokenAddress,
+            _feeRecipientAddress,
+            _collTokenAddress
+        )
+    {}
+
+    bytes4 public constant FUNC_SIG_FL_FEE = 0x72c27b62; //setFeeBps(uint256)
+    bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
+
     function getNewICRFromCdpChange(
         uint _coll,
         uint _debt,
@@ -15,7 +40,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
         uint _debtChange,
         bool isDebtIncrease,
         uint _price
-    ) external pure returns (uint) {
+    ) external view returns (uint) {
         return
             _getNewICRFromCdpChange(
                 _coll,
@@ -60,9 +85,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
-    // Set interest rate as 0 for js tests
-    function _calcUnitAmountAfterInterest(uint) internal pure override returns (uint) {
-        return DECIMAL_PRECISION;
+    function unprotectedActivePoolReceiveColl(uint _amt) external {
+        activePool.receiveColl(_amt);
     }
 
     // Payable fallback function

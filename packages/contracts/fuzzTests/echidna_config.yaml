@@ -1,5 +1,5 @@
-#checkAsserts checks assertions
-checkAsserts: true
+#checkAsserts checks assertions(Deprecated)
+#checkAsserts: true
 
 #codeSize max code size for deployed contratcs (default 24576, per EIP-170)
 codeSize: 124576
@@ -42,4 +42,7 @@ corpusDir: "fuzzTests/corpus"
 #mutConsts: [100, 1, 1]
 
 # maximum value to send to payable functions
-#maxValue: 100000000000000000000 # 100 eth
+maxValue: 100000000000000000000000 # 100000 eth
+
+#quiet produces (much) less verbose output
+quiet: false

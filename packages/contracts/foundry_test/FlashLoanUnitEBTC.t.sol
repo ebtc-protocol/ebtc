@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 
 /*
@@ -14,8 +12,6 @@ import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoa
  * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
 contract FlashLoanUnitEBTC is eBTCBaseFixture {
-    Utilities internal _utils;
-
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
     eBTCFlashReceiver internal ebtcReceiver;
@@ -25,10 +21,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;
@@ -44,7 +39,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
 
         uselessReceiver = new UselessFlashReceiver();
@@ -71,7 +66,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         deal(address(eBTCToken), address(ebtcReceiver), fee);
 
-        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT());
+        uint256 prevFeeBalance = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
 
         // Perform flashloan
         borrowerOperations.flashLoan(
@@ -82,7 +77,10 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         );
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(eBTCToken.balanceOf(borrowerOperations.FEE_RECIPIENT()), prevFeeBalance + fee);
+        assertEq(
+            eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress()),
+            prevFeeBalance + fee
+        );
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
@@ -105,13 +103,16 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // Zero Overflow Case
         uint256 loanAmount = type(uint256).max;
 
-        vm.expectRevert("SafeMath: multiplication overflow");
-        borrowerOperations.flashLoan(
-            ebtcReceiver,
-            address(eBTCToken),
-            loanAmount,
-            abi.encodePacked(uint256(0))
-        );
+        try
+            borrowerOperations.flashLoan(
+                ebtcReceiver,
+                address(eBTCToken),
+                loanAmount,
+                abi.encodePacked(uint256(0))
+            )
+        {} catch Panic(uint _errorCode) {
+            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
+        }
     }
 
     /// @dev Do nothing (no fee), check that it reverts
@@ -147,11 +148,11 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
-        // The flashFee function MUST return the fee charged for a loan of amount token.
+        // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * borrowerOperations.FEE_AMT()) / borrowerOperations.MAX_BPS());
+        assertEq(fee, (amount * borrowerOperations.feeBps()) / borrowerOperations.MAX_BPS());
 
-        // If the token is not supported flashFee MUST revert.
+        // If the token is not supported feeBps MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
 

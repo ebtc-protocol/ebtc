@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 // Common interface for the Pools.
 interface IPool {
@@ -9,12 +9,11 @@ interface IPool {
     event ETHBalanceUpdated(uint _newBalance);
     event EBTCBalanceUpdated(uint _newBalance);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
-    event DefaultPoolAddressChanged(address _newDefaultPoolAddress);
     event CollateralSent(address _to, uint _amount);
 
     // --- Functions ---
 
-    function getETH() external view returns (uint);
+    function getStEthColl() external view returns (uint);
 
     function getEBTCDebt() external view returns (uint);
 

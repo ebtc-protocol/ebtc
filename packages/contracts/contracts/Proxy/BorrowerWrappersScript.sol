@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Dependencies/SafeMath.sol";
 import "../Dependencies/LiquityMath.sol";
@@ -8,11 +8,10 @@ import "../Dependencies/IERC20.sol";
 import "../Interfaces/IBorrowerOperations.sol";
 import "../Interfaces/ICdpManager.sol";
 import "../Interfaces/IPriceFeed.sol";
-import "../Interfaces/ILQTYStaking.sol";
+import "../Interfaces/IFeeRecipient.sol";
 import "./BorrowerOperationsScript.sol";
 import "./ETHTransferScript.sol";
 import "./LQTYStakingScript.sol";
-import "../Dependencies/console.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, LQTYStakingScript {
@@ -23,19 +22,18 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     ICdpManager immutable cdpManager;
     IPriceFeed immutable priceFeed;
     IERC20 immutable ebtcToken;
-    IERC20 immutable lqtyToken;
-    ILQTYStaking immutable lqtyStaking;
+    IFeeRecipient feeRecipient;
     ICollateralToken immutable collToken;
 
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
-        address _lqtyStakingAddress,
+        address _feeRecipientAddress,
         address _collTokenAddress
     )
         public
         BorrowerOperationsScript(IBorrowerOperations(_borrowerOperationsAddress))
-        LQTYStakingScript(_lqtyStakingAddress)
+        LQTYStakingScript(_feeRecipientAddress)
     {
         checkContract(_cdpManagerAddress);
         ICdpManager cdpManagerCached = ICdpManager(_cdpManagerAddress);
@@ -49,23 +47,18 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         checkContract(ebtcTokenCached);
         ebtcToken = IERC20(ebtcTokenCached);
 
-        address lqtyTokenCached = address(cdpManagerCached.lqtyToken());
-        checkContract(lqtyTokenCached);
-        lqtyToken = IERC20(lqtyTokenCached);
-
-        ILQTYStaking lqtyStakingCached = cdpManagerCached.lqtyStaking();
+        IFeeRecipient lqtyStakingCached = IFeeRecipient(borrowerOperations.feeRecipientAddress());
         require(
-            _lqtyStakingAddress == address(lqtyStakingCached),
-            "BorrowerWrappersScript: Wrong LQTYStaking address"
+            _feeRecipientAddress == address(lqtyStakingCached),
+            "BorrowerWrappersScript: Wrong FeeRecipient address"
         );
-        lqtyStaking = lqtyStakingCached;
+        feeRecipient = lqtyStakingCached;
 
         checkContract(_collTokenAddress);
         collToken = ICollateralToken(_collTokenAddress);
     }
 
     function claimCollateralAndOpenCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
@@ -85,22 +78,17 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
         // Open cdp with obtained collateral, plus collateral sent by user
         collToken.approve(address(borrowerOperations), type(uint256).max);
-        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, totalCollateral);
+        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, totalCollateral);
     }
 
     function claimStakingGainsAndRecycle(
         bytes32 _cdpId,
-        uint _maxFee,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
         require(address(collToken) != address(0), "!collToken");
         uint collBalanceBefore = collToken.balanceOf(address(this));
         uint ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
-        uint lqtyBalanceBefore = lqtyToken.balanceOf(address(this));
-
-        // Claim gains
-        lqtyStaking.unstake(0);
 
         uint gainedCollateral = collToken.balanceOf(address(this)).sub(collBalanceBefore); // stack too deep issues :'(
         uint gainedEBTC = ebtcToken.balanceOf(address(this)).sub(ebtcBalanceBefore);
@@ -112,7 +100,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
             netEBTCAmount = _getNetEBTCAmount(_cdpId, gainedCollateral);
             borrowerOperations.adjustCdpWithColl(
                 _cdpId,
-                _maxFee,
                 0,
                 netEBTCAmount,
                 true,
@@ -125,12 +112,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint totalEBTC = gainedEBTC.add(netEBTCAmount);
         if (totalEBTC > 0) {
             ebtcToken.transfer(address(0x000000000000000000000000000000000000dEaD), totalEBTC);
-            //  stake LQTY if any
-            uint lqtyBalanceAfter = lqtyToken.balanceOf(address(this));
-            uint claimedLQTY = lqtyBalanceAfter.sub(lqtyBalanceBefore);
-            if (claimedLQTY > 0) {
-                lqtyStaking.stake(claimedLQTY);
-            }
         }
     }
 

@@ -1,26 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
+
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture {
-    Utilities internal _utils;
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
     }
 
     // -------- Repay eBTC Test cases --------
@@ -38,7 +34,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         uint balanceSnapshot = eBTCToken.balanceOf(user);
@@ -46,7 +42,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.repayEBTC(
             cdpId,
             // Repay 10% of eBTC
-            borrowedAmount.div(10),
+            borrowedAmount / 10,
             HINT,
             HINT
         );
@@ -71,7 +67,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Repay eBTC and make sure it reverts for 0 amount
         vm.expectRevert(
@@ -97,7 +93,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         uint balanceSnapshot = eBTCToken.balanceOf(user);
@@ -106,7 +102,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
         // Make sure eBTC balance decreased by repayAmnt precisely
-        assertEq(balanceSnapshot.sub(eBTCToken.balanceOf(user)), repayAmnt);
+        assertEq(balanceSnapshot - eBTCToken.balanceOf(user), repayAmnt);
         // Make sure ICR for CDP improved after eBTC was repaid
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
@@ -123,7 +119,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 10000000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -136,10 +132,10 @@ contract CDPOpsTest is eBTCBaseFixture {
                     vm.expectRevert(
                         bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
                     );
-                    borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                    borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
                 }
-                borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
             vm.stopPrank();
@@ -153,7 +149,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Randomize ebtc repaid amnt from 10 eBTC to max ebtc.balanceOf(user) / amount of CDPs for user
             uint randRepayAmnt = _utils.generateRandomNumber(
                 10e18,
-                eBTCToken.balanceOf(user).div(AMOUNT_OF_CDPS),
+                eBTCToken.balanceOf(user) / AMOUNT_OF_CDPS,
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
@@ -185,7 +181,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Take eBTC balance snapshot
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
@@ -194,7 +190,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Get initial Debt after opened CDP
         uint initialDebt = cdpManager.getCdpDebt(cdpId);
         // Withdraw 1 eBTC
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 1e17, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, 1e17, "hint", "hint");
         // Make sure ICR decreased
         assertLt(cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
         // Make sure debt increased
@@ -217,10 +213,10 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(bytes("BorrowerOps: Debt increase requires non-zero debtChange"));
-        borrowerOperations.withdrawEBTC(cdpId, FEE, 0, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, 0, "hint", "hint");
         vm.stopPrank();
     }
 
@@ -242,7 +238,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
-        borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
@@ -253,11 +249,11 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Calculate projected ICR change
         uint projectedIcr = LiquityMath._computeCR(
             collAmount,
-            initialDebt.add(withdrawAmnt),
+            initialDebt + withdrawAmnt,
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
-        uint projectedSystemDebt = cdpManager.getEntireSystemDebt().add(withdrawAmnt);
+        uint projectedSystemDebt = cdpManager.getEntireSystemDebt() + withdrawAmnt;
         uint projectedTcr = LiquityMath._computeCR(
             borrowerOperations.getEntireSystemColl(),
             projectedSystemDebt,
@@ -266,16 +262,16 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure tx is reverted if user tries to make withdraw resulting in either TCR < CCR or ICR < MCR
         if (projectedTcr <= CCR || projectedIcr <= MINIMAL_COLLATERAL_RATIO) {
             vm.expectRevert();
-            borrowerOperations.withdrawEBTC(cdpId, FEE, withdrawAmnt, "hint", "hint");
+            borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
             return;
         }
         // Withdraw
-        borrowerOperations.withdrawEBTC(cdpId, FEE, withdrawAmnt, "hint", "hint");
+        borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
         // Make sure ICR decreased
         uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure eBTC balance increased by withdrawAmnt
-        assertEq(eBTCToken.balanceOf(user).sub(balanceSnapshot), withdrawAmnt);
+        assertEq(eBTCToken.balanceOf(user) - balanceSnapshot, withdrawAmnt);
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         vm.stopPrank();
@@ -291,7 +287,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             collateral.deposit{value: 1000000000000000000000000 ether}();
             // Random collateral for each user
             uint collAmount = _utils.generateRandomNumber(30 ether, 100000 ether, user);
-            uint collAmountChunk = collAmount.div(AMOUNT_OF_CDPS);
+            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
             uint borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
@@ -304,10 +300,10 @@ contract CDPOpsTest is eBTCBaseFixture {
                     vm.expectRevert(
                         bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
                     );
-                    borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                    borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
                 }
-                borrowerOperations.openCdp(FEE, borrowedAmount, HINT, HINT, collAmountChunk);
+                borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                 cdpIds.push(sortedCdps.cdpOfOwnerByIndex(user, cdpIx));
             }
             vm.stopPrank();
@@ -322,13 +318,13 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint randCollWithdraw = _utils.generateRandomNumber(
                 // Max value to withdraw is 33% of eBTCs belong to CDP
                 0.1 ether,
-                cdpManager.getCdpDebt(cdpIds[cdpIx]).div(3),
+                cdpManager.getCdpDebt(cdpIds[cdpIx]) / 3,
                 user
             );
             uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Withdraw
-            borrowerOperations.withdrawEBTC(cdpIds[cdpIx], FEE, randCollWithdraw, "hint", "hint");
+            borrowerOperations.withdrawEBTC(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
             uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);

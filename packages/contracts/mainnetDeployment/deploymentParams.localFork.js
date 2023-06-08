@@ -8,6 +8,7 @@ const externalAddrs  = {
   UNISWAP_V2_ROUTER02: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
   // https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
   WETH_ERC20: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  STETH_ERC20: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
 }
 
 const ebtcAddrs = {
@@ -25,6 +26,8 @@ const beneficiaries = {
   TEST_INVESTOR_E: "0x89ff871dbcd0a456fe92db98d190c38bc10d1cc1"
 }
 
+const testAccounts = ["0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128", "0xc2E345f74B18187E5489822f9601c028ED1915a2", "0x31c57298578f7508B5982062cfEc5ec8BD346247"]
+
 const OUTPUT_FILE = './mainnetDeployment/localForkDeploymentOutput.json'
 
 const waitFunction = async () => {
@@ -34,6 +37,7 @@ const waitFunction = async () => {
 }
 
 const GAS_PRICE = 1000
+const MAX_FEE_PER_GAS = 1000000000
 const TX_CONFIRMATIONS = 1 // for local fork test
 
 module.exports = {
@@ -44,4 +48,6 @@ module.exports = {
   waitFunction,
   GAS_PRICE,
   TX_CONFIRMATIONS,
+  MAX_FEE_PER_GAS,
+  testAccounts
 };

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture, BorrowerOperations} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
 import {UselessFlashReceiver, eBTCFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 import "../contracts/Dependencies/IERC20.sol";
 import "../contracts/Interfaces/IERC3156FlashLender.sol";
@@ -27,7 +25,7 @@ contract FlashWithDeposit {
         IERC3156FlashLender _lender,
         BorrowerOperations _borrowerOperations,
         address collTokenAddress
-    ) public {
+    ) {
         want = _want;
         lender = _lender;
         borrowerOperations = _borrowerOperations;
@@ -52,7 +50,7 @@ contract FlashWithDeposit {
         // Run an operation with BorrowerOperations
         // W/e we got send as value
         IWETH(collToken).deposit{value: amount}();
-        borrowerOperations.openCdp(FEE, MIN_NET_DEBT, "hint", "hint", amount);
+        borrowerOperations.openCdp(MIN_NET_DEBT, "hint", "hint", amount);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
@@ -61,15 +59,12 @@ contract FlashWithDeposit {
 }
 
 contract FlashLoanWETHInteractions is eBTCBaseFixture {
-    Utilities internal _utils;
-
     function setUp() public override {
         // Base setup
         eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectLQTYContracts();
+
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utils = new Utilities();
 
         // Create a CDP
         address payable[] memory users;
@@ -85,7 +80,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 30 ether}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", 30 ether);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
 
@@ -122,10 +117,10 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         vm.startPrank(user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: amountToDepositInCDP}();
-        borrowerOperations.openCdp(FEE, borrowedAmount, "hint", "hint", amountToDepositInCDP);
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", amountToDepositInCDP);
         vm.stopPrank();
 
-        deal(address(collateral), address(macroContract), fee);
+        dealCollateral(address(macroContract), fee);
         vm.deal(address(macroContract), amountToDepositInCDP);
 
         // Ensure Delta between ETH and balance is marginal

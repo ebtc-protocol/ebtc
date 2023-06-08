@@ -47,7 +47,7 @@ contract('HintHelpers', async accounts => {
  const openCdp = async (account, index) => {
    const amountFinney = 2000 + index * 10
    const coll = web3.utils.toWei((amountFinney.toString()), 'finney')
-   await borrowerOperations.openCdp(th._100pct, 0, account, account, { from: account, value: coll })
+   await borrowerOperations.openCdp(0, account, account, { from: account, value: coll })
  }
 
  const withdrawEBTCfromCdp = async (account) => {
@@ -72,13 +72,9 @@ contract('HintHelpers', async accounts => {
   }
 
   before(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     sortedCdps = contracts.sortedCdps
     cdpManager = contracts.cdpManager
@@ -87,8 +83,6 @@ contract('HintHelpers', async accounts => {
     priceFeed = contracts.priceFeedTestnet
   
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
 
     numAccounts = 10
 

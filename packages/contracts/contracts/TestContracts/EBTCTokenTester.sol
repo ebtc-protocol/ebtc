@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../EBTCToken.sol";
 
@@ -10,8 +10,9 @@ contract EBTCTokenTester is EBTCToken {
 
     constructor(
         address _cdpManagerAddress,
-        address _borrowerOperationsAddress
-    ) public EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress) {}
+        address _borrowerOperationsAddress,
+        address _authorityAddress
+    ) EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
 
     function unprotectedMint(address _account, uint256 _amount) external {
         // No check on caller here
@@ -41,15 +42,11 @@ contract EBTCTokenTester is EBTCToken {
         _transfer(_poolAddress, _receiver, _amount);
     }
 
-    function callInternalApprove(
-        address owner,
-        address spender,
-        uint256 amount
-    ) external returns (bool) {
+    function callInternalApprove(address owner, address spender, uint256 amount) external {
         _approve(owner, spender, amount);
     }
 
-    function getChainId() external pure returns (uint256 chainID) {
+    function getChainId() external view returns (uint256 chainID) {
         //return _chainID(); // it’s private
         assembly {
             chainID := chainid()

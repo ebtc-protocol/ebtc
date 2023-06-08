@@ -92,23 +92,23 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async openCdp(...params) {
-    return this.forwardFunction(params, 'openCdp(uint256,uint256,bytes32,bytes32,uint256)')
+    return this.forwardFunction(params, 'openCdp(uint256,bytes32,bytes32,uint256)')
   }
 
   async addColl(...params) {
-    return this.forwardFunction(params, 'addColl(address,address,uint256)')
+    return this.forwardFunction(params, 'addColl(bytes32,bytes32,uint256)')
   }
 
   async withdrawColl(...params) {
-    return this.forwardFunction(params, 'withdrawColl(uint256,address,address)')
+    return this.forwardFunction(params, 'withdrawColl(uint256,bytes32,bytes32)')
   }
 
   async withdrawEBTC(...params) {
-    return this.forwardFunction(params, 'withdrawEBTC(uint256,uint256,address,address)')
+    return this.forwardFunction(params, 'withdrawEBTC(uint256,bytes32,bytes32)')
   }
 
   async repayEBTC(...params) {
-    return this.forwardFunction(params, 'repayEBTC(uint256,address,address)')
+    return this.forwardFunction(params, 'repayEBTC(uint256,bytes32,bytes32)')
   }
 
   async closeCdp(...params) {
@@ -116,11 +116,11 @@ class BorrowerOperationsProxy extends Proxy {
   }
 
   async adjustCdp(...params) {
-    return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,address,address)')
+    return this.forwardFunction(params, 'adjustCdp(uint256,uint256,uint256,bool,bytes32,bytes32)')
   }
 
   async adjustCdpWithColl(...params) {
-    return this.forwardFunction(params, 'adjustCdpWithColl(uint256,uint256,uint256,bool,address,address,uint256)')
+    return this.forwardFunction(params, 'adjustCdpWithColl(uint256,uint256,uint256,bool,bytes32,bytes32,uint256)')
   }
 
   async claimRedeemedCollateral(...params) {
@@ -135,16 +135,12 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('getNewICRFromCdpChange', params)
   }
 
-  async getCompositeDebt(...params) {
-    return this.proxyFunction('getCompositeDebt', params)
+  async LIQUIDATOR_REWARD(...params) {
+    return this.proxyFunction('LIQUIDATOR_REWARD', params)
   }
 
-  async EBTC_GAS_COMPENSATION(...params) {
-    return this.proxyFunction('EBTC_GAS_COMPENSATION', params)
-  }
-
-  async MIN_NET_DEBT(...params) {
-    return this.proxyFunction('MIN_NET_DEBT', params)
+  async MIN_NET_COLL(...params) {
+    return this.proxyFunction('MIN_NET_COLL', params)
   }
 
   async BORROWING_FEE_FLOOR(...params) {
@@ -158,7 +154,7 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimCollateralAndOpenCdp(...params) {
-    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,uint256,bytes32,bytes32,uint256)')
+    return this.forwardFunction(params, 'claimCollateralAndOpenCdp(uint256,bytes32,bytes32,uint256)')
   }
 
   async claimSPRewardsAndRecycle(...params) {
@@ -166,7 +162,7 @@ class BorrowerWrappersProxy extends Proxy {
   }
 
   async claimStakingGainsAndRecycle(...params) {
-    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(bytes32,uint256,bytes32,bytes32)')
+    return this.forwardFunction(params, 'claimStakingGainsAndRecycle(bytes32,bytes32,bytes32)')
   }
 
   async transferETH(...params) {
@@ -231,8 +227,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('baseRate', [])
   }
 
-  async L_ETH() {
-    return this.proxyFunction('L_ETH', [])
+  async L_STETHColl() {
+    return this.proxyFunction('L_STETHColl', [])
   }
 
   async L_EBTCDebt() {

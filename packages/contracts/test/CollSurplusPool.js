@@ -1,6 +1,11 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const NonPayable = artifacts.require('NonPayable.sol')
+const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
+const ReentrancyToken = artifacts.require("./ReentrancyToken.sol")
+const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol")
+const Governor = artifacts.require("./Governor.sol")
+const CollSurplusPool = artifacts.require("./CollSurplusPoolTester.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec
@@ -24,31 +29,28 @@ contract('CollSurplusPool', async accounts => {
 
   let contracts
   let collToken;
+  let poolAuthority;
 
   const getOpenCdpEBTCAmount = async (totalDebt) => th.getOpenCdpEBTCAmount(contracts, totalDebt)
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    contracts.cdpManager = await CdpManagerTester.new()
-    contracts.ebtcToken = await EBTCToken.new(
-      contracts.cdpManager.address,
-      contracts.borrowerOperations.address
-    )
-    const LQTYContracts = await deploymentHelper.deployLQTYContracts(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
     priceFeed = contracts.priceFeedTestnet
     collSurplusPool = contracts.collSurplusPool
+    activePool = contracts.activePool;
     borrowerOperations = contracts.borrowerOperations
     collToken = contracts.collateral;
-
+    liqReward = await borrowerOperations.LIQUIDATOR_REWARD();
+    poolAuthority = contracts.authority;
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
-  it("CollSurplusPool::getETH(): Returns the ETH balance of the CollSurplusPool after redemption", async () => {
-    const ETH_1 = await collSurplusPool.getETH()
+  it("CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption", async () => {
+    const ETH_1 = await collSurplusPool.getStEthColl()
     assert.equal(ETH_1, '0')
 
     const price = toBN(dec(100, 18))
@@ -63,8 +65,8 @@ contract('CollSurplusPool', async accounts => {
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
-    const ETH_2 = await collSurplusPool.getETH()
-    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
+    const ETH_2 = await collSurplusPool.getStEthColl()
+    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqReward))
   })
 
   it("CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations", async () => {
@@ -85,7 +87,7 @@ contract('CollSurplusPool', async accounts => {
     const B_coll = toBN(dec(60, 18))
     const B_ebtcAmount = toBN(dec(3000, 18))
     const B_netDebt = await th.getAmountWithBorrowingFee(contracts, B_ebtcAmount)
-    const openCdpData = th.getTransactionData('openCdp(uint256,uint256,bytes32,bytes32,uint256)', ['0xde0b6b3a7640000', web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32, B_coll])
+    const openCdpData = th.getTransactionData('openCdp(uint256,bytes32,bytes32,uint256)', [web3.utils.toHex(B_ebtcAmount), th.DUMMY_BYTES32, th.DUMMY_BYTES32, B_coll])
     await collToken.nonStandardSetApproval(nonPayable.address, borrowerOperations.address, mv._1Be18BN);
     await collToken.approve(borrowerOperations.address, mv._1Be18BN);
     await collToken.deposit({value: B_coll});
@@ -100,8 +102,9 @@ contract('CollSurplusPool', async accounts => {
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus for B
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
-    const ETH_2 = await collSurplusPool.getETH()
-    th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)))
+    const ETH_2 = await collSurplusPool.getStEthColl()
+    let _expected = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price));
+    th.assertIsApproximatelyEqual(ETH_2, _expected)
 
     let _collBefore = await collToken.balanceOf(nonPayable.address);
     const claimCollateralData = th.getTransactionData('claimCollateral()', [])
@@ -116,7 +119,78 @@ contract('CollSurplusPool', async accounts => {
 
   it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
     await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
+  })  
+	  
+    it('sweepToken(): move unprotected token to fee recipient', async () => {
+	  
+    collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, collToken.address)
+    let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();
+    let _amt = 123456789;
+
+    // expect reverts
+    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'Auth: UNAUTHORIZED');
+	
+    poolAuthority.setPublicCapability(collSurplusPool.address, _sweepTokenFunc, true);  
+    await th.assertRevert(collSurplusPool.sweepToken(collToken.address, _amt), 'collSurplusPool: Cannot Sweep Collateral');	  
+	  
+    let _dustToken = await CollateralTokenTester.new()  
+    await th.assertRevert(collSurplusPool.sweepToken(_dustToken.address, _amt), 'collSurplusPool: Attempt to sweep more than balance');	
+	  
+    // expect recipient get dust  
+    await _dustToken.deposit({value: _amt});
+    await _dustToken.transfer(collSurplusPool.address, _amt); 
+    let _feeRecipient = await collSurplusPool.feeRecipientAddress();	
+    let _balRecipient = await _dustToken.balanceOf(_feeRecipient);
+    await collSurplusPool.sweepToken(_dustToken.address, _amt);
+    let _balRecipientAfter = await _dustToken.balanceOf(_feeRecipient);
+    let _diff = _balRecipientAfter.sub(_balRecipient);
+    assert.isTrue(_diff.toNumber() == _amt);
+	
+  })
+ 
+  it('sweepToken(): test reentrancy and failed safeTransfer() cases', async () => {
+    collSurplusPool = await CollSurplusPool.new(borrowerOperations.address, borrowerOperations.address, activePool.address, poolAuthority.address)
+    let _sweepTokenFunc = await collSurplusPool.FUNC_SIG1();
+    let _amt = 123456789;
+	  
+    poolAuthority.setPublicCapability(collSurplusPool.address, _sweepTokenFunc, true);  
+    let _dustToken = await ReentrancyToken.new();
+	  
+    // expect guard against reentrancy
+    await _dustToken.deposit({value: _amt, from: owner});
+    await _dustToken.transferFrom(owner, collSurplusPool.address, _amt);
+    try {
+      _dustToken.setSweepPool(collSurplusPool.address);
+      await collSurplusPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
+    }
+	
+    // expect revert on failed safeTransfer() case 1: transfer() returns false
+    try {
+      _dustToken.setSweepPool("0x0000000000000000000000000000000000000000");
+      await collSurplusPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: ERC20 operation did not succeed")
+    }
+	
+    // expect revert on failed safeTransfer() case 2: no transfer() exist
+    try {
+      _dustToken = collSurplusPool;
+      await collSurplusPool.sweepToken(_dustToken.address, _amt)
+    } catch (err) {
+      //console.log("errMsg=" + err.message)
+      assert.include(err.message, "SafeERC20: low-level call failed")
+    }	
+	
+    // expect safeTransfer() works with non-standard transfer() like USDT
+    // https://etherscan.io/token/0xdac17f958d2ee523a2206206994597c13d831ec7#code#L126
+    _dustToken = await SimpleLiquidationTester.new();
+    await collSurplusPool.sweepToken(_dustToken.address, _amt);	
   })
 })
 
 contract('Reset chain state', async accounts => { })
+ 

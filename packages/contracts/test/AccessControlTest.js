@@ -27,20 +27,15 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   let cdpManager
   let nameRegistry
   let activePool
-  let defaultPool
   let functionCaller
   let borrowerOperations
 
-  let lqtyStaking
-  let lqtyToken
-  let communityIssuance
-  let lockupContractFactory
+  let feeRecipient
 
   before(async () => {
-    coreContracts = await deploymentHelper.deployLiquityCore()
-    coreContracts.cdpManager = await CdpManagerTester.new()
-    coreContracts = await deploymentHelper.deployEBTCTokenTester(coreContracts)
-    const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    coreContracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = coreContracts.feeRecipient;
     
     priceFeed = coreContracts.priceFeed
     ebtcToken = coreContracts.ebtcToken
@@ -48,28 +43,16 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     cdpManager = coreContracts.cdpManager
     nameRegistry = coreContracts.nameRegistry
     activePool = coreContracts.activePool
-    defaultPool = coreContracts.defaultPool
     functionCaller = coreContracts.functionCaller
     borrowerOperations = coreContracts.borrowerOperations
 
-    lqtyStaking = LQTYContracts.lqtyStaking
-    lqtyToken = LQTYContracts.lqtyToken
-    communityIssuance = LQTYContracts.communityIssuance
-    lockupContractFactory = LQTYContracts.lockupContractFactory
+    feeRecipient = LQTYContracts.feeRecipient
 
-    await deploymentHelper.connectLQTYContracts(LQTYContracts)
     await deploymentHelper.connectCoreContracts(coreContracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, coreContracts)
 
     for (account of accounts.slice(0, 10)) {
       await th.openCdp(coreContracts, { extraEBTCAmount: toBN(dec(20000, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: account } })
     }
-
-    const expectedCISupplyCap = '32000000000000000000000000' // 32mil
-
-    // Check CI has been properly funded
-    const bal = await lqtyToken.balanceOf(communityIssuance.address)
-    assert.equal(bal, expectedCISupplyCap)
   })
 
   describe('CdpManager', async accounts => {
@@ -208,10 +191,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   describe('ActivePool', async accounts => {
     // sendETH
-    it("sendETH(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("sendStEthColl(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.sendETH(alice, 100, { from: alice })
+        const txAlice = await activePool.sendStEthColl(alice, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -255,57 +238,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('DefaultPool', async accounts => {
-    // sendETHToActivePool
-    it("sendETHToActivePool(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.sendETHToActivePool(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // increaseEBTC	
-    it("increaseEBTCDebt(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.increaseEBTCDebt(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // decreaseEBTC	
-    it("decreaseEBTC(): reverts when called by an account that is not CdpManager", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await defaultPool.decreaseEBTCDebt(100, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        assert.include(err.message, "Caller is not the CdpManager")
-      }
-    })
-
-    // fallback (payment)	
-    it("fallback(): reverts when called by an account that is not the Active Pool", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await web3.eth.sendTransaction({ from: alice, to: defaultPool.address, value: 100 })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")// no receive or fallback function
-      }
-    })
-  })
-
   describe('EBTCToken', async accounts => {
-
     //    mint
     it("mint(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
@@ -378,78 +311,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
   })
-
-  describe('LockupContract', async accounts => {
-    it("withdrawLQTY(): reverts when caller is not beneficiary", async () => {
-      // deploy new LC with Carol as beneficiary
-      const unlockTime = (await lqtyToken.getDeploymentStartTime()).add(toBN(timeValues.SECONDS_IN_ONE_YEAR))
-      const deployedLCtx = await lockupContractFactory.deployLockupContract(
-        carol, 
-        unlockTime,
-        { from: owner })
-
-      const LC = await th.getLCFromDeploymentTx(deployedLCtx)
-
-      // LQTY Multisig funds the LC
-      await lqtyToken.transfer(LC.address, dec(100, 18), { from: multisig })
-
-      // Fast-forward one year, so that beneficiary can withdraw
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-
-      // Bob attempts to withdraw LQTY
-      try {
-        const txBob = await LC.withdrawLQTY({ from: bob })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-
-      // Confirm beneficiary, Carol, can withdraw
-      const txCarol = await LC.withdrawLQTY({ from: carol })
-      assert.isTrue(txCarol.receipt.status)
-    })
-  })
-
-  describe('LQTYStaking', async accounts => {
-    it("increaseF_EBTC(): reverts when caller is not CdpManager", async () => {
-      try {
-        const txAlice = await lqtyStaking.increaseF_EBTC(dec(1, 18), { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-    })
-  })
-
-  describe('LQTYToken', async accounts => {
-    it("sendToLQTYStaking(): reverts when caller is not the LQTYSstaking", async () => {
-      // Check multisig has some LQTY
-      assert.isTrue((await lqtyToken.balanceOf(multisig)).gt(toBN('0')))
-
-      // multisig tries to call it
-      try {
-        const tx = await lqtyToken.sendToLQTYStaking(multisig, 1, { from: multisig })
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-
-      // FF >> time one year
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
-
-      // Owner transfers 1 LQTY to bob
-      await lqtyToken.transfer(bob, dec(1, 18), { from: multisig })
-      assert.equal((await lqtyToken.balanceOf(bob)), dec(1, 18))
-
-      // Bob tries to call it
-      try {
-        const tx = await lqtyToken.sendToLQTYStaking(bob, dec(1, 18), { from: bob })
-      } catch (err) {
-        assert.include(err.message, "revert")
-      }
-    })
-  })
-
-  
 })
 
 

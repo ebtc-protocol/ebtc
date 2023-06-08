@@ -147,7 +147,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     while(await systemContainsCdpUnder100(price) && await cdpManager.checkRecoveryMode()) {
       const lowestCdp = await sortedCdps.getLast()
       const lastCdpDebt = (await cdpManager.getEntireDebtAndColl(cdp))[0]
-      await borrowerOperations.adjustCdp(0, 0 , lastCdpDebt, true, whale, {from: whale})
+      await borrowerOperations.adjustCdp(0, lastCdpDebt, true, whale, {from: whale})
       await ebtcToken.transfer(lowestCdp, lowestCdpDebt, {from: whale})
       await borrowerOperations.closeCdp({from: lowestCdp})
     }
@@ -156,7 +156,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       const debtLowest50Cdps = await getTotalDebtFromUndercollateralizedCdps(50, price)
       
       if (debtLowest50Cdps.gt(ZERO)) {
-        await borrowerOperations.adjustCdp(0, 0 , debtLowest50Cdps, true, whale, {from: whale})
+        await borrowerOperations.adjustCdp(0, debtLowest50Cdps, true, whale, {from: whale})
         await stabilityPool.provideToSP(debtLowest50Cdps, {from: whale})
       }
       
@@ -175,13 +175,13 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       const initialDeposit = (await stabilityPool.deposits(depositor))[0]
       const finalDeposit = await stabilityPool.getCompoundedEBTCDeposit(depositor)
       const ETHGain = await stabilityPool.getDepositorETHGain(depositor)
-      const ETHinSP = (await stabilityPool.getETH()).toString()
+      const ETHinSP = (await stabilityPool.getStEthColl()).toString()
       const EBTCinSP = (await stabilityPool.getTotalEBTCDeposits()).toString()
 
       // Attempt to withdraw
       const withdrawalTx = await stabilityPool.withdrawFromSP(dec(1, 36), { from: depositor })
 
-      const ETHinSPAfter = (await stabilityPool.getETH()).toString()
+      const ETHinSPAfter = (await stabilityPool.getStEthColl()).toString()
       const EBTCinSPAfter = (await stabilityPool.getTotalEBTCDeposits()).toString()
       const EBTCBalanceSPAfter = (await ebtcToken.balanceOf(stabilityPool.address))
       const depositAfter = await stabilityPool.getCompoundedEBTCDeposit(depositor)
@@ -295,12 +295,12 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getStEthColl()
 
       await attemptWithdrawAllDeposits(currentDepositors)
 
       const totalEBTCDepositsAfterWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsAfterWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsAfterWithdrawals = await stabilityPool.getStEthColl()
 
       console.log(`Total EBTC deposits before any withdrawals: ${totalEBTCDepositsBeforeWithdrawals}`)
       console.log(`Total ETH rewards before any withdrawals: ${totalETHRewardsBeforeWithdrawals}`)
@@ -367,12 +367,12 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getStEthColl()
 
       await attemptWithdrawAllDeposits(currentDepositors)
 
       const totalEBTCDepositsAfterWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsAfterWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsAfterWithdrawals = await stabilityPool.getStEthColl()
 
       console.log(`Total EBTC deposits before any withdrawals: ${totalEBTCDepositsBeforeWithdrawals}`)
       console.log(`Total ETH rewards before any withdrawals: ${totalETHRewardsBeforeWithdrawals}`)
@@ -439,12 +439,12 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getStEthColl()
 
       await attemptWithdrawAllDeposits(currentDepositors)
 
       const totalEBTCDepositsAfterWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsAfterWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsAfterWithdrawals = await stabilityPool.getStEthColl()
 
       console.log(`Total EBTC deposits before any withdrawals: ${totalEBTCDepositsBeforeWithdrawals}`)
       console.log(`Total ETH rewards before any withdrawals: ${totalETHRewardsBeforeWithdrawals}`)
@@ -512,12 +512,12 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
       await skyrocketPriceAndCheckAllCdpsSafe()
 
       const totalEBTCDepositsBeforeWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsBeforeWithdrawals = await stabilityPool.getStEthColl()
 
       await attemptWithdrawAllDeposits(currentDepositors)
 
       const totalEBTCDepositsAfterWithdrawals = await stabilityPool.getTotalEBTCDeposits()
-      const totalETHRewardsAfterWithdrawals = await stabilityPool.getETH()
+      const totalETHRewardsAfterWithdrawals = await stabilityPool.getStEthColl()
 
       console.log(`Total EBTC deposits before any withdrawals: ${totalEBTCDepositsBeforeWithdrawals}`)
       console.log(`Total ETH rewards before any withdrawals: ${totalETHRewardsBeforeWithdrawals}`)

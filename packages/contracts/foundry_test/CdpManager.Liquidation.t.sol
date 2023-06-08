@@ -1,112 +1,47 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
+
 import {console2 as console} from "forge-std/console2.sol";
 
-import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {Utilities} from "./utils/Utilities.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
-contract CdpManagerLiquidationTest is eBTCBaseFixture {
-    struct CdpState {
-        uint256 debt;
-        uint256 coll;
-        uint256 pendingEBTCDebtReward;
-        uint256 pendingEBTCInterest;
-        uint256 pendingETHReward;
-    }
-
+contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
-    Utilities internal _utils;
-
     uint public constant DECIMAL_PRECISION = 1e18;
+    mapping(bytes32 => bool) private _cdpLeftActive;
 
     ////////////////////////////////////////////////////////////////////////////
-    // Helper functions
+    // Liquidation Invariants for ebtc system
+    // - cdp_manager_liq1： total collateral snapshot is equal to whatever in active pool
+    // - cdp_manager_liq2： total collateral snapshot is equal to sum of individual CDP accounting number
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
-        (
-            uint256 debt,
-            uint256 coll,
-            uint256 pendingEBTCDebtReward,
-            uint256 pendingEBTCDebtInterest,
-            uint256 pendingETHReward
-        ) = cdpManager.getEntireDebtAndColl(cdpId);
-        return
-            CdpState(debt, coll, pendingEBTCDebtReward, pendingEBTCDebtInterest, pendingETHReward);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Invariants for ebtc system
-    // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
-    // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
-    // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
-    // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
-    // - cdp_manager_2： total collateral snapshot is equal to whatever in active pool & default pool
-    // - cdp_manager_3： total collateral snapshot is equal to sum of individual CDP accounting number
-    ////////////////////////////////////////////////////////////////////////////
-
-    function _assert_active_pool_invariant_1() internal {
-        assertGe(
-            collateral.balanceOf(address(activePool)),
-            activePool.getETH(),
-            "System Invariant: active_pool_1"
-        );
-    }
-
-    function _assert_active_pool_invariant_2() internal {
-        assertGe(
-            eBTCToken.totalSupply(),
-            activePool.getEBTCDebt(),
-            "System Invariant: active_pool_2"
-        );
-    }
-
-    function _assert_active_pool_invariant_3() internal {
-        assertEq(
-            eBTCToken.totalSupply(),
-            activePool.getEBTCDebt().add(defaultPool.getEBTCDebt()),
-            "System Invariant: active_pool_3"
-        );
-    }
-
-    function _assert_cdp_manager_invariant_1() internal {
-        assertEq(
-            cdpManager.getCdpIdsCount(),
-            sortedCdps.getSize(),
-            "System Invariant: cdp_manager_1"
-        );
-    }
-
-    function _assert_cdp_manager_invariant_2() internal {
+    function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
-            activePool.getETH().add(defaultPool.getETH()),
-            "System Invariant: cdp_manager_2"
+            activePool.getStEthColl(),
+            "System Invariant: cdp_manager_liq1"
         );
     }
 
-    function _assert_cdp_manager_invariant_3() internal {
+    function _assert_cdp_manager_invariant_liq2() internal {
         uint _sumColl;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (uint _debt, uint _coll, , , ) = cdpManager.Cdps(_cdpId);
-            _sumColl = _sumColl.add(_coll);
+            (, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            _sumColl = _sumColl + _coll;
         }
-        assertEq(cdpManager.totalCollateralSnapshot(), _sumColl, "System Invariant: cdp_manager_3");
-    }
-
-    function _ensureSystemInvariants() internal {
-        _assert_active_pool_invariant_1();
-        _assert_active_pool_invariant_2();
-        _assert_active_pool_invariant_3();
-        _assert_cdp_manager_invariant_1();
+        assertEq(
+            cdpManager.totalCollateralSnapshot(),
+            _sumColl,
+            "System Invariant: cdp_manager_liq2"
+        );
     }
 
     function _ensureSystemInvariants_Liquidation() internal {
-        _assert_cdp_manager_invariant_2();
-        _assert_cdp_manager_invariant_3();
+        _assert_cdp_manager_invariant_liq1();
+        _assert_cdp_manager_invariant_liq2();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -114,56 +49,51 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
     ////////////////////////////////////////////////////////////////////////////
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
+        super.setUp();
 
-        eBTCBaseFixture.connectLQTYContracts();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        connectCoreContracts();
+        connectLQTYContractsToCore();
 
-        _utils = new Utilities();
-        users = _utils.createUsers(1);
+        users = _utils.createUsers(4);
+    }
+
+    function _ensureDebtAmountValidity(uint _debtAmt) internal pure {
+        vm.assume(_debtAmt > 1e18);
+        vm.assume(_debtAmt < 10000e18);
+    }
+
+    function _ensureCollAmountValidity(uint _collAmt) internal pure {
+        vm.assume(_collAmt > 22e17);
+        vm.assume(_collAmt < 10000e18);
+    }
+
+    function _checkAvailableToLiq(bytes32 _cdpId, uint _price) internal view returns (bool) {
+        uint _TCR = cdpManager.getTCR(_price);
+        uint _ICR = cdpManager.getCurrentICR(_cdpId, _price);
+        bool _recoveryMode = _TCR < cdpManager.CCR();
+        return (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR));
     }
 
     // Test single CDP liquidation with price fluctuation
     function testLiquidateSingleCDP(uint256 price, uint256 debtAmt) public {
-        vm.assume(debtAmt > 1e18);
-        vm.assume(debtAmt < 10000e18);
+        _ensureDebtAmountValidity(debtAmt);
 
         uint _curPrice = priceFeedMock.getPrice();
         vm.assume(price > _curPrice / 10000);
-        vm.assume(_curPrice > price * 2);
+        vm.assume(_curPrice / 2 > price);
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
-        vm.startPrank(users[0]);
+        vm.assume(coll1 > 22e17); // Must reach minimum coll threshold
+
+        vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            ),
-            bytes32(0),
-            bytes32(0),
-            (10000 ether)
-        );
-        collateral.deposit{value: coll1}();
-        bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            debtAmt,
-            bytes32(0),
-            bytes32(0),
-            coll1
-        );
-        vm.stopPrank();
+
+        _openTestCDP(users[0], 10000 ether, 2e17);
+        bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
-
-        // accrue some interest before liquidation
-        skip(365 days);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -171,12 +101,15 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         _ensureSystemInvariants();
 
         // Liquidate cdp1
-        uint _TCR = cdpManager.getTCR(price);
-        uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
-        bool _recoveryMode = _TCR < cdpManager.CCR();
-        if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
+        bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
+        if (_availableToLiq1) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
+
+            uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
+            uint _expectedLiqDebt = _ICR > cdpManager.LICR()
+                ? _cdpState.debt
+                : ((_cdpState.coll * price) / cdpManager.LICR());
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
@@ -186,13 +119,13 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
             uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
             uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
             assertEq(
-                _cdpState.debt,
-                _debtLiquidatorBefore.sub(_debtLiquidatorAfter),
+                _expectedLiqDebt,
+                _debtLiquidatorBefore - _debtLiquidatorAfter,
                 "!liquidator repayment"
             );
             assertEq(
-                _cdpState.debt,
-                _debtSystemBefore.sub(_debtSystemAfter),
+                _expectedLiqDebt,
+                _debtSystemBefore - _debtSystemAfter,
                 "!system debt reduction"
             );
 
@@ -216,9 +149,8 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
     // Test single CDP partial liquidation with variable ratio for partial repayment:
     // - when its ICR is higher than LICR then the collateral to liquidator is (repaidDebt * LICR) / price
     // - when its ICR is lower than LICR then the collateral to liquidator is (repaidDebt * ICR) / price
-    function testPartiallyLiquidateSingleCDP(uint256 debtAmt, uint256 partialRatioBps) public {
-        vm.assume(debtAmt > 1e18);
-        vm.assume(debtAmt < 10000e18);
+    function testPartiallyLiquidateSingleCDP(uint debtAmt, uint partialRatioBps) public {
+        _ensureDebtAmountValidity(debtAmt);
         vm.assume(partialRatioBps < 10000);
         vm.assume(partialRatioBps > 0);
 
@@ -226,37 +158,15 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
 
         // in this test, simply use if debtAmt is a multiple of 2 to simulate two scenarios
         bool _icrGtLICR = (debtAmt % 2 == 0) ? true : false;
-        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, _icrGtLICR ? 297e16 : 206e16);
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, _icrGtLICR ? 249e16 : 205e16);
 
-        vm.startPrank(users[0]);
+        vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            _utils.calculateBorrowAmountFromDebt(
-                2e17,
-                cdpManager.EBTC_GAS_COMPENSATION(),
-                cdpManager.getBorrowingRateWithDecay()
-            ),
-            bytes32(0),
-            bytes32(0),
-            (10000 ether)
-        );
-        collateral.deposit{value: coll1}();
-        bytes32 cdpId1 = borrowerOperations.openCdp(
-            DECIMAL_PRECISION,
-            debtAmt,
-            bytes32(0),
-            bytes32(0),
-            coll1
-        );
-        vm.stopPrank();
+        _openTestCDP(users[0], 10000 ether, 2e17);
+        bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
         CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
-
-        // accrue some interest before liquidation
-        skip(365 days);
 
         // Price falls
         uint _newPrice = _curPrice / 2;
@@ -265,23 +175,21 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
         _ensureSystemInvariants();
 
         // Partially Liquidate cdp1
-        uint _ICR = cdpManager.getCurrentICR(cdpId1, _newPrice);
-        uint _TCR = cdpManager.getTCR(_newPrice);
-        bool _recoveryMode = _TCR < cdpManager.CCR();
-        if (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR)) {
+        bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
+        if (_availableToLiq1) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
-            assertGt(_cdpState.debt, _cdpState0.debt, "!interest should accrue");
+            assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
-            _partialLiq._ratio = _icrGtLICR ? cdpManager.LICR() : _ICR;
+            _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.debt - _partialLiq._repaidDebt) <
-                ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18)
+                (_cdpState.coll - ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)) <=
+                cdpManager.MIN_NET_COLL()
             ) {
                 _partialLiq._repaidDebt =
                     _cdpState.debt -
-                    ((cdpManager.MIN_NET_DEBT() * _newPrice) / 1e18);
+                    (((cdpManager.MIN_NET_COLL() * _newPrice) * 2) / 1e18);
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
                 }
@@ -289,6 +197,14 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
             _partialLiq._collToLiquidator =
                 (_partialLiq._repaidDebt * _partialLiq._ratio) /
                 _newPrice;
+
+            // fully liquidate instead
+            uint _expectedLiqDebt = _partialLiq._repaidDebt;
+            bool _fully = _partialLiq._collToLiquidator >= _cdpState.coll;
+            if (_fully) {
+                _partialLiq._collToLiquidator = _cdpState.coll;
+                _expectedLiqDebt = (_partialLiq._collToLiquidator * _newPrice) / cdpManager.LICR();
+            }
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             {
@@ -301,30 +217,208 @@ contract CdpManagerLiquidationTest is eBTCBaseFixture {
                 uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
                 uint _collSystemAfter = cdpManager.getEntireSystemColl();
                 assertEq(
-                    _partialLiq._repaidDebt,
-                    _debtLiquidatorBefore.sub(_debtLiquidatorAfter),
+                    _expectedLiqDebt,
+                    _debtLiquidatorBefore - _debtLiquidatorAfter,
                     "!liquidator repayment"
                 );
                 assertEq(
-                    _partialLiq._repaidDebt,
-                    _debtSystemBefore.sub(_debtSystemAfter),
+                    _expectedLiqDebt,
+                    _debtSystemBefore - _debtSystemAfter,
                     "!system debt reduction"
                 );
                 assertEq(
                     _partialLiq._collToLiquidator,
-                    _collSystemBefore.sub(_collSystemAfter),
+                    _collSystemBefore - _collSystemAfter,
                     "!system coll reduction"
                 );
             }
 
             // target CDP got partially liquidated but still active
-            assertTrue(sortedCdps.contains(cdpId1));
+            // OR target CDP got fully liquidated
+            if (_fully) {
+                assertFalse(sortedCdps.contains(cdpId1));
+                assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
+            } else {
+                assertTrue(sortedCdps.contains(cdpId1));
+                assertTrue(cdpManager.getCdpStatus(cdpId1) == 1);
+            }
 
-            // check state is active
-            assertTrue(cdpManager.getCdpStatus(cdpId1) == 1);
+            // check invariants
             _ensureSystemInvariants_Liquidation();
         }
 
         _ensureSystemInvariants();
+    }
+
+    function _checkCdpStatus(bytes32 _cdpId) internal {
+        assertTrue(sortedCdps.contains(_cdpId) == _cdpLeftActive[_cdpId]);
+        assertTrue(cdpManager.getCdpStatus(_cdpId) == (_cdpLeftActive[_cdpId] ? 1 : 3));
+    }
+
+    function _multipleCDPsLiq(uint _n, bytes32[] memory _cdps, address _liquidator) internal {
+        /// entire systme debt = activePool
+        uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
+
+        deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
+        uint _debtLiquidatorBefore = eBTCToken.balanceOf(_liquidator);
+
+        vm.prank(_liquidator);
+        if (_n > 0) {
+            cdpManager.liquidateCdps(_n);
+        } else {
+            cdpManager.batchLiquidateCdps(_cdps);
+        }
+
+        uint _debtLiquidatorAfter = eBTCToken.balanceOf(_liquidator);
+        uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
+
+        // calc debt in system by summing up all CDPs debt
+        uint _leftTotalDebt;
+        for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
+            (uint _cdpDebt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
+            _cdpLeftActive[cdpManager.CdpIds(i)] = true;
+        }
+
+        console.log("_leftTotalDebt from system", _leftTotalDebt);
+
+        uint _liquidatedDebt = (_debtSystemBefore - _debtSystemAfter);
+
+        console.log("_debtSystemBefore", _debtSystemBefore);
+        console.log("_debtLiquidatorBefore", _debtLiquidatorBefore);
+        console.log("_debtSystemAfter", _debtSystemAfter);
+        console.log("_debtLiquidatorAfter", _debtLiquidatorAfter);
+        console.log("_leftTotalDebt", _leftTotalDebt);
+        console.log("activePool.getEBTCDebt()", activePool.getEBTCDebt());
+        console.log("_liquidatedDebt", _liquidatedDebt);
+
+        assertEq(
+            _liquidatedDebt,
+            (_debtLiquidatorBefore - _debtLiquidatorAfter),
+            "!liquidator repayment"
+        );
+        _utils.assertApproximateEq(_leftTotalDebt, _debtSystemAfter, 1e6); //compared to 1e18
+    }
+
+    // Test multiple CDPs sequence liquidation with price fluctuation
+    function testSequenceLiquidateMultipleCDPs(
+        uint256 price,
+        uint256 debtAmt1,
+        uint256 debtAmt2
+    ) public {
+        _ensureDebtAmountValidity(debtAmt1);
+        _ensureDebtAmountValidity(debtAmt2);
+
+        uint _curPrice = priceFeedMock.getPrice();
+        vm.assume(price > _curPrice / 10000);
+        vm.assume(_curPrice / 2 > price);
+
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
+        uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
+
+        vm.prank(users[1]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        vm.prank(users[2]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+
+        _openTestCDP(users[0], 10000 ether, 2e17);
+        bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
+        bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
+
+        // Price falls
+        priceFeedMock.setPrice(price);
+
+        _ensureSystemInvariants();
+
+        // Liquidate All eligible cdps
+        bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
+        bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
+        if (_availableToLiq1 || _availableToLiq2) {
+            // get original debt
+            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+
+            bytes32[] memory _emptyCdps;
+            _multipleCDPsLiq(2, _emptyCdps, users[0]);
+
+            // check if CDP got liquidated
+            _checkCdpStatus(cdpId1);
+            _checkCdpStatus(cdpId2);
+
+            _ensureSystemInvariants_Liquidation();
+        }
+
+        _ensureSystemInvariants();
+    }
+
+    // Test multiple CDPs batch liquidation with price fluctuation
+    function testBatchLiquidateMultipleCDPs(
+        uint256 price,
+        uint256 debtAmt1,
+        uint256 debtAmt2
+    ) public {
+        _ensureDebtAmountValidity(debtAmt1);
+        _ensureDebtAmountValidity(debtAmt2);
+
+        uint _curPrice = priceFeedMock.getPrice();
+        vm.assume(price > _curPrice / 10000);
+        vm.assume(_curPrice / 2 > price);
+
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
+        uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
+
+        vm.prank(users[1]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        vm.prank(users[2]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+
+        _openTestCDP(users[0], 10000 ether, 2e17);
+        bytes32 cdpId1 = _openTestCDP(users[1], coll1, debtAmt1);
+        bytes32 cdpId2 = _openTestCDP(users[2], coll2, debtAmt2);
+
+        // Price falls
+        priceFeedMock.setPrice(price);
+
+        _ensureSystemInvariants();
+
+        // Liquidate All eligible cdps
+        bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
+        bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
+        if (_availableToLiq1 || _availableToLiq2) {
+            // get original debt
+            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+
+            bytes32[] memory _cdps = new bytes32[](2);
+            _cdps[0] = cdpId1;
+            _cdps[1] = cdpId2;
+            _multipleCDPsLiq(0, _cdps, users[0]);
+
+            // check if CDP got liquidated
+            _checkCdpStatus(cdpId1);
+            _checkCdpStatus(cdpId2);
+
+            _ensureSystemInvariants_Liquidation();
+        }
+
+        _ensureSystemInvariants();
+    }
+
+    function testFullLiquidation() public {
+        // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
+    }
+
+    function testPartialLiquidation() public {
+        // Set up a test case where the CDP is only partially liquidated using HintHelper, with ICR below MCR or TCR in recovery mode
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned and collateral was sent, and that no remaining debt was redistributed
+    }
+
+    function testRetryFullLiquidation() public {
+        // Set up a test case where the CDP is partially liquidated but the amount of collateral sent is 0, resulting in a retry with full liquidation
+        // Call _liquidateSingleCDP with the appropriate arguments
+        // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
     }
 }

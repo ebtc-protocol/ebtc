@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Interfaces/ISortedCdps.sol";
 
@@ -9,16 +9,6 @@ contract SortedCdpsTester {
 
     function setSortedCdps(address _sortedCdpsAddress) external {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
-    }
-
-    function insert(
-        address _owner,
-        bytes32 _cdpId,
-        uint256 _NICR,
-        bytes32 _prevId,
-        bytes32 _nextId
-    ) external {
-        sortedCdps.insert(_owner, _cdpId, _NICR, _prevId, _nextId);
     }
 
     function insert(address _owner, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) external {
@@ -39,5 +29,10 @@ contract SortedCdpsTester {
 
     function getCurrentICR(bytes32, uint) external pure returns (uint) {
         return 1;
+    }
+
+    // dummy return 0 for nonExistent check
+    function getCdpStatus(bytes32 _id) external view returns (uint) {
+        return 0;
     }
 }

@@ -35,7 +35,7 @@ $ hardhat test
       ✓ increaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
       ✓ decreaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
     ActivePool
-      ✓ sendETH(): reverts when called by an account that is not BO nor CdpM nor SP
+      ✓ sendStEthColl(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ increaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM
       ✓ decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ fallback(): reverts when called by an account that is not Borrower Operations nor Default Pool
@@ -58,7 +58,7 @@ $ hardhat test
       ✓ reinsert(): reverts when called by an account that is neither BorrowerOps nor CdpManager
     LockupContract
       ✓ withdrawLQTY(): reverts when caller is not beneficiary (68ms)
-    LQTYStaking
+    FeeRecipient
       ✓ increaseF_EBTC(): reverts when caller is not CdpManager
     LQTYToken
       ✓ sendToLQTYStaking(): reverts when caller is not the LQTYSstaking (49ms)
@@ -73,7 +73,7 @@ $ hardhat test
       ✓ addColl(), active Cdp: adds the correct collateral amount to the Cdp (194ms)
       ✓ addColl(), active Cdp: Cdp is in sortedList before and after (213ms)
       ✓ addColl(), active Cdp: updates the stake and updates the total stakes (225ms)
-      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots (736ms)
+      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (736ms)
       ✓ addColl(), reverts if cdp is non-existent or closed (831ms)
       ✓ addColl(): can add collateral in Recovery Mode (252ms)
       ✓ withdrawColl(): reverts when withdrawal would leave cdp with ICR < MCR (349ms)
@@ -88,7 +88,7 @@ $ hardhat test
       ✓ withdrawColl(): reduces ActivePool ETH and raw ether by correct amount (291ms)
       ✓ withdrawColl(): updates the stake and updates the total stakes (342ms)
       ✓ withdrawColl(): sends the correct amount of ETH to the user (289ms)
-      ✓ withdrawColl(): applies pending rewards and updates user's L_ETH, L_EBTCDebt snapshots (1205ms)
+      ✓ withdrawColl(): applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (1205ms)
       ✓ withdrawEBTC(): reverts when withdrawal would leave cdp with ICR < MCR (516ms)
       ✓ withdrawEBTC(): decays a non-zero base rate (1192ms)
       ✓ withdrawEBTC(): reverts if max fee > 100% (668ms)
@@ -216,7 +216,7 @@ $ hardhat test
       ✓ openCdp(): creates a stake and adds it to total stakes (281ms)
       ✓ openCdp(): inserts Cdp to Sorted Cdps list (370ms)
       ✓ openCdp(): Increases the activePool ETH and raw ether balance by correct amount (294ms)
-      ✓ openCdp(): records up-to-date initial snapshots of L_ETH and L_EBTCDebt (639ms)
+      ✓ openCdp(): records up-to-date initial snapshots of L_STETHColl and L_EBTCDebt (639ms)
       ✓ openCdp(): allows a user to open a Cdp, then close it, then re-open it (687ms)
       ✓ openCdp(): increases the Cdp's EBTC debt by the correct amount (129ms)
       ✓ openCdp(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
@@ -245,7 +245,7 @@ $ hardhat test
         ✓ collChange is negative, debtChange is positive (381ms)
 
   Contract: CollSurplusPool
-    ✓ CollSurplusPool::getETH(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
+    ✓ CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
     ✓ CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations
     ✓ CollSurplusPool: claimColl(): Reverts if nothing to claim
     ✓ CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus (723ms)
@@ -260,7 +260,7 @@ $ hardhat test
     ✓ Sets the correct ActivePool address in CdpManager
     ✓ Sets the correct DefaultPool address in CdpManager
     ✓ Sets the correct StabilityPool address in CdpManager
-    ✓ Sets the correct LQTYStaking address in CdpManager
+    ✓ Sets the correct FeeRecipient address in CdpManager
     ✓ Sets the correct StabilityPool address in ActivePool
     ✓ Sets the correct DefaultPool address in ActivePool (133ms)
     ✓ Sets the correct BorrowerOperations address in ActivePool
@@ -278,14 +278,14 @@ $ hardhat test
     ✓ Sets the correct SortedCdps address in BorrowerOperations
     ✓ Sets the correct ActivePool address in BorrowerOperations
     ✓ Sets the correct DefaultPool address in BorrowerOperations
-    ✓ Sets the correct LQTYStaking address in BorrowerOperations
-    ✓ Sets the correct LQTYToken address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct ActivePool address in LQTYStaking
-    ✓ Sets the correct BorrowerOperations address in LQTYStaking
+    ✓ Sets the correct FeeRecipient address in BorrowerOperations
+    ✓ Sets the correct LQTYToken address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct ActivePool address in FeeRecipient
+    ✓ Sets the correct BorrowerOperations address in FeeRecipient
     ✓ Sets the correct CommunityIssuance address in LQTYToken
-    ✓ Sets the correct LQTYStaking address in LQTYToken
+    ✓ Sets the correct FeeRecipient address in LQTYToken
     ✓ Sets the correct LockupContractFactory address in LQTYToken
     ✓ Sets the correct LQTYToken address in LockupContractFactory
     ✓ Sets the correct LQTYToken address in CommunityIssuance
@@ -364,7 +364,7 @@ TCR: 11.892415157517211309
     ✓ mint(): reverts when beneficiary is address(0)
     ✓ increaseAllowance(): increases an account's allowance by the correct amount
     ✓ decreaseAllowance(): decreases an account's allowance by the correct amount
-    ✓ sendToLQTYStaking(): changes balances of LQTYStaking and calling account by the correct amounts (48ms)
+    ✓ sendToLQTYStaking(): changes balances of FeeRecipient and calling account by the correct amounts (48ms)
     ✓ Initializes PERMIT_TYPEHASH correctly
     ✓ Initializes DOMAIN_SEPARATOR correctly
     ✓ Initial nonce for a given address is 0
@@ -400,10 +400,10 @@ TCR: 11.892415157517211309
       ✓ LQTY multisig can't withraw from a LC which it funded (271ms)
       ✓ No one can withraw from a LC (78ms)
 
-  Contract: Deploying the LQTY contracts: LCF, CI, LQTYStaking, and LQTYToken 
+  Contract: Deploying the LQTY contracts: LCF, CI, FeeRecipient, and LQTYToken 
     CommunityIssuance deployment
       ✓ Stores the deployer's address
-    LQTYStaking deployment
+    FeeRecipient deployment
       ✓ Stores the deployer's address
     LQTYToken deployment
       ✓ Stores the multisig's address
@@ -418,8 +418,8 @@ TCR: 11.892415157517211309
       ✓ Has a supply cap of 32 million
       ✓ Liquity AG can set addresses if CI's LQTY balance is equal or greater than 32 million  (393ms)
       ✓ Liquity AG can't set addresses if CI's LQTY balance is < 32 million  (367ms)
-    Connecting LQTYToken to LCF, CI and LQTYStaking
-      ✓ sets the correct LQTYToken address in LQTYStaking (1866ms)
+    Connecting LQTYToken to LCF, CI and FeeRecipient
+      ✓ sets the correct LQTYToken address in FeeRecipient (1866ms)
       ✓ sets the correct LQTYToken address in LockupContractFactory
       ✓ sets the correct LQTYToken address in CommunityIssuance (203ms)
 
@@ -543,7 +543,7 @@ issuance fraction after: 949066037374286
     - Frequent token issuance: issuance event every minute, for 1 month
     - Frequent token issuance: issuance event every minute, for 1 year
 
-  Contract: LQTYStaking revenue share tests
+  Contract: FeeRecipient revenue share tests
     ✓ stake(): reverts if amount is zero (74ms)
     ✓ ETH fee per LQTY staked increases when a redemption fee is triggered and totalStakes > 0 (1562ms)
     ✓ ETH fee per LQTY staked doesn't change when a redemption fee is triggered and totalStakes == 0 (3540ms)
@@ -621,24 +621,24 @@ issuance fraction after: 949066037374286
       ✓ setParams(): reverts when called by non-owner, with wrong addresses, or twice (157ms)
     CommunityIssuance
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (136ms)
-    LQTYStaking
+    FeeRecipient
       ✓ setAddresses(): reverts when called by non-owner, with wrong addresses, or twice (261ms)
     LockupContractFactory
       ✓ setLQTYAddress(): reverts when called by non-owner, with wrong address, or twice (216ms)
 
   Contract: StabilityPool
-    ✓ getETH(): gets the recorded ETH balance
+    ✓ getStEthColl(): gets the recorded ETH balance
     ✓ getTotalEBTCDeposits(): gets the recorded EBTC balance
 
   Contract: ActivePool
-    ✓ getETH(): gets the recorded ETH balance
+    ✓ getStEthColl(): gets the recorded ETH balance
     ✓ getEBTCDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount
-    ✓ sendETH(): decreases the recorded ETH balance by the correct amount
+    ✓ sendStEthColl(): decreases the recorded ETH balance by the correct amount
 
   Contract: DefaultPool
-    ✓ getETH(): gets the recorded EBTC balance
+    ✓ getStEthColl(): gets the recorded EBTC balance
     ✓ getEBTCDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount (57ms)
@@ -1117,7 +1117,7 @@ gasUsed:  636956
     ✓ liquidate(): removes the Cdp's stake from the total stakes (608ms)
     ✓ liquidate(): Removes the correct cdp from the CdpOwners array, and moves the last array element to the new empty slot (1276ms)
     ✓ liquidate(): updates the snapshots of total stakes and total collateral (422ms)
-    ✓ liquidate(): updates the L_ETH and L_EBTCDebt reward-per-unit-staked totals (984ms)
+    ✓ liquidate(): updates the L_STETHColl and L_EBTCDebt reward-per-unit-staked totals (984ms)
     ✓ liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system (503ms)
     ✓ liquidate(): reverts if cdp is non-existent (303ms)
     ✓ liquidate(): reverts if cdp has been closed (745ms)

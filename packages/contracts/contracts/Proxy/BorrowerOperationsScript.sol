@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IBorrowerOperations.sol";
@@ -14,13 +14,12 @@ contract BorrowerOperationsScript is CheckContract {
     }
 
     function openCdp(
-        uint _maxFee,
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
     ) external {
-        borrowerOperations.openCdp(_maxFee, _EBTCAmount, _upperHint, _lowerHint, _collAmount);
+        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount);
     }
 
     function addColl(
@@ -43,12 +42,11 @@ contract BorrowerOperationsScript is CheckContract {
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.withdrawEBTC(_cdpId, _maxFee, _amount, _upperHint, _lowerHint);
+        borrowerOperations.withdrawEBTC(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
     function repayEBTC(
@@ -66,7 +64,6 @@ contract BorrowerOperationsScript is CheckContract {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -75,7 +72,6 @@ contract BorrowerOperationsScript is CheckContract {
     ) external {
         borrowerOperations.adjustCdp(
             _cdpId,
-            _maxFee,
             _collWithdrawal,
             _debtChange,
             isDebtIncrease,
@@ -86,7 +82,6 @@ contract BorrowerOperationsScript is CheckContract {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _maxFee,
         uint _collWithdrawal,
         uint _debtChange,
         bool isDebtIncrease,
@@ -96,7 +91,6 @@ contract BorrowerOperationsScript is CheckContract {
     ) external {
         borrowerOperations.adjustCdpWithColl(
             _cdpId,
-            _maxFee,
             _collWithdrawal,
             _debtChange,
             isDebtIncrease,

@@ -43,7 +43,7 @@ contract('LQTY Token', async accounts => {
 
   let contracts
   let lqtyTokenTester
-  let lqtyStaking
+  let feeRecipient
   let communityIssuance
 
   let tokenName
@@ -125,10 +125,11 @@ contract('LQTY Token', async accounts => {
   }
 
   beforeEach(async () => {
-    contracts = await deploymentHelper.deployLiquityCore()
-    const LQTYContracts = await deploymentHelper.deployLQTYTesterContractsHardhat(bountyAddress, lpRewardsAddress, multisig)
+    contracts = await deploymentHelper.deployTesterContractsHardhat()
+    let LQTYContracts = {}
+    LQTYContracts.feeRecipient = contracts.feeRecipient;
 
-    lqtyStaking = LQTYContracts.lqtyStaking
+    feeRecipient = LQTYContracts.feeRecipient
     lqtyTokenTester = LQTYContracts.lqtyToken
     communityIssuance = LQTYContracts.communityIssuance
 
@@ -137,8 +138,6 @@ contract('LQTY Token', async accounts => {
     chainId = await lqtyTokenTester.getChainId()
 
     await deploymentHelper.connectLQTYContracts(LQTYContracts)
-    await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
-    await deploymentHelper.connectLQTYContractsToCore(LQTYContracts, contracts)
   })
 
   it('balanceOf(): gets the balance of the account', async () => {
@@ -272,7 +271,7 @@ contract('LQTY Token', async accounts => {
     await assertRevert(lqtyTokenTester.transfer(lqtyTokenTester.address, 1, { from: A }))
     await assertRevert(lqtyTokenTester.transfer(ZERO_ADDRESS, 1, { from: A }))
     await assertRevert(lqtyTokenTester.transfer(communityIssuance.address, 1, { from: A }))
-    await assertRevert(lqtyTokenTester.transfer(lqtyStaking.address, 1, { from: A }))
+    await assertRevert(lqtyTokenTester.transfer(feeRecipient.address, 1, { from: A }))
   })
 
   it('transfer(): transfer to or from the zero-address reverts', async () => {
@@ -321,22 +320,22 @@ contract('LQTY Token', async accounts => {
     assert.equal(A_allowanceAfterDecrease, '0')
   })
 
-  it('sendToLQTYStaking(): changes balances of LQTYStaking and calling account by the correct amounts', async () => {
+  it('sendToLQTYStaking(): changes balances of FeeRecipient and calling account by the correct amounts', async () => {
     // mint some tokens to A
     await lqtyTokenTester.unprotectedMint(A, dec(150, 18))
 
-    // Check caller and LQTYStaking balance before
+    // Check caller and FeeRecipient balance before
     const A_BalanceBefore = await lqtyTokenTester.balanceOf(A)
     assert.equal(A_BalanceBefore, dec(150, 18))
-    const lqtyStakingBalanceBefore = await lqtyTokenTester.balanceOf(lqtyStaking.address)
+    const lqtyStakingBalanceBefore = await lqtyTokenTester.balanceOf(feeRecipient.address)
     assert.equal(lqtyStakingBalanceBefore, '0')
 
     await lqtyTokenTester.unprotectedSendToLQTYStaking(A, dec(37, 18))
 
-    // Check caller and LQTYStaking balance before
+    // Check caller and FeeRecipient balance before
     const A_BalanceAfter = await lqtyTokenTester.balanceOf(A)
     assert.equal(A_BalanceAfter, dec(113, 18))
-    const lqtyStakingBalanceAfter = await lqtyTokenTester.balanceOf(lqtyStaking.address)
+    const lqtyStakingBalanceAfter = await lqtyTokenTester.balanceOf(feeRecipient.address)
     assert.equal(lqtyStakingBalanceAfter, dec(37, 18))
   })
 

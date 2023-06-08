@@ -1,82 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import "./ILiquityBase.sol";
 import "./IEBTCToken.sol";
-import "./ILQTYToken.sol";
-import "./ILQTYStaking.sol";
+import "./IFeeRecipient.sol";
+import "./ICollSurplusPool.sol";
+import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManager is ILiquityBase {
-    // --- Events ---
-
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event PriceFeedAddressChanged(address _newPriceFeedAddress);
-    event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
-    event ActivePoolAddressChanged(address _activePoolAddress);
-    event DefaultPoolAddressChanged(address _defaultPoolAddress);
-    event GasPoolAddressChanged(address _gasPoolAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event LQTYTokenAddressChanged(address _lqtyTokenAddress);
-    event LQTYStakingAddressChanged(address _lqtyStakingAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
-    event Liquidation(
-        uint _liquidatedDebt,
-        uint _liquidatedColl,
-        uint _collGasCompensation,
-        uint _EBTCGasCompensation
-    );
-    event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
-    event CdpUpdated(
-        bytes32 indexed _cdpId,
-        address indexed _borrower,
-        uint _debt,
-        uint _coll,
-        uint _stake,
-        uint8 _operation
-    );
-    event CdpLiquidated(
-        bytes32 indexed _cdpId,
-        address indexed _borrower,
-        uint _debt,
-        uint _coll,
-        uint8 operation
-    );
-    event BaseRateUpdated(uint _baseRate);
-    event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
-    event TotalStakesUpdated(uint _newTotalStakes);
-    event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint _L_EBTCInterest);
-    event CdpSnapshotsUpdated(uint _L_ETH, uint _L_EBTCDebt, uint L_EBTCInterest);
-    event CdpIndexUpdated(bytes32 _borrower, uint _newIndex);
-
+interface ICdpManager is ILiquityBase, ICdpManagerData {
     // --- Functions ---
-
-    function setAddresses(
-        address _borrowerOperationsAddress,
-        address _activePoolAddress,
-        address _defaultPoolAddress,
-        address _gasPoolAddress,
-        address _collSurplusPoolAddress,
-        address _priceFeedAddress,
-        address _ebtcTokenAddress,
-        address _sortedCdpsAddress,
-        address _lqtyTokenAddress,
-        address _lqtyStakingAddress,
-        address _collTokenAddress
-    ) external;
-
-    function ebtcToken() external view returns (IEBTCToken);
-
-    function lqtyToken() external view returns (ILQTYToken);
-
-    function lqtyStaking() external view returns (ILQTYStaking);
-
-    function lastInterestRateUpdateTime() external view returns (uint);
-
     function getCdpIdsCount() external view returns (uint);
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
@@ -116,24 +50,17 @@ interface ICdpManager is ILiquityBase {
 
     function applyPendingRewards(bytes32 _cdpId) external;
 
-    function getPendingETHReward(bytes32 _cdpId) external view returns (uint);
+    function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
-    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint, uint);
+    function syncUpdateIndexInterval() external returns (uint);
+
+    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
     function getEntireDebtAndColl(
         bytes32 _cdpId
-    )
-        external
-        view
-        returns (
-            uint debt,
-            uint coll,
-            uint pendingEBTCDebtReward,
-            uint pendingEBTCInterest,
-            uint pendingETHReward
-        );
+    ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 
     function closeCdp(bytes32 _cdpId) external;
 
@@ -163,6 +90,8 @@ interface ICdpManager is ILiquityBase {
 
     function getCdpColl(bytes32 _cdpId) external view returns (uint);
 
+    function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
+
     function setCdpStatus(bytes32 _cdpId, uint num) external;
 
     function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
@@ -172,6 +101,8 @@ interface ICdpManager is ILiquityBase {
     function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint);
 
     function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint);
+
+    function setCdpLiquidatorRewardShares(bytes32 _cdpId, uint _liquidatorRewardShares) external;
 
     function getTCR(uint _price) external view returns (uint);
 

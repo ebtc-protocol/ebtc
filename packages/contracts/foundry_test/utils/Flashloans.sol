@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.11;
+pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../contracts/Interfaces/IERC3156FlashBorrower.sol";
 import {IERC20} from "../../contracts/Dependencies/IERC20.sol";
@@ -18,7 +18,7 @@ contract UselessFlashReceiver is IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external override returns (bytes32) {
+    ) external pure override returns (bytes32) {
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }

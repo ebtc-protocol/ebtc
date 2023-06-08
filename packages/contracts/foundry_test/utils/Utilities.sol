@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity 0.6.11;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import "../../contracts/Dependencies/SafeMath.sol";
 import "../../contracts/Interfaces/ICdpManager.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
-    using SafeMath for uint256;
-
     uint internal constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
+    bytes32 internal nextSpecial = keccak256(abi.encodePacked("special address"));
+
+    function getNextSpecialAddress() public returns (address payable) {
+        //bytes32 to address conversion
+        address payable user = payable(address(uint160(uint256(nextSpecial))));
+        nextSpecial = keccak256(abi.encodePacked(nextSpecial));
+        return user;
+    }
 
     function getNextUserAddress() public returns (address payable) {
         //bytes32 to address conversion
@@ -47,7 +51,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return debt.mul(collateralRatio).div(price);
+        return ((debt * collateralRatio) / price);
     }
 
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
@@ -58,7 +62,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return coll.mul(price).div(collateralRatio);
+        return ((coll * price) / collateralRatio);
     }
 
     /// @dev Given Borrow Amount, Price and Collateral Ratio tells you how much to deposit
@@ -67,7 +71,7 @@ contract Utilities is Test {
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return collateralRatio.mul(borrowAmount).div(price);
+        return ((collateralRatio * borrowAmount) / price);
     }
 
     /* This is the function that generates the random number.
@@ -76,14 +80,14 @@ contract Utilities is Test {
      */
     function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, now, seed)));
+        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, block.timestamp, seed)));
 
         // Use the modulo operator to constrain the random number to the desired range
         uint result = (randomNumber % (max - min + 1)) + min;
-        // Randomly shrink random number
-        if (result % 4 == 0) {
-            result /= 100;
-        }
+        //        // Randomly shrink random number
+        //        if (result % 4 == 0) {
+        //            result /= 100;
+        //        }
         return result;
     }
 
@@ -106,13 +110,25 @@ contract Utilities is Test {
         uint256 amount,
         uint gasCompensation,
         uint borrowingRate
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
         return
             mulDivUp(
                 amount - gasCompensation,
                 DECIMAL_PRECISION,
-                DECIMAL_PRECISION.add(borrowingRate)
+                (DECIMAL_PRECISION + borrowingRate)
             );
+    }
+
+    function assertApproximateEq(
+        uint _num1,
+        uint _num2,
+        uint _tolerance
+    ) public pure returns (bool) {
+        if (_num1 > _num2) {
+            return _tolerance >= (_num1 - _num2);
+        } else {
+            return _tolerance >= (_num2 - _num1);
+        }
     }
 }

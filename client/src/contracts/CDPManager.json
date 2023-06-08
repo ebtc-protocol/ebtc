@@ -316,7 +316,7 @@
     {
       "constant": true,
       "inputs": [],
-      "name": "L_ETH",
+      "name": "L_STETHColl",
       "outputs": [
         {
           "internalType": "uint256",
