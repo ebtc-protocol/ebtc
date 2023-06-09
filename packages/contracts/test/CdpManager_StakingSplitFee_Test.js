@@ -80,9 +80,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _totalColl = await cdpManager.getEntireSystemColl(); 
       th.assertIsApproximatelyEqual(_aliceColl, _totalColl, 0);	
 	  
-      let _underlyingBalBefore = (_totalColl.add(_securityDepositShare)).mul(_newIndex).div(mv._1e18BN);
+      let _underlyingBalBefore = _totalColl.mul(_newIndex).div(mv._1e18BN);
+      let _underlyingBalTotal = (_totalColl.add(_securityDepositShare)).mul(_newIndex).div(mv._1e18BN);
       let _diffApBal = _apBalAfter.sub(_apBalBefore);
-      th.assertIsApproximatelyEqual(_diffApBal, _underlyingBalBefore);
+      th.assertIsApproximatelyEqual(_diffApBal, _underlyingBalTotal);
 	  
       let _price = await priceFeed.getPrice();
       let _icrBefore = await cdpManager.getCurrentICR(_aliceCdpId, _price);
@@ -365,7 +366,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   it("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
       await assertRevert(cdpManager.setStakingRewardSplit(1, {from: alice}), "Auth: UNAUTHORIZED");   
       await assertRevert(cdpManager.setStakingRewardSplit(10001, {from: owner}), "CDPManager: new staking reward split exceeds max");
-      assert.isTrue(2500 == (await cdpManager.stakingRewardSplit())); 
+      assert.isTrue(5000 == (await cdpManager.stakingRewardSplit())); 
 	  	  
       assert.isTrue(authority.address == (await cdpManager.authority()));
       const accounts = await web3.eth.getAccounts()

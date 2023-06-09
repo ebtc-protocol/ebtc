@@ -38,7 +38,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     uint public constant BORROWING_FEE_FLOOR = 0; // 0.5%
 
-    uint public constant STAKING_REWARD_SPLIT = 2_500; // taking 25% cut from staking reward
+    uint public constant STAKING_REWARD_SPLIT = 5_000; // taking 50% cut from staking reward
 
     uint public constant MAX_REWARD_SPLIT = 10_000;
 
