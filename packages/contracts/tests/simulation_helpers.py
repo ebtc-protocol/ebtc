@@ -403,18 +403,9 @@ def remove_accounts_from_events(accounts, active_accounts, inactive_accounts, ev
         remove_account(accounts, active_accounts, inactive_accounts, event[field])
 
 
-# The issuance factor F determines the curvature of the issuance curve.
-# Hours in one year: 24*365 = 8760
-# For 50% of remaining tokens issued each year, with hours as time units, we have:
-# F ** 8760 = 0.5
-# Re-arranging:
-# F = 0.5 ** (1/8760)
-# F = 0.99992087674
+## NOTE: Deprecated
 def quantity_LQTY_airdrop(index):
-    F = 0.99992087674
-    if index <= 0:
-        return 0
-    return 32e6 * (F ** (index - 1) - F ** index)
+    return 0 ## Removed from eBTC
 
 
 def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, price_ether_current,
@@ -427,17 +418,31 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
 
     while pending_liquidations(contracts, price_ether_current):
         try:
+            print("try")
+            ## Deposit funds for liquidations
+            if(a[0].balance > 0):
+                contracts.collateral.deposit({"from": a[0], "value": accounts[0].balance})
+
+            bal_after = contracts.collateral.balanceOf(a[0])
+            print("b4 assertion")
+            assert bal_after > 0
+            print("Assertion was fine")
+            contracts.collateral.approve(contracts.borrowerOperations, bal_after, {"from": a[0]})
+            
+            ## Perform liquidations
             tx = contracts.cdpManager.liquidateCdps(NUM_LIQUIDATIONS,
                                                         {'from': accounts[0], 'gas_limit': 8000000,
                                                          'allow_revert': True})
+            print("liquidation was fine")
             # print(tx.events['CdpLiquidated'])
             remove_accounts_from_events(accounts, active_accounts, inactive_accounts,
                                         tx.events['CdpLiquidated'], '_borrower')
+            print("event liquidation")
         except:
             print(f"TM: {contracts.cdpManager.address}")
             stability_pool_balance = 0 ## Stability Pool is gone
             print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
-            cdp = last_cdp
+            cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
             for i in range(NUM_LIQUIDATIONS):
                 print(f"i: {i}")
                 debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
@@ -661,7 +666,7 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
                 pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
                                             account, repay_amount)
                 if pending == 0:
-                    contracts.borrowerOperations.repayEBTC(repay_amount, hints[0], hints[1],
+                    contracts.borrowerOperations.repayEBTC(cdp_id, repay_amount, hints[0], hints[1],
                                                            {'from': account})
             elif check > 2 and not is_recovery_mode(contracts, price_ether_current):
                 # withdraw EBTC
@@ -669,7 +674,7 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
                 withdraw_amount_wei = floatToWei(withdraw_amount)
                 if is_new_tcr_above_ccr(contracts, 0, False, withdraw_amount_wei, True,
                                         floatToWei(price_ether_current)):
-                    contracts.borrowerOperations.withdrawEBTC(MAX_FEE, withdraw_amount_wei,
+                    contracts.borrowerOperations.withdrawEBTC(cdp_id, withdraw_amount_wei,
                                                               hints[0], hints[1], {'from': account})
                     rate_issuance = contracts.cdpManager.getBorrowingRateWithDecay() / 1e18
                     issuance_ebtc_adjust = issuance_ebtc_adjust + rate_issuance * withdraw_amount
@@ -682,14 +687,21 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
                 # add coll
                 coll_added_float = coll_new - coll
                 coll_added = floatToWei(coll_added_float)
-                contracts.borrowerOperations.addColl(hints[0], hints[1],
-                                                     {'from': account, 'value': coll_added})
+
+                ## Setup coll to deposit
+                bal_b4 = contracts.collateral.balanceOf(account)
+                contracts.collateral.deposit({"from": account, "value": coll_added})
+                bal_after = contracts.collateral.balanceOf(account) - bal_b4
+                contracts.collateral.approve(contracts.borrowerOperations, bal_after, {"from": account})
+
+                contracts.borrowerOperations.addColl(cdp_id, hints[0], hints[1], bal_after,
+                                                     {'from': account})
             elif check > 2 and not is_recovery_mode(contracts, price_ether_current):
                 # withdraw ETH
                 coll_withdrawn = floatToWei(coll - coll_new)
                 if is_new_tcr_above_ccr(contracts, coll_withdrawn, False, 0, False,
                                         floatToWei(price_ether_current)):
-                    contracts.borrowerOperations.withdrawColl(coll_withdrawn, hints[0], hints[1],
+                    contracts.borrowerOperations.withdrawColl(cdp_id, coll_withdrawn, hints[0], hints[1],
                                                               {'from': account})
 
     return [coll_added_float, issuance_ebtc_adjust]
