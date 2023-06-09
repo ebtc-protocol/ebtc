@@ -19,6 +19,7 @@ const HINT_HELPERS_STATE_NAME = 'hintHelpers';
 const FEE_RECIPIENT_STATE_NAME = 'feeRecipient';
 const EBTC_DEPLOYER_STATE_NAME = 'eBTCDeployer';
 const COLLATERAL_STATE_NAME = 'collateral';
+const MULTI_CDP_GETTER_STATE_NAME = 'multiCdpGetter';
 
 const chalk = require('chalk');
 
@@ -91,6 +92,8 @@ class EBTCDeployerScript {
             _deployedState = await DeploymentHelper.deployEBTCDeployer();
         } else if (_stateName == COLLATERAL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCollateralTestnet();
+        } else if (_stateName == MULTI_CDP_GETTER_STATE_NAME) {
+            _deployedState = await DeploymentHelper.deployMultiCdpGetter(ebtcDeployer, _expectedAddr);
         }
         await this.saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, _deployedState);
         return _deployedState;
@@ -240,6 +243,11 @@ class EBTCDeployerScript {
         _constructorArgs = [this.feeRecipientOwner, _expectedAddr[1]];
         let feeRecipient = await this.deployOrLoadState(FEE_RECIPIENT_STATE_NAME, _expectedAddr, _constructorArgs);
 
+        // deploy multiCdpGetter
+        console.log(chalk.cyan("[MultiCdpGetter]"))
+        _constructorArgs = [_expectedAddr[2], _expectedAddr[5]];
+        let multiCdpGetter = await this.deployOrLoadState(MULTI_CDP_GETTER_STATE_NAME, _expectedAddr, _constructorArgs);
+
         const coreContracts = {
             authority,
             liquidationLibrary,
@@ -251,7 +259,8 @@ class EBTCDeployerScript {
             collSurplusPool,
             hintHelpers,
             ebtcToken,
-            feeRecipient
+            feeRecipient,
+            multiCdpGetter
         }
         return coreContracts;
     }

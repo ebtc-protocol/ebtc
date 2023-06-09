@@ -14,6 +14,8 @@ const HintHelpers = artifacts.require("./HintHelpers.sol")
 const Governor = artifacts.require("./Governor.sol")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
+const MultiCdpGetter = artifacts.require("./MultiCdpGetter.sol")
+
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const EBTCDeployer = artifacts.require("./EBTCDeployerTester.sol")
 
@@ -357,6 +359,20 @@ class DeploymentHelper {
     const _salt = await ebtcDeployer.FEE_RECIPIENT();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[10]);
+    return await FeeRecipient.at(_deployedAddr);
+  }
+
+  static async deployMultiCdpGetter(ebtcDeployer, _expectedAddr) {
+    const _argTypes = ['address', 'address'];
+    const _argValues = [_expectedAddr[2], _expectedAddr[5]];
+    
+    const contractFactory = await ethers.getContractFactory("MultiCdpGetter", (await ethers.getSigners())[0])
+    const _code = contractFactory.bytecode
+    //assert.isTrue(_code == (await ebtcDeployer.feeRecipient_creationCode()));
+	  
+    const _salt = await ebtcDeployer.MULTI_CDP_GETTER();
+    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt);
+    assert.isTrue(_deployedAddr == _expectedAddr[11]);
     return await FeeRecipient.at(_deployedAddr);
   }
 
