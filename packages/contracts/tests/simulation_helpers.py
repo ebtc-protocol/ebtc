@@ -420,15 +420,15 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
         try:
             print("try")
             ## Deposit funds for liquidations
-            if(a[0].balance > 0):
-                contracts.collateral.deposit({"from": a[0], "value": accounts[0].balance})
+            if(a[0].balance() > 0):
+                contracts.collateral.deposit({"from": a[0], "value": accounts[0].balance()})
 
             bal_after = contracts.collateral.balanceOf(a[0])
             print("b4 assertion")
             assert bal_after > 0
             print("Assertion was fine")
             contracts.collateral.approve(contracts.borrowerOperations, bal_after, {"from": a[0]})
-            
+            print("After Approve was fine")
             ## Perform liquidations
             tx = contracts.cdpManager.liquidateCdps(NUM_LIQUIDATIONS,
                                                         {'from': accounts[0], 'gas_limit': 8000000,
