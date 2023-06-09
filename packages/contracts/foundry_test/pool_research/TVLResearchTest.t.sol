@@ -42,7 +42,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     address WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     address constant seeder_agent = address(1);
-    address constant leverage_agent = address(2);
+    address constant leverage_agent = address(40e18);
 
     // liq amounts
     uint256 FAKE_MINTING_AMOUNT = 10_000e18;
@@ -55,7 +55,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     uint256 TARGET_WBTC_AMOUNT = 177e8;
 
     // coll. seeding for agents
-    uint256 COLL_INIT_AMOUNT = 1000 ether;
+    uint256 COLL_INIT_AMOUNT = 100 ether;
 
     IBalancerPool balancerPool;
     bytes32 poolId;
@@ -358,7 +358,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         address _tokenIn,
         uint256 _amountTokenIn,
         address _tokenOut,
-        uint _tokenMinOut
+        uint256 _tokenMinOut
     ) internal view returns (LeverageMacroBase.SwapOperation[] memory) {
         // swap from ebtc -> wbtc -> (wstETH || weth)
         // NOTE: issue is the coll format in the test suite?
