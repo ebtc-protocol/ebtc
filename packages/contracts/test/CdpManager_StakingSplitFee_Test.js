@@ -55,7 +55,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
 	
     splitFeeRecipient = await LQTYContracts.feeRecipient;
-  })
+  })  
+  
+  it("FeeRecipient can't renounce owner", async() => {
+      await assertRevert(splitFeeRecipient.renounceOwnership({from: owner}), "FeeRecipient: can't renounce owner for sweepToken()");	  
+  }) 
   
   it("Claim split fee when there is staking reward coming", async() => {
       	  

@@ -38,4 +38,9 @@ contract FeeRecipient is Ownable, AuthNoOwner {
 
         emit SweepTokenSuccess(token, amount, _owner);
     }
+
+    /// @dev fee receipient can't renounce owner to ensure sweepToken() working as expected
+    function renounceOwnership() public override onlyOwner {
+        revert("FeeRecipient: can't renounce owner for sweepToken()");
+    }
 }

@@ -476,12 +476,15 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _feeSplitDistributed = _diffPerUnit > 0 ? _oldStake * _diffPerUnit : 0;
 
         uint _scaledCdpColl = Cdps[_cdpId].coll * DECIMAL_PRECISION;
-        require(
-            _scaledCdpColl > _feeSplitDistributed,
-            "LiquidationLibrary: fee split is too big for CDP"
-        );
-
-        return (_feeSplitDistributed, (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION);
+        if (_scaledCdpColl > _feeSplitDistributed) {
+            return (
+                _feeSplitDistributed,
+                (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION
+            );
+        } else {
+            // extreme unlikely case to skip fee split on this CDP to avoid revert
+            return (0, Cdps[_cdpId].coll);
+        }
     }
 
     // -- Modifier functions --

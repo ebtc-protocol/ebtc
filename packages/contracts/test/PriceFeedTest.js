@@ -2594,8 +2594,12 @@ contract('PriceFeed', async accounts => {
       let _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("990000000000000000"), 8, 18)
       assert.isTrue(_combinedPrice.lt(ethBTCPrice.mul(toBN(dec(10,10)))))
       // check an extreme case when stETH/ETH is far below 1, the resulting stETH/BTC should be relatively much smaller than ETH/BTC
-      _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
-      assert.isTrue(_combinedPrice.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      let _combinedPrice2 = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
+      assert.isTrue(_combinedPrice2.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      // check another extreme case when decimal of stETH/ETH is less than ETH/BTC
+      let ethBTCPrice2 = toBN("68038270000000000");	
+      let _combinedPrice3 = await priceFeed.formatClAggregateAnswer(ethBTCPrice2, toBN("99"), 18, 2)
+      assert.isTrue(_combinedPrice3.eq(_combinedPrice))
     })
 
     it("Chainlink working, Chainlink broken, Fallback bricked, Chainlink recovers, Fallback added", async () => {
