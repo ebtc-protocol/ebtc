@@ -417,17 +417,34 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
     stability_pool_eth_previous = 0 ## Stability Pool is gone / 1e18
 
     while pending_liquidations(contracts, price_ether_current):
-        try:
+            ## TODO Need to give funds to liquidator
+        # try:
             print("try")
             ## Deposit funds for liquidations
             if(a[0].balance() > 0):
                 contracts.collateral.deposit({"from": a[0], "value": accounts[0].balance()})
+            
+            if(contracts.ebtcToken.balanceOf(a[0]) == 0):
+                whale = accounts.at("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", force=True)
 
-            bal_after = contracts.collateral.balanceOf(a[0])
-            print("b4 assertion")
-            assert bal_after > 0
-            print("Assertion was fine")
-            contracts.collateral.approve(contracts.borrowerOperations, bal_after, {"from": a[0]})
+                col_amt = contracts.collateral.balanceOf(whale)
+                contracts.collateral.transfer(accounts[0], col_amt, {"from": whale})
+                
+                contracts.collateral.approve(contracts.borrowerOperations.address, col_amt, {"from": a[0]})
+
+                ## Comfy 1/10 of tvl
+                contracts.borrowerOperations.openCdp(col_amt // 10 * price_ether_current, ZERO_ADDRESS, ZERO_ADDRESS, col_amt,
+                                               {'from': a[0]})
+
+            new_bal = contracts.collateral.balanceOf(a[0])
+            if(new_bal > 0):
+                contracts.collateral.approve(contracts.borrowerOperations.address, new_bal, {"from": a[0]})
+                contracts.borrowerOperations.openCdp(new_bal // 10 * price_ether_current, ZERO_ADDRESS, ZERO_ADDRESS, new_bal, {'from': a[0]})
+
+
+            ## Approve eBTC for liquidations
+            contracts.ebtcToken.approve(contracts.cdpManager.address, contracts.ebtcToken.balanceOf(a[0]), {"from": a[0]})
+
             print("After Approve was fine")
             ## Perform liquidations
             tx = contracts.cdpManager.liquidateCdps(NUM_LIQUIDATIONS,
@@ -438,20 +455,20 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
             remove_accounts_from_events(accounts, active_accounts, inactive_accounts,
                                         tx.events['CdpLiquidated'], '_borrower')
             print("event liquidation")
-        except:
-            print(f"TM: {contracts.cdpManager.address}")
-            stability_pool_balance = 0 ## Stability Pool is gone
-            print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
-            cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
-            for i in range(NUM_LIQUIDATIONS):
-                print(f"i: {i}")
-                debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
-                print(f"debt: {debt / 1e18}")
-                if stability_pool_balance >= debt:
-                    print("True!")
-                cdp = contracts.sortedCdps.getPrev(cdp)
-                icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
-                print(f"ICR: {icr}")
+        # except:
+        #     print(f"TM: {contracts.cdpManager.address}")
+        #     stability_pool_balance = 0 ## Stability Pool is gone
+        #     print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
+        #     cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
+        #     for i in range(NUM_LIQUIDATIONS):
+        #         print(f"i: {i}")
+        #         debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
+        #         print(f"debt: {debt / 1e18}")
+        #         if stability_pool_balance >= debt:
+        #             print("True!")
+        #         cdp = contracts.sortedCdps.getPrev(cdp)
+        #         icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
+        #         print(f"ICR: {icr}")
     stability_pool_current = 0 ## Stability Pool is gone / 1e18
     stability_pool_eth_current = 0 ## Stability Pool is gone / 1e18
 
