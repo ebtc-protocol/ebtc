@@ -418,8 +418,7 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
 
     while pending_liquidations(contracts, price_ether_current):
             ## TODO Need to give funds to liquidator
-        # try:
-            print("try")
+        try:
             ## Deposit funds for liquidations
             if(a[0].balance() > 0):
                 contracts.collateral.deposit({"from": a[0], "value": accounts[0].balance()})
@@ -444,31 +443,27 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
 
             ## Approve eBTC for liquidations
             contracts.ebtcToken.approve(contracts.cdpManager.address, contracts.ebtcToken.balanceOf(a[0]), {"from": a[0]})
-
-            print("After Approve was fine")
             ## Perform liquidations
             tx = contracts.cdpManager.liquidateCdps(NUM_LIQUIDATIONS,
                                                         {'from': accounts[0], 'gas_limit': 8000000,
                                                          'allow_revert': True})
-            print("liquidation was fine")
             # print(tx.events['CdpLiquidated'])
             remove_accounts_from_events(accounts, active_accounts, inactive_accounts,
                                         tx.events['CdpLiquidated'], '_borrower')
-            print("event liquidation")
-        # except:
-        #     print(f"TM: {contracts.cdpManager.address}")
-        #     stability_pool_balance = 0 ## Stability Pool is gone
-        #     print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
-        #     cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
-        #     for i in range(NUM_LIQUIDATIONS):
-        #         print(f"i: {i}")
-        #         debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
-        #         print(f"debt: {debt / 1e18}")
-        #         if stability_pool_balance >= debt:
-        #             print("True!")
-        #         cdp = contracts.sortedCdps.getPrev(cdp)
-        #         icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
-        #         print(f"ICR: {icr}")
+        except:
+            print(f"TM: {contracts.cdpManager.address}")
+            stability_pool_balance = 0 ## Stability Pool is gone
+            print(f"stability_pool_balance: {stability_pool_balance / 1e18}")
+            cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
+            for i in range(NUM_LIQUIDATIONS):
+                print(f"i: {i}")
+                debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
+                print(f"debt: {debt / 1e18}")
+                if stability_pool_balance >= debt:
+                    print("True!")
+                cdp = contracts.sortedCdps.getPrev(cdp)
+                icr = contracts.cdpManager.getCurrentICR(cdp, Wei(price_ether_current * 1e18))
+                print(f"ICR: {icr}")
     stability_pool_current = 0 ## Stability Pool is gone / 1e18
     stability_pool_eth_current = 0 ## Stability Pool is gone / 1e18
 
