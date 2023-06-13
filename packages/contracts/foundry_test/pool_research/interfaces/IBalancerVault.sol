@@ -2,6 +2,8 @@
 pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
+import {IAsset} from "./IAsset.sol";
+
 interface IBalancerVault {
     enum JoinKind {
         INIT,
@@ -60,7 +62,7 @@ interface IBalancerVault {
     function batchSwap(
         uint8 kind,
         IVault.BatchSwapStep[] memory swaps,
-        address[] memory assets,
+        IAsset[] memory assets,
         IVault.FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline

@@ -12,6 +12,7 @@ import {Utilities} from "../utils/Utilities.sol";
 
 import "./interfaces/IStablePoolFactory.sol";
 import "./interfaces/IBalancerPool.sol";
+import "./interfaces/IAsset.sol";
 import "./interfaces/IBalancerVault.sol";
 import "../../contracts/Dependencies/IERC20.sol";
 
@@ -55,10 +56,10 @@ contract TVLResearchTest is eBTCBaseFixture {
     uint256 TARGET_WBTC_AMOUNT = 177e8;
 
     // coll. seeding for agents
-    uint256 COLL_INIT_AMOUNT = 100 ether;
+    uint256 COLL_INIT_AMOUNT = 20 ether; // NOTE: bump down temporality for test flow
 
     IBalancerPool balancerPool;
-    bytes32 poolId;
+    bytes32 EBTC_WBTC_POOL_ID;
     address leverageMacroAddr;
 
     function setUp() public override {
@@ -102,7 +103,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         vm.stopPrank();
 
         balancerPool = IBalancerPool(pool);
-        poolId = balancerPool.getPoolId();
+        EBTC_WBTC_POOL_ID = balancerPool.getPoolId();
 
         // hand-over tokens - `seeder`
         deal(address(eBTCToken), seeder_agent, FAKE_MINTING_AMOUNT);
@@ -116,7 +117,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     }
 
     function test_pool_config() public {
-        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(poolId);
+        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(EBTC_WBTC_POOL_ID);
 
         assertEq(tokens[0], WBTC);
         assertEq(tokens[1], address(eBTCToken));
@@ -135,7 +136,7 @@ contract TVLResearchTest is eBTCBaseFixture {
             _addLiquidity(LIQ_STEP_WBTC, LIQ_STEP_EBTC, false);
         }
 
-        (, uint256[] memory balances, ) = BALANCER_VAULT.getPoolTokens(poolId);
+        (, uint256[] memory balances, ) = BALANCER_VAULT.getPoolTokens(EBTC_WBTC_POOL_ID);
 
         // explore file in path: `packages/contracts/foundry_test/pool_research/pool_optimal_liquidity.json`
         _jsonCreation(balances[0], balances[1], AMPLIFICATION_FACTOR);
@@ -158,6 +159,9 @@ contract TVLResearchTest is eBTCBaseFixture {
     }
 
     function test_leverage_fl_via_leverageMacro() public {
+        // seed pool for test
+        _addLiquidity(2_000e8, 2000e18, true);
+
         vm.prank(leverage_agent);
         collateral.deposit{value: leverage_agent.balance}();
         vm.stopPrank();
@@ -170,9 +174,16 @@ contract TVLResearchTest is eBTCBaseFixture {
         uint256 currentPrice = priceFeedMock.getPrice();
         uint256 targetDebt = (initialColl * currentPrice * leverageFactor) / 1e36;
 
+        // cdp mcr
+        uint256 mcr = borrowerOperations.MCR();
+
+        // healthy cr ~ 140% to avoid triggers on ICR and TCR concerns
+        uint256 healthyDebt = (targetDebt * mcr) / 1.4e18;
+
         bytes32 cdpId = _cdpLeverageTargetCreation(
             initialColl,
             targetDebt,
+            healthyDebt,
             leverageFactor,
             leverageMacroAddr
         );
@@ -186,7 +197,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         IERC20(WBTC).approve(address(BALANCER_VAULT), wbtcAmount);
         eBTCToken.approve(address(BALANCER_VAULT), ebtcAmount);
 
-        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(poolId);
+        (address[] memory tokens, , ) = BALANCER_VAULT.getPoolTokens(EBTC_WBTC_POOL_ID);
 
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[0] = wbtcAmount;
@@ -207,14 +218,14 @@ contract TVLResearchTest is eBTCBaseFixture {
             fromInternalBalance: false
         });
 
-        BALANCER_VAULT.joinPool(poolId, seeder_agent, seeder_agent, request);
+        BALANCER_VAULT.joinPool(EBTC_WBTC_POOL_ID, seeder_agent, seeder_agent, request);
         vm.stopPrank();
     }
 
     function _swap(address agent, uint256 ebtcAmount) internal returns (uint256 amountOut) {
         // https://docs.balancer.fi/reference/swaps/single-swap.html
         IVault.SingleSwap memory singleSwap = IVault.SingleSwap({
-            poolId: poolId,
+            poolId: EBTC_WBTC_POOL_ID,
             kind: uint8(IBalancerVault.SwapKind.GIVEN_IN),
             assetIn: address(eBTCToken),
             assetOut: WBTC,
@@ -277,15 +288,17 @@ contract TVLResearchTest is eBTCBaseFixture {
     function _cdpLeverageTargetCreation(
         uint256 _initColl,
         uint256 _debtTarget,
+        uint256 _healthyDebt,
         uint256 _leverageTarget,
         address _leverageMacroAddr
     ) internal returns (bytes32) {
         // target coll on lev
         uint256 collSwapTarget = (_initColl * _leverageTarget) / 1e18;
-
+        console.log(_debtTarget);
+        console.log(_healthyDebt);
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
-            .OpenCdpOperation(_debtTarget, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget);
+            .OpenCdpOperation(_healthyDebt, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget);
         bytes memory openingCdpStructEncoded = abi.encode(openingCdpStruct);
 
         // NOTE: swaps, we do `before` swap, after is not req op
@@ -367,25 +380,24 @@ contract TVLResearchTest is eBTCBaseFixture {
         LeverageMacroBase.SwapCheck[] memory safetyOutputChecks = new LeverageMacroBase.SwapCheck[](
             1
         );
-        safetyOutputChecks[0] = LeverageMacroBase.SwapCheck(_tokenOut, _tokenMinOut);
+        safetyOutputChecks[0] = LeverageMacroBase.SwapCheck(WETH, _tokenMinOut);
 
         // assets
-        address[] memory assetArr = new address[](3);
-        assetArr[0] = address(eBTCToken);
-        assetArr[1] = WBTC;
-        assetArr[2] = WETH;
+        IAsset[] memory assetArr = new IAsset[](3);
+        assetArr[0] = IAsset(address(eBTCToken));
+        assetArr[1] = IAsset(WBTC);
+        assetArr[2] = IAsset(WETH);
 
         // limits
         int256[] memory limits = new int256[](3);
         limits[0] = int256(_amountTokenIn);
         limits[2] = -int256(_tokenMinOut);
-
         // balancer batch swap args
         // https://docs.balancer.fi/reference/swaps/batch-swaps.html#batchswapstep-struct
         IVault.BatchSwapStep[] memory batchSwapDetails = new IVault.BatchSwapStep[](2);
         // ebtc -> wbtc
         batchSwapDetails[0] = IVault.BatchSwapStep({
-            poolId: poolId,
+            poolId: EBTC_WBTC_POOL_ID,
             assetInIndex: 0,
             assetOutIndex: 1,
             amount: _amountTokenIn,
@@ -403,7 +415,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: leverageMacroAddr,
             fromInternalBalance: false,
-            recipient: leverageMacroAddr,
+            recipient: payable(leverageMacroAddr),
             toInternalBalance: false
         });
 
