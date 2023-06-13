@@ -13,7 +13,7 @@ const alchemyUrl = () => {
         const { secrets } = require(SECRETS_FILE)
         alchemyAPIKey = secrets.alchemyAPIKey
         if (alchemyAPIKey != undefined){
-            return `https://eth-mainnet.alchemyapi.io/v2/${alchemyAPIKey}`
+            return `https://eth-mainnet.g.alchemy.com/v2/${alchemyAPIKey}`
         } else {
             throw "Add an alchemyAPIKey to ./secrets.js!"
         }

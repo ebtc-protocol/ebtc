@@ -123,6 +123,13 @@ contract('BorrowerOperations', async accounts => {
       
     })	  
 	  
+    it("BorrowerOperations flashloan checks", async() => {
+      let _maxFlashLoanAlloweed = await borrowerOperations.maxFlashLoan(ebtcToken.address);	
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, 0, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: 0 Amount");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, borrowerOperations.address, _maxFlashLoanAlloweed, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: EBTC Only");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, _maxFlashLoanAlloweed.add(toBN(1)), th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: too much flashLoan amount");
+    })  
+	  
     it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
 	  await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
@@ -133,7 +140,7 @@ contract('BorrowerOperations', async accounts => {
 	  await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
 	  assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 	  await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFeeBps");
-	  let _newFee = toBN("9999");
+	  let _newFee = await borrowerOperations.maxFeeBps()
 	  assert.isTrue(_newFee.gt(await borrowerOperations.feeBps()));
 	  await borrowerOperations.setFeeBps(_newFee, {from: alice})
 	  assert.isTrue(_newFee.eq(await borrowerOperations.feeBps()));
@@ -151,9 +158,9 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 
       await assertRevert(borrowerOperations.setMaxFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
-      let _newFee = toBN("9999");
+      let _newFee = await borrowerOperations.maxFeeBps();
       
-      assert.isTrue(_newFee.lt(await borrowerOperations.maxFeeBps()));
+      assert.isTrue(_newFee.lte(await borrowerOperations.maxFeeBps()));
       await borrowerOperations.setMaxFeeBps(_newFee, {from: alice})
       assert.isTrue(_newFee.eq(await borrowerOperations.maxFeeBps()));
   

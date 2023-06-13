@@ -160,7 +160,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         FeeRecipientColl = _FeeRecipientColl + _shares;
 
         emit ActivePoolCollBalanceUpdated(_StEthColl);
-        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
+        emit ActivePoolFeeRecipientClaimableCollIncreased(FeeRecipientColl, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -251,9 +251,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(token == address(collateral), "ActivePool: collateral Only");
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
+        // NOTE: Check for `token` is implicit in the requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
         uint256 amountWithFee = amount + fee;
@@ -289,6 +289,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
             collateral.getPooledEthByShares(1e18) == oldRate,
             "ActivePool: Should keep same collateral share rate"
         );
+
+        emit FlashLoanSuccess(address(receiver), token, amount, fee);
 
         return true;
     }
@@ -328,7 +330,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
         FeeRecipientColl = _FeeRecipientColl - _shares;
-        emit ActivePoolFeeRecipientClaimableCollUpdated(_FeeRecipientColl);
+        emit ActivePoolFeeRecipientClaimableCollDecreased(FeeRecipientColl, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }
@@ -344,6 +346,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
 
         IERC20(token).safeTransfer(feeRecipientAddress, amount);
+
+        emit SweepTokenSuccess(token, amount, feeRecipientAddress);
     }
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {

@@ -22,8 +22,7 @@ import "./testnet/PriceFeedTestnet.sol";
 import "./ActivePoolTester.sol";
 import "./EBTCTokenTester.sol";
 
-
-contract EBTCDeployerTester is EBTCDeployer {
+contract EBTCDeployerTester is EBTCDeployer {    
     // core contracts creation code
     bytes public authority_creationCode = type(Governor).creationCode;
     bytes public liquidationLibrary_creationCode = type(LiquidationLibrary).creationCode;

@@ -46,6 +46,8 @@ contract SortedCdps is ISortedCdps {
 
     ICdpManager public immutable cdpManager;
 
+    uint256 public immutable maxSize;
+
     // Information for a node in the list
     struct Node {
         bytes32 nextId; // Id of next node (smaller NICR) in the list
@@ -56,7 +58,6 @@ contract SortedCdps is ISortedCdps {
     struct Data {
         bytes32 head; // Head of the list. Also the node in the list with the largest NICR
         bytes32 tail; // Tail of the list. Also the node in the list with the smallest NICR
-        uint256 maxSize; // Maximum size of the list
         uint256 size; // Current size of the list
         mapping(bytes32 => Node) nodes; // Track the corresponding ids for each node in the list
     }
@@ -83,7 +84,7 @@ contract SortedCdps is ISortedCdps {
             _size = type(uint256).max;
         }
 
-        data.maxSize = _size;
+        maxSize = _size;
 
         cdpManager = ICdpManager(_cdpManagerAddress);
         borrowerOperationsAddress = _borrowerOperationsAddress;
@@ -393,7 +394,7 @@ contract SortedCdps is ISortedCdps {
      * @return true if the list is full, false otherwise
      */
     function isFull() public view override returns (bool) {
-        return data.size == data.maxSize;
+        return data.size == maxSize;
     }
 
     /**
@@ -417,7 +418,7 @@ contract SortedCdps is ISortedCdps {
      * @return The maximum size of the list
      */
     function getMaxSize() external view override returns (uint256) {
-        return data.maxSize;
+        return maxSize;
     }
 
     /**

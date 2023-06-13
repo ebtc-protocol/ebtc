@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
+import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
@@ -134,9 +135,9 @@ contract BorrowerOperations is
     // --- Borrower Cdp Operations ---
 
     /**
-    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral. 
-    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode). 
-    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation. 
+    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral.
+    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode).
+    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation.
     */
     function openCdp(
         uint _EBTCAmount,
@@ -158,7 +159,7 @@ contract BorrowerOperations is
     }
 
     /**
-    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%. 
+    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%.
     */
     function withdrawColl(
         bytes32 _cdpId,
@@ -275,7 +276,8 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reversed BTC/ETH price
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -390,7 +392,8 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         // Reverse ETH/BTC price to BTC/ETH
-        bool isRecoveryMode = _checkRecoveryMode(vars.price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
         vars.debt = _EBTCAmount;
 
@@ -438,8 +441,8 @@ contract BorrowerOperations is
         // Mint the full EBTCAmount to the borrower
         _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
 
-        /** 
-            Note that only NET coll (as shares) is considered part of the CDP. 
+        /**
+            Note that only NET coll (as shares) is considered part of the CDP.
             The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
             The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
         */
@@ -463,14 +466,15 @@ contract BorrowerOperations is
     }
 
     /**
-    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC. 
+    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
 
         _requireCdpisActive(cdpManager, _cdpId);
         uint price = priceFeed.fetchPrice();
-        _requireNotInRecoveryMode(price);
+        uint _tcr = _checkDeltaIndexAndClaimFee(price);
+        _requireNotInRecoveryMode(_tcr);
 
         cdpManager.applyPendingRewards(_cdpId);
 
@@ -647,9 +651,9 @@ contract BorrowerOperations is
         require(_EBTCChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
     }
 
-    function _requireNotInRecoveryMode(uint _price) internal view {
+    function _requireNotInRecoveryMode(uint _tcr) internal view {
         require(
-            !_checkRecoveryMode(_price),
+            !_checkRecoveryModeForTCR(_tcr),
             "BorrowerOps: Operation not permitted during Recovery Mode"
         );
     }
@@ -851,6 +855,8 @@ contract BorrowerOperations is
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: 0 Amount");
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+        require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
+        // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
@@ -872,6 +878,8 @@ contract BorrowerOperations is
         // Burn amount, from FEE_RECIPIENT
         ebtcToken.burn(feeRecipientAddress, amount);
 
+        emit FlashLoanSuccess(address(receiver), token, amount, fee);
+
         return true;
     }
 
@@ -882,14 +890,20 @@ contract BorrowerOperations is
     }
 
     /// @dev Max flashloan, exclusively in ETH equals to the current balance
-    function maxFlashLoan(address token) external view override returns (uint256) {
+    function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(ebtcToken)) {
             return 0;
         }
-
-        // TODO: Decide if max, or w/e
-        // For now return 112 which is UniV3 compatible
-        // Source: I made it up
         return type(uint112).max;
+    }
+
+    // @dev only claim fee if delta index is big enough to trigger recovery mode
+    function _checkDeltaIndexAndClaimFee(uint _price) internal returns (uint) {
+        (uint _tcr, bool _triggerRecoveryMode) = cdpManager.checkIfDeltaIndexTriggerRM(_price);
+        if (_triggerRecoveryMode) {
+            ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+            _tcr = _getTCR(_price);
+        }
+        return _tcr;
     }
 }
