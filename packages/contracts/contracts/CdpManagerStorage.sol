@@ -483,7 +483,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             );
         } else {
             // extreme unlikely case to skip fee split on this CDP to avoid revert
-            return (0, Cdps[_cdpId].coll);
+            // NOTE: Gas, cheaper to use cached value and divide than to re-read from Storage
+            return (0, _scaledCdpColl / DECIMAL_PRECISION);
         }
     }
 
