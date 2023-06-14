@@ -14,6 +14,7 @@ import "./interfaces/IStablePoolFactory.sol";
 import "./interfaces/IBalancerPool.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IBalancerVault.sol";
+import "./interfaces/ICurvePool.sol";
 import "../../contracts/Dependencies/IERC20.sol";
 
 contract TVLResearchTest is eBTCBaseFixture {
@@ -37,9 +38,13 @@ contract TVLResearchTest is eBTCBaseFixture {
         0xa6f548df93de924d73be7d25dc02554c6bd66db500020000000000000000000e;
     uint256 AMPLIFICATION_FACTOR = 25;
 
+    // curve (https://curve.fi/#/ethereum/pools/factory-v2-117/deposit)
+    ICurvePool STETH_ETH_CURVE_POOL = ICurvePool(0x828b154032950C8ff7CF8085D841723Db2696056);
+
     // tokens
     address WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     address constant seeder_agent = address(1);
@@ -78,6 +83,10 @@ contract TVLResearchTest is eBTCBaseFixture {
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
         _utilsTvl = new Utilities();
+
+        // TODO: ensure diff between fork env and tester coll
+        // bytes memory collMainnetCode = STETH.code;
+        // vm.etch(collateral, collMainnetCode);
 
         // balancer pool creation
         string memory name = "Balancer eBTC Stable Pool";
@@ -294,8 +303,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     ) internal returns (bytes32) {
         // target coll on lev
         uint256 collSwapTarget = (_initColl * _leverageTarget) / 1e18;
-        console.log(_debtTarget);
-        console.log(_healthyDebt);
+        
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
             .OpenCdpOperation(_healthyDebt, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget);
@@ -375,7 +383,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     ) internal view returns (LeverageMacroBase.SwapOperation[] memory) {
         // swap from ebtc -> wbtc -> (wstETH || weth)
         // NOTE: issue is the coll format in the test suite?
-        LeverageMacroBase.SwapOperation[] memory swapOp = new LeverageMacroBase.SwapOperation[](1);
+        LeverageMacroBase.SwapOperation[] memory swapOp = new LeverageMacroBase.SwapOperation[](2);
 
         LeverageMacroBase.SwapCheck[] memory safetyOutputChecks = new LeverageMacroBase.SwapCheck[](
             1
@@ -436,6 +444,27 @@ contract TVLResearchTest is eBTCBaseFixture {
             address(BALANCER_VAULT),
             swapPayload,
             safetyOutputChecks
+        );
+
+        // play with another consecutive swap - curve (weth -> stETH)
+
+        swapPayload = abi.encodeWithSelector(
+            ICurvePool.exchange.selector,
+            int128(0),
+            int128(1),
+            _tokenMinOut,
+            0 // (_tokenMinOut * SLIPPAGE_CONTROL) / MAX_BPS
+        );
+
+        LeverageMacroBase.SwapCheck[] memory safetyOutputChecksEmpty;
+
+        swapOp[1] = LeverageMacroBase.SwapOperation(
+            WETH,
+            address(STETH_ETH_CURVE_POOL),
+            _tokenMinOut,
+            address(STETH_ETH_CURVE_POOL),
+            swapPayload,
+            safetyOutputChecksEmpty
         );
 
         return swapOp;
