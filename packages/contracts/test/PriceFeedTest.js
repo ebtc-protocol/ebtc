@@ -191,8 +191,8 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
-      // Check eBTC PriceFeed gives 10, with 18 digit precision
-      assert.equal(price, dec(10, 18))
+      // Check eBTC PriceFeed gives 1e21=1e11(ETH/BTC)*1e10(stETH/ETH), with 18 digit precision
+      assert.equal(price, dec(10, 38))
     })
 
     // --- Chainlink breaks ---
@@ -2490,7 +2490,7 @@ contract('PriceFeed', async accounts => {
       let status = await priceFeed.status()
       assert.equal(status, '0') // status 0: using Chainlink
 
-      // Oracle price is 1e9
+      // ETH/BTC price is 1e9 with 0 decimal
       await mockEthBtcChainlink.setDecimals(0)
       await mockStEthEthChainlink.setDecimals(0)
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
@@ -2498,8 +2498,8 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
 
-      // Check eBTC PriceFeed gives 1e9, with 18 digit precision
-      assert.isTrue(price.eq(toBN(dec(1, 9))))
+      // Check eBTC PriceFeed gives 1e9(ETH/BTC) * 1e18(stETH/ETH), with 18 digit precision
+      assert.isTrue(price.eq(toBN(dec(1, 45))))
 
       // Fallback should be broken and, therefore, the status should change to 4
       status = await priceFeed.status()
