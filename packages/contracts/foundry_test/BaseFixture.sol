@@ -14,6 +14,7 @@ import {FeeRecipient} from "../contracts/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
+import {ICollateralToken} from "../contracts/Dependencies/ICollateralToken.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
@@ -48,6 +49,9 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
+    // mainnet collateral
+    address STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+
     // PriceFeed
     bytes4 public constant SET_FALLBACK_CALLER_SIG =
         bytes4(keccak256(bytes("setFallbackCaller(address)")));
@@ -81,7 +85,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     BorrowerOperations borrowerOperations;
     HintHelpers hintHelpers;
     EBTCToken eBTCToken;
-    CollateralTokenTester collateral;
+    ICollateralToken collateral;
     Governor authority;
     LiquidationLibrary liqudationLibrary;
     EBTCDeployer ebtcDeployer;
@@ -117,7 +121,15 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         // Default governance is deployer
         // vm.prank(defaultGovernance);
 
-        collateral = new CollateralTokenTester();
+        // docs: https://book.getfoundry.sh/cheatcodes/env-or
+        bool isMainnetFork = vm.envOr("MAINNET_FORK", false);
+
+        if (isMainnetFork) {
+            collateral = ICollateralToken(STETH);
+        } else {
+            collateral = new CollateralTokenTester();
+        }
+
         weth = new WETH9();
         functionCaller = new FunctionCaller();
 

@@ -21,4 +21,11 @@ interface ICollateralToken is IERC20 {
 
     // Returns authorized oracle address
     function getOracle() external view returns (address);
+
+    function deposit() external payable;
+
+    // This function is alternative way to submit funds. Supports optional referral address.
+    function submit(address _referral) external payable returns (uint256);
+
+    function setEthPerShare(uint _ePerS) external;
 }

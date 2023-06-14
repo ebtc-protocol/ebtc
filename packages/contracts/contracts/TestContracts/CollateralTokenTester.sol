@@ -38,6 +38,14 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         emit Deposit(msg.sender, msg.value, _share);
     }
 
+    function submit(address ref) public payable returns (uint256) {
+        uint _share = getSharesByPooledEth(msg.value);
+        balances[msg.sender] += _share;
+        _totalBalance += _share;
+        emit Deposit(msg.sender, msg.value, _share);
+        return _share;
+    }
+
     function withdraw(uint wad) public {
         uint _share = getSharesByPooledEth(wad);
         require(balances[msg.sender] >= _share);

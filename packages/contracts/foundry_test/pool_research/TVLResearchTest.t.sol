@@ -8,47 +8,19 @@ import {eBTCBaseFixture} from "../BaseFixture.sol";
 import {ICdpManagerData} from "../../contracts/Interfaces/ICdpManagerData.sol";
 import {LeverageMacroReference} from "../../contracts/LeverageMacroReference.sol";
 import {LeverageMacroBase} from "../../contracts/LeverageMacroBase.sol";
-import {Utilities} from "../utils/Utilities.sol";
 
-import "./interfaces/IStablePoolFactory.sol";
+import {MainnetConstants} from "./MainnetConstants.sol";
+
 import "./interfaces/IBalancerPool.sol";
-import "./interfaces/IAsset.sol";
 import "./interfaces/IBalancerVault.sol";
 import "./interfaces/ICurvePool.sol";
 import "../../contracts/Dependencies/IERC20.sol";
 
-contract TVLResearchTest is eBTCBaseFixture {
-    // ebtc test inheritance
-    Utilities internal _utilsTvl;
-
-    // ebtc cdp pos.
-    uint256 LEV_BPS = 4_000;
-
-    // misc.
-    uint256 SLIPPAGE_CONTROL = 9_700;
-    uint256 MAX_DELTA = 7e17;
-    bytes32 public constant NULL_CDP_ID = bytes32(0);
-
-    // balancer
-    IStablePoolFactory STABLE_POOL_FACTORY =
-        IStablePoolFactory(0x8df6EfEc5547e31B0eb7d1291B511FF8a2bf987c);
-    IBalancerVault BALANCER_VAULT =
-        IBalancerVault(payable(0xBA12222222228d8Ba445958a75a0704d566BF2C8));
-    bytes32 constant WBTC_WETH_POOL_ID =
-        0xa6f548df93de924d73be7d25dc02554c6bd66db500020000000000000000000e;
-    uint256 AMPLIFICATION_FACTOR = 25;
-
-    // curve (https://curve.fi/#/ethereum/pools/factory-v2-117/deposit)
-    ICurvePool STETH_ETH_CURVE_POOL = ICurvePool(0x828b154032950C8ff7CF8085D841723Db2696056);
-
-    // tokens
-    address WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-    address WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
-
+contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
+    // agents
     address constant seeder_agent = address(1);
     address constant leverage_agent = address(40e18);
+    address constant leverage_agent_secondary = address(90e18);
 
     // liq amounts
     uint256 FAKE_MINTING_AMOUNT = 10_000e18;
@@ -76,17 +48,16 @@ contract TVLResearchTest is eBTCBaseFixture {
         vm.label(address(collateral), "collateralTest");
         vm.label(WBTC, "WBTC");
         vm.label(WETH, "WETH");
+        vm.label(STETH, "STETH");
         vm.label(WSTETH, "WSTETH");
 
         // ebtc system hook-up
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
-        _utilsTvl = new Utilities();
 
-        // TODO: ensure diff between fork env and tester coll
-        // bytes memory collMainnetCode = STETH.code;
-        // vm.etch(collateral, collMainnetCode);
+        // NOTE: ensure we are forking with the right collateral for the live tests
+        assertEq(address(collateral), STETH);
 
         // balancer pool creation
         string memory name = "Balancer eBTC Stable Pool";
@@ -120,6 +91,7 @@ contract TVLResearchTest is eBTCBaseFixture {
 
         // hand-over tokens - `leverage_agent`
         vm.deal(leverage_agent, COLL_INIT_AMOUNT);
+        vm.deal(leverage_agent_secondary, COLL_INIT_AMOUNT);
 
         // create lev proxy to enable factor `x` leverage
         leverageMacroAddr = _createLeverageMacro(leverage_agent);
@@ -171,8 +143,10 @@ contract TVLResearchTest is eBTCBaseFixture {
         // seed pool for test
         _addLiquidity(2_000e8, 2000e18, true);
 
+        _openCdp(leverage_agent_secondary, COLL_INIT_AMOUNT);
+
         vm.prank(leverage_agent);
-        collateral.deposit{value: leverage_agent.balance}();
+        collateral.submit{value: leverage_agent.balance}(address(0));
         vm.stopPrank();
 
         uint256 initialColl = collateral.balanceOf(leverage_agent);
@@ -183,11 +157,13 @@ contract TVLResearchTest is eBTCBaseFixture {
         uint256 currentPrice = priceFeedMock.getPrice();
         uint256 targetDebt = (initialColl * currentPrice * leverageFactor) / 1e36;
 
+        uint256 flFee = borrowerOperations.flashFee(address(eBTCToken), targetDebt);
+
         // cdp mcr
         uint256 mcr = borrowerOperations.MCR();
 
-        // healthy cr ~ 140% to avoid triggers on ICR and TCR concerns
-        uint256 healthyDebt = (targetDebt * mcr) / 1.4e18;
+        // healthy cr ~ 125% to avoid triggers on ICR and TCR concerns
+        uint256 healthyDebt = (targetDebt * mcr) / 1.25e18;
 
         bytes32 cdpId = _cdpLeverageTargetCreation(
             initialColl,
@@ -258,7 +234,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     function _openCdp(address agent, uint256 collAmount) internal {
         vm.startPrank(agent);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: collAmount}();
+        collateral.submit{value: collAmount}(address(0));
 
         uint256 currentPrice = priceFeedMock.getPrice();
 
@@ -303,7 +279,7 @@ contract TVLResearchTest is eBTCBaseFixture {
     ) internal returns (bytes32) {
         // target coll on lev
         uint256 collSwapTarget = (_initColl * _leverageTarget) / 1e18;
-        
+
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
             .OpenCdpOperation(_healthyDebt, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget);
@@ -314,7 +290,7 @@ contract TVLResearchTest is eBTCBaseFixture {
         LeverageMacroBase.SwapOperation[] memory levSwapsAfter;
 
         // swap after calldata generation
-        uint256 collSwapMinOut = (collSwapTarget * SLIPPAGE_CONTROL) / MAX_BPS;
+        uint256 collSwapMinOut = (collSwapTarget * SLIPPAGE_CONTROL_SWAP) / MAX_BPS;
         // NOTE: watch-out for codes: https://docs.balancer.fi/reference/contracts/error-codes.html#error-codes
         levSwapsBefore = _balancerCalldataSwap(
             address(eBTCToken),
@@ -453,7 +429,7 @@ contract TVLResearchTest is eBTCBaseFixture {
             int128(0),
             int128(1),
             _tokenMinOut,
-            0 // (_tokenMinOut * SLIPPAGE_CONTROL) / MAX_BPS
+            0
         );
 
         LeverageMacroBase.SwapCheck[] memory safetyOutputChecksEmpty;
