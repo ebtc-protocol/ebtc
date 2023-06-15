@@ -280,7 +280,12 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
 
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
-            .OpenCdpOperation(_debtTarget + _flFee, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget + 19e18);
+            .OpenCdpOperation(
+                _debtTarget + _flFee,
+                NULL_CDP_ID,
+                NULL_CDP_ID,
+                collSwapTarget + 19e18
+            );
         bytes memory openingCdpStructEncoded = abi.encode(openingCdpStruct);
 
         // NOTE: swaps, we do `before` swap, after is not req op
