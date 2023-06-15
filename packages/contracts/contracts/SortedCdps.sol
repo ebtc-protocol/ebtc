@@ -172,7 +172,10 @@ contract SortedCdps is ISortedCdps {
         _requireCallerIsBOorCdpM();
         _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
-        nextCdpNonce += 1;
+        unchecked {
+         ++nextCdpNonce;
+        }
+        
         cdpOwners[_id] = owner;
         _addCdpToOwnerEnumeration(owner, _id);
     }
