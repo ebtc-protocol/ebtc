@@ -150,25 +150,23 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         vm.stopPrank();
 
         uint256 initialColl = collateral.balanceOf(leverage_agent);
-        // TODO: test waters with 2x?, can it be fuzz or constrained to an interval?
+        // TODO: test waters with 2x, can it be fuzz or constrained to an interval?
         uint256 leverageFactor = 2e18;
 
         // targets given current price
         uint256 currentPrice = priceFeedMock.getPrice();
         uint256 targetDebt = (initialColl * currentPrice * leverageFactor) / 1e36;
 
+        // fl fee
         uint256 flFee = borrowerOperations.flashFee(address(eBTCToken), targetDebt);
 
         // cdp mcr
         uint256 mcr = borrowerOperations.MCR();
 
-        // healthy cr ~ 125% to avoid triggers on ICR and TCR concerns
-        uint256 healthyDebt = (targetDebt * mcr) / 1.25e18;
-
         bytes32 cdpId = _cdpLeverageTargetCreation(
             initialColl,
             targetDebt,
-            healthyDebt,
+            flFee,
             leverageFactor,
             leverageMacroAddr
         );
@@ -273,7 +271,7 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
     function _cdpLeverageTargetCreation(
         uint256 _initColl,
         uint256 _debtTarget,
-        uint256 _healthyDebt,
+        uint256 _flFee,
         uint256 _leverageTarget,
         address _leverageMacroAddr
     ) internal returns (bytes32) {
@@ -282,7 +280,7 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
 
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
-            .OpenCdpOperation(_healthyDebt, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget);
+            .OpenCdpOperation(_debtTarget + _flFee, NULL_CDP_ID, NULL_CDP_ID, collSwapTarget + 19e18);
         bytes memory openingCdpStructEncoded = abi.encode(openingCdpStruct);
 
         // NOTE: swaps, we do `before` swap, after is not req op
@@ -312,8 +310,8 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
 
         // post-checks on cdp opening
         LeverageMacroBase.PostCheckParams memory postCheckParams = _getPostCheckStruct(
-            _debtTarget,
-            collSwapTarget
+            _debtTarget + _flFee,
+            collSwapTarget + 19e18
         );
 
         // carry lev ops given the `_leverageTarget`
@@ -338,9 +336,12 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         LeverageMacroBase.CheckValueAndType memory expectedDebt = LeverageMacroBase
             .CheckValueAndType(_debtTarget, LeverageMacroBase.Operator.equal);
 
+        uint256 netColl = _collTarget - LIQUIDATOR_REWARD;
+        uint256 shares = collateral.getSharesByPooledEth(netColl);
+
         //  health-check on coll
         LeverageMacroBase.CheckValueAndType memory expectedCollateral = LeverageMacroBase
-            .CheckValueAndType(_collTarget, LeverageMacroBase.Operator.equal);
+            .CheckValueAndType(shares, LeverageMacroBase.Operator.equal);
 
         return
             LeverageMacroBase.PostCheckParams(

@@ -16,6 +16,7 @@ abstract contract MainnetConstants {
     uint256 SLIPPAGE_CONTROL_SWAP = 9_850;
     uint256 MAX_DELTA = 7e17;
     bytes32 public constant NULL_CDP_ID = bytes32(0);
+    uint public constant LIQUIDATOR_REWARD = 2e17;
 
     // balancer
     IStablePoolFactory STABLE_POOL_FACTORY =

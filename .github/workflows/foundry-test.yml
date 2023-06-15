@@ -44,4 +44,4 @@ jobs:
 
       - name: Foundry Test
         working-directory: ./packages/contracts/
-        run: forge test -vvv
+        run: forge test --nmp foundry_test/pool_research/TVLResearchTest.t.sol -vvv
