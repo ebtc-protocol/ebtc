@@ -463,7 +463,7 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         uint256 currentLeverage = (coll / initColl) * 1e18;
 
         // https://book.getfoundry.sh/reference/forge-std/assertApproxEqAbs
-        // assertApproxEqAbs(currentLeverage, targetLeverageFactor, MAX_DELTA);
+        assertApproxEqAbs(currentLeverage, targetLeverageFactor, MAX_DELTA);
     }
 
     function _jsonCreation(uint256 balance0, uint256 balance1, uint256 amplFactor) internal {
