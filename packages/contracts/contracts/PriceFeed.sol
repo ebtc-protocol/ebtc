@@ -587,14 +587,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.answer = answer;
                 fallbackResponse.timestamp = timestampRetrieved;
                 fallbackResponse.success = success;
-                return (fallbackResponse);
             } catch {
                 // If call to Fallback reverts, return a zero response with success = false
-                return (fallbackResponse);
             }
-        } else {
-            return fallbackResponse;
-        }
+        } // If unset we return a zero response with success = false
+
+        // Return is implicit
     }
 
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
