@@ -91,7 +91,6 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
 
         // hand-over tokens - `leverage_agent`
         vm.deal(leverage_agent, COLL_INIT_AMOUNT);
-        vm.deal(leverage_agent_secondary, COLL_INIT_AMOUNT);
 
         // create lev proxy to enable factor `x` leverage
         leverageMacroAddr = _createLeverageMacro(leverage_agent);
@@ -140,14 +139,16 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
     }
 
     function test_leverage_fl_via_leverageMacro(uint256 _levFactor) public {
-        // constraint leverage factor. test waters with ["2x", "4x"] the coll amount,
+        // constraint leverage factor. test fuzz waters with ["2x", "5x"] the coll amount
         vm.assume(_levFactor >= 2e18);
-        vm.assume(_levFactor <= 4e18);
+        vm.assume(_levFactor <= 5e18);
 
         // seed pool for test
         _addLiquidity(2_000e8, 2000e18, true);
 
-        _openCdp(leverage_agent_secondary, COLL_INIT_AMOUNT);
+        // NOTE: this 1st cdp needs to be well "feed" otherwise we may hit into `TCR < CCR` while leveraging with the proxy
+        vm.deal(leverage_agent_secondary, COLL_INIT_AMOUNT * (_levFactor / 1e18));
+        _openCdp(leverage_agent_secondary, COLL_INIT_AMOUNT * (_levFactor / 1.5e18));
 
         vm.prank(leverage_agent);
         collateral.submit{value: leverage_agent.balance}(address(0));
