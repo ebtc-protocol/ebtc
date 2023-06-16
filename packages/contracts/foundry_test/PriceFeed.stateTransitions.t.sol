@@ -245,4 +245,12 @@ contract PriceFeedTest is eBTCBaseFixture {
             chainlinkResponse.answer = fallbackResponse.answer * 2;
         }
     }
+
+    function _brickFallackFeed() internal {
+        priceFeedTester.setFallbackCaller(address(0));
+    }
+
+    function _restoreFallackFeed() internal {
+        priceFeedTester.setFallbackCaller(address(_tellorCaller));
+    }
 }
