@@ -13,7 +13,7 @@ abstract contract MainnetConstants {
 
     // misc.
     uint256 SLIPPAGE_CONTROL = 9_700;
-    uint256 SLIPPAGE_CONTROL_SWAP = 9_850;
+    uint256 SLIPPAGE_CONTROL_SWAP = 9_900;
     uint256 MAX_DELTA = 7e17;
     bytes32 public constant NULL_CDP_ID = bytes32(0);
     uint public constant LIQUIDATOR_REWARD = 2e17;
@@ -27,8 +27,11 @@ abstract contract MainnetConstants {
         0xa6f548df93de924d73be7d25dc02554c6bd66db500020000000000000000000e;
     uint256 AMPLIFICATION_FACTOR = 25;
 
-    // curve (https://curve.fi/#/ethereum/pools/factory-v2-117/deposit)
+    // curve pools
+    // https://curve.fi/#/ethereum/pools/factory-v2-117/deposit)
     ICurvePool STETH_ETH_CURVE_POOL = ICurvePool(0x828b154032950C8ff7CF8085D841723Db2696056);
+    // https://curve.fi/#/ethereum/pools/tricrypto2/deposit
+    ICurvePool TRICRYPTO_CURVE_POOL = ICurvePool(0xD51a44d3FaE010294C616388b506AcdA1bfAAE46);
 
     // tokens
     address WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;

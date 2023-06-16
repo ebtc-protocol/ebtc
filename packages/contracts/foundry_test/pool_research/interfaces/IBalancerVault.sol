@@ -135,9 +135,9 @@ interface IBalancerVault {
     function manageUserBalance(IVault.UserBalanceOp[] memory ops) external payable;
 
     function queryBatchSwap(
-        uint8 kind,
+        SwapKind kind,
         IVault.BatchSwapStep[] memory swaps,
-        address[] memory assets,
+        IAsset[] memory assets,
         IVault.FundManagement memory funds
     ) external returns (int256[] memory);
 

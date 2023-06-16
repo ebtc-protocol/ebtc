@@ -150,7 +150,7 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         vm.stopPrank();
 
         uint256 initialColl = collateral.balanceOf(leverage_agent);
-        // TODO: test waters with 2x, can it be fuzz or constrained to an interval?
+        // TODO: test waters with [2x, 4x], can it be fuzz or constrained to an interval?
         uint256 leverageFactor = 2e18;
 
         // targets given current price
@@ -278,13 +278,16 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         // target coll on lev
         uint256 collSwapTarget = (_initColl * _leverageTarget) / 1e18;
 
+        // swap after calldata generation
+        uint256 collSwapMinOut = _calldataSwapMinOut(_debtTarget);
+
         // cdp opening details
         LeverageMacroBase.OpenCdpOperation memory openingCdpStruct = LeverageMacroBase
             .OpenCdpOperation(
                 _debtTarget + _flFee,
                 NULL_CDP_ID,
                 NULL_CDP_ID,
-                collSwapTarget + 19e18
+                collSwapMinOut + _initColl
             );
         bytes memory openingCdpStructEncoded = abi.encode(openingCdpStruct);
 
@@ -292,8 +295,6 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         LeverageMacroBase.SwapOperation[] memory levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory levSwapsAfter;
 
-        // swap after calldata generation
-        uint256 collSwapMinOut = (collSwapTarget * SLIPPAGE_CONTROL_SWAP) / MAX_BPS;
         // NOTE: watch-out for codes: https://docs.balancer.fi/reference/contracts/error-codes.html#error-codes
         levSwapsBefore = _balancerCalldataSwap(
             address(eBTCToken),
@@ -316,7 +317,7 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         // post-checks on cdp opening
         LeverageMacroBase.PostCheckParams memory postCheckParams = _getPostCheckStruct(
             _debtTarget + _flFee,
-            collSwapTarget + 19e18
+            collSwapMinOut + _initColl
         );
 
         // carry lev ops given the `_leverageTarget`
@@ -355,6 +356,52 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
                 NULL_CDP_ID,
                 ICdpManagerData.Status.active
             );
+    }
+
+    /// @dev it is not marked as `view` since `queryBatchSwap` modifies states internally
+    function _calldataSwapMinOut(uint256 _ebtcAmount) internal returns (uint256 minStEthOut) {
+        IAsset[] memory assetArr = new IAsset[](3);
+        assetArr[0] = IAsset(address(eBTCToken));
+        assetArr[1] = IAsset(WBTC);
+        assetArr[2] = IAsset(WETH);
+
+        IVault.BatchSwapStep[] memory batchSwapDetails = new IVault.BatchSwapStep[](2);
+        // ebtc -> wbtc
+        batchSwapDetails[0] = IVault.BatchSwapStep({
+            poolId: EBTC_WBTC_POOL_ID,
+            assetInIndex: 0,
+            assetOutIndex: 1,
+            amount: _ebtcAmount,
+            userData: new bytes(0)
+        });
+        // wbtc -> (wstETH || weth)
+        batchSwapDetails[1] = IVault.BatchSwapStep({
+            poolId: WBTC_WETH_POOL_ID,
+            assetInIndex: 1,
+            assetOutIndex: 2,
+            amount: 0,
+            userData: new bytes(0)
+        });
+
+        IVault.FundManagement memory funds = IVault.FundManagement({
+            sender: leverageMacroAddr,
+            fromInternalBalance: false,
+            recipient: payable(leverageMacroAddr),
+            toInternalBalance: false
+        });
+
+        int256[] memory assetDeltas = BALANCER_VAULT.queryBatchSwap(
+            IBalancerVault.SwapKind.GIVEN_IN,
+            batchSwapDetails,
+            assetArr,
+            funds
+        );
+
+        uint256 wethOut = uint256(-assetDeltas[assetDeltas.length - 1]);
+
+        minStEthOut =
+            (STETH_ETH_CURVE_POOL.get_dy(int128(0), int128(1), wethOut) * SLIPPAGE_CONTROL_SWAP) /
+            MAX_BPS;
     }
 
     function _balancerCalldataSwap(
