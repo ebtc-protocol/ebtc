@@ -176,7 +176,7 @@ contract SortedCdps is ISortedCdps {
         _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
         unchecked {
-         ++nextCdpNonce;
+            ++nextCdpNonce;
         }
 
         cdpOwners[_id] = owner;
