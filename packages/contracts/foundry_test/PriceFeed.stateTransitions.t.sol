@@ -203,4 +203,46 @@ contract PriceFeedTest is eBTCBaseFixture {
             price = chainlinkResponse.answer;
         }
     }
+
+    function _makeBadChainlinkResponse(
+        PriceFeed.ChainlinkResponse memory chainlinkResponse
+    ) internal {
+        chainlinkResponse.success = false;
+    }
+
+    function _makeBrokenFallbackResponse(
+        PriceFeed.FallbackResponse memory fallbackResponse
+    ) internal {
+        fallbackResponse.success = false;
+    }
+
+    function _makeChainlinkFrozen(PriceFeed.ChainlinkResponse memory chainlinkResponse) internal {
+        chainlinkResponse.timestampStEthEth = 0;
+    }
+
+    function _makeFallbackFrozen(PriceFeed.FallbackResponse memory fallbackResponse) internal {
+        fallbackResponse.timestamp = 0;
+    }
+
+    function _makeChainlinkPriceChangeAboveMax(
+        PriceFeed.ChainlinkResponse memory _currentResponse,
+        PriceFeed.ChainlinkResponse memory _prevResponse
+    ) internal {
+        if (_currentResponse.answer < _prevResponse.answer) {
+            _currentResponse.answer = 0;
+        } else {
+            _prevResponse.answer = 0;
+        }
+    }
+
+    function _makeFeedsDeviate(
+        PriceFeed.ChainlinkResponse memory chainlinkResponse,
+        PriceFeed.FallbackResponse memory fallbackResponse
+    ) internal {
+        if (chainlinkResponse.answer < fallbackResponse.answer) {
+            fallbackResponse.answer = chainlinkResponse.answer * 2;
+        } else {
+            chainlinkResponse.answer = fallbackResponse.answer * 2;
+        }
+    }
 }
