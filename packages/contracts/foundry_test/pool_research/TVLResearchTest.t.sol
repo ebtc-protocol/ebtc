@@ -139,7 +139,11 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         uint256 wbtcBalancer = IERC20(WBTC).balanceOf(leverage_agent);
     }
 
-    function test_leverage_fl_via_leverageMacro() public {
+    function test_leverage_fl_via_leverageMacro(uint256 _levFactor) public {
+        // constraint leverage factor. test waters with ["2x", "4x"] the coll amount,
+        vm.assume(_levFactor >= 2e18);
+        vm.assume(_levFactor <= 4e18);
+
         // seed pool for test
         _addLiquidity(2_000e8, 2000e18, true);
 
@@ -150,12 +154,10 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
         vm.stopPrank();
 
         uint256 initialColl = collateral.balanceOf(leverage_agent);
-        // TODO: test waters with [2x, 4x], can it be fuzz or constrained to an interval?
-        uint256 leverageFactor = 2e18;
 
         // targets given current price
         uint256 currentPrice = priceFeedMock.getPrice();
-        uint256 targetDebt = (initialColl * currentPrice * leverageFactor) / 1e36;
+        uint256 targetDebt = (initialColl * currentPrice * _levFactor) / 1e36;
 
         // fl fee
         uint256 flFee = borrowerOperations.flashFee(address(eBTCToken), targetDebt);
@@ -167,11 +169,11 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
             initialColl,
             targetDebt,
             flFee,
-            leverageFactor,
+            _levFactor,
             leverageMacroAddr
         );
 
-        _checkLeverageTarget(cdpId, initialColl, leverageFactor);
+        _checkLeverageTarget(cdpId, initialColl, _levFactor);
     }
 
     // Internal helpers
@@ -501,16 +503,17 @@ contract TVLResearchTest is eBTCBaseFixture, MainnetConstants {
 
     function _checkLeverageTarget(
         bytes32 _cdpId,
-        uint256 initColl,
-        uint256 targetLeverageFactor
+        uint256 _initColl,
+        uint256 _targetLeverageFactor
     ) internal {
+        // NOTE: `coll` units is on shares
         (, uint256 coll, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        uint256 collInAmount = collateral.getPooledEthByShares(coll);
 
-        uint256 currentPrice = priceFeedMock.getPrice();
-        uint256 currentLeverage = (coll / initColl) * 1e18;
+        uint256 currentLeverage = (collInAmount * 1e18) / _initColl;
 
         // https://book.getfoundry.sh/reference/forge-std/assertApproxEqAbs
-        assertApproxEqAbs(currentLeverage, targetLeverageFactor, MAX_DELTA);
+        assertApproxEqAbs(currentLeverage, _targetLeverageFactor + 1e18, MAX_DELTA);
     }
 
     function _jsonCreation(uint256 balance0, uint256 balance1, uint256 amplFactor) internal {
