@@ -188,9 +188,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
-                    _cdpState.debt -
-                    ((((cdpManager.MIN_NET_COLL() * _newPrice) * 3) / 1e18) * _partialLiq._ratio) /
-                    1e18;
+                    ((_cdpState.coll - cdpManager.MIN_NET_COLL() * 3) * _newPrice) /
+                    _partialLiq._ratio;
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
                 }
