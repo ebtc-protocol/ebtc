@@ -191,8 +191,8 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
-      // Check eBTC PriceFeed gives 10, with 18 digit precision
-      assert.equal(price, dec(10, 18))
+      // Check eBTC PriceFeed gives 1e21=1e11(ETH/BTC)*1e10(stETH/ETH), with 18 digit precision
+      assert.equal(price, dec(10, 38))
     })
 
     // --- Chainlink breaks ---
@@ -2490,7 +2490,7 @@ contract('PriceFeed', async accounts => {
       let status = await priceFeed.status()
       assert.equal(status, '0') // status 0: using Chainlink
 
-      // Oracle price is 1e9
+      // ETH/BTC price is 1e9 with 0 decimal
       await mockEthBtcChainlink.setDecimals(0)
       await mockStEthEthChainlink.setDecimals(0)
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
@@ -2498,8 +2498,8 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
 
-      // Check eBTC PriceFeed gives 1e9, with 18 digit precision
-      assert.isTrue(price.eq(toBN(dec(1, 9))))
+      // Check eBTC PriceFeed gives 1e9(ETH/BTC) * 1e18(stETH/ETH), with 18 digit precision
+      assert.isTrue(price.eq(toBN(dec(1, 45))))
 
       // Fallback should be broken and, therefore, the status should change to 4
       status = await priceFeed.status()
@@ -2594,8 +2594,15 @@ contract('PriceFeed', async accounts => {
       let _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("990000000000000000"), 8, 18)
       assert.isTrue(_combinedPrice.lt(ethBTCPrice.mul(toBN(dec(10,10)))))
       // check an extreme case when stETH/ETH is far below 1, the resulting stETH/BTC should be relatively much smaller than ETH/BTC
-      _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
-      assert.isTrue(_combinedPrice.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      let _combinedPrice2 = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
+      assert.isTrue(_combinedPrice2.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      // check another extreme case when decimal of stETH/ETH is less than ETH/BTC
+      let ethBTCPrice2 = toBN("68038270000000000");	
+      let _combinedPrice3 = await priceFeed.formatClAggregateAnswer(ethBTCPrice2, toBN("99"), 18, 2)
+      assert.isTrue(_combinedPrice3.eq(_combinedPrice))
+      // check another extreme case when decimal of stETH/ETH is less than ETH/BTC with different decimal
+      let _combinedPrice4 = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("99"), 8, 2)
+      assert.isTrue(_combinedPrice4.eq(_combinedPrice))
     })
 
     it("Chainlink working, Chainlink broken, Fallback bricked, Chainlink recovers, Fallback added", async () => {
