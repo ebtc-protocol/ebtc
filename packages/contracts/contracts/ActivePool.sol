@@ -70,24 +70,24 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     /// @notice Amount of stETH collateral shares in the contract
     /// @dev Not necessarily equal to the the contract's raw StEthColl balance - tokens can be forcibly sent to contracts
-    /// @return uint The amount of StEthColl allocated to the pool
+    /// @return uint256 The amount of StEthColl allocated to the pool
 
-    function getStEthColl() external view override returns (uint) {
+    function getStEthColl() external view override returns (uint256) {
         return StEthColl;
     }
 
     /// @notice Returns the EBTCDebt state variable
     /// @dev The amount of EBTC debt in the pool. Like StEthColl, this is not necessarily equal to the contract's EBTC token balance - tokens can be forcibly sent to contracts
-    /// @return uint The amount of EBTC debt in the pool
+    /// @return uint256 The amount of EBTC debt in the pool
 
-    function getEBTCDebt() external view override returns (uint) {
+    function getEBTCDebt() external view override returns (uint256) {
         return EBTCDebt;
     }
 
     /// @notice The amount of stETH collateral shares claimable by the fee recipient
-    /// @return uint The amount of collateral shares claimable by the fee recipient
+    /// @return uint256 The amount of collateral shares claimable by the fee recipient
 
-    function getFeeRecipientClaimableColl() external view override returns (uint) {
+    function getFeeRecipientClaimableColl() external view override returns (uint256) {
         return FeeRecipientColl;
     }
 
@@ -98,10 +98,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @param _account The address of the account to send stETH to
     /// @param _shares The amount of stETH shares to send
 
-    function sendStEthColl(address _account, uint _shares) public override {
+    function sendStEthColl(address _account, uint256 _shares) public override {
         _requireCallerIsBOorCdpM();
 
-        uint cachedStEthColl = StEthColl;
+        uint256 cachedStEthColl = StEthColl;
         require(cachedStEthColl >= _shares, "!ActivePoolBal");
         unchecked {
             // Can use unchecked due to above
@@ -129,14 +129,14 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
     function sendStEthCollAndLiquidatorReward(
         address _account,
-        uint _shares,
-        uint _liquidatorRewardShares
+        uint256 _shares,
+        uint256 _liquidatorRewardShares
     ) external override {
         _requireCallerIsBOorCdpM();
 
-        uint cachedStEthColl = StEthColl;
+        uint256 cachedStEthColl = StEthColl;
         require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
-        uint totalShares = _shares + _liquidatorRewardShares; // TODO: Is this safe?
+        uint256 totalShares = _shares + _liquidatorRewardShares; // TODO: Is this safe?
         unchecked {
             // Safe per the check above
             cachedStEthColl -= _shares;
@@ -155,11 +155,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev If the fee recipient address is changed while outstanding claimable coll is available, only the new fee recipient will be able to claim the outstanding coll
     /// @param _shares The amount of StEthColl to allocate to the fee recipient
 
-    function allocateFeeRecipientColl(uint _shares) external override {
+    function allocateFeeRecipientColl(uint256 _shares) external override {
         _requireCallerIsCdpManager();
 
-        uint cachedStEthColl = StEthColl;
-        uint _FeeRecipientColl = FeeRecipientColl;
+        uint256 cachedStEthColl = StEthColl;
+        uint256 _FeeRecipientColl = FeeRecipientColl;
 
         require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
         unchecked {
@@ -178,7 +178,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @param _account The address to transfer shares to
     /// @param _shares The amount of shares to transfer
 
-    function _transferSharesWithContractHooks(address _account, uint _shares) internal {
+    function _transferSharesWithContractHooks(address _account, uint256 _shares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferShares(_account, _shares);
 
@@ -191,10 +191,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev Managed by system contracts - requires that the caller is either BorrowerOperations or CdpManager
     /// @param _amount: The amount to increase the system EBTC debt by
 
-    function increaseEBTCDebt(uint _amount) external override {
+    function increaseEBTCDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint cachedEBTCDebt = EBTCDebt + _amount;
+        uint256 cachedEBTCDebt = EBTCDebt + _amount;
 
         EBTCDebt = cachedEBTCDebt;
         emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
@@ -204,10 +204,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev Managed by system contracts - requires that the caller is either BorrowerOperations or CdpManager
     /// @param _amount: The amount to decrease the system EBTC debt by
 
-    function decreaseEBTCDebt(uint _amount) external override {
+    function decreaseEBTCDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint cachedEBTCDebt = EBTCDebt - _amount;
+        uint256 cachedEBTCDebt = EBTCDebt - _amount;
 
         EBTCDebt = cachedEBTCDebt;
         emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
@@ -239,10 +239,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @notice Notify that stETH collateral shares have been recieved, updating internal accounting accordingly
     /// @param _value The amount of collateral to receive
 
-    function receiveColl(uint _value) external override {
+    function receiveColl(uint256 _value) external override {
         _requireCallerIsBorrowerOperations();
 
-        uint cachedStEthColl = StEthColl + _value;
+        uint256 cachedStEthColl = StEthColl + _value;
         StEthColl = cachedStEthColl;
         emit ActivePoolCollBalanceUpdated(cachedStEthColl);
     }
@@ -336,8 +336,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @dev Is likely safe as an open permission though caution should be taken.
     /// @param _shares The amount of shares to claim to feeRecipient
 
-    function claimFeeRecipientColl(uint _shares) external override requiresAuth {
-        uint _FeeRecipientColl = FeeRecipientColl;
+    function claimFeeRecipientColl(uint256 _shares) external override requiresAuth {
+        uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
         unchecked {
             _FeeRecipientColl -= _shares;
@@ -353,7 +353,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
 
-    function sweepToken(address token, uint amount) public nonReentrant requiresAuth {
+    function sweepToken(address token, uint256 amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));
