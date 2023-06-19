@@ -46,6 +46,19 @@ contract PriceFeedTester is PriceFeed {
         return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
     }
 
+    function bothOraclesAliveAndUnbrokenAndSimilarPrice(
+        ChainlinkResponse memory _chainlinkResponse,
+        ChainlinkResponse memory _prevChainlinkResponse,
+        FallbackResponse memory _fallbackResponse
+    ) public view returns (bool) {
+        return
+            _bothOraclesLiveAndUnbrokenAndSimilarPrice(
+                _chainlinkResponse,
+                _prevChainlinkResponse,
+                _fallbackResponse
+            );
+    }
+
     function chainlinkIsFrozen(ChainlinkResponse memory _response) public view returns (bool) {
         return _chainlinkIsFrozen(_response);
     }

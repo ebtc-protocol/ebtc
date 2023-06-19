@@ -485,7 +485,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function _fallbackIsFrozen(
         FallbackResponse memory _fallbackResponse
     ) internal view returns (bool) {
-        return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
+        return
+            _fallbackResponse.timestamp > 0 &&
+            (block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout());
     }
 
     /// @notice Checks if both the Chainlink and fallback oracles are live, unbroken, and reporting similar prices.
