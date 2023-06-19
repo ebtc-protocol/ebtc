@@ -52,7 +52,12 @@ contract PriceFeedTest is eBTCBaseFixture {
             abi.encodeWithSelector(AggregatorV3Interface.getRoundData.selector, prevRoundId),
             abi.encode(prevRoundId, 966009470097829100, 1662456296, 1683478511, prevRoundId)
         );
-        _priceFeed = new PriceFeedTester(address(_tellorCaller), address(authority));
+        _priceFeed = new PriceFeedTester(
+            address(_tellorCaller),
+            address(authority),
+            0x86392dC19c0b719886221c78AB11eb8Cf5c52812,
+            0xAc559F25B1619171CbC396a50854A3240b6A4e99
+        );
     }
 
     // NOTE: now there is not mocking in constructor, since cl feeds are constants

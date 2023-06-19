@@ -46,6 +46,11 @@ contract SortedCdps is ISortedCdps {
 
     ICdpManager public immutable cdpManager;
 
+    uint256 public immutable maxSize;
+
+    uint256 constant ADDRESS_SHIFT = 96; // 8 * 12; Puts the address at leftmost bytes32 position
+    uint256 constant BLOCK_SHIFT = 64; // 8 * 8; Puts the block value after the address
+
     // Information for a node in the list
     struct Node {
         bytes32 nextId; // Id of next node (smaller NICR) in the list
@@ -56,7 +61,6 @@ contract SortedCdps is ISortedCdps {
     struct Data {
         bytes32 head; // Head of the list. Also the node in the list with the largest NICR
         bytes32 tail; // Tail of the list. Also the node in the list with the smallest NICR
-        uint256 maxSize; // Maximum size of the list
         uint256 size; // Current size of the list
         mapping(bytes32 => Node) nodes; // Track the corresponding ids for each node in the list
     }
@@ -83,7 +87,7 @@ contract SortedCdps is ISortedCdps {
             _size = type(uint256).max;
         }
 
-        data.maxSize = _size;
+        maxSize = _size;
 
         cdpManager = ICdpManager(_cdpManagerAddress);
         borrowerOperationsAddress = _borrowerOperationsAddress;
@@ -101,14 +105,14 @@ contract SortedCdps is ISortedCdps {
         bytes32 serialized;
 
         serialized |= bytes32(nonce);
-        serialized |= bytes32(blockHeight) << (8 * 8); // to accommendate more than 4.2 billion blocks
-        serialized |= bytes32(uint256(uint160(owner))) << (12 * 8);
+        serialized |= bytes32(blockHeight) << BLOCK_SHIFT; // to accommendate more than 4.2 billion blocks
+        serialized |= bytes32(uint256(uint160(owner))) << ADDRESS_SHIFT;
 
         return serialized;
     }
 
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
-        uint256 _tmp = uint256(cdpId) >> (12 * 8);
+        uint256 _tmp = uint256(cdpId) >> ADDRESS_SHIFT;
         return address(uint160(_tmp));
     }
 
@@ -171,7 +175,10 @@ contract SortedCdps is ISortedCdps {
         _requireCallerIsBOorCdpM();
         _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
-        nextCdpNonce += 1;
+        unchecked {
+            ++nextCdpNonce;
+        }
+
         cdpOwners[_id] = owner;
         _addCdpToOwnerEnumeration(owner, _id);
     }
@@ -393,7 +400,7 @@ contract SortedCdps is ISortedCdps {
      * @return true if the list is full, false otherwise
      */
     function isFull() public view override returns (bool) {
-        return data.size == data.maxSize;
+        return data.size == maxSize;
     }
 
     /**
@@ -417,7 +424,7 @@ contract SortedCdps is ISortedCdps {
      * @return The maximum size of the list
      */
     function getMaxSize() external view override returns (uint256) {
-        return data.maxSize;
+        return maxSize;
     }
 
     /**

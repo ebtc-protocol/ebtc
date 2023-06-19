@@ -13,6 +13,9 @@ import "./Dependencies/SafeERC20.sol";
  */
 contract FeeRecipient is Ownable, AuthNoOwner {
     using SafeERC20 for IERC20;
+    // --- Events ---
+    event SweepTokenSuccess(address _token, uint _amount, address _recipient);
+
     // --- Data ---
     string public constant NAME = "FeeRecipient";
 
@@ -30,6 +33,9 @@ contract FeeRecipient is Ownable, AuthNoOwner {
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "FeeRecipient: Attempt to sweep more than balance");
 
-        IERC20(token).safeTransfer(owner(), amount);
+        address _owner = owner();
+        IERC20(token).safeTransfer(_owner, amount);
+
+        emit SweepTokenSuccess(token, amount, _owner);
     }
 }

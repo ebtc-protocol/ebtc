@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from eth_abi import encode_abi ## web3.py doesn't have abi.encode for some reason
 import pytest
 from brownie import *  # noqa
 
@@ -25,101 +26,9 @@ class Contracts:
     hintHelpers: Optional[Contract] = None
     ebtcToken: Optional[Contract] = None
     feeRecipient: Optional[Contract] = None
-    communityIssuance: Optional[Contract] = None
-    lockupContractFactory: Optional[Contract] = None
-    lqtyToken: Optional[Contract] = None
-
-
-def set_addresses(contracts):
-    contracts.sortedCdps.setParams(
-        MAX_BYTES_32,
-        contracts.cdpManager.address,
-        contracts.borrowerOperations.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.cdpManager.setAddresses(
-        contracts.borrowerOperations.address,
-        contracts.activePool.address,
-        contracts.defaultPool.address,
-        contracts.stabilityPool.address,
-        contracts.gasPool.address,
-        contracts.collSurplusPool.address,
-        contracts.priceFeedTestnet.address,
-        contracts.ebtcToken.address,
-        contracts.sortedCdps.address,
-        contracts.lqtyToken.address,
-        contracts.feeRecipient.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.borrowerOperations.setAddresses(
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        contracts.defaultPool.address,
-        contracts.stabilityPool.address,
-        contracts.gasPool.address,
-        contracts.collSurplusPool.address,
-        contracts.priceFeedTestnet.address,
-        contracts.sortedCdps.address,
-        contracts.ebtcToken.address,
-        contracts.feeRecipient.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.stabilityPool.setAddresses(
-        contracts.borrowerOperations.address,
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        contracts.ebtcToken.address,
-        contracts.sortedCdps.address,
-        contracts.priceFeedTestnet.address,
-        contracts.communityIssuance.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.activePool.setAddresses(
-        contracts.borrowerOperations.address,
-        contracts.cdpManager.address,
-        contracts.stabilityPool.address,
-        contracts.defaultPool.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.defaultPool.setAddresses(
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.collSurplusPool.setAddresses(
-        contracts.borrowerOperations.address,
-        contracts.cdpManager.address,
-        contracts.activePool.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.hintHelpers.setAddresses(
-        contracts.sortedCdps.address,
-        contracts.cdpManager.address,
-        {'from': accounts[0]}
-    )
-
-    # LQTY
-    contracts.feeRecipient.setAddresses(
-        contracts.lqtyToken.address,
-        contracts.ebtcToken.address,
-        contracts.cdpManager.address,
-        contracts.borrowerOperations.address,
-        contracts.activePool.address,
-        {'from': accounts[0]}
-    )
-
-    contracts.communityIssuance.setAddresses(
-        contracts.lqtyToken.address,
-        contracts.stabilityPool.address,
-        {'from': accounts[0]}
-    )
+    ebtcDeployer: Optional[Contract] = None
+    authority: Optional[Contract] = None
+    collateral: Optional[Contract] = None
 
 
 @pytest.fixture
@@ -133,37 +42,253 @@ def add_accounts():
 def contracts():
     contracts = Contracts()
 
-    contracts.priceFeedTestnet = PriceFeedTestnet.deploy({'from': accounts[0]})  # noqa
-    contracts.sortedCdps = SortedCdps.deploy({'from': accounts[0]})  # noqa
-    contracts.cdpManager = CdpManager.deploy({'from': accounts[0]})  # noqa
-    contracts.activePool = ActivePool.deploy({'from': accounts[0]})  # noqa
-    contracts.stabilityPool = StabilityPool.deploy({'from': accounts[0]})  # noqa
-    contracts.gasPool = GasPool.deploy({'from': accounts[0]})  # noqa
-    contracts.defaultPool = DefaultPool.deploy({'from': accounts[0]})  # noqa
-    contracts.collSurplusPool = CollSurplusPool.deploy({'from': accounts[0]})  # noqa
-    contracts.borrowerOperations = BorrowerOperationsTester.deploy({'from': accounts[0]})  # noqa
-    contracts.hintHelpers = HintHelpers.deploy({'from': accounts[0]})  # noqa
-    contracts.ebtcToken = EBTCToken.deploy(  # noqa
-        contracts.cdpManager.address,
-        contracts.stabilityPool.address,
-        contracts.borrowerOperations.address,
-        {'from': accounts[0]}
+
+    """
+        Re uses the fixture so we deploy all via solidity
+        Then fetch the addresses and be done
+        No point in re-writing the same code
+    """
+
+    """
+        /** @dev The order is as follows:
+            0: authority
+            1: liquidationLibrary
+            2: cdpManager
+            3: borrowerOperations
+            4: priceFeed
+            5; sortedCdps
+            6: activePool
+            7: collSurplusPool
+            8: hintHelpers
+            9: eBTCToken
+            10: feeRecipient
+            11: multiCdpGetter
+
+            TODO TODO TODO TODO TODO TODO
+            Need to add params (check: `static async deployViaCreate3(ebtcDeployer, _argTypes, _argValues, _code, _salt) {`
+        */
+    """
+
+    ## -1 Deployer (NOTE: Raised gas limit)
+    contracts.ebtcDeployer = EBTCDeployerTester.deploy({"from": a[0]})
+    contracts.collateral = CollateralTokenTester.deploy({"from": a[0]})
+
+    _addresses = contracts.ebtcDeployer.getFutureEbtcAddresses()
+
+    ## TODO: START FROM
+    ## // deploy Governor as Authority 
+    ## TODO: For each contract, get Contract.NAME.encode_input because otherwise we can't encode it
+    ## NOTE: Source for deployment: 
+    ## https://github.com/Badger-Finance/ebtc/blob/ff38ed88712662785310657b6e96b8f8f3d241b7/packages/contracts/mainnetDeployment/eBTCDeployScript.js#L184
+
+    ## 0: authority
+    tx = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.AUTHORITY(),
+        contracts.ebtcDeployer.authority_creationCode(),
+        encode_abi(["address"], [a[0].address]),
+        {"from": a[0]}
     )
-    # LQTY
-    contracts.feeRecipient = FeeRecipient.deploy({'from': accounts[0]})  # noqa
-    contracts.communityIssuance = CommunityIssuance.deploy({'from': accounts[0]})  # noqa
-    contracts.lockupContractFactory = LockupContractFactory.deploy({'from': accounts[0]})  # noqa
-    contracts.lqtyToken = LQTYToken.deploy(  # noqa
-        contracts.communityIssuance.address,
-        contracts.feeRecipient.address,
-        contracts.lockupContractFactory.address,
-        accounts[0],  # bountyAddress
-        accounts[0],  # lpRewardsAddress
-        accounts[0],  # multisigAddress
-        {'from': accounts[0]}
+    contracts.authority = AuthNoOwner.at(tx.return_value)
+    assert contracts.authority.address == _addresses[0]
+
+    ## 1: liquidationLibrary
+    """
+    [_addresses[3], _addresses[7], _addresses[9], _addresses[5], _addresses[6], _addresses[4], contracts.collateral.address]
+    """
+    contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.LIQUIDATION_LIBRARY(),
+        contracts.ebtcDeployer.liquidationLibrary_creationCode(),
+        encode_abi([
+            'address', 
+            'address', 
+            'address', 
+            'address', 
+            'address', 
+            'address', 
+            'address'
+            ], 
+            [
+                _addresses[3], _addresses[7], _addresses[9], _addresses[5], _addresses[6], _addresses[4], contracts.collateral.address
+            ]),
+        {"from": a[0]}
+    )
+    # contracts.liquidationLibrary = LiquidationLibrary.at(tx.return_value)
+    # print("contracts.liquidationLibrary", contracts.liquidationLibrary)
+    # assert contracts.liquidationLibrary.address == _addresses[1]
+    
+    # ## 2: cdpManager
+    """
+    _constructorArgs = [_addresses[1], _addresses[0], _addresses[3], _addresses[7], _addresses[9], _addresses[5], _addresses[6], _addresses[4], contracts.collateral.address];
+    """
+    contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.CDP_MANAGER(),
+        contracts.ebtcDeployer.cdpManager_creationCode(),
+        encode_abi(['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'],
+                [_addresses[1], _addresses[0], _addresses[3], _addresses[7], _addresses[9], _addresses[5], _addresses[6], _addresses[4], contracts.collateral.address]
+        ),
+        {"from": a[0]}
     )
 
-    set_addresses(contracts)
+    ## 3: borrowerOperations
+    """
+    _constructorArgs = [_addresses[2], _addresses[6], _addresses[7], _addresses[4], _addresses[5], _addresses[9], _addresses[10], contracts.collateral.address];
+    """
+    contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.BORROWER_OPERATIONS(),
+        contracts.ebtcDeployer.borrowerOperationsTester_creationCode(), ## NOTE: Tester
+        encode_abi(
+            ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'],
+            [_addresses[2], _addresses[6], _addresses[7], _addresses[4], _addresses[5], _addresses[9], _addresses[10], contracts.collateral.address]
+        ),
+        {"from": a[0]}
+    )
+
+    ## NOTE: eBTC Token is deploy in script here, we deploy later
+
+    ## 4: priceFeed
+    """
+    _argValues = [_addresses[0]];
+    """
+    contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.PRICE_FEED(),
+        contracts.ebtcDeployer.priceFeedTestnet_creationCode(), ## NOTE: This is TESTNET 
+        encode_abi(
+            ['address'],
+            [_addresses[0]]
+        ),
+        {"from": a[0]}
+    )
+
+
+    ## 5; sortedCdps
+    """
+    _constructorArgs = [0, _addresses[2], _addresses[3]];
+    """
+    contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.SORTED_CDPS(),
+        contracts.ebtcDeployer.sortedCdps_creationCode(),
+        encode_abi(
+            ['uint256', 'address', 'address'],
+            [0, _addresses[2], _addresses[3]]
+        ),
+        {"from": a[0]}
+    )
+
+    ## 6: activePool
+    """
+    _constructorArgs = [_addresses[3], _addresses[2], contracts.collateral.address, _addresses[7], _addresses[10]];
+    """
+    contracts.activePool = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.ACTIVE_POOL(),
+        contracts.ebtcDeployer.activePool_creationCode(),
+        encode_abi(
+            ['address', 'address', 'address', 'address', 'address'],
+            [_addresses[3], _addresses[2], contracts.collateral.address, _addresses[7], _addresses[10]]
+        ),
+        {"from": a[0]}
+    )
+
+    ## 7: collSurplusPool
+    """
+    _constructorArgs = [_addresses[3], _addresses[2], _addresses[6], contracts.collateral.address];
+    """
+    contracts.collSurplusPool = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.COLL_SURPLUS_POOL(),
+        contracts.ebtcDeployer.collSurplusPool_creationCode(),
+        encode_abi(
+            ['address', 'address', 'address', 'address'],
+            [_addresses[3], _addresses[2], _addresses[6], contracts.collateral.address]
+        ),
+        {"from": a[0]}
+    )
+
+    ## 8: hintHelpers
+    """
+    _constructorArgs = [_addresses[5], _addresses[2], contracts.collateral.address, _addresses[6], _addresses[4]];
+    """
+    contracts.hintHelpers = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.HINT_HELPERS(),
+        contracts.ebtcDeployer.hintHelpers_creationCode(),
+        encode_abi(
+            ['address', 'address', 'address', 'address', 'address'],
+            [_addresses[5], _addresses[2], contracts.collateral.address, _addresses[6], _addresses[4]]
+        ),
+        {"from": a[0]}
+    )
+
+    ## 9: eBTCToken
+    """
+    _constructorArgs = [_addresses[2], _addresses[3], _addresses[0]];
+    """
+    contracts.eBTCToken = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.EBTC_TOKEN(),
+        contracts.ebtcDeployer.ebtcToken_creationCode(),
+        encode_abi(
+            ['address', 'address', 'address'],
+            [_addresses[2], _addresses[3], _addresses[0]]
+        ),
+        {"from": a[0]}
+    )
+
+    ## 10: feeRecipient
+    """
+    _constructorArgs = [this.feeRecipientOwner, _addresses[1]];
+    """
+    contracts.feeRecipient = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.FEE_RECIPIENT(),
+        contracts.ebtcDeployer.feeRecipient_creationCode(),
+        encode_abi(
+            ['address', 'address'],
+            [a[0].address, _addresses[1]] ## TODO: Is valid?s
+        ),
+        {"from": a[0]}
+    )
+
+    ## 11: multiCdpGetter
+    """
+    _constructorArgs = [_addresses[2], _addresses[5]];
+    """
+    contracts.multiCdpGetter = contracts.ebtcDeployer.deployWithCreationCodeAndConstructorArgs(
+        contracts.ebtcDeployer.MULTI_CDP_GETTER(),
+        contracts.ebtcDeployer.multiCdpGetter_creationCode(),
+        encode_abi(
+            ['address', 'address'],
+            [_addresses[2], _addresses[5]]
+        ),
+        {"from": a[0]}
+    )
+
+
+    """
+            function getFutureEbtcAddresses() public view returns (EbtcAddresses memory) {
+        EbtcAddresses memory addresses = EbtcAddresses(
+            Create3.addressOf(keccak256(abi.encodePacked(AUTHORITY))), 0 
+            Create3.addressOf(keccak256(abi.encodePacked(LIQUIDATION_LIBRARY))), 1
+            Create3.addressOf(keccak256(abi.encodePacked(CDP_MANAGER))), 2
+            Create3.addressOf(keccak256(abi.encodePacked(BORROWER_OPERATIONS))), 3
+            Create3.addressOf(keccak256(abi.encodePacked(PRICE_FEED))), 4 
+            Create3.addressOf(keccak256(abi.encodePacked(SORTED_CDPS))), 5
+            Create3.addressOf(keccak256(abi.encodePacked(ACTIVE_POOL))), 6
+            Create3.addressOf(keccak256(abi.encodePacked(COLL_SURPLUS_POOL))), 7
+            Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS))), 8 
+            Create3.addressOf(keccak256(abi.encodePacked(EBTC_TOKEN))),9
+            Create3.addressOf(keccak256(abi.encodePacked(FEE_RECIPIENT))), 10 
+            Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER)))11
+        );
+
+    """
+
+    contracts.priceFeedTestnet = PriceFeedTestnet.at(_addresses[4])
+    contracts.sortedCdps = SortedCdps.at(_addresses[5])
+    contracts.cdpManager = CdpManager.at(_addresses[2])
+    contracts.activePool = ActivePool.at(_addresses[6])
+    contracts.collSurplusPool = CollSurplusPool.at(_addresses[7])
+    contracts.borrowerOperations = BorrowerOperations.at(_addresses[3])
+    contracts.hintHelpers = HintHelpers.at(_addresses[8])
+    contracts.ebtcToken = EBTCToken.at(_addresses[9])
+    contracts.feeRecipient = FeeRecipient.at(_addresses[10])
+    ## TODO: Add the addresses from the factory
+    ## TODO: Add some sort of test to prove they are correct
 
     return contracts
 
@@ -211,13 +336,16 @@ def print_expectations():
 
 
 def test_run_simulation(add_accounts, contracts, print_expectations):
-    contracts.priceFeedTestnet.setPrice(floatToWei(price_ether[0]), {'from': accounts[0]})
+    contracts.priceFeedTestnet.setPrice(floatToWei(price_ether[0]), {'from': a[0]})
     # whale
     whale_coll = 30000.0
-    contracts.borrowerOperations.openCdp(MAX_FEE, Wei(10e24), ZERO_ADDRESS, ZERO_ADDRESS,
-                                           {'from': accounts[0], 'value': floatToWei(whale_coll)})
-    contracts.stabilityPool.provideToSP(floatToWei(stability_initial), ZERO_ADDRESS,
-                                        {'from': accounts[0]})
+    contracts.collateral.deposit({'from': a[0], 'value': floatToWei(whale_coll)})
+    balance_of_coll = contracts.collateral.balanceOf(a[0])
+    contracts.collateral.approve(contracts.borrowerOperations.address, balance_of_coll, {"from": a[0]})
+    ## Deposit All
+    ## Borrow 10e18
+    contracts.borrowerOperations.openCdp(Wei(10e18), ZERO_ADDRESS, ZERO_ADDRESS, balance_of_coll,
+                                           {'from': a[0]})
 
     active_accounts = []
     inactive_accounts = [*range(1, len(accounts))]
@@ -254,7 +382,7 @@ def test_run_simulation(add_accounts, contracts, print_expectations):
             # exogenous ether price input
             price_ether_current = price_ether[index]
             contracts.priceFeedTestnet.setPrice(floatToWei(price_ether_current),
-                                                {'from': accounts[0]})
+                                                {'from': a[0]})
 
             # cdp liquidation & return of stability pool
             result_liquidation = liquidate_cdps(accounts, contracts, active_accounts,

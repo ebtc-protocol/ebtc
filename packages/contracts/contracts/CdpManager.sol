@@ -58,7 +58,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit SortedCdpsAddressChanged(_sortedCdpsAddress);
         emit CollateralAddressChanged(_collTokenAddress);
 
-        stakingRewardSplit = 2500;
+        stakingRewardSplit = STAKING_REWARD_SPLIT;
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
@@ -757,7 +757,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
-            lastFeeOperationTime = block.timestamp;
+            // Using the effective elapsed time that is consumed so far to update lastFeeOperationTime
+            // instead block.timestamp for consistency with _calcDecayedBaseRate()
+            lastFeeOperationTime += _minutesPassedSinceLastFeeOp() * SECONDS_IN_ONE_MINUTE;
             emit LastFeeOpTimeUpdated(block.timestamp);
         }
     }
@@ -788,6 +790,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _price
     ) external view returns (bool) {
         return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
+    }
+
+    // @dev return current TCR for given price and true if delta index is big enough to trigger recovery mode, otherwise false.
+    function checkIfDeltaIndexTriggerRM(uint _price) external view override returns (uint, bool) {
+        uint _oldIndex = stFPPSg;
+        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+        if (_newIndex > _oldIndex) {
+            (uint _requiredDelta, uint _tcr) = _computeDeltaIndexToTriggerRM(
+                _newIndex,
+                _price,
+                stakingRewardSplit
+            );
+            return (_tcr, (_newIndex - _oldIndex) >= _requiredDelta);
+        } else {
+            return (_getTCR(_price), false);
+        }
     }
 
     // --- 'require' wrapper functions ---
