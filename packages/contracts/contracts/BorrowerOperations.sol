@@ -204,7 +204,15 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdpInternal(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(
+            _cdpId,
+            _collWithdrawal,
+            _EBTCChange,
+            _isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            0
+        );
     }
 
     /**
