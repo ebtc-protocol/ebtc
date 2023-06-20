@@ -1,0 +1,44 @@
+{
+  "eBTCDeployer": {
+    "address": "0x3B22f0466d98bE3040d2c51dE89b0479FDD48910"
+  },
+  "collateral": {
+    "address": "0xFC623e91a3A638718cDA6dCC108BD60a9F8109E1"
+  },
+  "authority": {
+    "address": "0x217f587B42435698078812448595Ef1ddF1bcbb0"
+  },
+  "liquidationLibrary": {
+    "address": "0x6105Ff2092AdE0B04E75aeD2542d59324fce950a"
+  },
+  "cdpManager": {
+    "address": "0xFd7d5d270BD240713d126d07472aED57f70805B1"
+  },
+  "borrowerOperations": {
+    "address": "0xc2141c722487268ce50fd6B6808C8b37fbc105c5"
+  },
+  "eBTCToken": {
+    "address": "0x244275B7b2204Bef3A851a759aACB339B9e20d16"
+  },
+  "priceFeed": {
+    "address": "0x9Aa1d3fac5d862247eF94aDFac9f673814DDe424"
+  },
+  "activePool": {
+    "address": "0xB3C7B1772E7b2712D0c0C3B0558f49F06A951A26"
+  },
+  "collSurplusPool": {
+    "address": "0x88F54f521CFbb3bAe4eacf80d79cA25bE216f009"
+  },
+  "sortedCdps": {
+    "address": "0x1d419249bBD2E630c6F23b1B5230227f96b5D849"
+  },
+  "hintHelpers": {
+    "address": "0xd0d57010479271a4f81f9D629a5754DE082ad535"
+  },
+  "feeRecipient": {
+    "address": "0xa38aA3965E64c654996Cd2e3036182585462C48a"
+  },
+  "multiCdpGetter": {
+    "address": "0x49eEaa057077D75f9FE47398d5E327Ae81E53064"
+  }
+}
