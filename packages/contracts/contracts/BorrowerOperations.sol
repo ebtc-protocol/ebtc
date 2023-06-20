@@ -155,7 +155,7 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAmount
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(_cdpId, 0, 0, false, _upperHint, _lowerHint, _collAmount);
+        _adjustCdpInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, _collAmount);
     }
 
     /**
@@ -167,7 +167,7 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, _collWithdrawal, 0, false, _upperHint, _lowerHint, 0);
     }
 
     // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
@@ -180,7 +180,7 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, 0, _EBTCAmount, true, _upperHint, _lowerHint, 0);
     }
 
     // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
@@ -193,7 +193,7 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, 0, _EBTCAmount, false, _upperHint, _lowerHint, 0);
     }
 
     function adjustCdp(
@@ -204,7 +204,15 @@ contract BorrowerOperations is
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(_cdpId, _collWithdrawal, _EBTCChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(
+            _cdpId,
+            _collWithdrawal,
+            _EBTCChange,
+            _isDebtIncrease,
+            _upperHint,
+            _lowerHint,
+            0
+        );
     }
 
     /**
@@ -220,27 +228,6 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdp(
-            _cdpId,
-            _collWithdrawal,
-            _EBTCChange,
-            _isDebtIncrease,
-            _upperHint,
-            _lowerHint,
-            _collAddAmount
-        );
-    }
-
-    function _adjustCdp(
-        bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _EBTCChange,
-        bool _isDebtIncrease,
-        bytes32 _upperHint,
-        bytes32 _lowerHint,
-        uint _collAddAmount
-    ) internal {
-        _requireCdpOwner(_cdpId);
         _adjustCdpInternal(
             _cdpId,
             _collWithdrawal,
@@ -269,6 +256,8 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
+        _requireCdpOwner(_cdpId);
+
         LocalVariables_adjustCdp memory vars;
 
         _requireCdpisActive(cdpManager, _cdpId);
