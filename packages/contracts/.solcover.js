@@ -20,7 +20,6 @@ module.exports = {
   skipFiles: [
     "TestContracts/",
     "MultiCdpGetter.sol",
-    "Migrations.sol",
     "Interfaces/",
     "LPRewards/Dependencies/",
     "LPRewards/TestContracts/",
