@@ -412,11 +412,17 @@ contract PriceFeedTest is eBTCBaseFixture {
     function _brickFallackFeed() internal {
         vm.prank(authUser);
         priceFeedTester.setFallbackCaller(address(0));
+        require(address(priceFeedTester.fallbackCaller()) == address(0), "!brickFallback");
     }
 
     function _restoreFallackFeed() internal {
+        _restoreFallbackPriceAndTimestamp(initStEthBTCPrice);
         vm.prank(authUser);
         priceFeedTester.setFallbackCaller(address(_tellorCaller));
+        require(
+            address(priceFeedTester.fallbackCaller()) == address(_tellorCaller),
+            "!restoreFallback"
+        );
     }
 
     function _restoreChainlinkPriceAndTimestamp(MockAggregator _mockFeed, int256 _price) internal {
