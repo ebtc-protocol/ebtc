@@ -358,7 +358,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
-    
+
         address cachedFeeRecipientAddress = feeRecipientAddress; // Saves an SLOAD
 
         IERC20(token).safeTransfer(cachedFeeRecipientAddress, amount);
