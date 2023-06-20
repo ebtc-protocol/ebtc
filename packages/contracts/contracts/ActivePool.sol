@@ -275,7 +275,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         // Check new balance
         // NOTE: Invariant Check, technically breaks CEI but I think we must use it
-        // NOTE: Must be > as otherwise you can self-destruct donate to brick the functionality forever
         // NOTE: This means any balance > StEthColl is stuck, this is also present in LUSD as is
 
         // NOTE: This check effectively prevents running 2 FL at the same time
