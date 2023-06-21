@@ -139,7 +139,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
         uint256 cachedAllowances = _allowances[sender][msg.sender];
         require(cachedAllowances >= amount, "ERC20: transfer amount exceeds allowance");
-        _approve(sender, msg.sender, cachedAllowances - amount);
+        unchecked {
+            _approve(sender, msg.sender, cachedAllowances - amount);
+        }
         return true;
     }
 
@@ -157,7 +159,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     ) external override returns (bool) {
         uint256 cachedAllowances = _allowances[msg.sender][spender];
         require(cachedAllowances >= subtractedValue, "ERC20: decreased allowance below zero");
-        _approve(msg.sender, spender, cachedAllowances - subtractedValue);
+        unchecked {
+            _approve(msg.sender, spender, cachedAllowances - subtractedValue);
+        }
         return true;
     }
 
