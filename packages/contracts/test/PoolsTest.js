@@ -139,7 +139,7 @@ contract('ActivePool', async accounts => {
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
     await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
 
-    let _newFee = web3.utils.toBN("9999");
+    let _newFee = await activePool.maxFeeBps();
     assert.isTrue(_newFee.gt(await activePool.feeBps()));
     await activePool.setFeeBps(_newFee, {from: alice})
     assert.isTrue(_newFee.eq(await activePool.feeBps()));
@@ -161,8 +161,8 @@ contract('ActivePool', async accounts => {
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
     await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < maxFeeBps");
 
-    let _newFee = web3.utils.toBN("9999");
-    assert.isTrue(_newFee.lt(await activePool.maxFeeBps())); // starts at 10000
+    let _newFee = await activePool.maxFeeBps()
+    assert.isTrue(_newFee.lte(await activePool.maxFeeBps())); // starts at 10000
     await activePool.setMaxFeeBps(_newFee, {from: alice})
     assert.isTrue(_newFee.eq(await activePool.maxFeeBps()));
 

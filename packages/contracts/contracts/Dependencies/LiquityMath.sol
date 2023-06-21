@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 library LiquityMath {
     uint internal constant DECIMAL_PRECISION = 1e18;
+    uint public constant MAX_TCR = 2 ** 256 - 1;
 
     /* Precision for Nominal ICR (independent of price). Rationale for the value:
      *
@@ -108,7 +109,7 @@ library LiquityMath {
         // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else {
             // if (_debt == 0)
-            return 2 ** 256 - 1;
+            return MAX_TCR;
         }
     }
 }

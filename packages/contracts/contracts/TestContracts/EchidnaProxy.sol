@@ -62,6 +62,11 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         }
     }
 
+    function _ensureMinCollInCdp(bytes32 _cdpId) internal view {
+        uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
+        require(_collWorth < cdpManager.MIN_NET_COLL(), "!minimum CDP collateral");
+    }
+
     // CdpManager
 
     function liquidatePrx(bytes32 _cdpId) external {
@@ -153,6 +158,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         bytes32 _cdpId = borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _coll);
         _ensureNoLiquidationTriggered(_cdpId);
         _ensureNoRecoveryModeTriggered();
+        _ensureMinCollInCdp(_cdpId);
     }
 
     function addCollPrx(

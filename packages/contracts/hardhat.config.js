@@ -22,7 +22,7 @@ const getSecret = (secretKey, defaultValue = "") => {
   return secret;
 };
 const alchemyUrl = () => {
-  return `https://eth-mainnet.alchemyapi.io/v2/${getSecret("alchemyAPIKey")}`;
+  return `https://eth-mainnet.g.alchemy.com/v2/${getSecret("alchemyAPIKey")}`;
 };
 
 const alchemyUrlGoerli = () => {

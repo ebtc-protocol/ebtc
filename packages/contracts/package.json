@@ -5,7 +5,8 @@
   "main": "truffle-config.js",
   "workspaces": {
     "nohoist": [
-      "**/@openzeppelin", "**/@openzeppelin/**"
+      "**/@openzeppelin",
+      "**/@openzeppelin/**"
     ]
   },
   "directories": {
@@ -16,18 +17,19 @@
     "prepare": "run-s prepare:*",
     "prepare:compile": "hardhat compile",
     "prepare:set-version": "node scripts/set-version.js",
-    "test": "hardhat test --show-stack-traces ./test/CdpManagerTest.js",
+    "test": "hardhat test --show-stack-traces",
     "coverage": "hardhat coverage",
     "coveralls": "cat coverage/lcov.info | coveralls",
     "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat --show-stack-traces",
     "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost",
     "testnet-fork-deployment": "hardhat run mainnetDeployment/testnetLocalForkDeployment.js --network localhost",
-    "deploy-testnet": "hardhat run mainnetDeployment/goerliDeployment.js --network goerli"
+    "deploy-testnet": "hardhat run mainnetDeployment/eBTCDeployScript.js --network localhost"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chalk": "4.1.2",
     "decimal.js": "^10.2.0",
     "eth-mutants": "^0.1.1",
     "ethereumjs-util": "^7.0.9",

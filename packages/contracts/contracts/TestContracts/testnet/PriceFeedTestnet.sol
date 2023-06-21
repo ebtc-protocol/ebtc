@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 
 import "../../Interfaces/IPriceFeed.sol";
 import "../../Interfaces/IFallbackCaller.sol";
-import "./../../Dependencies/Ownable.sol";
-import "./../../Dependencies/CheckContract.sol";
-import "./../../Dependencies/AuthNoOwner.sol";
+import "../../Dependencies/Ownable.sol";
+import "../../Dependencies/CheckContract.sol";
+import "../../Dependencies/AuthNoOwner.sol";
 
 /*
  * PriceFeed placeholder for testnet and development. The price can be manually input or fetched from
@@ -19,6 +19,10 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
     uint256 private _price = 7428 * 1e13; // stETH/BTC price == ~15.8118 ETH per BTC
     bool public _useFallback;
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the Fallback system
+
+    constructor(address _authorityAddress) {
+        _initializeAuthority(_authorityAddress);
+    }
 
     // --- Dependency setters ---
 

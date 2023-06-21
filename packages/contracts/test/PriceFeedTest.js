@@ -140,7 +140,7 @@ contract('PriceFeed', async accounts => {
       await mockEthBtcChainlink.setDecimals(8)
       await mockStEthEthChainlink.setDecimals(18)
 
-      priceFeed = await PriceFeed.new(tellorCaller.address, owner)
+      priceFeed = await PriceFeed.new(tellorCaller.address, owner, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       PriceFeed.setAsDeployed(priceFeed)
     })
 
@@ -185,14 +185,14 @@ contract('PriceFeed', async accounts => {
       // Decimals for second feed change
       await mockEthBtcChainlink.setDecimals(8)
       await mockStEthEthChainlink.setDecimals(8)
-      await mockEthBtcChainlink.setPrice(dec(1, 9))
-      await mockStEthEthChainlink.setPrice(dec(1, 8))
-      await mockEthBtcChainlink.setPrevPrice(dec(1, 9))
-      await mockStEthEthChainlink.setPrevPrice(dec(1, 8))
+      await mockEthBtcChainlink.setPrice(dec(10, 18))
+      await mockStEthEthChainlink.setPrice(dec(1, 18))
+      await mockEthBtcChainlink.setPrevPrice(dec(10, 18))
+      await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
-      // Check eBTC PriceFeed gives 10, with 18 digit precision
-      assert.equal(price, dec(10, 18))
+      // Check eBTC PriceFeed gives 1e21=1e11(ETH/BTC)*1e10(stETH/ETH), with 18 digit precision
+      assert.equal(price, dec(10, 38))
     })
 
     // --- Chainlink breaks ---
@@ -2366,8 +2366,10 @@ contract('PriceFeed', async accounts => {
     })
     
     it("SetFallbackCaller() should only allow authorized caller", async() => {
+      const ETH_BTC_CL_FEED = "0xAc559F25B1619171CbC396a50854A3240b6A4e99";
+      const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
       let _newAuthority = await GovernorTester.new(alice);    
-      let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
+      let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       
       await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
@@ -2463,7 +2465,7 @@ contract('PriceFeed', async accounts => {
       let _newAuthority = await GovernorTester.new(alice);
 
       // Deploy PriceFeed and set it up
-      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address)
+      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       PriceFeed.setAsDeployed(priceFeed)
       assert.isTrue(_newAuthority.address == (await priceFeed.authority()));
 
@@ -2488,7 +2490,7 @@ contract('PriceFeed', async accounts => {
       let status = await priceFeed.status()
       assert.equal(status, '0') // status 0: using Chainlink
 
-      // Oracle price is 1e9
+      // ETH/BTC price is 1e9 with 0 decimal
       await mockEthBtcChainlink.setDecimals(0)
       await mockStEthEthChainlink.setDecimals(0)
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
@@ -2496,8 +2498,8 @@ contract('PriceFeed', async accounts => {
       await priceFeed.fetchPrice()
       price = await priceFeed.lastGoodPrice()
 
-      // Check eBTC PriceFeed gives 1e9, with 18 digit precision
-      assert.isTrue(price.eq(toBN(dec(1, 9))))
+      // Check eBTC PriceFeed gives 1e9(ETH/BTC) * 1e18(stETH/ETH), with 18 digit precision
+      assert.isTrue(price.eq(toBN(dec(1, 45))))
 
       // Fallback should be broken and, therefore, the status should change to 4
       status = await priceFeed.status()
@@ -2585,5 +2587,91 @@ contract('PriceFeed', async accounts => {
       status = await priceFeed.status()
       assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
     })
-   })
+
+    it("Price Feed Combination: prefer multiplication over division", async () => {
+      // check a case when stETH/ETH is below 1, the resulting stETH/BTC should be smaller than ETH/BTC
+      let ethBTCPrice = toBN("6803827");	
+      let _combinedPrice = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("990000000000000000"), 8, 18)
+      assert.isTrue(_combinedPrice.lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      // check an extreme case when stETH/ETH is far below 1, the resulting stETH/BTC should be relatively much smaller than ETH/BTC
+      let _combinedPrice2 = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("11000000000000000"), 8, 18)
+      assert.isTrue(_combinedPrice2.mul(toBN(dec(10,1))).lt(ethBTCPrice.mul(toBN(dec(10,10)))))
+      // check another extreme case when decimal of stETH/ETH is less than ETH/BTC
+      let ethBTCPrice2 = toBN("68038270000000000");	
+      let _combinedPrice3 = await priceFeed.formatClAggregateAnswer(ethBTCPrice2, toBN("99"), 18, 2)
+      assert.isTrue(_combinedPrice3.eq(_combinedPrice))
+      // check another extreme case when decimal of stETH/ETH is less than ETH/BTC with different decimal
+      let _combinedPrice4 = await priceFeed.formatClAggregateAnswer(ethBTCPrice, toBN("99"), 8, 2)
+      assert.isTrue(_combinedPrice4.eq(_combinedPrice))
+    })
+
+    it("Chainlink working, Chainlink broken, Fallback bricked, Chainlink recovers, Fallback added", async () => {
+      // Status should be 0
+      let status = await priceFeed.status()
+      assert.equal(status, '0') // status 0: using Chainlink
+
+      await mockEthBtcChainlink.setLatestRoundId(0)
+      await priceFeed.fetchPrice()
+      let price = await priceFeed.lastGoodPrice()
+      // Price equals last good price
+      assert.equal(price, dec(10, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '2') // status 2: bothOraclesUntrusted
+
+      // ChainLink recovers and changes price
+      await mockEthBtcChainlink.setLatestRoundId(4)
+      await mockEthBtcChainlink.setPrevRoundId(3)
+      await mockStEthEthChainlink.setLatestRoundId(4)
+      await mockStEthEthChainlink.setPrevRoundId(3)
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(2, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(2, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 2e9, with 18 digit precision
+      assert.equal(price, dec(20, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
+
+      // Chainlink price updates and there's no status change
+      await mockEthBtcChainlink.setLatestRoundId(5)
+      await mockEthBtcChainlink.setPrevRoundId(4)
+      await mockStEthEthChainlink.setLatestRoundId(5)
+      await mockStEthEthChainlink.setPrevRoundId(4)
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(3, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(3, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 3e9, with 18 digit precision
+      assert.equal(price, dec(30, 18))
+
+      // Chainlink and Fallback should be broken so, therefore, the status should change to 2
+      status = await priceFeed.status()
+      assert.equal(status, '4') // status 4: usingChainlinkFallbackUntrusted
+
+      // A Fallback Oracle is added and it reports a valid value, same as CL
+      const now = await th.getLatestBlockTimestamp(web3)
+      await mockTellor.setUpdateTime(now)
+      await mockTellor.setPrice(dec(40, 18))
+      await priceFeed.setFallbackCaller(tellorCaller.address, {from: alice})
+      assert.equal(await priceFeed.fallbackCaller(), tellorCaller.address)
+
+      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(4, 9))
+      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(4, 9))
+
+      await priceFeed.fetchPrice()
+      price = await priceFeed.lastGoodPrice()
+      // Check eBTC PriceFeed gives 4e9, with 18 digit precision
+      assert.equal(price, dec(40, 18))
+
+      // Both oracles are live and reporting a simiar value
+      status = await priceFeed.status()
+      assert.equal(status, '0') // status 0: chainlinkWorking
+    })
+  })
 })

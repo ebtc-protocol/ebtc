@@ -13,6 +13,7 @@ import "../CollSurplusPool.sol";
 import "../HintHelpers.sol";
 import "../EBTCToken.sol";
 import "../FeeRecipient.sol";
+import "../MultiCdpGetter.sol";
 
 // tester imports
 import "./CDPManagerTester.sol";
@@ -33,6 +34,7 @@ contract EBTCDeployerTester is EBTCDeployer {
     bytes public hintHelpers_creationCode = type(HintHelpers).creationCode;
     bytes public ebtcToken_creationCode = type(EBTCToken).creationCode;
     bytes public feeRecipient_creationCode = type(FeeRecipient).creationCode;
+    bytes public multiCdpGetter_creationCode = type(MultiCdpGetter).creationCode;
 
     // test contracts creation code
     bytes public cdpManagerTester_creationCode = type(CdpManagerTester).creationCode;

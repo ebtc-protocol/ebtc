@@ -4,41 +4,12 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 
 import {PriceFeed} from "../contracts/PriceFeed.sol";
+import {PriceFeedTester} from "../contracts/TestContracts/PriceFeedTester.sol";
 import {MockTellor} from "../contracts/TestContracts/MockTellor.sol";
 import {MockAggregator} from "../contracts/TestContracts/MockAggregator.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 import {AggregatorV3Interface} from "../contracts/Dependencies/AggregatorV3Interface.sol";
-
-contract PriceFeedTester is PriceFeed {
-    constructor(
-        address _tellorCallerAddress,
-        address _authorityAddress
-    ) PriceFeed(_tellorCallerAddress, _authorityAddress) {}
-
-    function getCurrentFallbackResponse()
-        public
-        view
-        returns (FallbackResponse memory fallbackResponse)
-    {
-        return _getCurrentFallbackResponse();
-    }
-
-    function getCurrentChainlinkResponse()
-        public
-        view
-        returns (ChainlinkResponse memory chainlinkResponse)
-    {
-        return _getCurrentChainlinkResponse();
-    }
-
-    function bothOraclesSimilarPrice(
-        ChainlinkResponse memory _chainlinkResponse,
-        FallbackResponse memory _fallbackResponse
-    ) public pure returns (bool) {
-        return _bothOraclesSimilarPrice(_chainlinkResponse, _fallbackResponse);
-    }
-}
 
 contract PriceFeedTest is eBTCBaseFixture {
     address constant STETH_ETH_CL_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
@@ -81,7 +52,12 @@ contract PriceFeedTest is eBTCBaseFixture {
             abi.encodeWithSelector(AggregatorV3Interface.getRoundData.selector, prevRoundId),
             abi.encode(prevRoundId, 966009470097829100, 1662456296, 1683478511, prevRoundId)
         );
-        _priceFeed = new PriceFeedTester(address(_tellorCaller), address(authority));
+        _priceFeed = new PriceFeedTester(
+            address(_tellorCaller),
+            address(authority),
+            0x86392dC19c0b719886221c78AB11eb8Cf5c52812,
+            0xAc559F25B1619171CbC396a50854A3240b6A4e99
+        );
     }
 
     // NOTE: now there is not mocking in constructor, since cl feeds are constants
