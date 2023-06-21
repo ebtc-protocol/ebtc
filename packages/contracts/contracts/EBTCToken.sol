@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IEBTCToken.sol";
-import "./Dependencies/SafeMath.sol";
+
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -23,8 +23,6 @@ import "./Dependencies/AuthNoOwner.sol";
  */
 
 contract EBTCToken is IEBTCToken, AuthNoOwner {
-    using SafeMath for uint256;
-
     uint256 private _totalSupply;
     string internal constant _NAME = "EBTC Stablecoin";
     string internal constant _SYMBOL = "EBTC";
@@ -138,11 +136,10 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     ) external override returns (bool) {
         _requireValidRecipient(recipient);
         _transfer(sender, recipient, amount);
-        _approve(
-            sender,
-            msg.sender,
-            _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance")
-        );
+
+        uint256 cachedAllowances = _allowances[sender][msg.sender];
+        require(cachedAllowances >= amount, "ERC20: transfer amount exceeds allowance");
+        _approve(sender, msg.sender, cachedAllowances - amount);
         return true;
     }
 
@@ -150,7 +147,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         address spender,
         uint256 addedValue
     ) external override returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -158,14 +155,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         address spender,
         uint256 subtractedValue
     ) external override returns (bool) {
-        _approve(
-            msg.sender,
-            spender,
-            _allowances[msg.sender][spender].sub(
-                subtractedValue,
-                "ERC20: decreased allowance below zero"
-            )
-        );
+        uint256 cachedAllowances = _allowances[msg.sender][spender];
+        require(cachedAllowances >= subtractedValue, "ERC20: decreased allowance below zero");
+        _approve(msg.sender, spender, cachedAllowances - subtractedValue);
         return true;
     }
 
@@ -186,8 +178,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     function permit(
         address owner,
         address spender,
-        uint amount,
-        uint deadline,
+        uint256 amount,
+        uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -235,24 +227,38 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         assert(sender != address(0));
         assert(recipient != address(0));
 
-        _balances[sender] = _balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
-        _balances[recipient] = _balances[recipient].add(amount);
+        uint256 cachedSenderBalances = _balances[sender];
+        require(cachedSenderBalances >= amount, "ERC20: transfer amount exceeds balance");
+
+        unchecked {
+            // Safe because of the check above
+            _balances[sender] = cachedSenderBalances - amount;
+        }
+
+        _balances[recipient] = _balances[recipient] + amount;
         emit Transfer(sender, recipient, amount);
     }
 
     function _mint(address account, uint256 amount) internal {
         assert(account != address(0));
 
-        _totalSupply = _totalSupply.add(amount);
-        _balances[account] = _balances[account].add(amount);
+        _totalSupply = _totalSupply + amount;
+        _balances[account] = _balances[account] + amount;
         emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal {
         assert(account != address(0));
 
-        _balances[account] = _balances[account].sub(amount, "ERC20: burn amount exceeds balance");
-        _totalSupply = _totalSupply.sub(amount);
+        uint256 cachedBalance = _balances[account];
+        require(cachedBalance >= amount, "ERC20: burn amount exceeds balance");
+
+        unchecked {
+            // Safe because of the check above
+            _balances[account] = cachedBalance - amount;
+        }
+
+        _totalSupply = _totalSupply - amount;
         emit Transfer(account, address(0), amount);
     }
 
