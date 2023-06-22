@@ -370,8 +370,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 fallbackResponse.success = success;
                 if (
                     !_fallbackIsBroken(fallbackResponse) &&
-                    !(block.timestamp - fallbackResponse.timestamp >
-                        newFallbackCaler.fallbackTimeout())
+                    !_responseTimeout(fallbackResponse.timestamp, newFallbackCaler.fallbackTimeout())
                 ) {
                     address oldFallbackCaller = address(fallbackCaller);
                     fallbackCaller = newFallbackCaler;
@@ -434,8 +433,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @return A boolean indicating whether the Chainlink oracle is frozen
     function _chainlinkIsFrozen(ChainlinkResponse memory _response) internal view returns (bool) {
         return
-            block.timestamp - _response.timestampEthBtc > TIMEOUT_ETH_BTC_FEED ||
-            block.timestamp - _response.timestampStEthEth > TIMEOUT_STETH_ETH_FEED;
+            _responseTimeout(_response.timestampEthBtc, TIMEOUT_ETH_BTC_FEED) ||
+            _responseTimeout(_response.timestampStEthEth, TIMEOUT_STETH_ETH_FEED);
     }
 
     /// @notice Checks if the price change between Chainlink oracle rounds is above the maximum threshold allowed
@@ -485,7 +484,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function _fallbackIsFrozen(
         FallbackResponse memory _fallbackResponse
     ) internal view returns (bool) {
-        return block.timestamp - _fallbackResponse.timestamp > fallbackCaller.fallbackTimeout();
+        return
+            _fallbackResponse.timestamp > 0 &&
+            _responseTimeout(_fallbackResponse.timestamp, fallbackCaller.fallbackTimeout());
+    }
+
+    function _responseTimeout(uint256 _timestamp, uint256 _timeout) internal view returns (bool) {
+        return block.timestamp - _timestamp > _timeout;
     }
 
     /// @notice Checks if both the Chainlink and fallback oracles are live, unbroken, and reporting similar prices.
