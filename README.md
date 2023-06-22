@@ -12,10 +12,14 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 ## eBTC Audit - What's in scope
 `/packages/contracts/contracts` (all files in the base directory)
 
-Most of the `/Dependency` files are copy-pastes, but some are custom:
-`/packages/contracts/contracts/Dependencies/LiquityBase.sol`
+Most of the `/Dependency` files are copy-pastes, but some are custom or modified and are worthy of review:
+`/packages/contracts/contracts/Dependencies/Auth.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
 `/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
+`/packages/contracts/contracts/Dependencies/LiquityBase.sol`
+`/packages/contracts/contracts/Dependencies/LiquityMath.sol`
+`/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol`
+`/packages/contracts/contracts/Dependencies/RolesAuthority.sol`
 
 ## Other Notes
 We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer pools to access on-chain liquidity. Potential economic attacks should be considered taking this into account.
