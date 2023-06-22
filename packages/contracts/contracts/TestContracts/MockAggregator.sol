@@ -61,6 +61,14 @@ contract MockAggregator is AggregatorV3Interface {
         prevRoundId = _prevRoundId;
     }
 
+    function getPrice() public view returns (int) {
+        return price;
+    }
+
+    function getPrevPrice() public view returns (int) {
+        return prevPrice;
+    }
+
     // --- Getters that adhere to the AggregatorV3 interface ---
 
     function decimals() external view override returns (uint8) {
