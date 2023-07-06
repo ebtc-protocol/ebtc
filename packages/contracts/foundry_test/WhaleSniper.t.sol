@@ -38,7 +38,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         Proof that Split goes down after claiming
      */
     function test_whalePOCOne() public {
-
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
         vm.assume(debtAmt > 1e18);
 
@@ -67,13 +66,11 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         assertLt(tcrAfter, tcr);
     }
 
-
     // Padding Deposits -> W/e, prob 300% CR
     // Victim Deposits -> Leverage to 110
     // Attacker Brings TCR close to Recovery Mode -> Basically 110 as well
     // Attacker liquidates victim
     function test_whalePOCOpenMaliciousAndLiquidateApe() public {
-
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
 
         vm.assume(debtAmt > 1e18);
@@ -83,8 +80,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
         console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
-
-
 
         // Get TCR
         uint256 tcr = cdpManager.getTCR(_curPrice);
@@ -108,7 +103,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint _newIndex = _curIndex + 5e16;
         collateral.setEthPerShare(_newIndex);
 
-
         // Attacker opens CDP to push to barely to RM
         uint256 attackerDebtAmount = debtAmt;
         uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, 1214e15);
@@ -117,7 +111,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         // Now we take the split
         cdpManager.claimStakingSplitFee();
-
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);

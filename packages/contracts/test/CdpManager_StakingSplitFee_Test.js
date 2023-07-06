@@ -550,7 +550,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
   })
   
-  it.only("Test malicious Recovery Mode triggering within Borrower Operations: openCDP()", async() => {	  
+  it("Test malicious Recovery Mode triggering within Borrower Operations: openCDP()", async() => {	  
       await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: owner } });
       let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
       await openCdp({ ICR: toBN(dec(129, 16)), extraParams: { from: owner } });
