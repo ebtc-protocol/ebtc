@@ -11,7 +11,6 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
-import "./Dependencies/CheckContract.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
@@ -88,8 +87,6 @@ contract BorrowerOperations is
         address _feeRecipientAddress,
         address _collTokenAddress
     ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
-        // We no longer checkContract() here, because the contracts we depend on may not yet be deployed.
-
         // This makes impossible to open a cdp with zero withdrawn EBTC
         // assert(MIN_NET_DEBT > 0);
         // TODO: Re-evaluate this

@@ -35,16 +35,13 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         BorrowerOperationsScript(IBorrowerOperations(_borrowerOperationsAddress))
         LQTYStakingScript(_feeRecipientAddress)
     {
-        checkContract(_cdpManagerAddress);
         ICdpManager cdpManagerCached = ICdpManager(_cdpManagerAddress);
         cdpManager = cdpManagerCached;
 
         IPriceFeed priceFeedCached = cdpManagerCached.priceFeed();
-        checkContract(address(priceFeedCached));
         priceFeed = priceFeedCached;
 
         address ebtcTokenCached = address(cdpManagerCached.ebtcToken());
-        checkContract(ebtcTokenCached);
         ebtcToken = IERC20(ebtcTokenCached);
 
         IFeeRecipient lqtyStakingCached = IFeeRecipient(borrowerOperations.feeRecipientAddress());
@@ -54,7 +51,6 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         );
         feeRecipient = lqtyStakingCached;
 
-        checkContract(_collTokenAddress);
         collToken = ICollateralToken(_collTokenAddress);
     }
 
