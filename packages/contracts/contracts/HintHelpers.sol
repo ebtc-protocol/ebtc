@@ -145,7 +145,7 @@ contract HintHelpers is LiquityBase {
 
         uint newColl;
         uint _oldIndex = cdpManager.stFPPSg();
-        uint _newIndex = collateral.getPooledEthByShares(1e18);
+        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
