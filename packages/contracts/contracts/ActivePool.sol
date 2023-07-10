@@ -268,7 +268,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
 
         require(flashLoansPaused == false, "ActivePool: Flash Loans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
-        
+
         uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 

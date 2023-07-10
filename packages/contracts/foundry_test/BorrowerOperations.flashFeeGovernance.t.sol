@@ -54,9 +54,4 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
 
         vm.stopPrank();
     }
-
-    /**
-        @dev Confirm flash loans work with zero valid fee
-    */
-    function test_ZeroFlashfee() public {}
 }
