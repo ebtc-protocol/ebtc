@@ -93,8 +93,7 @@ contract RolesAuthority is Auth, Authority {
         } else if (flag == CapabilityFlag.Public) {
             return true;
         } else {
-            return
-                bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+            return bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
         }
     }
 
