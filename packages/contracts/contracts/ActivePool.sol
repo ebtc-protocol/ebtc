@@ -159,7 +159,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         _requireCallerIsCdpManager();
 
         uint256 cachedStEthColl = StEthColl;
-        uint256 _FeeRecipientColl = FeeRecipientColl;
 
         require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
         unchecked {
@@ -168,10 +167,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         }
 
         StEthColl = cachedStEthColl;
-        FeeRecipientColl = _FeeRecipientColl + _shares;
+
+        uint256 _FeeRecipientColl = FeeRecipientColl + _shares;
+        FeeRecipientColl = _FeeRecipientColl;
 
         emit ActivePoolCollBalanceUpdated(cachedStEthColl);
-        emit ActivePoolFeeRecipientClaimableCollIncreased(FeeRecipientColl, _shares);
+        emit ActivePoolFeeRecipientClaimableCollIncreased(_FeeRecipientColl, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
