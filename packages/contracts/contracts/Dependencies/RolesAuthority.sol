@@ -88,9 +88,14 @@ contract RolesAuthority is Auth, Authority {
     ) public view virtual override returns (bool) {
         CapabilityFlag flag = capabilityFlag[target][functionSig];
 
-        return
-            (flag != CapabilityFlag.Burned && flag == CapabilityFlag.Public) ||
-            bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+        if (flag == CapabilityFlag.Burned) {
+            return false;
+        } else if (flag == CapabilityFlag.Public) {
+            return true;
+        } else {
+            return
+                bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
