@@ -44,7 +44,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
     feeSplit = await contracts.cdpManager.stakingRewardSplit();	
-    liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
+    liq_stipend = await contracts.cdpManager.LIQUIDATOR_REWARD();
     minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
@@ -568,14 +568,17 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
       assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
       let _splitFee = 2399;
-      await cdpManager.setStakingRewardSplit(_splitFee, {from: alice}); 
-      assert.isTrue(_splitFee == (await cdpManager.stakingRewardSplit())); 
+      await cdpManager.setStakingRewardSplit(_splitFee, {from: alice});
+      let _s = await cdpManager.stakingRewardSplit(); 
+      assert.isTrue(_splitFee == _s); 
 	  
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
       let _oldIndex = web3.utils.toBN('1000000000000000000');
       let _newIndex = web3.utils.toBN('1010000000000000000');
+      let _deltaIndex = _newIndex.sub(_oldIndex);
+      let _idxPrime = _newIndex.sub(_deltaIndex.mul(_s).div(toBN("10000")));// I' = (I - deltaI * splitFee)
       await collToken.setEthPerShare(_newIndex);
 	  
       // check TCR for victim
@@ -583,17 +586,33 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _victimICRBefore = await cdpManager.getCurrentICR(_victimId, _price);
       assert.isTrue(_tcrBefore.gt(_CCR));
       assert.isTrue(_victimICRBefore.lt(_CCR));
+      let _1e36 = mv._1e18BN.mul(mv._1e18BN);
+	  
+      // calculate triggering CDP parameters
+      let _totalC = await cdpManager.getEntireSystemColl();
+      let _totalD = await cdpManager.getEntireSystemDebt();	  
+      let _icrUpper = _CCR// icr < CCR
+      let _numerator = _totalC.mul(_idxPrime).mul(toBN(_price)).div(_1e36).sub(_CCR.mul(_totalD).div(mv._1e18BN));// (C * I' * p - CCR * D)
+      let _icrLower = _CCR.mul(_newIndex).mul(toBN(_price)).mul(minDebt).div(_1e36).div(_numerator.add(minDebt.mul(toBN(_price)).mul(_newIndex).div(_1e36)))// icr > (2 * p * I * CCR) / (C * I' * p - CCR * D + 2 * p * I)
+      let _icr = toBN("1249753714546239750");
+      let _denominator = _CCR.sub(_icr);// CCR - icr
+      let _ebtcAmt = _numerator.mul(mv._1e18BN).div(_denominator).add(toBN("1234567890"));
 	  
       // attacker open CDP to facilitate Recovery Mode triggering deliberately
-      let _collAmt = toBN("19661958561574716850");
-      let _ebtcAmt = toBN("1125990105069686413");
+      let _collAmt = liq_stipend.add(_ebtcAmt.mul(_icr).div(toBN(_price)));
+      //console.log('_totalC=' + _totalC + ', _totalD=' + _totalD + ", _I'=" + _idxPrime + ', _d=' + _ebtcAmt + ', _c=' + _collAmt + ', _icrLower=' + _icrLower);
       await collToken.deposit({from: bob, value: _collAmt});   
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});  
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _price, _splitFee);
-      assert.isTrue(_newIndex.sub(_oldIndex).lte(_deltaRequiredIdx));  
+      assert.isTrue(_deltaIndex.lte(_deltaRequiredIdx));  
       let _idxBefore = await cdpManager.stFPPSg();
       assert.isTrue(_idxBefore.eq(_oldIndex));
       await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob});
+      let _attackerId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);	  
+      let _attackerColl = await cdpManager.getCdpColl(_attackerId);	  
+      let _attackerDebt = await cdpManager.getCdpDebt(_attackerId);  
+      let _attackerICR = await cdpManager.getCurrentICR(_attackerId, _price);
+      //console.log('attacker coll=' + _attackerColl + ', attacker debt=' + _attackerDebt + ', _attackerICR=' + _attackerICR);
       let _tcrAfter = await cdpManager.getTCR(_price); 
       //console.log('new TCR after=' + _tcrAfter);
       assert.isTrue(_tcrAfter.lt(_CCR));// now attacker successfully trigger Recovery Mode and could liquidate viction CDP below CCR
