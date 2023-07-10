@@ -79,20 +79,22 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
     }
 
     function test_macroAndFactoryEquivalence(address user) public {
+        vm.assume(user != address(0)); // Else this reverts on fuzzing
         LeverageMacroBase fromFactory = LeverageMacroBase(_createLeverageMacroWithFactory(user));
         LeverageMacroBase fromReference = LeverageMacroBase(_createLeverageMacro(user));
 
         // Equivalence of settings
         assertEq(
             address(fromFactory.borrowerOperations()),
-            address(fromReference.borrowerOperations())
+            address(fromReference.borrowerOperations()),
+            "different BO"
         );
-        assertEq(address(fromFactory.activePool()), address(fromReference.activePool()));
-        assertEq(address(fromFactory.cdpManager()), address(fromReference.cdpManager()));
-        assertEq(address(fromFactory.ebtcToken()), address(fromReference.ebtcToken()));
-        assertEq(address(fromFactory.sortedCdps()), address(fromReference.sortedCdps()));
-        assertEq(address(fromFactory.stETH()), address(fromReference.stETH()));
-        assertEq(address(fromFactory.owner()), address(fromReference.owner()));
+        assertEq(address(fromFactory.activePool()), address(fromReference.activePool()), "different AP");
+        assertEq(address(fromFactory.cdpManager()), address(fromReference.cdpManager()), "different CDP");
+        assertEq(address(fromFactory.ebtcToken()), address(fromReference.ebtcToken()), "different Token");
+        assertEq(address(fromFactory.sortedCdps()), address(fromReference.sortedCdps()), "different Sorted");
+        assertEq(address(fromFactory.stETH()), address(fromReference.stETH()), "different stETH");
+        assertEq(address(fromFactory.owner()), address(fromReference.owner()), "different Owner");
     }
 
     function test_OpenAndCloseLeveragedCDPHappy(uint256 netColl) public {
