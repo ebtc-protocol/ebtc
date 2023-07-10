@@ -56,24 +56,6 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
     }
 
     /**
-        @dev Set the max fee randaomly within its valid range
-
-     */
-    function test_FlashFeeOutsideValidRange(uint randomMaxFlashFee, uint newFee) public {
-        vm.assume(randomMaxFlashFee <= MAX_BPS);
-        vm.assume(newFee > randomMaxFlashFee);
-
-        vm.startPrank(defaultGovernance);
-
-        borrowerOperations.setMaxFeeBps(randomMaxFlashFee);
-
-        vm.expectRevert("ERC3156FlashLender: _newFee should <= maxFeeBps");
-        borrowerOperations.setFeeBps(newFee);
-
-        vm.stopPrank();
-    }
-
-    /**
         @dev Confirm flash loans work with zero valid fee
     */
     function test_ZeroFlashfee() public {}

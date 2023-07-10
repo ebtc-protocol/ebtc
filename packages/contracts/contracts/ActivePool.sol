@@ -266,7 +266,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
         // NOTE: Check for `token` is implicit in the requires above
 
+        require(flashLoansPaused == false, "ActivePool: Flash Loans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
+        
         uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(1e18);
 

@@ -34,6 +34,12 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
     uint internal constant MAX_BPS = 10000;
 
+    enum CapabilityFlag {
+        None,
+        Public,
+        Burned
+    }
+
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
     bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
@@ -54,6 +60,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
+    bytes4 internal constant SET_FLASH_LOANS_PAUSED_SIG =
+        bytes4(keccak256(bytes("setFlashLoansPaused(bool)")));
     bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
     // ActivePool
@@ -305,7 +313,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
         authority.setRoleName(
             5,
-            "BorrowerOperations+ActivePool: setFeeBps, setMaxFeeBps, setFeeRecipientAddress"
+            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
         );
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
 
@@ -323,7 +331,12 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
-        authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(
+            5,
+            address(borrowerOperations),
+            SET_FLASH_LOANS_PAUSED_SIG,
+            true
+        );
         authority.setRoleCapability(
             5,
             address(borrowerOperations),
@@ -332,7 +345,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         );
 
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
-        authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FLASH_LOANS_PAUSED_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
 
         authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);

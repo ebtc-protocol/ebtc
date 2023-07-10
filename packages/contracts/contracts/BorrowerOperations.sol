@@ -844,6 +844,7 @@ contract BorrowerOperations is
         require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
+        require(flashLoansPaused == false, "BorrowerOperations: Flash Loans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC
