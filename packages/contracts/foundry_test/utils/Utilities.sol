@@ -45,15 +45,18 @@ contract Utilities is Test {
         vm.roll(targetBlock);
     }
 
-    /* Calculate collateral amount to post based on required debt, collateral price and CR
-    Collateral amount is calculated as: (Debt * CR) / Price
+    /* 
+        Calculate collateral amount to post based on required debt, collateral price and CR
+        Collateral amount is calculated as: (Debt * CR) / Price
+        // TODO: Formula inaccurate
+        // TODO: In fixing formula all tests mess up
     */
     function calculateCollAmount(
         uint256 debt,
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return ((debt * collateralRatio) / price) + LIQUIDATOR_REWARD; // add liquidator reward to
+        return ((debt * 1e18 * collateralRatio) / price / 1e18) + LIQUIDATOR_REWARD; // add liquidator reward to
     }
 
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR
