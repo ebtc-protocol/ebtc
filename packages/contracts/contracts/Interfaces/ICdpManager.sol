@@ -15,10 +15,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
 
-    function getNominalICR(bytes32 _cdpId) external view returns (uint);
-
-    function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
-
     function liquidate(bytes32 _cdpId) external;
 
     function partiallyLiquidate(
@@ -55,14 +51,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
     function syncUpdateIndexInterval() external returns (uint);
 
     function checkIfDeltaIndexTriggerRM(uint _price) external view returns (uint, bool);
-
-    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
-
-    function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
-
-    function getEntireDebtAndColl(
-        bytes32 _cdpId
-    ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 
     function closeCdp(bytes32 _cdpId) external;
 
