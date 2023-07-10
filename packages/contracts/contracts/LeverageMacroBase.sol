@@ -406,7 +406,7 @@ contract LeverageMacroBase {
             swapData.addressForSwap,
             gasleft(),
             0,
-            32,
+            0,
             swapData.calldataForSwap
         );
         require(success, "Call has failed");
