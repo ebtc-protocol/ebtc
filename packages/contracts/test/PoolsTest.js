@@ -139,7 +139,7 @@ contract('ActivePool', async accounts => {
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
     await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < 10000");
 
-    let _newFee = await activePool.maxFeeBps();
+    let _newFee = await activePool.MAX_FEE_BPS();
     assert.isTrue(_newFee.gt(await activePool.feeBps()));
     await activePool.setFeeBps(_newFee, {from: alice})
     assert.isTrue(_newFee.eq(await activePool.feeBps()));
@@ -159,12 +159,12 @@ contract('ActivePool', async accounts => {
     await activePoolAuthority.setUserRole(alice, _role123, true, {from: accounts[0]});
 
     assert.isTrue((await activePoolAuthority.canCall(alice, activePool.address, _funcSig)));
-    await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < maxFeeBps");
+    await th.assertRevert(activePool.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should < MAX_FEE_BPS");
 
-    let _newFee = await activePool.maxFeeBps()
-    assert.isTrue(_newFee.lte(await activePool.maxFeeBps())); // starts at 10000
+    let _newFee = await activePool.MAX_FEE_BPS()
+    assert.isTrue(_newFee.lte(await activePool.MAX_FEE_BPS())); // starts at 10000
     await activePool.setMaxFeeBps(_newFee, {from: alice})
-    assert.isTrue(_newFee.eq(await activePool.maxFeeBps()));
+    assert.isTrue(_newFee.eq(await activePool.MAX_FEE_BPS()));
 
   })
  

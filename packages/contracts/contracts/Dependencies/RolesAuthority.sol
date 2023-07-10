@@ -12,6 +12,7 @@ import "./EnumerableSet.sol";
 contract RolesAuthority is IRolesAuthority, Auth, Authority {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
+
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/

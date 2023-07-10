@@ -143,7 +143,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
-        vm.assume(flashFee <= borrowerOperations.maxFeeBps());
+        vm.assume(flashFee <= borrowerOperations.MAX_FEE_BPS());
 
         vm.prank(defaultGovernance);
         borrowerOperations.setFeeBps(flashFee);

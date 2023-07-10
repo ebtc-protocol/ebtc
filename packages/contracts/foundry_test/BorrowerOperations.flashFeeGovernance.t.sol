@@ -17,11 +17,11 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
     }
 
     /**
-        @dev Set the max fee to maxFeeBps
+        @dev Set the max fee to MAX_FEE_BPS
         @dev Test flash fee setter within the full valid range
      */
     function test_FlashFeeInValidFullRange(uint newFee) public {
-        vm.assume(newFee < borrowerOperations.maxFeeBps());
+        vm.assume(newFee < borrowerOperations.MAX_FEE_BPS());
 
         uint oldFee = borrowerOperations.feeBps();
 
@@ -38,7 +38,7 @@ contract BorrowerOperationsFlashFeeGovernanceTest is eBTCBaseFixture {
     }
 
     function test_FlashFeeInValidReducedRange(uint randomMaxFlashFee, uint newFee) public {
-        vm.assume(randomMaxFlashFee < borrowerOperations.maxFeeBps());
+        vm.assume(randomMaxFlashFee < borrowerOperations.MAX_FEE_BPS());
         vm.assume(newFee < randomMaxFlashFee);
 
         uint oldFee = borrowerOperations.feeBps();
