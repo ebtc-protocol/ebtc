@@ -226,9 +226,7 @@ interface ICdpManagerData {
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg,
-        uint _stFeePerUnitgError,
-        uint _totalStakes
+        uint _stFeePerUnitg
     ) external view returns (uint, uint);
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);

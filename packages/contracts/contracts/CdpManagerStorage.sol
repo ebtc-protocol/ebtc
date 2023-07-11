@@ -439,9 +439,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
             _cdpId,
-            stFeePerUnitg,
-            stFeePerUnitgError,
-            totalStakes
+            stFeePerUnitg
         );
         Cdps[_cdpId].coll = _newColl;
         stFeePerUnitcdp[_cdpId] = stFeePerUnitg;
@@ -458,9 +456,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg,
-        uint _stFeePerUnitgError,
-        uint _totalStakes
+        uint _stFeePerUnitg
     ) public view returns (uint, uint) {
         if (
             stFeePerUnitcdp[_cdpId] == 0 ||
@@ -552,9 +548,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         debt = Cdps[_cdpId].debt;
         (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
             _cdpId,
-            stFeePerUnitg,
-            stFeePerUnitgError,
-            totalStakes
+            stFeePerUnitg
         );
         coll = _newColl;
 

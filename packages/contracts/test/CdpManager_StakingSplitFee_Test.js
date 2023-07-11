@@ -221,8 +221,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
           _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
           let _totalStakeAfter = await cdpManager.totalStakes();
-          let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
-          let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
+          let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg);
+          let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg);
 	     
           let _totalCollAfter = await cdpManager.getEntireSystemColl();  	 
 	  
@@ -317,7 +317,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
       let _collBeforeRedeemer = await collToken.balanceOf(owner); 
       let _newFeeIndex = await cdpManager.calcFeeUponStakingReward(_newIndex, _oi);
-      let _splitFeeAccumulated = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _newFeeIndex[1].add(await cdpManager.stFeePerUnitg()), _newFeeIndex[2], (await cdpManager.totalStakes()));
+      let _splitFeeAccumulated = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _newFeeIndex[1].add(await cdpManager.stFeePerUnitg()));
       await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  
       let _collAfterRedeemer = await collToken.balanceOf(owner);	
       let _aliceCollAfterRedeem = await cdpManager.getCdpColl(_aliceCdpId);  
@@ -346,8 +346,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
       let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
       let _totalStake = await cdpManager.totalStakes();
-      let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
-      let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
+      let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg);
+      let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg);
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFeeShare, _errorTolerance);
 	  

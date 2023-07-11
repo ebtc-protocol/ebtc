@@ -96,13 +96,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
         uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-        uint _stFeePerUnitgError = cdpManager.stFeePerUnitgError();
-        uint _totalStake = cdpManager.totalStakes();
         (uint _feeSplitDistributed, ) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
-            _stFeePerUnitg,
-            _stFeePerUnitgError,
-            _totalStake
+            _stFeePerUnitg
         );
 
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;

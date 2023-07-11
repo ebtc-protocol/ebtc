@@ -188,12 +188,7 @@ contract HintHelpers is LiquityBase {
             _oldIndex
         );
         _newStFeePerUnit = _deltaFeePerUnit + cdpManager.stFeePerUnitg();
-        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(
-            _cdpId,
-            _newStFeePerUnit,
-            _perUnitError,
-            cdpManager.totalStakes()
-        );
+        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _newStFeePerUnit);
         return newColl;
     }
 
