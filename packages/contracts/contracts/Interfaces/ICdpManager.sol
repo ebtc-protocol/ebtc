@@ -62,14 +62,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getRedemptionFeeWithDecay(uint _ETHDrawn) external view returns (uint);
 
-    function getBorrowingRate() external view returns (uint);
-
-    function getBorrowingRateWithDecay() external view returns (uint);
-
-    function getBorrowingFee(uint EBTCDebt) external view returns (uint);
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view returns (uint);
-
     function decayBaseRateFromBorrowing() external;
 
     function getCdpStatus(bytes32 _cdpId) external view returns (uint);

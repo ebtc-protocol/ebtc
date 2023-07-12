@@ -320,9 +320,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getEntireDebtAndColl(
-            _cdpId
-        );
+        (uint256 entireDebt, uint256 entireColl, ) = getEntireDebtAndColl(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);

@@ -29,8 +29,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        assertEq(cdpManager.getBorrowingRateWithDecay(), 0);
-
         uint debt = 2e17;
 
         console.log("debt %s", debt);
@@ -38,7 +36,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         _openTestCDP(user, 10000 ether, debt);
 
         vm.startPrank(user);
-        assertEq(cdpManager.getBorrowingRateWithDecay(), 0);
 
         // Set minute decay factor
         cdpManager.setMinuteDecayFactor(newMinuteDecayFactor);
