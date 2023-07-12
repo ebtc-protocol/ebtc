@@ -207,7 +207,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              *
              * If the resultant net coll of the partial is less than the minimum, we bail.
              */
-            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || newColl < MIN_NET_COLL) {
+            if (
+                newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
+                collateral.getPooledEthByShares(newColl) < MIN_NET_COLL
+            ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
