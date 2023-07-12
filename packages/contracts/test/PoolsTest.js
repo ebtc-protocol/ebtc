@@ -20,6 +20,7 @@ contract('ActivePool', async accounts => {
 
   const [owner, alice] = accounts;
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     coreContracts = await deploymentHelper.deployTesterContractsHardhat()
 	  
     activePool = coreContracts.activePool
@@ -146,13 +147,13 @@ contract('ActivePool', async accounts => {
 
   })
 
-  it("ActivePool governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	
-    await th.assertRevert(activePool.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
+  it("ActivePool governance permissioned: setFeeBps() should only allow authorized caller", async() => {	
+    await th.assertRevert(activePool.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
 
     assert.isTrue(activePoolAuthority.address == (await activePool.authority()));
 
     let _role123 = 123;
-    let _funcSig = await activePool.FUNC_SIG_MAX_FL_FEE();
+    let _funcSig = await activePool.FUNC_SIG_FL_FEE();
     console.log(_funcSig);
 
     await activePoolAuthority.setRoleCapability(_role123, activePool.address, _funcSig, true, {from: accounts[0]});	  
@@ -163,7 +164,7 @@ contract('ActivePool', async accounts => {
 
     let _newFee = await activePool.MAX_FEE_BPS()
     assert.isTrue(_newFee.lte(await activePool.MAX_FEE_BPS())); // starts at 10000
-    await activePool.setMaxFeeBps(_newFee, {from: alice})
+    await activePool.setFeeBps(_newFee, {from: alice})
     assert.isTrue(_newFee.eq(await activePool.MAX_FEE_BPS()));
 
   })

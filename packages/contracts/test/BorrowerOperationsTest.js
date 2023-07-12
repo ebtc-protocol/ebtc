@@ -80,6 +80,7 @@ contract('BorrowerOperations', async accounts => {
 
   const testCorpus = ({ withProxy = false }) => {
     beforeEach(async () => {
+      await deploymentHelper.setDeployGasPrice(1000000000)
       contracts = await deploymentHelper.deployTesterContractsHardhat()
       let LQTYContracts = {}
       LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -147,21 +148,21 @@ contract('BorrowerOperations', async accounts => {
 
     })
 
-    it("BorrowerOperations governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	  
-      await assertRevert(borrowerOperations.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
+    it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
+      await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
   
       assert.isTrue(authority.address == (await borrowerOperations.authority()));
       let _role123 = 123;
-      let _funcSig = await borrowerOperations.FUNC_SIG_MAX_FL_FEE();
+      let _funcSig = await borrowerOperations.FUNC_SIG_FL_FEE();
       await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
       await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
       assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 
-      await assertRevert(borrowerOperations.setMaxFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
+      await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
       let _newFee = await borrowerOperations.MAX_FEE_BPS();
       
       assert.isTrue(_newFee.lte(await borrowerOperations.MAX_FEE_BPS()));
-      await borrowerOperations.setMaxFeeBps(_newFee, {from: alice})
+      await borrowerOperations.setFeeBps(_newFee, {from: alice})
       assert.isTrue(_newFee.eq(await borrowerOperations.MAX_FEE_BPS()));
   
     })
