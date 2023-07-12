@@ -64,7 +64,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _syncIndex();
         syncUpdateIndexInterval();
-        stFeePerUnitg = 1e18;
+        stFeePerUnitg = DECIMAL_PRECISION;
     }
 
     // --- Getters ---
