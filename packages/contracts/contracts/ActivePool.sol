@@ -9,6 +9,7 @@ import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "./Dependencies/BaseMath.sol";
 
 /**
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -16,7 +17,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  */
-contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath {
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 

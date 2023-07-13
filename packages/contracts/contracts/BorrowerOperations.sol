@@ -444,7 +444,7 @@ contract BorrowerOperations is
         );
 
         // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
-        _activePoolAddColl(_collAmount, _netCollAsShares, _liquidatorRewardShares);
+        _activePoolAddColl(_collAmount, _netCollAsShares);
 
         assert(vars.netColl + LIQUIDATOR_REWARD == _collAmount); // Invariant Assertion
 
@@ -558,7 +558,7 @@ contract BorrowerOperations is
 
         if (_varMvTokens.isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange, 0);
+            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
@@ -566,13 +566,11 @@ contract BorrowerOperations is
     }
 
     /// @notice Send stETH to Active Pool and increase its recorded ETH balance
+    /// @param _amount total balance of stETH to send, inclusive of coll and liquidatorRewardShares
+    /// @param _sharesToTrack coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
     /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
-    function _activePoolAddColl(
-        uint _amount,
-        uint _sharesToTrack,
-        uint _liquidatorRewardShares
-    ) internal {
+    function _activePoolAddColl(uint _amount, uint _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _amount);
         activePool.receiveColl(_sharesToTrack);

@@ -172,7 +172,6 @@ interface ICdpManagerData {
         uint debtToOffset;
         uint totalCollToSendToLiquidator;
         uint debtToRedistribute;
-        uint collToRedistribute;
         uint collSurplus;
         uint collReward;
     }
@@ -182,7 +181,6 @@ interface ICdpManagerData {
         uint totalDebtToOffset;
         uint totalCollToSendToLiquidator;
         uint totalDebtToRedistribute;
-        uint totalCollToRedistribute;
         uint totalCollSurplus;
         uint totalCollReward;
     }
