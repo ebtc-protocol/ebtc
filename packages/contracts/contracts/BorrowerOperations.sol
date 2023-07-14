@@ -253,15 +253,14 @@ contract BorrowerOperations is
         uint _collAddAmount
     ) internal {
         _requireCdpOwner(_cdpId);
+        _requireCdpisActive(cdpManager, _cdpId);
+
+        cdpManager.applyPendingRewards(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
-        _requireCdpisActive(cdpManager, _cdpId);
-
         vars.price = priceFeed.fetchPrice();
-
-        // Reversed BTC/ETH price
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
+        uint256 _tcr = _getTCR(vars.price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
         if (_isDebtIncrease) {
@@ -377,9 +376,10 @@ contract BorrowerOperations is
 
         _requireAtLeastMinNetColl(vars.netColl);
 
-        vars.price = priceFeed.fetchPrice();
+        // Update global pending index before any operations
+        ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
 
-        // Reverse ETH/BTC price to BTC/ETH
+        vars.price = priceFeed.fetchPrice();
         uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
 
@@ -462,13 +462,13 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
-
         _requireCdpisActive(cdpManager, _cdpId);
+
+        cdpManager.applyPendingRewards(_cdpId);
+
         uint price = priceFeed.fetchPrice();
         uint _tcr = _checkDeltaIndexAndClaimFee(price);
         _requireNotInRecoveryMode(_tcr);
-
-        cdpManager.applyPendingRewards(_cdpId);
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
