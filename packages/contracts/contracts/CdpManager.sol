@@ -494,7 +494,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         _applyAccumulatedFeeSplit(_cdpId);
-        return _updateCdpRewardSnapshots(_cdpId);
+        return _updateRedistributedDebtSnapshot(_cdpId);
     }
 
     function removeStake(bytes32 _cdpId) external override {
