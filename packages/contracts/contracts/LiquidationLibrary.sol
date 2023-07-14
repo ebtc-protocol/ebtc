@@ -371,9 +371,10 @@ contract LiquidationLibrary is CdpManagerStorage {
         // apply pending debt if any
         // and update CDP internal accounting for debt
         // if there is liquidation redistribution
+        uint256 _cachedDebt = Cdps[_cdpId].debt;
         {
             if (_debtAndColl.pendingDebtReward > 0) {
-                Cdps[_cdpId].debt = Cdps[_cdpId].debt + _debtAndColl.pendingDebtReward;
+                Cdps[_cdpId].debt = _cachedDebt + _debtAndColl.pendingDebtReward;
             }
         }
 
@@ -385,7 +386,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _reInsertPartialLiquidation(
                 _partialState,
                 LiquityMath._computeNominalCR(newColl, newDebt),
-                _debtAndColl.entireDebt,
+                _cachedDebt,
                 _debtAndColl.entireColl
             );
             emit CdpPartiallyLiquidated(

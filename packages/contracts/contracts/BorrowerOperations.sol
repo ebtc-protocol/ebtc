@@ -88,7 +88,6 @@ contract BorrowerOperations is
         address _collTokenAddress
     ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
         // This makes impossible to open a cdp with zero withdrawn EBTC
-        // assert(MIN_NET_DEBT > 0);
         // TODO: Re-evaluate this
 
         cdpManager = ICdpManager(_cdpManagerAddress);
@@ -271,9 +270,9 @@ contract BorrowerOperations is
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
         _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
 
-        // Confirm the operation is either a borrower adjusting their own cdp
+        // Confirm the operation is the borrower adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        assert(msg.sender == _borrower);
+        require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         cdpManager.applyPendingRewards(_cdpId);
 
@@ -287,6 +286,10 @@ contract BorrowerOperations is
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         uint _cdpCollAmt = collateral.getPooledEthByShares(vars.coll);
+        require(
+            _collWithdrawal <= _cdpCollAmt,
+            "BorrowerOperations: withdraw more collateral than CDP has!"
+        );
         vars.oldICR = LiquityMath._computeCR(_cdpCollAmt, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
             vars.coll,
@@ -297,7 +300,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             vars.price
         );
-        assert(_collWithdrawal <= _cdpCollAmt);
 
         // Check the adjustment satisfies all conditions for the current system mode
         _requireValidAdjustmentInCurrentMode(isRecoveryMode, _collWithdrawal, _isDebtIncrease, vars);
@@ -384,7 +386,7 @@ contract BorrowerOperations is
         vars.debt = _EBTCAmount;
 
         // Sanity check
-        assert(vars.netColl > 0);
+        require(vars.netColl > 0, "BorrowerOperations: zero collateral for openCdp()!");
 
         uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
         uint _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
@@ -446,7 +448,11 @@ contract BorrowerOperations is
         // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
         _activePoolAddColl(_collAmount, _netCollAsShares);
 
-        assert(vars.netColl + LIQUIDATOR_REWARD == _collAmount); // Invariant Assertion
+        // Invariant check
+        require(
+            vars.netColl + LIQUIDATOR_REWARD == _collAmount,
+            "BorrowerOperations: deposited collateral mismatch!"
+        );
 
         return _cdpId;
     }

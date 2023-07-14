@@ -341,11 +341,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
-        _requireEBTCBalanceCoversRedemption(ebtcToken, msg.sender, _EBTCamount);
 
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
-        // Confirm redeemer's balance is less than total EBTC supply
-        assert(ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
+        _requireEBTCBalanceCoversRedemptionAndWithinSupply(
+            ebtcToken,
+            msg.sender,
+            _EBTCamount,
+            totals.totalEBTCSupplyAtStart
+        );
 
         totals.remainingEBTC = _EBTCamount;
         address currentBorrower;
@@ -606,7 +609,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
-        assert(newBaseRate > 0); // Base rate is always non-zero after redemption
+        require(newBaseRate > 0, "CdpManager: new baseRate is zero!"); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
         baseRate = newBaseRate;
@@ -682,7 +685,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _decayBaseRate() internal {
         uint decayedBaseRate = _calcDecayedBaseRate();
-        assert(decayedBaseRate <= DECIMAL_PRECISION); // The baseRate can decay to 0
+        require(decayedBaseRate <= DECIMAL_PRECISION, "CdpManager: baseRate too large!"); // The baseRate can decay to 0
 
         baseRate = decayedBaseRate;
         emit BaseRateUpdated(decayedBaseRate);
@@ -759,14 +762,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    function _requireEBTCBalanceCoversRedemption(
+    function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
         IEBTCToken _ebtcToken,
         address _redeemer,
-        uint _amount
+        uint _amount,
+        uint _totalSupply
     ) internal view {
+        uint callerBalance = _ebtcToken.balanceOf(_redeemer);
         require(
-            _ebtcToken.balanceOf(_redeemer) >= _amount,
+            callerBalance >= _amount,
             "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
+        );
+        require(
+            callerBalance <= _totalSupply,
+            "CdpManager: redeemer's EBTC balance exceeds total supply!"
         );
     }
 
