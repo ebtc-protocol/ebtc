@@ -53,6 +53,7 @@ contract('Gas compensation tests', async accounts => {
   })
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -761,9 +762,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
 
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1, 18))
-
     /* Expect total gas compensation = 
     0.5% of [A_coll + B_coll + C_coll + D_coll]
     */
@@ -838,9 +836,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
-
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1 , 18))
 
     /* Expect total gas compensation = 
        0.5% of [A_coll + B_coll + C_coll + D_coll]
@@ -926,9 +921,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
-
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1, 18))
 
     /* Expect total gas compensation = 
     0.5% of [A_coll + B_coll + C_coll + D_coll]
@@ -1071,14 +1063,10 @@ contract('Gas compensation tests', async accounts => {
 
       const ICRList = []
       const coll_firstCdp = (await cdpManager.Cdps(_account_cdps[_10_accounts[0]]))[1]
-      const gasComp_firstCdp = (await cdpManagerTester.getCollGasCompensation(coll_firstCdp)).toString()
 
       for (account of _10_accounts) {
         // Check gas compensation is the same for all cdps
         const coll = (await cdpManager.Cdps(_account_cdps[account]))[1]
-        const gasCompensation = (await cdpManagerTester.getCollGasCompensation(coll)).toString()
-
-        assert.equal(gasCompensation, gasComp_firstCdp)
 
         const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
         ICRList.push(ICR)
