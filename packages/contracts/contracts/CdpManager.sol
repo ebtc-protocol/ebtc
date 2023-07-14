@@ -470,13 +470,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cnt = _cnt - 1;
             _id = sortedCdps.getNext(_id);
         }
-        require(
-            _toRemoveIds[0] == _start,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
-        );
+        require(_toRemoveIds[0] == _start, "CdpManager: batchRemoveSortedCdpIds check start error");
         require(
             _toRemoveIds[_total - 1] == _end,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
+            "CdpManager: batchRemoveSortedCdpIds check end error"
         );
         return _toRemoveIds;
     }

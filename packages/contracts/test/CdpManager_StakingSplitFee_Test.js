@@ -477,7 +477,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.deposit({from: owner, value: _collAmt});    
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
-      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and open CDP  
       await priceFeed.setPrice(_originalPrice);    
@@ -499,7 +499,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _moreDebt = toBN("708960105069686413");	 
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
-      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and adjust CDP  
       await priceFeed.setPrice(_originalPrice);
@@ -518,7 +518,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));
-      await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOps: Operation not permitted during Recovery Mode")
+      await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOperations: Operation not permitted during Recovery Mode")
   })
   
   it("Test first ICR compared to TCR when there is staking reward", async() => {
