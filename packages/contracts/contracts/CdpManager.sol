@@ -338,6 +338,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
+
+        claimStakingSplitFee();
+
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
