@@ -706,7 +706,10 @@ contract BorrowerOperations is
     }
 
     function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {
-        require(_newICR >= _oldICR, "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode");
+        require(
+            _newICR >= _oldICR,
+            "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode"
+        );
     }
 
     function _requireNewTCRisAboveCCR(uint _newTCR) internal pure {
@@ -721,7 +724,10 @@ contract BorrowerOperations is
     }
 
     function _requireAtLeastMinNetColl(uint _coll) internal pure {
-        require(_coll >= MIN_NET_COLL, "BorrowerOperations: Cdp's net coll must be greater than minimum");
+        require(
+            _coll >= MIN_NET_COLL,
+            "BorrowerOperations: Cdp's net coll must be greater than minimum"
+        );
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
@@ -843,8 +849,14 @@ contract BorrowerOperations is
         bytes calldata data
     ) external override returns (bool) {
         require(amount > 0, "BorrowerOperations: Flashloan amount must be above 0");
-        require(token == address(ebtcToken), "BorrowerOperations: Only eBTC token can be flashloaned");
-        require(amount <= maxFlashLoan(token), "BorrowerOperations: Flashloan amount exceeds maximum for specified token");
+        require(
+            token == address(ebtcToken),
+            "BorrowerOperations: Only eBTC token can be flashloaned"
+        );
+        require(
+            amount <= maxFlashLoan(token),
+            "BorrowerOperations: Flashloan amount exceeds maximum for specified token"
+        );
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
         require(flashLoansPaused == false, "BorrowerOperations: Flashloans Paused");
@@ -874,7 +886,10 @@ contract BorrowerOperations is
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(ebtcToken), "BorrowerOperations: Only eBTC token can be flashloaned");
+        require(
+            token == address(ebtcToken),
+            "BorrowerOperations: Only eBTC token can be flashloaned"
+        );
 
         return (amount * feeBps) / MAX_BPS;
     }

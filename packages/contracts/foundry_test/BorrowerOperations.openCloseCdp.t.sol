@@ -222,7 +222,9 @@ contract CDPTest is eBTCBaseFixture {
             vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
             if (borrowedAmountWithFee < MIN_NET_DEBT) {
-                vm.expectRevert(bytes("BorrowerOperations: Cdp's net debt must be greater than minimum"));
+                vm.expectRevert(
+                    bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
+                );
                 vm.prank(user);
                 borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             }

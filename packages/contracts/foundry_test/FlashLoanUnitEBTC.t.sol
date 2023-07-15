@@ -216,7 +216,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     function testEBTCSpecReturnValue() public {
-        vm.expectRevert("BorrowerOperations: IERC3156: Callback failed");
+        vm.expectRevert("IERC3156: Callback failed");
         borrowerOperations.flashLoan(
             wrongReturnReceiver,
             address(eBTCToken),

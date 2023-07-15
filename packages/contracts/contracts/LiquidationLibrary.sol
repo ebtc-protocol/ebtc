@@ -449,7 +449,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
         Cdp storage _cdp = Cdps[_cdpId];
-        
+
         uint _coll = _cdp.coll;
         uint _debt = _cdp.debt;
 
