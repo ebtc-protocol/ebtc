@@ -260,8 +260,7 @@ contract BorrowerOperations is
         LocalVariables_adjustCdp memory vars;
 
         vars.price = priceFeed.fetchPrice();
-        uint256 _tcr = _getTCR(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -377,11 +376,10 @@ contract BorrowerOperations is
         _requireAtLeastMinNetColl(vars.netColl);
 
         // Update global pending index before any operations
-        ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
+        cdpManager.claimStakingSplitFee();
 
         vars.price = priceFeed.fetchPrice();
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         vars.debt = _EBTCAmount;
 
@@ -467,8 +465,7 @@ contract BorrowerOperations is
         cdpManager.applyPendingRewards(_cdpId);
 
         uint price = priceFeed.fetchPrice();
-        uint _tcr = _checkDeltaIndexAndClaimFee(price);
-        _requireNotInRecoveryMode(_tcr);
+        _requireNotInRecoveryMode(_getTCR(price));
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
@@ -886,15 +883,5 @@ contract BorrowerOperations is
             return 0;
         }
         return type(uint112).max;
-    }
-
-    // @dev only claim fee if delta index is big enough to trigger recovery mode
-    function _checkDeltaIndexAndClaimFee(uint _price) internal returns (uint) {
-        (uint _tcr, bool _triggerRecoveryMode) = cdpManager.checkIfDeltaIndexTriggerRM(_price);
-        if (_triggerRecoveryMode) {
-            ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
-            _tcr = _getTCR(_price);
-        }
-        return _tcr;
     }
 }
