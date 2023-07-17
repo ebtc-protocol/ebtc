@@ -272,8 +272,6 @@ contract BorrowerOperations is
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
-        cdpManager.applyPendingRewards(_cdpId);
-
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
