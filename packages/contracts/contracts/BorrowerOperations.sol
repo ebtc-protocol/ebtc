@@ -367,7 +367,6 @@ contract BorrowerOperations is
         uint _collAmount,
         address _borrower
     ) internal returns (bytes32) {
-        require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
         _requireNonZeroDebt(_EBTCAmount);
 
         LocalVariables_openCdp memory vars;
@@ -375,6 +374,7 @@ contract BorrowerOperations is
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.netColl = _getNetColl(_collAmount);
 
+        // will revert if _collAmount is less than MIN_NET_COLL + LIQUIDATOR_REWARD
         _requireAtLeastMinNetColl(vars.netColl);
 
         vars.price = priceFeed.fetchPrice();
