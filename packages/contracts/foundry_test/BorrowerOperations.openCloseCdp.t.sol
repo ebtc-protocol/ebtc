@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract OpenCloseCdpTest is eBTCBaseFixture {
+contract OpenCloseCdpTest is eBTCBaseInvariants {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+
+        connectCoreContracts();
+        connectLQTYContractsToCore();
     }
 
     // Generic test for happy case when 1 user open CDP
@@ -199,8 +200,7 @@ contract OpenCloseCdpTest is eBTCBaseFixture {
             vm.stopPrank();
         }
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
-        _verifyCdpOrderingInvariant_NICR();
-        _verifyCdpOrderingInvariant_ICR();
+        _ensureSystemInvariants();
     }
 
     /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount by bottom.
@@ -265,7 +265,6 @@ contract OpenCloseCdpTest is eBTCBaseFixture {
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
-        _verifyCdpOrderingInvariant_NICR();
-        _verifyCdpOrderingInvariant_ICR();
+        _ensureSystemInvariants();
     }
 }

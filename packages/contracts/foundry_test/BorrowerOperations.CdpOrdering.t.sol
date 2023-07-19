@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract CdpOrderingTest is eBTCBaseFixture {
-    mapping(bytes32 => bool) private _cdpIdsExist;
-
+contract CdpOrderingTest is eBTCBaseInvariants {
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+
+        connectCoreContracts();
+        connectLQTYContractsToCore();
     }
 
     function test_OpenCdpOrdering() public {
@@ -49,8 +48,7 @@ contract CdpOrderingTest is eBTCBaseFixture {
         console.log("cdp1 after: ", cdpManager.getCurrentICR(cdp1, price));
         console.log("cdp2 after: ", cdpManager.getCurrentICR(cdp2, price));
 
-        _verifyCdpOrderingInvariant_NICR();
-        _verifyCdpOrderingInvariant_ICR();
+        _ensureSystemInvariants();
     }
 
     /**
@@ -98,8 +96,7 @@ contract CdpOrderingTest is eBTCBaseFixture {
             console.log("openCdp:", collAmount, ": ", borrowedAmount);
 
             vm.stopPrank();
-            _verifyCdpOrderingInvariant_NICR();
-            _verifyCdpOrderingInvariant_ICR();
+            _ensureSystemInvariants();
         }
     }
 
