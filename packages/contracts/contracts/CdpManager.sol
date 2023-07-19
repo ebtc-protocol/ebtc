@@ -63,7 +63,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(stakingRewardSplit);
 
         _syncIndex();
-        syncUpdateIndexInterval();
         stFeePerUnitg = DECIMAL_PRECISION;
     }
 
@@ -571,20 +570,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) internal view returns (bool) {
         uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
         return TCR < CCR;
-    }
-
-    function syncUpdateIndexInterval() public override returns (uint) {
-        ICollateralTokenOracle _oracle = ICollateralTokenOracle(collateral.getOracle());
-        (uint256 epochsPerFrame, uint256 slotsPerEpoch, uint256 secondsPerSlot, ) = _oracle
-            .getBeaconSpec();
-        uint256 _newInterval = (epochsPerFrame * slotsPerEpoch * secondsPerSlot) / 2;
-        if (_newInterval != INDEX_UPD_INTERVAL) {
-            emit CollateralIndexUpdateIntervalUpdated(INDEX_UPD_INTERVAL, _newInterval);
-            INDEX_UPD_INTERVAL = _newInterval;
-            // Ensure growth of index from last update to the time this function gets called will be charged
-            claimStakingSplitFee();
-        }
-        return INDEX_UPD_INTERVAL;
     }
 
     // --- Redemption fee functions ---
