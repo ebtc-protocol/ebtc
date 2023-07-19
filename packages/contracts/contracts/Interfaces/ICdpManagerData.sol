@@ -60,7 +60,6 @@ interface ICdpManagerData {
     event CdpSnapshotsUpdated(bytes32 _cdpId, uint _L_EBTCDebt);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
-    event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,

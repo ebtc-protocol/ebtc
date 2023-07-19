@@ -48,8 +48,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
-    function syncUpdateIndexInterval() external returns (uint);
-
     function closeCdp(bytes32 _cdpId) external;
 
     function removeStake(bytes32 _cdpId) external;

@@ -98,8 +98,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     mapping(bytes32 => uint256) public stFeePerUnitcdp;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
-    /* Global Index update minimal interval, typically it is updated once per day  */
-    uint256 public INDEX_UPD_INTERVAL;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
     mapping(bytes32 => uint) public rewardSnapshots;
 
