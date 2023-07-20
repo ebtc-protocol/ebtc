@@ -506,12 +506,6 @@ contract BorrowerOperations is
 
     // --- Helper functions ---
 
-    function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
-        uint usdValue = (_price * _coll) / DECIMAL_PRECISION;
-
-        return usdValue;
-    }
-
     function _getCollChange(
         uint _collReceived,
         uint _requestedCollWithdrawal
