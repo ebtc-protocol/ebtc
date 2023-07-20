@@ -70,7 +70,7 @@ interface ICdpManagerData {
     );
 
     enum CdpManagerOperation {
-        applyPendingRewards,
+        applyPendingCdpState,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,

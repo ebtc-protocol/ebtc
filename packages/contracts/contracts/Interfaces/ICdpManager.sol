@@ -40,11 +40,7 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint);
 
-    function updateCdpRewardSnapshots(bytes32 _cdpId) external;
-
-    function addCdpIdToArray(bytes32 _cdpId) external returns (uint index);
-
-    function applyPendingRewards(bytes32 _cdpId) external;
+    function applyPendingCdpState(bytes32 _cdpId) external;
 
     function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
@@ -78,7 +74,13 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
 
-    function setCdpStatus(bytes32 _cdpId, uint num) external;
+    function initializeCdp(
+        bytes32 _cdpId,
+        uint _debt,
+        uint _coll,
+        uint _liquidatorRewardShares,
+        address _borrower
+    ) external returns (uint, uint);
 
     function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external returns (uint);
 
@@ -87,8 +89,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
     function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external returns (uint);
 
     function decreaseCdpDebt(bytes32 _cdpId, uint _collDecrease) external returns (uint);
-
-    function setCdpLiquidatorRewardShares(bytes32 _cdpId, uint _liquidatorRewardShares) external;
 
     function getTCR(uint _price) external view returns (uint);
 

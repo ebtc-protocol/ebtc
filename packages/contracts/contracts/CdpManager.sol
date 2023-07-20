@@ -383,7 +383,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 bytes32 _nextId = sortedCdps.getPrev(_cId);
                 address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
 
-                _applyPendingRewards(_cId);
+                _applyPendingCdpState(_cId);
 
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
@@ -486,17 +486,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _toRemoveIds;
     }
 
-    function applyPendingRewards(bytes32 _cdpId) external override {
+    function applyPendingCdpState(bytes32 _cdpId) external override {
         // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
-        return _applyPendingRewards(_cdpId);
-    }
-
-    // Update borrower's snapshots of L_EBTCDebt to reflect the current values
-    function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations();
-        _applyAccumulatedFeeSplit(_cdpId);
-        return _updateRedistributedDebtSnapshot(_cdpId);
+        return _applyPendingCdpState(_cdpId);
     }
 
     function removeStake(bytes32 _cdpId) external override {
@@ -522,11 +515,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     // Push the owner's address to the Cdp owners list, and record the corresponding array index on the Cdp struct
-    function addCdpIdToArray(bytes32 _cdpId) external override returns (uint index) {
-        _requireCallerIsBorrowerOperations();
-        return _addCdpIdToArray(_cdpId);
-    }
-
     function _addCdpIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
         /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
         debt of liquidation reserve plus MIN_NET_DEBT.
@@ -870,12 +858,28 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /**
      * @notice Set the status of a CDP
+     * @notice Requires cdpId to be already initialized on SortedCdps
      * @param _cdpId The ID of the CDP
-     * @param _num The new ICdpManagerData.Satus, as an integer
+     * @param _liquidatorRewardShares The fixed liquidator reward shares for the CDP
      */
-    function setCdpStatus(bytes32 _cdpId, uint _num) external override {
+    function initializeCdp(
+        bytes32 _cdpId,
+        uint _debt,
+        uint _coll,
+        uint _liquidatorRewardShares,
+        address _borrower
+    ) external returns (uint stake, uint index) {
         _requireCallerIsBorrowerOperations();
-        Cdps[_cdpId].status = Status(_num);
+
+        Cdps[_cdpId].debt = _debt;
+        Cdps[_cdpId].coll = _coll;
+        Cdps[_cdpId].status = Status.active;
+        Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
+
+        _applyAccumulatedFeeSplit(_cdpId);
+        _updateRedistributedDebtSnapshot(_cdpId);
+        stake = _updateStakeAndTotalStakes(_cdpId);
+        index = _addCdpIdToArray(_cdpId);
     }
 
     /**
@@ -928,18 +932,5 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint newDebt = Cdps[_cdpId].debt - _debtDecrease;
         Cdps[_cdpId].debt = newDebt;
         return newDebt;
-    }
-
-    /**
-     * @notice Set the liquidator reward shares of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _liquidatorRewardShares The new liquidator reward shares
-     */
-    function setCdpLiquidatorRewardShares(
-        bytes32 _cdpId,
-        uint _liquidatorRewardShares
-    ) external override {
-        _requireCallerIsBorrowerOperations();
-        Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
     }
 }

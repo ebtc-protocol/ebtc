@@ -256,7 +256,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingCdpState(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
@@ -412,19 +412,19 @@ contract BorrowerOperations is
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
 
-        cdpManager.setCdpStatus(_cdpId, 1);
-        cdpManager.increaseCdpColl(_cdpId, _netCollAsShares); // Collateral is stored in shares form for normalization
-        cdpManager.increaseCdpDebt(_cdpId, vars.debt);
-        cdpManager.setCdpLiquidatorRewardShares(_cdpId, _liquidatorRewardShares);
-
-        cdpManager.updateCdpRewardSnapshots(_cdpId);
-        vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
-
-        vars.arrayIndex = cdpManager.addCdpIdToArray(_cdpId);
-        emit CdpCreated(_cdpId, _borrower, msg.sender, vars.arrayIndex);
+        // Collateral is stored in shares form for normalization
+        (vars.stake, vars.arrayIndex) = cdpManager.initializeCdp(
+            _cdpId,
+            vars.debt,
+            _netCollAsShares,
+            _liquidatorRewardShares,
+            _borrower
+        );
 
         // Mint the full EBTCAmount to the borrower
         _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
+
+        emit CdpCreated(_cdpId, _borrower, msg.sender, vars.arrayIndex);
 
         /**
             Note that only NET coll (as shares) is considered part of the CDP.
@@ -461,7 +461,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingCdpState(_cdpId);
 
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));

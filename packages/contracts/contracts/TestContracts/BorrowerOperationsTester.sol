@@ -70,7 +70,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
             );
     }
 
-
     function callInternalAdjustLoan(
         address _borrower,
         uint _collWithdrawal,
