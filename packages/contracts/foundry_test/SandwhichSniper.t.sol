@@ -39,7 +39,6 @@ contract SandWhichSniperTest is eBTCBaseFixture {
     // Attacker Brings TCR close to Recovery Mode -> Basically 110 as well
     // Attacker liquidates victim
     function test_snipeViaPriceDradwown() public {
-
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
 
         vm.assume(debtAmt > 1e18);
@@ -56,8 +55,6 @@ contract SandWhichSniperTest is eBTCBaseFixture {
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
         console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
-
-
 
         // Get TCR
         uint256 tcr = cdpManager.getTCR(_curPrice);
@@ -81,17 +78,17 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, 125e16); // Safe CR, since it's price that moves to liquidations
         console.log("_curPrice", _curPrice);
         console.log("collAttacker", collAttacker);
-        console.log("CR Attacker", (collAttacker - _utils.LIQUIDATOR_REWARD()) * _curPrice / attackerDebtAmount);
+        console.log(
+            "CR Attacker",
+            ((collAttacker - _utils.LIQUIDATOR_REWARD()) * _curPrice) / attackerDebtAmount
+        );
         bytes32 cdpIdAttacker = _openTestCDP(users[0], collAttacker, attackerDebtAmount);
         console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
 
-
         /** SANDWHICH 2 */
         // 1% drawdown for simiplicity
-        priceFeedMock.setPrice(_curPrice * 99 / 100);
+        priceFeedMock.setPrice((_curPrice * 99) / 100);
         uint256 _newPrice = priceFeedMock.getPrice();
-
-
 
         uint256 tcrAfter = cdpManager.getTCR(_newPrice);
         console.log("tcrAfter claim", _newPrice);
@@ -106,7 +103,5 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
         assertGt(tcrEnd, 1250000000000000000);
-
-        
     }
 }

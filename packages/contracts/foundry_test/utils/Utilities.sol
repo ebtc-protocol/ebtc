@@ -13,7 +13,6 @@ contract Utilities is Test {
     bytes32 internal nextSpecial = keccak256(abi.encodePacked("special address"));
     uint256 public constant LIQUIDATOR_REWARD = 2e17;
 
-
     function getNextSpecialAddress() public returns (address payable) {
         //bytes32 to address conversion
         address payable user = payable(address(uint160(uint256(nextSpecial))));
