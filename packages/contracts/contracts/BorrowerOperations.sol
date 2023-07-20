@@ -18,7 +18,8 @@ contract BorrowerOperations is
     LiquityBase,
     ReentrancyGuard,
     IBorrowerOperations,
-    ERC3156FlashLender
+    ERC3156FlashLender,
+    AuthNoOwner
 {
     string public constant NAME = "BorrowerOperations";
 
@@ -827,6 +828,9 @@ contract BorrowerOperations is
             _feeRecipientAddress != address(0),
             "BorrowerOperations: cannot set fee recipient to zero address"
         );
+
+        cdpManager.claimStakingSplitFee();
+
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
@@ -881,5 +885,23 @@ contract BorrowerOperations is
             return 0;
         }
         return type(uint112).max;
+    }
+
+    function setFeeBps(uint _newFee) external requiresAuth {
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+
+        cdpManager.claimStakingSplitFee();
+
+        // set new flash fee
+        uint _oldFee = feeBps;
+        feeBps = uint16(_newFee);
+        emit FlashFeeSet(msg.sender, _oldFee, _newFee);
+    }
+
+    function setFlashLoansPaused(bool _paused) external requiresAuth {
+        cdpManager.claimStakingSplitFee();
+
+        flashLoansPaused = _paused;
+        emit FlashLoansPaused(msg.sender, _paused);
     }
 }

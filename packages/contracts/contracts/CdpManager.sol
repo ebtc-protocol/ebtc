@@ -782,6 +782,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
+        claimStakingSplitFee();
+
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
@@ -795,6 +797,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _redemptionFeeFloor <= DECIMAL_PRECISION,
             "CDPManager: new redemption fee floor is higher than maximum"
         );
+
+        claimStakingSplitFee();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -810,6 +814,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
+        claimStakingSplitFee();
+
         // decay first according to previous factor
         _decayBaseRate();
 
@@ -819,6 +825,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
+        claimStakingSplitFee();
+
         _decayBaseRate();
 
         beta = _beta;

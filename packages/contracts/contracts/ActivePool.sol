@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/ICollateralToken.sol";
+import "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
@@ -17,7 +18,7 @@ import "./Dependencies/BaseMath.sol";
  * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  */
-contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath {
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath, AuthNoOwner {
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 
@@ -342,6 +343,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function claimFeeRecipientColl(uint256 _shares) external override requiresAuth {
         uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+
+        ICdpManagerData(cdpManagerAddress).claimStakingSplitFee();
+
         unchecked {
             _FeeRecipientColl -= _shares;
         }
@@ -362,6 +366,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
 
+        ICdpManagerData(cdpManagerAddress).claimStakingSplitFee();
+
         address cachedFeeRecipientAddress = feeRecipientAddress; // Saves an SLOAD
 
         IERC20(token).safeTransfer(cachedFeeRecipientAddress, amount);
@@ -374,7 +380,28 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
             _feeRecipientAddress != address(0),
             "ActivePool: cannot set fee recipient to zero address"
         );
+
+        ICdpManagerData(cdpManagerAddress).claimStakingSplitFee();
+
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
+    function setFeeBps(uint _newFee) external requiresAuth {
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+
+        ICdpManagerData(cdpManagerAddress).claimStakingSplitFee();
+
+        // set new flash fee
+        uint _oldFee = feeBps;
+        feeBps = uint16(_newFee);
+        emit FlashFeeSet(msg.sender, _oldFee, _newFee);
+    }
+
+    function setFlashLoansPaused(bool _paused) external requiresAuth {
+        ICdpManagerData(cdpManagerAddress).claimStakingSplitFee();
+
+        flashLoansPaused = _paused;
+        emit FlashLoansPaused(msg.sender, _paused);
     }
 }
