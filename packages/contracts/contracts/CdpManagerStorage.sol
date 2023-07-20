@@ -361,7 +361,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
-    function claimStakingSplitFee() public {
+    function applyPendingGlobalState() public {
         (uint _oldIndex, uint _newIndex) = _syncIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
@@ -434,7 +434,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
         uint _stFeePerUnitg = stFeePerUnitg;

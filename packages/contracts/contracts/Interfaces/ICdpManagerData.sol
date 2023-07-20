@@ -219,7 +219,7 @@ interface ICdpManagerData {
         uint256 _prevIndex
     ) external view returns (uint256, uint256, uint256);
 
-    function claimStakingSplitFee() external;
+    function applyPendingGlobalState() external;
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,

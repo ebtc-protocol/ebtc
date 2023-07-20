@@ -338,7 +338,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
@@ -782,7 +782,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
@@ -798,7 +798,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new redemption fee floor is higher than maximum"
         );
 
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -814,7 +814,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         // decay first according to previous factor
         _decayBaseRate();
@@ -825,7 +825,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
-        claimStakingSplitFee();
+        applyPendingGlobalState();
 
         _decayBaseRate();
 

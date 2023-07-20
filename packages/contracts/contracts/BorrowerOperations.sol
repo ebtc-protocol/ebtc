@@ -375,7 +375,7 @@ contract BorrowerOperations is
         _requireAtLeastMinNetColl(vars.netColl);
 
         // Update global pending index before any operations
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
@@ -821,20 +821,6 @@ contract BorrowerOperations is
         return newTCR;
     }
 
-    // === Governed Functions ==
-
-    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
-        require(
-            _feeRecipientAddress != address(0),
-            "BorrowerOperations: cannot set fee recipient to zero address"
-        );
-
-        cdpManager.claimStakingSplitFee();
-
-        feeRecipientAddress = _feeRecipientAddress;
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
-    }
-
     // === Flash Loans === //
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -887,10 +873,24 @@ contract BorrowerOperations is
         return type(uint112).max;
     }
 
+    // === Governed Functions ==
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        require(
+            _feeRecipientAddress != address(0),
+            "BorrowerOperations: cannot set fee recipient to zero address"
+        );
+
+        cdpManager.applyPendingGlobalState();
+
+        feeRecipientAddress = _feeRecipientAddress;
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
     function setFeeBps(uint _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         // set new flash fee
         uint _oldFee = feeBps;
@@ -899,7 +899,7 @@ contract BorrowerOperations is
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);
