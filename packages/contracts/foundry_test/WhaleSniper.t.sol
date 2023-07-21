@@ -84,14 +84,9 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint88 attackerDebtAmount,
         uint88 systemDebtAmount
     ) public {
-        // A) Given any attacker and system debt, both of which are above 3 BTC in denomination
-        if (attackerDebtAmount < 1e20) {
-            attackerDebtAmount += 1e20; // Avoids the assume > 1e20
-        }
-
-        if (systemDebtAmount < 1e20) {
-            systemDebtAmount += 1e20; // Avoids the assume > 1e20
-        }
+        // A) Given any attacker and system debt, both of which are above 100 BTC in denomination
+        attackerDebtAmount = uint88(bound(attackerDebtAmount, 1e20, type(uint88).max));
+        systemDebtAmount = uint88(bound(systemDebtAmount, 1e20, type(uint88).max));
 
         console.log("systemDebtAmount", systemDebtAmount);
         console.log("attackerDebtAmount", attackerDebtAmount);
