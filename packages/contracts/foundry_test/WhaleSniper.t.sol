@@ -85,12 +85,12 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint88 systemDebtAmount
     ) public {
         // A) Given any attacker and system debt, both of which are above 3 BTC in denomination
-        if (attackerDebtAmount < 3e18) {
-            attackerDebtAmount += 3e18; // Avoids the assume > 3e18
+        if (attackerDebtAmount < 1e20) {
+            attackerDebtAmount += 1e20; // Avoids the assume > 1e20
         }
 
-        if (systemDebtAmount < 3e18) {
-            systemDebtAmount += 3e18; // Avoids the assume > 3e18
+        if (systemDebtAmount < 1e20) {
+            systemDebtAmount += 1e20; // Avoids the assume > 1e20
         }
 
         console.log("systemDebtAmount", systemDebtAmount);
@@ -116,7 +116,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         // 3) Given a Victim that is heavily levered, with ICR below CCR
         // 5% of amt
         {
-            uint256 victimAmount = systemDebtAmount / 20;
+            uint256 victimAmount = systemDebtAmount / 50;
             console.log("victimAmount", victimAmount);
 
             // Levered to the tits
