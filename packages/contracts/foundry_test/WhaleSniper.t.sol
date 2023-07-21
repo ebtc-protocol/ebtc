@@ -97,7 +97,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("attackerDebtAmount", attackerDebtAmount);
         // u88 max is 3e26, max bitcoins are 2e25 (adjuges for 18 decimals)
         // And a ICR for the attacker that will drive the TCR below 150
-        cdpCR = cdpCR % 150e16; // Anything above is not meaningful since it drives the TCR above
+        cdpCR = cdpCR % 126e16; // Anything above is not meaningful since it drives the TCR above
         console.log("cdpCR", cdpCR);
 
         uint _curPrice = priceFeedMock.getPrice();
@@ -114,7 +114,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         // Deposit and bring TCR to RM
 
         // 3) Given a Victim that is heavily levered, with ICR below CCR
-        // 2% of amt
+        // 5% of amt
         {
             uint256 victimAmount = systemDebtAmount / 20;
             console.log("victimAmount", victimAmount);
