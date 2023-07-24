@@ -68,7 +68,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         // Levered to the tits
         uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 124e16); // Liquidatable only in RM
         console.log("collVictim", collVictim);
-        bytes32 cdpIdVictm = _openTestCDP(users[0], collVictim, victimAmount);
+        bytes32 cdpIdVictim = _openTestCDP(users[0], collVictim, victimAmount);
         console.log("tcrAfterOpen Victim", cdpManager.getTCR(_curPrice));
 
         /** SANDWHICH 1 */
@@ -91,17 +91,18 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         uint256 _newPrice = priceFeedMock.getPrice();
 
         uint256 tcrAfter = cdpManager.getTCR(_newPrice);
-        console.log("tcrAfter claim", _newPrice);
+        console.log("tcrAfter claim", tcrAfter);
 
         // We're in recovery mode
-        assertLt(_newPrice, 1250000000000000000);
+        assertLt(tcrAfter, 1250000000000000000);
 
         // We can now liquidate victim
         /** SANDWHICH 3 */
         vm.startPrank(users[0]);
-        cdpManager.liquidate(cdpIdVictm);
+        cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
-        assertGt(tcrEnd, 1250000000000000000);
+        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 3); //closedByLiquidation
+        //assertGt(tcrEnd, 1250000000000000000);
     }
 }

