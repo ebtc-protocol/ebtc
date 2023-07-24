@@ -410,7 +410,8 @@ contract BorrowerOperations is
         } else {
             _requireICRisAboveMCR(vars.ICR);
             uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price); // bools: coll increase, debt increase
-            _requireNewTCRisAboveCCR(newTCR);
+            // Any open CDP is a debt increase so this check is safe
+            _requireNewTCRisAboveBufferedCCR(newTCR);
         }
 
         // Set the cdp struct's properties
@@ -690,7 +691,13 @@ contract BorrowerOperations is
                 _isDebtIncrease,
                 _vars.price
             );
-            _requireNewTCRisAboveCCR(_vars.newTCR);
+            if (_isDebtIncrease || _collWithdrawal > 0) {
+                // Adding debt or reducing coll has negative impact on TCR, do a stricter check
+                _requireNewTCRisAboveBufferedCCR(_vars.newTCR);
+            } else {
+                // Other cases have a laxer check
+                _requireNewTCRisAboveCCR(_vars.newTCR);
+            }
         }
     }
 
@@ -698,6 +705,13 @@ contract BorrowerOperations is
         require(
             _newICR >= MCR,
             "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
+        );
+    }
+
+    function _requireNewTCRisAboveBufferedCCR(uint _newTCR) internal pure {
+        require(
+            _newTCR >= BUFFERED_CCR,
+            "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted"
         );
     }
 
