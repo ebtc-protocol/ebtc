@@ -68,18 +68,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // updateRewardSnapshots
-    it("updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.updateCdpRewardSnapshots(bob, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert" )
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
     // removeStake
     it("removeStake(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
@@ -116,23 +104,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // addCdpOwnerToArray
-    it("addCdpOwnerToArray(): reverts when called by an account that is not BorrowerOperations", async () => {
+    // initializeCdp
+    it("initializeCdp(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await cdpManager.addCdpIdToArray(th.DUMMY_BYTES32, { from: alice })
-        
-      } catch (err) {
-         assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
-    // setCdpStatus
-    it("setCdpStatus(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.setCdpStatus(bob, 1, { from: alice })
+        const txAlice = await cdpManager.initializeCdp(bob, 1, 1, 1, cdpManager.address, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
