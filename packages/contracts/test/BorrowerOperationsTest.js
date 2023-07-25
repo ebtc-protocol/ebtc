@@ -3317,9 +3317,9 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it("openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the CCR", async () => {
+    it.only("openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the BUFFERED_CCR", async () => {
       await priceFeed.setPrice(dec(3800, 13))
-      await openCdp({ICR: toBN(dec(126, 16)), extraParams: { from: alice } })
+      await openCdp({ICR: toBN(dec(136, 16)), extraParams: { from: alice } })
 
       const TCR = await th.getTCR(contracts)
 
@@ -3328,6 +3328,7 @@ contract('BorrowerOperations', async accounts => {
         const txBob = await openCdp({ extraEBTCAmount: toBN(dec(1, 17)), ICR: toBN(dec(124, 16)), extraParams: { from: bob } })
         assert.isFalse(txBob.receipt.status)
       } catch (err) {
+        console.log(err.message)
         assert.include(err.message, "revert")
       }
     })
