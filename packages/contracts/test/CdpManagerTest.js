@@ -4814,7 +4814,7 @@ contract('CdpManager', async accounts => {
     await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("150000")});
     await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("150000")});
     await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("150000")});
-    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(126, 16)), extraEBTCAmount: dec(1590, 18), extraParams: { from: bob } })
+    const { collateral: B_coll, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(135, 16)), extraEBTCAmount: dec(1590, 18), extraParams: { from: bob } })
     const { collateral: C_coll, totalDebt: C_totalDebt } = await openCdp({ ICR: toBN(dec(600, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: carol } })
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(800, 16)), extraEBTCAmount: dec(1090, 18), extraParams: { from: dennis } })
     let _aCdpID = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
