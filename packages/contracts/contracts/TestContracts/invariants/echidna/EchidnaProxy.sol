@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.17;
 
-import "../CdpManager.sol";
-import "../BorrowerOperations.sol";
-import "../ActivePool.sol";
-import "./CollateralTokenTester.sol";
-import "./testnet/PriceFeedTestnet.sol";
-import "./EBTCTokenTester.sol";
-import "../Interfaces/IERC3156FlashBorrower.sol";
-import "../Dependencies/IERC20.sol";
+import "../../../CdpManager.sol";
+import "../../../BorrowerOperations.sol";
+import "../../../ActivePool.sol";
+import "../../CollateralTokenTester.sol";
+import "../../testnet/PriceFeedTestnet.sol";
+import "../../EBTCTokenTester.sol";
+import "../../../Interfaces/IERC3156FlashBorrower.sol";
+import "../../../Dependencies/IERC20.sol";
 
 contract EchidnaProxy is IERC3156FlashBorrower {
     CdpManager cdpManager;

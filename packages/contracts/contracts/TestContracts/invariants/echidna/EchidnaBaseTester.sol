@@ -1,24 +1,24 @@
 pragma solidity 0.8.17;
 
-import "../../Interfaces/ICdpManagerData.sol";
-import "../../Dependencies/SafeMath.sol";
-import "../../CdpManager.sol";
-import "../../LiquidationLibrary.sol";
-import "../../BorrowerOperations.sol";
-import "../../ActivePool.sol";
-import "../../CollSurplusPool.sol";
-import "../../SortedCdps.sol";
-import "../../HintHelpers.sol";
-import "../../FeeRecipient.sol";
-import "../testnet/PriceFeedTestnet.sol";
-import "../CollateralTokenTester.sol";
-import "../EchidnaProxy.sol";
-import "../EBTCTokenTester.sol";
-import "../../Governor.sol";
-import "../../EBTCDeployer.sol";
+import "../../../Interfaces/ICdpManagerData.sol";
+import "../../../Dependencies/SafeMath.sol";
+import "../../../CdpManager.sol";
+import "../../../LiquidationLibrary.sol";
+import "../../../BorrowerOperations.sol";
+import "../../../ActivePool.sol";
+import "../../../CollSurplusPool.sol";
+import "../../../SortedCdps.sol";
+import "../../../HintHelpers.sol";
+import "../../../FeeRecipient.sol";
+import "../../testnet/PriceFeedTestnet.sol";
+import "../../CollateralTokenTester.sol";
+import "./EchidnaProxy.sol";
+import "../../EBTCTokenTester.sol";
+import "../../../Governor.sol";
+import "../../../EBTCDeployer.sol";
 
-import "../invariants/IHevm.sol";
-import "../invariants/Properties.sol";
+import "../../invariants/IHevm.sol";
+import "../../invariants/Properties.sol";
 
 abstract contract EchidnaBaseTester {
     using SafeMath for uint;

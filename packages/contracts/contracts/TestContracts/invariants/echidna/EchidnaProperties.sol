@@ -1,7 +1,7 @@
 pragma solidity 0.8.17;
 
 import {EchidnaBaseTester} from "./EchidnaBaseTester.sol";
-import {Properties} from "./Properties.sol";
+import {Properties} from "../Properties.sol";
 
 abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     function echidna_canary_active_pool_balance() public view returns (bool) {
@@ -13,7 +13,8 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     }
 
     function echidna_accounting_balances() public view returns (bool) {
-        return invariant_P_22(collateral, borrowerOperations, eBTCToken, sortedCdps, priceFeedTestnet);
+        return
+            invariant_P_22(collateral, borrowerOperations, eBTCToken, sortedCdps, priceFeedTestnet);
     }
 
     function echidna_price() public view returns (bool) {

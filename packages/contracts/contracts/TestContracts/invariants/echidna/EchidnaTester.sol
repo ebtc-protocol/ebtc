@@ -2,32 +2,33 @@
 
 pragma solidity 0.8.17;
 
-import "../Interfaces/ICdpManagerData.sol";
-import "../Dependencies/SafeMath.sol";
-import "../CdpManager.sol";
-import "../LiquidationLibrary.sol";
-import "../BorrowerOperations.sol";
-import "../ActivePool.sol";
-import "../CollSurplusPool.sol";
-import "../SortedCdps.sol";
-import "../HintHelpers.sol";
-import "../FeeRecipient.sol";
-import "./testnet/PriceFeedTestnet.sol";
-import "./CollateralTokenTester.sol";
+import "../../../Interfaces/ICdpManagerData.sol";
+import "../../../Dependencies/SafeMath.sol";
+import "../../../CdpManager.sol";
+import "../../../LiquidationLibrary.sol";
+import "../../../BorrowerOperations.sol";
+import "../../../ActivePool.sol";
+import "../../../CollSurplusPool.sol";
+import "../../../SortedCdps.sol";
+import "../../../HintHelpers.sol";
+import "../../../FeeRecipient.sol";
+import "../../testnet/PriceFeedTestnet.sol";
+import "../../CollateralTokenTester.sol";
+import "../../EBTCTokenTester.sol";
+import "../../../Governor.sol";
+import "../../../EBTCDeployer.sol";
 import "./EchidnaProxy.sol";
-import "./EBTCTokenTester.sol";
-import "../Governor.sol";
-import "../EBTCDeployer.sol";
 
-import "./invariants/IHevm.sol";
-import "./invariants/Properties.sol";
-import "./invariants/EchidnaBaseTester.sol";
+import "../IHevm.sol";
+import "../Properties.sol";
+import "./EchidnaBaseTester.sol";
+import "./EchidnaProperties.sol";
 
 // Run with:
 // cd <your-path-to-ebtc-repo-root>/packages/contracts
 // rm -f ./fuzzTests/corpus/* # (optional)
 // <your-path-to->/echidna-test contracts/TestContracts/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
-contract EchidnaTester is EchidnaBaseTester {
+contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     constructor() public payable {
         _setUp();
         _connectCoreContracts();
