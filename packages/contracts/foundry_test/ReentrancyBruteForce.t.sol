@@ -50,6 +50,8 @@ contract FakeReentrancyGuardTool {
         } else {
             revert("Error");
         }
+
+        lock = 0;
     }
 
     function doTheOpFive(uint256 a, uint256 b, uint256 c, uint256 d, uint256 e) external {
@@ -60,6 +62,8 @@ contract FakeReentrancyGuardTool {
         } else {
             revert("Error");
         }
+
+        lock = 0;
     }
 
     receive() external payable {}
@@ -72,8 +76,11 @@ contract SCTestBasic is Test {
     ReentrantBruteforcer c;
     FakeReentrancyGuardTool demoTarget;
 
-    bytes ZERO;
+    bytes ZERO; // Used to pass empty values to ANY function
 
+    string constant EXPECTED_REENTRANCY_ERROR = "Error";
+
+    // TODO: Add real contracts here
     function setUp() public {
         demoTarget = new FakeReentrancyGuardTool();
 
@@ -90,29 +97,88 @@ contract SCTestBasic is Test {
         }
     }
 
-    function testBruteForceReentrancies() public {
-        // On each iteration we deploy a new contract for exploit
-        c = new ReentrantBruteforcer(address(demoTarget), abi.encodeWithSelector(demoTarget.doTheOpFive.selector, ZERO));
-        console2.log("Setup");
+    // We iterate over each of these
+    // {
+    //   target
+    //   [selectors]
+    // }[]
 
+    struct ContractAndTargets {
+        address contractAddress;
+        bytes[] calldatasList; // e.g. abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO)
+    }
+
+    function allStartingTargetsAndCalldatas() public returns (ContractAndTargets[] memory contractsAndCalldatas) {
+        contractsAndCalldatas = new ContractAndTargets[](1);
+        contractsAndCalldatas[0].contractAddress = address(demoTarget); // E.g.
+
+        contractsAndCalldatas[0].calldatasList = new bytes[](2);
+        contractsAndCalldatas[0].calldatasList[0] = abi.encodeWithSelector(demoTarget.doTheOpFive.selector, ZERO);
+        contractsAndCalldatas[0].calldatasList[1] = abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO);
+    }
+
+    function allReentrantTargetsAndCalldatas() public returns (ContractAndTargets[] memory) {
+        // Pro tip: Return allStartingTargetsAndCalldatas, to try every combination
+        return allStartingTargetsAndCalldatas();
+    }
+
+    // And all of the possible combinations
+
+    function oneBruteForceReentrancyCheck(
+        address rentrantTarget,
+        bytes memory reentrantData,
+        address initialTarget,
+        bytes memory initialData
+    )
+        // TODO: Could also add the custom error message but I think you can just check via GLOBAL
+        internal
+    {
+        c = new ReentrantBruteforcer(rentrantTarget, reentrantData);
+
+        // == Reentrancy Setup == //
+        // NOTE: You have to customize this so you can reEnter
         vm.deal(address(this), 1);
         payable(address(demoTarget)).call{value: 1}("");
         console2.log("Dealt");
 
         // You must set this up
+        // TODO: Place as reparate piece of code you have to handle
         console2.log("Calling Reentrancy on doTheOP");
-        c.startReentrancy(address(demoTarget), abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO));
+        c.startReentrancy(initialTarget, initialData); // Start Input
+        // == END Reentrancy Setup == //
 
+        // == VERIFY RESULT == //
         // Fetch results from fallback
         {
             bool outcome = c.status();
             bytes memory response = c.response();
 
-            assertEq(outcome, false); // Must have reverted in the fallback
+            assertEq(outcome, false, "Call must revert"); // Must have reverted in the fallback
 
-            string memory expectedVal = "Error";
+            // Verifies the error matches the intended one
             bytes4 errorString = 0x08c379a0; // This is added by Solidity compiler: https://trustchain.medium.com/reversing-and-debugging-evm-the-end-of-time-part-4-3eafe5b0511a
-            assertEq(response, bytes.concat(errorString, abi.encode(expectedVal))); // Error must match
+            assertEq(response, bytes.concat(errorString, abi.encode(EXPECTED_REENTRANCY_ERROR)), "Error Must Match");
+        }
+    }
+
+    function testBruteForceReentrancies() public {
+        ContractAndTargets[] memory startingCalldatasAndTargets = allReentrantTargetsAndCalldatas();
+        ContractAndTargets[] memory contractsAndCalldatas = allReentrantTargetsAndCalldatas();
+
+        for (uint256 i = 0; i < startingCalldatasAndTargets.length; i++) {
+            for (uint256 n = 0; n < contractsAndCalldatas[i].calldatasList.length; n++) {
+                for (uint256 x = 0; x < contractsAndCalldatas.length; x++) {
+                    for (uint256 y = 0; y < contractsAndCalldatas[x].calldatasList.length; y++) {
+                        oneBruteForceReentrancyCheck(
+                            // It
+                            contractsAndCalldatas[x].contractAddress,
+                            contractsAndCalldatas[x].calldatasList[y],
+                            startingCalldatasAndTargets[i].contractAddress,
+                            startingCalldatasAndTargets[i].calldatasList[n]
+                        );
+                    }
+                }
+            }
         }
     }
 }
