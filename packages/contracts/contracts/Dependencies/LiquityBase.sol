@@ -123,6 +123,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint _price,
         uint _stakingSplit
     ) internal view returns (uint, uint) {
+        
+        if(_stakingSplit == 0) {
+            _stakingSplit = 1; // Avoids division by zero
+        }
+
         uint _tcr = _getTCR(_price);
         if (_tcr <= CCR) {
             return (0, _tcr);
