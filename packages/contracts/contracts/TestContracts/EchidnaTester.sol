@@ -21,74 +21,13 @@ import "../EBTCDeployer.sol";
 
 import "./invariants/IHevm.sol";
 import "./invariants/Properties.sol";
+import "./invariants/EchidnaBaseTester.sol";
 
 // Run with:
 // cd <your-path-to-ebtc-repo-root>/packages/contracts
 // rm -f ./fuzzTests/corpus/* # (optional)
 // <your-path-to->/echidna-test contracts/TestContracts/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
-contract EchidnaTester is Properties {
-    using SafeMath for uint;
-
-    uint private constant NUMBER_OF_ACTORS = 100;
-    uint private constant INITIAL_BALANCE = 1e24;
-    uint private constant INITIAL_COLL_BALANCE = 1e21;
-    uint private MCR;
-    uint private CCR;
-    uint private LICR;
-    uint private MIN_NET_COLL;
-
-    CdpManager private cdpManager;
-    BorrowerOperations private borrowerOperations;
-    ActivePool private activePool;
-    CollSurplusPool private collSurplusPool;
-    EBTCTokenTester private eBTCToken;
-    SortedCdps private sortedCdps;
-    HintHelpers private hintHelpers;
-    PriceFeedTestnet private priceFeedTestnet;
-    CollateralTokenTester private collateral;
-    FeeRecipient private feeRecipient;
-    LiquidationLibrary private liqudationLibrary;
-    Governor private authority;
-    address defaultGovernance;
-    EBTCDeployer ebtcDeployer;
-
-    EchidnaProxy[NUMBER_OF_ACTORS] private echidnaProxies;
-
-    uint private numberOfCdps;
-
-    address private constant hevm = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
-    uint private constant diff_tolerance = 2000000; //compared to 1e18
-
-    // -- Permissioned Function Signatures for Authority --
-    // CDPManager
-    bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
-        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
-    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
-        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
-    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
-        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 private constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
-
-    // EBTCToken
-    bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
-    bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
-
-    // PriceFeed
-    bytes4 public constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
-
-    // Flash Lender
-    bytes4 internal constant SET_FLASH_FEE_SIG = bytes4(keccak256(bytes("setFlashFee(uint256)")));
-    bytes4 internal constant SET_MAX_FLASH_FEE_SIG =
-        bytes4(keccak256(bytes("setMaxFlashFee(uint256)")));
-
-    struct CDPChange {
-        uint collAddition;
-        uint collReduction;
-        uint debtAddition;
-        uint debtReduction;
-    }
-
+contract EchidnaTester is EchidnaBaseTester {
     constructor() public payable {
         _setUp();
         _connectCoreContracts();
@@ -352,9 +291,9 @@ contract EchidnaTester is Properties {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
         (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
-        uint _debt = entireDebt.add(_change.debtAddition).sub(_change.debtReduction);
-        uint _coll = entireColl.add(_change.collAddition).sub(_change.collReduction);
-        require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
+        uint _debt = entireDebt + _change.debtAddition - _change.debtReduction;
+        uint _coll = entireColl + _change.collAddition - _change.collReduction;
+        require((_debt * MCR) / price < _coll, "!CDP_MCR");
     }
 
     function _getRandomActor(uint _i) internal pure returns (uint) {
@@ -372,18 +311,6 @@ contract EchidnaTester is Properties {
         uint _priceDiv = _i % 10;
         _oldPrice = priceFeedTestnet.getPrice();
         _newPrice = _oldPrice / (_priceDiv + 1);
-    }
-
-    function _assertApproximateEq(
-        uint _num1,
-        uint _num2,
-        uint _tolerance
-    ) internal pure returns (bool) {
-        if (_num1 > _num2) {
-            return _tolerance >= _num1.sub(_num2);
-        } else {
-            return _tolerance >= _num2.sub(_num1);
-        }
     }
 
     ///////////////////////////////////////////////////////
@@ -501,10 +428,10 @@ contract EchidnaTester is Properties {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
 
-        uint requiredCollAmount = _EBTCAmount.mul(CCR).div(price);
+        uint requiredCollAmount = (_EBTCAmount * CCR) / (price);
         uint actorBalance = collateral.balanceOf(address(echidnaProxy));
         if (actorBalance < requiredCollAmount) {
-            echidnaProxy.dealCollateral(requiredCollAmount.sub(actorBalance));
+            echidnaProxy.dealCollateral(requiredCollAmount - actorBalance);
         }
         echidnaProxy.openCdpPrx(requiredCollAmount, _EBTCAmount, bytes32(0), bytes32(0));
 
@@ -518,11 +445,11 @@ contract EchidnaTester is Properties {
 
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
-        require(_EBTCAmount.mul(MCR).div(price) < _coll, "!openCdpRawExt_EBTCAmount");
+        require((_EBTCAmount * MCR) / (price) < _coll, "!openCdpRawExt_EBTCAmount");
 
         uint actorBalance = collateral.balanceOf(address(echidnaProxy));
         if (actorBalance < _coll) {
-            echidnaProxy.dealCollateral(_coll.sub(actorBalance));
+            echidnaProxy.dealCollateral(_coll - actorBalance);
         }
         echidnaProxies[actor].openCdpPrx(_coll, _EBTCAmount, bytes32(0), bytes32(0));
 
@@ -537,7 +464,7 @@ contract EchidnaTester is Properties {
         require(_cdpId != bytes32(0), "!cdpId");
         uint actorBalance = collateral.balanceOf(address(echidnaProxy));
         if (actorBalance < _coll) {
-            echidnaProxy.dealCollateral(_coll.sub(actorBalance));
+            echidnaProxy.dealCollateral(_coll - actorBalance);
         }
 
         echidnaProxy.addCollPrx(_cdpId, _coll, _cdpId, _cdpId);
@@ -687,69 +614,5 @@ contract EchidnaTester is Properties {
         );
         require(_newSmallerIndex > 0, "!nonsenseNewSmallerRate");
         collateral.setEthPerShare(_newSmallerIndex);
-    }
-
-    // --------------------------
-    // Invariants and properties
-    // --------------------------
-
-    function echidna_canary_active_pool_balance() public view returns (bool) {
-        return invariant_P_47(cdpManager, collateral, activePool);
-    }
-
-    function echidna_cdp_properties() public view returns (bool) {
-        return invariant_SL_03(cdpManager, priceFeedTestnet, sortedCdps);
-    }
-
-    function echidna_accounting_balances() public view returns (bool) {
-        return invariant_P_22(collateral, borrowerOperations, eBTCToken, sortedCdps, priceFeedTestnet);
-    }
-
-    function echidna_price() public view returns (bool) {
-        return invariant_DUMMY_01(priceFeedTestnet);
-    }
-
-    function echidna_EBTC_global_balances() public view returns (bool) {
-        return invariant_P_36(eBTCToken, cdpManager, sortedCdps);
-    }
-
-    function echidna_active_pool_invariant_1() public view returns (bool) {
-        return invariant_AP_01(collateral, activePool);
-    }
-
-    function echidna_active_pool_invariant_3() public view returns (bool) {
-        return invariant_AP_03(eBTCToken, activePool);
-    }
-
-    function echidna_active_pool_invariant_4() public view returns (bool) {
-        return invariant_AP_04(cdpManager, activePool, diff_tolerance);
-    }
-
-    function echidna_active_pool_invariant_5() public view returns (bool) {
-        return invariant_AP_05(cdpManager, diff_tolerance);
-    }
-
-    function echidna_cdp_manager_invariant_1() public view returns (bool) {
-        return invariant_CDPM_01(cdpManager, sortedCdps);
-    }
-
-    function echidna_cdp_manager_invariant_2() public view returns (bool) {
-        return invariant_CDPM_02(cdpManager);
-    }
-
-    function echidna_cdp_manager_invariant_3() public view returns (bool) {
-        return invariant_CDPM_03(cdpManager);
-    }
-
-    function echidna_coll_surplus_pool_invariant_1() public view returns (bool) {
-        return invariant_CSP_01(collateral, collSurplusPool);
-    }
-
-    function echidna_sorted_list_invariant_1() public view returns (bool) {
-        return invariant_SL_01(cdpManager, sortedCdps);
-    }
-
-    function echidna_sorted_list_invariant_2() public view returns (bool) {
-        return invariant_SL_02(cdpManager, sortedCdps, priceFeedTestnet, 1e13);
     }
 }
