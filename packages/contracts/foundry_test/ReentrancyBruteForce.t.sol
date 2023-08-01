@@ -109,12 +109,25 @@ contract SCTestBasic is Test {
     }
 
     function allStartingTargetsAndCalldatas() public returns (ContractAndTargets[] memory contractsAndCalldatas) {
-        contractsAndCalldatas = new ContractAndTargets[](1);
+        contractsAndCalldatas = new ContractAndTargets[](5);
         contractsAndCalldatas[0].contractAddress = address(demoTarget); // E.g.
+        contractsAndCalldatas[1].contractAddress = address(demoTarget); // E.g.
+        contractsAndCalldatas[2].contractAddress = address(demoTarget); // E.g.
+        contractsAndCalldatas[3].contractAddress = address(demoTarget); // E.g.
+        contractsAndCalldatas[4].contractAddress = address(demoTarget); // E.g.
 
-        contractsAndCalldatas[0].calldatasList = new bytes[](2);
+        contractsAndCalldatas[0].calldatasList = new bytes[](5);
         contractsAndCalldatas[0].calldatasList[0] = abi.encodeWithSelector(demoTarget.doTheOpFive.selector, ZERO);
         contractsAndCalldatas[0].calldatasList[1] = abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO);
+        contractsAndCalldatas[0].calldatasList[2] = abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO);
+        contractsAndCalldatas[0].calldatasList[3] = abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO);
+        contractsAndCalldatas[0].calldatasList[4] = abi.encodeWithSelector(demoTarget.doTheOp.selector, ZERO);
+
+        contractsAndCalldatas[1].calldatasList = contractsAndCalldatas[0].calldatasList;
+        contractsAndCalldatas[2].calldatasList = contractsAndCalldatas[0].calldatasList;
+        contractsAndCalldatas[3].calldatasList = contractsAndCalldatas[0].calldatasList;
+        contractsAndCalldatas[4].calldatasList = contractsAndCalldatas[0].calldatasList;
+
     }
 
     function allReentrantTargetsAndCalldatas() public returns (ContractAndTargets[] memory) {
@@ -166,16 +179,20 @@ contract SCTestBasic is Test {
         ContractAndTargets[] memory contractsAndCalldatas = allReentrantTargetsAndCalldatas();
 
         for (uint256 i = 0; i < startingCalldatasAndTargets.length; i++) {
-            for (uint256 n = 0; n < contractsAndCalldatas[i].calldatasList.length; n++) {
+            for (uint256 n = 0; n < startingCalldatasAndTargets[i].calldatasList.length; n++) {
                 for (uint256 x = 0; x < contractsAndCalldatas.length; x++) {
                     for (uint256 y = 0; y < contractsAndCalldatas[x].calldatasList.length; y++) {
                         oneBruteForceReentrancyCheck(
-                            // It
                             contractsAndCalldatas[x].contractAddress,
                             contractsAndCalldatas[x].calldatasList[y],
                             startingCalldatasAndTargets[i].contractAddress,
                             startingCalldatasAndTargets[i].calldatasList[n]
                         );
+
+                        console2.log("i", i);
+                        console2.log("n", n);
+                        console2.log("x", x);
+                        console2.log("y", y);
                     }
                 }
             }
