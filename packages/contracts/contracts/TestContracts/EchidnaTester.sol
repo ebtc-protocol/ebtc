@@ -800,7 +800,6 @@ contract EchidnaTester is Properties {
     ////////////////////////////////////////////////////////////////////////////
     // Basic Invariants for ebtc system
     // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
-    // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
     // - active_pool_3： sum of EBTC debt accounting numbers in active pool is equal to EBTC total supply
     // - active_pool_4： total collateral in active pool should be equal to the sum of all individual CDP collateral
     // - active_pool_5： sum of debt accounting in active pool should be equal to sum of debt accounting of individual CDPs
@@ -816,18 +815,8 @@ contract EchidnaTester is Properties {
         return invariant_AP_01(collateral, activePool);
     }
 
-    function echidna_active_pool_invariant_2() public view returns (bool) {
-        if (eBTCToken.totalSupply() < activePool.getEBTCDebt()) {
-            return false;
-        }
-        return true;
-    }
-
     function echidna_active_pool_invariant_3() public view returns (bool) {
-        if (eBTCToken.totalSupply() != (activePool.getEBTCDebt())) {
-            return false;
-        }
-        return true;
+        return invariant_AP_03(eBTCToken, activePool);
     }
 
     function echidna_active_pool_invariant_4() public view returns (bool) {

@@ -9,8 +9,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     ////////////////////////////////////////////////////////////////////////////
     // Basic Invariants for ebtc system
     // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
-    // - active_pool_2： EBTC debt accounting number in active pool is less than or equal to EBTC total supply
-    // - active_pool_3： sum of EBTC debt accounting numbers in active pool & default pool is equal to EBTC total supply
+    // - active_pool_3： sum of EBTC debt accounting numbers in active pool is equal to EBTC total supply
     // - active_pool_4： total collateral in active pool should be equal to the sum of all individual CDP collateral
     // - active_pool_5： sum of debt accounting in active pool should be equal to sum of debt accounting of individual CDPs
     // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
@@ -26,14 +25,6 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
             collateral.sharesOf(address(activePool)),
             activePool.getStEthColl(),
             "System Invariant: active_pool_1"
-        );
-    }
-
-    function _assert_active_pool_invariant_2() internal {
-        assertGe(
-            eBTCToken.totalSupply(),
-            activePool.getEBTCDebt(),
-            "System Invariant: active_pool_2"
         );
     }
 
@@ -137,7 +128,6 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
 
     function _ensureSystemInvariants() internal {
         _assert_active_pool_invariant_1();
-        _assert_active_pool_invariant_2();
         _assert_active_pool_invariant_3();
         _assert_active_pool_invariant_4();
         _assert_active_pool_invariant_5();

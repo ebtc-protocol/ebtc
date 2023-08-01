@@ -11,8 +11,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | Property | Description | Type | Tested |
 | --- | --- | --- | --- |
 | AP-01 | The collateral balance in the active pool is greater than or equal to its accounting number | High Level | ✅ |
-| AP-02 | The eBTC debt accounting number in active pool is less than or equal to EBTC total supply | High Level | ✅ |
-| AP-03 | The sum of eBTC debt accounting numbers in active pool & default pool is equal to eBTC total supply | High Level | ✅ |
+| AP-03 | The eBTC debt accounting number in active pool equal to the EBTC total supply | High Level | ✅ |
 | AP-04 | The total collateral in active pool should be equal to the sum of all individual CDP collateral | High Level | ✅ |
 | AP-05 | The sum of debt accounting in active pool should be equal to sum of debt accounting of individual CDPs | High Level | ✅ |
 | CDPM-01 | The count of active CDPs is equal to the SortedCdp list length | High Level | ✅ |
