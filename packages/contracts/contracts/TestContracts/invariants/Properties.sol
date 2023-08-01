@@ -122,19 +122,14 @@ abstract contract Properties is AssertionHelper {
     function invariant_SL_02(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
-        PriceFeedTestnet priceFeedTestnet,
-        uint256 diff_tolerance
+        PriceFeedTestnet priceFeedTestnet
     ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint256 _price = priceFeedTestnet.getPrice();
         uint256 _firstICR = cdpManager.getCurrentICR(_first, _price);
         uint256 _TCR = cdpManager.getTCR(_price);
 
-        if (
-            _first != sortedCdps.dummyId() &&
-            _price > 0 &&
-            (!isApproximateEq(_firstICR, _TCR, diff_tolerance) && _firstICR < _TCR)
-        ) {
+        if (_first != sortedCdps.dummyId() && _price > 0 && _firstICR < _TCR) {
             return false;
         }
         return true;
