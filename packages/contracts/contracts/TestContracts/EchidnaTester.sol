@@ -694,122 +694,24 @@ contract EchidnaTester is Properties {
     // --------------------------
 
     function echidna_canary_active_pool_balance() public view returns (bool) {
-        if (cdpManager.getCdpIdsCount() > 0 && collateral.balanceOf(address(activePool)) <= 0) {
-            return false;
-        }
-        return true;
+        return invariant_P_47(cdpManager, collateral, activePool);
     }
 
-    function _echidna_cdps_order() internal view returns (bool) {
-        bytes32 currentCdp = sortedCdps.getFirst();
-        bytes32 nextCdp = sortedCdps.getNext(currentCdp);
-
-        while (currentCdp != bytes32(0) && nextCdp != bytes32(0) && currentCdp != nextCdp) {
-            if (cdpManager.getNominalICR(nextCdp) > cdpManager.getNominalICR(currentCdp)) {
-                return false;
-            }
-
-            currentCdp = nextCdp;
-            nextCdp = sortedCdps.getNext(currentCdp);
-        }
-
-        return true;
-    }
-
-    /**
-     * - Status
-     * - Stake
-     */
     function echidna_cdp_properties() public view returns (bool) {
-        bytes32 currentCdp = sortedCdps.getFirst();
-
-        uint _price = priceFeedTestnet.getPrice();
-        require(_price > 0, "!price");
-
-        while (currentCdp != bytes32(0)) {
-            // Status
-            if (
-                ICdpManagerData.Status(cdpManager.getCdpStatus(currentCdp)) !=
-                ICdpManagerData.Status.active
-            ) {
-                return false;
-            }
-
-            // Stake > 0
-            if (cdpManager.getCdpStake(currentCdp) == 0) {
-                return false;
-            }
-
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        return true;
+        return invariant_SL_03(cdpManager, priceFeedTestnet, sortedCdps);
     }
 
     function echidna_accounting_balances() public view returns (bool) {
-        if (collateral.sharesOf(address(activePool)) < activePool.getStEthColl()) {
-            return false;
-        }
-
-        if (collateral.balanceOf(address(borrowerOperations)) > 0) {
-            return false;
-        }
-
-        if (collateral.balanceOf(address(eBTCToken)) > 0) {
-            return false;
-        }
-
-        if (collateral.balanceOf(address(priceFeedTestnet)) > 0) {
-            return false;
-        }
-
-        if (collateral.balanceOf(address(sortedCdps)) > 0) {
-            return false;
-        }
-
-        return true;
+        return invariant_P_22(collateral, borrowerOperations, eBTCToken, sortedCdps, priceFeedTestnet);
     }
 
     function echidna_price() public view returns (bool) {
-        uint price = priceFeedTestnet.getPrice();
-
-        if (price == 0) {
-            return false;
-        }
-
-        return true;
+        return invariant_DUMMY_01(priceFeedTestnet);
     }
 
     function echidna_EBTC_global_balances() public view returns (bool) {
-        uint totalSupply = eBTCToken.totalSupply();
-
-        bytes32 currentCdp = sortedCdps.getFirst();
-        uint cdpsBalance;
-        while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(currentCdp);
-            cdpsBalance = cdpsBalance.add(entireDebt);
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-
-        if (totalSupply < cdpsBalance) {
-            return false;
-        }
-
-        return true;
+        return invariant_P_36(eBTCToken, cdpManager, sortedCdps);
     }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Basic Invariants for ebtc system
-    // - active_pool_1： collateral balance in active pool is greater than or equal to its accounting number
-    // - active_pool_3： sum of EBTC debt accounting numbers in active pool is equal to EBTC total supply
-    // - active_pool_4： total collateral in active pool should be equal to the sum of all individual CDP collateral
-    // - active_pool_5： sum of debt accounting in active pool should be equal to sum of debt accounting of individual CDPs
-    // - cdp_manager_1： count of active CDPs is equal to SortedCdp list length
-    // - cdp_manager_2： sum of active CDPs stake is equal to totalStakes
-    // - cdp_manager_3： stFeePerUnit tracker for individual CDP is equal to or less than the global variable
-    // - coll_surplus_pool_1： collateral balance in collSurplus pool is greater than or equal to its accounting number
-    // - sorted_list_1： NICR ranking in the sorted list should follow descending order
-    // - sorted_list_2： the first(highest) ICR in the sorted list should be bigger or equal to TCR
-    ////////////////////////////////////////////////////////////////////////////
 
     function echidna_active_pool_invariant_1() public view returns (bool) {
         return invariant_AP_01(collateral, activePool);
@@ -828,59 +730,26 @@ contract EchidnaTester is Properties {
     }
 
     function echidna_cdp_manager_invariant_1() public view returns (bool) {
-        if (cdpManager.getCdpIdsCount() != sortedCdps.getSize()) {
-            return false;
-        }
-        return true;
+        return invariant_CDPM_01(cdpManager, sortedCdps);
     }
 
     function echidna_cdp_manager_invariant_2() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
-            _sum = _sum.add(cdpManager.getCdpStake(cdpManager.CdpIds(i)));
-        }
-        if (_sum != cdpManager.totalStakes()) {
-            return false;
-        }
-        return true;
+        return invariant_CDPM_02(cdpManager);
     }
 
     function echidna_cdp_manager_invariant_3() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-        for (uint i = 0; i < _cdpCount; ++i) {
-            if (_stFeePerUnitg < cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i))) {
-                return false;
-            }
-        }
-        return true;
+        return invariant_CDPM_03(cdpManager);
     }
 
     function echidna_coll_surplus_pool_invariant_1() public view returns (bool) {
-        if (collateral.sharesOf(address(collSurplusPool)) < collSurplusPool.getStEthColl()) {
-            return false;
-        }
-        return true;
+        return invariant_CSP_01(collateral, collSurplusPool);
     }
 
     function echidna_sorted_list_invariant_1() public view returns (bool) {
-        return _echidna_cdps_order();
+        return invariant_SL_01(cdpManager, sortedCdps);
     }
 
     function echidna_sorted_list_invariant_2() public view returns (bool) {
-        bytes32 _first = sortedCdps.getFirst();
-        uint _price = priceFeedTestnet.getPrice();
-        uint _firstICR = cdpManager.getCurrentICR(_first, _price);
-        uint _TCR = cdpManager.getTCR(_price);
-        uint _crTolerance = 1e13; //compared to 1e18
-        if (
-            _first != sortedCdps.dummyId() &&
-            _price > 0 &&
-            (!_assertApproximateEq(_firstICR, _TCR, _crTolerance) && _firstICR < _TCR)
-        ) {
-            return false;
-        }
-        return true;
+        return invariant_SL_02(cdpManager, sortedCdps, priceFeedTestnet, 1e13);
     }
 }
