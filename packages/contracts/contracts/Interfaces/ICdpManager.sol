@@ -3,9 +3,6 @@
 pragma solidity 0.8.17;
 
 import "./ILiquityBase.sol";
-import "./IEBTCToken.sol";
-import "./IFeeRecipient.sol";
-import "./ICollSurplusPool.sol";
 import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
