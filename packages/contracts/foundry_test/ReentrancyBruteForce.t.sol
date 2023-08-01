@@ -30,7 +30,7 @@ contract ReentrantBruteforcer is Test {
         // Store the result and revert here since this is where we need to do stuff
         status = success;
         response = retval;
-        
+
         console2.log("Handle Fallback End");
     }
 
@@ -79,17 +79,15 @@ contract SCTestBasic is Test {
 
         // Given max length of input you just encode this, so you have some gibberish value
         // Notice that Array have bigger length so you prob need to increase this
-        ZERO = bytes.concat(
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode(""),
-            abi.encode("")
-        );
+        // NOTE: as of Solidity 0.8.X you can pass extra calldata and solidity ignores it, this allows us to pass empty values
+        // These will be sufficient to get early reverts at the reentrancy modifier
+        {
+            ZERO = bytes.concat(
+                abi.encode(""), abi.encode(""), abi.encode(""), abi.encode(""), abi.encode(""), abi.encode("")
+            );
+
+            ZERO = bytes.concat(ZERO, ZERO, ZERO, ZERO);
+        }
     }
 
     function testBruteForceReentrancies() public {
@@ -107,14 +105,14 @@ contract SCTestBasic is Test {
 
         // Fetch results from fallback
         {
-          bool outcome = c.status();
-          bytes memory response = c.response();
+            bool outcome = c.status();
+            bytes memory response = c.response();
 
-          assertEq(outcome, false); // Must have reverted in the fallback
+            assertEq(outcome, false); // Must have reverted in the fallback
 
-          string memory expectedVal = "Error";
-          bytes4 errorString = 0x08c379a0; // This is added by Solidity compiler: https://trustchain.medium.com/reversing-and-debugging-evm-the-end-of-time-part-4-3eafe5b0511a
-          assertEq(response, bytes.concat(errorString, abi.encode(expectedVal))); // Error must match
+            string memory expectedVal = "Error";
+            bytes4 errorString = 0x08c379a0; // This is added by Solidity compiler: https://trustchain.medium.com/reversing-and-debugging-evm-the-end-of-time-part-4-3eafe5b0511a
+            assertEq(response, bytes.concat(errorString, abi.encode(expectedVal))); // Error must match
         }
     }
 }
