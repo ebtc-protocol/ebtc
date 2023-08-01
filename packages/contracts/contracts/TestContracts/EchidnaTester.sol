@@ -820,32 +820,11 @@ contract EchidnaTester is Properties {
     }
 
     function echidna_active_pool_invariant_4() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
-            (, uint _coll, ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = _sum.add(_coll);
-        }
-        uint _activeColl = activePool.getStEthColl();
-        uint _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
-        uint _divisor = _sum > _activeColl ? _sum : _activeColl;
-        if (_diff * 1e18 > diff_tolerance * _activeColl) {
-            return false;
-        }
-        return true;
+        return invariant_AP_04(cdpManager, activePool, diff_tolerance);
     }
 
     function echidna_active_pool_invariant_5() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = _sum.add(_debt);
-        }
-        if (!_assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance)) {
-            return false;
-        }
-        return true;
+        return invariant_AP_05(cdpManager, diff_tolerance);
     }
 
     function echidna_cdp_manager_invariant_1() public view returns (bool) {
