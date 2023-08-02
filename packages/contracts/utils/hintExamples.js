@@ -35,10 +35,9 @@ async function main() {
 
   // Call deployed CdpManager contract to read the liquidation reserve and latest borrowing fee
   const liquidationReserve = await cdpManager.EBTC_GAS_COMPENSATION()
-  const expectedFee = await cdpManager.getBorrowingFeeWithDecay(EBTCAmount)
   
   // Total debt of the new cdp = EBTC amount drawn, plus fee, plus the liquidation reserve
-  const expectedDebt = EBTCAmount.add(expectedFee).add(liquidationReserve)
+  const expectedDebt = EBTCAmount.add(liquidationReserve)
 
   // Get the nominal NICR of the new cdp
   const _1e20 = toBN(toWei('100'))

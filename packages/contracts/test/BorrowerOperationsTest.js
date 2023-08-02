@@ -3422,7 +3422,6 @@ contract('BorrowerOperations', async accounts => {
 
       // Get the expected debt based on the EBTC request (adding fee and liq. reserve on top)
       const expectedDebt = EBTCRequest
-        .add(await cdpManager.getBorrowingFee(EBTCRequest))
       const debt_After = await getCdpEntireDebt(aliceIndex)
       const coll_After = await getCdpEntireColl(aliceIndex)
       const status_After = await cdpManager.getCdpStatus(aliceIndex)

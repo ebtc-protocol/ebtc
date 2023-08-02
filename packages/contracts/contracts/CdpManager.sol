@@ -632,32 +632,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return redemptionFee;
     }
 
-    // --- Borrowing fee functions ---
-
-    function getBorrowingRate() public view override returns (uint) {
-        return _calcBorrowingRate(baseRate);
-    }
-
-    function getBorrowingRateWithDecay() public view override returns (uint) {
-        return _calcBorrowingRate(_calcDecayedBaseRate());
-    }
-
-    function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
-    function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRate(), _EBTCDebt);
-    }
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRateWithDecay(), _EBTCDebt);
-    }
-
-    function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
     function decayBaseRateFromBorrowing() external override {
         _requireCallerIsBorrowerOperations();

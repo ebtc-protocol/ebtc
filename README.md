@@ -728,8 +728,6 @@ If the redemption causes a CDP's full debt to be cancelled, the CDP is then clos
 
 Gas compensation functions are found in the parent _LiquityBase.sol_ contract:
 
-`_getCollGasCompensation(uint _entireColl)` returns the amount of stETH to be drawn from a CDP's collateral and sent as gas compensation. 
-
 `_getCompositeDebt(uint _debt)` returns the composite debt (drawn debt + gas compensation) of a CDP, for the purpose of ICR calculation.
 
 ## eBTC System Fees
