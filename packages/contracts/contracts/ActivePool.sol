@@ -378,7 +378,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
-            "ActivePool: cannot set fee recipient to zero address"
+            "ActivePool: Cannot set fee recipient to zero address"
         );
 
         ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();

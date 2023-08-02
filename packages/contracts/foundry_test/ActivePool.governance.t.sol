@@ -213,7 +213,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
         // user sets recipient address
         vm.prank(user);
-        vm.expectRevert("ActivePool: cannot set fee recipient to zero address");
+        vm.expectRevert("ActivePool: Cannot set fee recipient to zero address");
         activePool.setFeeRecipientAddress(address(0));
         assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
     }

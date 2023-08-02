@@ -844,7 +844,7 @@ contract BorrowerOperations is
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
-            "BorrowerOperations: cannot set feeRecipient to zero address"
+            "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
 
         cdpManager.applyPendingGlobalState();
