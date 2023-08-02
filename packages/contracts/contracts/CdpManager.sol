@@ -796,7 +796,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setRedemptionsPaused(bool _paused) external requiresAuth {
-        claimStakingSplitFee();
+        applyPendingGlobalState();
         _decayBaseRate();
 
         redemptionsPaused = _paused;
