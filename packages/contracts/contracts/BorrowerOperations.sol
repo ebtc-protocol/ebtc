@@ -860,6 +860,7 @@ contract BorrowerOperations is
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "BorrowerOperations: Flash Loans Paused");
         require(amount > 0, "BorrowerOperations: Flashloan amount must be above 0");
         require(
             token == address(ebtcToken),
@@ -871,7 +872,6 @@ contract BorrowerOperations is
         );
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
-        require(flashLoansPaused == false, "BorrowerOperations: Flashloans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC

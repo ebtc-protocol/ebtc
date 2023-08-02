@@ -265,11 +265,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
         require(amount > 0, "ActivePool: 0 Amount");
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
         // NOTE: Check for `token` is implicit in the requires above
 
-        require(flashLoansPaused == false, "ActivePool: Flash Loans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         uint256 amountWithFee = amount + fee;
