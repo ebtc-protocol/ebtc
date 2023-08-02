@@ -344,6 +344,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
 
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
+
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,
@@ -786,8 +788,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
 
         claimStakingSplitFee();
-
-        // decay first according to previous factor
         _decayBaseRate();
 
         // set new factor after decaying
@@ -797,11 +797,18 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function setBeta(uint _beta) external requiresAuth {
         claimStakingSplitFee();
-
         _decayBaseRate();
 
         beta = _beta;
         emit BetaSet(_beta);
+    }
+
+    function setRedemptionsPaused(bool _paused) external requiresAuth {
+        claimStakingSplitFee();
+        _decayBaseRate();
+
+        redemptionsPaused = _paused;
+        emit RedemptionsPaused(_paused);
     }
 
     // --- Cdp property getters ---
