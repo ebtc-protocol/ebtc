@@ -1,0 +1,27 @@
+# Flashloan POC
+
+These 2 checks in the flashloan are incorrect:
+
+```solidity
+        require(
+            collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(StEthColl),
+            "ActivePool: Must repay Balance"
+        );
+        require(collateral.sharesOf(address(this)) >= StEthColl, "ActivePool: Must repay Share");
+```
+
+That's because the contract has a balance that is higher than these
+
+You can also flashloan a value that is greater than `StEthColl`
+
+It may be best to prevent that, and cap the amount to `stETHColl`
+
+That said, the check that is saving the system is the check for lack of rate changes
+
+Since the rate for stETH cannot change, the repayment value must be as high as the borrowed value + the fee
+
+## Mitigation (TODO: Talk to spearbit during mitigation phase)
+
+We could:
+- Cap the amount borrowable to StEthColl
+- Remove the other checks

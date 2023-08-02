@@ -18,7 +18,8 @@ contract BorrowerOperations is
     LiquityBase,
     ReentrancyGuard,
     IBorrowerOperations,
-    ERC3156FlashLender
+    ERC3156FlashLender,
+    AuthNoOwner
 {
     string public constant NAME = "BorrowerOperations";
 
@@ -256,16 +257,14 @@ contract BorrowerOperations is
         uint _collAddAmount
     ) internal {
         _requireCdpOwner(_cdpId);
+        _requireCdpisActive(cdpManager, _cdpId);
+
+        cdpManager.applyPendingRewards(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
-        _requireCdpisActive(cdpManager, _cdpId);
-
         vars.price = priceFeed.fetchPrice();
-
-        // Reversed BTC/ETH price
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -276,8 +275,6 @@ contract BorrowerOperations is
         // Confirm the operation is the borrower adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
-
-        cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
@@ -380,11 +377,11 @@ contract BorrowerOperations is
         // will revert if _collAmount is less than MIN_NET_COLL + LIQUIDATOR_REWARD
         _requireAtLeastMinNetColl(vars.netColl);
 
-        vars.price = priceFeed.fetchPrice();
+        // Update global pending index before any operations
+        cdpManager.claimStakingSplitFee();
 
-        // Reverse ETH/BTC price to BTC/ETH
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        vars.price = priceFeed.fetchPrice();
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         vars.debt = _EBTCAmount;
 
@@ -465,13 +462,12 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
-
         _requireCdpisActive(cdpManager, _cdpId);
-        uint price = priceFeed.fetchPrice();
-        uint _tcr = _checkDeltaIndexAndClaimFee(price);
-        _requireNotInRecoveryMode(_tcr);
 
         cdpManager.applyPendingRewards(_cdpId);
+
+        uint price = priceFeed.fetchPrice();
+        _requireNotInRecoveryMode(_getTCR(price));
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
@@ -836,6 +832,9 @@ contract BorrowerOperations is
             _feeRecipientAddress != address(0),
             "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
+
+        cdpManager.claimStakingSplitFee();
+
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
@@ -901,13 +900,21 @@ contract BorrowerOperations is
         return type(uint112).max;
     }
 
-    // @dev only claim fee if delta index is big enough to trigger recovery mode
-    function _checkDeltaIndexAndClaimFee(uint _price) internal returns (uint) {
-        (uint _tcr, bool _triggerRecoveryMode) = cdpManager.checkIfDeltaIndexTriggerRM(_price);
-        if (_triggerRecoveryMode) {
-            ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
-            _tcr = _getTCR(_price);
-        }
-        return _tcr;
+    function setFeeBps(uint _newFee) external requiresAuth {
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+
+        cdpManager.claimStakingSplitFee();
+
+        // set new flash fee
+        uint _oldFee = feeBps;
+        feeBps = uint16(_newFee);
+        emit FlashFeeSet(msg.sender, _oldFee, _newFee);
+    }
+
+    function setFlashLoansPaused(bool _paused) external requiresAuth {
+        cdpManager.claimStakingSplitFee();
+
+        flashLoansPaused = _paused;
+        emit FlashLoansPaused(msg.sender, _paused);
     }
 }

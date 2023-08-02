@@ -48,12 +48,15 @@ contract CdpManagerTester is CdpManager {
         uint _price,
         uint _stakingRewardSplit
     ) external view returns (uint) {
-        (uint deltaIdx, ) = _computeDeltaIndexToTriggerRM(
-            _currentIndex,
-            _price,
-            _stakingRewardSplit
-        );
-        return deltaIdx;
+        uint _tcr = _getTCR(_price);
+        if (_tcr <= CCR) {
+            return 0;
+        } else if (_tcr == LiquityMath.MAX_TCR) {
+            return type(uint256).max;
+        } else {
+            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
+            return (_splitIndex * (_tcr - CCR)) / _tcr;
+        }
     }
 
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {

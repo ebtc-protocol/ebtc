@@ -230,7 +230,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         return (rewardSnapshots[_cdpId] < L_EBTCDebt);
     }
 
-    function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
+    function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
         uint _L_EBTCDebt = L_EBTCDebt;
 
         rewardSnapshots[_cdpId] = _L_EBTCDebt;
@@ -252,7 +252,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             uint _newDebt = prevDebt + pendingEBTCDebtReward;
             _cdp.debt = _newDebt;
 
-            _updateCdpRewardSnapshots(_cdpId);
+            _updateRedistributedDebtSnapshot(_cdpId);
 
             address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpUpdated(

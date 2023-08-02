@@ -45,8 +45,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
-    function checkIfDeltaIndexTriggerRM(uint _price) external view returns (uint, bool);
-
     function closeCdp(bytes32 _cdpId) external;
 
     function removeStake(bytes32 _cdpId) external;
