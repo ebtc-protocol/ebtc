@@ -341,6 +341,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
 
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
+
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,
@@ -795,6 +797,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
+        claimStakingSplitFee();
+
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
@@ -808,6 +812,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _redemptionFeeFloor <= DECIMAL_PRECISION,
             "CDPManager: new redemption fee floor is higher than maximum"
         );
+
+        claimStakingSplitFee();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -823,7 +829,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
-        // decay first according to previous factor
+        claimStakingSplitFee();
         _decayBaseRate();
 
         // set new factor after decaying
@@ -832,10 +838,19 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
+        claimStakingSplitFee();
         _decayBaseRate();
 
         beta = _beta;
         emit BetaSet(_beta);
+    }
+
+    function setRedemptionsPaused(bool _paused) external requiresAuth {
+        claimStakingSplitFee();
+        _decayBaseRate();
+
+        redemptionsPaused = _paused;
+        emit RedemptionsPaused(_paused);
     }
 
     // --- Cdp property getters ---

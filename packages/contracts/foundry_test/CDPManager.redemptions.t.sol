@@ -198,4 +198,68 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         return _decMul(x, y);
     }
+
+    function test_ValidRedemptionsRevertWhenPaused() public {
+        (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
+        uint debt = 1;
+
+        vm.prank(defaultGovernance);
+        cdpManager.setRedemptionsPaused(true);
+        assertEq(true, cdpManager.redemptionsPaused());
+
+        vm.startPrank(user);
+
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+
+        vm.expectRevert("CdpManager: Redemptions Paused");
+        cdpManager.redeemCollateral(
+            debt,
+            firstRedemptionHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_ValidRedemptionNoLongerRevertsWhenUnpausedAfterBeingPaused() public {
+        (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
+        uint debt = 1;
+
+        vm.startPrank(defaultGovernance);
+        cdpManager.setRedemptionsPaused(true);
+        cdpManager.setRedemptionsPaused(false);
+        assertEq(false, cdpManager.redemptionsPaused());
+        vm.stopPrank();
+
+        vm.startPrank(user);
+
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        cdpManager.redeemCollateral(
+            debt,
+            firstRedemptionHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
+
+        vm.stopPrank();
+    }
+
+    function _singleCdpRedemptionSetup() internal returns (address user, bytes32 userCdpId) {
+        uint debt = 2e17;
+        user = _utils.getNextUserAddress();
+        userCdpId = _openTestCDP(user, 10000 ether, debt);
+
+        vm.startPrank(user);
+        eBTCToken.approve(address(cdpManager), type(uint256).max);
+        vm.stopPrank();
+    }
 }
