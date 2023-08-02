@@ -337,6 +337,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
+
+        claimStakingSplitFee();
+
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
@@ -474,13 +477,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cnt = _cnt - 1;
             _id = sortedCdps.getNext(_id);
         }
-        require(
-            _toRemoveIds[0] == _start,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
-        );
+        require(_toRemoveIds[0] == _start, "CdpManager: batchRemoveSortedCdpIds check start error");
         require(
             _toRemoveIds[_total - 1] == _end,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
+            "CdpManager: batchRemoveSortedCdpIds check end error"
         );
         return _toRemoveIds;
     }
@@ -495,7 +495,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
         _requireCallerIsBorrowerOperations();
         _applyAccumulatedFeeSplit(_cdpId);
-        return _updateCdpRewardSnapshots(_cdpId);
+        return _updateRedistributedDebtSnapshot(_cdpId);
     }
 
     function removeStake(bytes32 _cdpId) external override {
@@ -637,32 +637,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return redemptionFee;
     }
 
-    // --- Borrowing fee functions ---
-
-    function getBorrowingRate() public view override returns (uint) {
-        return _calcBorrowingRate(baseRate);
-    }
-
-    function getBorrowingRateWithDecay() public view override returns (uint) {
-        return _calcBorrowingRate(_calcDecayedBaseRate());
-    }
-
-    function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
-    function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRate(), _EBTCDebt);
-    }
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRateWithDecay(), _EBTCDebt);
-    }
-
-    function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
     function decayBaseRateFromBorrowing() external override {
         _requireCallerIsBorrowerOperations();
@@ -722,22 +696,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _price
     ) external view returns (bool) {
         return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
-    }
-
-    // @dev return current TCR for given price and true if delta index is big enough to trigger recovery mode, otherwise false.
-    function checkIfDeltaIndexTriggerRM(uint _price) external view override returns (uint, bool) {
-        uint _oldIndex = stFPPSg;
-        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
-        if (_newIndex > _oldIndex) {
-            (uint _requiredDelta, uint _tcr) = _computeDeltaIndexToTriggerRM(
-                _newIndex,
-                _price,
-                stakingRewardSplit
-            );
-            return (_tcr, (_newIndex - _oldIndex) >= _requiredDelta);
-        } else {
-            return (_getTCR(_price), false);
-        }
     }
 
     // --- 'require' wrapper functions ---

@@ -322,7 +322,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
-
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
 
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
@@ -412,5 +411,17 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
         vm.stopPrank();
         return _cdpId;
+    }
+
+    /// @dev Increase index on collateral, storing real before, after, and what is stored in the CdpManager global index
+    function _increaseCollateralIndex()
+        internal
+        returns (uint oldIndex, uint newIndex, uint storedIndex)
+    {
+        oldIndex = collateral.getPooledEthByShares(1e18);
+        collateral.setEthPerShare(oldIndex + 1e17);
+        newIndex = collateral.getPooledEthByShares(1e18);
+
+        storedIndex = cdpManager.stFPPSg();
     }
 }

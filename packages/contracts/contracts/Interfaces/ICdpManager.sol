@@ -3,9 +3,6 @@
 pragma solidity 0.8.17;
 
 import "./ILiquityBase.sol";
-import "./IEBTCToken.sol";
-import "./IFeeRecipient.sol";
-import "./ICollSurplusPool.sol";
 import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
@@ -48,8 +45,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
 
-    function checkIfDeltaIndexTriggerRM(uint _price) external view returns (uint, bool);
-
     function closeCdp(bytes32 _cdpId) external;
 
     function removeStake(bytes32 _cdpId) external;
@@ -59,14 +54,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
     function getRedemptionRateWithDecay() external view returns (uint);
 
     function getRedemptionFeeWithDecay(uint _ETHDrawn) external view returns (uint);
-
-    function getBorrowingRate() external view returns (uint);
-
-    function getBorrowingRateWithDecay() external view returns (uint);
-
-    function getBorrowingFee(uint EBTCDebt) external view returns (uint);
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view returns (uint);
 
     function decayBaseRateFromBorrowing() external;
 

@@ -65,7 +65,10 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _ICR = getCurrentICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
-        require(_ICR < MCR || (_TCR < CCR && _ICR < _TCR), "!_ICR");
+        require(
+            _ICR < MCR || (_TCR < CCR && _ICR < _TCR),
+            "CdpManager: ICR is not below liquidation threshold in current mode"
+        );
 
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
@@ -318,9 +321,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getEntireDebtAndColl(
-            _cdpId
-        );
+        (uint256 entireDebt, uint256 entireColl, ) = getEntireDebtAndColl(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
@@ -444,6 +445,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
         Cdp storage _cdp = Cdps[_cdpId];
+
         uint _coll = _cdp.coll;
         uint _debt = _cdp.debt;
 
@@ -451,7 +453,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         _cdp.debt = _debt - _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
 
-        _updateCdpRewardSnapshots(_cdpId);
+        _updateRedistributedDebtSnapshot(_cdpId);
     }
 
     // Re-Insertion into SortedCdp list after partial liquidation

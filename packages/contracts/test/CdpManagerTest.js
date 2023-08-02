@@ -805,7 +805,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Attempt to liquidate Bob
-    await assertRevert(cdpManager.liquidate(_bobCdpId), "!_ICR")
+    await assertRevert(cdpManager.liquidate(_bobCdpId), "CdpManager: ICR is not below liquidation threshold in current mode")
 
     // Confirm Bob's cdp is still active
     assert.isTrue(await sortedCdps.contains(_bobCdpId))
@@ -969,8 +969,8 @@ contract('CdpManager', async accounts => {
     // Liquidate Alice, Bob, Carol
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from: bob});
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from: carol});
-    await assertRevert(cdpManager.liquidate(_aliceCdpId), "!_ICR")
-    await assertRevert(cdpManager.liquidate(_bobCdpId), "!_ICR")
+    await assertRevert(cdpManager.liquidate(_aliceCdpId), "CdpManager: ICR is not below liquidation threshold in current mode")
+    await assertRevert(cdpManager.liquidate(_bobCdpId), "CdpManager: ICR is not below liquidation threshold in current mode")
     await cdpManager.liquidate(_carolCdpId, {from: owner})
 
     /* Check Alice stays active, Carol gets liquidated, and Bob gets liquidated 
@@ -4266,7 +4266,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(D_balanceAfter.eq(D_balanceBefore))
 
     // Deprecated D is not closed, so cannot open cdp
-    // await assertRevert(borrowerOperations.openCdp(0, th.DUMMY_BYTES32, ZERO_ADDRESS, { from: D, value: dec(10, 18) }), 'BorrowerOps: Cdp is active')
+    // await assertRevert(borrowerOperations.openCdp(0, th.DUMMY_BYTES32, ZERO_ADDRESS, { from: D, value: dec(10, 18) }), 'BorrowerOperations: Cdp is active')
 
     return {
       A_netDebt, A_coll,

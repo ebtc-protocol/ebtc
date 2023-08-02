@@ -10,8 +10,8 @@ import {Authority} from "./Authority.sol";
 contract AuthNoOwner {
     event AuthorityUpdated(address indexed user, Authority indexed newAuthority);
 
-    Authority public authority;
-    bool public authorityInitialized;
+    Authority private _authority;
+    bool private _authorityInitialized;
 
     modifier requiresAuth() virtual {
         require(isAuthorized(msg.sender, msg.sig), "Auth: UNAUTHORIZED");
@@ -19,8 +19,16 @@ contract AuthNoOwner {
         _;
     }
 
+    function authority() public view returns (Authority) {
+        return _authority;
+    }
+
+    function authorityInitialized() public view returns (bool) {
+        return _authorityInitialized;
+    }
+
     function isAuthorized(address user, bytes4 functionSig) internal view virtual returns (bool) {
-        Authority auth = authority; // Memoizing authority saves us a warm SLOAD, around 100 gas.
+        Authority auth = _authority; // Memoizing authority saves us a warm SLOAD, around 100 gas.
 
         // Checking if the caller is the owner only after calling the authority saves gas in most cases, but be
         // aware that this makes protected functions uncallable even to the owner if the authority is out of order.
@@ -30,13 +38,13 @@ contract AuthNoOwner {
     function setAuthority(address newAuthority) public virtual {
         // We check if the caller is the owner first because we want to ensure they can
         // always swap out the authority even if it's reverting or using up a lot of gas.
-        require(authority.canCall(msg.sender, address(this), msg.sig));
+        require(_authority.canCall(msg.sender, address(this), msg.sig));
 
-        authority = Authority(newAuthority);
+        _authority = Authority(newAuthority);
 
         // Once authority is set once via any means, ensure it is initialized
-        if (!authorityInitialized) {
-            authorityInitialized = true;
+        if (!_authorityInitialized) {
+            _authorityInitialized = true;
         }
 
         emit AuthorityUpdated(msg.sender, Authority(newAuthority));
@@ -45,11 +53,11 @@ contract AuthNoOwner {
     /// @notice Changed constructor to initialize to allow flexiblity of constructor vs initializer use
     /// @notice sets authorityInitiailzed flag to ensure only one use of
     function _initializeAuthority(address newAuthority) internal {
-        require(address(authority) == address(0), "Auth: authority is non-zero");
-        require(!authorityInitialized, "Auth: authority already initialized");
+        require(address(_authority) == address(0), "Auth: authority is non-zero");
+        require(!_authorityInitialized, "Auth: authority already initialized");
 
-        authority = Authority(newAuthority);
-        authorityInitialized = true;
+        _authority = Authority(newAuthority);
+        _authorityInitialized = true;
 
         emit AuthorityUpdated(address(this), Authority(newAuthority));
     }

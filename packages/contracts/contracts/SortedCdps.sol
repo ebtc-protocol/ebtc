@@ -125,7 +125,7 @@ contract SortedCdps is ISortedCdps {
     }
 
     function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
-        require(index < _ownedCount[owner], "!index");
+        require(index < _ownedCount[owner], "SortedCdps: index exceeds owned count of owner");
         return _ownedCdps[owner][index];
     }
 
