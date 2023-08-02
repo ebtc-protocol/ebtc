@@ -265,11 +265,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
         require(amount > 0, "ActivePool: 0 Amount");
         uint256 fee = flashFee(token, amount); // NOTE: Check for `token` is implicit in the requires above
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
-
-        require(flashLoansPaused == false, "ActivePool: Flash Loans Paused");
 
         uint256 amountWithFee = amount + fee;
         uint256 oldRate = collateral.getPooledEthByShares(DECIMAL_PRECISION);
