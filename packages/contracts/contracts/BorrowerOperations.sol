@@ -18,7 +18,8 @@ contract BorrowerOperations is
     LiquityBase,
     ReentrancyGuard,
     IBorrowerOperations,
-    ERC3156FlashLender
+    ERC3156FlashLender,
+    AuthNoOwner
 {
     string public constant NAME = "BorrowerOperations";
 
@@ -118,8 +119,11 @@ contract BorrowerOperations is
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndCdpM() {
-        require(locked == OPEN, "BorrowerOperations: REENTRANCY");
-        require(ReentrancyGuard(address(cdpManager)).locked() == OPEN, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "BorrowerOperations: Reentrancy in nonReentrant call");
+        require(
+            ReentrancyGuard(address(cdpManager)).locked() == OPEN,
+            "CdpManager: Reentrancy in nonReentrant call"
+        );
 
         locked = LOCKED;
 
@@ -253,16 +257,14 @@ contract BorrowerOperations is
         uint _collAddAmount
     ) internal {
         _requireCdpOwner(_cdpId);
+        _requireCdpisActive(cdpManager, _cdpId);
+
+        cdpManager.applyPendingRewards(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
-        _requireCdpisActive(cdpManager, _cdpId);
-
         vars.price = priceFeed.fetchPrice();
-
-        // Reversed BTC/ETH price
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -273,8 +275,6 @@ contract BorrowerOperations is
         // Confirm the operation is the borrower adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
-
-        cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
@@ -367,7 +367,6 @@ contract BorrowerOperations is
         uint _collAmount,
         address _borrower
     ) internal returns (bytes32) {
-        require(_collAmount > 0, "BorrowerOps: collateral for CDP is zero");
         _requireNonZeroDebt(_EBTCAmount);
 
         LocalVariables_openCdp memory vars;
@@ -375,13 +374,14 @@ contract BorrowerOperations is
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.netColl = _getNetColl(_collAmount);
 
+        // will revert if _collAmount is less than MIN_NET_COLL + LIQUIDATOR_REWARD
         _requireAtLeastMinNetColl(vars.netColl);
 
-        vars.price = priceFeed.fetchPrice();
+        // Update global pending index before any operations
+        cdpManager.claimStakingSplitFee();
 
-        // Reverse ETH/BTC price to BTC/ETH
-        uint _tcr = _checkDeltaIndexAndClaimFee(vars.price);
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_tcr);
+        vars.price = priceFeed.fetchPrice();
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
 
         vars.debt = _EBTCAmount;
 
@@ -462,13 +462,12 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
-
         _requireCdpisActive(cdpManager, _cdpId);
-        uint price = priceFeed.fetchPrice();
-        uint _tcr = _checkDeltaIndexAndClaimFee(price);
-        _requireNotInRecoveryMode(_tcr);
 
         cdpManager.applyPendingRewards(_cdpId);
+
+        uint price = priceFeed.fetchPrice();
+        _requireNotInRecoveryMode(_getTCR(price));
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
@@ -599,20 +598,20 @@ contract BorrowerOperations is
 
     function _requireCdpOwner(bytes32 _cdpId) internal view {
         address _owner = sortedCdps.existCdpOwners(_cdpId);
-        require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
+        require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
     function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
-            "BorrowerOperations: Cannot withdraw and add coll"
+            "BorrowerOperations: Cannot add and withdraw collateral in same operation"
         );
     }
 
     function _requireCallerIsBorrower(address _borrower) internal view {
         require(
             msg.sender == _borrower,
-            "BorrowerOps: Caller must be the borrower for a withdrawal"
+            "BorrowerOperations: Caller must be the borrower for a withdrawal"
         );
     }
 
@@ -623,35 +622,30 @@ contract BorrowerOperations is
     ) internal pure {
         require(
             _collAddAmount != 0 || _collWithdrawal != 0 || _EBTCChange != 0,
-            "BorrowerOps: There must be either a collateral change or a debt change"
+            "BorrowerOperations: There must be either a collateral change or a debt change"
         );
     }
 
     function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
         uint status = _cdpManager.getCdpStatus(_cdpId);
-        require(status == 1, "BorrowerOps: Cdp does not exist or is closed");
+        require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    //    function _requireCdpisNotActive(ICdpManager _cdpManager, address _borrower) internal view {
-    //        uint status = _cdpManager.getCdpStatus(_borrower);
-    //        require(status != 1, "BorrowerOps: Cdp is active");
-    //    }
-
     function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
-        require(_EBTCChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
+        require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
 
     function _requireNotInRecoveryMode(uint _tcr) internal view {
         require(
             !_checkRecoveryModeForTCR(_tcr),
-            "BorrowerOps: Operation not permitted during Recovery Mode"
+            "BorrowerOperations: Operation not permitted during Recovery Mode"
         );
     }
 
     function _requireNoCollWithdrawal(uint _collWithdrawal) internal pure {
         require(
             _collWithdrawal == 0,
-            "BorrowerOps: Collateral withdrawal not permitted Recovery Mode"
+            "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode"
         );
     }
 
@@ -698,37 +692,43 @@ contract BorrowerOperations is
     function _requireICRisAboveMCR(uint _newICR) internal pure {
         require(
             _newICR >= MCR,
-            "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
+            "BorrowerOperations: An operation that would result in ICR < MCR is not permitted"
         );
     }
 
     function _requireICRisAboveCCR(uint _newICR) internal pure {
-        require(_newICR >= CCR, "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+        require(_newICR >= CCR, "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
     }
 
     function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {
-        require(_newICR >= _oldICR, "BorrowerOps: Cannot decrease your Cdp's ICR in Recovery Mode");
+        require(
+            _newICR >= _oldICR,
+            "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode"
+        );
     }
 
     function _requireNewTCRisAboveCCR(uint _newTCR) internal pure {
         require(
             _newTCR >= CCR,
-            "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+            "BorrowerOperations: An operation that would result in TCR < CCR is not permitted"
         );
     }
 
     function _requireNonZeroDebt(uint _debt) internal pure {
-        require(_debt > 0, "BorrowerOps: Debt must be non-zero");
+        require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
     }
 
     function _requireAtLeastMinNetColl(uint _coll) internal pure {
-        require(_coll >= MIN_NET_COLL, "BorrowerOps: Cdp's net coll must be greater than minimum");
+        require(
+            _coll >= MIN_NET_COLL,
+            "BorrowerOperations: Cdp's net coll must be greater than minimum"
+        );
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
         require(
             _debtRepayment <= _currentDebt,
-            "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
+            "BorrowerOperations: Amount repaid must not be larger than the Cdp's debt"
         );
     }
 
@@ -739,7 +739,7 @@ contract BorrowerOperations is
     ) internal view {
         require(
             _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
-            "BorrowerOps: Caller doesnt have enough EBTC to make repayment"
+            "BorrowerOperations: Caller doesnt have enough EBTC to make repayment"
         );
     }
 
@@ -830,8 +830,11 @@ contract BorrowerOperations is
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
-            "BorrowerOperations: cannot set fee recipient to zero address"
+            "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
+
+        cdpManager.claimStakingSplitFee();
+
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
@@ -855,7 +858,7 @@ contract BorrowerOperations is
         // Callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
-            "BorrowerOperations: IERC3156: Callback failed"
+            "IERC3156: Callback failed"
         );
 
         // Gas: Repay from user balance, so we don't trigger a new SSTORE
@@ -886,13 +889,21 @@ contract BorrowerOperations is
         return type(uint112).max;
     }
 
-    // @dev only claim fee if delta index is big enough to trigger recovery mode
-    function _checkDeltaIndexAndClaimFee(uint _price) internal returns (uint) {
-        (uint _tcr, bool _triggerRecoveryMode) = cdpManager.checkIfDeltaIndexTriggerRM(_price);
-        if (_triggerRecoveryMode) {
-            ICdpManagerData(address(cdpManager)).claimStakingSplitFee();
-            _tcr = _getTCR(_price);
-        }
-        return _tcr;
+    function setFeeBps(uint _newFee) external requiresAuth {
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+
+        cdpManager.claimStakingSplitFee();
+
+        // set new flash fee
+        uint _oldFee = feeBps;
+        feeBps = uint16(_newFee);
+        emit FlashFeeSet(msg.sender, _oldFee, _newFee);
+    }
+
+    function setFlashLoansPaused(bool _paused) external requiresAuth {
+        cdpManager.claimStakingSplitFee();
+
+        flashLoansPaused = _paused;
+        emit FlashLoansPaused(msg.sender, _paused);
     }
 }

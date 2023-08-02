@@ -57,11 +57,6 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _coll - LIQUIDATOR_REWARD;
     }
 
-    // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
-    function _getCollGasCompensation(uint _entireColl) internal pure returns (uint) {
-        return _entireColl / PERCENT_DIVISOR;
-    }
-
     /**
         @notice Get the entire system collateral
         @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
@@ -113,24 +108,5 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // _price is ETH/BTC
     function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
-    }
-
-    // @dev this function is to calculate how much delta index required to introduce a possible recovery mode triggering:
-    // @dev deltaI = (currentIndex / split) * (1 - CCR / currentTCR)
-    // @dev return delta index required to trigger recovery mode in current index denomination and current TCR for given price
-    function _computeDeltaIndexToTriggerRM(
-        uint _currentIndex,
-        uint _price,
-        uint _stakingSplit
-    ) internal view returns (uint, uint) {
-        uint _tcr = _getTCR(_price);
-        if (_tcr <= CCR) {
-            return (0, _tcr);
-        } else if (_tcr == LiquityMath.MAX_TCR) {
-            return (type(uint256).max, _tcr); // system cold start
-        } else {
-            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingSplit;
-            return ((_splitIndex * (_tcr - CCR)) / _tcr, _tcr);
-        }
     }
 }

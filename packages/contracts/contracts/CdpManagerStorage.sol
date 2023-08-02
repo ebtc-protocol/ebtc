@@ -138,10 +138,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndBOps() {
-        require(locked == OPEN, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "CdpManager: Reentrancy in nonReentrant call");
         require(
             ReentrancyGuard(borrowerOperationsAddress).locked() == OPEN,
-            "BorrowerOperations: REENTRANCY"
+            "BorrowerOperations: Reentrancy in nonReentrant call"
         );
 
         locked = LOCKED;
@@ -230,7 +230,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         return (rewardSnapshots[_cdpId] < L_EBTCDebt);
     }
 
-    function _updateCdpRewardSnapshots(bytes32 _cdpId) internal {
+    function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
         uint _L_EBTCDebt = L_EBTCDebt;
 
         rewardSnapshots[_cdpId] = _L_EBTCDebt;
@@ -252,7 +252,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             uint _newDebt = prevDebt + pendingEBTCDebtReward;
             _cdp.debt = _newDebt;
 
-            _updateCdpRewardSnapshots(_cdpId);
+            _updateRedistributedDebtSnapshot(_cdpId);
 
             address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpUpdated(
@@ -554,10 +554,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId
     ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;
-        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
-            _cdpId,
-            stFeePerUnitg
-        );
+        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
         coll = _newColl;
 
         pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);

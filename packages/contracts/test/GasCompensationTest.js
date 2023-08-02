@@ -53,6 +53,7 @@ contract('Gas compensation tests', async accounts => {
   })
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -98,116 +99,6 @@ contract('Gas compensation tests', async accounts => {
     if (signer_address != b8nSigner_address) {
       await _signer.sendTransaction({ to: b8nSigner_address, value: ethers.utils.parseEther("2000000")});
     }
-  })
-
-  // --- Raw gas compensation calculations ---
-
-  it('_getCollGasCompensation(): returns the 0.5% of collaterall if it is < $10 in value', async () => {
-    /* 
-    ETH:USD price = 1
-    coll = 1 ETH: $1 in value
-    -> Expect 0.5% of collaterall as gas compensation */
-    await priceFeed.setPrice(dec(1, 18))
-    // const price_1 = await priceFeed.getPrice()
-    const gasCompensation_1 = (await cdpManagerTester.getCollGasCompensation(dec(1, 'ether'))).toString()
-    assert.equal(gasCompensation_1, dec(5, 15))
-
-    /* 
-    ETH:USD price = 28.4
-    coll = 0.1 ETH: $2.84 in value
-    -> Expect 0.5% of collaterall as gas compensation */
-    await priceFeed.setPrice('28400000000000000000')
-    // const price_2 = await priceFeed.getPrice()
-    const gasCompensation_2 = (await cdpManagerTester.getCollGasCompensation(dec(100, 'finney'))).toString()
-    assert.equal(gasCompensation_2, dec(5, 14))
-
-    /* 
-    ETH:USD price = 1000000000 (1 billion)
-    coll = 0.000000005 ETH (5e9 wei): $5 in value 
-    -> Expect 0.5% of collaterall as gas compensation */
-    await priceFeed.setPrice(dec(1, 27))
-    // const price_3 = await priceFeed.getPrice()
-    const gasCompensation_3 = (await cdpManagerTester.getCollGasCompensation('5000000000')).toString()
-    assert.equal(gasCompensation_3, '25000000')
-  })
-
-  it('_getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral < $10 in value', async () => {
-    /* 
-    ETH:USD price = 200
-    coll = 9.999 ETH  
-    0.5% of coll = 0.04995 ETH. USD value: $9.99
-    -> Expect 0.5% of collaterall as gas compensation */
-    const gasCompensation_1 = (await cdpManagerTester.getCollGasCompensation('9999000000000000000')).toString()
-    assert.equal(gasCompensation_1, '49995000000000000')
-
-    /* ETH:USD price = 200
-     coll = 0.055 ETH  
-     0.5% of coll = 0.000275 ETH. USD value: $0.055
-     -> Expect 0.5% of collaterall as gas compensation */
-    const gasCompensation_2 = (await cdpManagerTester.getCollGasCompensation('55000000000000000')).toString()
-    assert.equal(gasCompensation_2, dec(275, 12))
-
-    /* ETH:USD price = 200
-    coll = 6.09232408808723580 ETH  
-    0.5% of coll = 0.004995 ETH. USD value: $6.09
-    -> Expect 0.5% of collaterall as gas compensation */
-    const gasCompensation_3 = (await cdpManagerTester.getCollGasCompensation('6092324088087235800')).toString()
-    assert.equal(gasCompensation_3, '30461620440436179')
-  })
-
-  it('getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral = $10 in value', async () => {
-    /* 
-    ETH:USD price = 200
-    coll = 10 ETH  
-    0.5% of coll = 0.5 ETH. USD value: $10
-    -> Expect 0.5% of collaterall as gas compensation */
-    const gasCompensation = (await cdpManagerTester.getCollGasCompensation(dec(10, 'ether'))).toString()
-    assert.equal(gasCompensation, '50000000000000000')
-  })
-
-  it('getCollGasCompensation(): returns 0.5% of collaterall when 0.5% of collateral = $10 in value', async () => {
-    /* 
-    ETH:USD price = 200 $/E
-    coll = 100 ETH  
-    0.5% of coll = 0.5 ETH. USD value: $100
-    -> Expect $100 gas compensation, i.e. 0.5 ETH */
-    const gasCompensation_1 = (await cdpManagerTester.getCollGasCompensation(dec(100, 'ether'))).toString()
-    assert.equal(gasCompensation_1, dec(500, 'finney'))
-
-    /* 
-    ETH:USD price = 200 $/E
-    coll = 10.001 ETH  
-    0.5% of coll = 0.050005 ETH. USD value: $10.001
-    -> Expect $100 gas compensation, i.e.  0.050005  ETH */
-    const gasCompensation_2 = (await cdpManagerTester.getCollGasCompensation('10001000000000000000')).toString()
-    assert.equal(gasCompensation_2, '50005000000000000')
-
-    /* 
-    ETH:USD price = 200 $/E
-    coll = 37.5 ETH  
-    0.5% of coll = 0.1875 ETH. USD value: $37.5
-    -> Expect $37.5 gas compensation i.e.  0.1875  ETH */
-    const gasCompensation_3 = (await cdpManagerTester.getCollGasCompensation('37500000000000000000')).toString()
-    assert.equal(gasCompensation_3, '187500000000000000')
-
-    /* 
-    ETH:USD price = 45323.54542 $/E
-    coll = 94758.230582309850 ETH  
-    0.5% of coll = 473.7911529 ETH. USD value: $21473894.84
-    -> Expect $21473894.8385808 gas compensation, i.e.  473.7911529115490  ETH */
-    await priceFeed.setPrice('45323545420000000000000')
-    const gasCompensation_4 = await cdpManagerTester.getCollGasCompensation('94758230582309850000000')
-    assert.isAtMost(th.getDifference(gasCompensation_4, '473791152911549000000'), 1000000)
-
-    /* 
-    ETH:USD price = 1000000 $/E (1 million)
-    coll = 300000000 ETH   (300 million)
-    0.5% of coll = 1500000 ETH. USD value: $150000000000
-    -> Expect $150000000000 gas compensation, i.e. 1500000 ETH */
-    await priceFeed.setPrice(dec(1, 24))
-    const price_2 = await priceFeed.getPrice()
-    const gasCompensation_5 = (await cdpManagerTester.getCollGasCompensation('300000000000000000000000000')).toString()
-    assert.equal(gasCompensation_5, '1500000000000000000000000')
   })
 
   // --- Composite debt calculations ---
@@ -871,9 +762,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
 
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1, 18))
-
     /* Expect total gas compensation = 
     0.5% of [A_coll + B_coll + C_coll + D_coll]
     */
@@ -948,9 +836,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
-
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1 , 18))
 
     /* Expect total gas compensation = 
        0.5% of [A_coll + B_coll + C_coll + D_coll]
@@ -1036,9 +921,6 @@ contract('Gas compensation tests', async accounts => {
     const _0pt5percent_bobColl = bobColl.div(web3.utils.toBN('200'))
     const _0pt5percent_carolColl = carolColl.div(web3.utils.toBN('200'))
     const _0pt5percent_dennisColl = dennisColl.div(web3.utils.toBN('200'))
-
-    const collGasCompensation = await cdpManagerTester.getCollGasCompensation(price)
-    assert.equal(collGasCompensation, dec(1, 18))
 
     /* Expect total gas compensation = 
     0.5% of [A_coll + B_coll + C_coll + D_coll]
@@ -1181,14 +1063,10 @@ contract('Gas compensation tests', async accounts => {
 
       const ICRList = []
       const coll_firstCdp = (await cdpManager.Cdps(_account_cdps[_10_accounts[0]]))[1]
-      const gasComp_firstCdp = (await cdpManagerTester.getCollGasCompensation(coll_firstCdp)).toString()
 
       for (account of _10_accounts) {
         // Check gas compensation is the same for all cdps
         const coll = (await cdpManager.Cdps(_account_cdps[account]))[1]
-        const gasCompensation = (await cdpManagerTester.getCollGasCompensation(coll)).toString()
-
-        assert.equal(gasCompensation, gasComp_firstCdp)
 
         const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
         ICRList.push(ICR)

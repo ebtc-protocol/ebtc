@@ -116,9 +116,8 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint ICR = cdpManager.getCurrentICR(_cdpId, price);
 
         uint EBTCAmount = _collateral.mul(price).div(ICR);
-        uint borrowingRate = cdpManager.getBorrowingRateWithDecay();
         uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(
-            LiquityMath.DECIMAL_PRECISION.add(borrowingRate)
+            LiquityMath.DECIMAL_PRECISION
         );
 
         return netDebt;
