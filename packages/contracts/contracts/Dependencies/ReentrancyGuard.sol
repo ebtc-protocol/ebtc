@@ -11,7 +11,7 @@ abstract contract ReentrancyGuard {
     uint256 public locked = OPEN;
 
     modifier nonReentrant() virtual {
-        require(locked == OPEN, "ReentrancyGuard: REENTRANCY");
+        require(locked == OPEN, "ReentrancyGuard: Reentrancy in nonReentrant call");
 
         locked = LOCKED;
 

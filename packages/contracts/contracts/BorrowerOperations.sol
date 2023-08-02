@@ -118,8 +118,11 @@ contract BorrowerOperations is
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndCdpM() {
-        require(locked == OPEN, "BorrowerOperations: REENTRANCY");
-        require(ReentrancyGuard(address(cdpManager)).locked() == OPEN, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "BorrowerOperations: Reentrancy in nonReentrant call");
+        require(
+            ReentrancyGuard(address(cdpManager)).locked() == OPEN,
+            "CdpManager: Reentrancy in nonReentrant call"
+        );
 
         locked = LOCKED;
 
@@ -599,20 +602,20 @@ contract BorrowerOperations is
 
     function _requireCdpOwner(bytes32 _cdpId) internal view {
         address _owner = sortedCdps.existCdpOwners(_cdpId);
-        require(msg.sender == _owner, "BorrowerOps: Caller must be cdp owner");
+        require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
     function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
-            "BorrowerOperations: Cannot withdraw and add coll"
+            "BorrowerOperations: Cannot add and withdraw collateral in same operation"
         );
     }
 
     function _requireCallerIsBorrower(address _borrower) internal view {
         require(
             msg.sender == _borrower,
-            "BorrowerOps: Caller must be the borrower for a withdrawal"
+            "BorrowerOperations: Caller must be the borrower for a withdrawal"
         );
     }
 
@@ -623,35 +626,30 @@ contract BorrowerOperations is
     ) internal pure {
         require(
             _collAddAmount != 0 || _collWithdrawal != 0 || _EBTCChange != 0,
-            "BorrowerOps: There must be either a collateral change or a debt change"
+            "BorrowerOperations: There must be either a collateral change or a debt change"
         );
     }
 
     function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
         uint status = _cdpManager.getCdpStatus(_cdpId);
-        require(status == 1, "BorrowerOps: Cdp does not exist or is closed");
+        require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    //    function _requireCdpisNotActive(ICdpManager _cdpManager, address _borrower) internal view {
-    //        uint status = _cdpManager.getCdpStatus(_borrower);
-    //        require(status != 1, "BorrowerOps: Cdp is active");
-    //    }
-
     function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
-        require(_EBTCChange > 0, "BorrowerOps: Debt increase requires non-zero debtChange");
+        require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
 
     function _requireNotInRecoveryMode(uint _tcr) internal view {
         require(
             !_checkRecoveryModeForTCR(_tcr),
-            "BorrowerOps: Operation not permitted during Recovery Mode"
+            "BorrowerOperations: Operation not permitted during Recovery Mode"
         );
     }
 
     function _requireNoCollWithdrawal(uint _collWithdrawal) internal pure {
         require(
             _collWithdrawal == 0,
-            "BorrowerOps: Collateral withdrawal not permitted Recovery Mode"
+            "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode"
         );
     }
 
@@ -698,37 +696,43 @@ contract BorrowerOperations is
     function _requireICRisAboveMCR(uint _newICR) internal pure {
         require(
             _newICR >= MCR,
-            "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
+            "BorrowerOperations: An operation that would result in ICR < MCR is not permitted"
         );
     }
 
     function _requireICRisAboveCCR(uint _newICR) internal pure {
-        require(_newICR >= CCR, "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+        require(_newICR >= CCR, "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
     }
 
     function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {
-        require(_newICR >= _oldICR, "BorrowerOps: Cannot decrease your Cdp's ICR in Recovery Mode");
+        require(
+            _newICR >= _oldICR,
+            "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode"
+        );
     }
 
     function _requireNewTCRisAboveCCR(uint _newTCR) internal pure {
         require(
             _newTCR >= CCR,
-            "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+            "BorrowerOperations: An operation that would result in TCR < CCR is not permitted"
         );
     }
 
     function _requireNonZeroDebt(uint _debt) internal pure {
-        require(_debt > 0, "BorrowerOps: Debt must be non-zero");
+        require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
     }
 
     function _requireAtLeastMinNetColl(uint _coll) internal pure {
-        require(_coll >= MIN_NET_COLL, "BorrowerOps: Cdp's net coll must be greater than minimum");
+        require(
+            _coll >= MIN_NET_COLL,
+            "BorrowerOperations: Cdp's net coll must be greater than minimum"
+        );
     }
 
     function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
         require(
             _debtRepayment <= _currentDebt,
-            "BorrowerOps: Amount repaid must not be larger than the Cdp's debt"
+            "BorrowerOperations: Amount repaid must not be larger than the Cdp's debt"
         );
     }
 
@@ -739,7 +743,7 @@ contract BorrowerOperations is
     ) internal view {
         require(
             _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
-            "BorrowerOps: Caller doesnt have enough EBTC to make repayment"
+            "BorrowerOperations: Caller doesnt have enough EBTC to make repayment"
         );
     }
 
@@ -830,7 +834,7 @@ contract BorrowerOperations is
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
-            "BorrowerOperations: cannot set fee recipient to zero address"
+            "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
@@ -843,12 +847,18 @@ contract BorrowerOperations is
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(amount > 0, "BorrowerOperations: 0 Amount");
-        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
-        require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
+        require(amount > 0, "BorrowerOperations: Flashloan amount must be above 0");
+        require(
+            token == address(ebtcToken),
+            "BorrowerOperations: Only eBTC token can be flashloaned"
+        );
+        require(
+            amount <= maxFlashLoan(token),
+            "BorrowerOperations: Flashloan amount exceeds maximum for specified token"
+        );
         // NOTE: Check for `eBTCToken` is implicit in the two requires above
 
-        require(flashLoansPaused == false, "BorrowerOperations: Flash Loans Paused");
+        require(flashLoansPaused == false, "BorrowerOperations: Flashloans Paused");
         uint256 fee = (amount * feeBps) / MAX_BPS;
 
         // Issue EBTC
@@ -857,7 +867,7 @@ contract BorrowerOperations is
         // Callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == FLASH_SUCCESS_VALUE,
-            "BorrowerOperations: IERC3156: Callback failed"
+            "IERC3156: Callback failed"
         );
 
         // Gas: Repay from user balance, so we don't trigger a new SSTORE
@@ -875,7 +885,10 @@ contract BorrowerOperations is
     }
 
     function flashFee(address token, uint256 amount) external view override returns (uint256) {
-        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+        require(
+            token == address(ebtcToken),
+            "BorrowerOperations: Only eBTC token can be flashloaned"
+        );
 
         return (amount * feeBps) / MAX_BPS;
     }

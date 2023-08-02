@@ -138,10 +138,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndBOps() {
-        require(locked == OPEN, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "CdpManager: Reentrancy in nonReentrant call");
         require(
             ReentrancyGuard(borrowerOperationsAddress).locked() == OPEN,
-            "BorrowerOperations: REENTRANCY"
+            "BorrowerOperations: Reentrancy in nonReentrant call"
         );
 
         locked = LOCKED;
