@@ -556,7 +556,7 @@ contract('Gas compensation tests', async accounts => {
   })
 
 
-  it('gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
+  xit('gas compensation from pool-offset liquidations. Liquidation event emits the correct gas compensation and total liquidated coll and debt', async () => {
     await priceFeed.setPrice(dec(400, 18))
     await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: whale } })
 

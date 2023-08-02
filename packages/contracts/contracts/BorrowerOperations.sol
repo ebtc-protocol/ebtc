@@ -117,6 +117,7 @@ contract BorrowerOperations is
     /**
         @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
+        @dev Prevents multi-contract reentrancy between these two contracts
      */
     modifier nonReentrantSelfAndCdpM() {
         require(locked == OPEN, "BorrowerOperations: Reentrancy in nonReentrant call");
@@ -259,7 +260,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingState(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
@@ -285,7 +286,7 @@ contract BorrowerOperations is
         vars.coll = cdpManager.getCdpColl(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
-        uint _cdpCollAmt = collateral.getPooledEthByShares(vars.coll);
+        uint _cdpCollAmt = collateral.getPooledEthByShares(vars.coll); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
         require(
             _collWithdrawal <= _cdpCollAmt,
             "BorrowerOperations: withdraw more collateral than CDP has!"
@@ -311,9 +312,9 @@ contract BorrowerOperations is
             _requireNonZeroDebt(vars.debt - vars.netDebtChange);
         }
 
-        (vars.newColl, vars.newDebt) = _updateCdpFromAdjustment(
-            cdpManager,
-            _cdpId,
+        (vars.newColl, vars.newDebt) = _getNewCdpAmounts(
+            vars.coll,
+            vars.debt,
             vars.collChange,
             vars.isCollIncrease,
             vars.netDebtChange,
@@ -323,27 +324,17 @@ contract BorrowerOperations is
         // Only check when the collateral exchange rate from share is above 1e18
         // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
         if (collateral.getPooledEthByShares(DECIMAL_PRECISION) >= DECIMAL_PRECISION) {
+            //@audit why do we get this value again? we can calculate it locally
             _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
         }
 
-        vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
+        cdpManager.updateCdp(_cdpId, _borrower, vars.coll, vars.debt, vars.newColl, vars.newDebt);
 
         // Re-insert cdp in to the sorted list
         {
             uint newNICR = _getNewNominalICRFromCdpChange(vars, _isDebtIncrease);
             sortedCdps.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
         }
-
-        emit CdpUpdated(
-            _cdpId,
-            _borrower,
-            vars.debt,
-            vars.coll,
-            vars.newDebt,
-            vars.newColl,
-            vars.stake,
-            BorrowerOperation.adjustCdp
-        );
 
         // Use the unmodified _EBTCChange here, as we don't send the fee to the user
         {
@@ -378,7 +369,7 @@ contract BorrowerOperations is
         _requireAtLeastMinNetColl(vars.netColl);
 
         // Update global pending index before any operations
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
@@ -415,16 +406,14 @@ contract BorrowerOperations is
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
 
-        cdpManager.setCdpStatus(_cdpId, 1);
-        cdpManager.increaseCdpColl(_cdpId, _netCollAsShares); // Collateral is stored in shares form for normalization
-        cdpManager.increaseCdpDebt(_cdpId, vars.debt);
-        cdpManager.setCdpLiquidatorRewardShares(_cdpId, _liquidatorRewardShares);
-
-        cdpManager.updateCdpRewardSnapshots(_cdpId);
-        vars.stake = cdpManager.updateStakeAndTotalStakes(_cdpId);
-
-        vars.arrayIndex = cdpManager.addCdpIdToArray(_cdpId);
-        emit CdpCreated(_cdpId, _borrower, msg.sender, vars.arrayIndex);
+        // Collateral is stored in shares form for normalization
+        cdpManager.initializeCdp(
+            _cdpId,
+            vars.debt,
+            _netCollAsShares,
+            _liquidatorRewardShares,
+            _borrower
+        );
 
         // Mint the full EBTCAmount to the borrower
         _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
@@ -434,16 +423,6 @@ contract BorrowerOperations is
             The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
             The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
         */
-        emit CdpUpdated(
-            _cdpId,
-            _borrower,
-            0,
-            0,
-            vars.debt,
-            _netCollAsShares,
-            vars.stake,
-            BorrowerOperation.openCdp
-        );
 
         // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
         _activePoolAddColl(_collAmount, _netCollAsShares);
@@ -464,7 +443,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingRewards(_cdpId);
+        cdpManager.applyPendingState(_cdpId);
 
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));
@@ -485,10 +464,9 @@ contract BorrowerOperations is
         _requireNewTCRisAboveCCR(newTCR);
 
         cdpManager.removeStake(_cdpId);
-        cdpManager.closeCdp(_cdpId);
 
         // We already verified msg.sender is the borrower
-        emit CdpUpdated(_cdpId, msg.sender, debt, coll, 0, 0, 0, BorrowerOperation.closeCdp);
+        cdpManager.closeCdp(_cdpId, msg.sender, debt, coll);
 
         // Burn the repaid EBTC from the user's balance
         _repayEBTC(msg.sender, debt);
@@ -509,12 +487,6 @@ contract BorrowerOperations is
 
     // --- Helper functions ---
 
-    function _getUSDValue(uint _coll, uint _price) internal pure returns (uint) {
-        uint usdValue = (_price * _coll) / DECIMAL_PRECISION;
-
-        return usdValue;
-    }
-
     function _getCollChange(
         uint _collReceived,
         uint _requestedCollWithdrawal
@@ -525,25 +497,6 @@ contract BorrowerOperations is
         } else {
             collChange = collateral.getSharesByPooledEth(_requestedCollWithdrawal);
         }
-    }
-
-    // Update cdp's coll and debt based on whether they increase or decrease
-    function _updateCdpFromAdjustment(
-        ICdpManager _cdpManager,
-        bytes32 _cdpId,
-        uint _collChange,
-        bool _isCollIncrease,
-        uint _debtChange,
-        bool _isDebtIncrease
-    ) internal returns (uint, uint) {
-        uint newColl = (_isCollIncrease)
-            ? _cdpManager.increaseCdpColl(_cdpId, _collChange)
-            : _cdpManager.decreaseCdpColl(_cdpId, _collChange);
-        uint newDebt = (_isDebtIncrease)
-            ? _cdpManager.increaseCdpDebt(_cdpId, _debtChange)
-            : _cdpManager.decreaseCdpDebt(_cdpId, _debtChange);
-
-        return (newColl, newDebt);
     }
 
     /**
@@ -825,20 +778,6 @@ contract BorrowerOperations is
         return newTCR;
     }
 
-    // === Governed Functions ==
-
-    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
-        require(
-            _feeRecipientAddress != address(0),
-            "BorrowerOperations: Cannot set feeRecipient to zero address"
-        );
-
-        cdpManager.claimStakingSplitFee();
-
-        feeRecipientAddress = _feeRecipientAddress;
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
-    }
-
     // === Flash Loans === //
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -888,10 +827,24 @@ contract BorrowerOperations is
         return type(uint112).max;
     }
 
+    // === Governed Functions ==
+
+    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        require(
+            _feeRecipientAddress != address(0),
+            "BorrowerOperations: Cannot set feeRecipient to zero address"
+        );
+
+        cdpManager.applyPendingGlobalState();
+
+        feeRecipientAddress = _feeRecipientAddress;
+        emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
     function setFeeBps(uint _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         // set new flash fee
         uint _oldFee = feeBps;
@@ -900,7 +853,7 @@ contract BorrowerOperations is
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);
