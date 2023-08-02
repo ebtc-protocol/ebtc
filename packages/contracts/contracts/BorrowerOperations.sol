@@ -875,10 +875,7 @@ contract BorrowerOperations is
     }
 
     function flashFee(address token, uint256 amount) public view override returns (uint256) {
-        require(
-            token == address(ebtcToken),
-            "BorrowerOperations: EBTC Only"
-        );
+        require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
 
         return (amount * feeBps) / MAX_BPS;
     }
