@@ -11,7 +11,6 @@ import "./Dependencies/ICollateralToken.sol";
 import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/SafeERC20.sol";
 
-
 interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }

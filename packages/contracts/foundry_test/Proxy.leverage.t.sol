@@ -89,10 +89,26 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
             address(fromReference.borrowerOperations()),
             "different BO"
         );
-        assertEq(address(fromFactory.activePool()), address(fromReference.activePool()), "different AP");
-        assertEq(address(fromFactory.cdpManager()), address(fromReference.cdpManager()), "different CDP");
-        assertEq(address(fromFactory.ebtcToken()), address(fromReference.ebtcToken()), "different Token");
-        assertEq(address(fromFactory.sortedCdps()), address(fromReference.sortedCdps()), "different Sorted");
+        assertEq(
+            address(fromFactory.activePool()),
+            address(fromReference.activePool()),
+            "different AP"
+        );
+        assertEq(
+            address(fromFactory.cdpManager()),
+            address(fromReference.cdpManager()),
+            "different CDP"
+        );
+        assertEq(
+            address(fromFactory.ebtcToken()),
+            address(fromReference.ebtcToken()),
+            "different Token"
+        );
+        assertEq(
+            address(fromFactory.sortedCdps()),
+            address(fromReference.sortedCdps()),
+            "different Sorted"
+        );
         assertEq(address(fromFactory.stETH()), address(fromReference.stETH()), "different stETH");
         assertEq(address(fromFactory.owner()), address(fromReference.owner()), "different Owner");
     }
