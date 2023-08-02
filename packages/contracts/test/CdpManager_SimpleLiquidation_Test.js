@@ -64,8 +64,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // normal mode	  
       let _aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, (await priceFeed.getPrice()));
       assert.isTrue(_aliceICR.gt(_MCR));
-      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");  
+      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");  
 	  
       // recovery mode	  
       let _newPrice = dec(2400, 13);
@@ -77,8 +77,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       _aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
       let _TCR = await cdpManager.getTCR(_newPrice);
       assert.isTrue(_aliceICR.gt(_TCR));
-      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");	  
+      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");	  
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {

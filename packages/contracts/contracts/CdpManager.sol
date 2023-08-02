@@ -344,6 +344,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
 
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
+
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,
@@ -475,13 +477,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cnt = _cnt - 1;
             _id = sortedCdps.getNext(_id);
         }
-        require(
-            _toRemoveIds[0] == _start,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
-        );
+        require(_toRemoveIds[0] == _start, "CdpManager: batchRemoveSortedCdpIds check start error");
         require(
             _toRemoveIds[_total - 1] == _end,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
+            "CdpManager: batchRemoveSortedCdpIds check end error"
         );
         return _toRemoveIds;
     }
@@ -625,32 +624,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint redemptionFee = (_redemptionRate * _ETHDrawn) / DECIMAL_PRECISION;
         require(redemptionFee < _ETHDrawn, "CdpManager: Fee would eat up all returned collateral");
         return redemptionFee;
-    }
-
-    // --- Borrowing fee functions ---
-
-    function getBorrowingRate() public view override returns (uint) {
-        return _calcBorrowingRate(baseRate);
-    }
-
-    function getBorrowingRateWithDecay() public view override returns (uint) {
-        return _calcBorrowingRate(_calcDecayedBaseRate());
-    }
-
-    function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
-    function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRate(), _EBTCDebt);
-    }
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRateWithDecay(), _EBTCDebt);
-    }
-
-    function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
     }
 
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
@@ -820,6 +793,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         beta = _beta;
         emit BetaSet(_beta);
+    }
+
+    function setRedemptionsPaused(bool _paused) external requiresAuth {
+        claimStakingSplitFee();
+        _decayBaseRate();
+
+        redemptionsPaused = _paused;
+        emit RedemptionsPaused(_paused);
     }
 
     // --- Cdp property getters ---

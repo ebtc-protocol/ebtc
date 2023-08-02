@@ -57,11 +57,6 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _coll - LIQUIDATOR_REWARD;
     }
 
-    // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
-    function _getCollGasCompensation(uint _entireColl) internal pure returns (uint) {
-        return _entireColl / PERCENT_DIVISOR;
-    }
-
     /**
         @notice Get the entire system collateral
         @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting

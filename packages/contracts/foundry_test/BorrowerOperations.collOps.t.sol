@@ -80,7 +80,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(
-            bytes("BorrowerOps: There must be either a collateral change or a debt change")
+            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
         );
         borrowerOperations.addColl(cdpId, "hint", "hint", 0);
         vm.stopPrank();
@@ -108,13 +108,15 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (collAmount < borrowerOperations.MIN_NET_COLL()) {
-            vm.expectRevert(bytes("BorrowerOps: Cdp's net coll must be greater than minimum"));
+            vm.expectRevert(
+                bytes("BorrowerOperations: Cdp's net coll must be greater than minimum")
+            );
             borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             return;
         }
 
         if (borrowedAmount == 0) {
-            vm.expectRevert(bytes("BorrowerOps: Debt must be non-zero"));
+            vm.expectRevert(bytes("BorrowerOperations: Debt must be non-zero"));
             borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             return;
         }
@@ -170,7 +172,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
                     vm.expectRevert(
-                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                        bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
                     );
                     borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
@@ -259,7 +261,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
                     vm.expectRevert(
-                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                        bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
                     );
                     borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
@@ -312,7 +314,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(
-            bytes("BorrowerOps: There must be either a collateral change or a debt change")
+            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
         );
         borrowerOperations.withdrawColl(cdpId, 0, HINT, HINT);
         vm.stopPrank();
@@ -340,7 +342,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Withdraw collateral and make sure operation reverts with ICR < MCR
         vm.expectRevert(
-            bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+            bytes("BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
         );
         borrowerOperations.withdrawColl(cdpId, withdrawnColl, HINT, HINT);
         vm.stopPrank();

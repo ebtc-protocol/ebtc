@@ -329,15 +329,7 @@ class TestHelper {
    * So, it adds the gas compensation and the borrowing fee
    */
   static async getOpenCdpTotalDebt(contracts, ebtcAmount) {
-    const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
-    const compositeDebt = await this.getCompositeDebt(contracts, ebtcAmount)
-
-    if (DEBUG) {
-      console.log("fee: ", fee.toString())
-      console.log("compositeDebt: ", compositeDebt.toString())
-    }
-    
-    return compositeDebt.add(fee)
+    return ebtcAmount
   }
 
   /*
@@ -356,8 +348,7 @@ class TestHelper {
 
   // Adds the borrowing fee
   static async getAmountWithBorrowingFee(contracts, ebtcAmount) {
-    const fee = await contracts.cdpManager.getBorrowingFee(ebtcAmount)
-    return ebtcAmount.add(fee)
+    return ebtcAmount
   }
 
   // Adds the redemption fee
@@ -539,11 +530,10 @@ class TestHelper {
   }
 
   static async getCollAndDebtFromWithdrawEBTC(contracts, account, amount) {
-    const fee = await contracts.cdpManager.getBorrowingFee(amount)
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
-    const newDebt = entireDebt.add(this.toBN(amount)).add(fee)
+    const newDebt = entireDebt.add(this.toBN(amount))
 
     return { newColl, newDebt }
   }
@@ -563,9 +553,8 @@ class TestHelper {
     // const coll = (await contracts.cdpManager.Cdps(account))[1]
     // const debt = (await contracts.cdpManager.Cdps(account))[0]
 
-    const fee = EBTCChange.gt(this.toBN('0')) ? await contracts.cdpManager.getBorrowingFee(EBTCChange) : this.toBN('0')
     const newColl = entireColl.add(ETHChange)
-    const newDebt = entireDebt.add(EBTCChange).add(fee)
+    const newDebt = entireDebt.add(EBTCChange)
 
     return { newColl, newDebt }
   }

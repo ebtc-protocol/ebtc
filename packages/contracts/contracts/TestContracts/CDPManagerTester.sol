@@ -43,10 +43,6 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
 
-    function getCollGasCompensation(uint _coll) external pure returns (uint) {
-        return _getCollGasCompensation(_coll);
-    }
-
     function getDeltaIndexToTriggerRM(
         uint _currentIndex,
         uint _price,

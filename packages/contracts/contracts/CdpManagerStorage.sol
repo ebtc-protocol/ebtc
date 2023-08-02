@@ -39,7 +39,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     uint public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION * 5) / 1000; // 0.5%
     uint public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
-
+    bool public redemptionsPaused;
     /*
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
@@ -138,10 +138,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
      */
     modifier nonReentrantSelfAndBOps() {
-        require(locked == OPEN, "CdpManager: REENTRANCY");
+        require(locked == OPEN, "CdpManager: Reentrancy in nonReentrant call");
         require(
             ReentrancyGuard(borrowerOperationsAddress).locked() == OPEN,
-            "BorrowerOperations: REENTRANCY"
+            "BorrowerOperations: Reentrancy in nonReentrant call"
         );
 
         locked = LOCKED;
@@ -554,10 +554,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId
     ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;
-        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
-            _cdpId,
-            stFeePerUnitg
-        );
+        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
         coll = _newColl;
 
         pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
