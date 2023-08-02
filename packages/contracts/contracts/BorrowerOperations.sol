@@ -846,19 +846,10 @@ contract BorrowerOperations is
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        require(amount > 0, "BorrowerOperations: Flashloan amount must be above 0");
-        require(
-            token == address(ebtcToken),
-            "BorrowerOperations: Only eBTC token can be flashloaned"
-        );
-        require(
-            amount <= maxFlashLoan(token),
-            "BorrowerOperations: Flashloan amount exceeds maximum for specified token"
-        );
-        // NOTE: Check for `eBTCToken` is implicit in the two requires above
-
-        require(flashLoansPaused == false, "BorrowerOperations: Flashloans Paused");
-        uint256 fee = (amount * feeBps) / MAX_BPS;
+        require(!flashLoansPaused, "BorrowerOperations: Flash Loans Paused");
+        require(amount > 0, "BorrowerOperations: 0 Amount");
+        uint256 fee = flashFee(token, amount); // NOTE: Check for `eBTCToken` is implicit here
+        require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
 
         // Issue EBTC
         ebtcToken.mint(address(receiver), amount);
@@ -883,10 +874,10 @@ contract BorrowerOperations is
         return true;
     }
 
-    function flashFee(address token, uint256 amount) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(
             token == address(ebtcToken),
-            "BorrowerOperations: Only eBTC token can be flashloaned"
+            "BorrowerOperations: EBTC Only"
         );
 
         return (amount * feeBps) / MAX_BPS;
