@@ -211,8 +211,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _liqState._price,
                 _totalDebtToBurn,
                 _totalColToSend,
-                true,
-                _liquidatorReward
+                true
             );
             if (_collSurplus > 0) {
                 // due to division precision loss, should be zero surplus in normal mode
@@ -278,8 +277,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _recoveryState._price,
                 _totalDebtToBurn,
                 _totalColToSend,
-                true,
-                _liquidatorReward
+                true
             );
             if (_collSurplus > 0) {
                 collSurplusPool.accountSurplus(_borrower, _collSurplus);
@@ -358,8 +356,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _partialState._price,
             _partialDebt,
             _debtAndColl.entireColl,
-            false,
-            0
+            false
         );
 
         // early return: if new collateral is zero, we have a full liqudiation
@@ -377,9 +374,10 @@ contract LiquidationLibrary is CdpManagerStorage {
         // apply pending debt if any
         // and update CDP internal accounting for debt
         // if there is liquidation redistribution
+        uint256 _cachedDebt = Cdps[_cdpId].debt;
         {
             if (_debtAndColl.pendingDebtReward > 0) {
-                Cdps[_cdpId].debt = Cdps[_cdpId].debt + _debtAndColl.pendingDebtReward;
+                Cdps[_cdpId].debt = _cachedDebt + _debtAndColl.pendingDebtReward;
             }
         }
 
@@ -391,7 +389,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _reInsertPartialLiquidation(
                 _partialState,
                 LiquityMath._computeNominalCR(newColl, newDebt),
-                _debtAndColl.entireDebt,
+                _cachedDebt,
                 _debtAndColl.entireColl
             );
             emit CdpPartiallyLiquidated(
@@ -529,8 +527,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _price,
         uint _totalDebtToBurn,
         uint _totalColToSend,
-        bool _fullLiquidation,
-        uint _liquidatorReward
+        bool _fullLiquidation
     ) private view returns (uint cappedColPortion, uint collSurplus, uint debtToRedistribute) {
         // Calculate liquidation incentive for liquidator:
         // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
@@ -922,9 +919,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         newTotals.totalDebtToRedistribute =
             oldTotals.totalDebtToRedistribute +
             singleLiquidation.debtToRedistribute;
-        newTotals.totalCollToRedistribute =
-            oldTotals.totalCollToRedistribute +
-            singleLiquidation.collToRedistribute;
         newTotals.totalCollSurplus = oldTotals.totalCollSurplus + singleLiquidation.collSurplus;
         newTotals.totalCollReward = oldTotals.totalCollReward + singleLiquidation.collReward;
 

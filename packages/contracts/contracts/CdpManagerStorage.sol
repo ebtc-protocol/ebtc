@@ -98,8 +98,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     mapping(bytes32 => uint256) public stFeePerUnitcdp;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
-    /* Global Index update minimal interval, typically it is updated once per day  */
-    uint256 public INDEX_UPD_INTERVAL;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
     mapping(bytes32 => uint) public rewardSnapshots;
 
@@ -159,7 +157,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     function _closeCdpWithoutRemovingSortedCdps(bytes32 _cdpId, Status closedStatus) internal {
-        assert(closedStatus != Status.nonExistent && closedStatus != Status.active);
+        require(
+            closedStatus != Status.nonExistent && closedStatus != Status.active,
+            "CdpManagerStorage: close non-exist or non-active CDP!"
+        );
 
         uint CdpIdsArrayLength = CdpIds.length;
         _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
@@ -170,6 +171,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
         rewardSnapshots[_cdpId] = 0;
+        stFeePerUnitcdp[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -201,19 +203,16 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _getRedistributedEBTCDebt(
         bytes32 _cdpId
     ) internal view returns (uint pendingEBTCDebtReward) {
-        uint snapshotEBTCDebt = rewardSnapshots[_cdpId];
         Cdp storage cdp = Cdps[_cdpId];
 
         if (cdp.status != Status.active) {
             return 0;
         }
 
-        uint stake = cdp.stake;
-
-        uint rewardPerUnitStaked = L_EBTCDebt - snapshotEBTCDebt;
+        uint rewardPerUnitStaked = L_EBTCDebt - rewardSnapshots[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
-            pendingEBTCDebtReward = (stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
+            pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
         }
     }
 
@@ -242,12 +241,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _applyPendingRewards(bytes32 _cdpId) internal {
         _applyAccumulatedFeeSplit(_cdpId);
 
-        if (_hasRedistributedDebt(_cdpId)) {
-            _requireCdpIsActive(_cdpId);
-
-            // Compute pending rewards
-            uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
-
+        // Compute pending rewards
+        uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
+        if (pendingEBTCDebtReward > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
             uint prevDebt = _cdp.debt;
             uint prevColl = _cdp.coll;
@@ -310,13 +306,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             stake = _coll;
         } else {
             /*
-             * The following assert() holds true because:
+             * The following check holds true because:
              * - The system always contains >= 1 cdp
              * - When we close or liquidate a cdp, we redistribute the pending rewards,
              * so if all cdps were closed/liquidated,
              * rewards would’ve been emptied and totalCollateralSnapshot would be zero too.
              */
-            assert(totalStakesSnapshot > 0);
+            require(totalStakesSnapshot > 0, "CdpManagerStorage: zero totalStakesSnapshot!");
             stake = (_coll * totalStakesSnapshot) / totalCollateralSnapshot;
         }
         return stake;
@@ -329,13 +325,16 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _removeCdp(bytes32 _cdpId, uint CdpIdsArrayLength) internal {
         Status cdpStatus = Cdps[_cdpId].status;
         // It’s set in caller function `_closeCdp`
-        assert(cdpStatus != Status.nonExistent && cdpStatus != Status.active);
+        require(
+            cdpStatus != Status.nonExistent && cdpStatus != Status.active,
+            "CdpManagerStorage: remove non-exist or non-active CDP!"
+        );
 
         uint128 index = Cdps[_cdpId].arrayIndex;
         uint length = CdpIdsArrayLength;
         uint idxLast = length - 1;
 
-        assert(index <= idxLast);
+        require(index <= idxLast, "CdpManagerStorage: CDP indexing overflow!");
 
         bytes32 idToMove = CdpIds[idxLast];
 

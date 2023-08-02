@@ -88,7 +88,6 @@ contract BorrowerOperations is
         address _collTokenAddress
     ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
         // This makes impossible to open a cdp with zero withdrawn EBTC
-        // assert(MIN_NET_DEBT > 0);
         // TODO: Re-evaluate this
 
         cdpManager = ICdpManager(_cdpManagerAddress);
@@ -274,9 +273,9 @@ contract BorrowerOperations is
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
         _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
 
-        // Confirm the operation is either a borrower adjusting their own cdp
+        // Confirm the operation is the borrower adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        assert(msg.sender == _borrower);
+        require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         cdpManager.applyPendingRewards(_cdpId);
 
@@ -290,6 +289,10 @@ contract BorrowerOperations is
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
         uint _cdpCollAmt = collateral.getPooledEthByShares(vars.coll);
+        require(
+            _collWithdrawal <= _cdpCollAmt,
+            "BorrowerOperations: withdraw more collateral than CDP has!"
+        );
         vars.oldICR = LiquityMath._computeCR(_cdpCollAmt, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
             vars.coll,
@@ -300,7 +303,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             vars.price
         );
-        assert(_collWithdrawal <= _cdpCollAmt);
 
         // Check the adjustment satisfies all conditions for the current system mode
         _requireValidAdjustmentInCurrentMode(isRecoveryMode, _collWithdrawal, _isDebtIncrease, vars);
@@ -368,7 +370,6 @@ contract BorrowerOperations is
         uint _collAmount,
         address _borrower
     ) internal returns (bytes32) {
-        require(_collAmount > 0, "BorrowerOperations: collateral for CDP is zero");
         _requireNonZeroDebt(_EBTCAmount);
 
         LocalVariables_openCdp memory vars;
@@ -376,6 +377,7 @@ contract BorrowerOperations is
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.netColl = _getNetColl(_collAmount);
 
+        // will revert if _collAmount is less than MIN_NET_COLL + LIQUIDATOR_REWARD
         _requireAtLeastMinNetColl(vars.netColl);
 
         vars.price = priceFeed.fetchPrice();
@@ -387,7 +389,7 @@ contract BorrowerOperations is
         vars.debt = _EBTCAmount;
 
         // Sanity check
-        assert(vars.netColl > 0);
+        require(vars.netColl > 0, "BorrowerOperations: zero collateral for openCdp()!");
 
         uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
         uint _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
@@ -447,9 +449,13 @@ contract BorrowerOperations is
         );
 
         // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
-        _activePoolAddColl(_collAmount, _netCollAsShares, _liquidatorRewardShares);
+        _activePoolAddColl(_collAmount, _netCollAsShares);
 
-        assert(vars.netColl + LIQUIDATOR_REWARD == _collAmount); // Invariant Assertion
+        // Invariant check
+        require(
+            vars.netColl + LIQUIDATOR_REWARD == _collAmount,
+            "BorrowerOperations: deposited collateral mismatch!"
+        );
 
         return _cdpId;
     }
@@ -561,7 +567,7 @@ contract BorrowerOperations is
 
         if (_varMvTokens.isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange, 0);
+            _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
@@ -569,13 +575,11 @@ contract BorrowerOperations is
     }
 
     /// @notice Send stETH to Active Pool and increase its recorded ETH balance
+    /// @param _amount total balance of stETH to send, inclusive of coll and liquidatorRewardShares
+    /// @param _sharesToTrack coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
     /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
-    function _activePoolAddColl(
-        uint _amount,
-        uint _sharesToTrack,
-        uint _liquidatorRewardShares
-    ) internal {
+    function _activePoolAddColl(uint _amount, uint _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _amount);
         activePool.receiveColl(_sharesToTrack);

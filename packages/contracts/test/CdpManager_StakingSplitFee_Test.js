@@ -142,17 +142,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       }
   })
   
-  it("Sync update interval", async() => {	  
-      let _oldInterval = await cdpManager.INDEX_UPD_INTERVAL();
-      assert.isTrue(toBN(_oldInterval.toString()).eq(toBN("43200")));	  
-	  
-      await collToken.setBeaconSpec(2, 1, 1);
-	  
-      await cdpManager.syncUpdateIndexInterval(); 
-      let _newInterval = await cdpManager.INDEX_UPD_INTERVAL();
-      assert.isTrue(toBN(_newInterval.toString()).eq(toBN("1")));// = (2*1*1) / 2
-  })
-  
   it("Fee would be applied to all CDPs when there is staking reward coming", async() => {
       // try some big numbers here:
       // with current ETH/BTC exchange rate (0.07428 BTC/ETH)

@@ -143,36 +143,23 @@ contract SortedCdps is ISortedCdps {
         return cdps;
     }
 
+    /*
+     * @dev Add a node to the list
+     * @param owner cdp owner
+     * @param _NICR Node's NICR
+     * @param _prevId Id of previous node for the insert position
+     * @param _nextId Id of next node for the insert position
+     */
     function insert(
         address owner,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
     ) external override returns (bytes32) {
+        _requireCallerIsBOorCdpM();
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
         require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
 
-        _insertWithGeneratedId(owner, _id, _NICR, _prevId, _nextId);
-        return _id;
-    }
-
-    /*
-     * @dev Add a node to the list
-     * @param owner cdp owner
-     * @param _id Node's id
-     * @param _NICR Node's NICR
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     */
-
-    function _insertWithGeneratedId(
-        address owner,
-        bytes32 _id,
-        uint256 _NICR,
-        bytes32 _prevId,
-        bytes32 _nextId
-    ) internal {
-        _requireCallerIsBOorCdpM();
         _insert(cdpManager, _id, _NICR, _prevId, _nextId);
 
         unchecked {
@@ -181,6 +168,7 @@ contract SortedCdps is ISortedCdps {
 
         cdpOwners[_id] = owner;
         _addCdpToOwnerEnumeration(owner, _id);
+        return _id;
     }
 
     function _insert(

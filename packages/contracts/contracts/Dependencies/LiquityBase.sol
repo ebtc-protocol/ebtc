@@ -14,10 +14,6 @@ import "../Dependencies/ICollateralToken.sol";
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {
-    uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
-    uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
-    uint public constant _5pct = 50000000000000000; // 5e16 == 5%
-
     // Collateral Ratio applied for Liquidation Incentive
     // i.e., liquidator repay $1 worth of debt to get back $1.03 worth of collateral
     uint public constant LICR = 1030000000000000000; // 103%
@@ -110,19 +106,6 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
         uint feePercentage = (_fee * DECIMAL_PRECISION) / _amount;
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
-    }
-
-    // Convert ETH/BTC price to BTC/ETH price
-    function _getPriceReciprocal(uint _price) internal pure returns (uint) {
-        return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
-    }
-
-    // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
-    // _debt is denominated in BTC
-    // _price is ETH/BTC
-    function _convertDebtDenominationToEth(uint _debt, uint _price) internal pure returns (uint) {
-        uint priceReciprocal = _getPriceReciprocal(_price);
-        return (_debt * priceReciprocal) / DECIMAL_PRECISION;
     }
 
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
