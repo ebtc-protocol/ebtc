@@ -631,11 +631,6 @@ contract BorrowerOperations is
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    //    function _requireCdpisNotActive(ICdpManager _cdpManager, address _borrower) internal view {
-    //        uint status = _cdpManager.getCdpStatus(_borrower);
-    //        require(status != 1, "BorrowerOperations: Cdp is active");
-    //    }
-
     function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
         require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
