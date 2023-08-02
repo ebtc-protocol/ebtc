@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+import "@crytic/properties/contracts/util/PropertiesHelper.sol";
+
 import "../../../Interfaces/ICdpManagerData.sol";
 import "../../../Dependencies/SafeMath.sol";
 import "../../../CdpManager.sol";
@@ -17,10 +19,10 @@ import "../../CollateralTokenTester.sol";
 import "../../EBTCTokenTester.sol";
 import "../../../Governor.sol";
 import "../../../EBTCDeployer.sol";
-import "./EchidnaProxy.sol";
 
 import "../IHevm.sol";
 import "../Properties.sol";
+import "../Actor.sol";
 import "./EchidnaBaseTester.sol";
 import "./EchidnaProperties.sol";
 
@@ -28,34 +30,12 @@ import "./EchidnaProperties.sol";
 // cd <your-path-to-ebtc-repo-root>/packages/contracts
 // rm -f ./fuzzTests/corpus/* # (optional)
 // <your-path-to->/echidna-test contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
-contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
-    constructor() public payable {
+contract EchidnaTester is EchidnaBaseTester, EchidnaProperties, PropertiesAsserts {
+    constructor() payable {
         _setUp();
+        _setUpActors();
         _connectCoreContracts();
         _connectLQTYContractsToCore();
-
-        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
-            echidnaProxies[i] = new EchidnaProxy(
-                cdpManager,
-                borrowerOperations,
-                eBTCToken,
-                collateral,
-                activePool,
-                priceFeedTestnet
-            );
-            (bool success, ) = address(echidnaProxies[i]).call{value: INITIAL_BALANCE}("");
-            require(success);
-            echidnaProxies[i].dealCollateral(INITIAL_COLL_BALANCE);
-        }
-
-        MCR = cdpManager.MCR();
-        CCR = cdpManager.CCR();
-        LICR = cdpManager.LICR();
-        MIN_NET_COLL = cdpManager.MIN_NET_COLL();
-        require(MCR > 0);
-        require(CCR > 0);
-        require(LICR > 0);
-        require(MIN_NET_COLL > 0);
     }
 
     /* basic function to call when setting up new echidna test
@@ -272,17 +252,43 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
 
             authority.transferOwnership(defaultGovernance);
         }
+
+        MCR = cdpManager.MCR();
+        CCR = cdpManager.CCR();
+        LICR = cdpManager.LICR();
+        MIN_NET_COLL = cdpManager.MIN_NET_COLL();
+        assert(MCR > 0);
+        assert(CCR > 0);
+        assert(LICR > 0);
+        assert(MIN_NET_COLL > 0);
+    }
+
+    function _setUpActors() internal {
+        // TODO why 100 actors instead of echidna's default of 3?
+        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
+            actors[i] = new Actor(eBTCToken, borrowerOperations, activePool);
+            (bool success, ) = address(actors[i]).call{value: INITIAL_BALANCE}("");
+            assert(success);
+            actors[i].proxy(
+                address(collateral),
+                abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
+                INITIAL_COLL_BALANCE
+            );
+        }
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
      */
     function _connectCoreContracts() internal {
+        // TODO why is this necessary?
         IHevm(hevm).warp(block.timestamp + 86400);
     }
 
     /* connectLQTYContractsToCore() - connect LQTY contracts to core contracts
      */
-    function _connectLQTYContractsToCore() internal {}
+    function _connectLQTYContractsToCore() internal {
+        // TODO can this be removed?
+    }
 
     ///////////////////////////////////////////////////////
     // Helper functions
@@ -314,13 +320,38 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
         _newPrice = _oldPrice / (_priceDiv + 1);
     }
 
+    // helper functions
+    function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
+        uint _price = priceFeedTestnet.getPrice();
+        if (_price > 0) {
+            bool _recovery = cdpManager.checkRecoveryMode(_price);
+            uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+            if (_recovery) {
+                require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
+            } else {
+                require(_icr > cdpManager.MCR(), "liquidationTriggeredInNormalMode");
+            }
+        }
+    }
+
+    function _ensureNoRecoveryModeTriggered() internal view {
+        uint _price = priceFeedTestnet.getPrice();
+        if (_price > 0) {
+            require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
+        }
+    }
+
+    function _ensureMinCollInCdp(bytes32 _cdpId) internal view {
+        uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
+        require(_collWorth < cdpManager.MIN_NET_COLL(), "!minimum CDP collateral");
+    }
+
     ///////////////////////////////////////////////////////
     // CdpManager
     ///////////////////////////////////////////////////////
 
     function liquidateExt(uint _i) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
+        Actor actor = actors[_getRandomActor(_i)];
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
@@ -331,7 +362,10 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
             (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-            echidnaProxy.liquidatePrx(_cdpId);
+            actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
+            );
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
         }
 
@@ -339,8 +373,7 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     }
 
     function partialLiquidateExt(uint _i, uint _partialAmount) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
+        Actor actor = actors[_getRandomActor(_i)];
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
@@ -352,7 +385,16 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
             (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_partialAmount < entireDebt, "!_partialAmount");
-            echidnaProxy.partialLiquidatePrx(_cdpId, _partialAmount);
+            actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(
+                    CdpManager.partiallyLiquidate.selector,
+                    _cdpId,
+                    _partialAmount,
+                    _cdpId,
+                    _cdpId
+                )
+            );
             (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
         }
@@ -361,8 +403,7 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     }
 
     function liquidateCdpsExt(uint _i, uint _n) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
+        Actor actor = actors[_getRandomActor(_i)];
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
@@ -371,12 +412,16 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
             _n = cdpManager.getCdpIdsCount();
         }
 
-        echidnaProxy.liquidateCdpsPrx(_n);
+        actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n)
+        );
 
         priceFeedTestnet.setPrice(_oldPrice);
     }
 
     function redeemCollateralExt(
+        // TODO optimize the input space
         uint _i,
         uint _EBTCAmount,
         bytes32 _firstRedemptionHint,
@@ -384,16 +429,19 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
         bytes32 _lowerPartialRedemptionHint,
         uint _partialRedemptionHintNICR
     ) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        echidnaProxy.redeemCollateralPrx(
-            _EBTCAmount,
-            _firstRedemptionHint,
-            _upperPartialRedemptionHint,
-            _lowerPartialRedemptionHint,
-            _partialRedemptionHintNICR,
-            0,
-            0
+        Actor actor = actors[_getRandomActor(_i)];
+        actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(
+                CdpManager.redeemCollateral.selector,
+                _EBTCAmount,
+                _firstRedemptionHint,
+                _upperPartialRedemptionHint,
+                _lowerPartialRedemptionHint,
+                _partialRedemptionHintNICR,
+                0,
+                0
+            )
         );
     }
 
@@ -405,113 +453,226 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashloanCollExt(uint _i, uint _collAmount) public {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        echidnaProxy.flashloanColl(_collAmount);
+    function flashloanCollExt(uint _i, uint _amount) public {
+        Actor actor = actors[_getRandomActor(_i)];
+        _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
+
+        // sugardaddy fee
+        uint _fee = activePool.flashFee(address(collateral), _amount);
+        require(_fee < address(actor).balance, "!tooMuchFeeCollFL");
+
+        actor.proxy(
+            address(collateral),
+            abi.encodeWithSelector(CollateralTokenTester.deposit.selector, "", _fee)
+        );
+
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+
+        actor.proxy(
+            address(activePool),
+            abi.encodeWithSelector(
+                ActivePool.flashLoan.selector,
+                IERC3156FlashBorrower(address(actor)),
+                address(collateral),
+                _amount,
+                abi.encodePacked(uint256(0))
+            )
+        );
+
+        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        assert(_balAfter - _balBefore == _fee);
     }
 
     ///////////////////////////////////////////////////////
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashloanEBTCExt(uint _i, uint _EBTCAmount) public {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        echidnaProxy.flashloanEBTC(_EBTCAmount);
+    function flashloanEBTCExt(uint _i, uint _amount) public {
+        Actor actor = actors[_getRandomActor(_i)];
+        _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
+
+        // sugardaddy fee
+        uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
+        actor.proxy(
+            address(eBTCToken),
+            abi.encodeWithSelector(EBTCTokenTester.unprotectedMint.selector, _fee)
+        );
+
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        (bool success, ) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.flashLoan.selector,
+                IERC3156FlashBorrower(address(this)),
+                address(eBTCToken),
+                _amount,
+                abi.encodePacked(uint256(0))
+            )
+        );
+        uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        if (success) {
+            assert(_balAfter - _balBefore == _fee);
+
+            // TODO remove?
+            actor.proxy(
+                address(eBTCToken),
+                abi.encodeWithSelector(
+                    EBTCTokenTester.unprotectedBurn.selector,
+                    borrowerOperations.feeRecipientAddress(),
+                    _fee
+                )
+            );
+        }
     }
 
-    function openCdpExt(uint _i, uint _EBTCAmount) public {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
+    function openCdpWithCollExt(uint _i, uint _coll, uint _EBTCAmount) public {
+        Actor actor = actors[_getRandomActor(_i)];
 
         // we pass in CCR instead of MCR in case it’s the first one
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
+        require((_EBTCAmount * MCR) / price < _coll);
 
         uint requiredCollAmount = (_EBTCAmount * CCR) / (price);
-        uint actorBalance = collateral.balanceOf(address(echidnaProxy));
+        requiredCollAmount = clampBetween(_coll, requiredCollAmount, 2 * requiredCollAmount);
+
+        uint actorBalance = collateral.balanceOf(address(actor));
         if (actorBalance < requiredCollAmount) {
-            echidnaProxy.dealCollateral(requiredCollAmount - actorBalance);
+            actor.proxy(
+                address(collateral),
+                abi.encodeWithSelector(
+                    CollateralTokenTester.deposit.selector,
+                    "",
+                    requiredCollAmount - actorBalance
+                )
+            );
         }
-        echidnaProxy.openCdpPrx(requiredCollAmount, _EBTCAmount, bytes32(0), bytes32(0));
+        (bool success, bytes memory returnData) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                _EBTCAmount,
+                bytes32(0),
+                bytes32(0)
+            )
+        );
+        if(success) {
+            bytes32 _cdpId = abi.decode(returnData, (bytes32));
+            _ensureNoLiquidationTriggered(_cdpId);
+            _ensureNoRecoveryModeTriggered();
+            _ensureMinCollInCdp(_cdpId);
 
-        numberOfCdps = cdpManager.getCdpIdsCount();
-        assert(numberOfCdps > 0);
-    }
-
-    function openCdpWithCollExt(uint _i, uint _coll, uint _EBTCAmount) public {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-
-        uint price = priceFeedTestnet.getPrice();
-        require(price > 0);
-        require((_EBTCAmount * MCR) / (price) < _coll, "!openCdpRawExt_EBTCAmount");
-
-        uint actorBalance = collateral.balanceOf(address(echidnaProxy));
-        if (actorBalance < _coll) {
-            echidnaProxy.dealCollateral(_coll - actorBalance);
+            numberOfCdps = cdpManager.getCdpIdsCount();
+            assert(numberOfCdps > 0);
         }
-        echidnaProxies[actor].openCdpPrx(_coll, _EBTCAmount, bytes32(0), bytes32(0));
-
-        numberOfCdps = cdpManager.getCdpIdsCount();
-        assert(numberOfCdps > 0);
     }
 
     function addCollExt(uint _i, uint _coll) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
-        uint actorBalance = collateral.balanceOf(address(echidnaProxy));
+        uint actorBalance = collateral.balanceOf(address(actor));
+
         if (actorBalance < _coll) {
-            echidnaProxy.dealCollateral(_coll - actorBalance);
+            actor.proxy(
+                address(collateral),
+                abi.encodeWithSelector(
+                    CollateralTokenTester.deposit.selector,
+                    "",
+                    _coll - actorBalance
+                )
+            );
         }
 
-        echidnaProxy.addCollPrx(_cdpId, _coll, _cdpId, _cdpId);
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.addColl.selector,
+                _cdpId,
+                _coll,
+                _cdpId,
+                _cdpId
+            )
+        );
     }
 
     function withdrawCollExt(uint _i, uint _amount) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
         CDPChange memory _change = CDPChange(0, _amount, 0, 0);
         _ensureMCR(_cdpId, _change);
 
-        echidnaProxy.withdrawCollPrx(_cdpId, _amount, _cdpId, _cdpId);
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.withdrawColl.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
+        );
+        _ensureNoLiquidationTriggered(_cdpId);
+        _ensureNoRecoveryModeTriggered();
     }
 
     function withdrawEBTCExt(uint _i, uint _amount) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
         CDPChange memory _change = CDPChange(0, 0, _amount, 0);
         _ensureMCR(_cdpId, _change);
 
-        echidnaProxy.withdrawEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.withdrawEBTC.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
+        );
+        _ensureNoLiquidationTriggered(_cdpId);
+        _ensureNoRecoveryModeTriggered();
     }
 
     function repayEBTCExt(uint _i, uint _amount) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
         (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-        require(_amount <= entireDebt, "!repayEBTC_amount");
-        echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
+        _amount = clampBetween(_amount, 1, entireDebt);
+        uint _price = priceFeedTestnet.fetchPrice();
+        uint _tcrBefore = cdpManager.getTCR(_price);
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.repayEBTC.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
+        );
+        uint _tcrAfter = cdpManager.getTCR(_price);
+        assert(_tcrAfter > _tcrBefore);
     }
 
     function closeCdpExt(uint _i) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
         require(1 == cdpManager.getCdpStatus(_cdpId), "!closeCdpExtActive");
-        echidnaProxies[actor].closeCdpPrx(_cdpId);
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
+        );
     }
 
     function adjustCdpExt(
@@ -520,9 +681,8 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
         uint _debtChange,
         bool _isDebtIncrease
     ) external {
-        uint actor = _getRandomActor(_i);
-        EchidnaProxy echidnaProxy = echidnaProxies[actor];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
+        Actor actor = actors[_getRandomActor(_i)];
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
         (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
@@ -536,60 +696,45 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
         if (_isDebtIncrease) {
             _change = CDPChange(0, _collWithdrawal, _debtChange, 0);
         } else {
-            require(_debtChange < entireDebt, "!adjustCdpExt_debtChange");
+            // TODO can I change entire debt? remove -1
+            _debtChange = clampBetween(_debtChange, 0, entireDebt - 1);
             _change = CDPChange(0, _collWithdrawal, 0, _debtChange);
         }
         _ensureMCR(_cdpId, _change);
-        echidnaProxy.adjustCdpPrx(
-            _cdpId,
-            _collWithdrawal,
-            debtChange,
-            _isDebtIncrease,
-            _cdpId,
-            _cdpId
+        actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.adjustCdp.selector,
+                _cdpId,
+                _cdpId,
+                _collWithdrawal,
+                debtChange,
+                _isDebtIncrease,
+                _cdpId,
+                _cdpId
+            )
         );
+        if (_collWithdrawal > 0 || _isDebtIncrease) {
+            _ensureNoLiquidationTriggered(_cdpId);
+            _ensureNoRecoveryModeTriggered();
+        }
     }
 
     ///////////////////////////////////////////////////////
     // EBTC Token
     ///////////////////////////////////////////////////////
 
-    function transferExt(uint _i, address recipient, uint256 amount) external returns (bool) {
-        uint actor = _getRandomActor(_i);
-        echidnaProxies[actor].transferPrx(recipient, amount);
-    }
-
-    function approveExt(uint _i, address spender, uint256 amount) external returns (bool) {
-        uint actor = _getRandomActor(_i);
-        echidnaProxies[actor].approvePrx(spender, amount);
-    }
-
-    function transferFromExt(
-        uint _i,
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool) {
-        uint actor = _getRandomActor(_i);
-        echidnaProxies[actor].transferFromPrx(sender, recipient, amount);
-    }
-
-    function increaseAllowanceExt(
-        uint _i,
-        address spender,
-        uint256 addedValue
-    ) external returns (bool) {
-        uint actor = _getRandomActor(_i);
-        echidnaProxies[actor].increaseAllowancePrx(spender, addedValue);
-    }
-
-    function decreaseAllowanceExt(
-        uint _i,
-        address spender,
-        uint256 subtractedValue
-    ) external returns (bool) {
-        uint actor = _getRandomActor(_i);
-        echidnaProxies[actor].decreaseAllowancePrx(spender, subtractedValue);
+    // TODO evaluate if recipient should be any or should be one of actors
+    function approveAndTransfer(uint _i, address recipient, uint256 amount) external returns (bool) {
+        Actor actor = actors[_getRandomActor(_i)];
+        actor.proxy(
+            address(eBTCToken),
+            abi.encodeWithSelector(EBTCToken.approve.selector, recipient, amount)
+        );
+        actor.proxy(
+            address(eBTCToken),
+            abi.encodeWithSelector(EBTCToken.transfer.selector, recipient, amount)
+        );
     }
 
     ///////////////////////////////////////////////////////
@@ -597,9 +742,11 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     ///////////////////////////////////////////////////////
 
     function increaseCollateralRate(uint _newBiggerIndex) external {
-        require(_newBiggerIndex > collateral.getPooledEthByShares(1e18), "!biggerNewRate");
-        require(_newBiggerIndex < collateral.getPooledEthByShares(1e18) * 10000, "!tooBigNewRate");
-        require(_newBiggerIndex < 10000e18, "!nonsenseNewBiggerRate");
+        _newBiggerIndex = clampBetween(
+            _newBiggerIndex,
+            collateral.getPooledEthByShares(1e18),
+            min(10_000 * 1e18, collateral.getPooledEthByShares(1e18) * 10_000)
+        );
         collateral.setEthPerShare(_newBiggerIndex);
     }
 
@@ -608,12 +755,11 @@ contract EchidnaTester is EchidnaBaseTester, EchidnaProperties {
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
     function decreaseCollateralRate(uint _newSmallerIndex) external {
-        require(_newSmallerIndex < collateral.getPooledEthByShares(1e18), "!smallerNewRate");
-        require(
-            _newSmallerIndex > collateral.getPooledEthByShares(1e18) / 10000,
-            "!tooSmallNewRate"
+        _newSmallerIndex = clampBetween(
+            _newSmallerIndex,
+            max(collateral.getPooledEthByShares(1e18) / 10000, 1),
+            collateral.getPooledEthByShares(1e18)
         );
-        require(_newSmallerIndex > 0, "!nonsenseNewSmallerRate");
         collateral.setEthPerShare(_newSmallerIndex);
     }
 }

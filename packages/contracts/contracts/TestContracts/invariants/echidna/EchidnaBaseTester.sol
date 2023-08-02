@@ -12,13 +12,13 @@ import "../../../HintHelpers.sol";
 import "../../../FeeRecipient.sol";
 import "../../testnet/PriceFeedTestnet.sol";
 import "../../CollateralTokenTester.sol";
-import "./EchidnaProxy.sol";
 import "../../EBTCTokenTester.sol";
 import "../../../Governor.sol";
 import "../../../EBTCDeployer.sol";
 
-import "../../invariants/IHevm.sol";
-import "../../invariants/Properties.sol";
+import "../IHevm.sol";
+import "../Properties.sol";
+import "../Actor.sol";
 
 abstract contract EchidnaBaseTester {
     using SafeMath for uint;
@@ -46,7 +46,7 @@ abstract contract EchidnaBaseTester {
     address defaultGovernance;
     EBTCDeployer ebtcDeployer;
 
-    EchidnaProxy[NUMBER_OF_ACTORS] internal echidnaProxies;
+    Actor[NUMBER_OF_ACTORS] internal actors;
 
     uint internal numberOfCdps;
 
