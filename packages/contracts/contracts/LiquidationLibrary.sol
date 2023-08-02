@@ -199,7 +199,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            CdpManagerOperation.liquidateInNormalMode
+            CdpOperation.liquidateInNormalMode
         );
 
         {
@@ -230,7 +230,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _borrower,
             _totalDebtToBurn,
             _cappedColPortion,
-            CdpManagerOperation.liquidateInNormalMode
+            CdpOperation.liquidateInNormalMode
         );
 
         return _liqState;
@@ -264,7 +264,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            CdpManagerOperation.liquidateInRecoveryMode
+            CdpOperation.liquidateInRecoveryMode
         );
 
         // avoid stack too deep
@@ -304,7 +304,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _borrower,
             _totalDebtToBurn,
             _cappedColPortion,
-            CdpManagerOperation.liquidateInRecoveryMode
+            CdpOperation.liquidateInRecoveryMode
         );
 
         return _recoveryState;
@@ -394,7 +394,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 sortedCdps.getOwnerAddress(_cdpId),
                 _partialDebt,
                 _partialColl,
-                CdpManagerOperation.partiallyLiquidate
+                CdpOperation.partiallyLiquidate
             );
         }
         return (_partialDebt, _partialColl);
@@ -487,7 +487,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             Cdps[_cdpId].debt,
             Cdps[_cdpId].coll,
             Cdps[_cdpId].stake,
-            CdpManagerOperation.partiallyLiquidate
+            CdpOperation.partiallyLiquidate
         );
     }
 

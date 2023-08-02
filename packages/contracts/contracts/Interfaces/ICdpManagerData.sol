@@ -36,21 +36,21 @@ interface ICdpManagerData {
         uint _debt,
         uint _coll,
         uint _stake,
-        CdpManagerOperation _operation
+        CdpOperation _operation
     );
     event CdpLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        CdpManagerOperation _operation
+        CdpOperation _operation
     );
     event CdpPartiallyLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        CdpManagerOperation operation
+        CdpOperation operation
     );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
@@ -69,8 +69,11 @@ interface ICdpManagerData {
         uint collLeft
     );
 
-    enum CdpManagerOperation {
-        applyPendingCdpState,
+    enum CdpOperation {
+        openCdp,
+        closeCdp,
+        adjustCdp,
+        applyPendingState,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,

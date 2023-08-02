@@ -56,11 +56,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
   })
 
   describe('CdpManager', async accounts => {
-    // applyPendingCdpState
-    it("applyPendingCdpState(): reverts when called by an account that is not BorrowerOperations", async () => {
+    // applyPendingState
+    it("applyPendingState(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await cdpManager.applyPendingCdpState(bob, { from: alice })
+        const txAlice = await cdpManager.applyPendingState(bob, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
