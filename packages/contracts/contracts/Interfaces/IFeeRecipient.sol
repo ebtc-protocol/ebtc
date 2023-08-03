@@ -20,5 +20,5 @@ interface IFeeRecipient {
 
     function receiveEbtcFee(uint _EBTCFee) external;
 
-    function claimStakingSplitFee() external;
+    function applyPendingGlobalState() external;
 }

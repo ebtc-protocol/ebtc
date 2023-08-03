@@ -574,7 +574,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(troveUpdatedEvents[0].args[4].toString(), _debtRemaining.toString(), '!partially liquidated CDP remaining debt');
       assert.equal(troveUpdatedEvents[0].args[5].toString(), _collRemaining.toString(), '!partially liquidated CDP remaining collateral');
       assert.equal(troveUpdatedEvents[0].args[6].toString(), _stakeRemaining.toString(), '!partially liquidated CDP remaining stake');
-      assert.equal(troveUpdatedEvents[0].args[7], 4, '!CdpManagerOperation.partiallyLiquidate');
+      assert.equal(troveUpdatedEvents[0].args[7], 7, '!CdpOperation.partiallyLiquidate');
 
       // check CdpPartiallyLiquidated event
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpPartiallyLiquidated')
@@ -583,7 +583,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(liquidationEvents[0].args[1], alice, '!partially liquidated CDP owner');
       assert.equal(liquidationEvents[0].args[2].toString(), _debtLiquidated.toString(), '!partially liquidated CDP debt');
       assert.equal(liquidationEvents[0].args[3].toString(), _collLiquidated.toString(), '!partially liquidated CDP collateral');
-      assert.equal(liquidationEvents[0].args[4], 4, '!CdpManagerOperation.partiallyLiquidate');
+      assert.equal(liquidationEvents[0].args[4], 7, '!CdpOperation.partiallyLiquidate');
 	  
       // check liquidator balance change
       let _gasUsed = th.gasUsed(tx);
