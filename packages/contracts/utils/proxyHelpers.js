@@ -255,22 +255,6 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getBorrowingRate() {
-    return this.proxyFunction('getBorrowingRate', [])
-  }
-
-  async getBorrowingRateWithDecay() {
-    return this.proxyFunction('getBorrowingRateWithDecay', [])
-  }
-
-  async getBorrowingFee(...params) {
-    return this.proxyFunction('getBorrowingFee', params)
-  }
-
-  async getBorrowingFeeWithDecay(...params) {
-    return this.proxyFunction('getBorrowingFeeWithDecay', params)
-  }
-
   async getEntireDebtAndColl(...params) {
     return this.proxyFunction('getEntireDebtAndColl', params)
   }

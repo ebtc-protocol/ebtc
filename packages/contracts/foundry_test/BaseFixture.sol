@@ -34,6 +34,12 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
     uint internal constant MAX_BPS = 10000;
 
+    enum CapabilityFlag {
+        None,
+        Public,
+        Burned
+    }
+
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
     bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
@@ -43,6 +49,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     bytes4 private constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
+    bytes4 private constant SET_REDEMPETIONS_PAUSED_SIG =
+        bytes4(keccak256(bytes("setRedemptionsPaused(bool)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -54,6 +62,8 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
+    bytes4 internal constant SET_FLASH_LOANS_PAUSED_SIG =
+        bytes4(keccak256(bytes("setFlashLoansPaused(bool)")));
     bytes4 internal constant SET_MAX_FEE_BPS_SIG = bytes4(keccak256(bytes("setMaxFeeBps(uint256)")));
 
     // ActivePool
@@ -305,25 +315,30 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
         authority.setRoleName(
             5,
-            "BorrowerOperations+ActivePool: setFeeBps, setMaxFeeBps, setFeeRecipientAddress"
+            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
         );
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
 
         // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
-
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
 
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_BETA_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_REDEMPETIONS_PAUSED_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
-        authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(
+            5,
+            address(borrowerOperations),
+            SET_FLASH_LOANS_PAUSED_SIG,
+            true
+        );
         authority.setRoleCapability(
             5,
             address(borrowerOperations),
@@ -332,7 +347,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         );
 
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
-        authority.setRoleCapability(5, address(activePool), SET_MAX_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FLASH_LOANS_PAUSED_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
 
         authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
@@ -396,5 +411,17 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
         vm.stopPrank();
         return _cdpId;
+    }
+
+    /// @dev Increase index on collateral, storing real before, after, and what is stored in the CdpManager global index
+    function _increaseCollateralIndex()
+        internal
+        returns (uint oldIndex, uint newIndex, uint storedIndex)
+    {
+        oldIndex = collateral.getPooledEthByShares(1e18);
+        collateral.setEthPerShare(oldIndex + 1e17);
+        newIndex = collateral.getPooledEthByShares(1e18);
+
+        storedIndex = cdpManager.stFPPSg();
     }
 }

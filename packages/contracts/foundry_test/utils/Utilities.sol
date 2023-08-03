@@ -11,6 +11,7 @@ contract Utilities is Test {
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
     bytes32 internal nextSpecial = keccak256(abi.encodePacked("special address"));
+    uint256 public constant LIQUIDATOR_REWARD = 2e17;
 
     function getNextSpecialAddress() public returns (address payable) {
         //bytes32 to address conversion
@@ -43,15 +44,18 @@ contract Utilities is Test {
         vm.roll(targetBlock);
     }
 
-    /* Calculate collateral amount to post based on required debt, collateral price and CR
-    Collateral amount is calculated as: (Debt * CR) / Price
+    /* 
+        Calculate collateral amount to post based on required debt, collateral price and CR
+        Collateral amount is calculated as: (Debt * CR) / Price
+        // TODO: Formula inaccurate
+        // TODO: In fixing formula all tests mess up
     */
     function calculateCollAmount(
         uint256 debt,
         uint256 price,
         uint256 collateralRatio
     ) public pure returns (uint256) {
-        return ((debt * collateralRatio) / price);
+        return ((debt * 1e18 * collateralRatio) / price / 1e18) + LIQUIDATOR_REWARD; // add liquidator reward to
     }
 
     /* Calculate some relevant borrowed amount based on collateral, it's price and CR

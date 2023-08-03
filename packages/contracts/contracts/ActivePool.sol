@@ -5,10 +5,12 @@ pragma solidity 0.8.17;
 import "./Interfaces/IActivePool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/ICollateralToken.sol";
+import "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "./Dependencies/BaseMath.sol";
 
 /**
  * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
@@ -16,7 +18,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
  * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
  */
-contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
+contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath, AuthNoOwner {
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 
@@ -159,7 +161,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         _requireCallerIsCdpManager();
 
         uint256 cachedStEthColl = StEthColl;
-        uint256 _FeeRecipientColl = FeeRecipientColl;
 
         require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
         unchecked {
@@ -168,10 +169,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         }
 
         StEthColl = cachedStEthColl;
-        FeeRecipientColl = _FeeRecipientColl + _shares;
+
+        uint256 _FeeRecipientColl = FeeRecipientColl + _shares;
+        FeeRecipientColl = _FeeRecipientColl;
 
         emit ActivePoolCollBalanceUpdated(cachedStEthColl);
-        emit ActivePoolFeeRecipientClaimableCollIncreased(FeeRecipientColl, _shares);
+        emit ActivePoolFeeRecipientClaimableCollIncreased(_FeeRecipientColl, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -262,13 +265,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
         require(amount > 0, "ActivePool: 0 Amount");
+        uint256 fee = flashFee(token, amount); // NOTE: Check for `token` is implicit in the requires above
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
-        // NOTE: Check for `token` is implicit in the requires above
 
-        uint256 fee = (amount * feeBps) / MAX_BPS;
         uint256 amountWithFee = amount + fee;
-        uint256 oldRate = collateral.getPooledEthByShares(1e18);
+        uint256 oldRate = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         collateral.transfer(address(receiver), amount);
 
@@ -296,7 +299,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         );
         require(collateral.sharesOf(address(this)) >= StEthColl, "ActivePool: Must repay Share");
         require(
-            collateral.getPooledEthByShares(1e18) == oldRate,
+            collateral.getPooledEthByShares(DECIMAL_PRECISION) == oldRate,
             "ActivePool: Should keep same collateral share rate"
         );
 
@@ -310,7 +313,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     /// @param amount The amount of tokens to calculate the fee for
     /// @return The amount of the flash loan fee
 
-    function flashFee(address token, uint256 amount) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
 
         return (amount * feeBps) / MAX_BPS;
@@ -338,6 +341,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     function claimFeeRecipientColl(uint256 _shares) external override requiresAuth {
         uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
+
         unchecked {
             _FeeRecipientColl -= _shares;
         }
@@ -358,6 +364,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
 
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
+
         address cachedFeeRecipientAddress = feeRecipientAddress; // Saves an SLOAD
 
         IERC20(token).safeTransfer(cachedFeeRecipientAddress, amount);
@@ -368,9 +376,30 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard {
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
-            "ActivePool: cannot set fee recipient to zero address"
+            "ActivePool: Cannot set fee recipient to zero address"
         );
+
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
+
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
+    }
+
+    function setFeeBps(uint _newFee) external requiresAuth {
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
+
+        // set new flash fee
+        uint _oldFee = feeBps;
+        feeBps = uint16(_newFee);
+        emit FlashFeeSet(msg.sender, _oldFee, _newFee);
+    }
+
+    function setFlashLoansPaused(bool _paused) external requiresAuth {
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
+
+        flashLoansPaused = _paused;
+        emit FlashLoansPaused(msg.sender, _paused);
     }
 }

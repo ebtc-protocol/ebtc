@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.17;
 
+import {IRolesAuthority} from "./IRolesAuthority.sol";
 import {Auth, Authority} from "./Auth.sol";
 import "./EnumerableSet.sol";
 
@@ -8,31 +9,9 @@ import "./EnumerableSet.sol";
 /// @author BadgerDAO
 /// @author Modified from Solmate (https://github.com/transmissions11/solmate/blob/main/src/auth/authorities/RolesAuthority.sol)
 /// @author Modified from Dappsys (https://github.com/dapphub/ds-roles/blob/master/src/roles.sol)
-contract RolesAuthority is Auth, Authority {
+contract RolesAuthority is IRolesAuthority, Auth, Authority {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event UserRoleUpdated(address indexed user, uint8 indexed role, bool enabled);
-
-    event PublicCapabilityUpdated(address indexed target, bytes4 indexed functionSig, bool enabled);
-    event CapabilityBurned(address indexed target, bytes4 indexed functionSig);
-
-    event RoleCapabilityUpdated(
-        uint8 indexed role,
-        address indexed target,
-        bytes4 indexed functionSig,
-        bool enabled
-    );
-
-    enum CapabilityFlag {
-        None,
-        Public,
-        Burned
-    }
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -88,9 +67,13 @@ contract RolesAuthority is Auth, Authority {
     ) public view virtual override returns (bool) {
         CapabilityFlag flag = capabilityFlag[target][functionSig];
 
-        return
-            (flag != CapabilityFlag.Burned && flag == CapabilityFlag.Public) ||
-            bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+        if (flag == CapabilityFlag.Burned) {
+            return false;
+        } else if (flag == CapabilityFlag.Public) {
+            return true;
+        } else {
+            return bytes32(0) != getUserRoles[user] & getRolesWithCapability[target][functionSig];
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -106,7 +89,7 @@ contract RolesAuthority is Auth, Authority {
     ) public virtual requiresAuth {
         require(
             capabilityFlag[target][functionSig] != CapabilityFlag.Burned,
-            "RolesAuthority: capability burned"
+            "RolesAuthority: Capability Burned"
         );
 
         if (enabled) {
@@ -148,6 +131,10 @@ contract RolesAuthority is Auth, Authority {
 
     /// @notice Permanently burns a capability for a target.
     function burnCapability(address target, bytes4 functionSig) public virtual requiresAuth {
+        require(
+            capabilityFlag[target][functionSig] != CapabilityFlag.Burned,
+            "RolesAuthority: Capability Burned"
+        );
         capabilityFlag[target][functionSig] = CapabilityFlag.Burned;
 
         emit CapabilityBurned(target, functionSig);

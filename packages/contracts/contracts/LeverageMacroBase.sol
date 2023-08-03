@@ -8,8 +8,8 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IPriceFeed.sol";
 import "./Dependencies/ICollateralToken.sol";
-
 import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
+import "./Dependencies/SafeERC20.sol";
 
 interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
@@ -24,6 +24,8 @@ interface ICdpCdps {
  *      - Via delegate call (LeverageMacroDelegateTarget)
  */
 contract LeverageMacroBase {
+    using SafeERC20 for IERC20;
+
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
     ICdpCdps public immutable cdpManager;
@@ -122,9 +124,7 @@ contract LeverageMacroBase {
 
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
-            // Not safe because OZ for our cases, if you use USDT it's your prob friend
-            // NOTE: Send directly to flashLoanMacroReceiver
-            IERC20(operation.tokenToTransferIn).transferFrom(
+            IERC20(operation.tokenToTransferIn).safeTransferFrom(
                 msg.sender,
                 address(this),
                 operation.amountToTransferIn
@@ -225,6 +225,12 @@ contract LeverageMacroBase {
         if (collateralBal > 0) {
             stETH.transfer(msg.sender, collateralBal);
         }
+    }
+
+    function sweepToken(address token, uint256 amount) public {
+        _assertOwner();
+
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     /// @dev Assumes that
@@ -399,7 +405,7 @@ contract LeverageMacroBase {
             swapData.addressForSwap,
             gasleft(),
             0,
-            32,
+            0,
             swapData.calldataForSwap
         );
         require(success, "Call has failed");

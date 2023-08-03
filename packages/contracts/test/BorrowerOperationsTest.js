@@ -80,6 +80,7 @@ contract('BorrowerOperations', async accounts => {
 
   const testCorpus = ({ withProxy = false }) => {
     beforeEach(async () => {
+      await deploymentHelper.setDeployGasPrice(1000000000)
       contracts = await deploymentHelper.deployTesterContractsHardhat()
       let LQTYContracts = {}
       LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -125,9 +126,9 @@ contract('BorrowerOperations', async accounts => {
 	  
     it("BorrowerOperations flashloan checks", async() => {
       let _maxFlashLoanAlloweed = await borrowerOperations.maxFlashLoan(ebtcToken.address);	
-      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, 0, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: 0 Amount");
-      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, borrowerOperations.address, _maxFlashLoanAlloweed, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: EBTC Only");
-      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, _maxFlashLoanAlloweed.add(toBN(1)), th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: too much flashLoan amount");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, 0, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: Flashloan amount must be above 0");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, borrowerOperations.address, _maxFlashLoanAlloweed, th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: Only eBTC token can be flashloaned");
+      await assertRevert(borrowerOperations.flashLoan(borrowerOperations.address, ebtcToken.address, _maxFlashLoanAlloweed.add(toBN(1)), th.DUMMY_BYTES32, {from: alice}), "BorrowerOperations: Flashloan amount exceeds maximum for specified token flashLoan amount");
     })  
 	  
     it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
@@ -139,30 +140,30 @@ contract('BorrowerOperations', async accounts => {
 	  await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
 	  await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
 	  assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
-	  await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= maxFeeBps");
-	  let _newFee = await borrowerOperations.maxFeeBps()
+	  await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+	  let _newFee = await borrowerOperations.MAX_FEE_BPS()
 	  assert.isTrue(_newFee.gt(await borrowerOperations.feeBps()));
 	  await borrowerOperations.setFeeBps(_newFee, {from: alice})
 	  assert.isTrue(_newFee.eq(await borrowerOperations.feeBps()));
 
     })
 
-    it("BorrowerOperations governance permissioned: setMaxFeeBps() should only allow authorized caller", async() => {	  
-      await assertRevert(borrowerOperations.setMaxFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
+    it("BorrowerOperations governance permissioned: setFeeBps() should only allow authorized caller", async() => {	  
+      await assertRevert(borrowerOperations.setFeeBps(1, {from: alice}), "Auth: UNAUTHORIZED");   
   
       assert.isTrue(authority.address == (await borrowerOperations.authority()));
       let _role123 = 123;
-      let _funcSig = await borrowerOperations.FUNC_SIG_MAX_FL_FEE();
+      let _funcSig = await borrowerOperations.FUNC_SIG_FL_FEE();
       await authority.setRoleCapability(_role123, borrowerOperations.address, _funcSig, true, {from: accounts[0]});	  
       await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
       assert.isTrue((await authority.canCall(alice, borrowerOperations.address, _funcSig)));
 
-      await assertRevert(borrowerOperations.setMaxFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
-      let _newFee = await borrowerOperations.maxFeeBps();
+      await assertRevert(borrowerOperations.setFeeBps(10001, {from: alice}), "ERC3156FlashLender: _newMaxFlashFee should <= 10000");
+      let _newFee = await borrowerOperations.MAX_FEE_BPS();
       
-      assert.isTrue(_newFee.lte(await borrowerOperations.maxFeeBps()));
-      await borrowerOperations.setMaxFeeBps(_newFee, {from: alice})
-      assert.isTrue(_newFee.eq(await borrowerOperations.maxFeeBps()));
+      assert.isTrue(_newFee.lte(await borrowerOperations.MAX_FEE_BPS()));
+      await borrowerOperations.setFeeBps(_newFee, {from: alice})
+      assert.isTrue(_newFee.eq(await borrowerOperations.MAX_FEE_BPS()));
   
     })
 
@@ -201,7 +202,7 @@ contract('BorrowerOperations', async accounts => {
     })
 	
     it("openCdp(): should NOT allow open with zero collateral", async () => {	
-	  await assertRevert(borrowerOperations.openCdp(123, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, { from: bob }), "BorrowerOps: collateral for CDP is zero");	  
+	  await assertRevert(borrowerOperations.openCdp(123, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, { from: bob }), "BorrowerOperations: collateral for CDP is zero");	  
     })
 
     it("openCdp(): mutiple Cdp per user", async () => {		  
@@ -273,7 +274,7 @@ contract('BorrowerOperations', async accounts => {
       const collTopUp = 1  // 1 wei top up
 
       await assertRevert(borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, collTopUp, { from: alice }),
-        "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+        "BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
       })
 
     it("addColl(): Increases the activePool ETH and raw ether balance by correct amount", async () => {
@@ -480,7 +481,7 @@ contract('BorrowerOperations', async accounts => {
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOps: Caller must be cdp owner")
+        assert.include(error.message, "BorrowerOperations: Caller must be cdp owner")
       }
     })
 
@@ -508,7 +509,7 @@ contract('BorrowerOperations', async accounts => {
         assert.isFalse(txBob.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOps: Caller must be cdp owner")
+        assert.include(error.message, "BorrowerOperations: Caller must be cdp owner")
       }
     })
 
@@ -551,7 +552,7 @@ contract('BorrowerOperations', async accounts => {
       const collWithdrawal = 1  // 1 wei withdrawal
 
      await assertRevert(borrowerOperations.withdrawColl(aliceIndex, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, { from: alice }),
-      "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+      "BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
     })
 
     // reverts when calling address does not have active cdp  
@@ -618,7 +619,7 @@ contract('BorrowerOperations', async accounts => {
       // Carol withdraws exactly all her collateral
       await assertRevert(
         borrowerOperations.withdrawColl(carolIndex, carolColl, carolIndex, carolIndex, { from: carol }),
-        'BorrowerOps: An operation that would result in ICR < MCR is not permitted'
+        'BorrowerOperations: An operation that would result in ICR < MCR is not permitted'
       )
 
       // Bob attempts to withdraw 1 wei more than his collateral
@@ -689,7 +690,7 @@ contract('BorrowerOperations', async accounts => {
       // Alice attempts to withdraw all collateral
       await assertRevert(
         borrowerOperations.withdrawColl(aliceIndex, aliceColl, aliceIndex, aliceIndex, { from: alice }),
-        'BorrowerOps: An operation that would result in ICR < MCR is not permitted'
+        'BorrowerOperations: An operation that would result in ICR < MCR is not permitted'
       )
     })
 
@@ -880,7 +881,7 @@ contract('BorrowerOperations', async accounts => {
       const EBTCwithdrawal = 1  // withdraw 1 wei EBTC
 
      await assertRevert(borrowerOperations.withdrawEBTC(aliceIndex, EBTCwithdrawal, aliceIndex, aliceIndex, { from: alice }), 
-      "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+      "BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
     })
 
     it("withdrawEBTC(): does not decay a non-zero base rate", async () => {
@@ -1118,7 +1119,7 @@ contract('BorrowerOperations', async accounts => {
       const EBTCRepayment = 1  // 1 wei repayment
 
      await assertRevert(borrowerOperations.repayEBTC(aliceIndex, EBTCRepayment, aliceIndex, aliceIndex, { from: alice }), 
-      "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+      "BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
     })
 
     it("repayEBTC(): Succeeds when it would leave cdp with net debt >= minimum net debt", async () => {
@@ -1159,7 +1160,7 @@ contract('BorrowerOperations', async accounts => {
       let _aDebt = await cdpManager.getCdpDebt(AIndex);
 
       const repayTxAPromise = borrowerOperations.repayEBTC(AIndex, _aDebt, AIndex, AIndex, { from: A })
-      await assertRevert(repayTxAPromise, "BorrowerOps: Debt must be non-zero")
+      await assertRevert(repayTxAPromise, "BorrowerOperations: Debt must be non-zero")
     })
 
     it("adjustCdp(): Reverts if repaid amount is greater than current debt", async () => {
@@ -1362,7 +1363,7 @@ contract('BorrowerOperations', async accounts => {
       const collTopUp = 1
 
      await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 0, EBTCRepayment, false, aliceIndex, aliceIndex, { from: alice, value: collTopUp }), 
-      "BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+      "BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
     })
 
     it("adjustCdp(): Borrowing at zero rate does not change EBTC balance of LQTY staking contract", async () => {
@@ -1499,7 +1500,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Alice attempts an adjustment that repays half her debt BUT withdraws 1 wei collateral, and fails
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 1, dec(5000, 18), false, aliceIndex, aliceIndex, { from: alice }),
-        "BorrowerOps: Collateral withdrawal not permitted Recovery Mode")
+        "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode")
     })
 
     it("adjustCdp(): debt increase that would leave ICR < 150% reverts in Recovery Mode", async () => {
@@ -1531,7 +1532,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(newICR.gt(ICR_A) && newICR.lt(CCR))
 
       await assertRevert(borrowerOperations.adjustCdpWithColl(aliceIndex, 0, debtIncrease, true, aliceIndex, aliceIndex, collIncrease, { from: alice }),
-        "BorrowerOps: Operation must leave cdp with ICR >= CCR")
+        "BorrowerOperations: Operation must leave cdp with ICR >= CCR")
     })
 
     it("adjustCdp(): debt increase that would reduce the ICR reverts in Recovery Mode", async () => {
@@ -1569,7 +1570,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(newICR_A.lt(ICR_A) && newICR_A.gt(CCR))
 
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 0, aliceDebtIncrease, true, aliceIndex, aliceIndex, { from: alice, value: aliceCollIncrease }),
-        "BorrowerOps: Cannot decrease your Cdp's ICR in Recovery Mode")
+        "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode")
 
       //--- Bob with ICR < CCR tries to reduce his ICR ---
 
@@ -1589,7 +1590,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(newICR_B.lt(ICR_B))
 
       await assertRevert(borrowerOperations.adjustCdp(bobIndex, 0, bobDebtIncrease, true, bobIndex, bobIndex, { from: bob, value: bobCollIncrease }),
-        " BorrowerOps: Operation must leave cdp with ICR >= CCR")
+        " BorrowerOperations: Operation must leave cdp with ICR >= CCR")
     })
 
     it("adjustCdp(): A cdp with ICR < CCR in Recovery Mode can adjust their cdp to ICR > CCR", async () => {
@@ -2050,7 +2051,7 @@ contract('BorrowerOperations', async accounts => {
 
       await assertRevert(
         borrowerOperations.adjustCdp(aliceIndex, aliceColl, aliceDebt, true, aliceIndex, aliceIndex, { from: alice }),
-        'BorrowerOps: An operation that would result in ICR < MCR is not permitted'
+        'BorrowerOperations: An operation that would result in ICR < MCR is not permitted'
       )
     })
 
@@ -2063,7 +2064,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 0, 0, true, aliceIndex, aliceIndex, { from: alice }),
-        'BorrowerOps: Debt increase requires non-zero debtChange')
+        'BorrowerOperations: Debt increase requires non-zero debtChange')
     })
 
     it("adjustCdp(): Reverts if requested coll withdrawal and ether is sent", async () => {
@@ -2076,7 +2077,7 @@ contract('BorrowerOperations', async accounts => {
 
       borrowerOperations.adjustCdpWithColl(
         aliceIndex, dec(1, 'ether'), dec(100, 18), true, aliceIndex, aliceIndex, dec(3, 'ether'), { from: alice }),
-        'BorrowerOperations: Cannot withdraw and add coll'
+        'BorrowerOperations: Cannot add and withdraw collateral in same operation'
     })
 
     it("adjustCdp(): Reverts if it’s zero adjustment", async () => {
@@ -2086,7 +2087,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 0, 0, false, aliceIndex, aliceIndex, { from: alice }),
-                         'BorrowerOps: There must be either a collateral change or a debt change')
+                         'BorrowerOperations: There must be either a collateral change or a debt change')
     })
 
     it("adjustCdp(): Reverts if requested coll withdrawal is greater than cdp's collateral", async () => {
@@ -2145,7 +2146,7 @@ contract('BorrowerOperations', async accounts => {
     
       await assertRevert(
         borrowerOperations.closeCdp(aliceIndex, { from: alice }),
-        "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+        "BorrowerOperations: An operation that would result in TCR < CCR is not permitted"
       )
     })
 
@@ -2211,7 +2212,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Carol attempts to close her cdp during Recovery Mode
-      await assertRevert(borrowerOperations.closeCdp(carolIndex, { from: carol }), "BorrowerOps: Operation not permitted during Recovery Mode")
+      await assertRevert(borrowerOperations.closeCdp(carolIndex, { from: carol }), "BorrowerOperations: Operation not permitted during Recovery Mode")
     })
 
     it("closeCdp(): reverts when cdp is the only one in the system", async () => {
@@ -2636,7 +2637,7 @@ contract('BorrowerOperations', async accounts => {
       const closeCdpPromise_B = borrowerOperations.closeCdp(BIndex, { from: B })
 
       // Check closing cdp reverts
-      await assertRevert(closeCdpPromise_B, "BorrowerOps: Caller doesnt have enough EBTC to make repayment")
+      await assertRevert(closeCdpPromise_B, "BorrowerOperations: Caller doesnt have enough EBTC to make repayment")
     })
 
     // --- openCdp() ---
@@ -2673,7 +2674,7 @@ contract('BorrowerOperations', async accounts => {
           debt: A_Debt,
           coll: A_Coll,
           stake: toBN(await cdpManager.getCdpStake(AIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const B_expected = {
@@ -2684,7 +2685,7 @@ contract('BorrowerOperations', async accounts => {
           debt: B_Debt,
           coll: B_Coll,
           stake: toBN(await cdpManager.getCdpStake(BIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const C_expected = {
@@ -2695,7 +2696,7 @@ contract('BorrowerOperations', async accounts => {
           debt: C_Debt,
           coll: C_Coll,
           stake: toBN(await cdpManager.getCdpStake(CIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const checkEmittedValues = (expected, emitted) => {
@@ -3422,7 +3423,6 @@ contract('BorrowerOperations', async accounts => {
 
       // Get the expected debt based on the EBTC request (adding fee and liq. reserve on top)
       const expectedDebt = EBTCRequest
-        .add(await cdpManager.getBorrowingFee(EBTCRequest))
       const debt_After = await getCdpEntireDebt(aliceIndex)
       const coll_After = await getCdpEntireColl(aliceIndex)
       const status_After = await cdpManager.getCdpStatus(aliceIndex)

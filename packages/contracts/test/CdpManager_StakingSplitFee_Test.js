@@ -24,6 +24,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let sortedCdps
   let collSurplusPool;
   let _MCR;
+  let _CCR;
   let collToken;
   let splitFeeRecipient;
   let authority;
@@ -31,6 +32,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -45,6 +47,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
     minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     _MCR = await cdpManager.MCR();
+    _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
@@ -107,7 +110,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
       let _feeBalBefore = await activePool.getFeeRecipientClaimableColl();
-      await cdpManager.claimStakingSplitFee();  
+      await cdpManager.applyPendingGlobalState();  
       let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _fees[0]);
@@ -130,27 +133,16 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_icrAfter.toString()).gt(toBN(_icrBefore.toString())));
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
-      // ensure claimStakingSplitFee() could be called any time
+      // ensure applyPendingGlobalState() could be called any time
       let _loop = 10;
       for(let i = 0;i < _loop;i++){
           _newIndex = _newIndex.add(_deltaIndex.div(toBN("10")));
           await collToken.setEthPerShare(_newIndex);  
           let _newBalClaimable = await activePool.getFeeRecipientClaimableColl();
-          await cdpManager.claimStakingSplitFee();
+          await cdpManager.applyPendingGlobalState();
           assert.isTrue(_newBalClaimable.lt(await activePool.getFeeRecipientClaimableColl()));
           assert.isTrue(_newIndex.eq(await cdpManager.stFPPSg()));		  
       }
-  })
-  
-  it("Sync update interval", async() => {	  
-      let _oldInterval = await cdpManager.INDEX_UPD_INTERVAL();
-      assert.isTrue(toBN(_oldInterval.toString()).eq(toBN("43200")));	  
-	  
-      await collToken.setBeaconSpec(2, 1, 1);
-	  
-      await cdpManager.syncUpdateIndexInterval(); 
-      let _newInterval = await cdpManager.INDEX_UPD_INTERVAL();
-      assert.isTrue(toBN(_newInterval.toString()).eq(toBN("1")));// = (2*1*1) / 2
   })
   
   it("Fee would be applied to all CDPs when there is staking reward coming", async() => {
@@ -207,7 +199,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
           let _feeBalBefore = await activePool.getFeeRecipientClaimableColl(); 
-          await cdpManager.claimStakingSplitFee();  	 
+          await cdpManager.applyPendingGlobalState();  	 
           let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
@@ -221,8 +213,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
           _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
           let _totalStakeAfter = await cdpManager.totalStakes();
-          let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
-          let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStakeAfter);
+          let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg);
+          let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg);
 	     
           let _totalCollAfter = await cdpManager.getEntireSystemColl();  	 
 	  
@@ -317,7 +309,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
       let _collBeforeRedeemer = await collToken.balanceOf(owner); 
       let _newFeeIndex = await cdpManager.calcFeeUponStakingReward(_newIndex, _oi);
-      let _splitFeeAccumulated = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _newFeeIndex[1].add(await cdpManager.stFeePerUnitg()), _newFeeIndex[2], (await cdpManager.totalStakes()));
+      let _splitFeeAccumulated = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _newFeeIndex[1].add(await cdpManager.stFeePerUnitg()));
       await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  
       let _collAfterRedeemer = await collToken.balanceOf(owner);	
       let _aliceCollAfterRedeem = await cdpManager.getCdpColl(_aliceCdpId);  
@@ -340,14 +332,14 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
 	  
       let _feeBalBefore = await activePool.getFeeRecipientClaimableColl();
-      await cdpManager.claimStakingSplitFee();  
+      await cdpManager.applyPendingGlobalState();  
       let _feeBalAfter = await activePool.getFeeRecipientClaimableColl();
 	  
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
       let _stFeePerUnitgError = await cdpManager.stFeePerUnitgError();
       let _totalStake = await cdpManager.totalStakes();
-      let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
-      let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg, _stFeePerUnitgError, _totalStake);
+      let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _stFeePerUnitg);
+      let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _stFeePerUnitg);
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFeeShare, _errorTolerance);
 	  
@@ -428,7 +420,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);  
 	  
       // claim fee
-      await cdpManager.claimStakingSplitFee();
+      await cdpManager.applyPendingGlobalState();
 	  
       // final check
       _cdpDebtColl = await cdpManager.getEntireDebtAndColl(_cdpId);
@@ -477,7 +469,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.deposit({from: owner, value: _collAmt});    
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
-      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and open CDP  
       await priceFeed.setPrice(_originalPrice);    
@@ -499,7 +491,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _moreDebt = toBN("708960105069686413");	 
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
-      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOps: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and adjust CDP  
       await priceFeed.setPrice(_originalPrice);
@@ -518,7 +510,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));
-      await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOps: Operation not permitted during Recovery Mode")
+      await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOperations: Operation not permitted during Recovery Mode")
   })
   
   it("Test first ICR compared to TCR when there is staking reward", async() => {
@@ -545,6 +537,66 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _firstICR = await cdpManager.getCurrentICR(_firstId, _price);
       let _tcr = await cdpManager.getTCR(_price);
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
+  })  
+
+  it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	  
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: owner } });
+      let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
+      await openCdp({ ICR: toBN(dec(129, 16)), extraParams: { from: owner } });
+
+      let _price = dec(7228, 13);
+      await priceFeed.setPrice(_price);
+
+      // modify split fee
+      assert.isTrue(authority.address == (await cdpManager.authority()));
+      const accounts = await web3.eth.getAccounts()
+      assert.isTrue(accounts[0] == (await authority.owner()));
+      let _role123 = 123;
+      let _splitRewardSig = "0xb6fe918a";//cdpManager#SET_STAKING_REWARD_SPLIT_SIG;
+      await authority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: accounts[0]});	  
+      await authority.setUserRole(alice, _role123, true, {from: accounts[0]});
+      assert.isTrue((await authority.canCall(alice, cdpManager.address, _splitRewardSig)));
+      let _splitFee = 2399;
+      await cdpManager.setStakingRewardSplit(_splitFee, {from: alice});
+      let _s = await cdpManager.stakingRewardSplit(); 
+      assert.isTrue(_splitFee == _s); 
+
+      // make some fee to claim
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      let _oldIndex = web3.utils.toBN('1000000000000000000');
+      let _newIndex = web3.utils.toBN('1010000000000000000');
+      let _deltaIndex = _newIndex.sub(_oldIndex);
+      let _idxPrime = _newIndex.sub(_deltaIndex.mul(_s).div(toBN("10000")));// I' = (I - deltaI * splitFee)
+      await collToken.setEthPerShare(_newIndex);
+
+      // check TCR for victim
+      let _tcrBefore = await cdpManager.getTCR(_price);
+      let _victimICRBefore = await cdpManager.getCurrentICR(_victimId, _price);
+      assert.isTrue(_tcrBefore.gt(_CCR));
+      assert.isTrue(_victimICRBefore.lt(_CCR));
+      let _1e36 = mv._1e18BN.mul(mv._1e18BN);
+
+      // calculate triggering CDP parameters
+      let _totalC = await cdpManager.getEntireSystemColl();
+      let _totalD = await cdpManager.getEntireSystemDebt();	  
+      let _icrUpper = _CCR// icr < CCR
+      let _numerator = _totalC.mul(_idxPrime).mul(toBN(_price)).div(_1e36).sub(_CCR.mul(_totalD).div(mv._1e18BN));// (C * I' * p - CCR * D)
+      let _icrLower = _CCR.mul(_newIndex).mul(toBN(_price)).mul(minDebt).div(_1e36).div(_numerator.add(minDebt.mul(toBN(_price)).mul(_newIndex).div(_1e36)))// icr > (2 * p * I * CCR) / (C * I' * p - CCR * D + 2 * p * I)
+      let _icr = toBN("1249753714546239750");
+      let _denominator = _CCR.sub(_icr);// CCR - icr
+      let _ebtcAmt = _numerator.mul(mv._1e18BN).div(_denominator).add(toBN("1234567890"));
+
+      // attacker open CDP to facilitate Recovery Mode triggering deliberately
+      let _collAmt = liq_stipend.add(_ebtcAmt.mul(_icr).div(toBN(_price)));
+      //console.log('_totalC=' + _totalC + ', _totalD=' + _totalD + ", _I'=" + _idxPrime + ', _d=' + _ebtcAmt + ', _c=' + _collAmt + ', _icrLower=' + _icrLower);
+      await collToken.deposit({from: bob, value: _collAmt});   
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});  
+      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _price, _splitFee);
+      assert.isTrue(_deltaIndex.lte(_deltaRequiredIdx));  
+      let _idxBefore = await cdpManager.stFPPSg();
+      assert.isTrue(_idxBefore.eq(_oldIndex));
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
   })
   
   

@@ -22,8 +22,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         authority.setRoleName(testRole, "TestRole");
         vm.stopPrank();
 
-        console.log("1");
-
         _grantAllGovernorCapabilitiesToRole(testRole);
         _testRoleWithCapabilitiesCanCallGovernorFunctions(testUser, testRole);
     }
@@ -135,7 +133,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         }
 
         vm.stopPrank();
-        console.log("2");
     }
 
     function _testRoleWithCapabilitiesCanCallGovernorFunctions(
@@ -149,8 +146,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         string memory updatedRoleName = authority.getRoleName(testRole);
         assertEq(updatedRoleName, "NewTestRole", "Role name should have been updated");
 
-        console.log("3");
-
         // setUserRole
         address newUser = address(0x2);
         authority.setUserRole(newUser, testRole, true); // This should succeed
@@ -159,8 +154,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
             true,
             "New user should have the testRole"
         );
-
-        console.log("4");
 
         // setRoleCapability
         bytes4 newFuncSig = bytes4(keccak256("newFunctionSignature()"));
@@ -171,8 +164,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
             "TestRole should have the new capability"
         );
 
-        console.log("5");
-
         // setPublicCapability true
         authority.setPublicCapability(address(authority), newFuncSig, true); // This should succeed
         assertEq(
@@ -181,8 +172,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
             "New function signature should be public"
         );
 
-        console.log("6");
-
         // setPublicCapability false
         authority.setPublicCapability(address(authority), newFuncSig, false); // This should succeed
         assertEq(
@@ -190,8 +179,6 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
             false,
             "New function signature should not be public"
         );
-
-        console.log("7");
 
         vm.stopPrank();
     }

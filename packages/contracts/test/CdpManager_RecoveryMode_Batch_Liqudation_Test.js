@@ -98,9 +98,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
-      assert.equal(liquidationEvents[0].args[4].toString(), '2');//liquidateInRecoveryMode
-      assert.equal(liquidationEvents[1].args[4].toString(), '2');//liquidateInRecoveryMode
-      assert.equal(liquidationEvents[2].args[4].toString(), '1');//liquidateInNormalMode
+      assert.equal(liquidationEvents[0].args[4].toString(), '5');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[1].args[4].toString(), '5');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[2].args[4].toString(), '4');//liquidateInNormalMode
 
       // Confirm all cdps removed
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
