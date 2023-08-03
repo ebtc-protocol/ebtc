@@ -42,7 +42,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         vm.assume(debtAmt > 1e18);
 
         uint _curPrice = priceFeedMock.getPrice();
-        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16);
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 136e16);
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
@@ -90,15 +90,16 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         console.log("systemDebtAmount", systemDebtAmount);
         console.log("attackerDebtAmount", attackerDebtAmount);
+
         // u88 max is 3e26, max bitcoins are 2e25 (adjuges for 18 decimals)
         // And a ICR for the attacker that will drive the TCR below 150
-        cdpCR = cdpCR % 126e16; // Anything above is not meaningful since it drives the TCR above
+        cdpCR = cdpCR % 135e16; // Anything above is not meaningful since it drives the TCR above
         console.log("cdpCR", cdpCR);
 
         uint _curPrice = priceFeedMock.getPrice();
 
         // 2) Given an initial deposit that matches the attacker capital, that is very close to CCR
-        uint256 coll1 = _utils.calculateCollAmount(systemDebtAmount, _curPrice, 126e16); // Literally at the edge
+        uint256 coll1 = _utils.calculateCollAmount(systemDebtAmount, _curPrice, 136e16); // Literally at the edge
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, systemDebtAmount);
         console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
@@ -179,7 +180,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         uint _curPrice = priceFeedMock.getPrice();
 
-        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 136e16); // Literally at the edge
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
         console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
@@ -189,8 +190,8 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         // Deposit and bring TCR to RM
 
-        // 2% of amt
-        uint256 victimAmount = debtAmt / 20;
+        // 1% of amt
+        uint256 victimAmount = debtAmt / 100;
         console.log("victimAmount", victimAmount);
 
         // Levered to the tits
@@ -207,11 +208,14 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         collateral.setEthPerShare(_newIndex);
 
         // Attacker opens CDP to push to barely to RM
-        uint256 attackerDebtAmount = debtAmt;
+        uint256 attackerDebtAmount = debtAmt; // AMT matches increase in value so we decrease TCR 
         // 1214e15 makes the tx revert due to change in TCR
-        // 1215e15 is safe but the liquidation reverts
-        uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, 1215e15); // NOTE: This fails
-        bytes32 cdpIdAttacker = _openTestCDP(users[0], collAttacker, attackerDebtAmount);
+        // 125e16 is safe but the liquidation reverts
+
+        // NOTE: We cannot trigger RM, but this still reverts since it's too strong of a negative push
+        uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, 130e16);
+
+        bytes32 cdpIdAttacker = _expectCdpRevert(users[0], collAttacker, attackerDebtAmount);
         console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
 
         // Now we take the split
@@ -229,5 +233,15 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 tcrEnd = cdpManager.getTCR(_curPrice);
         console.log("tcrEnd liquidation", tcrEnd);
         assertGt(tcrEnd, 1250000000000000000);
+    }
+
+    function _expectCdpRevert(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+        dealCollateral(_user, _coll);
+        vm.startPrank(_user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        vm.expectRevert();
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
+        vm.stopPrank();
+        return _cdpId;
     }
 }
