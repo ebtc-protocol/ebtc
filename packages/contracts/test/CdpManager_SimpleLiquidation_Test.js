@@ -357,7 +357,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
       th.assertIsApproximatelyEqual(_liquidatedEvents[0].args[2].toString(), _expectedDebtRepaid.toString());
       assert.equal(_liquidatedEvents[0].args[3].toString(), aliceColl.toString(), '!liquidated CDP collateral');
-      assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
+      assert.equal(_liquidatedEvents[0].args[4].toString(), '5', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
 
@@ -412,7 +412,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
       assert.equal(_liquidatedEvents[0].args[2].toString(), aliceDebt.toString(), '!liquidated CDP debt');
       assert.equal(_liquidatedEvents[0].args[3].toString(), _cappedLiqColl.toString(), '!liquidated CDP collateral');
-      assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
+      assert.equal(_liquidatedEvents[0].args[4].toString(), '5', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
       let _expectClaimSurplus = toBN(aliceColl.toString()).sub(_cappedLiqColl);

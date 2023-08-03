@@ -2674,7 +2674,7 @@ contract('BorrowerOperations', async accounts => {
           debt: A_Debt,
           coll: A_Coll,
           stake: toBN(await cdpManager.getCdpStake(AIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const B_expected = {
@@ -2685,7 +2685,7 @@ contract('BorrowerOperations', async accounts => {
           debt: B_Debt,
           coll: B_Coll,
           stake: toBN(await cdpManager.getCdpStake(BIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const C_expected = {
@@ -2696,7 +2696,7 @@ contract('BorrowerOperations', async accounts => {
           debt: C_Debt,
           coll: C_Coll,
           stake: toBN(await cdpManager.getCdpStake(CIndex)),
-          operation: toBN(0), //BorrowerOperations.openCDP
+          operation: toBN(0), //CdpOperation.openCDP
         };
 
         const checkEmittedValues = (expected, emitted) => {

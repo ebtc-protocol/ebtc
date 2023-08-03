@@ -96,7 +96,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     it("closeCdp(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await cdpManager.closeCdp(bob, { from: alice })
+        const txAlice = await cdpManager.closeCdp(bob, bob, 0, 0, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -116,47 +116,11 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // increaseCdpColl
-    it("increaseCdpColl(): reverts when called by an account that is not BorrowerOperations", async () => {
+    // updateCdp
+    it("updateCdp(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await cdpManager.increaseCdpColl(bob, 100, { from: alice })
-        
-      } catch (err) {
-         assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
-    // decreaseCdpColl
-    it("decreaseCdpColl(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.decreaseCdpColl(bob, 100, { from: alice })
-        
-      } catch (err) {
-         assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
-    // increaseCdpDebt
-    it("increaseCdpDebt(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.increaseCdpDebt(bob, 100, { from: alice })
-        
-      } catch (err) {
-         assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
-    // decreaseCdpDebt
-    it("decreaseCdpDebt(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.decreaseCdpDebt(bob, 100, { from: alice })
+        const txAlice = await cdpManager.updateCdp(bob, cdpManager.address, 1, 1, 1, 1, { from: alice })
         
       } catch (err) {
          assert.include(err.message, "revert")
