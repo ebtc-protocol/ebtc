@@ -446,6 +446,35 @@ class TestHelper {
         }
       }
     }
+    if(eventName === 'CdpUpdated'){
+      // try rawLogs for CdpUpdated
+      for (let i = 0; i < tx.receipt.rawLogs.length; i++) {
+           //console.log('tx.receipt.rawLogs[' + i + '].topics[0]=' + tx.receipt.rawLogs[i].topics[0]);
+           if (tx.receipt.rawLogs[i].topics[0] === '0x7e042f3ac12649aab70b1f15fc844445c798d7b434140e6cce56fcbb5a7c0bf1') {
+               if (argName === '_cdpId'){
+                   return tx.receipt.rawLogs[i].topics[1];
+               } else if (argName === '_borrower'){
+                   return web3.utils.toChecksumAddress('0x' + tx.receipt.rawLogs[i].topics[2].substring(26).toUpperCase());				   
+               } else{
+                   let parsedVal = web3.eth.abi.decodeParameters(['uint256','uint256','uint256','uint256','uint256','uint8'], tx.receipt.rawLogs[i].data);
+                   //console.log('CdpUpdated event data parsed=' + JSON.stringify(parsedVal));
+                   if (argName === '_oldDebt'){
+                       return parsedVal['0'];
+                   } else if (argName === '_oldColl'){
+                       return parsedVal['1'];
+                   } else if (argName === '_debt'){
+                       return parsedVal['2'];
+                   } else if (argName === '_coll'){
+                       return parsedVal['3'];
+                   } else if (argName === '_stake'){
+                       return parsedVal['4'];
+                   } else { // _operation
+                       return parsedVal['5'];
+                   } 				   
+               }
+           }	  
+      }		
+    }
 
     throw (`The transaction logs do not contain event ${eventName} and arg ${argName}`)
   }
@@ -749,7 +778,7 @@ class TestHelper {
         if (DEBUG) console.log('transfer ' + _finalColl + 'coll to proxy=' + extraParams.usrProxy);	
     }
     const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, _finalColl, extraParams)
-
+	
     return {
       ebtcAmount,
       netDebt,
