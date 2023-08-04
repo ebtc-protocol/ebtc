@@ -777,9 +777,7 @@ contract BorrowerOperations is
         uint _debtChange,
         bool _isDebtIncrease,
         uint _price
-    ) internal returns (uint) {
-        emit L4("vars", _coll, _debt, _collChange, _debtChange);
-        emit L2("increase", _isCollIncrease ? 1 : 0, _isDebtIncrease ? 1 : 0);
+    ) internal view returns (uint) {
         (uint newColl, uint newDebt) = _getNewCdpAmounts(
             _coll,
             _debt,
