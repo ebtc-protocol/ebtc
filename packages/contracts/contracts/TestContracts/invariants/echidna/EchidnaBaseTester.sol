@@ -23,8 +23,8 @@ import "../Actor.sol";
 abstract contract EchidnaBaseTester {
     using SafeMath for uint;
 
-    uint internal constant NUMBER_OF_ACTORS = 100;
-    uint internal constant INITIAL_BALANCE = 1e24;
+    uint internal constant NUMBER_OF_ACTORS = 3;
+    uint internal constant INITIAL_ETH_BALANCE = 1e24;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
     uint internal MCR;
     uint internal CCR;
@@ -46,7 +46,7 @@ abstract contract EchidnaBaseTester {
     address defaultGovernance;
     EBTCDeployer ebtcDeployer;
 
-    Actor[NUMBER_OF_ACTORS] internal actors;
+    mapping(address => Actor) internal actors;
 
     uint internal numberOfCdps;
 
