@@ -510,14 +510,10 @@ contract EchidnaTester is
         }
     }
 
-    // by using uint128 we're not interested in SafeMath reverts
-    function openCdp(uint128 _col1, uint128 _EBTCAmount1) external {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) external {
         Actor actor = actors[msg.sender];
         bool success;
         bytes memory returnData;
-
-        uint256 _col = uint256(_col1);
-        uint256 _EBTCAmount = uint256(_EBTCAmount1);
 
         // we pass in CCR instead of MCR in case it's the first one
         uint price = priceFeedTestnet.getPrice();
