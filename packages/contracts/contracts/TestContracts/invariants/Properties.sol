@@ -225,8 +225,8 @@ abstract contract Properties is AssertionHelper {
         }
     }
 
-    /// @notice P-49 Adding collateral improves Nominal ICR
-    function invariant_P_36(uint256 nicrBefore, uint256 nicrAfter) internal view returns (bool) {
+    /// @notice P-48 Adding collateral improves Nominal ICR
+    function invariant_P_48(uint256 nicrBefore, uint256 nicrAfter) internal view returns (bool) {
         return nicrAfter > nicrBefore;
     }
 

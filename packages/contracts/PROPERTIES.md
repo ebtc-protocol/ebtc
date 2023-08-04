@@ -68,4 +68,5 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | P-45 | Anyone can open more than 1 CDP, and can open even if one of the CDPs is undercollateralized | High Level | |
 | P-46 | TCR should be slightly improved after every redemption | High Level | |
 | P-47 | The collateral balance of the ActivePool is positive if there is at least one CDP open | High Level | |
-| P-48 | Adding collateral improves Nominal ICR | ✅ |
+| P-48 | Adding collateral improves the Nominal ICR | ✅ |
+| P-49 | Adding collateral decreases the Nominal ICR | ✅ |

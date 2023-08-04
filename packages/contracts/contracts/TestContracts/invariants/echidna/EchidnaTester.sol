@@ -551,8 +551,8 @@ contract EchidnaTester is
         );
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
-            _ensureNoLiquidationTriggered(_cdpId);
-            _ensureNoRecoveryModeTriggered();
+            // _ensureNoLiquidationTriggered(_cdpId);
+            // _ensureNoRecoveryModeTriggered();
 
             uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
             assertGte(_collWorth, MIN_NET_COLL, "CDP collateral must be above minimum");
@@ -649,15 +649,31 @@ contract EchidnaTester is
         }
     }
 
-    function withdrawColl(uint _amount) internal {
+    function withdrawColl(uint _amount, uint256 _i) external {
         Actor actor = actors[msg.sender];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-        require(_cdpId != bytes32(0), "!cdpId");
+        bool success;
+        bytes memory returnData;
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         CDPChange memory _change = CDPChange(0, _amount, 0, 0);
-        _ensureMCR(_cdpId, _change);
 
-        actor.proxy(
+        // Can only withdraw up to CDP collateral amount, otherwise will revert with assert
+        _amount = clampBetween(
+            _amount,
+            0,
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
+        );
+        // _ensureMCR(_cdpId, _change);
+
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.withdrawColl.selector,
@@ -667,8 +683,47 @@ contract EchidnaTester is
                 _cdpId
             )
         );
-        _ensureNoLiquidationTriggered(_cdpId);
-        _ensureNoRecoveryModeTriggered();
+
+        _after(_cdpId);
+
+        // _ensureNoLiquidationTriggered(_cdpId);
+        // _ensureNoRecoveryModeTriggered();
+
+        if (success) {
+            // TODO add more invariants here
+            assertLt(
+                vars.nicrAfter,
+                vars.nicrBefore,
+                "P-50 Removing collateral decreases the Nominal ICR"
+            );
+        } else {
+            if (_amount == 0) {
+                assertWithMsg(
+                    _isRevertReasonEqual(
+                        returnData,
+                        "BorrowerOps: There must be either a collateral change or a debt change"
+                    ),
+                    "Cannot withdrawColl 0"
+                );
+            } else {
+                // TODO think of a better way to split these reverts
+                assertWithMsg(
+                    _isRevertReasonEqual(
+                        returnData,
+                        "BorrowerOps: Cdp's net coll must be greater than minimum"
+                    ) ||
+                        _isRevertReasonEqual(
+                            returnData,
+                            "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                        ) ||
+                        _isRevertReasonEqual(
+                            returnData,
+                            "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
+                        ),
+                    "Cannot leave CDP collateral below minimum nor leave TCR < CCR nor leave ICR < MCR"
+                );
+            }
+        }
     }
 
     function withdrawEBTC(uint _amount) internal {
