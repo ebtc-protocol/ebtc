@@ -739,15 +739,14 @@ contract EchidnaTester is
             // withdraw increases debt
             // withdraw decreases NICR debt
             assertGt(vars.nicrBefore, vars.nicrAfter, "withdrawEBTC decreases Nominal ICR");
-
-        } 
-        else if(_amount == 0) {
-            assertRevertReasonEqual(returnData, "BorrowerOps: Debt increase requires non-zero debtChange");
-        }
-        else if (vars.cdpStatusBefore != 1) {
+        } else if (_amount == 0) {
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: Debt increase requires non-zero debtChange"
+            );
+        } else if (vars.cdpStatusBefore != 1) {
             assertRevertReasonEqual(returnData, "BorrowerOps: Cdp does not exist or is closed");
-        } 
-        else {
+        } else {
             assertRevertReasonEqual(
                 returnData,
                 "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
@@ -756,16 +755,25 @@ contract EchidnaTester is
         }
     }
 
-    function repayEBTC(uint _amount) internal {
+    function repayEBTC(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-        require(_cdpId != bytes32(0), "!cdpId");
+        bool success;
+        bytes memory returnData;
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
         (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-        _amount = clampBetween(_amount, 1, entireDebt);
-        uint _price = priceFeedTestnet.fetchPrice();
-        uint _tcrBefore = cdpManager.getTCR(_price);
-        actor.proxy(
+        _amount = clampBetween(_amount, 0, entireDebt);
+
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.repayEBTC.selector,
@@ -775,8 +783,22 @@ contract EchidnaTester is
                 _cdpId
             )
         );
-        uint _tcrAfter = cdpManager.getTCR(_price);
-        assert(_tcrAfter > _tcrBefore);
+
+        _after(_cdpId);
+
+        if (success) {
+            assertGt(vars.tcrAfter, vars.tcrBefore, "TCR must increase after a repayment");
+        } else if (_amount == 0) {
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: There must be either a collateral change or a debt change"
+                // "Cannot repayBTC 0"
+            );
+        } else if (vars.debtBefore - _amount == 0) {
+            assertRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero");
+        } else {
+            assertRevertReasonEqual(returnData, "TODO");
+        }
     }
 
     function closeCdp(uint _i) external {
