@@ -47,6 +47,7 @@ abstract contract EchidnaBaseTester {
     EBTCDeployer ebtcDeployer;
 
     mapping(address => Actor) internal actors;
+    Actor internal actor;
 
     uint internal numberOfCdps;
 

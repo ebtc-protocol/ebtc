@@ -294,7 +294,6 @@ contract EchidnaTester is
 
     function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
         uint price = priceFeedTestnet.getPrice();
-        require(price > 0);
         (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
         uint _debt = entireDebt + _change.debtAddition - _change.debtReduction;
         uint _coll = entireColl + _change.collAddition - _change.collReduction;
@@ -317,22 +316,18 @@ contract EchidnaTester is
     // helper functions
     function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
         uint _price = priceFeedTestnet.getPrice();
-        if (_price > 0) {
-            bool _recovery = cdpManager.checkRecoveryMode(_price);
-            uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
-            if (_recovery) {
-                require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
-            } else {
-                require(_icr > cdpManager.MCR(), "liquidationTriggeredInNormalMode");
-            }
+        bool _recovery = cdpManager.checkRecoveryMode(_price);
+        uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+        if (_recovery) {
+            require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
+        } else {
+            require(_icr > cdpManager.MCR(), "liquidationTriggeredInNormalMode");
         }
     }
 
     function _ensureNoRecoveryModeTriggered() internal view {
         uint _price = priceFeedTestnet.getPrice();
-        if (_price > 0) {
-            require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
-        }
+        require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
     }
 
     ///////////////////////////////////////////////////////
@@ -340,7 +335,7 @@ contract EchidnaTester is
     ///////////////////////////////////////////////////////
 
     function liquidate(uint _i) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
@@ -362,7 +357,7 @@ contract EchidnaTester is
     }
 
     function partialLiquidate(uint _i, uint _partialAmount) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
@@ -392,7 +387,7 @@ contract EchidnaTester is
     }
 
     function liquidateCdps(uint _i, uint _n) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
 
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
@@ -414,7 +409,8 @@ contract EchidnaTester is
         bytes32 _hint,
         uint _partialRedemptionHintNICR
     ) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(
@@ -439,7 +435,8 @@ contract EchidnaTester is
     ///////////////////////////////////////////////////////
 
     function flashloanColl(uint _amount) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
 
         // sugardaddy fee
@@ -474,7 +471,8 @@ contract EchidnaTester is
     ///////////////////////////////////////////////////////
 
     function flashloanEBTC(uint _amount) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
 
         // sugardaddy fee
@@ -513,14 +511,13 @@ contract EchidnaTester is
     }
 
     function openCdp(uint256 _col, uint256 _EBTCAmount) external {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         bool success;
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
         uint price = priceFeedTestnet.getPrice();
-        // TODO understand when price can be zero and validate if that makes sense
-        require(price > 0);
 
         uint256 requiredCollAmount = (_EBTCAmount * CCR) / (price);
         uint256 minCollAmount = max(
@@ -583,7 +580,8 @@ contract EchidnaTester is
     }
 
     function addColl(uint _coll, uint256 _i) external {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         bool success;
         bytes memory returnData;
 
@@ -650,7 +648,8 @@ contract EchidnaTester is
     }
 
     function withdrawColl(uint _amount, uint256 _i) external {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         bool success;
         bytes memory returnData;
 
@@ -727,7 +726,8 @@ contract EchidnaTester is
     }
 
     function withdrawEBTC(uint _amount) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
@@ -749,7 +749,8 @@ contract EchidnaTester is
     }
 
     function repayEBTC(uint _amount) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
         (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
@@ -770,19 +771,61 @@ contract EchidnaTester is
         assert(_tcrAfter > _tcrBefore);
     }
 
-    function closeCdp(uint _i) internal {
-        Actor actor = actors[msg.sender];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-        require(_cdpId != bytes32(0), "!cdpId");
-        require(1 == cdpManager.getCdpStatus(_cdpId), "!closeCdpExtActive");
-        actor.proxy(
+    function closeCdp(uint _i) external {
+        actor = actors[msg.sender];
+
+        bool success;
+        bytes memory returnData;
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
         );
+
+        _after(_cdpId);
+
+        if (success) {
+            // TODO add more invariants
+            assertEq(
+                vars.sortedCdpsSizeBefore - 1,
+                vars.sortedCdpsSizeAfter,
+                "closeCdp reduces list size by 1"
+            );
+            assertEq(
+                vars.actorCollBefore +
+                    vars.cdpCollBefore +
+                    vars.liquidatorRewardSharesBefore,
+                vars.actorCollAfter,
+                "closeCdp gives collateral and liquidator rewards back to user"
+            );
+        } else if (vars.sortedCdpsSizeBefore == 1) {
+            assertWithMsg(
+                _isRevertReasonEqual(returnData, "CdpManager: Only one cdp in the system"),
+                "closeCdp must not close last CDP"
+            );
+        } else {
+            assertWithMsg(
+                _isRevertReasonEqual(returnData, "BorrowerOps: Cdp does not exist or is closed") ||
+                    _isRevertReasonEqual(
+                        returnData,
+                        "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                    ),
+                "closeCdp must target active CDP"
+            );
+        }
     }
 
     function adjustCdp(uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease) internal {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
@@ -790,7 +833,6 @@ contract EchidnaTester is
         require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
 
         uint price = priceFeedTestnet.getPrice();
-        require(price > 0);
 
         uint debtChange = _debtChange;
         CDPChange memory _change;
@@ -827,7 +869,8 @@ contract EchidnaTester is
 
     // TODO evaluate if recipient should be any or should be one of actors
     function approveAndTransfer(address recipient, uint256 amount) internal returns (bool) {
-        Actor actor = actors[msg.sender];
+        actor = actors[msg.sender];
+
         actor.proxy(
             address(eBTCToken),
             abi.encodeWithSelector(EBTCToken.approve.selector, recipient, amount)
