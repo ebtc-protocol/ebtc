@@ -239,7 +239,9 @@ contract BorrowerOperations is
         );
     }
 
-    event LL(uint, uint);
+    event L2(string, uint, uint);
+    event L3(string, uint, uint, uint);
+    event L4(string, uint, uint, uint, uint);
 
     /*
      * _adjustCdpInternal(): Alongside a debt change, this function can perform either
@@ -283,7 +285,7 @@ contract BorrowerOperations is
         cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
-        emit LL(_collAddAmount, _collWithdrawal);
+        emit L3("before", _collAddAmount, _collWithdrawal, _EBTCChange);
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
         vars.netDebtChange = _EBTCChange;
@@ -303,6 +305,7 @@ contract BorrowerOperations is
             _isDebtIncrease,
             vars.price
         );
+        emit L2("assert", _collWithdrawal, _cdpCollAmt);
         assert(_collWithdrawal <= _cdpCollAmt);
 
         // Check the adjustment satisfies all conditions for the current system mode
@@ -774,7 +777,9 @@ contract BorrowerOperations is
         uint _debtChange,
         bool _isDebtIncrease,
         uint _price
-    ) internal view returns (uint) {
+    ) internal returns (uint) {
+        emit L4("vars", _coll, _debt, _collChange, _debtChange);
+        emit L2("increase", _isCollIncrease ? 1 : 0, _isDebtIncrease ? 1 : 0);
         (uint newColl, uint newDebt) = _getNewCdpAmounts(
             _coll,
             _debt,

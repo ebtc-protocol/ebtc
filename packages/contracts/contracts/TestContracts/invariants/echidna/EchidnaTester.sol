@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.17;
 
-import "@crytic/properties/contracts/util/PropertiesHelper.sol";
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 
 import "../../../Interfaces/ICdpManagerData.sol";
@@ -36,7 +35,6 @@ contract EchidnaTester is
     EchidnaBaseTester,
     EchidnaBeforeAfter,
     EchidnaProperties,
-    PropertiesAsserts,
     PropertiesConstants
 {
     constructor() payable {
@@ -558,22 +556,18 @@ contract EchidnaTester is
             assertWithMsg(numberOfCdps > 0, "CDPs count must have increased");
         } else {
             if (_EBTCAmount == 0) {
-                assertWithMsg(
-                    _isRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero"),
-                    "Cannot open CDP with zero debt"
-                );
+                assertRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero");
             } else if (collateral.balanceOf(address(actor)) < _col) {
-                assertWithMsg(
-                    _isRevertReasonEqual(returnData, "ERC20: transfer amount exceeds balance"),
-                    "Actor must have collateral to open CDP"
+                assertRevertReasonEqual(
+                    returnData,
+                    "ERC20: transfer amount exceeds balance"
+                    // Actor must have collateral to open CDP
                 );
             } else {
-                assertWithMsg(
-                    _isRevertReasonEqual(
-                        returnData,
-                        "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
-                    ),
-                    "Cannot open CDP and decrease TCR below CCR"
+                assertRevertReasonEqual(
+                    returnData,
+                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                    // Actor must have collateral to open CDP
                 );
             }
         }
@@ -632,18 +626,12 @@ contract EchidnaTester is
             // TODO add more invariants here
             assertGt(vars.nicrAfter, vars.nicrBefore, "P-49 Adding collateral improves Nominal ICR");
         } else {
-            if (_coll == 0) {
-                assertWithMsg(
-                    _isRevertReasonEqual(
-                        returnData,
-                        "BorrowerOps: There must be either a collateral change or a debt change"
-                    ),
-                    "Cannot addColl 0"
-                );
-            } else {
-                emit LogUint256(_getRevertMsg(returnData), _coll);
-                assertWithMsg(false, "Add other revert conditions here");
-            }
+            assertEq(_coll, 0, "Cannot addColl 0");
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: There must be either a collateral change or a debt change"
+                // "Cannot addColl 0"
+            );
         }
     }
 
@@ -697,44 +685,43 @@ contract EchidnaTester is
             );
         } else {
             if (_amount == 0) {
-                assertWithMsg(
-                    _isRevertReasonEqual(
-                        returnData,
-                        "BorrowerOps: There must be either a collateral change or a debt change"
-                    ),
-                    "Cannot withdrawColl 0"
+                assertRevertReasonEqual(
+                    returnData,
+                    "BorrowerOps: There must be either a collateral change or a debt change"
                 );
             } else {
-                // TODO think of a better way to split these reverts
-                assertWithMsg(
-                    _isRevertReasonEqual(
-                        returnData,
-                        "BorrowerOps: Cdp's net coll must be greater than minimum"
-                    ) ||
-                        _isRevertReasonEqual(
-                            returnData,
-                            "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
-                        ) ||
-                        _isRevertReasonEqual(
-                            returnData,
-                            "BorrowerOps: An operation that would result in ICR < MCR is not permitted"
-                        ),
-                    "Cannot leave CDP collateral below minimum nor leave TCR < CCR nor leave ICR < MCR"
+                assertRevertReasonEqual(
+                    returnData,
+                    "BorrowerOps: Cdp's net coll must be greater than minimum",
+                    "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
+                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
                 );
             }
         }
     }
 
-    function withdrawEBTC(uint _amount) internal {
+    function withdrawEBTC(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-        require(_cdpId != bytes32(0), "!cdpId");
+        bool success;
+        bytes memory returnData;
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
+        // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
+        // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflows
+        _amount = clampBetween(_amount, 0, type(uint128).max);
 
         CDPChange memory _change = CDPChange(0, 0, _amount, 0);
-        _ensureMCR(_cdpId, _change);
 
-        actor.proxy(
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.withdrawEBTC.selector,
@@ -744,8 +731,29 @@ contract EchidnaTester is
                 _cdpId
             )
         );
-        _ensureNoLiquidationTriggered(_cdpId);
-        _ensureNoRecoveryModeTriggered();
+
+        _after(_cdpId);
+
+        if (success) {
+            // TODO add more invariants
+            // withdraw increases debt
+            // withdraw decreases NICR debt
+            assertGt(vars.nicrBefore, vars.nicrAfter, "withdrawEBTC decreases Nominal ICR");
+
+        } 
+        else if(_amount == 0) {
+            assertRevertReasonEqual(returnData, "BorrowerOps: Debt increase requires non-zero debtChange");
+        }
+        else if (vars.cdpStatusBefore != 1) {
+            assertRevertReasonEqual(returnData, "BorrowerOps: Cdp does not exist or is closed");
+        } 
+        else {
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+            );
+        }
     }
 
     function repayEBTC(uint _amount) internal {
@@ -800,26 +808,23 @@ contract EchidnaTester is
                 vars.sortedCdpsSizeAfter,
                 "closeCdp reduces list size by 1"
             );
+            assertGt(
+                vars.actorCollAfter,
+                vars.actorCollBefore,
+                "closeCdp increases the collateral balance of the user"
+            );
             assertEq(
-                vars.actorCollBefore +
-                    vars.cdpCollBefore +
-                    vars.liquidatorRewardSharesBefore,
+                vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter,
                 "closeCdp gives collateral and liquidator rewards back to user"
             );
         } else if (vars.sortedCdpsSizeBefore == 1) {
-            assertWithMsg(
-                _isRevertReasonEqual(returnData, "CdpManager: Only one cdp in the system"),
-                "closeCdp must not close last CDP"
-            );
+            assertRevertReasonEqual(returnData, "CdpManager: Only one cdp in the system");
         } else {
-            assertWithMsg(
-                _isRevertReasonEqual(returnData, "BorrowerOps: Cdp does not exist or is closed") ||
-                    _isRevertReasonEqual(
-                        returnData,
-                        "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
-                    ),
-                "closeCdp must target active CDP"
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: Cdp does not exist or is closed",
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
             );
         }
     }
