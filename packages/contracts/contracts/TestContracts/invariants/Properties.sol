@@ -225,6 +225,11 @@ abstract contract Properties is AssertionHelper {
         }
     }
 
+    /// @notice P-49 Adding collateral improves Nominal ICR
+    function invariant_P_36(uint256 nicrBefore, uint256 nicrAfter) internal view returns (bool) {
+        return nicrAfter > nicrBefore;
+    }
+
     /// @notice DUMMY-01 PriceFeed is configured
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;

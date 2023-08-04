@@ -239,6 +239,8 @@ contract BorrowerOperations is
         );
     }
 
+    event LL(uint, uint);
+
     /*
      * _adjustCdpInternal(): Alongside a debt change, this function can perform either
      * a collateral top-up or a collateral withdrawal.
@@ -281,6 +283,7 @@ contract BorrowerOperations is
         cdpManager.applyPendingRewards(_cdpId);
 
         // Get the collChange based on the collateral value transferred in the transaction
+        emit LL(_collAddAmount, _collWithdrawal);
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
         vars.netDebtChange = _EBTCChange;

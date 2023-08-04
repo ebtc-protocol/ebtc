@@ -26,6 +26,7 @@ import "../Properties.sol";
 import "../Actor.sol";
 import "./EchidnaBaseTester.sol";
 import "./EchidnaProperties.sol";
+import "./EchidnaBeforeAfter.sol";
 
 // Run with:
 // cd <your-path-to-ebtc-repo-root>/packages/contracts
@@ -33,6 +34,7 @@ import "./EchidnaProperties.sol";
 // <your-path-to->/echidna-test contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
 contract EchidnaTester is
     EchidnaBaseTester,
+    EchidnaBeforeAfter,
     EchidnaProperties,
     PropertiesAsserts,
     PropertiesConstants
@@ -528,11 +530,6 @@ contract EchidnaTester is
         uint256 maxCollAmount = min(2 * minCollAmount, INITIAL_COLL_BALANCE / 10);
         _col = clampBetween(requiredCollAmount, minCollAmount, maxCollAmount);
 
-        assertGte(
-            collateral.balanceOf(address(actor)),
-            _col,
-            "Actor always has balance to perform openCdp"
-        );
         (success, ) = actor.proxy(
             address(collateral),
             abi.encodeWithSelector(
@@ -568,6 +565,11 @@ contract EchidnaTester is
                     _isRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero"),
                     "Cannot open CDP with zero debt"
                 );
+            } else if (collateral.balanceOf(address(actor)) < _col) {
+                assertWithMsg(
+                    _isRevertReasonEqual(returnData, "ERC20: transfer amount exceeds balance"),
+                    "Actor must have collateral to open CDP"
+                );
             } else {
                 assertWithMsg(
                     _isRevertReasonEqual(
@@ -580,30 +582,71 @@ contract EchidnaTester is
         }
     }
 
-    function addColl(uint _coll) internal {
+    function addColl(uint _coll, uint256 _i) external {
         Actor actor = actors[msg.sender];
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-        require(_cdpId != bytes32(0), "!cdpId");
-        uint actorBalance = collateral.balanceOf(address(actor));
+        bool success;
+        bytes memory returnData;
 
-        if (actorBalance < _coll) {
-            actor.proxy(
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
+        _coll = clampBetween(_coll, 0, INITIAL_COLL_BALANCE / 10);
+
+        if (collateral.balanceOf(address(actor)) < _coll) {
+            (success, ) = actor.proxy(
                 address(collateral),
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
-                _coll - actorBalance
+                collateral.getPooledEthByShares(_coll - collateral.balanceOf(address(actor)))
             );
+            assertWithMsg(success, "deposit never fails as EchidnaTester has high enough balance");
         }
 
-        actor.proxy(
+        (success, ) = actor.proxy(
+            address(collateral),
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                _coll
+            )
+        );
+        assertWithMsg(success, "Approve never fails");
+
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.addColl.selector,
                 _cdpId,
-                _coll,
                 _cdpId,
-                _cdpId
+                _cdpId,
+                _coll
             )
         );
+
+        _after(_cdpId);
+
+        if (success) {
+            // TODO add more invariants here
+            assertGt(vars.nicrAfter, vars.nicrBefore, "P-49 Adding collateral improves Nominal ICR");
+        } else {
+            if (_coll == 0) {
+                assertWithMsg(
+                    _isRevertReasonEqual(
+                        returnData,
+                        "BorrowerOps: There must be either a collateral change or a debt change"
+                    ),
+                    "Cannot addColl 0"
+                );
+            } else {
+                emit LogUint256(_getRevertMsg(returnData), _coll);
+                assertWithMsg(false, "Add other revert conditions here");
+            }
+        }
     }
 
     function withdrawColl(uint _amount) internal {

@@ -39,6 +39,7 @@
     "xmlhttprequest": "^1.8.0"
   },
   "devDependencies": {
+    "@crytic/properties": "https://github.com/crytic/properties.git",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.2",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
