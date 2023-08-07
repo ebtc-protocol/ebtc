@@ -70,8 +70,8 @@ contract('Echidna debugger', async accounts => {
 
     const totalSupply = await ebtcToken.totalSupply();
     const gasPoolBalance = await ebtcToken.balanceOf(GAS_POOL_ADDRESS);
-    const activePoolBalance = await activePool.getEBTCDebt();
-    const defaultPoolBalance = await defaultPool.getEBTCDebt();
+    const activePoolBalance = await activePool.getSystemDebt();
+    const defaultPoolBalance = await defaultPool.getSystemDebt();
     const stabilityPoolBalance = await stabilityPool.getTotalEBTCDeposits();
     const currentCdp = await echidnaTester.echidnaProxies(0);
     const cdpBalance = ebtcToken.balanceOf(currentCdp);

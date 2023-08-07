@@ -63,7 +63,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @dev Not necessarily equal to the raw collateral token balance - tokens can be forcibly sent to contracts
      * @return The current collateral balance tracked by the variable
      */
-    function getStEthColl() external view override returns (uint) {
+    function getSystemCollShares() external view override returns (uint) {
         return StEthColl;
     }
 
@@ -120,7 +120,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(msg.sender == activePoolAddress, "CollSurplusPool: Caller is not Active Pool");
     }
 
-    function receiveColl(uint _value) external override {
+    function receiveCollShares(uint _value) external override {
         _requireCallerIsActivePool();
         StEthColl = StEthColl + _value;
     }

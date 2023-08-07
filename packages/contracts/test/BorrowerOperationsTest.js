@@ -282,12 +282,12 @@ contract('BorrowerOperations', async accounts => {
       
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const activePool_ETH_Before = await activePool.getStEthColl()
+      const activePool_ETH_Before = await activePool.getSystemCollShares()
 
       assert.isTrue(activePool_ETH_Before.eq(aliceColl))
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: alice })
 
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_After.eq(aliceColl.add(toBN(dec(1, 'ether')))))
     })
 
@@ -394,8 +394,8 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
+      const alicePendingEBTCDebtReward = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
+      const bobPendingEBTCDebtReward = (await cdpManager.getPendingDebtRedistribution(bobIndex))
       for (reward of [alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
@@ -735,12 +735,12 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       // check before
-      const activePool_ETH_before = await activePool.getStEthColl()
+      const activePool_ETH_before = await activePool.getSystemCollShares()
       // Withdraw 0.1 ether
       await borrowerOperations.withdrawColl(aliceIndex, dec(1, 17), aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       const activePool_RawEther_After = toBN(await web3.eth.getBalance(activePool.address))
       assert.isTrue(activePool_ETH_After.eq(activePool_ETH_before.sub(toBN(dec(1, 17)))))
     })
@@ -826,8 +826,8 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
       // Check A and B have pending rewards
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
-      const pendingDebtReward_B = (await cdpManager.getPendingEBTCDebtReward(bobIndex))
+      const pendingDebtReward_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
+      const pendingDebtReward_B = (await cdpManager.getPendingDebtRedistribution(bobIndex))
       for (reward of [pendingDebtReward_A, pendingDebtReward_B]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
@@ -1076,13 +1076,13 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebtBefore.gt(toBN(0)))
 
       // check before
-      const activePool_EBTC_Before = await activePool.getEBTCDebt()
+      const activePool_EBTC_Before = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTC_Before.eq(aliceDebtBefore))
 
       await borrowerOperations.withdrawEBTC(aliceIndex, await getNetBorrowingAmount(dec(1, 17)), aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const activePool_EBTC_After = await activePool.getEBTCDebt()
+      const activePool_EBTC_After = await activePool.getSystemDebt()
       th.assertIsApproximatelyEqual(activePool_EBTC_After, activePool_EBTC_Before.add(toBN(dec(1, 17))))
     })
 
@@ -1258,13 +1258,13 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
 
       // Check before
-      const activePool_EBTC_Before = await activePool.getEBTCDebt()
+      const activePool_EBTC_Before = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTC_Before.gt(toBN('0')))
 
       await borrowerOperations.repayEBTC(aliceIndex, aliceDebtBefore.div(toBN(10)), aliceIndex, aliceIndex, { from: alice })  // Repays 1/10 her debt
 
       // check after
-      const activePool_EBTC_After = await activePool.getEBTCDebt()
+      const activePool_EBTC_After = await activePool.getSystemDebt()
       th.assertIsApproximatelyEqual(activePool_EBTC_After, activePool_EBTC_Before.sub(aliceDebtBefore.div(toBN(10))))
     })
 
@@ -1746,7 +1746,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const aliceCollBefore = await getCdpEntireColl(aliceIndex)
-      const activePoolCollBefore = await activePool.getStEthColl()
+      const activePoolCollBefore = await activePool.getSystemCollShares()
 
       assert.isTrue(aliceCollBefore.gt(toBN('0')))
       assert.isTrue(aliceCollBefore.eq(activePoolCollBefore))
@@ -1755,7 +1755,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustCdp(aliceIndex, 0, dec(1, 18), true, aliceIndex, aliceIndex, { from: alice, value: 0 })
 
       const aliceCollAfter = await getCdpEntireColl(aliceIndex)
-      const activePoolCollAfter = await activePool.getStEthColl()
+      const activePoolCollAfter = await activePool.getSystemCollShares()
 
       assert.isTrue(aliceCollAfter.eq(activePoolCollAfter))
       assert.isTrue(activePoolCollAfter.eq(activePoolCollAfter))
@@ -1768,7 +1768,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const aliceDebtBefore = await getCdpEntireDebt(aliceIndex)
-      const activePoolDebtBefore = await activePool.getEBTCDebt()
+      const activePoolDebtBefore = await activePool.getSystemDebt()
 
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
       assert.isTrue(aliceDebtBefore.eq(activePoolDebtBefore))
@@ -1777,7 +1777,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, 0, false, aliceIndex, aliceIndex, dec(1, 'ether'), { from: alice })
 
       const aliceDebtAfter = await getCdpEntireDebt(aliceIndex)
-      const activePoolDebtAfter = await activePool.getEBTCDebt()
+      const activePoolDebtAfter = await activePool.getSystemDebt()
 
       assert.isTrue(aliceDebtAfter.eq(aliceDebtBefore))
       assert.isTrue(activePoolDebtAfter.eq(activePoolDebtBefore))
@@ -1967,13 +1967,13 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const activePool_ETH_Before = await activePool.getStEthColl()
+      const activePool_ETH_Before = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll decrease and debt decrease
       await borrowerOperations.adjustCdp(aliceIndex, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_After.eq(activePool_ETH_Before.sub(toBN(dec(1, 17)))))
     })
 
@@ -1986,13 +1986,13 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const activePool_ETH_Before = await activePool.getStEthColl()
+      const activePool_ETH_Before = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, dec(100, 18), true, aliceIndex, aliceIndex, dec(1, 'ether'), { from: alice })
 
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_After.eq(activePool_ETH_Before.add(toBN(dec(1, 18)))))
     })
 
@@ -2004,13 +2004,13 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_Before = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTCDebt_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll increase and debt decrease
       await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, dec(30, 18), false, aliceIndex, aliceIndex, dec(1, 'ether'), { from: alice })
 
-      const activePool_EBTCDebt_After = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_After = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTCDebt_After.eq(activePool_EBTCDebt_Before.sub(toBN(dec(30, 18)))))
     })
 
@@ -2022,13 +2022,13 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_Before = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTCDebt_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, await getNetBorrowingAmount(dec(100, 18)), true, aliceIndex, aliceIndex, dec(1, 'ether'), { from: alice })
 
-      const activePool_EBTCDebt_After = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_After = await activePool.getSystemDebt()
     
       th.assertIsApproximatelyEqual(activePool_EBTCDebt_After, activePool_EBTCDebt_Before.add(toBN(dec(100, 18))))
     })
@@ -2411,7 +2411,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceColl.gt('0'))
 
       // Check active Pool ETH before
-      const activePool_ETH_before = await activePool.getStEthColl()
+      const activePool_ETH_before = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_before.eq(aliceColl.add(dennisColl)))
       assert.isTrue(activePool_ETH_before.gt(toBN('0')))
 
@@ -2422,7 +2422,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
 
       // Check after
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_After.eq(dennisColl))
     })
 
@@ -2441,7 +2441,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebt.gt('0'))
 
       // Check before
-      const activePool_Debt_before = await activePool.getEBTCDebt()
+      const activePool_Debt_before = await activePool.getSystemDebt()
       assert.isTrue(activePool_Debt_before.eq(aliceDebt.add(dennisDebt)))
       assert.isTrue(activePool_Debt_before.gt(toBN('0')))
 
@@ -2452,7 +2452,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
 
       // Check after
-      const activePool_Debt_After = (await activePool.getEBTCDebt()).toString()
+      const activePool_Debt_After = (await activePool.getSystemDebt()).toString()
       th.assertIsApproximatelyEqual(activePool_Debt_After, dennisDebt)
     })
 
@@ -2599,7 +2599,7 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const pendingDebtReward_A = (await cdpManager.getPendingEBTCDebtReward(aliceIndex))
+      const pendingDebtReward_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
       assert.isTrue(pendingDebtReward_A.gt(toBN('0')))
 
       // Close Alice's cdp. Alice's pending rewards should be removed from the DefaultPool when she close.
@@ -3492,7 +3492,7 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): Increases the activePool ETH and raw ether balance by correct amount", async () => {
-      const activePool_ETH_Before = await activePool.getStEthColl()
+      const activePool_ETH_Before = await activePool.getSystemCollShares()
       const activePool_RawEther_Before = await web3.eth.getBalance(activePool.address)
       assert.equal(activePool_ETH_Before, 0)
       assert.equal(activePool_RawEther_Before, 0)
@@ -3501,7 +3501,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const aliceCollAfter = await getCdpEntireColl(aliceIndex)
 
-      const activePool_ETH_After = await activePool.getStEthColl()
+      const activePool_ETH_After = await activePool.getSystemCollShares()
       assert.isTrue(activePool_ETH_After.eq(aliceCollAfter))
     })
 
@@ -3607,7 +3607,7 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): increases EBTC debt in ActivePool by the debt of the cdp", async () => {
-      const activePool_EBTCDebt_Before = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_Before = await activePool.getSystemDebt()
       assert.equal(activePool_EBTCDebt_Before, 0)
 
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("21000")});
@@ -3617,7 +3617,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceDebt = await getCdpEntireDebt(aliceIndex)
       assert.isTrue(aliceDebt.gt(toBN('0')))
 
-      const activePool_EBTCDebt_After = await activePool.getEBTCDebt()
+      const activePool_EBTCDebt_After = await activePool.getSystemDebt()
       assert.isTrue(activePool_EBTCDebt_After.eq(aliceDebt))
     })
 
@@ -4012,7 +4012,7 @@ contract('BorrowerOperations', async accounts => {
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, false, debtChange, false, price))
 
         let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).sub(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).sub(toBN(debtChange)))
 
@@ -4052,7 +4052,7 @@ contract('BorrowerOperations', async accounts => {
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, true, price))
 
         let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).add(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).add(toBN(debtChange)))
 
@@ -4092,7 +4092,7 @@ contract('BorrowerOperations', async accounts => {
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, false, price))
         
         let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).add(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).sub(toBN(debtChange)))
 

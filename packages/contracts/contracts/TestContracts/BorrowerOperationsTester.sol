@@ -81,8 +81,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
-    function unprotectedActivePoolReceiveColl(uint _amt) external {
-        activePool.receiveColl(_amt);
+    function unprotectedActivePoolreceiveCollShares(uint _amt) external {
+        activePool.receiveCollShares(_amt);
     }
 
     // Payable fallback function

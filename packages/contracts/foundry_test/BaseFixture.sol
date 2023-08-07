@@ -70,7 +70,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     bytes4 private constant SWEEP_TOKEN_SIG =
         bytes4(keccak256(bytes("sweepToken(address,uint256)")));
     bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
-        bytes4(keccak256(bytes("claimFeeRecipientColl(uint256)")));
+        bytes4(keccak256(bytes("claimFeeRecipientCollShares(uint256)")));
 
     // Fee Recipient
     bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =

@@ -253,7 +253,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
-        uint projectedSystemDebt = cdpManager.getEntireSystemDebt() + withdrawAmnt;
+        uint projectedSystemDebt = cdpManager.getSystemDebt() + withdrawAmnt;
         uint projectedTcr = LiquityMath._computeCR(
             borrowerOperations.getEntireSystemColl(),
             projectedSystemDebt,

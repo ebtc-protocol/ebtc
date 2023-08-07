@@ -96,7 +96,7 @@ contract HintHelpers is LiquityBase {
             ) {
                 // Apply pending debt
                 uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
-                    cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
+                    cdpManager.getPendingDebtRedistribution(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {

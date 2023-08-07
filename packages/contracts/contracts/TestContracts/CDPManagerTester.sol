@@ -102,7 +102,7 @@ contract CdpManagerTester is CdpManager {
         uint _ETHDrawn,
         uint _price
     ) external view returns (uint) {
-        uint _totalEBTCSupply = _getEntireSystemDebt();
+        uint _totalEBTCSupply = _getSystemDebt();
         uint decayedBaseRate = _calcDecayedBaseRate();
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
@@ -110,16 +110,16 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 
-    function activePoolIncreaseEBTCDebt(uint _amount) external {
-        activePool.increaseEBTCDebt(_amount);
+    function activePoolincreaseSystemDebt(uint _amount) external {
+        activePool.increaseSystemDebt(_amount);
     }
 
-    function activePoolDecreaseEBTCDebt(uint _amount) external {
-        activePool.decreaseEBTCDebt(_amount);
+    function activePooldecreaseSystemDebt(uint _amount) external {
+        activePool.decreaseSystemDebt(_amount);
     }
 
-    function activePoolSendStEthColl(address _addr, uint _amt) external {
-        activePool.sendStEthColl(_addr, _amt);
+    function activePooltransferSystemCollShares(address _addr, uint _amt) external {
+        activePool.transferSystemCollShares(_addr, _amt);
     }
 
     function sortedCdpsBatchRemove(bytes32[] memory _cdpIds) external {

@@ -1320,7 +1320,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_A.lt(mv._MCR) && ICR_A.lt(await th.getTCR(contracts)))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
 
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
@@ -1328,7 +1328,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Expect system debt and system coll not reduced
     const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)
@@ -2601,7 +2601,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check A's collateral and debt remain the same
     const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
+    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingDebtRedistribution(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')
     assert.equal(entireDebt_A.toString(), '0')
@@ -3030,7 +3030,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C, D, E.
     With 253 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated. 
@@ -3045,7 +3045,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Expect system debt reduced by 203 EBTC and system coll 2.3 ETH
     const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)
@@ -3345,7 +3345,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check system is no longer in Recovery Mode
     const recoveryMode_After = await th.checkRecoveryMode(contracts)
-    console.log('TCR=' + (await cdpManager.getTCR(price)) + ',aliceColl=' + (await cdpManager.getCdpColl(_aliceCdpId)) + ',aliceDebt=' + (await cdpManager.getCdpDebt(_aliceCdpId)));
+    console.log('TCR=' + (await cdpManager.getTCR(price)) + ',aliceColl=' + (await cdpManager.getCdpCollShares(_aliceCdpId)) + ',aliceDebt=' + (await cdpManager.getCdpDebt(_aliceCdpId)));
     assert.isFalse(recoveryMode_After)
 
     // get all Cdps
@@ -3744,7 +3744,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3755,7 +3755,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Expect system debt reduced by 203 EBTC and system coll by 2 ETH
     const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)
@@ -3991,9 +3991,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '3')
 
     // Confirm D, B, C coll & debt have not changed
-    const dennisDebt_After = (await cdpManager.Cdps(_dennisCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(dennis)))
-    const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(bob)))
-    const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(carol)))
+    const dennisDebt_After = (await cdpManager.Cdps(_dennisCdpId))[0].add((await cdpManager.getPendingDebtRedistribution(dennis)))
+    const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add((await cdpManager.getPendingDebtRedistribution(bob)))
+    const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add((await cdpManager.getPendingDebtRedistribution(carol)))
 
     const dennisColl_After = (await cdpManager.Cdps(_dennisCdpId))[1]  
     const bobColl_After = (await cdpManager.Cdps(_bobCdpId))[1]
@@ -4297,7 +4297,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // Check A's collateral and debt are the same
     const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingEBTCDebtReward(_aliceCdpId)))
+    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingDebtRedistribution(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')
     th.assertIsApproximatelyEqual(entireDebt_A.toString(), '0')

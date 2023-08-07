@@ -5,7 +5,7 @@ import "../Dependencies/ICollateralToken.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 interface IEbtcInternalPool {
-    function receiveColl(uint _value) external;
+    function receiveCollShares(uint _value) external;
 }
 
 // based on WETH9 contract
@@ -59,8 +59,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         return true;
     }
 
-    function receiveCollToInternalPool(address _pool, uint _value) external {
-        IEbtcInternalPool(_pool).receiveColl(_value);
+    function receiveCollSharesToInternalPool(address _pool, uint _value) external {
+        IEbtcInternalPool(_pool).receiveCollShares(_value);
     }
 
     function approve(address guy, uint wad) public override returns (bool) {

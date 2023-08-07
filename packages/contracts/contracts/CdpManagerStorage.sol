@@ -191,7 +191,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
-        uint _totalCollateralSnapshot = activePool.getStEthColl() - _collRemainder;
+        uint _totalCollateralSnapshot = activePool.getSystemCollShares() - _collRemainder;
         totalCollateralSnapshot = _totalCollateralSnapshot;
 
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
@@ -349,12 +349,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Calculate TCR given an price, and the entire system coll and debt.
     function _computeTCRWithGivenSystemValues(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) internal view returns (uint) {
-        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
-        return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
+        uint _totalColl = collateral.getPooledEthByShares(_systemCollShares);
+        return LiquityMath._computeCR(_totalColl, _systemDebt, _price);
     }
 
     // --- Staking-Reward Fee split functions ---
@@ -421,8 +421,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         stFeePerUnitg = _newPerUnit;
         stFeePerUnitgError = _newErrorPerUnit;
 
-        require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
-        activePool.allocateFeeRecipientColl(_feeTaken);
+        require(activePool.getSystemCollShares() > _feeTaken, "CDPManager: fee split is too big");
+        activePool.allocateSystemCollSharesToFeeRecipient(_feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, _newPerUnit, _feeTaken);
     }
@@ -526,15 +526,15 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     /**
-    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
+    get the pending Cdp debt redistribution (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned according to their stake
     */
-    function getPendingEBTCDebtReward(
+    function getPendingDebtRedistribution(
         bytes32 _cdpId
     ) public view returns (uint pendingEBTCDebtReward) {
         return _getRedistributedEBTCDebt(_cdpId);
     }
 
-    function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
+    function hasPendingDebtRedistribution(bytes32 _cdpId) public view returns (bool) {
         return _hasRedistributedDebt(_cdpId);
     }
 
@@ -557,7 +557,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
         coll = _newColl;
 
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        pendingEBTCDebtReward = getPendingDebtRedistribution(_cdpId);
 
         debt = debt + pendingEBTCDebtReward;
     }

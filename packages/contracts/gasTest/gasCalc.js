@@ -1306,8 +1306,8 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
     await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isFalse(hasPendingRewards)
+    const hasPendingDebtRedistribution = await cdpManager.hasPendingDebtRedistribution(_cdpIdLiq3)
+    assert.isFalse(hasPendingDebtRedistribution)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1348,8 +1348,8 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(3014, 13))
     await cdpManager.liquidate(_cdpIdLiq4, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingDebtRedistribution = await cdpManager.hasPendingDebtRedistribution(_cdpIdLiq3)
+    assert.isTrue(hasPendingDebtRedistribution)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1385,8 +1385,8 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
     await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingDebtRedistribution = await cdpManager.hasPendingDebtRedistribution(_cdpIdLiq3)
+    assert.isTrue(hasPendingDebtRedistribution)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1429,8 +1429,8 @@ contract('Gas cost tests', async accounts => {
     // Price drops
     await priceFeed.setPrice(dec(1500, 13))
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingDebtRedistribution = await cdpManager.hasPendingDebtRedistribution(_cdpIdLiq3)
+    assert.isTrue(hasPendingDebtRedistribution)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 

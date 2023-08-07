@@ -158,7 +158,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Determine the remaining amount (lot) to be redeemed,
         // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.eBtcToRedeem = LiquityMath._min(
-            _redeemColFromCdp._maxEBTCamount,
+            _redeemColFromCdp._maxDebtToReturn,
             Cdps[_redeemColFromCdp._cdpId].debt
         );
 
@@ -261,13 +261,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
-        activePool.decreaseEBTCDebt(_EBTC);
+        activePool.decreaseSystemDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
         collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
-        activePool.sendStEthCollAndLiquidatorReward(
+        activePool.transferSystemCollSharesAndLiquidatorRewardShares(
             address(collSurplusPool),
             _stEth,
             _liquidatorRewardShares
@@ -346,7 +346,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
-        totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
+        totals.totalEBTCSupplyAtStart = _getSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,
             msg.sender,
@@ -450,13 +450,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
 
         // Update Active Pool eBTC debt internal accounting
-        activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
+        activePool.decreaseSystemDebt(totals.totalEBTCToRedeem);
 
         // Allocate the stETH fee to the FeeRecipient
-        activePool.allocateFeeRecipientColl(totals.ETHFee);
+        activePool.allocateSystemCollSharesToFeeRecipient(totals.ETHFee);
 
         // CEI: Send the stETH drawn to the redeemer
-        activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
+        activePool.transferSystemCollShares(msg.sender, totals.ETHToSendToRedeemer);
 
         // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
         // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
@@ -533,10 +533,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Recovery Mode and TCR functions ---
 
     /**
-    Returns the systemic entire debt assigned to Cdps, i.e. the sum of the EBTCDebt in the Active Pool and the Default Pool.
+    Returns the systemic entire debt assigned to Cdps, i.e. the debt in the Active Pool.
      */
-    function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
-        return _getEntireSystemDebt();
+    function getSystemDebt() public view returns (uint systemDebt) {
+        return _getSystemDebt();
     }
 
     /**
@@ -553,13 +553,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     // Check whether or not the system *would be* in Recovery Mode,
-    // given an ETH:USD price, and the entire system coll and debt.
+    // given an stETH:BTC price, and the entire system coll and debt.
     function _checkPotentialRecoveryMode(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) internal view returns (bool) {
-        uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
+        uint TCR = _computeTCRWithGivenSystemValues(_systemCollShares, _systemDebt, _price);
         return TCR < CCR;
     }
 
@@ -572,7 +572,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * 2) increases the baseRate based on the amount redeemed, as a proportion of total supply
      */
     function _updateBaseRateFromRedemption(
-        uint _ETHDrawn,
+        uint _stEthBalance,
         uint _price,
         uint _totalEBTCSupply
     ) internal returns (uint) {
@@ -580,7 +580,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         /* Convert the drawn ETH back to EBTC at face value rate (1 EBTC:1 USD), in order to get
          * the fraction of total supply that was redeemed at face value. */
-        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
+        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_stEthBalance) * _price) /
             _totalEBTCSupply;
 
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
@@ -612,17 +612,17 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             );
     }
 
-    function _getRedemptionFee(uint _ETHDrawn) internal view returns (uint) {
-        return _calcRedemptionFee(getRedemptionRate(), _ETHDrawn);
+    function _getRedemptionFee(uint _stEthBalance) internal view returns (uint) {
+        return _calcRedemptionFee(getRedemptionRate(), _stEthBalance);
     }
 
-    function getRedemptionFeeWithDecay(uint _ETHDrawn) external view override returns (uint) {
-        return _calcRedemptionFee(getRedemptionRateWithDecay(), _ETHDrawn);
+    function getRedemptionFeeWithDecay(uint _stEthBalance) external view override returns (uint) {
+        return _calcRedemptionFee(getRedemptionRateWithDecay(), _stEthBalance);
     }
 
-    function _calcRedemptionFee(uint _redemptionRate, uint _ETHDrawn) internal pure returns (uint) {
-        uint redemptionFee = (_redemptionRate * _ETHDrawn) / DECIMAL_PRECISION;
-        require(redemptionFee < _ETHDrawn, "CdpManager: Fee would eat up all returned collateral");
+    function _calcRedemptionFee(uint _redemptionRate, uint _stEthBalance) internal pure returns (uint) {
+        uint redemptionFee = (_redemptionRate * _stEthBalance) / DECIMAL_PRECISION;
+        require(redemptionFee < _stEthBalance, "CdpManager: Fee would eat up all returned collateral");
         return redemptionFee;
     }
 
@@ -680,11 +680,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // Check whether or not the system *would be* in Recovery Mode,
     // given an ETH:USD price, and the entire system coll and debt.
     function checkPotentialRecoveryMode(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) external view returns (bool) {
-        return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
+        return _checkPotentialRecoveryMode(_systemCollShares, _systemDebt, _price);
     }
 
     // --- 'require' wrapper functions ---
@@ -821,7 +821,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     /// @notice Get stored collateral value of a CDP, in stETH shares. Does not include pending changes from redistributions or unprocessed staking yield.
-    function getCdpColl(bytes32 _cdpId) external view override returns (uint) {
+    function getCdpCollShares(bytes32 _cdpId) external view override returns (uint) {
         return Cdps[_cdpId].coll;
     }
 

@@ -74,7 +74,7 @@ interface IBorrowerOperations {
         uint _collAddAmount
     ) external;
 
-    function claimCollateral() external;
+    function claimSurplusCollShares() external;
 
     function feeRecipientAddress() external view returns (address);
 }

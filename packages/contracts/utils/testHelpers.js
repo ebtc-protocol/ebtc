@@ -534,7 +534,7 @@ class TestHelper {
     // console.log(`account: ${account}`)
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
-    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingEBTCDebtReward(account))
+    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingDebtRedistribution(account))
     const entireDebt = rawDebt.add(pendingEBTCDebtReward)
     let entireColl = rawColl;
     return { entireColl, entireDebt }
@@ -1258,7 +1258,7 @@ class TestHelper {
 
   // --- Misc. functions  ---
 
-  static async forcesendStEthColl(from, receiver, value) {
+  static async forcetransferSystemCollShares(from, receiver, value) {
     const destructible = await Destructible.new()
     await web3.eth.sendTransaction({ to: destructible.address, from, value })
     await destructible.destruct(receiver)

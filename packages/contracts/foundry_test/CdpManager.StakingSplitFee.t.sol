@@ -109,21 +109,21 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     /// @dev Expect internal accounting allocated to fee recipient to change, and actual token balance to stay the same.
-    /// @dev token balance would change when fee coll is claimed to fee recipient in getFeeRecipientClaimableColl()
+    /// @dev token balance would change when fee coll is claimed to fee recipient in getFeeRecipientClaimableCollShares()
     function _takeSplitFee(uint _totalColl, uint _expectedFee) internal {
         uint _totalCollBefore = _totalColl;
         uint _collateralTokensInActivePoolBefore = collateral.balanceOf(address(activePool));
-        uint _internalAccountingCollBefore = activePool.getStEthColl();
+        uint _internalAccountingCollBefore = activePool.getSystemCollShares();
         uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
-        uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableColl();
+        uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableCollShares();
 
         cdpManager.applyPendingGlobalState();
 
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
         uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));
-        uint _internalAccountingCollAfter = activePool.getStEthColl();
+        uint _internalAccountingCollAfter = activePool.getSystemCollShares();
         uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
-        uint _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableColl();
+        uint _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableCollShares();
 
         /**
         This split only updates internal accounting, all tokens remain in ActivePool, tokens are actually transfered by a pull model function to feeRecipient.

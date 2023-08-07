@@ -131,10 +131,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
 
   describe('ActivePool', async accounts => {
     // sendETH
-    it("sendStEthColl(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("transferSystemCollShares(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.sendStEthColl(alice, 100, { from: alice })
+        const txAlice = await activePool.transferSystemCollShares(alice, 100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -143,10 +143,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
 
     // increaseEBTC	
-    it("increaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("increaseSystemDebt(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.increaseEBTCDebt(100, { from: alice })
+        const txAlice = await activePool.increaseSystemDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")
@@ -155,10 +155,10 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
 
     // decreaseEBTC
-    it("decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM", async () => {
+    it("decreaseSystemDebt(): reverts when called by an account that is not BO nor CdpM", async () => {
       // Attempt call from alice
       try {
-        const txAlice = await activePool.decreaseEBTCDebt(100, { from: alice })
+        const txAlice = await activePool.decreaseSystemDebt(100, { from: alice })
         
       } catch (err) {
         assert.include(err.message, "revert")

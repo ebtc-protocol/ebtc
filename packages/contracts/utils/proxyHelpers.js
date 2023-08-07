@@ -187,7 +187,7 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('getCdpDebt', user)
   }
 
-  async getCdpColl(user) {
+  async getCdpCollShares(user) {
     return this.proxyFunctionWithUser('getCdpColl', user)
   }
 
@@ -199,8 +199,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getPendingETHReward', params)
   }
 
-  async getPendingEBTCDebtReward(...params) {
-    return this.proxyFunction('getPendingEBTCDebtReward', params)
+  async getPendingDebtRedistribution(...params) {
+    return this.proxyFunction('getPendingDebtRedistribution', params)
   }
 
   async liquidate(user) {

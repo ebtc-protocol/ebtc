@@ -157,7 +157,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             // housekeeping leftover collateral for liquidated CDP
             if (_outputState.totalColSurplus > 0) {
-                activePool.sendStEthColl(address(collSurplusPool), _outputState.totalColSurplus);
+                activePool.transferSystemCollShares(address(collSurplusPool), _outputState.totalColSurplus);
             }
 
             return (
@@ -295,8 +295,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         _recoveryState.totalColReward = _recoveryState.totalColReward + _liquidatorReward;
 
         // check if system back to normal mode
-        _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt > _totalDebtToBurn
-            ? _recoveryState.entireSystemDebt - _totalDebtToBurn
+        _recoveryState.systemDebt = _recoveryState.systemDebt > _totalDebtToBurn
+            ? _recoveryState.systemDebt - _totalDebtToBurn
             : 0;
         _recoveryState.entireSystemColl = _recoveryState.entireSystemColl > _totalColToSend
             ? _recoveryState.entireSystemColl - _totalColToSend
@@ -513,10 +513,10 @@ contract LiquidationLibrary is CdpManagerStorage {
         ebtcToken.burn(msg.sender, totalDebtToBurn);
 
         // offset debt from Active Pool
-        activePool.decreaseEBTCDebt(totalDebtToBurn);
+        activePool.decreaseSystemDebt(totalDebtToBurn);
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
-        activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
+        activePool.transferSystemCollSharesAndLiquidatorRewardShares(msg.sender, totalColToSend, totalColReward);
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -595,7 +595,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
+            activePool.transferSystemCollShares(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         _finalizeExternalLiquidation(
@@ -643,14 +643,14 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _getLiquidationValuesRecoveryMode(
         uint _price,
         uint _systemDebt,
-        uint _systemColl,
+        uint _systemCollShares,
         LocalVariables_LiquidationSequence memory vars,
         LiquidationValues memory singleLiquidation,
         bool sequenceLiq
     ) internal {
         LocalVar_RecoveryLiquidate memory _recState = LocalVar_RecoveryLiquidate(
             _systemDebt,
-            _systemColl,
+            _systemCollShares,
             0,
             0,
             0,
@@ -713,7 +713,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
+            activePool.transferSystemCollShares(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         _finalizeExternalLiquidation(
@@ -730,7 +730,7 @@ contract LiquidationLibrary is CdpManagerStorage {
      */
     function _getTotalFromBatchLiquidate_RecoveryMode(
         uint _price,
-        uint _systemColl,
+        uint _systemCollShares,
         uint _systemDebt,
         bytes32[] memory _cdpArray,
         bool sequenceLiq
@@ -739,11 +739,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationValues memory singleLiquidation;
 
         vars.backToNormalMode = false;
-        vars.entireSystemDebt = _systemDebt;
-        vars.entireSystemColl = _systemColl;
+        vars.systemDebt = _systemDebt;
+        vars.entireSystemColl = _systemCollShares;
         uint _TCR = _computeTCRWithGivenSystemValues(
             vars.entireSystemColl,
-            vars.entireSystemDebt,
+            vars.systemDebt,
             _price
         );
         uint _cnt = _cdpArray.length;
@@ -761,7 +761,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     _applyAccumulatedFeeSplit(vars.cdpId);
                     _getLiquidationValuesRecoveryMode(
                         _price,
-                        vars.entireSystemDebt,
+                        vars.systemDebt,
                         vars.entireSystemColl,
                         vars,
                         singleLiquidation,
@@ -769,7 +769,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     );
 
                     // Update aggregate trackers
-                    vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
+                    vars.systemDebt = vars.systemDebt - singleLiquidation.debtToOffset;
                     vars.entireSystemColl =
                         vars.entireSystemColl -
                         singleLiquidation.totalCollToSendToLiquidator -
@@ -780,7 +780,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
                     _TCR = _computeTCRWithGivenSystemValues(
                         vars.entireSystemColl,
-                        vars.entireSystemDebt,
+                        vars.systemDebt,
                         _price
                     );
                     vars.backToNormalMode = _TCR < CCR ? false : true;

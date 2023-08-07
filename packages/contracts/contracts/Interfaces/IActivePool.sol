@@ -19,23 +19,23 @@ interface IActivePool is IPool {
     event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
 
     // --- Functions ---
-    function sendStEthColl(address _account, uint _amount) external;
+    function transferSystemCollShares(address _account, uint _amount) external;
 
-    function receiveColl(uint _value) external;
+    function receiveCollShares(uint _value) external;
 
-    function sendStEthCollAndLiquidatorReward(
+    function transferSystemCollSharesAndLiquidatorRewardShares(
         address _account,
         uint _shares,
         uint _liquidatorRewardShares
     ) external;
 
-    function allocateFeeRecipientColl(uint _shares) external;
+    function allocateSystemCollSharesToFeeRecipient(uint _shares) external;
 
-    function claimFeeRecipientColl(uint _shares) external;
+    function claimFeeRecipientCollShares(uint _shares) external;
 
     function feeRecipientAddress() external view returns (address);
 
-    function getFeeRecipientClaimableColl() external view returns (uint);
+    function getFeeRecipientClaimableCollShares() external view returns (uint);
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external;
 }

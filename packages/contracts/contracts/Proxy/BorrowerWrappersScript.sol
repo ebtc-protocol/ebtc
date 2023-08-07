@@ -63,7 +63,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         uint balanceBefore = collToken.balanceOf(address(this));
 
         // Claim collateral
-        borrowerOperations.claimCollateral();
+        borrowerOperations.claimSurplusCollShares();
 
         uint balanceAfter = collToken.balanceOf(address(this));
 

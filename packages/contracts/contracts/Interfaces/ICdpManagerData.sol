@@ -130,7 +130,7 @@ interface ICdpManagerData {
     }
 
     struct LocalVar_RecoveryLiquidate {
-        uint256 entireSystemDebt;
+        uint256 systemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
         uint256 totalColToSend;
@@ -155,7 +155,7 @@ interface ICdpManagerData {
         uint ICR;
         bytes32 cdpId;
         bool backToNormalMode;
-        uint entireSystemDebt;
+        uint systemDebt;
         uint entireSystemColl;
         uint price;
         uint TCR;
@@ -163,7 +163,7 @@ interface ICdpManagerData {
 
     struct LocalVariables_RedeemCollateralFromCdp {
         bytes32 _cdpId;
-        uint _maxEBTCamount;
+        uint _maxDebtToReturn;
         uint _price;
         bytes32 _upperPartialRedemptionHint;
         bytes32 _lowerPartialRedemptionHint;
@@ -234,9 +234,9 @@ interface ICdpManagerData {
 
     function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
-    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
+    function getPendingDebtRedistribution(bytes32 _cdpId) external view returns (uint);
 
-    function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
+    function hasPendingDebtRedistribution(bytes32 _cdpId) external view returns (bool);
 
     function getEntireDebtAndColl(
         bytes32 _cdpId

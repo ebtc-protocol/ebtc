@@ -20,7 +20,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
-            activePool.getStEthColl(),
+            activePool.getSystemCollShares(),
             "System Invariant: cdp_manager_liq1"
         );
     }
@@ -113,11 +113,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
-            uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
+            uint _debtSystemBefore = cdpManager.getSystemDebt();
             vm.prank(users[0]);
             cdpManager.liquidate(cdpId1);
             uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
-            uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
+            uint _debtSystemAfter = cdpManager.getSystemDebt();
             assertEq(
                 _expectedLiqDebt,
                 _debtLiquidatorBefore - _debtLiquidatorAfter,
@@ -209,12 +209,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             {
                 uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
-                uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
+                uint _debtSystemBefore = cdpManager.getSystemDebt();
                 uint _collSystemBefore = cdpManager.getEntireSystemColl();
                 vm.prank(users[0]);
                 cdpManager.partiallyLiquidate(cdpId1, _partialLiq._repaidDebt, cdpId1, cdpId1);
                 uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
-                uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
+                uint _debtSystemAfter = cdpManager.getSystemDebt();
                 uint _collSystemAfter = cdpManager.getEntireSystemColl();
                 assertEq(
                     _expectedLiqDebt,
@@ -257,7 +257,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _multipleCDPsLiq(uint _n, bytes32[] memory _cdps, address _liquidator) internal {
         /// entire systme debt = activePool
-        uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
+        uint _debtSystemBefore = cdpManager.getSystemDebt();
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
         uint _debtLiquidatorBefore = eBTCToken.balanceOf(_liquidator);
@@ -270,7 +270,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
 
         uint _debtLiquidatorAfter = eBTCToken.balanceOf(_liquidator);
-        uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
+        uint _debtSystemAfter = cdpManager.getSystemDebt();
 
         // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
@@ -289,7 +289,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         console.log("_debtSystemAfter", _debtSystemAfter);
         console.log("_debtLiquidatorAfter", _debtLiquidatorAfter);
         console.log("_leftTotalDebt", _leftTotalDebt);
-        console.log("activePool.getEBTCDebt()", activePool.getEBTCDebt());
+        console.log("activePool.getSystemDebt()", activePool.getSystemDebt());
         console.log("_liquidatedDebt", _liquidatedDebt);
 
         assertEq(
