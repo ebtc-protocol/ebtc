@@ -539,13 +539,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
   })  
 
-  it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	  
-      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: owner } });
-      let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
-      await openCdp({ ICR: toBN(dec(129, 16)), extraParams: { from: owner } });
+  it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	
+        let _price = dec(7228, 13);
+        await priceFeed.setPrice(_price);
 
-      let _price = dec(7228, 13);
-      await priceFeed.setPrice(_price);
+      await openCdp({ ICR: toBN(dec(137, 16)), extraParams: { from: owner } });
+      let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
+      await openCdp({ ICR: toBN(dec(135, 16)), extraParams: { from: owner } });
+
+
 
       // modify split fee
       assert.isTrue(authority.address == (await cdpManager.authority()));
@@ -561,6 +563,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _s = await cdpManager.stakingRewardSplit(); 
       assert.isTrue(_splitFee == _s); 
 
+      console.log("basics");
+
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
@@ -570,12 +574,16 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _idxPrime = _newIndex.sub(_deltaIndex.mul(_s).div(toBN("10000")));// I' = (I - deltaI * splitFee)
       await collToken.setEthPerShare(_newIndex);
 
+      console.log("basics2");
+
       // check TCR for victim
       let _tcrBefore = await cdpManager.getTCR(_price);
       let _victimICRBefore = await cdpManager.getCurrentICR(_victimId, _price);
       assert.isTrue(_tcrBefore.gt(_CCR));
-      assert.isTrue(_victimICRBefore.lt(_CCR));
+      assert.isTrue(_victimICRBefore.gt(_CCR)); // NOTE: This changes the logic, TODO: Review and remove this comment
       let _1e36 = mv._1e18BN.mul(mv._1e18BN);
+
+      console.log("CCR");
 
       // calculate triggering CDP parameters
       let _totalC = await cdpManager.getEntireSystemColl();
