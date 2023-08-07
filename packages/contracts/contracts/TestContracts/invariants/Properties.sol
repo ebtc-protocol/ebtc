@@ -101,10 +101,7 @@ abstract contract Properties is AssertionHelper {
     event L(string, uint);
 
     /// @notice SL-01 The NICR ranking in the sorted list should follow descending order
-    function invariant_SL_01(
-        CdpManager cdpManager,
-        SortedCdps sortedCdps
-    ) internal returns (bool) {
+    function invariant_SL_01(CdpManager cdpManager, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
 

@@ -10,7 +10,9 @@ abstract contract EchidnaLog is EchidnaBaseTester {
         uint256 coll = cdpManager.getEntireSystemColl();
         uint256 debt = cdpManager.getEntireSystemDebt();
 
-        (uint currentEBTCDebt, uint currentETH, ) = cdpManager.getEntireDebtAndColl(sortedCdps.getFirst());
+        (uint currentEBTCDebt, uint currentETH, ) = cdpManager.getEntireDebtAndColl(
+            sortedCdps.getFirst()
+        );
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
 
         emit Log("Price", price);

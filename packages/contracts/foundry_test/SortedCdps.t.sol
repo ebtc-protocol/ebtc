@@ -82,14 +82,15 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 10 ether}();
 
-        uint256 coll1 = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD() ;
+        uint256 coll1 = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll1);
         emit log_string("col1");
         emit log_uint(cdpManager.getCdpColl(cdpId));
 
         collateral.setEthPerShare(0.957599492232792566e18);
 
-        uint256 coll2 = (1999995586570936579 + collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD()));
+        uint256 coll2 = (1999995586570936579 +
+            collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD()));
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll2);
 
         emit log_string("col2");
@@ -97,7 +98,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         collateral.setEthPerShare(1.000002206719401318e18);
 
-        uint256 coll3 = 2096314780549457901 + collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD());
+        uint256 coll3 = 2096314780549457901 +
+            collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD());
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll3);
 
         emit log_string("col3");
@@ -110,7 +112,9 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     }
 
     function testSortedCdpsICRgteTCRInvariant() public {
-        uint256 coll = borrowerOperations.MIN_NET_COLL() + borrowerOperations.LIQUIDATOR_REWARD() + 16;
+        uint256 coll = borrowerOperations.MIN_NET_COLL() +
+            borrowerOperations.LIQUIDATOR_REWARD() +
+            16;
 
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -120,7 +124,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         borrowerOperations.openCdp(1, HINT, HINT, coll);
         borrowerOperations.openCdp(1, HINT, HINT, coll);
-        collateral.setEthPerShare(collateral.getEthPerShare() * 1 ether / 1.1 ether);
+        collateral.setEthPerShare((collateral.getEthPerShare() * 1 ether) / 1.1 ether);
 
         emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
         emit log_uint(cdpManager.getCurrentICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
