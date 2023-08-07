@@ -51,7 +51,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
 
         // Base Deposits
         uint _curPrice = priceFeedMock.getPrice();
-        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge, for similicity
+        uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 136e16); // Literally at the edge, for similicity
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
         console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
@@ -62,11 +62,11 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         // Deposit and bring TCR to RM
 
         /** VICTIM */
-        uint256 victimAmount = debtAmt / 2;
+        uint256 victimAmount = debtAmt / 50;
         console.log("victimAmount", victimAmount);
 
         // Levered to the tits
-        uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 124e16); // Liquidatable only in RM
+        uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 115e16); // Liquidatable only in RM
         console.log("collVictim", collVictim);
         bytes32 cdpIdVictim = _openTestCDP(users[0], collVictim, victimAmount);
         console.log("tcrAfterOpen Victim", cdpManager.getTCR(_curPrice));
@@ -82,7 +82,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
             "CR Attacker",
             ((collAttacker - _utils.LIQUIDATOR_REWARD()) * _curPrice) / attackerDebtAmount
         );
-        bytes32 cdpIdAttacker = _openTestCDP(users[0], collAttacker, attackerDebtAmount);
+        bytes32 cdpIdAttacker = _expectCdpRevert(users[0], collAttacker, attackerDebtAmount); // NOTE: Meant to revert
         console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
 
         /** SANDWHICH 2 */
@@ -94,15 +94,25 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         console.log("tcrAfter claim", tcrAfter);
 
         // We're in recovery mode
-        assertLt(tcrAfter, 1250000000000000000);
+        assertGt(tcrAfter, 1250000000000000000, "in RM");
 
         // We can now liquidate victim
         /** SANDWHICH 3 */
         vm.startPrank(users[0]);
+        vm.expectRevert(); // Cannot liquidate
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
-        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 3); //closedByLiquidation
-        //assertGt(tcrEnd, 1250000000000000000);
+        assertTrue(cdpManager.getCdpStatus(cdpIdVictim) !=  3, "Liquidation"); //!closedByLiquidation
+    }
+
+    function _expectCdpRevert(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+        dealCollateral(_user, _coll);
+        vm.startPrank(_user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        vm.expectRevert();
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
+        vm.stopPrank();
+        return _cdpId;
     }
 }
