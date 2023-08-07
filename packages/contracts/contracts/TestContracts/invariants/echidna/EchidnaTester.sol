@@ -787,6 +787,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            // TODO not always
             assertGt(vars.tcrAfter, vars.tcrBefore, "TCR must increase after a repayment");
         } else if (_amount == 0) {
             assertRevertReasonEqual(
@@ -916,21 +917,27 @@ contract EchidnaTester is
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function updateCollateralRate(int128 _newIndexInt128) internal {
-        uint _newIndex;
-        if (_newIndexInt128 >= 0) {
-            _newIndex = clampBetween(
-                uint256(int256(_newIndexInt128)),
-                collateral.getPooledEthByShares(1e18),
-                min(10_000 * 1e18, collateral.getPooledEthByShares(1e18) * 10_000)
-            );
-        } else {
-            _newIndex = clampBetween(
-                uint256(int256(_newIndexInt128)),
-                max(collateral.getPooledEthByShares(1e18) / 10000, 1),
-                collateral.getPooledEthByShares(1e18)
-            );
-        }
-        collateral.setEthPerShare(uint256(_newIndex));
+    function setEthPerShare(uint256 _newEthPerShare) external {
+        uint256 currentEthPerShare = collateral.getEthPerShare();
+        _newEthPerShare = clampBetween(
+            _newEthPerShare,
+            (currentEthPerShare * 1 ether) / MAX_REBASE_PERCENT,
+            (currentEthPerShare * MAX_REBASE_PERCENT) / 1 ether
+        );
+        collateral.setEthPerShare(_newEthPerShare);
+    }
+
+    ///////////////////////////////////////////////////////
+    // PriceFeed
+    ///////////////////////////////////////////////////////
+
+    function setPrice(uint256 _newPrice) external {
+        uint256 currentPrice = priceFeedTestnet.getPrice();
+        _newPrice = clampBetween(
+            _newPrice,
+            (currentPrice * 1 ether) / MAX_PRICE_CHANGE_PERCENT,
+            (currentPrice * MAX_PRICE_CHANGE_PERCENT) / 1 ether
+        );
+        priceFeedTestnet.setPrice(_newPrice);
     }
 }

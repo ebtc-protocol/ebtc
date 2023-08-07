@@ -19,7 +19,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | CDPM-03 | The stFeePerUnit tracker for individual CDP is equal to or less than the global variable | High Level | TODO: Verify if this doesn't lead to inconsistent math after a negative slash (Has pending rewards, slash happens, what happens to CDP totals?) |
 | CSP-01 | The collateral balance in the collSurplus pool is greater than or equal to its accounting number | High Level | TODO: Verify if the balance is equal to the shares at all times  |
 | SL-01 | The NICR ranking in the sorted list should follow descending order | High Level | ✅ |
-| SL-02 | The the first(highest) ICR in the sorted list should bigger or equal to TCR | High Level | ✅ |
+| SL-02 | The the first(highest) ICR in the sorted list should be greater or equal to TCR | High Level | ✅ |
 | SL-03 | All CDPs have status active and stake greater than zero | High Level | ✅ |
 | P-01 | The dollar value of the locked stETH exceeds the dollar value of the issued eBTC | High-Level | TODO: check that this BREAKS in case of price change/rebase. This should always be the case unless TCR < 100 Said the opposite way, if TCR < 100, then the value of $ value of eBTC is higher than the value of stETH |
 | P-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode | High Level | TODO: verify if this is true for MCR or CCR |

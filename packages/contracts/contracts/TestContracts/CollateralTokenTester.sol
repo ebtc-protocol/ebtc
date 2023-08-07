@@ -95,6 +95,10 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         _ethPerShare = _ePerS;
     }
 
+    function getEthPerShare() external view returns(uint256) {
+        return _ethPerShare;
+    }
+
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
         uint _tmp = _mul(1e18, _ethAmount);
         return _div(_tmp, _ethPerShare);

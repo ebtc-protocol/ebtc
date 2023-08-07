@@ -102,11 +102,13 @@ abstract contract Properties is AssertionHelper {
     function invariant_SL_01(
         CdpManager cdpManager,
         SortedCdps sortedCdps
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
 
         while (currentCdp != bytes32(0) && nextCdp != bytes32(0) && currentCdp != nextCdp) {
+            emit LogUint256("NICR next", cdpManager.getNominalICR(nextCdp));
+            emit LogUint256("NICR curr", cdpManager.getNominalICR(currentCdp));
             if (cdpManager.getNominalICR(nextCdp) > cdpManager.getNominalICR(currentCdp)) {
                 return false;
             }
@@ -118,7 +120,7 @@ abstract contract Properties is AssertionHelper {
         return true;
     }
 
-    /// @notice SL-02 The the first(highest) ICR in the sorted list should bigger or equal to TCR
+    /// @notice SL-02 The the first(highest) ICR in the sorted list should be greater or equal to TCR
     function invariant_SL_02(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
