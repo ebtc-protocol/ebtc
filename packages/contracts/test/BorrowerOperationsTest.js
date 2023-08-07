@@ -3318,7 +3318,7 @@ contract('BorrowerOperations', async accounts => {
       }
     })
 
-    it.only("openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the BUFFERED_CCR", async () => {
+    it("openCdp(): reverts when opening the cdp would cause the TCR of the system to fall below the BUFFERED_CCR", async () => {
       await priceFeed.setPrice(dec(3800, 13))
       await openCdp({ICR: toBN(dec(136, 16)), extraParams: { from: alice } })
 
