@@ -98,6 +98,8 @@ abstract contract Properties is AssertionHelper {
         return collateral.sharesOf(address(collSurplusPool)) >= collSurplusPool.getStEthColl();
     }
 
+    event L(string, uint);
+
     /// @notice SL-01 The NICR ranking in the sorted list should follow descending order
     function invariant_SL_01(
         CdpManager cdpManager,
@@ -107,8 +109,8 @@ abstract contract Properties is AssertionHelper {
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
 
         while (currentCdp != bytes32(0) && nextCdp != bytes32(0) && currentCdp != nextCdp) {
-            // emit LogUint256("NICR next", cdpManager.getNominalICR(nextCdp));
-            // emit LogUint256("NICR curr", cdpManager.getNominalICR(currentCdp));
+            emit L("NICR next", cdpManager.getNominalICR(nextCdp));
+            emit L("NICR curr", cdpManager.getNominalICR(currentCdp));
             if (cdpManager.getNominalICR(nextCdp) > cdpManager.getNominalICR(currentCdp)) {
                 return false;
             }
