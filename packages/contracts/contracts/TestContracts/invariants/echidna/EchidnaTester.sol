@@ -26,6 +26,7 @@ import "../Actor.sol";
 import "./EchidnaBaseTester.sol";
 import "./EchidnaProperties.sol";
 import "./EchidnaBeforeAfter.sol";
+import "./EchidnaAssertionHelper.sol";
 
 // Run with:
 // cd <your-path-to-ebtc-repo-root>/packages/contracts
@@ -35,6 +36,7 @@ contract EchidnaTester is
     EchidnaBaseTester,
     EchidnaBeforeAfter,
     EchidnaProperties,
+    EchidnaAssertionHelper,
     PropertiesConstants
 {
     constructor() payable {

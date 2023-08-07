@@ -3,8 +3,9 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
-contract CDPOpsTest is eBTCBaseFixture {
+contract CDPOpsTest is eBTCBaseFixture, Properties {
     function setUp() public override {
         eBTCBaseFixture.setUp();
 
@@ -71,5 +72,26 @@ contract CDPOpsTest is eBTCBaseFixture {
             bytes32 cdp = cdps[cdpIx];
             assertEq(cdp, cdpId);
         }
+    }
+
+    function testSortedCdpsInvariants() public {
+        uint256 coll = borrowerOperations.MIN_NET_COLL() + borrowerOperations.LIQUIDATOR_REWARD() + 16;
+
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: coll * 2}();
+
+        borrowerOperations.openCdp(1, HINT, HINT, coll);
+        borrowerOperations.openCdp(1, HINT, HINT, coll);
+        collateral.setEthPerShare(collateral.getEthPerShare() * 1 ether / 1.1 ether);
+
+        emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCurrentICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCdpColl(sortedCdps.getFirst()));
+
+        assertTrue(invariant_SL_01(cdpManager, sortedCdps), "SL-01");
+        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock), "SL-02");
     }
 }

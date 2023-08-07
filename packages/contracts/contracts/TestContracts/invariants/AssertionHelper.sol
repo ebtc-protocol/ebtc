@@ -1,8 +1,6 @@
 pragma solidity 0.8.17;
 
-import "@crytic/properties/contracts/util/PropertiesHelper.sol";
-
-abstract contract AssertionHelper is PropertiesAsserts {
+abstract contract AssertionHelper {
     function isApproximateEq(
         uint256 _num1,
         uint256 _num2,
@@ -33,36 +31,6 @@ abstract contract AssertionHelper is PropertiesAsserts {
     ) internal pure returns (bool) {
         return (keccak256(abi.encodePacked(_getRevertMsg(returnData))) ==
             keccak256(abi.encodePacked(reason)));
-    }
-
-    function assertRevertReasonEqual(
-        bytes memory returnData,
-        string memory reason
-    ) internal returns (bool) {
-        bool isEqual = _isRevertReasonEqual(returnData, reason);
-        assertWithMsg(isEqual, reason);
-    }
-
-    function assertRevertReasonEqual(
-        bytes memory returnData,
-        string memory reason1,
-        string memory reason2
-    ) internal returns (bool) {
-        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
-            _isRevertReasonEqual(returnData, reason2);
-        assertWithMsg(isEqual, string.concat(reason1, " OR ", reason2));
-    }
-
-    function assertRevertReasonEqual(
-        bytes memory returnData,
-        string memory reason1,
-        string memory reason2,
-        string memory reason3
-    ) internal returns (bool) {
-        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
-            _isRevertReasonEqual(returnData, reason2) ||
-            _isRevertReasonEqual(returnData, reason3);
-        assertWithMsg(isEqual, string.concat(reason1, " OR ", reason2, " OR ", reason3));
     }
 
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
