@@ -400,9 +400,8 @@ contract BorrowerOperations is
         } else {
             _requireICRisAboveMCR(vars.ICR);
             uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price); // bools: coll increase, debt increase
-            
-            if(vars.ICR <= BUFFERED_CCR) {
 
+            if (vars.ICR <= BUFFERED_CCR) {
                 // Any open CDP is a debt increase so this check is safe
 
                 // If you're dragging CCR toward buffer or RM, we add an extra check for TCR
@@ -647,9 +646,7 @@ contract BorrowerOperations is
                 _isDebtIncrease,
                 _vars.price
             );
-            if ((_isDebtIncrease || _collWithdrawal > 0) &&
-                _vars.newICR <= BUFFERED_CCR
-                ) {
+            if ((_isDebtIncrease || _collWithdrawal > 0) && _vars.newICR <= BUFFERED_CCR) {
                 // Adding debt or reducing coll has negative impact on TCR, do a stricter check
 
                 // If you're dragging CCR toward buffer or RM, we add an extra check for TCR
