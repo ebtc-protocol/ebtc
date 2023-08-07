@@ -436,7 +436,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   })
   
   it("Test fee split claim before TCR calculation for Borrower Operations", async() => {	  
-      await openCdp({ ICR: toBN(dec(130, 16)), extraParams: { from: owner } });
+      await openCdp({ ICR: toBN(dec(137, 16)), extraParams: { from: owner } });
 	  
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
@@ -469,11 +469,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.deposit({from: owner, value: _collAmt});    
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
-      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted'");
 	  
       // price rebounce and open CDP  
-      await priceFeed.setPrice(_originalPrice);    
-      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      await priceFeed.setPrice(_originalPrice); // Also reverts due to buffer
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted'");
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
 	  
       // make some fee to claim
