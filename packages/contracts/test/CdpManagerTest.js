@@ -4810,7 +4810,7 @@ contract('CdpManager', async accounts => {
 
     // Alice opens cdp and transfers 1000 EBTC each to Erin, Flyn, Graham
     await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("270000")});
-    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(127, 16)), extraEBTCAmount: dec(1, 17), extraParams: { from: alice } })
+    const { collateral: A_coll, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(136, 16)), extraEBTCAmount: dec(1, 17), extraParams: { from: alice } })
 
     // B, C, D open cdp
     await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("150000")});
