@@ -208,7 +208,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         collateral.setEthPerShare(_newIndex);
 
         // Attacker opens CDP to push to barely to RM
-        uint256 attackerDebtAmount = debtAmt; // AMT matches increase in value so we decrease TCR 
+        uint256 attackerDebtAmount = debtAmt; // AMT matches increase in value so we decrease TCR
         // 1214e15 makes the tx revert due to change in TCR
         // 125e16 is safe but the liquidation reverts
 

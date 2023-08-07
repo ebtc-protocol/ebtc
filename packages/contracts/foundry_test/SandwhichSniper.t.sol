@@ -103,7 +103,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
-        assertTrue(cdpManager.getCdpStatus(cdpIdVictim) !=  3, "Liquidation"); //!closedByLiquidation
+        assertTrue(cdpManager.getCdpStatus(cdpIdVictim) != 3, "Liquidation"); //!closedByLiquidation
     }
 
     function _expectCdpRevert(address _user, uint _coll, uint _debt) internal returns (bytes32) {
