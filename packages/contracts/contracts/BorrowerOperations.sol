@@ -404,7 +404,8 @@ contract BorrowerOperations is
             if (vars.ICR <= BUFFERED_CCR) {
                 // Any open CDP is a debt increase so this check is safe
 
-                // If you're dragging CCR toward buffer or RM, we add an extra check for TCR
+                // If you're dragging TCR toward buffer or RM, we add an extra check for TCR
+                // Which forces you to raise TCR to 135+
                 _requireNewTCRisAboveBufferedCCR(newTCR);
             } else {
                 _requireNewTCRisAboveCCR(newTCR);
@@ -649,8 +650,8 @@ contract BorrowerOperations is
             if ((_isDebtIncrease || _collWithdrawal > 0) && _vars.newICR <= BUFFERED_CCR) {
                 // Adding debt or reducing coll has negative impact on TCR, do a stricter check
 
-                // If you're dragging CCR toward buffer or RM, we add an extra check for TCR
-                // If you're at 125 you're force to raise ICR to 135
+                // If you're dragging TCR toward buffer or RM, we add an extra check for TCR
+                // Which forces you to raise TCR to 135+
                 _requireNewTCRisAboveBufferedCCR(_vars.newTCR);
             } else {
                 // Other cases have a laxer check
