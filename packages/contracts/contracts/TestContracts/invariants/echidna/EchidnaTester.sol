@@ -44,9 +44,6 @@ contract EchidnaTester is
         _setUpActors();
     }
 
-    /* basic function to call when setting up new echidna test
-    Use in pair with connectCoreContracts to wire up infrastructure
-    */
     function _setUp() internal {
         defaultGovernance = msg.sender;
         ebtcDeployer = new EBTCDeployer();
@@ -292,13 +289,13 @@ contract EchidnaTester is
     // Helper functions
     ///////////////////////////////////////////////////////
 
-    function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
-        uint price = priceFeedTestnet.getPrice();
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
-        uint _debt = entireDebt + _change.debtAddition - _change.debtReduction;
-        uint _coll = entireColl + _change.collAddition - _change.collReduction;
-        require((_debt * MCR) / price < _coll, "!CDP_MCR");
-    }
+    // function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
+    //     uint price = priceFeedTestnet.getPrice();
+    //     (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+    //     uint _debt = entireDebt + _change.debtAddition - _change.debtReduction;
+    //     uint _coll = entireColl + _change.collAddition - _change.collReduction;
+    //     require((_debt * MCR) / price < _coll, "!CDP_MCR");
+    // }
 
     function _getRandomCdp(uint _i) internal view returns (bytes32) {
         uint _cdpIdx = _i % cdpManager.getCdpIdsCount();
@@ -311,23 +308,6 @@ contract EchidnaTester is
         uint _priceDiv = _i % 10;
         _oldPrice = priceFeedTestnet.getPrice();
         _newPrice = _oldPrice / (_priceDiv + 1);
-    }
-
-    // helper functions
-    function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
-        uint _price = priceFeedTestnet.getPrice();
-        bool _recovery = cdpManager.checkRecoveryMode(_price);
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
-        if (_recovery) {
-            require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
-        } else {
-            require(_icr > cdpManager.MCR(), "liquidationTriggeredInNormalMode");
-        }
-    }
-
-    function _ensureNoRecoveryModeTriggered() internal view {
-        uint _price = priceFeedTestnet.getPrice();
-        require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
     }
 
     ///////////////////////////////////////////////////////
@@ -404,6 +384,7 @@ contract EchidnaTester is
         priceFeedTestnet.setPrice(_oldPrice);
     }
 
+    // TODO implement redemptions
     function redeemCollateral(
         uint _EBTCAmount,
         bytes32 _hint,
@@ -426,7 +407,8 @@ contract EchidnaTester is
         );
     }
 
-    function claimSplitFee() internal {
+    function claimStakingSplitFee() internal {
+        // TODO do before/after active pool fees
         cdpManager.claimStakingSplitFee();
     }
 
@@ -548,14 +530,12 @@ contract EchidnaTester is
         );
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
-            // _ensureNoLiquidationTriggered(_cdpId);
-            // _ensureNoRecoveryModeTriggered();
 
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
             assertGte(_collWorth, MIN_NET_COLL, "CDP collateral must be above minimum");
-
-            numberOfCdps = cdpManager.getCdpIdsCount();
-            assertWithMsg(numberOfCdps > 0, "CDPs count must have increased");
+            assertWithMsg(cdpManager.getCdpIdsCount() > 0, "CDPs count must have increased");
         } else {
             if (_EBTCAmount == 0) {
                 assertRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero");
@@ -626,7 +606,10 @@ contract EchidnaTester is
 
         if (success) {
             // TODO add more invariants here
+            // TODO NICR may not improve if a rebase happened. Investigate.
             assertGt(vars.nicrAfter, vars.nicrBefore, "P-49 Adding collateral improves Nominal ICR");
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
         } else {
             assertEq(_coll, 0, "Cannot addColl 0");
             assertRevertReasonEqual(
@@ -675,11 +658,10 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        // _ensureNoLiquidationTriggered(_cdpId);
-        // _ensureNoRecoveryModeTriggered();
-
         if (success) {
             // TODO add more invariants here
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertLt(
                 vars.nicrAfter,
                 vars.nicrBefore,
@@ -738,8 +720,9 @@ contract EchidnaTester is
 
         if (success) {
             // TODO add more invariants
-            // withdraw increases debt
-            // withdraw decreases NICR debt
+            assertEq(vars.debtAfter, vars.debtBefore + _amount, "withdrawEBTC increases debt");
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertGt(vars.nicrBefore, vars.nicrAfter, "withdrawEBTC decreases Nominal ICR");
         } else if (_amount == 0) {
             assertRevertReasonEqual(
@@ -748,6 +731,14 @@ contract EchidnaTester is
             );
         } else if (vars.cdpStatusBefore != 1) {
             assertRevertReasonEqual(returnData, "BorrowerOps: Cdp does not exist or is closed");
+        } else if (
+            collateral.getPooledEthByShares(vars.cdpCollBefore) < borrowerOperations.MIN_NET_COLL()
+        ) {
+            // This may happen after a rebase, if before the CDP has coll greater than min now it may not be anymore
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: Cdp's net coll must be greater than minimum"
+            );
         } else {
             assertRevertReasonEqual(
                 returnData,
@@ -789,8 +780,17 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // TODO not always
+            // TODO this is breaking in some very complex cases (long sequence). Investigate
             assertGt(vars.tcrAfter, vars.tcrBefore, "TCR must increase after a repayment");
+
+            assertEq(
+                vars.ebtcTotalSupplyAfter,
+                vars.ebtcTotalSupplyBefore - _amount,
+                "P-05: eBTC tokens are burned upon repayment of a CDP's debt"
+            );
+
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
         } else if (_amount == 0) {
             assertRevertReasonEqual(
                 returnData,
@@ -828,6 +828,8 @@ contract EchidnaTester is
 
         if (success) {
             // TODO add more invariants
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
@@ -873,7 +875,7 @@ contract EchidnaTester is
             _debtChange = clampBetween(_debtChange, 0, entireDebt - 1);
             _change = CDPChange(0, _collWithdrawal, 0, _debtChange);
         }
-        _ensureMCR(_cdpId, _change);
+        // _ensureMCR(_cdpId, _change);
         actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
@@ -888,8 +890,8 @@ contract EchidnaTester is
             )
         );
         if (_collWithdrawal > 0 || _isDebtIncrease) {
-            _ensureNoLiquidationTriggered(_cdpId);
-            _ensureNoRecoveryModeTriggered();
+            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
         }
     }
 

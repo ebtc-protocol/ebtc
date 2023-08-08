@@ -166,6 +166,30 @@ abstract contract Properties is AssertionHelper {
         return true;
     }
 
+    /// @notice P-01 The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100%
+    function invariant_P_01(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet,
+        EBTCToken eBTCToken
+    ) internal view returns (bool) {
+        // TODO how to calculate "the dollar value of eBTC"?
+        return
+            cdpManager.getTCR(priceFeedTestnet.getPrice()) > 1 ether
+                ? cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice() >=
+                    eBTCToken.totalSupply()
+                : cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice() <
+                    eBTCToken.totalSupply();
+    }
+
+    /// @notice P-03 After any operation, the TCR must be above the CCR
+    function invariant_P_03(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet
+    ) internal view returns (bool) {
+        uint _price = priceFeedTestnet.getPrice();
+        return !cdpManager.checkRecoveryMode(_price);
+    }
+
     /// @notice P-22 `CdpManager`, `BorrowerOperations`, `eBTCToken`, `SortedCDPs` and `PriceFeed`s do not hold value terms of stETH and eBTC unless there are donations. @todo Missing CdpManager balance check, Missing stETH/eBTC checks
     function invariant_P_22(
         ICollateralToken collateral,
@@ -229,6 +253,22 @@ abstract contract Properties is AssertionHelper {
     /// @notice P-48 Adding collateral improves Nominal ICR
     function invariant_P_48(uint256 nicrBefore, uint256 nicrAfter) internal view returns (bool) {
         return nicrAfter > nicrBefore;
+    }
+
+    /// @notice P-50 After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode
+    function invariant_P_50(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet,
+        bytes32 _cdpId
+    ) internal view returns (bool) {
+        uint _price = priceFeedTestnet.getPrice();
+        bool _recovery = cdpManager.checkRecoveryMode(_price);
+        uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+        if (_recovery) {
+            return (_icr > cdpManager.getTCR(_price));
+        } else {
+            return (_icr > cdpManager.MCR());
+        }
     }
 
     /// @notice DUMMY-01 PriceFeed is configured

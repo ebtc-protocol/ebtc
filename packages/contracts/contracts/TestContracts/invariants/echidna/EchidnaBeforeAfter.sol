@@ -20,6 +20,8 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         uint256 tcrAfter;
         uint256 debtBefore;
         uint256 debtAfter;
+        uint256 ebtcTotalSupplyBefore;
+        uint256 ebtcTotalSupplyAfter;
     }
 
     Vars vars;
@@ -33,6 +35,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         vars.cdpStatusBefore = cdpManager.getCdpStatus(_cdpId);
         vars.tcrBefore = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
         vars.debtBefore = cdpManager.getCdpDebt(_cdpId);
+        vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -44,5 +47,6 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         vars.cdpStatusAfter = cdpManager.getCdpStatus(_cdpId);
         vars.tcrAfter = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
         vars.debtAfter = cdpManager.getCdpDebt(_cdpId);
+        vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
     }
 }

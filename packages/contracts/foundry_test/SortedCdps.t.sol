@@ -89,8 +89,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         collateral.setEthPerShare(0.957599492232792566e18);
 
-        uint256 coll2 = (1999995586570936579 +
-            collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD()));
+        uint256 coll2 = 1999995586570936579 +
+            collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD());
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll2);
 
         emit log_string("col2");
