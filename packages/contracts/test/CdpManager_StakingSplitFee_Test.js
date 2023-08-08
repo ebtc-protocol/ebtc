@@ -25,6 +25,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let collSurplusPool;
   let _MCR;
   let _CCR;
+  let _BCCR;
   let collToken;
   let splitFeeRecipient;
   let authority;
@@ -48,6 +49,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
+    _BCCR = await cdpManager.BUFFERED_CCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
@@ -443,7 +445,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
       let _oldIndex = web3.utils.toBN('1000000000000000000');
       let _newIndex = web3.utils.toBN('1500000000000000000');
-      await collToken.setEthPerShare(_newIndex);
 	  
       // price drops
       let _originalPrice = await priceFeed.getPrice();	  
@@ -464,24 +465,26 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));  
 	  
       // open CDP will revert due to TCR reduce after fee claim
-      let _collAmt = toBN("19751958561574716850");
+      let _collAmt = toBN("21299958561574716850");
       let _ebtcAmt = toBN("1158960105069686413");
       await collToken.deposit({from: owner, value: _collAmt});    
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));  
+      await collToken.setEthPerShare(_newIndex);
       await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted'");
 	  
       // price rebounce and open CDP  
-      await priceFeed.setPrice(_originalPrice); // Also reverts due to buffer
-      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt), "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted'");
-      let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      await priceFeed.setPrice(_originalPrice);
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: owner});
+      let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 1);
+      assert.isTrue((await sortedCdps.contains(_cdpId)));
+      assert.isTrue(_newIndex.eq((await cdpManager.stFPPSg())));
 	  
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
       _oldIndex = _newIndex;
       _newIndex = web3.utils.toBN('1750000000000000000');
-      await collToken.setEthPerShare(_newIndex);
 	  
       // price drop again
       await priceFeed.setPrice(_newPrice);
@@ -491,6 +494,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _moreDebt = toBN("708960105069686413");	 
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
+      await collToken.setEthPerShare(_newIndex);
       await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and adjust CDP  
@@ -502,7 +506,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
       _oldIndex = _newIndex;
       _newIndex = web3.utils.toBN('1950000000000000000');
-      await collToken.setEthPerShare(_newIndex);
 	  
       // price drop deeper and closeCdp revert due to TCR reduce after claim fee
       _newPrice = dec(6000,13)
@@ -510,6 +513,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await cdpManager.checkRecoveryMode(_newPrice));
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));
+      await collToken.setEthPerShare(_newIndex);
       await assertRevert(borrowerOperations.closeCdp(_cdpId), "BorrowerOperations: Operation not permitted during Recovery Mode")
   })
   
@@ -539,15 +543,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
   })  
 
-  it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	
-        let _price = dec(7228, 13);
-        await priceFeed.setPrice(_price);
+  it("Malicious Recovery Mode triggering should fail within [Borrower Operations: openCDP()] due to sync-up of staking index and TCR buffering", async() => {	
+      let _price = dec(7228, 13);
+      await priceFeed.setPrice(_price);
 
       await openCdp({ ICR: toBN(dec(137, 16)), extraParams: { from: owner } });
-      let _victimId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);	  
-      await openCdp({ ICR: toBN(dec(135, 16)), extraParams: { from: owner } });
-
-
 
       // modify split fee
       assert.isTrue(authority.address == (await cdpManager.authority()));
@@ -563,48 +563,39 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _s = await cdpManager.stakingRewardSplit(); 
       assert.isTrue(_splitFee == _s); 
 
-      console.log("basics");
+      // check TCR after price drops
+      _price = dec(6595, 13);
+      await priceFeed.setPrice(_price);
+      let _tcrBefore = await cdpManager.getTCR(_price);
+      assert.isTrue(_tcrBefore.gt(_CCR));
+      let _1e36 = mv._1e18BN.mul(mv._1e18BN);
 
-      // make some fee to claim
+      // make some staking fee split to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
       let _oldIndex = web3.utils.toBN('1000000000000000000');
-      let _newIndex = web3.utils.toBN('1010000000000000000');
+      let _newIndex = web3.utils.toBN('1000050000000000000');
       let _deltaIndex = _newIndex.sub(_oldIndex);
       let _idxPrime = _newIndex.sub(_deltaIndex.mul(_s).div(toBN("10000")));// I' = (I - deltaI * splitFee)
+	  
+      // ensure the index increase is good enough for attacker
+      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_oldIndex, _price, _splitFee);
+      console.log('_deltaRequiredIdx=' + _deltaRequiredIdx);
+      assert.isTrue(_deltaIndex.gt(_deltaRequiredIdx));  	  
+	  
       await collToken.setEthPerShare(_newIndex);
 
-      console.log("basics2");
-
-      // check TCR for victim
-      let _tcrBefore = await cdpManager.getTCR(_price);
-      let _victimICRBefore = await cdpManager.getCurrentICR(_victimId, _price);
-      assert.isTrue(_tcrBefore.gt(_CCR));
-      assert.isTrue(_victimICRBefore.gt(_CCR)); // NOTE: This changes the logic, TODO: Review and remove this comment
-      let _1e36 = mv._1e18BN.mul(mv._1e18BN);
-
-      console.log("CCR");
-
-      // calculate triggering CDP parameters
-      let _totalC = await cdpManager.getEntireSystemColl();
-      let _totalD = await cdpManager.getEntireSystemDebt();	  
-      let _icrUpper = _CCR// icr < CCR
-      let _numerator = _totalC.mul(_idxPrime).mul(toBN(_price)).div(_1e36).sub(_CCR.mul(_totalD).div(mv._1e18BN));// (C * I' * p - CCR * D)
-      let _icrLower = _CCR.mul(_newIndex).mul(toBN(_price)).mul(minDebt).div(_1e36).div(_numerator.add(minDebt.mul(toBN(_price)).mul(_newIndex).div(_1e36)))// icr > (2 * p * I * CCR) / (C * I' * p - CCR * D + 2 * p * I)
-      let _icr = toBN("1249753714546239750");
-      let _denominator = _CCR.sub(_icr);// CCR - icr
-      let _ebtcAmt = _numerator.mul(mv._1e18BN).div(_denominator).add(toBN("1234567890"));
-
-      // attacker open CDP to facilitate Recovery Mode triggering deliberately
-      let _collAmt = liq_stipend.add(_ebtcAmt.mul(_icr).div(toBN(_price)));
-      //console.log('_totalC=' + _totalC + ', _totalD=' + _totalD + ", _I'=" + _idxPrime + ', _d=' + _ebtcAmt + ', _c=' + _collAmt + ', _icrLower=' + _icrLower);
+      // attacker tries to open CDP to facilitate Recovery Mode triggering deliberately in vain
+      let _collAmt = liq_stipend.add(minDebt);
+      let _ebtcAmt = _collAmt.mul(toBN(_price)).div(_MCR.add(toBN('123456789012345672')));
       await collToken.deposit({from: bob, value: _collAmt});   
-      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});  
-      let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _price, _splitFee);
-      assert.isTrue(_deltaIndex.lte(_deltaRequiredIdx));  
-      let _idxBefore = await cdpManager.stFPPSg();
-      assert.isTrue(_idxBefore.eq(_oldIndex));
-      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});
+      await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted"); 
+      assert.isTrue(_oldIndex.eq(await cdpManager.stFPPSg())); 
+
+      // Without index sync-up & buffer-check in place
+      // the attacker might be able to drop the TCR to quite close to CCR with the malicious CDP   
+      console.log('_tcrAfter=' + (await cdpManager.getTCR(_price)));
   })
   
   

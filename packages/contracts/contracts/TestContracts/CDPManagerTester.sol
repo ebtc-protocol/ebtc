@@ -43,6 +43,7 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
 
+    // ref: https://github.com/Badger-Finance/ebtc/pull/456#issuecomment-1566821518
     function getDeltaIndexToTriggerRM(
         uint _currentIndex,
         uint _price,
@@ -54,8 +55,14 @@ contract CdpManagerTester is CdpManager {
         } else if (_tcr == LiquityMath.MAX_TCR) {
             return type(uint256).max;
         } else {
-            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
-            return (_splitIndex * (_tcr - CCR)) / _tcr;
+            if (_currentIndex == stFPPSg) {
+                uint _splitIndex = (stFPPSg * MAX_REWARD_SPLIT) /
+                    (MAX_REWARD_SPLIT - _stakingRewardSplit);
+                return (_splitIndex * (_tcr - CCR)) / _tcr;
+            } else {
+                uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
+                return (_splitIndex * (_tcr - CCR)) / _tcr;
+            }
         }
     }
 
