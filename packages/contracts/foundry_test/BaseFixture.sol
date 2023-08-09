@@ -20,8 +20,9 @@ import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
+import {LogUtils} from "./utils/LogUtils.sol";
 
-contract eBTCBaseFixture is Test, BytecodeReader {
+contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint public constant CCR = 125e16; // 125%
@@ -33,6 +34,22 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant AMOUNT_OF_CDPS = 3;
 
     uint internal constant MAX_BPS = 10000;
+
+    uint internal constant GAS_STIPEND_BALANCE = 2e17;
+
+    struct CdpData {
+        bytes32 cdpId;
+        uint debt;
+        uint collShares;
+        uint stake;
+        uint liquidatorRewardShares;
+        uint status;
+        uint128 arrayIndex;
+        uint rewardSnapshot;
+        uint stFeePerUnitcdp;
+        uint currentPrice;
+        uint currentIcr;
+    }
 
     enum CapabilityFlag {
         None,
@@ -423,5 +440,80 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         newIndex = collateral.getPooledEthByShares(1e18);
 
         storedIndex = cdpManager.stFPPSg();
+    }
+
+    /// @notice Currently not returning arrayIndex as there is no public getter method on cdpManager
+    function _getCdpData(bytes32 cdpId) public returns (CdpData memory cdpData) {
+        cdpData.cdpId = cdpId;
+        cdpData.status = cdpManager.getCdpStatus(cdpId);
+        cdpData.stake = cdpManager.getCdpStake(cdpId);
+        cdpData.debt = cdpManager.getCdpDebt(cdpId);
+        cdpData.collShares = cdpManager.getCdpColl(cdpId);
+        cdpData.liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(cdpId);
+        cdpData.rewardSnapshot = cdpManager.rewardSnapshots(cdpId);
+        cdpData.stFeePerUnitcdp = cdpManager.stFeePerUnitcdp(cdpId);
+        cdpData.currentPrice = priceFeedMock.fetchPrice();
+        cdpData.currentIcr = cdpManager.getCurrentICR(cdpId, cdpData.currentPrice);
+    }
+
+    function _printCdpData(CdpData memory cdpData) internal {
+        console.log("=== CdpId: ", uint(cdpData.cdpId), " ===");
+        console.log("debt: ", cdpData.debt);
+        console.log(
+            "coll (shares / stEth): ",
+            cdpData.collShares,
+            collateral.getPooledEthByShares(cdpData.collShares)
+        );
+        console.log(
+            "liquidatorRewardShares (shares / stEth): ",
+            cdpData.liquidatorRewardShares,
+            collateral.getPooledEthByShares(cdpData.liquidatorRewardShares)
+        );
+        console.log("stake: ", cdpData.stake);
+        console.log("status: ", cdpData.status);
+        console.log("rewardSnapshot: ", cdpData.rewardSnapshot);
+        console.log("stFeePerUnitcdp: ", cdpData.stFeePerUnitcdp);
+        console.log("currentPrice: ", cdpData.currentPrice);
+        console.log("currentIcr: ", cdpData.currentIcr);
+        console.log("");
+    }
+
+    function _getAndPrintCdpData(bytes32 cdpId) internal {
+        CdpData memory cdpData = _getCdpData(cdpId);
+        _printCdpData(cdpData);
+    }
+
+    function _getCurrentICR(bytes32 cdpId) internal returns (uint ICR) {
+        uint price = priceFeedMock.fetchPrice();
+        return cdpManager.getCurrentICR(cdpId, price);
+    }
+
+    function _getTCR() internal returns (uint TCR) {
+        uint price = priceFeedMock.fetchPrice();
+        return cdpManager.getTCR(price);
+    }
+
+    function _getAndPrintSystemState() internal {
+        uint price = priceFeedMock.fetchPrice();
+        uint TCR = _getTCR();
+
+        console.log("=== System State ===");
+        console.log("price: ", price);
+        console.log("TCR: ", TCR);
+        console.log("");
+    }
+
+    function _getRequiredPriceForICR(
+        uint debt,
+        uint collShares,
+        uint ICR
+    ) internal returns (uint price) {
+        return (debt * ICR) / collShares;
+    }
+
+    function _getDebtForDesiredICR(uint stEthBalance, uint ICR) internal returns (uint debt) {
+        uint price = priceFeedMock.fetchPrice();
+
+        debt = (stEthBalance * price) / ICR;
     }
 }
