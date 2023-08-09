@@ -334,4 +334,27 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         assertGt(initialTcr, newTcr);
     }
+
+    function testRepayEBTCMustImproveTCR() public {
+        uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
+        uint borrowedAmount = 1;
+        uint debtAmount = 28;
+        uint repayAmount = 1;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10 ether}();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.withdrawEBTC(_cdpId, debtAmount, _cdpId, _cdpId);
+        collateral.setEthPerShare(1.099408949270679030e18);
+
+        uint256 _price = priceFeedMock.getPrice();
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+        borrowerOperations.repayEBTC(_cdpId, repayAmount, HINT, HINT);
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+
+        assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");
+    }
 }

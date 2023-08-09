@@ -13,10 +13,9 @@ abstract contract EchidnaLog is EchidnaBaseTester {
         emit Log("Price", price);
         emit Log("TCR", cdpManager.getTCR(price));
         emit Log("ICR", cdpManager.getCurrentICR(sortedCdps.getFirst(), price));
-        emit Log("C", coll);
-        emit Log("U", collateral.getPooledEthByShares(coll));
-        emit Log("D", debt);
-        emit Log("RecoveryMode", cdpManager.checkRecoveryMode(price) ? 1 : 0);
+        emit Log("TC", coll);
+        emit Log("TU", collateral.getPooledEthByShares(coll));
+        emit Log("TD", debt);
         emit Log("EthPerShare", collateral.getEthPerShare());
         _;
     }

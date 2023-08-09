@@ -6,11 +6,7 @@ abstract contract AssertionHelper {
         uint256 _num2,
         uint256 _tolerance
     ) internal pure returns (bool) {
-        if (_num1 > _num2) {
-            return _tolerance >= _num1 - _num2;
-        } else {
-            return _tolerance >= _num2 - _num1;
-        }
+        return diffPercent(_num1, _num2) <= _tolerance;
     }
 
     function diffPercent(uint256 _num1, uint256 _num2) internal pure returns (uint256) {
@@ -24,6 +20,29 @@ abstract contract AssertionHelper {
 
     // https://ethereum.stackexchange.com/a/83577
     function _getRevertMsg(bytes memory returnData) internal pure returns (string memory) {
+        // Check that the data has the right size: 4 bytes for signature + 32 bytes for panic code
+        if (returnData.length == 4 + 32) {
+            // Check that the data starts with the Panic signature
+            bytes4 panicSignature = bytes4(keccak256(bytes("Panic(uint256)")));
+            for (uint i = 0; i < 4; i++) {
+                if (returnData[i] != panicSignature[i]) return "Undefined signature";
+            }
+
+            uint256 panicCode;
+            for (uint i = 4; i < 36; i++) {
+                panicCode = panicCode << 8;
+                panicCode |= uint8(returnData[i]);
+            }
+
+            // Now convert the panic code into its string representation
+            if (panicCode == 17) {
+                return "Panic(17)";
+            }
+
+            // Add other panic codes as needed or return a generic "Unknown panic"
+            return "Undefined panic code";
+        }
+
         // If the returnData length is less than 68, then the transaction failed silently (without a revert message)
         if (returnData.length < 68) return "Transaction reverted silently";
 

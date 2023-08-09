@@ -33,4 +33,21 @@ abstract contract EchidnaAssertionHelper is AssertionHelper, PropertiesAsserts {
             _isRevertReasonEqual(returnData, reason3);
         assertWithMsg(isEqual, string.concat(reason1, " OR ", reason2, " OR ", reason3));
     }
+
+    function assertRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason1,
+        string memory reason2,
+        string memory reason3,
+        string memory reason4
+    ) internal returns (bool) {
+        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
+            _isRevertReasonEqual(returnData, reason2) ||
+            _isRevertReasonEqual(returnData, reason3) ||
+            _isRevertReasonEqual(returnData, reason4);
+        assertWithMsg(
+            isEqual,
+            string.concat(reason1, " OR ", reason2, " OR ", reason3, " OR ", reason4)
+        );
+    }
 }

@@ -289,6 +289,23 @@ contract EchidnaTester is
     // Helper functions
     ///////////////////////////////////////////////////////
 
+    function _totalCdpsBelowMcr() internal returns (uint256) {
+        uint256 ans;
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 _price = priceFeedTestnet.getPrice();
+
+        while (currentCdp != bytes32(0)) {
+            if (cdpManager.getCurrentICR(currentCdp, _price) < MCR) {
+                ++ans;
+            }
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        return ans;
+    }
+
     // function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
     //     uint price = priceFeedTestnet.getPrice();
     //     (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
@@ -363,6 +380,8 @@ contract EchidnaTester is
 
         _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
 
+        uint256 totalCdpsBelowMcr = _totalCdpsBelowMcr();
+
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n)
@@ -370,16 +389,32 @@ contract EchidnaTester is
 
         if (success) {
             assertRevertReasonEqual(returnData, "TODO1");
+        } else if (totalCdpsBelowMcr == 0) {
+            assertRevertReasonEqual(
+                returnData,
+                // attempting to liquidate CDPs if no are below MCR will trigger
+                "Panic(17)"
+            );
         } else {
             assertRevertReasonEqual(returnData, "TODO2");
         }
     }
 
-    function redeemCollateral(uint _EBTCAmount, uint _partialRedemptionHintNICR) external {
+    function redeemCollateral(
+        uint _EBTCAmount,
+        uint _partialRedemptionHintNICR,
+        uint _maxFeePercentage
+    ) external {
         actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
+
+        _maxFeePercentage = clampBetween(
+            _maxFeePercentage,
+            cdpManager.redemptionFeeFloor(),
+            cdpManager.DECIMAL_PRECISION()
+        );
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -391,7 +426,7 @@ contract EchidnaTester is
                 bytes32(0),
                 _partialRedemptionHintNICR,
                 0,
-                0
+                _maxFeePercentage
             )
         );
 
@@ -569,7 +604,12 @@ contract EchidnaTester is
             (success, ) = actor.proxy(
                 address(collateral),
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
-                collateral.getPooledEthByShares(_coll - collateral.balanceOf(address(actor)))
+                (_coll - collateral.balanceOf(address(actor)))
+            );
+            assertGte(
+                collateral.balanceOf(address(actor)),
+                _coll,
+                "Actor has high enough balance to add"
             );
             assertWithMsg(success, "deposit never fails as EchidnaTester has high enough balance");
         }
@@ -676,7 +716,9 @@ contract EchidnaTester is
                     returnData,
                     "BorrowerOps: Cdp's net coll must be greater than minimum",
                     "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
-                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted",
+                    // SafeMath over-/under-flows (see testCdpsOpenRebaseClose)
+                    "Panic(17)"
                 );
             }
         }
@@ -696,7 +738,7 @@ contract EchidnaTester is
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
-        // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflows
+        // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
         _amount = clampBetween(_amount, 0, type(uint128).max);
 
         CDPChange memory _change = CDPChange(0, 0, _amount, 0);
@@ -732,10 +774,11 @@ contract EchidnaTester is
         } else if (
             collateral.getPooledEthByShares(vars.cdpCollBefore) < borrowerOperations.MIN_NET_COLL()
         ) {
-            // This may happen after a rebase, if before the CDP has coll greater than min now it may not be anymore
             assertRevertReasonEqual(
                 returnData,
-                "BorrowerOps: Cdp's net coll must be greater than minimum"
+                // This may happen after a rebase, if before the CDP has coll greater than min now it may not be anymore
+                "BorrowerOps: Cdp's net coll must be greater than minimum",
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
             );
         } else {
             assertRevertReasonEqual(
@@ -746,7 +789,7 @@ contract EchidnaTester is
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) external {
+    function repayEBTC(uint _amount, uint256 _i) external log {
         actor = actors[msg.sender];
 
         bool success;
@@ -778,6 +821,8 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            emit LogUint256("TCR before", vars.tcrBefore);
+            emit LogUint256("TCR after", vars.tcrAfter);
             assertWithMsg(
                 vars.tcrAfter > vars.tcrBefore ||
                     diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
@@ -844,14 +889,22 @@ contract EchidnaTester is
                 vars.actorCollBefore,
                 "closeCdp increases the collateral balance of the user"
             );
-            assertEq(
-                vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
-                vars.actorCollAfter,
+            assertWithMsg(
+                // not exact due to rounding errors
+                isApproximateEq(
+                    vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
+                    vars.actorCollAfter,
+                    0.01e18
+                ),
                 "closeCdp gives collateral and liquidator rewards back to user"
             );
         } else if (vars.sortedCdpsSizeBefore == 1) {
-            // TODO check also for overflow reverts
-            assertRevertReasonEqual(returnData, "CdpManager: Only one cdp in the system");
+            assertRevertReasonEqual(
+                returnData,
+                "CdpManager: Only one cdp in the system",
+                // SafeMath over-/under-flows (see testCdpsOpenRebaseClose)
+                "Panic(17)"
+            );
         } else {
             assertRevertReasonEqual(
                 returnData,
