@@ -355,13 +355,13 @@ contract EchidnaTester is
     //     priceFeedTestnet.setPrice(_oldPrice);
     // }
 
-    function liquidateCdps(uint _n) external {
+    function liquidateCdps(uint _n) external log {
         actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
 
-        _n = clampBetween(_n, 0, cdpManager.getCdpIdsCount());
+        _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -808,7 +808,7 @@ contract EchidnaTester is
         }
     }
 
-    function closeCdp(uint _i) external {
+    function closeCdp(uint _i) external log {
         actor = actors[msg.sender];
 
         bool success;

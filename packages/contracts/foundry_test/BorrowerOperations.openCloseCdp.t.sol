@@ -264,4 +264,23 @@ contract CDPTest is eBTCBaseFixture {
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
     }
+
+    function testCdpsOpenRebaseClose() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint256).max);
+
+        uint256 coll = borrowerOperations.MIN_NET_COLL() +
+            borrowerOperations.LIQUIDATOR_REWARD() +
+            16;
+
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: coll}();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll);
+        collateral.setEthPerShare(1.015149924993973008e18);
+
+        vm.expectRevert("CdpManager: Only one cdp in the system");
+        borrowerOperations.closeCdp(_cdpId);
+    }
 }
