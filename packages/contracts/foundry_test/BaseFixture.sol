@@ -26,6 +26,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint public constant CCR = 125e16; // 125%
+    uint public constant BCCR = 136e16; // 135%
     uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
     uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16; // 200% - defensive CR
     uint internal constant MIN_NET_DEBT = 1e17; // Subject to changes once CL is changed

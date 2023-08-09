@@ -259,12 +259,23 @@ contract CDPOpsTest is eBTCBaseFixture {
             projectedSystemDebt,
             priceFeedMock.fetchPrice()
         );
+
         // Make sure tx is reverted if user tries to make withdraw resulting in either TCR < CCR or ICR < MCR
         if (projectedTcr <= CCR || projectedIcr <= MINIMAL_COLLATERAL_RATIO) {
             vm.expectRevert();
             borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
             return;
         }
+
+        // Make sure tx is reverted if user tries to make withdraw resulting in TCR <= BCCR when their withdrawal results in ICR <= BCCR
+        if (projectedTcr <= BCCR && projectedTcr <= BCCR) {
+            vm.expectRevert(
+                "BorrowerOps: A TCR decreasing operation that would result in TCR < BUFFERED_CCR is not permitted"
+            );
+            borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
+            return;
+        }
+
         // Withdraw
         borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
         // Make sure ICR decreased
