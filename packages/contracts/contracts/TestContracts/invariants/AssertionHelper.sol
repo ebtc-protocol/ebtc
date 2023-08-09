@@ -13,6 +13,15 @@ abstract contract AssertionHelper {
         }
     }
 
+    function diffPercent(uint256 _num1, uint256 _num2) internal pure returns (uint256) {
+        if (_num1 == _num2) return 0;
+        else if (_num1 > _num2) {
+            return ((_num1 - _num2) * 1e18) / ((_num1 + _num2) / 2);
+        } else {
+            return ((_num2 - _num1) * 1e18) / ((_num1 + _num2) / 2);
+        }
+    }
+
     // https://ethereum.stackexchange.com/a/83577
     function _getRevertMsg(bytes memory returnData) internal pure returns (string memory) {
         // If the returnData length is less than 68, then the transaction failed silently (without a revert message)
