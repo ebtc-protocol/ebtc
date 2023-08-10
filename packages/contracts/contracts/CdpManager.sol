@@ -620,9 +620,15 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _calcRedemptionFee(getRedemptionRateWithDecay(), _stEthBalance);
     }
 
-    function _calcRedemptionFee(uint _redemptionRate, uint _stEthBalance) internal pure returns (uint) {
+    function _calcRedemptionFee(
+        uint _redemptionRate,
+        uint _stEthBalance
+    ) internal pure returns (uint) {
         uint redemptionFee = (_redemptionRate * _stEthBalance) / DECIMAL_PRECISION;
-        require(redemptionFee < _stEthBalance, "CdpManager: Fee would eat up all returned collateral");
+        require(
+            redemptionFee < _stEthBalance,
+            "CdpManager: Fee would eat up all returned collateral"
+        );
         return redemptionFee;
     }
 

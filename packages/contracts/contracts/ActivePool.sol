@@ -137,7 +137,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         _requireCallerIsBOorCdpM();
 
         uint256 _cachedSystemCollShares = systemCollShares;
-        require(_cachedSystemCollShares >= _collShares, "ActivePool: Insufficient collateral shares");
+        require(
+            _cachedSystemCollShares >= _collShares,
+            "ActivePool: Insufficient collateral shares"
+        );
         uint256 _totalCollSharesToTransfer = _collShares + _liquidatorRewardShares; // TODO: Is this safe?
         unchecked {
             // Safe per the check above
@@ -162,7 +165,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         uint256 _cachedSystemCollShares = systemCollShares;
 
-        require(_cachedSystemCollShares >= _collShares, "ActivePool: Insufficient collateral shares");
+        require(
+            _cachedSystemCollShares >= _collShares,
+            "ActivePool: Insufficient collateral shares"
+        );
         unchecked {
             // Safe per the check above
             _cachedSystemCollShares -= _collShares;
@@ -297,7 +303,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
             collateral.balanceOf(address(this)) >= collateral.getPooledEthByShares(systemCollShares),
             "ActivePool: Must repay Balance"
         );
-        require(collateral.sharesOf(address(this)) >= systemCollShares, "ActivePool: Must repay Share");
+        require(
+            collateral.sharesOf(address(this)) >= systemCollShares,
+            "ActivePool: Must repay Share"
+        );
         require(
             collateral.getPooledEthByShares(DECIMAL_PRECISION) == oldRate,
             "ActivePool: Should keep same collateral share rate"

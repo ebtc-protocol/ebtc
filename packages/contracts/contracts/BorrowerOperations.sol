@@ -278,7 +278,10 @@ contract BorrowerOperations is
         require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         // Get the collSharesChange based on the collateral value transferred in the transaction
-        (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthBalanceChange(_stEthBalanceToIncrease, _stEthBalanceToDecrease);
+        (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthBalanceChange(
+            _stEthBalanceToIncrease,
+            _stEthBalanceToDecrease
+        );
 
         vars.debtChange = _debtChange;
 
@@ -303,7 +306,12 @@ contract BorrowerOperations is
         );
 
         // Check the adjustment satisfies all conditions for the current system mode
-        _requireValidAdjustmentInCurrentMode(isRecoveryMode, _stEthBalanceToDecrease, _isDebtIncrease, vars);
+        _requireValidAdjustmentInCurrentMode(
+            isRecoveryMode,
+            _stEthBalanceToDecrease,
+            _isDebtIncrease,
+            vars
+        );
 
         // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
         if (!_isDebtIncrease && _debtChange > 0) {
@@ -472,7 +480,11 @@ contract BorrowerOperations is
         _repayEBTC(msg.sender, debt);
 
         // CEI: Send the collateral and liquidator reward shares back to the user
-        activePool.transferSystemCollSharesAndLiquidatorRewardShares(msg.sender, coll, liquidatorRewardShares);
+        activePool.transferSystemCollSharesAndLiquidatorRewardShares(
+            msg.sender,
+            coll,
+            liquidatorRewardShares
+        );
     }
 
     /**
@@ -486,7 +498,7 @@ contract BorrowerOperations is
     }
 
     // --- Helper functions ---
-    
+
     /**
         @notice Calculate collateral shares change for a CDP from stEth balance change. Determine whether this change is positive or negative
         @dev This function is used in the context of a CDP adjustment, where the collateral change is either a top-up or a withdrawal
@@ -498,12 +510,12 @@ contract BorrowerOperations is
         uint _stEthBalanceToIncrease,
         uint _stEthBalanceToDecrease
     ) internal view returns (uint collSharesChange, bool isCollIncrease) {
-
         // If balance to increase is positive, this is an increase
         if (_stEthBalanceToIncrease != 0) {
             collSharesChange = collateral.getSharesByPooledEth(_stEthBalanceToIncrease);
             isCollIncrease = true;
-        } else { // Otherwise, this is a decrease. The calling function must have already determined one of these two input values is zero
+        } else {
+            // Otherwise, this is a decrease. The calling function must have already determined one of these two input values is zero
             collSharesChange = collateral.getSharesByPooledEth(_stEthBalanceToDecrease);
         }
     }
@@ -525,7 +537,10 @@ contract BorrowerOperations is
 
         if (_varMvTokens.isCollIncrease) {
             // Coll increase: send change value of stETH to Active Pool, increment ActivePool stETH internal accounting
-            _sendCollSharesToActivePool(_varMvTokens.collAddUnderlying, _varMvTokens.collSharesChange);
+            _sendCollSharesToActivePool(
+                _varMvTokens.collAddUnderlying,
+                _varMvTokens.collSharesChange
+            );
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
             activePool.transferSystemCollShares(_varMvTokens.user, _varMvTokens.collSharesChange);
@@ -780,7 +795,9 @@ contract BorrowerOperations is
         uint _systemStEthBalance = collateral.getPooledEthByShares(_systemCollShares);
         uint totalDebt = _getSystemDebt();
 
-        _systemStEthBalance = _isCollIncrease ? _systemStEthBalance + _collChange : _systemStEthBalance - _collChange;
+        _systemStEthBalance = _isCollIncrease
+            ? _systemStEthBalance + _collChange
+            : _systemStEthBalance - _collChange;
         totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
 
         uint newTCR = LiquityMath._computeCR(_systemStEthBalance, totalDebt, _price);

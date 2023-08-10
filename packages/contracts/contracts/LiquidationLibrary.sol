@@ -157,7 +157,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             // housekeeping leftover collateral for liquidated CDP
             if (_outputState.totalColSurplus > 0) {
-                activePool.transferSystemCollShares(address(collSurplusPool), _outputState.totalColSurplus);
+                activePool.transferSystemCollShares(
+                    address(collSurplusPool),
+                    _outputState.totalColSurplus
+                );
             }
 
             return (
@@ -516,7 +519,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         activePool.decreaseSystemDebt(totalDebtToBurn);
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
-        activePool.transferSystemCollSharesAndLiquidatorRewardShares(msg.sender, totalColToSend, totalColReward);
+        activePool.transferSystemCollSharesAndLiquidatorRewardShares(
+            msg.sender,
+            totalColToSend,
+            totalColReward
+        );
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -741,11 +748,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         vars.backToNormalMode = false;
         vars.systemDebt = _systemDebt;
         vars.entireSystemColl = _systemCollShares;
-        uint _TCR = _computeTCRWithGivenSystemValues(
-            vars.entireSystemColl,
-            vars.systemDebt,
-            _price
-        );
+        uint _TCR = _computeTCRWithGivenSystemValues(vars.entireSystemColl, vars.systemDebt, _price);
         uint _cnt = _cdpArray.length;
         bool[] memory _liqFlags = new bool[](_cnt);
         uint _liqCnt;
