@@ -352,7 +352,25 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         uint256 _price = priceFeedMock.getPrice();
         uint256 tcrBefore = cdpManager.getTCR(_price);
+
+        uint entireSystemColl = cdpManager.getEntireSystemColl();
+        uint entireSystemDebt = activePool.getEBTCDebt();
+        uint underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
+
+        emit log_named_uint("C", entireSystemColl);
+        emit log_named_uint("D", entireSystemDebt);
+        emit log_named_uint("U", underlyingCollateral);
+
         borrowerOperations.repayEBTC(_cdpId, repayAmount, HINT, HINT);
+
+        entireSystemColl = cdpManager.getEntireSystemColl();
+        entireSystemDebt = activePool.getEBTCDebt();
+        underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
+
+        emit log_named_uint("C", entireSystemColl);
+        emit log_named_uint("D", entireSystemDebt);
+        emit log_named_uint("U", underlyingCollateral);
+
         uint256 tcrAfter = cdpManager.getTCR(_price);
 
         assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");

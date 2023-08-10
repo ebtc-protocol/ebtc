@@ -27,7 +27,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | P-04 | Anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not | High-Level | TODO: use [crytic/properties](https://github.com/crytic/properties) |
 | P-05 | eBTC tokens are burned upon repayment of a CDP's debt | State Transitions | ✅ |
 | P-06 | The eBTC system regularly updates the stETH:BTC price via a decentralized data feed | Variable Transitions | ✅ |
-| P-07 | When a CDP falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation. | State Transitions | TODO: check that liquidation only succeeds if ICR < 110% in normal mode, or if ICR < 125% in Recovery Mode |
+| P-07 | When a CDP falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation. Liquidation only succeeds if ICR < 110% in normal mode, or if ICR < 125% in Recovery Mode. | State Transitions | ✅ |
 | P-08 | Any user can liquidate a CDP that does not have enough collateral | High-Level | TODO: check that liquidation always succeeds if MCR < 110% and the user has sufficient eBTC to repay |
 | P-09 | As a reward for their service, the liquidator receives a percentage of the CDP's collateral, ranging from 3% to 10%. Additionally, the liquidator also receives a "Gas Stipend" of 0.2 stETH. The liquidator will always recieve 3% minimum bonus of collateral versus debt returned. However, they only get the 0.2 stETH stipend in a full liquidation. For a partial liquidation, only the % bonus is recieved based on the debt value returned. I'll actually need to check what happens if the CDP is below 3% ICR. I'd also clarify that the stipend is not strictly 0.2 stETH. It is stored as shares within the system upon opening of the CDP and therefore will differ based on rebases, and this can be checked through `cdpManager.getCdpLiquidatorRewardShares(cdpId)`  | Unit Tests | TODO: This may break when doing a debt redistributions |
 | P-10 | A "Gas Stipend" of 0.2 stETH is previously deposited by the borrower as insurance against liquidation costs | Unit Tests | ✅ |
@@ -36,7 +36,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | P-13 | When a user redeems eBTC, it is exchanged for stETH, at face value (minus a redemption fee) | Unit Tests | |
 | P-14 | When eBTC is redeemed for stETH, the system cancels the eBTC with debt from CDPs, and the stETH is drawn from their collateral in exact amounts (totalDebt Decrease is equal to TS decrease). The debt reduction is pro-rata to all CDPs open based on their size | Unit Tests | |
 | P-15 | A redemption sequence of n steps will fully redeem from up to n-1 CDPs, and, and partially redeems from up to 1 CDP, which is always the last CDP in the redemption sequence. | Unit Tests | TODO: check that if the system has at least 1 CDP, it may never go back to 0 CDPs. Interesting to check last partial redemption. |
-| P-16 | Redemptions are disabled during the first 14 days of operation since deployment of the eBTC protocol | Valid States | |
+| P-16 | Redemptions are disabled during the first 14 days of operation since deployment of the eBTC protocol | Valid States | ✅ |
 | P-17 | Partially redeemed CDP is re-inserted into the sorted list of CDPs, and remains active, with reduced collateral and debt. Linked List invariant is maintained. And new values correspond with tokens burned and transferred. | Unit Tests | |
 | P-18 | When a CDP is open, the total collateral is the sum of the collaterals split into the `CollSurplusPool`, the gas addresses, and ?? | Valid States | TODO: ask team about [Full redemption](./README.md#full-redemption) |
 | P-19 | If an existing CDP's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 125% | State Transitions | TODO: May change to TCR + Buffer. KEY invariant |
@@ -68,6 +68,6 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | P-45 | Anyone can open more than 1 CDP, and can open even if one of the CDPs is undercollateralized | High Level | |
 | P-46 | TCR should be slightly improved after every redemption | High Level | |
 | P-47 | The collateral balance of the ActivePool is positive if there is at least one CDP open | High Level | |
-| P-48 | Adding collateral improves the Nominal ICR of a CDP  | Unit Tests | ✅ |
-| P-49 | Adding collateral decreases the Nominal ICR of a CDP | Unit Tests | ✅ |
+| P-48 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
+| P-49 | Removing collateral decreases the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | P-50 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
