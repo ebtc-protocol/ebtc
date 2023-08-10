@@ -184,7 +184,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _populateCdpStatus(bytes32 _cdpId) internal {
         CdpState memory _cdpState = _getEntireDebtAndColl(_cdpId);
         _targetCdpPrevColls[_cdpId] = _cdpState.collShares;
-        _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.collShares);
+        _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(
+            _cdpState.collShares
+        );
     }
 
     function _ensureDebtAmountValidity(uint _debtAmt) internal pure {
