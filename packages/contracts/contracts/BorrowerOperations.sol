@@ -60,7 +60,7 @@ contract BorrowerOperations is
         uint price;
         uint debt;
         uint totalColl;
-        uint netColl;
+        uint netStEthBalance;
         uint ICR;
         uint NICR;
         uint stake;
@@ -144,9 +144,9 @@ contract BorrowerOperations is
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthCollBalance
+        uint _stEthBalance
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
-        return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _stEthCollBalance, msg.sender);
+        return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _stEthBalance, msg.sender);
     }
 
     // Function that adds the received stETH to the caller's specified Cdp.
@@ -160,7 +160,7 @@ contract BorrowerOperations is
     }
 
     /**
-    Withdraws `_collWithdrawal` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%.
+    Withdraws `_stEthBalanceToDecrease` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%.
     */
     function withdrawColl(
         bytes32 _cdpId,
@@ -244,7 +244,7 @@ contract BorrowerOperations is
      * _adjustCdpInternal(): Alongside a debt change, this function can perform either
      * a collateral top-up or a collateral withdrawal.
      *
-     * It therefore expects either a positive _collAddAmount, or a positive _collWithdrawal argument.
+     * It therefore expects either a positive _collAddAmount, or a positive _stEthBalanceToDecrease argument.
      *
      * If both are positive, it will revert.
      */
@@ -333,7 +333,7 @@ contract BorrowerOperations is
         // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
         if (collateral.getPooledEthByShares(DECIMAL_PRECISION) >= DECIMAL_PRECISION) {
             //@audit why do we get this value again? we can calculate it locally
-            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
+            _requireAtLeastMinNetStEthBalance(collateral.getPooledEthByShares(vars.newColl));
         }
 
         cdpManager.updateCdp(_cdpId, _borrower, vars.coll, vars.debt, vars.newColl, vars.newDebt);
@@ -363,18 +363,18 @@ contract BorrowerOperations is
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthCollBalance,
+        uint _stEthBalance,
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
 
         LocalVariables_openCdp memory vars;
 
-        // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
-        vars.netColl = _getNetColl(_stEthCollBalance);
+        // ICR is based on the net collateral balance, i.e. the inputted balance amount - fixed liquidator incentive gas comp.
+        vars.netStEthBalance = _getNetStEthBalance(_stEthBalance);
 
-        // will revert if _stEthCollBalance is less than MIN_NET_COLL + LIQUIDATOR_REWARD
-        _requireAtLeastMinNetColl(vars.netColl);
+        // will revert if _stEthBalance is less than MIN_CDP_STETH_BALANCE + LIQUIDATOR_REWARD
+        _requireAtLeastMinNetStEthBalance(vars.netStEthBalance);
 
         // Update global pending index before any operations
         cdpManager.applyPendingGlobalState();
@@ -385,16 +385,16 @@ contract BorrowerOperations is
         vars.debt = _EBTCAmount;
 
         // Sanity check
-        require(vars.netColl > 0, "BorrowerOperations: zero collateral for openCdp()!");
+        require(vars.netStEthBalance > 0, "BorrowerOperations: zero collateral for openCdp()!");
 
-        uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
+        uint _netCollShares = collateral.getSharesByPooledEth(vars.netStEthBalance);
         uint _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
 
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
-        vars.ICR = LiquityMath._computeCR(vars.netColl, vars.debt, vars.price);
+        vars.ICR = LiquityMath._computeCR(vars.netStEthBalance, vars.debt, vars.price);
 
         // NICR uses shares to normalize NICR across CDPs opened at different pooled ETH / shares ratios
-        vars.NICR = LiquityMath._computeNominalCR(_netCollAsShares, vars.debt);
+        vars.NICR = LiquityMath._computeNominalCR(_netCollShares, vars.debt);
 
         /**
             In recovery move, ICR must be greater than CCR
@@ -407,7 +407,13 @@ contract BorrowerOperations is
             _requireICRisAboveCCR(vars.ICR);
         } else {
             _requireICRisAboveMCR(vars.ICR);
-            uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price); // bools: coll increase, debt increase
+            uint newTCR = _getNewTCRFromCdpChange(
+                vars.netStEthBalance,
+                true,
+                vars.debt,
+                true,
+                vars.price
+            ); // bools: coll increase, debt increase
             _requireNewTCRisAboveCCR(newTCR);
         }
 
@@ -418,7 +424,7 @@ contract BorrowerOperations is
         cdpManager.initializeCdp(
             _cdpId,
             vars.debt,
-            _netCollAsShares,
+            _netCollShares,
             _liquidatorRewardShares,
             _borrower
         );
@@ -433,11 +439,11 @@ contract BorrowerOperations is
         */
 
         // CEI: Move the net collateral and liquidator gas compensation to the Active Pool. Track only net collateral shares for TCR purposes.
-        _sendCollSharesToActivePool(_stEthCollBalance, _netCollAsShares);
+        _sendCollSharesToActivePool(_stEthBalance, _netCollShares);
 
         // Invariant check
         require(
-            vars.netColl + LIQUIDATOR_REWARD == _stEthCollBalance,
+            vars.netStEthBalance + LIQUIDATOR_REWARD == _stEthBalance,
             "BorrowerOperations: deposited collateral mismatch!"
         );
 
@@ -548,13 +554,13 @@ contract BorrowerOperations is
     }
 
     /// @notice Send a given stETH balance to Active Pool and increase the system collateral shares accordingly
-    /// @param _collBalance total balance of stETH to send, inclusive of coll and liquidatorRewardShares
+    /// @param _stEthBalance total balance of stETH to send, inclusive of coll and liquidatorRewardShares
     /// @param _collShares coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not explictly tracked by internal account and are  not considered as part of the system for CR purposes.
     /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
-    function _sendCollSharesToActivePool(uint _collBalance, uint _collShares) internal {
+    function _sendCollSharesToActivePool(uint _stEthBalance, uint _collShares) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
-        collateral.transferFrom(msg.sender, address(activePool), _collBalance);
+        collateral.transferFrom(msg.sender, address(activePool), _stEthBalance);
         activePool.receiveCollShares(_collShares);
     }
 
@@ -578,9 +584,9 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
+    function _requireSingularCollChange(uint _stEthBalanceToIncrease, uint _stEthBalanceToDecrease) internal pure {
         require(
-            _collAdd == 0 || _collWithdrawal == 0,
+            _stEthBalanceToIncrease == 0 || _stEthBalanceToDecrease == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"
         );
     }
@@ -595,10 +601,10 @@ contract BorrowerOperations is
     function _requireNonZeroAdjustment(
         uint _collAddAmount,
         uint _debtChange,
-        uint _collWithdrawal
+        uint _stEthBalanceToDecrease
     ) internal pure {
         require(
-            _collAddAmount != 0 || _collWithdrawal != 0 || _debtChange != 0,
+            _collAddAmount != 0 || _stEthBalanceToDecrease != 0 || _debtChange != 0,
             "BorrowerOperations: There must be either a collateral change or a debt change"
         );
     }
@@ -619,16 +625,16 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireNoCollWithdrawal(uint _collWithdrawal) internal pure {
+    function _requireNoCollWithdrawal(uint _stEthBalanceToDecrease) internal pure {
         require(
-            _collWithdrawal == 0,
+            _stEthBalanceToDecrease == 0,
             "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode"
         );
     }
 
     function _requireValidAdjustmentInCurrentMode(
         bool _isRecoveryMode,
-        uint _collWithdrawal,
+        uint _stEthBalanceToDecrease,
         bool _isDebtIncrease,
         LocalVariables_adjustCdp memory _vars
     ) internal view {
@@ -647,7 +653,7 @@ contract BorrowerOperations is
          * - The adjustment won't pull the TCR below CCR
          */
         if (_isRecoveryMode) {
-            _requireNoCollWithdrawal(_collWithdrawal);
+            _requireNoCollWithdrawal(_stEthBalanceToDecrease);
             if (_isDebtIncrease) {
                 _requireICRisAboveCCR(_vars.newICR);
                 _requireNewICRisAboveOldICR(_vars.newICR, _vars.oldICR);
@@ -695,9 +701,9 @@ contract BorrowerOperations is
         require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
     }
 
-    function _requireAtLeastMinNetColl(uint _coll) internal pure {
+    function _requireAtLeastMinNetStEthBalance(uint _coll) internal pure {
         require(
-            _coll >= MIN_NET_COLL,
+            _coll >= MIN_CDP_STETH_BALANCE,
             "BorrowerOperations: Cdp's net coll must be greater than minimum"
         );
     }

@@ -38,7 +38,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    minDebt = await contracts.borrowerOperations.MIN_CDP_STETH_BALANCE();
     liqReward = await contracts.cdpManager.LIQUIDATOR_REWARD();	
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();

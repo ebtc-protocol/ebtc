@@ -208,7 +208,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              */
             if (
                 newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
-                collateral.getPooledEthByShares(newColl) < MIN_NET_COLL
+                collateral.getPooledEthByShares(newColl) < MIN_CDP_STETH_BALANCE
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

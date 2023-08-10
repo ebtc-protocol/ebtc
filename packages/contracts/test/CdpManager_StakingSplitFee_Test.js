@@ -45,7 +45,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     defaultPool = contracts.defaultPool;
     feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
-    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    minDebt = await contracts.borrowerOperations.MIN_CDP_STETH_BALANCE();
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();

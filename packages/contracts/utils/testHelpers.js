@@ -735,7 +735,7 @@ class TestHelper {
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     const price = await contracts.priceFeedTestnet.getPrice()
-    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_COLL()
+    const minNetDebtEth = await contracts.borrowerOperations.MIN_CDP_STETH_BALANCE()
     const securityDeposit = await contracts.borrowerOperations.LIQUIDATOR_REWARD()
     const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (

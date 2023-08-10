@@ -192,7 +192,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
     function _checkInputFuzzParameters(uint256 netColl, uint256 adjustBps) internal {
         vm.assume(netColl < INITITAL_COLL * 5);
-        vm.assume(netColl > cdpManager.MIN_NET_COLL() * 2);
+        vm.assume(netColl > cdpManager.MIN_CDP_STETH_BALANCE() * 2);
         vm.assume(adjustBps < (MAX_SLIPPAGE / 2));
         vm.assume(adjustBps > 100);
     }
@@ -420,10 +420,10 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         {
             if (
                 collateral.getPooledEthByShares(_totalColl - _collRemoved) <=
-                cdpManager.MIN_NET_COLL()
+                cdpManager.MIN_CDP_STETH_BALANCE()
             ) {
                 uint256 _minShare = collateral.getSharesByPooledEth(
-                    cdpManager.MIN_NET_COLL() + 123456789
+                    cdpManager.MIN_CDP_STETH_BALANCE() + 123456789
                 );
                 require(_totalColl > _minShare, "!CDP is too small to decrease size");
                 _collRemoved = _totalColl - _minShare;

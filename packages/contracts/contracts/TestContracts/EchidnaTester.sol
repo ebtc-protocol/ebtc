@@ -50,7 +50,7 @@ contract EchidnaTester {
     uint private MCR;
     uint private CCR;
     uint private LICR;
-    uint private MIN_NET_COLL;
+    uint private MIN_CDP_STETH_BALANCE;
 
     CdpManager private cdpManager;
     BorrowerOperations private borrowerOperations;
@@ -126,11 +126,11 @@ contract EchidnaTester {
         MCR = cdpManager.MCR();
         CCR = cdpManager.CCR();
         LICR = cdpManager.LICR();
-        MIN_NET_COLL = cdpManager.MIN_NET_COLL();
+        MIN_CDP_STETH_BALANCE = cdpManager.MIN_CDP_STETH_BALANCE();
         require(MCR > 0);
         require(CCR > 0);
         require(LICR > 0);
-        require(MIN_NET_COLL > 0);
+        require(MIN_CDP_STETH_BALANCE > 0);
     }
 
     /* basic function to call when setting up new echidna test

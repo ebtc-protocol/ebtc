@@ -80,7 +80,7 @@ contract('CdpManager', async accounts => {
     hintHelpers = contracts.hintHelpers
     debtToken = ebtcToken;
     LICR = await cdpManager.LICR()
-    MIN_CDP_SIZE = await cdpManager.MIN_NET_COLL()
+    MIN_CDP_SIZE = await cdpManager.MIN_CDP_STETH_BALANCE()
     collToken = contracts.collateral;  
     liqReward = await contracts.borrowerOperations.LIQUIDATOR_REWARD();	
 

@@ -454,8 +454,8 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         _cdp.coll = _coll - _partialColl;
         _cdp.debt = _debt - _partialDebt;
-        _updateStakeAndTotalStakes(_cdpId);
 
+        _updateStakeAndTotalStakes(_cdpId);
         _updateRedistributedDebtSnapshot(_cdpId);
     }
 
@@ -966,14 +966,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _price
     ) internal view {
         require(
-            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_COLL, _price)) <= _entireDebt,
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_CDP_STETH_BALANCE, _price)) <=
+                _entireDebt,
             "LiquidationLibrary: Partial debt liquidated must be less than total debt"
         );
     }
 
     function _requirePartialLiqCollSize(uint _entireColl) internal pure {
         require(
-            _entireColl >= MIN_NET_COLL,
+            _entireColl >= MIN_CDP_STETH_BALANCE,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
     }

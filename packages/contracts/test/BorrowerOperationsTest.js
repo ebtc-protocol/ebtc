@@ -106,7 +106,7 @@ contract('BorrowerOperations', async accounts => {
 
       feeRecipient = contracts.feeRecipient
 
-      MIN_NET_DEBT = await borrowerOperations.MIN_NET_COLL()
+      MIN_NET_DEBT = await borrowerOperations.MIN_CDP_STETH_BALANCE()
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR()
 
       ownerSigner = await ethers.provider.getSigner(owner);

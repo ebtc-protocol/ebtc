@@ -139,8 +139,8 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('LIQUIDATOR_REWARD', params)
   }
 
-  async MIN_NET_COLL(...params) {
-    return this.proxyFunction('MIN_NET_COLL', params)
+  async MIN_CDP_STETH_BALANCE(...params) {
+    return this.proxyFunction('MIN_CDP_STETH_BALANCE', params)
   }
 
   async BORROWING_FEE_FLOOR(...params) {

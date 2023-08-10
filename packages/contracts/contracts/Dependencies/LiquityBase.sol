@@ -28,7 +28,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
     uint public constant LIQUIDATOR_REWARD = 2e17;
 
     // Minimum amount of stETH collateral a CDP must have
-    uint public constant MIN_NET_COLL = 2e18;
+    uint public constant MIN_CDP_STETH_BALANCE = 2e18;
 
     uint public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -53,8 +53,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     // --- Gas compensation functions ---
 
-    function _getNetColl(uint _coll) internal pure returns (uint) {
-        return _coll - LIQUIDATOR_REWARD;
+    function _getNetStEthBalance(uint _stEthBalance) internal pure returns (uint) {
+        return _stEthBalance - LIQUIDATOR_REWARD;
     }
 
     /**
