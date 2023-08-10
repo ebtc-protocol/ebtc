@@ -26,6 +26,8 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         uint256 ebtcTotalSupplyAfter;
         uint256 ethPerShareBefore;
         uint256 ethPerShareAfter;
+        bool isRecoveryModeBefore;
+        bool isRecoveryModeAfter;
     }
 
     struct Cdp {

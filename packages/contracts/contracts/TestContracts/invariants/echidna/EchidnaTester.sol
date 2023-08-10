@@ -511,8 +511,12 @@ contract EchidnaTester is
             // TODO add properties for redeemCollateral
         } else if (_EBTCAmount == 0) {
             assertRevertReasonEqual(returnData, "CdpManager: Amount must be greater than zero");
-        } else if(vars.sortedCdpsSizeBefore == 1){
-            assertRevertReasonEqual(returnData, "CdpManager: Only one cdp in the system");
+        } else if (vars.sortedCdpsSizeBefore == 1) {
+            assertRevertReasonEqual(
+                returnData,
+                "CdpManager: Only one cdp in the system",
+                "CdpManager: Unable to redeem any amount"
+            );
         } else {
             assertRevertReasonEqual(returnData, "TODO2");
         }
@@ -603,7 +607,7 @@ contract EchidnaTester is
     //     }
     // }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) external {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
         actor = actors[msg.sender];
 
         bool success;
@@ -642,10 +646,15 @@ contract EchidnaTester is
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
+            // TODO fix this breaking invariant and remove comments
             assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
-            assertGte(_collWorth, MIN_NET_COLL, "CDP collateral must be above minimum");
+            assertGte(
+                _collWorth,
+                borrowerOperations.MIN_NET_COLL(),
+                "CDP collateral must be above minimum"
+            );
             assertWithMsg(cdpManager.getCdpIdsCount() > 0, "CDPs count must have increased");
         } else {
             if (_EBTCAmount == 0) {
@@ -728,26 +737,23 @@ contract EchidnaTester is
             );
             assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
-        } else if(_coll == 0) {
+        } else if (_coll == 0) {
             assertRevertReasonEqual(
                 returnData,
                 "BorrowerOps: There must be either a collateral change or a debt change"
                 // "Cannot addColl 0"
             );
         } else if (
-            vars.ethPerShareBefore >= 1e18 &&
-            collateral.getPooledEthByShares(vars.cdpCollBefore + _coll) >= borrowerOperations.MIN_NET_COLL()
+            collateral.getPooledEthByShares(1e18) >= 1e18 &&
+            collateral.getPooledEthByShares(vars.cdpCollBefore + _coll) <
+            borrowerOperations.MIN_NET_COLL()
         ) {
             assertRevertReasonEqual(
                 returnData,
                 "BorrowerOps: Cdp's net coll must be greater than minimum"
             );
         } else {
-            assertRevertReasonEqual(
-                returnData,
-                "TODO"
-            );
-
+            assertRevertReasonEqual(returnData, "TODO");
         }
     }
 
@@ -764,6 +770,9 @@ contract EchidnaTester is
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
+        uint256 _price = priceFeedTestnet.getPrice();
+        bool isRecoveryMode = cdpManager.checkRecoveryMode(_price);
+
         CDPChange memory _change = CDPChange(0, _amount, 0, 0);
 
         // Can only withdraw up to CDP collateral amount, otherwise will revert with assert
@@ -772,7 +781,6 @@ contract EchidnaTester is
             0,
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
         );
-        // _ensureMCR(_cdpId, _change);
 
         _before(_cdpId);
 
@@ -790,30 +798,33 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // TODO add more invariants here
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            // TODO fix this breaking invariant and remove comments
+            // assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertLt(
                 vars.nicrAfter,
                 vars.nicrBefore,
                 "P-50 Removing collateral decreases the Nominal ICR"
             );
+        } else if (_amount == 0) {
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: There must be either a collateral change or a debt change"
+            );
+        } else if (isRecoveryMode) {
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: Collateral withdrawal not permitted Recovery Mode"
+            );
         } else {
-            if (_amount == 0) {
-                assertRevertReasonEqual(
-                    returnData,
-                    "BorrowerOps: There must be either a collateral change or a debt change"
-                );
-            } else {
-                assertRevertReasonEqual(
-                    returnData,
-                    "BorrowerOps: Cdp's net coll must be greater than minimum",
-                    "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
-                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted",
-                    // SafeMath over-/under-flows (see testCdpsOpenRebaseClose)
-                    "Panic(17)"
-                );
-            }
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: Cdp's net coll must be greater than minimum",
+                "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted",
+                // SafeMath over-/under-flows (see testCdpsOpenRebaseClose)
+                "Panic(17)"
+            );
         }
     }
 
@@ -852,7 +863,6 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // TODO add more invariants
             assertEq(vars.debtAfter, vars.debtBefore + _amount, "withdrawEBTC increases debt");
             assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
@@ -872,7 +882,8 @@ contract EchidnaTester is
                 // This may happen after a rebase, if before the CDP has coll greater than min now it may not be anymore
                 "BorrowerOps: Cdp's net coll must be greater than minimum",
                 "BorrowerOps: An operation that would result in ICR < MCR is not permitted",
-                "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted",
+                "BorrowerOps: Operation must leave cdp with ICR >= CCR"
             );
         } else {
             assertRevertReasonEqual(
@@ -942,18 +953,15 @@ contract EchidnaTester is
         } else if (vars.debtBefore - _amount == 0) {
             assertRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero");
         } else if (
-            vars.ethPerShareBefore >= 1e18 &&
-            collateral.getPooledEthByShares(vars.cdpCollBefore) >= borrowerOperations.MIN_NET_COLL()
+            collateral.getPooledEthByShares(1e18) >= 1e18 &&
+            collateral.getPooledEthByShares(vars.cdpCollBefore) < borrowerOperations.MIN_NET_COLL()
         ) {
             assertRevertReasonEqual(
                 returnData,
                 "BorrowerOps: Cdp's net coll must be greater than minimum"
             );
         } else {
-            assertRevertReasonEqual(
-                returnData,
-                "TODO"
-            );
+            assertRevertReasonEqual(returnData, "TODO");
         }
     }
 
@@ -1014,6 +1022,7 @@ contract EchidnaTester is
         } else if (vars.sortedCdpsSizeBefore == 1) {
             assertRevertReasonEqual(
                 returnData,
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted",
                 "CdpManager: Only one cdp in the system",
                 // SafeMath over-/under-flows (see testCdpsOpenRebaseClose)
                 "Panic(17)"

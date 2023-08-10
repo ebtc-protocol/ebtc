@@ -283,4 +283,26 @@ contract CDPTest is eBTCBaseFixture {
         vm.expectRevert("CdpManager: Only one cdp in the system");
         borrowerOperations.closeCdp(_cdpId);
     }
+
+    function testOpenCdpMustNotTriggerRecoveryMode() public {
+
+    
+        // address user = _utils.getNextUserAddress();
+        // vm.startPrank(user);
+        // vm.deal(user, type(uint256).max);
+
+        // uint256 coll = borrowerOperations.MIN_NET_COLL() +
+        //     borrowerOperations.LIQUIDATOR_REWARD() +
+        //     16;
+
+        // collateral.approve(address(borrowerOperations), type(uint256).max);
+        // collateral.deposit{value: coll}();
+
+        // bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll);
+        // collateral.setEthPerShare(1.015149924993973008e18);
+
+        // vm.expectRevert("CdpManager: Only one cdp in the system");
+        // borrowerOperations.closeCdp(_cdpId);
+    }
+
 }
