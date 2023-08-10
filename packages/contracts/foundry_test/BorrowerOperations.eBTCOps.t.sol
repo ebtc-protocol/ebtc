@@ -71,7 +71,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Repay eBTC and make sure it reverts for 0 amount
         vm.expectRevert(
-            bytes("BorrowerOps: There must be either a collateral change or a debt change")
+            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
         );
         borrowerOperations.repayEBTC(cdpId, 0, HINT, HINT);
         vm.stopPrank();
@@ -130,7 +130,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
                     vm.expectRevert(
-                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                        bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
                     );
                     borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;
@@ -215,7 +215,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        vm.expectRevert(bytes("BorrowerOps: Debt increase requires non-zero debtChange"));
+        vm.expectRevert(bytes("BorrowerOperations: Debt increase requires non-zero debtChange"));
         borrowerOperations.withdrawEBTC(cdpId, 0, "hint", "hint");
         vm.stopPrank();
     }
@@ -298,7 +298,7 @@ contract CDPOpsTest is eBTCBaseFixture {
                 // In case borrowedAmount < MIN_NET_DEBT should expect revert
                 if (borrowedAmount < MIN_NET_DEBT) {
                     vm.expectRevert(
-                        bytes("BorrowerOps: Cdp's net debt must be greater than minimum")
+                        bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
                     );
                     borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmountChunk);
                     break;

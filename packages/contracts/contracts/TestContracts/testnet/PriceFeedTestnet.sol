@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "../../Interfaces/IPriceFeed.sol";
 import "../../Interfaces/IFallbackCaller.sol";
 import "../../Dependencies/Ownable.sol";
-import "../../Dependencies/CheckContract.sol";
 import "../../Dependencies/AuthNoOwner.sol";
 
 /*
@@ -13,7 +12,7 @@ import "../../Dependencies/AuthNoOwner.sol";
    the Fallback's TestNet implementation. Backwards compatible with local test environment as it defaults to use
    the manual price.
  */
-contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
+contract PriceFeedTestnet is IPriceFeed, Ownable, AuthNoOwner {
     // --- variables ---
 
     uint256 private _price = 7428 * 1e13; // stETH/BTC price == ~15.8118 ETH per BTC
@@ -31,8 +30,6 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, CheckContract, AuthNoOwner {
         address _fallbackCallerAddress,
         address _authorityAddress
     ) external onlyOwner {
-        checkContract(_fallbackCallerAddress);
-
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
         _initializeAuthority(_authorityAddress);

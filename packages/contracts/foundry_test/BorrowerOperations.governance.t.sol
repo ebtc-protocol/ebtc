@@ -61,7 +61,7 @@ contract BorrowerOperationsGovernanceTest is eBTCBaseFixture {
 
         // user sets recipient address
         vm.prank(user);
-        vm.expectRevert("BorrowerOperations: cannot set fee recipient to zero address");
+        vm.expectRevert("BorrowerOperations: Cannot set feeRecipient to zero address");
         borrowerOperations.setFeeRecipientAddress(address(0));
         assertEq(oldFeeRecipient, borrowerOperations.feeRecipientAddress());
     }

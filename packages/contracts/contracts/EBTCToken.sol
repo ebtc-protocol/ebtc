@@ -210,10 +210,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Internal operations ---
 
-    function _chainID() private view returns (uint256 chainID) {
-        assembly {
-            chainID := chainid()
-        }
+    function _chainID() private view returns (uint256) {
+        return block.chainid;
     }
 
     function _buildDomainSeparator(
@@ -228,8 +226,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     // Warning: sanity checks (for sender and recipient) should have been done before calling these internal functions
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
-        assert(sender != address(0));
-        assert(recipient != address(0));
+        require(sender != address(0), "EBTCToken: zero sender!");
+        require(recipient != address(0), "EBTCToken: zero recipient!");
 
         uint256 cachedSenderBalances = _balances[sender];
         require(cachedSenderBalances >= amount, "ERC20: transfer amount exceeds balance");
@@ -244,7 +242,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _mint(address account, uint256 amount) internal {
-        assert(account != address(0));
+        require(account != address(0), "EBTCToken: mint to zero recipient!");
 
         _totalSupply = _totalSupply + amount;
         _balances[account] = _balances[account] + amount;
@@ -252,7 +250,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _burn(address account, uint256 amount) internal {
-        assert(account != address(0));
+        require(account != address(0), "EBTCToken: burn from zero account!");
 
         uint256 cachedBalance = _balances[account];
         require(cachedBalance >= amount, "ERC20: burn amount exceeds balance");
@@ -267,8 +265,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _approve(address owner, address spender, uint256 amount) internal {
-        assert(owner != address(0));
-        assert(spender != address(0));
+        require(owner != address(0), "EBTCToken: zero approve owner!");
+        require(spender != address(0), "EBTCToken: zero approve spender!");
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);

@@ -25,6 +25,7 @@ interface ICdpManagerData {
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
     event BetaSet(uint256 _beta);
+    event RedemptionsPaused(bool _paused);
 
     event Liquidation(uint _liquidatedDebt, uint _liquidatedColl, uint _liqReward);
     event Redemption(uint _attemptedEBTCAmount, uint _actualEBTCAmount, uint _ETHSent, uint _ETHFee);
@@ -36,21 +37,21 @@ interface ICdpManagerData {
         uint _debt,
         uint _coll,
         uint _stake,
-        CdpManagerOperation _operation
+        CdpOperation _operation
     );
     event CdpLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        CdpManagerOperation _operation
+        CdpOperation _operation
     );
     event CdpPartiallyLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
         uint _coll,
-        CdpManagerOperation operation
+        CdpOperation operation
     );
     event BaseRateUpdated(uint _baseRate);
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
@@ -60,7 +61,6 @@ interface ICdpManagerData {
     event CdpSnapshotsUpdated(bytes32 _cdpId, uint _L_EBTCDebt);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
-    event CollateralIndexUpdateIntervalUpdated(uint _oldInterval, uint _newInterval);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,
@@ -70,8 +70,11 @@ interface ICdpManagerData {
         uint collLeft
     );
 
-    enum CdpManagerOperation {
-        applyPendingRewards,
+    enum CdpOperation {
+        openCdp,
+        closeCdp,
+        adjustCdp,
+        applyPendingState,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,
@@ -172,7 +175,6 @@ interface ICdpManagerData {
         uint debtToOffset;
         uint totalCollToSendToLiquidator;
         uint debtToRedistribute;
-        uint collToRedistribute;
         uint collSurplus;
         uint collReward;
     }
@@ -182,7 +184,6 @@ interface ICdpManagerData {
         uint totalDebtToOffset;
         uint totalCollToSendToLiquidator;
         uint totalDebtToRedistribute;
-        uint totalCollToRedistribute;
         uint totalCollSurplus;
         uint totalCollReward;
     }
@@ -222,12 +223,22 @@ interface ICdpManagerData {
         uint256 _prevIndex
     ) external view returns (uint256, uint256, uint256);
 
-    function claimStakingSplitFee() external;
+    function applyPendingGlobalState() external;
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg,
-        uint _stFeePerUnitgError,
-        uint _totalStakes
+        uint _stFeePerUnitg
     ) external view returns (uint, uint);
+
+    function getNominalICR(bytes32 _cdpId) external view returns (uint);
+
+    function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
+
+    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
+
+    function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
+
+    function getEntireDebtAndColl(
+        bytes32 _cdpId
+    ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 }

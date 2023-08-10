@@ -10,7 +10,6 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
     ////////////////////////////////////////////////////////////////////////////
     // See PROPERTIES.md for the invariants of the eBTC system
     ////////////////////////////////////////////////////////////////////////////
-
     function _ensureSystemInvariants() internal {
         assertTrue(invariant_AP_01(collateral, activePool), "AP-01");
         assertTrue(invariant_AP_03(eBTCToken, activePool), "AP-03");
@@ -22,5 +21,4 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
         assertTrue(invariant_SL_01(cdpManager, sortedCdps, 0.01e18), "SL-01");
         assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), "SL-02");
-    }
 }

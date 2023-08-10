@@ -43,21 +43,20 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
 
-    function getCollGasCompensation(uint _coll) external pure returns (uint) {
-        return _getCollGasCompensation(_coll);
-    }
-
     function getDeltaIndexToTriggerRM(
         uint _currentIndex,
         uint _price,
         uint _stakingRewardSplit
     ) external view returns (uint) {
-        (uint deltaIdx, ) = _computeDeltaIndexToTriggerRM(
-            _currentIndex,
-            _price,
-            _stakingRewardSplit
-        );
-        return deltaIdx;
+        uint _tcr = _getTCR(_price);
+        if (_tcr <= CCR) {
+            return 0;
+        } else if (_tcr == LiquityMath.MAX_TCR) {
+            return type(uint256).max;
+        } else {
+            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
+            return (_splitIndex * (_tcr - CCR)) / _tcr;
+        }
     }
 
     function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {

@@ -14,7 +14,7 @@ import "./Dependencies/SafeERC20.sol";
 contract FeeRecipient is Ownable, AuthNoOwner {
     using SafeERC20 for IERC20;
     // --- Events ---
-    event SweepTokenSuccess(address _token, uint _amount, address _recipient);
+    event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
 
     // --- Data ---
     string public constant NAME = "FeeRecipient";
