@@ -773,8 +773,6 @@ contract EchidnaTester is
         uint256 _price = priceFeedTestnet.getPrice();
         bool isRecoveryMode = cdpManager.checkRecoveryMode(_price);
 
-        CDPChange memory _change = CDPChange(0, _amount, 0, 0);
-
         // Can only withdraw up to CDP collateral amount, otherwise will revert with assert
         _amount = clampBetween(
             _amount,
@@ -844,8 +842,6 @@ contract EchidnaTester is
         // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
         // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
         _amount = clampBetween(_amount, 0, type(uint128).max);
-
-        CDPChange memory _change = CDPChange(0, 0, _amount, 0);
 
         _before(_cdpId);
 
