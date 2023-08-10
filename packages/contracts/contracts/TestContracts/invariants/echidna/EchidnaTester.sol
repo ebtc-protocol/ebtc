@@ -392,7 +392,7 @@ contract EchidnaTester is
         } else if (totalCdpsBelowMcr == 0) {
             assertRevertReasonEqual(
                 returnData,
-                // attempting to liquidate CDPs if no are below MCR will trigger
+                // attempting to liquidate if no CDPs are below MCR will trigger underflow in LiquidationLibrary._getTotalsFromBatchLiquidate_NormalMode
                 "Panic(17)"
             );
         } else {
