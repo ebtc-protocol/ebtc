@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract CDPTest is eBTCBaseFixture {
+contract CDPTest is eBTCBaseFixture, Properties {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
@@ -285,24 +286,38 @@ contract CDPTest is eBTCBaseFixture {
     }
 
     function testOpenCdpMustNotTriggerRecoveryMode() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
 
-    
-        // address user = _utils.getNextUserAddress();
-        // vm.startPrank(user);
-        // vm.deal(user, type(uint256).max);
 
-        // uint256 coll = borrowerOperations.MIN_NET_COLL() +
-        //     borrowerOperations.LIQUIDATOR_REWARD() +
-        //     16;
+        uint price = priceFeedMock.getPrice();
 
-        // collateral.approve(address(borrowerOperations), type(uint256).max);
-        // collateral.deposit{value: coll}();
+        // openCdp
+        collateral.approve(address(borrowerOperations), 2200000000000000016);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
 
-        // bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll);
-        // collateral.setEthPerShare(1.015149924993973008e18);
+        // addColl
+        collateral.approve(address(borrowerOperations), 19055591963114510547);
+        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 19055591963114510547);
 
-        // vm.expectRevert("CdpManager: Only one cdp in the system");
-        // borrowerOperations.closeCdp(_cdpId);
+        // withdrawEBTC
+        borrowerOperations.withdrawEBTC(_cdpId, 1184219647878146906, _cdpId, _cdpId);
+
+        // setEthPerShare
+        collateral.setEthPerShare(926216476604259366);
+
+        // setEthPerShare
+        collateral.setEthPerShare(842014978731144878);
+
+        // openCdp
+        collateral.approve(address(borrowerOperations), 2200000000000000016);
+        borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+
+        assertTrue(invariant_P_03(cdpManager, priceFeedMock), "P-03");
     }
 
 }
