@@ -45,7 +45,7 @@ contract('ActivePool', async accounts => {
     const recordedEBTC_balanceBefore = await activePool.getSystemDebt()
     assert.equal(recordedEBTC_balanceBefore, 0)
 	  
-    const tx = await cdpManager.activePoolincreaseSystemDebt('0x64')
+    const tx = await cdpManager.activePoolIncreaseSystemDebt('0x64')
     assert.isTrue(tx.receipt.status)
     const recordedEBTC_balanceAfter = await activePool.getSystemDebt()
     assert.equal(recordedEBTC_balanceAfter, 100)
@@ -53,13 +53,13 @@ contract('ActivePool', async accounts => {
   // Decrease
   it('decreaseEBTC(): decreases the recorded EBTC balance by the correct amount', async () => {
     // start the pool on 100 wei
-    const tx1 = await cdpManager.activePoolincreaseSystemDebt('0x64')
+    const tx1 = await cdpManager.activePoolIncreaseSystemDebt('0x64')
     assert.isTrue(tx1.receipt.status)
 
     const recordedEBTC_balanceBefore = await activePool.getSystemDebt()
     assert.equal(recordedEBTC_balanceBefore, 100)
 	  
-    const tx2 = await cdpManager.activePooldecreaseSystemDebt('0x64')
+    const tx2 = await cdpManager.activePoolDecreaseSystemDebt('0x64')
     assert.isTrue(tx2.receipt.status)
     const recordedEBTC_balanceAfter = await activePool.getSystemDebt()
     assert.equal(recordedEBTC_balanceAfter, 0)
@@ -84,7 +84,7 @@ contract('ActivePool', async accounts => {
     assert.equal(activePool_BalanceBeforeTx, dec(2, 'ether'))
 
     // send ether from pool to alice
-    const tx2 = await cdpManager.activePooltransferSystemCollShares(alice, web3.utils.toHex(dec(1, 'ether')))
+    const tx2 = await cdpManager.activePoolTransferSystemCollShares(alice, web3.utils.toHex(dec(1, 'ether')))
     assert.isTrue(tx2.receipt.status)
 
     const activePool_BalanceAfterTx = web3.utils.toBN(await collToken.balanceOf(activePool.address))

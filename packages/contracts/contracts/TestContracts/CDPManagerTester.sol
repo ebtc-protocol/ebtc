@@ -110,15 +110,15 @@ contract CdpManagerTester is CdpManager {
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 
-    function activePoolincreaseSystemDebt(uint _amount) external {
+    function activePoolIncreaseSystemDebt(uint _amount) external {
         activePool.increaseSystemDebt(_amount);
     }
 
-    function activePooldecreaseSystemDebt(uint _amount) external {
+    function activePoolDecreaseSystemDebt(uint _amount) external {
         activePool.decreaseSystemDebt(_amount);
     }
 
-    function activePooltransferSystemCollShares(address _addr, uint _amt) external {
+    function activePoolTransferSystemCollShares(address _addr, uint _amt) external {
         activePool.transferSystemCollShares(_addr, _amt);
     }
 

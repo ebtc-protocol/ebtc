@@ -10,7 +10,7 @@ contract MultiCdpGetter {
     struct CombinedCdpData {
         bytes32 id;
         uint debt;
-        uint coll;
+        uint collShares;
         uint stake;
         uint snapshotEBTCDebt;
     }
@@ -85,7 +85,7 @@ contract MultiCdpGetter {
             _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
-                _cdps[idx].coll,
+                _cdps[idx].collShares,
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */
@@ -120,7 +120,7 @@ contract MultiCdpGetter {
             _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
-                _cdps[idx].coll,
+                _cdps[idx].collShares,
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */

@@ -109,7 +109,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
             uint _expectedLiqDebt = _ICR > cdpManager.LICR()
                 ? _cdpState.debt
-                : ((_cdpState.coll * price) / cdpManager.LICR());
+                : ((_cdpState.collShares * price) / cdpManager.LICR());
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
@@ -184,11 +184,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.coll - cdpManager.MIN_CDP_STETH_BALANCE()) <=
+                (_cdpState.collShares - cdpManager.MIN_CDP_STETH_BALANCE()) <=
                 ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
-                    ((_cdpState.coll - cdpManager.MIN_CDP_STETH_BALANCE() * 3) * _newPrice) /
+                    ((_cdpState.collShares - cdpManager.MIN_CDP_STETH_BALANCE() * 3) * _newPrice) /
                     _partialLiq._ratio;
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
@@ -200,9 +200,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             // fully liquidate instead
             uint _expectedLiqDebt = _partialLiq._repaidDebt;
-            bool _fully = _partialLiq._collToLiquidator >= _cdpState.coll;
+            bool _fully = _partialLiq._collToLiquidator >= _cdpState.collShares;
             if (_fully) {
-                _partialLiq._collToLiquidator = _cdpState.coll;
+                _partialLiq._collToLiquidator = _cdpState.collShares;
                 _expectedLiqDebt = (_partialLiq._collToLiquidator * _newPrice) / cdpManager.LICR();
             }
 

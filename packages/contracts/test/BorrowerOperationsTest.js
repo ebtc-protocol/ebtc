@@ -2705,7 +2705,7 @@ contract('BorrowerOperations', async accounts => {
           assert.isTrue(expected.oldDebt.eq(emitted.oldDebt));
           assert.isTrue(expected.oldColl.eq(emitted.oldColl));
           assert.isTrue(expected.debt.eq(emitted.debt));
-          assert.isTrue(expected.coll.eq(emitted.coll));
+          assert.isTrue(expected.collShares.eq(emitted.collShares));
           assert.isTrue(expected.stake.eq(emitted.stake));
           assert.isTrue(expected.operation.eq(emitted.operation));
         }

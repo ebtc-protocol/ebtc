@@ -47,7 +47,7 @@ contract BorrowerOperations is
         uint debtChange;
         bool isCollIncrease;
         uint debt;
-        uint coll;
+        uint collShares;
         uint oldICR;
         uint newICR;
         uint newTCR;
@@ -286,17 +286,17 @@ contract BorrowerOperations is
         vars.debtChange = _debtChange;
 
         vars.debt = cdpManager.getCdpDebt(_cdpId);
-        vars.coll = cdpManager.getCdpCollShares(_cdpId);
+        vars.collShares = cdpManager.getCdpCollShares(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
-        uint _stEthBalanceOfCdpCollShares = collateral.getPooledEthByShares(vars.coll); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
+        uint _stEthBalanceOfCdpCollShares = collateral.getPooledEthByShares(vars.collShares); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
         require(
             _stEthBalanceToDecrease <= _stEthBalanceOfCdpCollShares,
             "BorrowerOperations: withdraw more collateral than CDP has!"
         );
         vars.oldICR = LiquityMath._computeCR(_stEthBalanceOfCdpCollShares, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
-            vars.coll,
+            vars.collShares,
             vars.debt,
             vars.collSharesChange,
             vars.isCollIncrease,
@@ -321,7 +321,7 @@ contract BorrowerOperations is
         }
 
         (vars.newColl, vars.newDebt) = _getNewCdpAmounts(
-            vars.coll,
+            vars.collShares,
             vars.debt,
             vars.collSharesChange,
             vars.isCollIncrease,
@@ -336,7 +336,7 @@ contract BorrowerOperations is
             _requireAtLeastMinNetStEthBalance(collateral.getPooledEthByShares(vars.newColl));
         }
 
-        cdpManager.updateCdp(_cdpId, _borrower, vars.coll, vars.debt, vars.newColl, vars.newDebt);
+        cdpManager.updateCdp(_cdpId, _borrower, vars.collShares, vars.debt, vars.newColl, vars.newDebt);
 
         // Re-insert cdp in to the sorted list
         {
@@ -499,7 +499,7 @@ contract BorrowerOperations is
       when a borrower’s Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their stETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
      */
     function claimSurplusCollShares() external override {
-        // send ETH from CollSurplus Pool to owner
+        // send coll shares from CollSurplus Pool to owner
         collSurplusPool.claimColl(msg.sender);
     }
 
@@ -734,7 +734,7 @@ contract BorrowerOperations is
         bool _isDebtIncrease
     ) internal pure returns (uint) {
         (uint newColl, uint newDebt) = _getNewCdpAmounts(
-            vars.coll,
+            vars.collShares,
             vars.debt,
             vars.collSharesChange,
             vars.isCollIncrease,

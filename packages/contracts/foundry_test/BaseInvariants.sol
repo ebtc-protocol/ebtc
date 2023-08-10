@@ -50,7 +50,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
-            _sum = (_sum + _cdpState.coll);
+            _sum = (_sum + _cdpState.collShares);
         }
         require(
             _utils.assertApproximateEq(activePool.getSystemCollShares(), _sum, _tolerance),

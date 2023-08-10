@@ -107,7 +107,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     ////////////////////////////////////////////////////////////////////////////
     struct CdpState {
         uint256 debt;
-        uint256 coll;
+        uint256 collShares;
         uint256 pendingEBTCDebtReward;
     }
 

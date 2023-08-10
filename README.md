@@ -774,7 +774,7 @@ The decay parameter is tuned such that the fee changes by a factor of 0.99 per h
 
 When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated CDP, to all active CDPs in the system, in proportion to their collateral.
 
-For two CDPs A and B with collateral `A.coll > B.coll`, CDP A should earn a bigger share of the liquidated collateral and debt.
+For two CDPs A and B with collateral `A.collShares > B.collShares`, CDP A should earn a bigger share of the liquidated collateral and debt.
 
 In eBTC it is important that all active CDPs remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Cdps’ collateral, preserves the ordering of active CDPs by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
 

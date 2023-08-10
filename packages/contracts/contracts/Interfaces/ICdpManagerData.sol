@@ -92,7 +92,7 @@ interface ICdpManagerData {
     // Store the necessary data for a cdp
     struct Cdp {
         uint debt;
-        uint coll;
+        uint collShares;
         uint stake;
         uint liquidatorRewardShares;
         Status status;

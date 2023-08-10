@@ -449,10 +449,10 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
         Cdp storage _cdp = Cdps[_cdpId];
 
-        uint _coll = _cdp.coll;
+        uint _coll = _cdp.collShares;
         uint _debt = _cdp.debt;
 
-        _cdp.coll = _coll - _partialColl;
+        _cdp.collShares = _coll - _partialColl;
         _cdp.debt = _debt - _partialDebt;
 
         _updateStakeAndTotalStakes(_cdpId);
@@ -490,7 +490,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _oldDebt,
             _oldColl,
             Cdps[_cdpId].debt,
-            Cdps[_cdpId].coll,
+            Cdps[_cdpId].collShares,
             Cdps[_cdpId].stake,
             CdpOperation.partiallyLiquidate
         );

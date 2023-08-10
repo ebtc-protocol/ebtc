@@ -21,7 +21,7 @@ contract CollSurplusPoolTester is CollSurplusPool {
         )
     {}
 
-    function unprotectedreceiveCollShares(uint _amount) external {
+    function unprotectedReceiveCollShares(uint _amount) external {
         StEthColl = StEthColl + _amount;
     }
 

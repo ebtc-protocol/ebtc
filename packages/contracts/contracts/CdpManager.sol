@@ -170,7 +170,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Repurposing this struct here to avoid stack too deep.
         LocalVar_CdpDebtColl memory _oldDebtAndColl = LocalVar_CdpDebtColl(
             Cdps[_redeemColFromCdp._cdpId].debt,
-            Cdps[_redeemColFromCdp._cdpId].coll,
+            Cdps[_redeemColFromCdp._cdpId].collShares,
             0
         );
 
@@ -222,7 +222,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             );
 
             Cdps[_redeemColFromCdp._cdpId].debt = newDebt;
-            Cdps[_redeemColFromCdp._cdpId].coll = newColl;
+            Cdps[_redeemColFromCdp._cdpId].collShares = newColl;
             _updateStakeAndTotalStakes(_redeemColFromCdp._cdpId);
 
             address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp._cdpId);
@@ -828,7 +828,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /// @notice Get stored collateral value of a CDP, in stETH shares. Does not include pending changes from redistributions or unprocessed staking yield.
     function getCdpCollShares(bytes32 _cdpId) external view override returns (uint) {
-        return Cdps[_cdpId].coll;
+        return Cdps[_cdpId].collShares;
     }
 
     /**
@@ -864,7 +864,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireCallerIsBorrowerOperations();
 
         Cdps[_cdpId].debt = _debt;
-        Cdps[_cdpId].coll = _coll;
+        Cdps[_cdpId].collShares = _coll;
         Cdps[_cdpId].status = Status.active;
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
@@ -897,7 +897,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) external {
         _requireCallerIsBorrowerOperations();
 
-        _setCdpColl(_cdpId, _newColl);
+        _setCdpCollShares(_cdpId, _newColl);
         _setCdpDebt(_cdpId, _newDebt);
 
         uint stake = _updateStakeAndTotalStakes(_cdpId);
@@ -919,8 +919,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * @param _cdpId The ID of the CDP
      * @param _newColl New collateral value, in stETH shares
      */
-    function _setCdpColl(bytes32 _cdpId, uint _newColl) internal {
-        Cdps[_cdpId].coll = _newColl;
+    function _setCdpCollShares(bytes32 _cdpId, uint _newColl) internal {
+        Cdps[_cdpId].collShares = _newColl;
     }
 
     /**

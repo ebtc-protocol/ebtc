@@ -173,7 +173,7 @@ contract LeverageMacroBase {
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(cdpInfo.collShares, checkParams.expectedCollateral);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: openCDP status check"
@@ -185,7 +185,7 @@ contract LeverageMacroBase {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
             _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(cdpInfo.collShares, checkParams.expectedCollateral);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: adjustCDP status check"

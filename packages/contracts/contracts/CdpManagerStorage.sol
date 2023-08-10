@@ -166,7 +166,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
 
         Cdps[_cdpId].status = closedStatus;
-        Cdps[_cdpId].coll = 0;
+        Cdps[_cdpId].collShares = 0;
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
@@ -246,7 +246,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         if (pendingEBTCDebtReward > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
             uint prevDebt = _cdp.debt;
-            uint prevColl = _cdp.coll;
+            uint prevColl = _cdp.collShares;
 
             // Apply pending rewards to cdp's state
             uint _newDebt = prevDebt + pendingEBTCDebtReward;
@@ -292,7 +292,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Update borrower's stake based on their latest collateral value
     function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
         Cdp storage _cdp = Cdps[_cdpId];
-        uint newStake = _computeNewStake(_cdp.coll);
+        uint newStake = _computeNewStake(_cdp.collShares);
         uint oldStake = _cdp.stake;
         _cdp.stake = newStake;
 
@@ -453,7 +453,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             _cdpId,
             _stFeePerUnitg
         );
-        Cdps[_cdpId].coll = _newColl;
+        Cdps[_cdpId].collShares = _newColl;
         stFeePerUnitcdp[_cdpId] = _stFeePerUnitg;
 
         emit CdpFeeSplitApplied(
@@ -471,7 +471,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _stFeePerUnitg
     ) public view returns (uint, uint) {
         uint _stFeePerUnitcdp = stFeePerUnitcdp[_cdpId];
-        uint _cdpCol = Cdps[_cdpId].coll;
+        uint _cdpCol = Cdps[_cdpId].collShares;
 
         if (_stFeePerUnitcdp == 0 || _cdpCol == 0 || _stFeePerUnitcdp == _stFeePerUnitg) {
             return (0, _cdpCol);
