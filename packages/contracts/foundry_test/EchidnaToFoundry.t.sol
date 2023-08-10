@@ -10,13 +10,6 @@ import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
 contract EchidnaToFoundry is eBTCBaseFixture, Properties {
-    struct CDPChange {
-        uint collAddition;
-        uint collReduction;
-        uint debtAddition;
-        uint debtReduction;
-    }
-
     address user;
 
     function setUp() public override {
@@ -115,8 +108,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
 
         _amount = clampBetween(_amount, 0, type(uint128).max);
-
-        CDPChange memory _change = CDPChange(0, 0, _amount, 0);
 
         console2.log("withdrawEBTC", _amount, _i);
         borrowerOperations.withdrawEBTC(_cdpId, _amount, _cdpId, _cdpId);
