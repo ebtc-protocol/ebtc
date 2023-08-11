@@ -177,11 +177,11 @@ contract BorrowerOperations is
      */
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _debtToRepay,
+        uint _debt,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdpInternal(_cdpId, 0, _debtToRepay, true, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, 0, _debt, true, _upperHint, _lowerHint, 0);
     }
 
     // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
@@ -190,11 +190,11 @@ contract BorrowerOperations is
     */
     function repayEBTC(
         bytes32 _cdpId,
-        uint _debtToRepay,
+        uint _debt,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
-        _adjustCdpInternal(_cdpId, 0, _debtToRepay, false, _upperHint, _lowerHint, 0);
+        _adjustCdpInternal(_cdpId, 0, _debt, false, _upperHint, _lowerHint, 0);
     }
 
     function adjustCdp(
