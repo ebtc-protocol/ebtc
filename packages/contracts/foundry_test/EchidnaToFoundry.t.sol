@@ -25,6 +25,22 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
     }
 
 
+    function testGetValuesRedemptions() public {
+        vm.warp(block.timestamp + 60 * 60 * 24 * 365); // Warp a year to go over min time
+        openCdp(4975011538218946772755711718445854401649461238704126722046796672,1);
+        setEthPerShare(0);
+        openCdp(3605950849545190917236707431640872421373248423478238946946259069,2);
+        redeemCollateral(547127325038,947890426751454568089952789385716404489268405604644114758048974194620,57939920126045711308615423797531076503306665406531885559654882737632016156);
+        openCdp(4975011538218946772755711718445854401649461238704126722046796672,1);
+        setEthPerShare(0);
+        openCdp(3605950849545190917236707431640872421373248423478238946946259069,2);
+        redeemCollateral(547127325038,947890426751454568089952789385716404489268405604644114758048974194620,57939920126045711308615423797531076503306665406531885559654882737632016156);
+        
+        console2.log("collateral.sharesOf(address(collSurplusPool)", collateral.sharesOf(address(collSurplusPool)));
+        console2.log("collSurplusPool.getStEthColl()", collSurplusPool.getStEthColl());
+        assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
+    }
+
     function testGetValues() public {
         openCdp(298,1);
         addColl(1643239628397191314697579057448420627080273462830700079102449130509,365742980907456965584449763965903736633480494004802033305060593621986);
@@ -111,5 +127,27 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
         console2.log("withdrawEBTC", _amount, _i);
         borrowerOperations.withdrawEBTC(_cdpId, _amount, _cdpId, _cdpId);
+    }
+
+    function redeemCollateral(
+        uint _EBTCAmount,
+        uint _partialRedemptionHintNICR,
+        uint _maxFeePercentage
+    ) internal {
+        require(
+            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
+            "CdpManager: Redemptions are not allowed during bootstrap phase"
+        );
+
+        _EBTCAmount = clampBetween(_EBTCAmount, 0, eBTCToken.balanceOf(address(user)));
+
+        _maxFeePercentage = clampBetween(
+            _maxFeePercentage,
+            cdpManager.redemptionFeeFloor(),
+            cdpManager.DECIMAL_PRECISION()
+        );
+
+        console2.log("redeemCollateral", _EBTCAmount, _partialRedemptionHintNICR, _maxFeePercentage);
+        cdpManager.redeemCollateral(_EBTCAmount, bytes32(0), bytes32(0), bytes32(0), _partialRedemptionHintNICR, 0, _maxFeePercentage);
     }
 }

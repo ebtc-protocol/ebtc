@@ -137,9 +137,13 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
-    function testWETHSpec(uint128 amount, address randomToken) public {
+    function testWETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(randomToken != address(collateral));
         vm.assume(amount > 0);
+        vm.assume(flashFee <= activePool.MAX_FEE_BPS());
+
+        vm.prank(defaultGovernance);
+        activePool.setFeeBps(flashFee);
 
         // NOTE: Send funds for flashloan to be doable
         dealCollateral(address(activePool), amount);
@@ -158,14 +162,17 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
-        assertEq(fee, (amount * activePool.feeBps()) / activePool.MAX_BPS());
+        assertEq(
+            uint(fee),
+            (uint256(amount) * uint256(activePool.feeBps())) / uint(activePool.MAX_BPS())
+        );
 
         // If the token is not supported feeBps MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
         activePool.flashFee(randomToken, amount);
 
         // If the token is not supported flashLoan MUST revert.
-        vm.expectRevert("ActivePool: Too much");
+        vm.expectRevert("ActivePool: collateral Only");
         activePool.flashLoan(specReceiver, randomToken, amount, abi.encodePacked(uint256(0)));
 
         if (fee > 0) {

@@ -14,10 +14,6 @@ import "../Dependencies/ICollateralToken.sol";
  * common functions.
  */
 contract LiquityBase is BaseMath, ILiquityBase {
-    uint public constant _100pct = 1000000000000000000; // 1e18 == 100%
-    uint public constant _105pct = 1050000000000000000; // 1.05e18 == 105%
-    uint public constant _5pct = 50000000000000000; // 5e16 == 5%
-
     // Collateral Ratio applied for Liquidation Incentive
     // i.e., liquidator repay $1 worth of debt to get back $1.03 worth of collateral
     uint public constant LICR = 1030000000000000000; // 103%
@@ -59,11 +55,6 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     function _getNetColl(uint _coll) internal pure returns (uint) {
         return _coll - LIQUIDATOR_REWARD;
-    }
-
-    // Return the amount of ETH to be drawn from a cdp's collateral and sent as gas compensation.
-    function _getCollGasCompensation(uint _entireColl) internal pure returns (uint) {
-        return _entireColl / PERCENT_DIVISOR;
     }
 
     /**
@@ -112,42 +103,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
     }
 
-    // Convert ETH/BTC price to BTC/ETH price
-    function _getPriceReciprocal(uint _price) internal pure returns (uint) {
-        return (DECIMAL_PRECISION * DECIMAL_PRECISION) / _price;
-    }
-
-    // Convert debt denominated in BTC to debt denominated in ETH given that _price is ETH/BTC
-    // _debt is denominated in BTC
-    // _price is ETH/BTC
-    function _convertDebtDenominationToEth(uint _debt, uint _price) internal pure returns (uint) {
-        uint priceReciprocal = _getPriceReciprocal(_price);
-        return (_debt * priceReciprocal) / DECIMAL_PRECISION;
-    }
-
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
     function _convertDebtDenominationToBtc(uint _debt, uint _price) internal pure returns (uint) {
         return (_debt * _price) / DECIMAL_PRECISION;
-    }
-
-    // @dev this function is to calculate how much delta index required to introduce a possible recovery mode triggering:
-    // @dev deltaI = (currentIndex / split) * (1 - CCR / currentTCR)
-    // @dev return delta index required to trigger recovery mode in current index denomination and current TCR for given price
-    function _computeDeltaIndexToTriggerRM(
-        uint _currentIndex,
-        uint _price,
-        uint _stakingSplit
-    ) internal view returns (uint, uint) {
-        uint _tcr = _getTCR(_price);
-        if (_tcr <= CCR) {
-            return (0, _tcr);
-        } else if (_tcr == LiquityMath.MAX_TCR) {
-            return (type(uint256).max, _tcr); // system cold start
-        } else {
-            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingSplit;
-            return ((_splitIndex * (_tcr - CCR)) / _tcr, _tcr);
-        }
     }
 }

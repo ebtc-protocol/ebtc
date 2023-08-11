@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
+
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
+
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
@@ -12,9 +14,10 @@ contract CDPTest is eBTCBaseFixture, Properties {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+
+        connectCoreContracts();
+        connectLQTYContractsToCore();
     }
 
     // Generic test for happy case when 1 user open CDP
@@ -90,7 +93,7 @@ contract CDPTest is eBTCBaseFixture, Properties {
         vm.startPrank(user);
         // Borrowed eBTC amount is too high compared to Collateral
         vm.expectRevert(
-            bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+            bytes("BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
         );
         borrowerOperations.openCdp(20000e20, "hint", "hint", 10 ether);
         vm.stopPrank();
@@ -107,7 +110,7 @@ contract CDPTest is eBTCBaseFixture, Properties {
 
         assert(sortedCdps.getLast() == "");
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
-        vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+        vm.expectRevert(bytes("BorrowerOperations: Cdp's net debt must be greater than minimum"));
         borrowerOperations.openCdp(1e15, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
@@ -128,7 +131,7 @@ contract CDPTest is eBTCBaseFixture, Properties {
         assert(sortedCdps.getLast() == "");
 
         vm.startPrank(user);
-        vm.expectRevert(bytes("BorrowerOps: Cdp's net coll must be greater than minimum"));
+        vm.expectRevert(bytes("BorrowerOperations: Cdp's net coll must be greater than minimum"));
         borrowerOperations.openCdp(1, "hint", "hint", collPlusLiquidatorReward);
         vm.stopPrank();
     }
@@ -223,7 +226,9 @@ contract CDPTest is eBTCBaseFixture, Properties {
             vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
             if (borrowedAmountWithFee < MIN_NET_DEBT) {
-                vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                vm.expectRevert(
+                    bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
+                );
                 vm.prank(user);
                 borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             }

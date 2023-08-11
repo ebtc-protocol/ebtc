@@ -2,14 +2,12 @@
 
 pragma solidity 0.8.17;
 
-import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IBorrowerOperations.sol";
 
-contract BorrowerOperationsScript is CheckContract {
+contract BorrowerOperationsScript {
     IBorrowerOperations immutable borrowerOperations;
 
     constructor(IBorrowerOperations _borrowerOperations) public {
-        checkContract(address(_borrowerOperations));
         borrowerOperations = _borrowerOperations;
     }
 

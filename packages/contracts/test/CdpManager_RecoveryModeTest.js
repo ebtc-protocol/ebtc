@@ -1604,7 +1604,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     //liquidate A, B, C
     assert.isTrue(await th.checkRecoveryMode(contracts))
-    await assertRevert(cdpManager.liquidate(_aliceCdpId), "!_ICR")
+    await assertRevert(cdpManager.liquidate(_aliceCdpId), "CdpManager: ICR is not below liquidation threshold in current mode")
     assert.isTrue(await th.checkRecoveryMode(contracts))
     await cdpManager.liquidate(_bobCdpId, {from: owner})
     assert.isTrue(await th.checkRecoveryMode(contracts))

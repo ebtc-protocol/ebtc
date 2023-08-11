@@ -63,8 +63,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(stakingRewardSplit);
 
         _syncIndex();
-        syncUpdateIndexInterval();
-        stFeePerUnitg = 1e18;
+        stFeePerUnitg = DECIMAL_PRECISION;
     }
 
     // --- Getters ---
@@ -195,7 +194,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 0,
                 0,
                 0,
-                CdpManagerOperation.redeemCollateral
+                CdpOperation.redeemCollateral
             );
         } else {
             // Debt remains, reinsert CDP
@@ -207,7 +206,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              *
              * If the resultant net coll of the partial is less than the minimum, we bail.
              */
-            if (newNICR != _redeemColFromCdp._partialRedemptionHintNICR || newColl < MIN_NET_COLL) {
+            if (
+                newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
+                collateral.getPooledEthByShares(newColl) < MIN_NET_COLL
+            ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
@@ -232,7 +234,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 newDebt,
                 newColl,
                 Cdps[_redeemColFromCdp._cdpId].stake,
-                CdpManagerOperation.redeemCollateral
+                CdpOperation.redeemCollateral
             );
         }
 
@@ -261,7 +263,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Update Active Pool EBTC, and send ETH to account
         activePool.decreaseEBTCDebt(_EBTC);
 
-        // Register stETH surplus from upcoming transfers of stETH from Active Pool and Gas Pool
+        // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
         collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
@@ -335,14 +337,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
+
+        applyPendingGlobalState();
+
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
-        _requireEBTCBalanceCoversRedemption(ebtcToken, msg.sender, _EBTCamount);
+
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
         totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
-        // Confirm redeemer's balance is less than total EBTC supply
-        assert(ebtcToken.balanceOf(msg.sender) <= totals.totalEBTCSupplyAtStart);
+        _requireEBTCBalanceCoversRedemptionAndWithinSupply(
+            ebtcToken,
+            msg.sender,
+            _EBTCamount,
+            totals.totalEBTCSupplyAtStart
+        );
 
         totals.remainingEBTC = _EBTCamount;
         address currentBorrower;
@@ -375,7 +385,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 bytes32 _nextId = sortedCdps.getPrev(_cId);
                 address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
 
-                _applyPendingRewards(_cId);
+                _applyPendingState(_cId);
 
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
@@ -467,89 +477,18 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cnt = _cnt - 1;
             _id = sortedCdps.getNext(_id);
         }
-        require(
-            _toRemoveIds[0] == _start,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check start error!"
-        );
+        require(_toRemoveIds[0] == _start, "CdpManager: batchRemoveSortedCdpIds check start error");
         require(
             _toRemoveIds[_total - 1] == _end,
-            "LiquidationLibrary: batchRemoveSortedCdpIds check end error!"
+            "CdpManager: batchRemoveSortedCdpIds check end error"
         );
         return _toRemoveIds;
     }
 
-    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
-    // Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _cdpId) external view override returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
-
-        uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
-        return NICR;
-    }
-
-    // Return the current collateral ratio (ICR) of a given Cdp.
-    //Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getCurrentICR(bytes32 _cdpId, uint _price) public view override returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
-
-        uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
-        uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
-        return ICR;
-    }
-
-    function applyPendingRewards(bytes32 _cdpId) external override {
+    function applyPendingState(bytes32 _cdpId) external override {
         // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
-        return _applyPendingRewards(_cdpId);
-    }
-
-    // Update borrower's snapshots of L_EBTCDebt to reflect the current values
-    function updateCdpRewardSnapshots(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations();
-        _applyAccumulatedFeeSplit(_cdpId);
-        return _updateCdpRewardSnapshots(_cdpId);
-    }
-
-    /**
-    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
-    */
-    function getPendingEBTCDebtReward(
-        bytes32 _cdpId
-    ) public view returns (uint pendingEBTCDebtReward) {
-        return _getRedistributedEBTCDebt(_cdpId);
-    }
-
-    function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
-        return _hasRedistributedDebt(_cdpId);
-    }
-
-    // Return the Cdps entire debt and coll struct
-    function _getEntireDebtAndColl(
-        bytes32 _cdpId
-    ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getEntireDebtAndColl(
-            _cdpId
-        );
-        return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
-    }
-
-    // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
-    /// @notice pending rewards are included in the debt and coll totals returned.
-    function getEntireDebtAndColl(
-        bytes32 _cdpId
-    ) public view override returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
-        debt = Cdps[_cdpId].debt;
-        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
-            _cdpId,
-            stFeePerUnitg,
-            stFeePerUnitgError,
-            totalStakes
-        );
-        coll = _newColl;
-
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
-
-        debt = debt + pendingEBTCDebtReward;
+        return _applyPendingState(_cdpId);
     }
 
     function removeStake(bytes32 _cdpId) external override {
@@ -569,17 +508,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _updateStakeAndTotalStakes(_cdpId);
     }
 
-    function closeCdp(bytes32 _cdpId) external override {
+    function closeCdp(bytes32 _cdpId, address _borrower, uint _debt, uint _coll) external override {
         _requireCallerIsBorrowerOperations();
+        emit CdpUpdated(_cdpId, _borrower, _debt, _coll, 0, 0, 0, CdpOperation.closeCdp);
         return _closeCdp(_cdpId, Status.closedByOwner);
     }
 
     // Push the owner's address to the Cdp owners list, and record the corresponding array index on the Cdp struct
-    function addCdpIdToArray(bytes32 _cdpId) external override returns (uint index) {
-        _requireCallerIsBorrowerOperations();
-        return _addCdpIdToArray(_cdpId);
-    }
-
     function _addCdpIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
         /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
         debt of liquidation reserve plus MIN_NET_DEBT.
@@ -628,20 +563,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return TCR < CCR;
     }
 
-    function syncUpdateIndexInterval() public override returns (uint) {
-        ICollateralTokenOracle _oracle = ICollateralTokenOracle(collateral.getOracle());
-        (uint256 epochsPerFrame, uint256 slotsPerEpoch, uint256 secondsPerSlot, ) = _oracle
-            .getBeaconSpec();
-        uint256 _newInterval = (epochsPerFrame * slotsPerEpoch * secondsPerSlot) / 2;
-        if (_newInterval != INDEX_UPD_INTERVAL) {
-            emit CollateralIndexUpdateIntervalUpdated(INDEX_UPD_INTERVAL, _newInterval);
-            INDEX_UPD_INTERVAL = _newInterval;
-            // Ensure growth of index from last update to the time this function gets called will be charged
-            claimStakingSplitFee();
-        }
-        return INDEX_UPD_INTERVAL;
-    }
-
     // --- Redemption fee functions ---
 
     /*
@@ -664,7 +585,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
-        assert(newBaseRate > 0); // Base rate is always non-zero after redemption
+        require(newBaseRate > 0, "CdpManager: new baseRate is zero!"); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
         baseRate = newBaseRate;
@@ -705,32 +626,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return redemptionFee;
     }
 
-    // --- Borrowing fee functions ---
-
-    function getBorrowingRate() public view override returns (uint) {
-        return _calcBorrowingRate(baseRate);
-    }
-
-    function getBorrowingRateWithDecay() public view override returns (uint) {
-        return _calcBorrowingRate(_calcDecayedBaseRate());
-    }
-
-    function _calcBorrowingRate(uint _baseRate) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
-    function getBorrowingFee(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRate(), _EBTCDebt);
-    }
-
-    function getBorrowingFeeWithDecay(uint _EBTCDebt) external view override returns (uint) {
-        return _calcBorrowingFee(getBorrowingRateWithDecay(), _EBTCDebt);
-    }
-
-    function _calcBorrowingFee(uint _borrowingRate, uint _EBTCDebt) internal pure returns (uint) {
-        return BORROWING_FEE_FLOOR;
-    }
-
     // Updates the baseRate state variable based on time elapsed since the last redemption or EBTC borrowing operation.
     function decayBaseRateFromBorrowing() external override {
         _requireCallerIsBorrowerOperations();
@@ -740,7 +635,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _decayBaseRate() internal {
         uint decayedBaseRate = _calcDecayedBaseRate();
-        assert(decayedBaseRate <= DECIMAL_PRECISION); // The baseRate can decay to 0
+        require(decayedBaseRate <= DECIMAL_PRECISION, "CdpManager: baseRate too large!"); // The baseRate can decay to 0
 
         baseRate = decayedBaseRate;
         emit BaseRateUpdated(decayedBaseRate);
@@ -792,22 +687,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
     }
 
-    // @dev return current TCR for given price and true if delta index is big enough to trigger recovery mode, otherwise false.
-    function checkIfDeltaIndexTriggerRM(uint _price) external view override returns (uint, bool) {
-        uint _oldIndex = stFPPSg;
-        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
-        if (_newIndex > _oldIndex) {
-            (uint _requiredDelta, uint _tcr) = _computeDeltaIndexToTriggerRM(
-                _newIndex,
-                _price,
-                stakingRewardSplit
-            );
-            return (_tcr, (_newIndex - _oldIndex) >= _requiredDelta);
-        } else {
-            return (_getTCR(_price), false);
-        }
-    }
-
     // --- 'require' wrapper functions ---
 
     function _requireCallerIsBorrowerOperations() internal view {
@@ -817,14 +696,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    function _requireEBTCBalanceCoversRedemption(
+    function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
         IEBTCToken _ebtcToken,
         address _redeemer,
-        uint _amount
+        uint _amount,
+        uint _totalSupply
     ) internal view {
+        uint callerBalance = _ebtcToken.balanceOf(_redeemer);
         require(
-            _ebtcToken.balanceOf(_redeemer) >= _amount,
+            callerBalance >= _amount,
             "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
+        );
+        require(
+            callerBalance <= _totalSupply,
+            "CdpManager: redeemer's EBTC balance exceeds total supply!"
         );
     }
 
@@ -859,6 +744,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
+        applyPendingGlobalState();
+
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
@@ -872,6 +759,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _redemptionFeeFloor <= DECIMAL_PRECISION,
             "CDPManager: new redemption fee floor is higher than maximum"
         );
+
+        applyPendingGlobalState();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -887,6 +776,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
+        applyPendingGlobalState();
+
         // decay first according to previous factor
         _decayBaseRate();
 
@@ -896,10 +787,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
+        applyPendingGlobalState();
+
         _decayBaseRate();
 
         beta = _beta;
         emit BetaSet(_beta);
+    }
+
+    function setRedemptionsPaused(bool _paused) external requiresAuth {
+        applyPendingGlobalState();
+        _decayBaseRate();
+
+        redemptionsPaused = _paused;
+        emit RedemptionsPaused(_paused);
     }
 
     // --- Cdp property getters ---
@@ -938,77 +839,90 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Cdp property setters, called by BorrowerOperations ---
 
     /**
-     * @notice Set the status of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _num The new ICdpManagerData.Satus, as an integer
+        @notice Initiailze all state for new CDP
+        @dev Only callable by BorrowerOperations, critical trust assumption 
+        @dev Requires CDP to be already inserted into linked list correctly
+        @param _cdpId id of CDP to initialize state for. Inserting the blank CDP into the linked list grants this ID
+        @param _debt debt units of CDP
+        @param _coll collateral shares of CDP
+        @param _liquidatorRewardShares collateral shares for CDP gas stipend
+        @param _borrower borrower address
      */
-    function setCdpStatus(bytes32 _cdpId, uint _num) external override {
-        _requireCallerIsBorrowerOperations();
-        Cdps[_cdpId].status = Status(_num);
-    }
-
-    /**
-     * @notice Increase the collateral of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _collIncrease The amount to collateral to increase, in stETH shares
-     * @return The new collateral amount in stETH shares
-     */
-    function increaseCdpColl(bytes32 _cdpId, uint _collIncrease) external override returns (uint) {
-        _requireCallerIsBorrowerOperations();
-        uint newColl = Cdps[_cdpId].coll + _collIncrease;
-        Cdps[_cdpId].coll = newColl;
-        return newColl;
-    }
-
-    /**
-     * @notice Decrease the collateral of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _collDecrease The amount of collateral to decrease, in stETH sharse
-     * @return The new collateral amount in stETH shares
-     */
-    function decreaseCdpColl(bytes32 _cdpId, uint _collDecrease) external override returns (uint) {
-        _requireCallerIsBorrowerOperations();
-        uint newColl = Cdps[_cdpId].coll - _collDecrease;
-        Cdps[_cdpId].coll = newColl;
-        return newColl;
-    }
-
-    /**
-     * @notice Increase the debt of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _debtIncrease The amount of debt to increase
-     * @return The new debt amount
-     */
-    function increaseCdpDebt(bytes32 _cdpId, uint _debtIncrease) external override returns (uint) {
-        _requireCallerIsBorrowerOperations();
-        uint newDebt = Cdps[_cdpId].debt + _debtIncrease;
-        Cdps[_cdpId].debt = newDebt;
-        return newDebt;
-    }
-
-    /**
-     * @notice Decrease the debt of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _debtDecrease The amount of debt to decrease
-     * @return The new debt amount
-     */
-    function decreaseCdpDebt(bytes32 _cdpId, uint _debtDecrease) external override returns (uint) {
-        _requireCallerIsBorrowerOperations();
-        uint newDebt = Cdps[_cdpId].debt - _debtDecrease;
-        Cdps[_cdpId].debt = newDebt;
-        return newDebt;
-    }
-
-    /**
-     * @notice Set the liquidator reward shares of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _liquidatorRewardShares The new liquidator reward shares
-     */
-    function setCdpLiquidatorRewardShares(
+    function initializeCdp(
         bytes32 _cdpId,
-        uint _liquidatorRewardShares
-    ) external override {
+        uint _debt,
+        uint _coll,
+        uint _liquidatorRewardShares,
+        address _borrower
+    ) external {
         _requireCallerIsBorrowerOperations();
+
+        Cdps[_cdpId].debt = _debt;
+        Cdps[_cdpId].coll = _coll;
+        Cdps[_cdpId].status = Status.active;
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
+
+        _applyAccumulatedFeeSplit(_cdpId);
+        _updateRedistributedDebtSnapshot(_cdpId);
+        uint stake = _updateStakeAndTotalStakes(_cdpId);
+        uint index = _addCdpIdToArray(_cdpId);
+
+        // Previous debt and coll are by definition zero upon opening a new CDP
+        emit CdpUpdated(_cdpId, _borrower, 0, 0, _debt, _coll, stake, CdpOperation.openCdp);
+    }
+
+    /**
+        @notice Set new CDP debt and collateral values, updating stake accordingly.
+        @dev Only callable by BorrowerOperations, critical trust assumption 
+        @param _cdpId Id of CDP to update state for
+        @param _borrower borrower of CDP. Passed along in function to avoid an extra storage read.
+        @param _coll collateral shares of CDP before update operation. Passed in function to avoid an extra stroage read.
+        @param _debt debt units of CDP before update operation. Passed in function to avoid an extra stroage read.
+        @param _newColl collateral shares of CDP after update operation.
+        @param _newDebt debt units of CDP after update operation.
+     */
+    function updateCdp(
+        bytes32 _cdpId,
+        address _borrower,
+        uint _coll,
+        uint _debt,
+        uint _newColl,
+        uint _newDebt
+    ) external {
+        _requireCallerIsBorrowerOperations();
+
+        _setCdpColl(_cdpId, _newColl);
+        _setCdpDebt(_cdpId, _newDebt);
+
+        uint stake = _updateStakeAndTotalStakes(_cdpId);
+
+        emit CdpUpdated(
+            _cdpId,
+            _borrower,
+            _debt,
+            _coll,
+            _newDebt,
+            _newColl,
+            stake,
+            CdpOperation.adjustCdp
+        );
+    }
+
+    /**
+     * @notice Set the collateral of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _newColl New collateral value, in stETH shares
+     */
+    function _setCdpColl(bytes32 _cdpId, uint _newColl) internal {
+        Cdps[_cdpId].coll = _newColl;
+    }
+
+    /**
+     * @notice Set the debt of a CDP
+     * @param _cdpId The ID of the CDP
+     * @param _newDebt New debt units value
+     */
+    function _setCdpDebt(bytes32 _cdpId, uint _newDebt) internal {
+        Cdps[_cdpId].debt = _newDebt;
     }
 }

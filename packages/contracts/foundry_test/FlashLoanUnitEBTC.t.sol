@@ -139,10 +139,14 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev This test converts the MUST into assets from the spec
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
-    function testEBTCSpec(uint128 amount, address randomToken) public {
+    function testEBTCSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
+        vm.assume(flashFee <= borrowerOperations.MAX_FEE_BPS());
+
+        vm.prank(defaultGovernance);
+        borrowerOperations.setFeeBps(flashFee);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
         assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), type(uint112).max);
@@ -212,7 +216,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     function testEBTCSpecReturnValue() public {
-        vm.expectRevert("BorrowerOperations: IERC3156: Callback failed");
+        vm.expectRevert("IERC3156: Callback failed");
         borrowerOperations.flashLoan(
             wrongReturnReceiver,
             address(eBTCToken),
