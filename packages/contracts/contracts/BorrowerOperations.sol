@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.17;
 
-import "forge-std/console2.sol";
-
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICdpManagerData.sol";
