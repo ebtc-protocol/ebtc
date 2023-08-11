@@ -427,7 +427,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // alice could claim whatever surplus is
       let prevETHOfAlice = await ethers.provider.getBalance(alice);	
       let _collClaimatorPre = await collToken.balanceOf(alice);
-      let _claimTx = await borrowerOperations.claimCollateral({ from: alice});	
+      let _claimTx = await borrowerOperations.claimSurplusCollShares({ from: alice});	
       let postETHOfAlice = await ethers.provider.getBalance(alice);
       let _collClaimatorPost = await collToken.balanceOf(alice);
       let _gasEtherUsedClaim = toBN(_claimTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_claimTx)).toString()));

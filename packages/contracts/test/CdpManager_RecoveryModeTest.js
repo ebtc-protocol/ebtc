@@ -1745,7 +1745,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // can claim collateral
     const bob_balanceBefore_2 = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPre2 = await collToken.balanceOf(bob);	
-    const BOB_GAS_2 = th.gasUsed(await borrowerOperations.claimCollateral({ from: bob, gasPrice: GAS_PRICE  }))
+    const BOB_GAS_2 = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: bob, gasPrice: GAS_PRICE  }))
     const bob_expectedBalance_2 = bob_balanceBefore_2.sub(th.toBN(BOB_GAS_2 * GAS_PRICE))
     const bob_balanceAfter_2 = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPost2 = await collToken.balanceOf(bob);	
@@ -1774,7 +1774,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPre = await collToken.balanceOf(bob);	
-    const BOB_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: bob, gasPrice: GAS_PRICE  }))
+    const BOB_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: bob, gasPrice: GAS_PRICE  }))
     const bob_expectedBalance = bob_balanceBefore.sub(th.toBN(BOB_GAS * GAS_PRICE))
     const bob_balanceAfter = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPost = await collToken.balanceOf(bob);	
@@ -3820,13 +3820,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // can claim collateral
     const alice_balanceBefore = th.toBN(await web3.eth.getBalance(alice))
-    const ALICE_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: alice, gasPrice: GAS_PRICE  }))
+    const ALICE_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: alice, gasPrice: GAS_PRICE  }))
     const alice_balanceAfter = th.toBN(await web3.eth.getBalance(alice))
     //th.assertIsApproximatelyEqual(alice_balanceAfter, alice_balanceBefore.add(th.toBN(alice_remainingCollateral).sub(th.toBN(ALICE_GAS * GAS_PRICE))))
 
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPre = await collToken.balanceOf(bob);	
-    const BOB_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: bob, gasPrice: GAS_PRICE  }))
+    const BOB_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: bob, gasPrice: GAS_PRICE  }))
     const bob_balanceAfter = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPost = await collToken.balanceOf(bob);	
     th.assertIsApproximatelyEqual(_collBobPost, _collBobPre.add(th.toBN(bob_remainingCollateral)));//.sub(th.toBN(BOB_GAS * GAS_PRICE))))

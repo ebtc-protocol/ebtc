@@ -74,7 +74,7 @@ contract('CollSurplusPool', async accounts => {
   })
 
   it("CollSurplusPool: claimColl(): Reverts if nothing to claim", async () => {
-    await th.assertRevert(borrowerOperations.claimCollateral({ from: A }), 'CollSurplusPool: No collateral available to claim')
+    await th.assertRevert(borrowerOperations.claimSurplusCollShares({ from: A }), 'CollSurplusPool: No collateral available to claim')
   })
 
   it("CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus", async () => {

@@ -500,7 +500,7 @@ class TestHelper {
       "oldDebt": emittedOldDebt,
       "oldColl": emittedOldColl,
       "debt": emittedDebt,
-      "coll": emittedColl,
+      "collShares": emittedColl,
       "stake": emittedStake,
       "operation": emittedOperation
     }

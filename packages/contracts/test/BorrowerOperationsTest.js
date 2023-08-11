@@ -2672,7 +2672,7 @@ contract('BorrowerOperations', async accounts => {
           oldDebt: toBN(0),
           oldColl: toBN(0),
           debt: A_Debt,
-          coll: A_Coll,
+          collShares: A_Coll,
           stake: toBN(await cdpManager.getCdpStake(AIndex)),
           operation: toBN(0), //CdpOperation.openCDP
         };
@@ -2683,7 +2683,7 @@ contract('BorrowerOperations', async accounts => {
           oldDebt: toBN(0),
           oldColl: toBN(0),
           debt: B_Debt,
-          coll: B_Coll,
+          collShares: B_Coll,
           stake: toBN(await cdpManager.getCdpStake(BIndex)),
           operation: toBN(0), //CdpOperation.openCDP
         };
@@ -2694,7 +2694,7 @@ contract('BorrowerOperations', async accounts => {
           oldDebt: toBN(0),
           oldColl: toBN(0),
           debt: C_Debt,
-          coll: C_Coll,
+          collShares: C_Coll,
           stake: toBN(await cdpManager.getCdpStake(CIndex)),
           operation: toBN(0), //CdpOperation.openCDP
         };

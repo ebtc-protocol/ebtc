@@ -76,7 +76,7 @@ contract('ActivePool', async accounts => {
     await collToken.deposit({ from: owner, value: _amt });  
     const tx1 = await collToken.transfer(activePool.address, _amt, { from: owner, value: 0 })
     assert.isTrue(tx1.receipt.status)
-    await activePool.unprotectedReceiveColl(_amt);
+    await activePool.unprotectedReceiveCollShares(_amt);
 
     const activePool_BalanceBeforeTx = web3.utils.toBN(await collToken.balanceOf(activePool.address))
     const alice_Balance_BeforeTx = web3.utils.toBN(await collToken.balanceOf(alice))
@@ -104,7 +104,7 @@ contract('ActivePool', async accounts => {
     await collToken.deposit({from: alice, value: _fee.add(web3.utils.toBN(_amount))});
     
     await collToken.transfer(activePool.address, _amount, {from: alice});
-    await borrowerOperations.unprotectedActivePoolReceiveColl(_amount);
+    await borrowerOperations.unprotectedActivePoolreceiveCollShares(_amount);
 	
     await collToken.transfer(_flashBorrower.address, _fee, {from: alice});
 	
