@@ -8,6 +8,8 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         uint256 nicrAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
+        uint256 actorCdpCountBefore;
+        uint256 actorCdpCountAfter;
         uint256 cdpCollBefore;
         uint256 cdpCollAfter;
         uint256 liquidatorRewardSharesBefore;
@@ -22,31 +24,50 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester {
         uint256 debtAfter;
         uint256 ebtcTotalSupplyBefore;
         uint256 ebtcTotalSupplyAfter;
+        uint256 ethPerShareBefore;
+        uint256 ethPerShareAfter;
+        bool isRecoveryModeBefore;
+        bool isRecoveryModeAfter;
+    }
+
+    struct Cdp {
+        bytes32 id;
+        uint256 icr;
     }
 
     Vars vars;
 
     function _before(bytes32 _cdpId) internal {
-        vars.nicrBefore = cdpManager.getNominalICR(_cdpId);
+        vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
+            ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
+            : 0;
+        vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
+        vars.debtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
+
         vars.actorCollBefore = collateral.balanceOf(address(actor));
-        vars.cdpCollBefore = cdpManager.getCdpColl(_cdpId);
-        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeBefore = sortedCdps.getSize();
-        vars.cdpStatusBefore = cdpManager.getCdpStatus(_cdpId);
         vars.tcrBefore = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
-        vars.debtBefore = cdpManager.getCdpDebt(_cdpId);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
+        vars.ethPerShareBefore = collateral.getEthPerShare();
     }
 
     function _after(bytes32 _cdpId) internal {
-        vars.nicrAfter = cdpManager.getNominalICR(_cdpId);
+        vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
+            ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
+            : 0;
+        vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
+        vars.debtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
+
         vars.actorCollAfter = collateral.balanceOf(address(actor));
-        vars.cdpCollAfter = cdpManager.getCdpColl(_cdpId);
-        vars.liquidatorRewardSharesAfter = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeAfter = sortedCdps.getSize();
-        vars.cdpStatusAfter = cdpManager.getCdpStatus(_cdpId);
         vars.tcrAfter = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
-        vars.debtAfter = cdpManager.getCdpDebt(_cdpId);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
+        vars.ethPerShareAfter = collateral.getEthPerShare();
     }
 }
