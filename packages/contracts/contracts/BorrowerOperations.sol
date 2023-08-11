@@ -336,7 +336,14 @@ contract BorrowerOperations is
             _requireAtLeastMinNetStEthBalance(collateral.getPooledEthByShares(vars.newColl));
         }
 
-        cdpManager.updateCdp(_cdpId, _borrower, vars.collShares, vars.debt, vars.newColl, vars.newDebt);
+        cdpManager.updateCdp(
+            _cdpId,
+            _borrower,
+            vars.collShares,
+            vars.debt,
+            vars.newColl,
+            vars.newDebt
+        );
 
         // Re-insert cdp in to the sorted list
         {
@@ -462,14 +469,14 @@ contract BorrowerOperations is
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));
 
-        uint coll = cdpManager.getCdpCollShares(_cdpId);
+        uint collShares = cdpManager.getCdpCollShares(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
         uint liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
         uint newTCR = _getNewTCRFromCdpChange(
-            collateral.getPooledEthByShares(coll),
+            collateral.getPooledEthByShares(collShares),
             false,
             debt,
             false,
@@ -480,7 +487,7 @@ contract BorrowerOperations is
         cdpManager.removeStake(_cdpId);
 
         // We already verified msg.sender is the borrower
-        cdpManager.closeCdp(_cdpId, msg.sender, debt, coll);
+        cdpManager.closeCdp(_cdpId, msg.sender, debt, collShares);
 
         // Burn the repaid EBTC from the user's balance
         _repayEBTC(msg.sender, debt);
@@ -488,7 +495,7 @@ contract BorrowerOperations is
         // CEI: Send the collateral and liquidator reward shares back to the user
         activePool.transferSystemCollSharesAndLiquidatorRewardShares(
             msg.sender,
-            coll,
+            collShares,
             liquidatorRewardShares
         );
     }
@@ -584,7 +591,10 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _stEthBalanceToIncrease, uint _stEthBalanceToDecrease) internal pure {
+    function _requireSingularCollChange(
+        uint _stEthBalanceToIncrease,
+        uint _stEthBalanceToDecrease
+    ) internal pure {
         require(
             _stEthBalanceToIncrease == 0 || _stEthBalanceToDecrease == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"
@@ -704,7 +714,7 @@ contract BorrowerOperations is
     function _requireAtLeastMinNetStEthBalance(uint _coll) internal pure {
         require(
             _coll >= MIN_CDP_STETH_BALANCE,
-            "BorrowerOperations: Cdp's net coll must be greater than minimum"
+            "BorrowerOperations: Cdp's net stEth collateral balance must be greater than minimum"
         );
     }
 
