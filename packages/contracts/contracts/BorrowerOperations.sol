@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+import "forge-std/console2.sol";
+
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICdpManagerData.sol";
@@ -240,10 +242,6 @@ contract BorrowerOperations is
         );
     }
 
-    event L2(string, uint, uint);
-    event L3(string, uint, uint, uint);
-    event L4(string, uint, uint, uint, uint);
-
     /*
      * _adjustCdpInternal(): Alongside a debt change, this function can perform either
      * a collateral top-up or a collateral withdrawal.
@@ -282,7 +280,6 @@ contract BorrowerOperations is
         require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         // Get the collChange based on the collateral value transferred in the transaction
-        emit L3("before", _collAddAmount, _collWithdrawal, _EBTCChange);
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
 
         vars.netDebtChange = _EBTCChange;
@@ -306,8 +303,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             vars.price
         );
-        // TODO: Do we need this?
-        emit L2("assert", _collWithdrawal, _cdpCollAmt);
         assert(_collWithdrawal <= _cdpCollAmt);
 
         // Check the adjustment satisfies all conditions for the current system mode
@@ -461,6 +456,10 @@ contract BorrowerOperations is
         uint liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
+
+        uint sc = getEntireSystemColl();
+        uint tc = collateral.getPooledEthByShares(sc);
+        uint td = _getEntireSystemDebt();
 
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
