@@ -33,7 +33,6 @@ import "./EchidnaAssertionHelper.sol";
 // rm -f ./fuzzTests/corpus/* # (optional)
 // <your-path-to->/echidna-test contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
 contract EchidnaTester is
-    EchidnaBaseTester,
     EchidnaBeforeAfter,
     EchidnaProperties,
     EchidnaAssertionHelper,
@@ -633,6 +632,9 @@ contract EchidnaTester is
             )
         );
         assertWithMsg(success, "Approve never fails");
+
+        _before(bytes32(0));
+
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
@@ -643,11 +645,14 @@ contract EchidnaTester is
                 _col
             )
         );
+
+        _after(bytes32(0));
+
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
             // TODO fix this breaking invariant and remove comments
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_03(vars), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
             assertGte(
@@ -656,22 +661,20 @@ contract EchidnaTester is
                 "CDP collateral must be above minimum"
             );
             assertWithMsg(cdpManager.getCdpIdsCount() > 0, "CDPs count must have increased");
+        } else if (_EBTCAmount == 0) {
+            assertRevertReasonEqual(returnData, "BorrowerOperations: Debt must be non-zero");
+        } else if (collateral.balanceOf(address(actor)) < _col) {
+            assertRevertReasonEqual(
+                returnData,
+                "ERC20: transfer amount exceeds balance"
+                // Actor must have collateral to open CDP
+            );
         } else {
-            if (_EBTCAmount == 0) {
-                assertRevertReasonEqual(returnData, "BorrowerOps: Debt must be non-zero");
-            } else if (collateral.balanceOf(address(actor)) < _col) {
-                assertRevertReasonEqual(
-                    returnData,
-                    "ERC20: transfer amount exceeds balance"
-                    // Actor must have collateral to open CDP
-                );
-            } else {
-                assertRevertReasonEqual(
-                    returnData,
-                    "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
-                    // Actor must have collateral to open CDP
-                );
-            }
+            assertRevertReasonEqual(
+                returnData,
+                "BorrowerOps: An operation that would result in TCR < CCR is not permitted"
+                // Actor must have collateral to open CDP
+            );
         }
     }
 
@@ -735,7 +738,7 @@ contract EchidnaTester is
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 "P-49 Adding collateral improves Nominal ICR if there is no rebase"
             );
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_03(vars), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
         } else if (_coll == 0) {
             assertRevertReasonEqual(
@@ -797,7 +800,7 @@ contract EchidnaTester is
 
         if (success) {
             // TODO fix this breaking invariant and remove comments
-            // assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            // assertWithMsg(invariant_P_03(vars), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertLt(
                 vars.nicrAfter,
@@ -860,7 +863,7 @@ contract EchidnaTester is
 
         if (success) {
             assertEq(vars.debtAfter, vars.debtBefore + _amount, "withdrawEBTC increases debt");
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_03(vars), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertGt(vars.nicrBefore, vars.nicrAfter, "withdrawEBTC decreases Nominal ICR");
         } else if (_amount == 0) {
@@ -938,7 +941,7 @@ contract EchidnaTester is
                 "P-05: eBTC tokens are burned upon repayment of a CDP's debt"
             );
 
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_03(vars), "P-03");
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
         } else if (_amount == 0) {
             assertRevertReasonEqual(
@@ -988,7 +991,7 @@ contract EchidnaTester is
 
         if (success) {
             // TODO add more invariants
-            assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), "P-03");
+            assertWithMsg(invariant_P_03(vars), P_03);
             assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,

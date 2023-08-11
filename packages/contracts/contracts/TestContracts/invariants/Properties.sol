@@ -10,8 +10,10 @@ import {AssertionHelper} from "./AssertionHelper.sol";
 import {CollSurplusPool} from "../../CollSurplusPool.sol";
 import {PriceFeedTestnet} from "../testnet/PriceFeedTestnet.sol";
 import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
+import {BeforeAfter} from "./BeforeAfter.sol";
+import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 
-abstract contract Properties is AssertionHelper {
+abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     /// @notice AP-01 The collateral balance in the active pool is greater than or equal to its accounting number
     function invariant_AP_01(
         ICollateralToken collateral,
@@ -194,12 +196,8 @@ abstract contract Properties is AssertionHelper {
     }
 
     /// @notice P-03 After any operation, the TCR must be above the CCR
-    function invariant_P_03(
-        CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet
-    ) internal view returns (bool) {
-        uint _price = priceFeedTestnet.getPrice();
-        return !cdpManager.checkRecoveryMode(_price);
+    function invariant_P_03(Vars memory vars) internal view returns (bool) {
+        return !vars.isRecoveryModeBefore && vars.isRecoveryModeAfter;
     }
 
     /// @notice P-22 `CdpManager`, `BorrowerOperations`, `eBTCToken`, `SortedCDPs` and `PriceFeed`s do not hold value terms of stETH and eBTC unless there are donations. @todo Missing CdpManager balance check, Missing stETH/eBTC checks

@@ -6,8 +6,8 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 /*
- * Test suite that tests exactly one thing: opening CDPs
- * It tests different cases and also does random testing against random coll amounts and amount of users
+ * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
+ * The objective is to go from random values to hardcoded values that can be analyzed more easily
  */
 contract EchidnaToFoundry is eBTCBaseFixture, Properties {
     address user;
@@ -24,39 +24,51 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         collateral.deposit{value: funds}();
     }
 
-
     function testGetValuesRedemptions() public {
         vm.warp(block.timestamp + 60 * 60 * 24 * 365); // Warp a year to go over min time
-        openCdp(4975011538218946772755711718445854401649461238704126722046796672,1);
+        openCdp(4975011538218946772755711718445854401649461238704126722046796672, 1);
         setEthPerShare(0);
-        openCdp(3605950849545190917236707431640872421373248423478238946946259069,2);
-        redeemCollateral(547127325038,947890426751454568089952789385716404489268405604644114758048974194620,57939920126045711308615423797531076503306665406531885559654882737632016156);
-        openCdp(4975011538218946772755711718445854401649461238704126722046796672,1);
+        openCdp(3605950849545190917236707431640872421373248423478238946946259069, 2);
+        redeemCollateral(
+            547127325038,
+            947890426751454568089952789385716404489268405604644114758048974194620,
+            57939920126045711308615423797531076503306665406531885559654882737632016156
+        );
+        openCdp(4975011538218946772755711718445854401649461238704126722046796672, 1);
         setEthPerShare(0);
-        openCdp(3605950849545190917236707431640872421373248423478238946946259069,2);
-        redeemCollateral(547127325038,947890426751454568089952789385716404489268405604644114758048974194620,57939920126045711308615423797531076503306665406531885559654882737632016156);
-        
-        console2.log("collateral.sharesOf(address(collSurplusPool)", collateral.sharesOf(address(collSurplusPool)));
+        openCdp(3605950849545190917236707431640872421373248423478238946946259069, 2);
+        redeemCollateral(
+            547127325038,
+            947890426751454568089952789385716404489268405604644114758048974194620,
+            57939920126045711308615423797531076503306665406531885559654882737632016156
+        );
+
+        console2.log(
+            "collateral.sharesOf(address(collSurplusPool)",
+            collateral.sharesOf(address(collSurplusPool))
+        );
         console2.log("collSurplusPool.getStEthColl()", collSurplusPool.getStEthColl());
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
     }
 
     function testGetValues() public {
-        openCdp(298,1);
-        addColl(1643239628397191314697579057448420627080273462830700079102449130509,365742980907456965584449763965903736633480494004802033305060593621986);
-        withdrawEBTC(1184219647878146906,2441064729135930468687515109208933352881429821330765071021434864906412112313);
+        openCdp(298, 1);
+        addColl(
+            1643239628397191314697579057448420627080273462830700079102449130509,
+            365742980907456965584449763965903736633480494004802033305060593621986
+        );
+        withdrawEBTC(
+            1184219647878146906,
+            2441064729135930468687515109208933352881429821330765071021434864906412112313
+        );
         setEthPerShare(534740885114938036571112017074595968544303330274215367894);
         setEthPerShare(0);
-        openCdp(0,1);
+        openCdp(0, 1);
 
         assertTrue(invariant_P_03(cdpManager, priceFeedMock), "P-03");
     }
 
-    function clampBetween(
-        uint256 value,
-        uint256 low,
-        uint256 high
-    ) internal returns (uint256) {
+    function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
             return ans;
@@ -148,6 +160,14 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         );
 
         console2.log("redeemCollateral", _EBTCAmount, _partialRedemptionHintNICR, _maxFeePercentage);
-        cdpManager.redeemCollateral(_EBTCAmount, bytes32(0), bytes32(0), bytes32(0), _partialRedemptionHintNICR, 0, _maxFeePercentage);
+        cdpManager.redeemCollateral(
+            _EBTCAmount,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0),
+            _partialRedemptionHintNICR,
+            0,
+            _maxFeePercentage
+        );
     }
 }

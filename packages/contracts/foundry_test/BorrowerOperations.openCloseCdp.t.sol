@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
-
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
@@ -298,7 +297,6 @@ contract CDPTest is eBTCBaseFixture, Properties {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-
         uint price = priceFeedMock.getPrice();
 
         // openCdp
@@ -324,5 +322,4 @@ contract CDPTest is eBTCBaseFixture, Properties {
 
         assertTrue(invariant_P_03(cdpManager, priceFeedMock), "P-03");
     }
-
 }
