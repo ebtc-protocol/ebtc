@@ -197,7 +197,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     /// @notice P-03 After any operation, the TCR must be above the CCR
     function invariant_P_03(Vars memory vars) internal view returns (bool) {
-        return !vars.isRecoveryModeBefore && vars.isRecoveryModeAfter;
+        return !vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter;
     }
 
     /// @notice P-22 `CdpManager`, `BorrowerOperations`, `eBTCToken`, `SortedCDPs` and `PriceFeed`s do not hold value terms of stETH and eBTC unless there are donations. @todo Missing CdpManager balance check, Missing stETH/eBTC checks

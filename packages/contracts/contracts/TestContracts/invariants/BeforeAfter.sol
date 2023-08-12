@@ -6,10 +6,14 @@ abstract contract BeforeAfter {
         uint256 nicrAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
+        uint256 actorEbtcBefore;
+        uint256 actorEbtcAfter;
         uint256 actorCdpCountBefore;
         uint256 actorCdpCountAfter;
         uint256 cdpCollBefore;
         uint256 cdpCollAfter;
+        uint256 cdpDebtBefore;
+        uint256 cdpDebtAfter;
         uint256 liquidatorRewardSharesBefore;
         uint256 liquidatorRewardSharesAfter;
         uint256 sortedCdpsSizeBefore;

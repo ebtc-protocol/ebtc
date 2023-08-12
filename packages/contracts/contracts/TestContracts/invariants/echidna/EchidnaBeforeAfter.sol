@@ -12,6 +12,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
     function _before(bytes32 _cdpId) internal {
         vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
@@ -19,6 +20,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.debtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.actorCollBefore = collateral.balanceOf(address(actor));
+        vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeBefore = sortedCdps.getSize();
         vars.tcrBefore = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
@@ -29,6 +31,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
     function _after(bytes32 _cdpId) internal {
         vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
@@ -36,6 +39,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.debtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.actorCollAfter = collateral.balanceOf(address(actor));
+        vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeAfter = sortedCdps.getSize();
         vars.tcrAfter = cdpManager.getTCR(priceFeedTestnet.fetchPrice());

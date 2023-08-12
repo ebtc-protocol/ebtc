@@ -23,7 +23,10 @@ abstract contract PropertiesDescriptions {
     string constant SL_03 = "SL-03 All CDPs have status active and stake greater than zero";
     string constant P_01 =
         "P-01 The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100%";
+    string constant P_02 =
+        "Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode";
     string constant P_03 = "P-03 After any operation, the TCR must be above the CCR";
+    string constant P_05 = "P-05 eBTC tokens are burned upon repayment of a CDP's debt";
     string constant P_22 =
         "P-22 `CdpManager`, `BorrowerOperations`, `eBTCToken`, `SortedCDPs` and `PriceFeed`s do not hold value terms of stETH and eBTC unless there are donations";
     string constant P_36 =

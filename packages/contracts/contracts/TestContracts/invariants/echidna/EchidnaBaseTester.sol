@@ -26,10 +26,6 @@ abstract contract EchidnaBaseTester {
     uint internal constant NUMBER_OF_ACTORS = 3;
     uint internal constant INITIAL_ETH_BALANCE = 1e24;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
-    uint internal MCR;
-    uint internal CCR;
-    uint internal LICR;
-    uint internal MIN_NET_COLL;
 
     CdpManager internal cdpManager;
     BorrowerOperations internal borrowerOperations;
