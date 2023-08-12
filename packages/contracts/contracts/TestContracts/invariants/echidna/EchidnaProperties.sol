@@ -5,29 +5,16 @@ import {EchidnaLog} from "./EchidnaLog.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract EchidnaProperties is EchidnaBaseTester, EchidnaLog, Properties {
-    function echidna_canary_active_pool_balance() public log returns (bool) {
-        return invariant_P_47(cdpManager, collateral, activePool);
-    }
-
-    function echidna_cdp_properties() public log returns (bool) {
-        return invariant_SL_03(cdpManager, priceFeedTestnet, sortedCdps);
-    }
-
-    function echidna_accounting_balances() public log returns (bool) {
-        return
-            invariant_P_22(collateral, borrowerOperations, eBTCToken, sortedCdps, priceFeedTestnet);
-    }
-
     function echidna_price() public log returns (bool) {
         return invariant_DUMMY_01(priceFeedTestnet);
     }
 
-    function echidna_EBTC_global_balances() public log returns (bool) {
-        return invariant_P_36(eBTCToken, cdpManager, sortedCdps);
-    }
-
     function echidna_active_pool_invariant_1() public log returns (bool) {
         return invariant_AP_01(collateral, activePool);
+    }
+
+    function echidna_active_pool_invariant_2() public log returns (bool) {
+        return invariant_AP_02(cdpManager, activePool);
     }
 
     function echidna_active_pool_invariant_3() public log returns (bool) {
@@ -66,7 +53,15 @@ abstract contract EchidnaProperties is EchidnaBaseTester, EchidnaLog, Properties
         return invariant_SL_02(cdpManager, sortedCdps, priceFeedTestnet, diff_tolerance);
     }
 
-    function echidna_p_1() public log returns (bool) {
-        return invariant_P_01(cdpManager, priceFeedTestnet, eBTCToken);
+    function echidna_sorted_list_invariant_3() public log returns (bool) {
+        return invariant_SL_03(cdpManager, priceFeedTestnet, sortedCdps);
+    }
+
+    function echidna_GENERAL_02() public log returns (bool) {
+        return invariant_GENERAL_02(cdpManager, priceFeedTestnet, eBTCToken);
+    }
+
+    function echidna_GENERAL_03() public log returns (bool) {
+        return invariant_GENERAL_03(cdpManager, borrowerOperations, eBTCToken, collateral);
     }
 }

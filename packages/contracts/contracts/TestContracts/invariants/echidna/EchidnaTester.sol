@@ -432,12 +432,12 @@ contract EchidnaTester is
             assertWithMsg(
                 cdpsLiquidated[i].icr < cdpManager.MCR() ||
                     (cdpsLiquidated[i].icr < cdpManager.CCR() && isRecoveryMode),
-                P_07
+                L_01
             );
         }
         assertWithMsg(
             vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            "TCR must increase after a liquidation"
+            L_12
         );
     }
 
@@ -483,7 +483,7 @@ contract EchidnaTester is
 
         _after(bytes32(0));
 
-        assertWithMsg(!vars.isRecoveryModeBefore, P_02);
+        assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
     }
 
     // function claimStakingSplitFee() internal {
@@ -617,9 +617,8 @@ contract EchidnaTester is
 
         bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
-        // TODO fix this breaking invariant and remove comments
-        assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
         uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
         assertGte(
             _collWorth,
@@ -685,9 +684,12 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        assertWithMsg(vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18, P_49);
-        assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
+        assertWithMsg(
+            vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
+            BO_03
+        );
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
 
     function withdrawColl(uint _amount, uint256 _i) external {
@@ -728,9 +730,9 @@ contract EchidnaTester is
         _after(_cdpId);
 
         // TODO fix this breaking invariant and remove comments
-        // assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
-        assertLt(vars.nicrAfter, vars.nicrBefore, P_49);
+        // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+        assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
     }
 
     function withdrawEBTC(uint _amount, uint256 _i) external {
@@ -810,10 +812,10 @@ contract EchidnaTester is
         //     "TCR must increase after a repayment"
         // );
 
-        assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, P_05);
-
-        assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
+        assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, BO_07);
+        assertEq(vars.actorEbtcBefore, vars.actorEbtcAfter - _amount, BO_07);
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
 
     function closeCdp(uint _i) external log {
@@ -840,8 +842,8 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
         assertEq(
             vars.sortedCdpsSizeBefore - 1,
             vars.sortedCdpsSizeAfter,
@@ -860,7 +862,7 @@ contract EchidnaTester is
         //         vars.actorCollAfter,
         //         0.01e18
         //     ),
-        //     "closeCdp gives collateral and liquidator rewards back to user"
+        //     BO_05
         // );
     }
 
@@ -898,8 +900,8 @@ contract EchidnaTester is
     //         )
     //     );
     //     if (_collWithdrawal > 0 || _isDebtIncrease) {
-    //         assertWithMsg(invariant_P_03(cdpManager, priceFeedTestnet), P_03);
-    //         assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
+    //         assertWithMsg(invariant_GENERAL_01(cdpManager, priceFeedTestnet), GENERAL_01);
+    //         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     //     }
     // }
 
