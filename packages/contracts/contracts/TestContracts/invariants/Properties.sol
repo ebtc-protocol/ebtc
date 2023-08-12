@@ -177,7 +177,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_GENERAL_01(Vars memory vars) internal view returns (bool) {
-        return vars.isRecoveryModeBefore ? !vars.isRecoveryModeAfter : true;
+        return !vars.isRecoveryModeBefore ? !vars.isRecoveryModeAfter : true;
     }
 
     function invariant_GENERAL_02(
