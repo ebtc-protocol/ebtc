@@ -324,6 +324,6 @@ contract CDPTest is eBTCBaseFixture, Properties {
 
         bool isRecoveryModeAfter = cdpManager.checkRecoveryMode(priceFeedMock.getPrice());
 
-        assertTrue(!isRecoveryModeBefore && !isRecoveryModeAfter, GENERAL_01);
+        assertTrue(isRecoveryModeBefore ? !isRecoveryModeAfter : true, GENERAL_01);
     }
 }
