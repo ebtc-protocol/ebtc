@@ -71,3 +71,4 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | P-48 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | P-49 | Removing collateral decreases the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | P-50 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
+| P-51 | TCR must increase after a liquidation | High Level | ✅ |

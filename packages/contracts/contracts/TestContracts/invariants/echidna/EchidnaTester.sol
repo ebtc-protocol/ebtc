@@ -432,7 +432,7 @@ contract EchidnaTester is
             assertWithMsg(
                 cdpsLiquidated[i].icr < cdpManager.MCR() ||
                     (cdpsLiquidated[i].icr < cdpManager.CCR() && isRecoveryMode),
-                "Liquidation only succeeds if ICR < 110% in normal mode, or if ICR < 125% in Recovery Mode."
+                P_07
             );
         }
         assertWithMsg(
@@ -619,7 +619,7 @@ contract EchidnaTester is
 
         // TODO fix this breaking invariant and remove comments
         assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
+        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
         uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
         assertGte(
             _collWorth,
@@ -685,13 +685,9 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        // TODO add more invariants here
-        assertWithMsg(
-            vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
-            "P-49 Adding collateral improves Nominal ICR if there is no rebase"
-        );
+        assertWithMsg(vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18, P_49);
         assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
+        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
     }
 
     function withdrawColl(uint _amount, uint256 _i) external {
@@ -733,12 +729,8 @@ contract EchidnaTester is
 
         // TODO fix this breaking invariant and remove comments
         // assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
-        assertLt(
-            vars.nicrAfter,
-            vars.nicrBefore,
-            "P-50 Removing collateral decreases the Nominal ICR"
-        );
+        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
+        assertLt(vars.nicrAfter, vars.nicrBefore, P_49);
     }
 
     function withdrawEBTC(uint _amount, uint256 _i) external {
@@ -821,7 +813,7 @@ contract EchidnaTester is
         assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, P_05);
 
         assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
+        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
     }
 
     function closeCdp(uint _i) external log {
@@ -848,9 +840,8 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        // TODO add more invariants
         assertWithMsg(invariant_P_03(vars), P_03);
-        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), "P-50");
+        assertWithMsg(invariant_P_50(cdpManager, priceFeedTestnet, _cdpId), P_50);
         assertEq(
             vars.sortedCdpsSizeBefore - 1,
             vars.sortedCdpsSizeAfter,
