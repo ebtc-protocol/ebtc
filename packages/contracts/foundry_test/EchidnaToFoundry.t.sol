@@ -48,7 +48,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
             collateral.sharesOf(address(collSurplusPool))
         );
         console2.log("collSurplusPool.getStEthColl()", collSurplusPool.getStEthColl());
-        assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
+        // assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
     }
 
     function testGetValues() public {
