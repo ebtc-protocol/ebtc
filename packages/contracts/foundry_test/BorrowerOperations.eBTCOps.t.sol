@@ -373,6 +373,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         uint256 tcrAfter = cdpManager.getTCR(_price);
 
+        // TODO uncomment after https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3 is fixed
         assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");
     }
 }
