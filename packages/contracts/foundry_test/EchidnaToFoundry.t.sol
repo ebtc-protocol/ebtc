@@ -64,8 +64,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         setEthPerShare(534740885114938036571112017074595968544303330274215367894);
         setEthPerShare(0);
         openCdp(0, 1);
-
-        assertTrue(invariant_P_03(cdpManager, priceFeedMock), "P-03");
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {

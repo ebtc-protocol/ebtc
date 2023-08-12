@@ -316,10 +316,13 @@ contract CDPTest is eBTCBaseFixture, Properties {
         // setEthPerShare
         collateral.setEthPerShare(842014978731144878);
 
+        bool isRecoveryModeBefore = cdpManager.checkRecoveryMode(priceFeedMock.getPrice());
         // openCdp
         collateral.approve(address(borrowerOperations), 2200000000000000016);
         borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
 
-        assertTrue(invariant_P_03(cdpManager, priceFeedMock), "P-03");
+        bool isRecoveryModeAfter = cdpManager.checkRecoveryMode(priceFeedMock.getPrice());
+
+        assertTrue(!isRecoveryModeBefore && !isRecoveryModeAfter, GENERAL_01);
     }
 }
