@@ -842,6 +842,29 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return Cdps[_cdpId].liquidatorRewardShares;
     }
 
+    /**
+        @notice Get data struct for a given CDP
+        @param _cdpId ID of CDP to fetch data struct for
+        @returns cdpData CDP data struct
+    */
+    function getCdpData(bytes32 _cdpId) external view override returns (Cdp memory cdpData) {
+        cdpData = Cdps[_cdpId];
+        return cdpData;
+    }
+
+    /**
+        @notice Get index snapshots (stETH pooledEthByShare and eBTC debt redistribution)
+        @param _cdpId ID of CDP to fetch snapshots for
+        @returns indexSnapshots CDP snapshots struct
+    */
+    function getCdpIndexSnapshots(
+        bytes32 _cdpId
+    ) external view override returns (CdpIndexSnapshots memory indexSnapshots) {
+        indexSnapshots.pooledEthPerShareIndex = stFeePerUnitcdp[_cdpId];
+        indexSnapshots.debtRedistributionIndex = rewardSnapshots[_cdpId];
+        return indexSnapshots;
+    }
+
     // --- Cdp property setters, called by BorrowerOperations ---
 
     /**

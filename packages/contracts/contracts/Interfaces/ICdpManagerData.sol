@@ -99,6 +99,11 @@ interface ICdpManagerData {
         uint128 arrayIndex;
     }
 
+    struct CdpIndexSnapshots {
+        uint pooledEthPerShareIndex;
+        uint debtRedistributionIndex;
+    }
+
     /*
      * --- Variable container structs for liquidations ---
      *
