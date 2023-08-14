@@ -462,7 +462,7 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         _requireCdpOwner(_cdpId);
-        _requireCdpisActive(cdpManager, _cdpId);
+        _requireCdpisActive(_cdpId);
 
         cdpManager.applyPendingState(_cdpId);
 
@@ -619,8 +619,8 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
-        uint status = _cdpManager.getCdpStatus(_cdpId);
+    function _requireCdpisActive(bytes32 _cdpId) internal view {
+        uint status = cdpManager.getCdpStatus(_cdpId);
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
