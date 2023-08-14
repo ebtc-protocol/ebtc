@@ -485,6 +485,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _toRemoveIds;
     }
 
+    /**
+        @notice Apply pending index snapshot state to a CDP (realizing changes in stETH pooledEthPerShare or eBTC debt redistribution index)
+        @notice Applies pending global snapshot states as well if necessary
+        @dev Global snapshot state should be synced before CDP state and before any other operations in the calling function
+        @param _cdpId CDP ID to apply update index states for
+    */
     function applyPendingState(bytes32 _cdpId) external override {
         // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
