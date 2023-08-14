@@ -825,10 +825,10 @@ contract BorrowerOperations is
             return 0;
         }
 
-        if(flashLoansPaused) {
+        if (flashLoansPaused) {
             return 0;
         }
-        
+
         return type(uint112).max;
     }
 

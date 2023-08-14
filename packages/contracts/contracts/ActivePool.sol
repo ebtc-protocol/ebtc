@@ -316,7 +316,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         require(token == address(collateral), "ActivePool: collateral Only");
         require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
 
-
         return (amount * feeBps) / MAX_BPS;
     }
 
@@ -329,7 +328,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
             return 0;
         }
 
-        if(flashLoansPaused) {
+        if (flashLoansPaused) {
             return 0;
         }
 
