@@ -172,8 +172,8 @@ contract LeverageMacroBase {
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
-            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
+            _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: openCDP status check"
@@ -184,8 +184,8 @@ contract LeverageMacroBase {
         if (postCheckType == PostOperationCheck.cdpStats) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
+            _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: adjustCDP status check"
@@ -237,7 +237,7 @@ contract LeverageMacroBase {
     ///     >= you prob use this one
     ///     <= if you don't need >= you go for lte
     ///     And if you really need eq, it's third
-    function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
+    function _doCheckValueType(CheckValueAndType memory check, uint256 valueToCheck) internal {
         if (check.operator == Operator.skip) {
             // Early return
             return;
