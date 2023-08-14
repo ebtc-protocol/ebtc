@@ -164,6 +164,32 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
 
+        // Pause FL
+        vm.startPrank(defaultGovernance);
+        borrowerOperations.setFlashLoansPaused(true);
+        vm.stopPrank();
+
+        // If the FL is paused, flashFee Reverts
+        vm.expectRevert("BorrowerOperations: Flash Loans Paused");
+        borrowerOperations.flashFee(address(eBTCToken), amount);
+
+        // If the FL is paused, maxFlashLoan returns 0
+        assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), 0);
+
+        // if the FL is paused, flashLoan Reverts
+        vm.expectRevert("BorrowerOperations: Flash Loans Paused");
+        borrowerOperations.flashLoan(
+            specReceiver,
+            address(eBTCToken),
+            amount,
+            abi.encodePacked(uint256(0))
+        );
+
+        // Unpause
+        vm.startPrank(defaultGovernance);
+        borrowerOperations.setFlashLoansPaused(false);
+        vm.stopPrank();
+
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashLoan(
