@@ -63,11 +63,11 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
 
-    function getCdpData(bytes32 _cdpId) external view override returns (Cdp memory cdpData);
+    function getCdpData(bytes32 _cdpId) external view returns (Cdp memory);
 
     function getCdpIndexSnapshots(
         bytes32 _cdpId
-    ) external view override returns (CdpIndexSnapshots memory indexSnapshots);
+    ) external view returns (CdpIndexSnapshots memory);
 
     function initializeCdp(
         bytes32 _cdpId,
