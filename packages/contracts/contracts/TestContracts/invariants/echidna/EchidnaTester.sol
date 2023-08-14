@@ -410,12 +410,14 @@ contract EchidnaTester is
 
         _before(bytes32(0));
 
-        (success, ) = actor.proxy(
+        (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n)
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(bytes32(0));
 
@@ -479,7 +481,10 @@ contract EchidnaTester is
                 _maxFeePercentage
             )
         );
-        require(success);
+
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(bytes32(0));
 
@@ -611,7 +616,9 @@ contract EchidnaTester is
             )
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(bytes32(0));
 
@@ -680,7 +687,9 @@ contract EchidnaTester is
             )
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(_cdpId);
 
@@ -725,7 +734,9 @@ contract EchidnaTester is
             )
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(_cdpId);
 
@@ -765,7 +776,9 @@ contract EchidnaTester is
             )
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(_cdpId);
     }
@@ -799,7 +812,9 @@ contract EchidnaTester is
             )
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(_cdpId);
 
@@ -838,7 +853,9 @@ contract EchidnaTester is
             abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
         );
 
-        require(success);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
         _after(_cdpId);
 

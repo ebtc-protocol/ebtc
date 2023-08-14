@@ -4,6 +4,14 @@ import {AssertionHelper} from "../AssertionHelper.sol";
 import {PropertiesAsserts} from "@crytic/properties/contracts/util/PropertiesHelper.sol";
 
 abstract contract EchidnaAssertionHelper is AssertionHelper, PropertiesAsserts {
+    function assertRevertReasonNotEqual(
+        bytes memory returnData,
+        string memory reason
+    ) internal returns (bool) {
+        bool isEqual = _isRevertReasonEqual(returnData, reason);
+        assertWithMsg(!isEqual, reason);
+    }
+
     function assertRevertReasonEqual(
         bytes memory returnData,
         string memory reason
