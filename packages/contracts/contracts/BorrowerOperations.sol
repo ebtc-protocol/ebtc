@@ -258,7 +258,7 @@ contract BorrowerOperations is
         uint _stEthBalanceToIncrease
     ) internal {
         _requireCdpOwner(_cdpId);
-        _requireCdpisActive(cdpManager, _cdpId);
+        _requireCdpisActive(_cdpId);
 
         cdpManager.applyPendingState(_cdpId);
 
