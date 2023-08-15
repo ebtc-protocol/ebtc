@@ -169,7 +169,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
         require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
 
-        _insert(cdpManager, _id, _NICR, _prevId, _nextId);
+        _insert(_id, _NICR, _prevId, _nextId);
 
         unchecked {
             ++nextCdpNonce;
@@ -180,13 +180,7 @@ contract SortedCdps is ISortedCdps {
         return _id;
     }
 
-    function _insert(
-        ICdpManager _cdpManager,
-        bytes32 _id,
-        uint256 _NICR,
-        bytes32 _prevId,
-        bytes32 _nextId
-    ) internal {
+    function _insert(bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
         // List must not be full
         require(!isFull(), "SortedCdps: List is full");
         // List must not already contain node
@@ -199,10 +193,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 prevId = _prevId;
         bytes32 nextId = _nextId;
 
-        if (!_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        if (!_validInsertPosition(_NICR, prevId, nextId)) {
             // Sender's hint was not a valid insert position
             // Use sender's hint to find a valid insert position
-            (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
+            (prevId, nextId) = _findInsertPosition(_NICR, prevId, nextId);
         }
 
         if (prevId == dummyId && nextId == dummyId) {
@@ -342,7 +336,7 @@ contract SortedCdps is ISortedCdps {
         // Remove node from the list
         _remove(_id);
 
-        _insert(cdpManager, _id, _newNICR, _prevId, _nextId);
+        _insert(_id, _newNICR, _prevId, _nextId);
     }
 
     /**
@@ -470,11 +464,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external view override returns (bool) {
-        return _validInsertPosition(cdpManager, _NICR, _prevId, _nextId);
+        return _validInsertPosition(_NICR, _prevId, _nextId);
     }
 
     function _validInsertPosition(
-        ICdpManager _cdpManager,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
@@ -484,32 +477,27 @@ contract SortedCdps is ISortedCdps {
             return isEmpty();
         } else if (_prevId == dummyId) {
             // `(null, _nextId)` is a valid insert position if `_nextId` is the head of the list
-            return data.head == _nextId && _NICR >= _cdpManager.getNominalICR(_nextId);
+            return data.head == _nextId && _NICR >= cdpManager.getNominalICR(_nextId);
         } else if (_nextId == dummyId) {
             // `(_prevId, null)` is a valid insert position if `_prevId` is the tail of the list
-            return data.tail == _prevId && _NICR <= _cdpManager.getNominalICR(_prevId);
+            return data.tail == _prevId && _NICR <= cdpManager.getNominalICR(_prevId);
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_NICR` falls between the two nodes' NICRs
             return
                 data.nodes[_prevId].nextId == _nextId &&
-                _cdpManager.getNominalICR(_prevId) >= _NICR &&
-                _NICR >= _cdpManager.getNominalICR(_nextId);
+                cdpManager.getNominalICR(_prevId) >= _NICR &&
+                _NICR >= cdpManager.getNominalICR(_nextId);
         }
     }
 
     /*
      * @dev Descend the list (larger NICRs to smaller NICRs) to find a valid insert position
-     * @param _cdpManager CdpManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start descending the list from
      */
-    function _descendList(
-        ICdpManager _cdpManager,
-        uint256 _NICR,
-        bytes32 _startId
-    ) internal view returns (bytes32, bytes32) {
+    function _descendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
-        if (data.head == _startId && _NICR >= _cdpManager.getNominalICR(_startId)) {
+        if (data.head == _startId && _NICR >= cdpManager.getNominalICR(_startId)) {
             return (dummyId, _startId);
         }
 
@@ -517,7 +505,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 nextId = data.nodes[prevId].nextId;
 
         // Descend the list until we reach the end or until we find a valid insert position
-        while (prevId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        while (prevId != dummyId && !_validInsertPosition(_NICR, prevId, nextId)) {
             prevId = data.nodes[prevId].nextId;
             nextId = data.nodes[prevId].nextId;
         }
@@ -527,17 +515,12 @@ contract SortedCdps is ISortedCdps {
 
     /*
      * @dev Ascend the list (smaller NICRs to larger NICRs) to find a valid insert position
-     * @param _cdpManager CdpManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start ascending the list from
      */
-    function _ascendList(
-        ICdpManager _cdpManager,
-        uint256 _NICR,
-        bytes32 _startId
-    ) internal view returns (bytes32, bytes32) {
+    function _ascendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
-        if (data.tail == _startId && _NICR <= _cdpManager.getNominalICR(_startId)) {
+        if (data.tail == _startId && _NICR <= cdpManager.getNominalICR(_startId)) {
             return (_startId, dummyId);
         }
 
@@ -545,7 +528,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 prevId = data.nodes[nextId].prevId;
 
         // Ascend the list until we reach the end or until we find a valid insertion point
-        while (nextId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        while (nextId != dummyId && !_validInsertPosition(_NICR, prevId, nextId)) {
             nextId = data.nodes[nextId].prevId;
             prevId = data.nodes[nextId].prevId;
         }
@@ -565,11 +548,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external view override returns (bytes32, bytes32) {
-        return _findInsertPosition(cdpManager, _NICR, _prevId, _nextId);
+        return _findInsertPosition(_NICR, _prevId, _nextId);
     }
 
     function _findInsertPosition(
-        ICdpManager _cdpManager,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
@@ -578,14 +560,14 @@ contract SortedCdps is ISortedCdps {
         bytes32 nextId = _nextId;
 
         if (prevId != dummyId) {
-            if (!contains(prevId) || _NICR > _cdpManager.getNominalICR(prevId)) {
+            if (!contains(prevId) || _NICR > cdpManager.getNominalICR(prevId)) {
                 // `prevId` does not exist anymore or now has a smaller NICR than the given NICR
                 prevId = dummyId;
             }
         }
 
         if (nextId != dummyId) {
-            if (!contains(nextId) || _NICR < _cdpManager.getNominalICR(nextId)) {
+            if (!contains(nextId) || _NICR < cdpManager.getNominalICR(nextId)) {
                 // `nextId` does not exist anymore or now has a larger NICR than the given NICR
                 nextId = dummyId;
             }
@@ -593,16 +575,16 @@ contract SortedCdps is ISortedCdps {
 
         if (prevId == dummyId && nextId == dummyId) {
             // No hint - descend list starting from head
-            return _descendList(_cdpManager, _NICR, data.head);
+            return _descendList(_NICR, data.head);
         } else if (prevId == dummyId) {
             // No `prevId` for hint - ascend list starting from `nextId`
-            return _ascendList(_cdpManager, _NICR, nextId);
+            return _ascendList(_NICR, nextId);
         } else if (nextId == dummyId) {
             // No `nextId` for hint - descend list starting from `prevId`
-            return _descendList(_cdpManager, _NICR, prevId);
+            return _descendList(_NICR, prevId);
         } else {
             // Descend list starting from `prevId`
-            return _descendList(_cdpManager, _NICR, prevId);
+            return _descendList(_NICR, prevId);
         }
     }
 
