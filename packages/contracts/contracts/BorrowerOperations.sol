@@ -507,7 +507,7 @@ contract BorrowerOperations is
      */
     function claimSurplusCollShares() external override {
         // send coll shares from CollSurplus Pool to owner
-        collSurplusPool.claimColl(msg.sender);
+        collSurplusPool.claimSurplusCollShares(msg.sender);
     }
 
     // --- Helper functions ---

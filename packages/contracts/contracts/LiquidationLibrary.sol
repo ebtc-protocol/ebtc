@@ -283,7 +283,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 true
             );
             if (_collSurplus > 0) {
-                collSurplusPool.accountSurplus(_borrower, _collSurplus);
+                collSurplusPool.setSurplusCollSharesFor(_borrower, _collSurplus);
                 _recoveryState.totalColSurplus = _recoveryState.totalColSurplus + _collSurplus;
             }
             if (_debtToRedistribute > 0) {
@@ -471,10 +471,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // ensure new ICR does NOT decrease due to partial liquidation
         // if original ICR is above LICR
         if (_partialState._ICR > LICR) {
-            require(
-                getICR(_cdpId, _partialState._price) >= _partialState._ICR,
-                "!_newICR>=_ICR"
-            );
+            require(getICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
         }
 
         // reInsert into sorted CDP list

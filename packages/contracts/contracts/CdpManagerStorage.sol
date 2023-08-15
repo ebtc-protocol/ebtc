@@ -98,14 +98,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     mapping(bytes32 => uint256) public stFeePerUnitcdp;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
-    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
+    // Map active cdps to their eBTC debt redistribution index snapshot
     mapping(bytes32 => uint) public debtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
-    // Error trackers for the cdp redistribution calculation
-    uint public lastETHError_Redistribution;
+    // Error tracker for the debt redistribution calculation
     uint public lastEBTCDebtRedistributionError;
 
     constructor(
@@ -216,12 +215,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
     }
 
+    /*
+        @notice A Cdp has redistributed debt if its debt redistribution index snapshot is less than the current global debt redistribution index
+        @notice This indicates that debt redistribution(s) have occured since the index snapshot was updated, and the Cdp therefore has redistributed debt
+    */
     function _hasRedistributedDebt(bytes32 _cdpId) internal view returns (bool) {
-        /*
-         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
-         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
-         * pending rewards
-         */
         if (Cdps[_cdpId].status != Status.active) {
             return false;
         }
@@ -234,7 +232,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _systemDebtRedistributionIndex = systemDebtRedistributionIndex;
 
         debtRedistributionIndex[_cdpId] = _systemDebtRedistributionIndex;
-        emit CdpSnapshotsUpdated(_cdpId, _systemDebtRedistributionIndex);
+        emit CdpDebtRedistributionIndexUpdated(_cdpId, _systemDebtRedistributionIndex);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp

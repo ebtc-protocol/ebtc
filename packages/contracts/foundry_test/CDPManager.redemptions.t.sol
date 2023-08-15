@@ -153,7 +153,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             require(cdpManager.getCdpStatus(_cdpIds[i]) == 4, "redemption leave CDP not closed!");
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             require(
-                collSurplusPool.getCollateral(_owner) > cdpManager.LIQUIDATOR_REWARD(),
+                collSurplusPool.getSurplusCollSharesFor(_owner) > cdpManager.LIQUIDATOR_REWARD(),
                 "redemption leave wrong surplus to claim!"
             );
         }

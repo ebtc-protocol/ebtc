@@ -800,7 +800,9 @@ contract EchidnaTester {
         bytes32 currentCdp = sortedCdps.getFirst();
         uint cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(currentCdp);
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(
+                currentCdp
+            );
             cdpsBalance = cdpsBalance.add(entireDebt);
             currentCdp = sortedCdps.getNext(currentCdp);
         }

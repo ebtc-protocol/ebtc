@@ -162,7 +162,7 @@ contract('BorrowerWrappers', async accounts => {
 
     // check everything remain the same
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 1)
     th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId), collateral)
@@ -188,7 +188,7 @@ contract('BorrowerWrappers', async accounts => {
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
@@ -196,7 +196,7 @@ contract('BorrowerWrappers', async accounts => {
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
     th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId2), expectedSurplus.sub(liqReward))
@@ -222,7 +222,7 @@ contract('BorrowerWrappers', async accounts => {
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
@@ -231,7 +231,7 @@ contract('BorrowerWrappers', async accounts => {
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
     th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId2), expectedSurplus.add(collateral).sub(liqReward))

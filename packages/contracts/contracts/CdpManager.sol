@@ -264,7 +264,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         activePool.decreaseSystemDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
-        collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
+        collSurplusPool.setSurplusCollSharesFor(_borrower, _stEth + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
         activePool.transferSystemCollSharesAndLiquidatorRewardShares(
@@ -514,9 +514,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _updateStakeAndTotalStakes(_cdpId);
     }
 
-    function closeCdp(bytes32 _cdpId, address _borrower, uint _debt, uint _coll) external override {
+    function closeCdp(
+        bytes32 _cdpId,
+        address _borrower,
+        uint _debt,
+        uint _collShares
+    ) external override {
         _requireCallerIsBorrowerOperations();
-        emit CdpUpdated(_cdpId, _borrower, _debt, _coll, 0, 0, 0, CdpOperation.closeCdp);
+        emit CdpUpdated(_cdpId, _borrower, _debt, _collShares, 0, 0, 0, CdpOperation.closeCdp);
         return _closeCdp(_cdpId, Status.closedByOwner);
     }
 
@@ -879,21 +884,21 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         @dev Requires CDP to be already inserted into linked list correctly
         @param _cdpId id of CDP to initialize state for. Inserting the blank CDP into the linked list grants this ID
         @param _debt debt units of CDP
-        @param _coll collateral shares of CDP
+        @param _collShares collateral shares of CDP
         @param _liquidatorRewardShares collateral shares for CDP gas stipend
         @param _borrower borrower address
      */
     function initializeCdp(
         bytes32 _cdpId,
         uint _debt,
-        uint _coll,
+        uint _collShares,
         uint _liquidatorRewardShares,
         address _borrower
     ) external {
         _requireCallerIsBorrowerOperations();
 
         Cdps[_cdpId].debt = _debt;
-        Cdps[_cdpId].collShares = _coll;
+        Cdps[_cdpId].collShares = _collShares;
         Cdps[_cdpId].status = Status.active;
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
@@ -903,7 +908,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint index = _addCdpIdToArray(_cdpId);
 
         // Previous debt and coll are by definition zero upon opening a new CDP
-        emit CdpUpdated(_cdpId, _borrower, 0, 0, _debt, _coll, stake, CdpOperation.openCdp);
+        emit CdpUpdated(_cdpId, _borrower, 0, 0, _debt, _collShares, stake, CdpOperation.openCdp);
     }
 
     /**
@@ -911,22 +916,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         @dev Only callable by BorrowerOperations, critical trust assumption 
         @param _cdpId Id of CDP to update state for
         @param _borrower borrower of CDP. Passed along in function to avoid an extra storage read.
-        @param _coll collateral shares of CDP before update operation. Passed in function to avoid an extra stroage read.
+        @param _collShares collateral shares of CDP before update operation. Passed in function to avoid an extra stroage read.
         @param _debt debt units of CDP before update operation. Passed in function to avoid an extra stroage read.
-        @param _newColl collateral shares of CDP after update operation.
+        @param _newCollShares collateral shares of CDP after update operation.
         @param _newDebt debt units of CDP after update operation.
      */
     function updateCdp(
         bytes32 _cdpId,
         address _borrower,
-        uint _coll,
+        uint _collShares,
         uint _debt,
-        uint _newColl,
+        uint _newCollShares,
         uint _newDebt
     ) external {
         _requireCallerIsBorrowerOperations();
 
-        _setCdpCollShares(_cdpId, _newColl);
+        _setCdpCollShares(_cdpId, _newCollShares);
         _setCdpDebt(_cdpId, _newDebt);
 
         uint stake = _updateStakeAndTotalStakes(_cdpId);
@@ -935,9 +940,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cdpId,
             _borrower,
             _debt,
-            _coll,
+            _collShares,
             _newDebt,
-            _newColl,
+            _newCollShares,
             stake,
             CdpOperation.adjustCdp
         );
@@ -946,10 +951,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /**
      * @notice Set the collateral of a CDP
      * @param _cdpId The ID of the CDP
-     * @param _newColl New collateral value, in stETH shares
+     * @param _newCollShares New collateral value, in stETH shares
      */
-    function _setCdpCollShares(bytes32 _cdpId, uint _newColl) internal {
-        Cdps[_cdpId].collShares = _newColl;
+    function _setCdpCollShares(bytes32 _cdpId, uint _newCollShares) internal {
+        Cdps[_cdpId].collShares = _newCollShares;
     }
 
     /**

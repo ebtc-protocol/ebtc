@@ -23,7 +23,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     // deposited ether tracker
     uint256 internal StEthColl;
     // Collateral surplus claimable by cdp owners
-    mapping(address => uint) internal balances;
+    mapping(address => uint) internal collSharesSurplus;
 
     // --- Contract setters ---
 
@@ -72,27 +72,27 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @param _account The address of the account
      * @return The collateral balance available to claim
      */
-    function getCollateral(address _account) external view override returns (uint) {
-        return balances[_account];
+    function getSurplusCollSharesFor(address _account) external view override returns (uint) {
+        return collSharesSurplus[_account];
     }
 
     // --- Pool functionality ---
 
-    function accountSurplus(address _account, uint _amount) external override {
+    function setSurplusCollSharesFor(address _account, uint _amount) external override {
         _requireCallerIsCdpManager();
 
-        uint newAmount = balances[_account] + _amount;
-        balances[_account] = newAmount;
+        uint newAmount = collSharesSurplus[_account] + _amount;
+        collSharesSurplus[_account] = newAmount;
 
         emit CollBalanceUpdated(_account, newAmount);
     }
 
-    function claimColl(address _account) external override {
+    function claimSurplusCollShares(address _account) external override {
         _requireCallerIsBorrowerOperations();
-        uint claimableColl = balances[_account];
+        uint claimableColl = collSharesSurplus[_account];
         require(claimableColl > 0, "CollSurplusPool: No collateral available to claim");
 
-        balances[_account] = 0;
+        collSharesSurplus[_account] = 0;
         emit CollBalanceUpdated(_account, 0);
 
         require(StEthColl >= claimableColl, "!CollSurplusPoolBal");

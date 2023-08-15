@@ -69,15 +69,15 @@ contract('CollSurplusPool', async accounts => {
     th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqReward))
   })
 
-  it("CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations", async () => {
-    await th.assertRevert(collSurplusPool.claimColl(A, { from: A }), 'CollSurplusPool: Caller is not Borrower Operations')
+  it("CollSurplusPool: claimSurplusCollShares(): Reverts if caller is not Borrower Operations", async () => {
+    await th.assertRevert(collSurplusPool.claimSurplusCollShares(A, { from: A }), 'CollSurplusPool: Caller is not Borrower Operations')
   })
 
-  it("CollSurplusPool: claimColl(): Reverts if nothing to claim", async () => {
+  it("CollSurplusPool: claimSurplusCollShares(): Reverts if nothing to claim", async () => {
     await th.assertRevert(borrowerOperations.claimCollateral({ from: A }), 'CollSurplusPool: No collateral available to claim')
   })
 
-  it("CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus", async () => {
+  it("CollSurplusPool: claimSurplusCollShares(): Reverts if owner cannot receive ETH surplus", async () => {
     const nonPayable = await NonPayable.new()
 
     const price = toBN(dec(100, 18))
@@ -118,7 +118,7 @@ contract('CollSurplusPool', async accounts => {
   })
 
   it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
-    await th.assertRevert(collSurplusPool.accountSurplus(A, 1), 'CollSurplusPool: Caller is not CdpManager')
+    await th.assertRevert(collSurplusPool.setSurplusCollSharesFor(A, 1), 'CollSurplusPool: Caller is not CdpManager')
   })  
 	  
     it('sweepToken(): move unprotected token to fee recipient', async () => {

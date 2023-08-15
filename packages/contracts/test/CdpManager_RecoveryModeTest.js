@@ -712,7 +712,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check Bob’s collateral surplus
     // Bob's doesn't have any collateral left as he had ICR < 100% and his collateral was given to liquidator
-    assert.equal(await collSurplusPool.getCollateral(owner), 0)
+    assert.equal(await collSurplusPool.getSurplusCollSharesFor(owner), 0)
   })
 
   it("liquidate(), with ICR% = 110 < TCR: repay the cdp debt entirely, collsuprlus present", async () => {
@@ -1741,7 +1741,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await th.redeemCollateral(dennis, contracts, B_netDebt_2,GAS_PRICE)
     price = await priceFeed.getPrice()
     const bob_surplus = B_coll_2.sub(B_netDebt_2.mul(mv._1e18BN).div(price)).add(liqStipend)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_surplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(bob), bob_surplus)
     // can claim collateral
     const bob_balanceBefore_2 = th.toBN(await web3.eth.getBalance(bob))
     let _collBobPre2 = await collToken.balanceOf(bob);	
@@ -1769,7 +1769,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await th.redeemCollateral(dennis, contracts, B_netDebt, GAS_PRICE)
     let price = await priceFeed.getPrice()
     const bob_surplus = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqStipend)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_surplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(bob), bob_surplus)
 
     // can claim collateral
     const bob_balanceBefore = th.toBN(await web3.eth.getBalance(bob))
@@ -3815,8 +3815,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // check collateral surplus
     const alice_remainingCollateral = A_coll.sub(equivalentCollA)
     const bob_remainingCollateral = B_coll.sub(equivalentCollB)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(alice), alice_remainingCollateral)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(bob), bob_remainingCollateral)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(alice), alice_remainingCollateral)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollSharesFor(bob), bob_remainingCollateral)
 
     // can claim collateral
     const alice_balanceBefore = th.toBN(await web3.eth.getBalance(alice))

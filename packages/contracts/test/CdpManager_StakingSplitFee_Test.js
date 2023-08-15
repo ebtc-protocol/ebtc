@@ -356,7 +356,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_icrBobAfter.toString()).gt(LICR));
       let _expectedLiquidatedCollBob = (_bobCollDebtAfter[0].mul(_icrBobAfter).div(toBN(_newPrice))).mul(mv._1e18BN).div(_newIndex);
       await cdpManager.liquidate(_bobCdpId, {from: owner});
-      let _surplusToClaimBob = await collSurplusPool.getCollateral(bob);
+      let _surplusToClaimBob = await collSurplusPool.getSurplusCollSharesFor(bob);
       th.assertIsApproximatelyEqual(_surplusToClaimBob, _bobCollDebtAfter[1].sub(_expectedLiquidatedCollBob), _errorTolerance);
   })
   

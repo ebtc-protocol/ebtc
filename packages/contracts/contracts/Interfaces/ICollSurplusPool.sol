@@ -19,11 +19,11 @@ interface ICollSurplusPool {
 
     function getSystemCollShares() external view returns (uint);
 
-    function getCollateral(address _account) external view returns (uint);
+    function getSurplusCollSharesFor(address _account) external view returns (uint);
 
-    function accountSurplus(address _account, uint _amount) external;
+    function setSurplusCollSharesFor(address _account, uint _amount) external;
 
-    function claimColl(address _account) external;
+    function claimSurplusCollShares(address _account) external;
 
     function receiveCollShares(uint _value) external;
 }

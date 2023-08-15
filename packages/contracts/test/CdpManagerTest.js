@@ -4343,7 +4343,7 @@ contract('CdpManager', async accounts => {
     const C_balanceBefore = toBN(await contracts.collateral.balanceOf(C))
 
     // CollSurplusPool endpoint cannot be called directly
-    await assertRevert(collSurplusPool.claimColl(A), 'CollSurplusPool: Caller is not Borrower Operations')
+    await assertRevert(collSurplusPool.claimSurplusCollShares(A), 'CollSurplusPool: Caller is not Borrower Operations')
 
     const A_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: A, gasPrice: GAS_PRICE  }))
     const B_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: B, gasPrice: GAS_PRICE  }))

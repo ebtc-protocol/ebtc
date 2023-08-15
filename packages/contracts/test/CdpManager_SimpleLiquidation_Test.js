@@ -416,7 +416,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
       let _expectClaimSurplus = toBN(aliceColl.toString()).sub(_cappedLiqColl);
-      let _toClaimSurplus = await collSurplusPool.getCollateral(alice);
+      let _toClaimSurplus = await collSurplusPool.getSurplusCollSharesFor(alice);
       assert.isTrue(toBN(_toClaimSurplus.toString()).gt(toBN('0')));
       assert.equal(_toClaimSurplus.toString(), _expectClaimSurplus.toString());
 
