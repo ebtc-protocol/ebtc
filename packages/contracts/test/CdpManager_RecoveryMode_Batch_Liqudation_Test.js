@@ -56,9 +56,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getCurrentICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -134,9 +134,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getCurrentICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -183,8 +183,8 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))

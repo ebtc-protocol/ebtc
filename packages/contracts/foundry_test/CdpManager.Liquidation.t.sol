@@ -69,7 +69,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _checkAvailableToLiq(bytes32 _cdpId, uint _price) internal view returns (bool) {
         uint _TCR = cdpManager.getTCR(_price);
-        uint _ICR = cdpManager.getCurrentICR(_cdpId, _price);
+        uint _ICR = cdpManager.getICR(_cdpId, _price);
         bool _recoveryMode = _TCR < cdpManager.CCR();
         return (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR));
     }
@@ -93,7 +93,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getVirtualDebtAndColl(cdpId1);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -103,10 +103,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
-            uint _ICR = cdpManager.getCurrentICR(cdpId1, price);
+            uint _ICR = cdpManager.getICR(cdpId1, price);
             uint _expectedLiqDebt = _ICR > cdpManager.LICR()
                 ? _cdpState.debt
                 : ((_cdpState.collShares * price) / cdpManager.LICR());
@@ -166,7 +166,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getVirtualDebtAndColl(cdpId1);
 
         // Price falls
         uint _newPrice = _curPrice / 2;
@@ -177,7 +177,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Partially Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
@@ -275,7 +275,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
         for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
-            (uint _cdpDebt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (uint _cdpDebt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
@@ -335,8 +335,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getVirtualDebtAndColl(cdpId1);
+            CdpState memory _cdpState2 = _getVirtualDebtAndColl(cdpId2);
 
             bytes32[] memory _emptyCdps;
             _multipleCDPsLiq(2, _emptyCdps, users[0]);
@@ -386,8 +386,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getVirtualDebtAndColl(cdpId1);
+            CdpState memory _cdpState2 = _getVirtualDebtAndColl(cdpId2);
 
             bytes32[] memory _cdps = new bytes32[](2);
             _cdps[0] = cdpId1;

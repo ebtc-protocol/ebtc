@@ -327,7 +327,7 @@ $ hardhat test
     ✓ _getCompositeDebt(): returns (debt + 50) when collateral < $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) collateral = $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value (52ms)
-    ✓ getCurrentICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
+    ✓ getICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
     ✓ Gas compensation from pool-offset liquidations. All collateral paid as compensation (1340ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder (1199ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder (1333ms)

@@ -509,7 +509,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = getVirtualDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -517,8 +517,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getCurrentICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+    function getICR(bytes32 _cdpId, uint _price) public view returns (uint) {
+        (uint currentEBTCDebt, uint currentETH, ) = getVirtualDebtAndColl(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
@@ -539,10 +539,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     // Return the Cdps entire debt and coll struct
-    function _getEntireDebtAndColl(
+    function _getVirtualDebtAndColl(
         bytes32 _cdpId
     ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getEntireDebtAndColl(
+        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getVirtualDebtAndColl(
             _cdpId
         );
         return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
@@ -550,7 +550,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function getEntireDebtAndColl(
+    function getVirtualDebtAndColl(
         bytes32 _cdpId
     ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;

@@ -378,9 +378,9 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
+    function _getVirtualDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
         (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
-            .getEntireDebtAndColl(cdpId);
+            .getVirtualDebtAndColl(cdpId);
         return CdpState(debt, coll, pendingEBTCDebtReward);
     }
 

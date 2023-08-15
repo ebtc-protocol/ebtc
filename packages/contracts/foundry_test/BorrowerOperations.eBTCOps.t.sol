@@ -36,7 +36,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
         borrowerOperations.repayEBTC(
@@ -49,7 +49,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
         // Make sure ICR for CDP improved after eBTC was repaid
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         vm.stopPrank();
     }
@@ -95,7 +95,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
         borrowerOperations.repayEBTC(cdpId, repayAmnt, HINT, HINT);
@@ -104,7 +104,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure eBTC balance decreased by repayAmnt precisely
         assertEq(balanceSnapshot - eBTCToken.balanceOf(user), repayAmnt);
         // Make sure ICR for CDP improved after eBTC was repaid
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         vm.stopPrank();
     }
@@ -152,11 +152,11 @@ contract CDPOpsTest is eBTCBaseFixture {
                 eBTCToken.balanceOf(user) / AMOUNT_OF_CDPS,
                 user
             );
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Repay eBTC for each CDP
             borrowerOperations.repayEBTC(cdpIds[cdpIx], randRepayAmnt, HINT, HINT);
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
             _utils.mineBlocks(100);
@@ -186,13 +186,13 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         // Get initial Debt after opened CDP
         uint initialDebt = cdpManager.getCdpDebt(cdpId);
         // Withdraw 1 eBTC
         borrowerOperations.withdrawEBTC(cdpId, 1e17, "hint", "hint");
         // Make sure ICR decreased
-        assertLt(cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
+        assertLt(cdpManager.getICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         // Make sure eBTC balance of user increased
@@ -242,7 +242,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         // Get initial Debt after opened CDP
         uint initialDebt = cdpManager.getCdpDebt(cdpId);
 
@@ -268,7 +268,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Withdraw
         borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
         // Make sure ICR decreased
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure eBTC balance increased by withdrawAmnt
         assertEq(eBTCToken.balanceOf(user) - balanceSnapshot, withdrawAmnt);
@@ -321,11 +321,11 @@ contract CDPOpsTest is eBTCBaseFixture {
                 cdpManager.getCdpDebt(cdpIds[cdpIx]) / 3,
                 user
             );
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Withdraw
             borrowerOperations.withdrawEBTC(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
             _utils.mineBlocks(100);

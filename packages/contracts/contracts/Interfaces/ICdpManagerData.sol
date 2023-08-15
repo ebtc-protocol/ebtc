@@ -237,13 +237,13 @@ interface ICdpManagerData {
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);
 
-    function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
+    function getICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
     function getPendingDebtRedistribution(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingDebtRedistribution(bytes32 _cdpId) external view returns (bool);
 
-    function getEntireDebtAndColl(
+    function getVirtualDebtAndColl(
         bytes32 _cdpId
     ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 }

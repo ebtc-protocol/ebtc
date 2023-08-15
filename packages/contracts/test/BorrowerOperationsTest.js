@@ -269,7 +269,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isFalse(await cdpManager.checkRecoveryMode(price))
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
-      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isTrue((await cdpManager.getICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const collTopUp = 1  // 1 wei top up
 
@@ -547,7 +547,7 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       assert.isFalse(await cdpManager.checkRecoveryMode(price))
-      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isTrue((await cdpManager.getICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const collWithdrawal = 1  // 1 wei withdrawal
 
@@ -679,7 +679,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
-      const aliceColl = (await cdpManager.getEntireDebtAndColl(aliceIndex))[1]
+      const aliceColl = (await cdpManager.getVirtualDebtAndColl(aliceIndex))[1]
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
@@ -876,7 +876,7 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       assert.isFalse(await cdpManager.checkRecoveryMode(price))
-      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isTrue((await cdpManager.getICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCwithdrawal = 1  // withdraw 1 wei EBTC
 
@@ -1114,7 +1114,7 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       assert.isFalse(await cdpManager.checkRecoveryMode(price))
-      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isTrue((await cdpManager.getICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCRepayment = 1  // 1 wei repayment
 
@@ -1357,7 +1357,7 @@ contract('BorrowerOperations', async accounts => {
       const price = await priceFeed.getPrice()
 
       assert.isFalse(await cdpManager.checkRecoveryMode(price))
-      assert.isTrue((await cdpManager.getCurrentICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
+      assert.isTrue((await cdpManager.getICR(aliceIndex, price)).lt(toBN(dec(110, 16))))
 
       const EBTCRepayment = 1  // 1 wei repayment
       const collTopUp = 1
@@ -1519,7 +1519,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getICR(aliceIndex, price)
 
       const aliceDebt = await getCdpEntireDebt(aliceIndex)
       const aliceColl = await getCdpEntireColl(aliceIndex)
@@ -1554,7 +1554,7 @@ contract('BorrowerOperations', async accounts => {
 
       //--- Alice with ICR > 150% tries to reduce her ICR ---
 
-      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getICR(aliceIndex, price)
 
       // Check Alice's initial ICR is above 150%
       assert.isTrue(ICR_A.gt(CCR))
@@ -1574,7 +1574,7 @@ contract('BorrowerOperations', async accounts => {
 
       //--- Bob with ICR < CCR tries to reduce his ICR ---
 
-      const ICR_B = await cdpManager.getCurrentICR(bobIndex, price)
+      const ICR_B = await cdpManager.getICR(bobIndex, price)
 
       // Check Bob's initial ICR is below 150%
       assert.isTrue(ICR_B.lt(CCR))
@@ -1607,7 +1607,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const ICR_A = await cdpManager.getCurrentICR(aliceIndex, price)
+      const ICR_A = await cdpManager.getICR(aliceIndex, price)
       // Check initial ICR is below 150%
       assert.isTrue(ICR_A.lt(CCR))
 
@@ -1624,7 +1624,7 @@ contract('BorrowerOperations', async accounts => {
       const tx = await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, debtIncrease, true, aliceIndex, aliceIndex, collIncrease, { from: alice })
       assert.isTrue(tx.receipt.status)
 
-      const actualNewICR = await cdpManager.getCurrentICR(aliceIndex, price)
+      const actualNewICR = await cdpManager.getICR(aliceIndex, price)
       assert.isTrue(actualNewICR.gt(CCR))
     })
 
@@ -1642,7 +1642,7 @@ contract('BorrowerOperations', async accounts => {
 
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
-      const initialICR = await cdpManager.getCurrentICR(aliceIndex, price)
+      const initialICR = await cdpManager.getICR(aliceIndex, price)
       // Check initial ICR is above CCR
       assert.isTrue(initialICR.gt(CCR))
 
@@ -1658,7 +1658,7 @@ contract('BorrowerOperations', async accounts => {
       const tx = await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, debtIncrease, true, aliceIndex, aliceIndex, collIncrease, { from: alice })
       assert.isTrue(tx.receipt.status)
 
-      const actualNewICR = await cdpManager.getCurrentICR(aliceIndex, price)
+      const actualNewICR = await cdpManager.getICR(aliceIndex, price)
       assert.isTrue(actualNewICR.gt(initialICR))
     })
 
@@ -2562,7 +2562,7 @@ contract('BorrowerOperations', async accounts => {
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
       const carolIndex = await sortedCdps.cdpOfOwnerByIndex(carol,0)
 	  
-      let _carolDebtColl = await cdpManager.getEntireDebtAndColl(carolIndex)
+      let _carolDebtColl = await cdpManager.getVirtualDebtAndColl(carolIndex)
       let _carolDebt = _carolDebtColl[0]
       let _carolColl = _carolDebtColl[1]
 
@@ -3374,7 +3374,7 @@ contract('BorrowerOperations', async accounts => {
       const carol_CdpStatus = await cdpManager.getCdpStatus(carolIndex)
       assert.equal(carol_CdpStatus, 1)
 
-      const carolICR = await cdpManager.getCurrentICR(carolIndex, price)
+      const carolICR = await cdpManager.getICR(carolIndex, price)
       assert.isTrue(carolICR.gte(toBN(dec(150, 16))))
     })
 
@@ -3768,11 +3768,11 @@ contract('BorrowerOperations', async accounts => {
         await priceFeed.setPrice(_newPrice)
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3812,11 +3812,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3858,11 +3858,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3903,11 +3903,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3947,11 +3947,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getEntireDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 

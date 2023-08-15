@@ -177,12 +177,12 @@ class TestHelper {
   }
 
   static async ICRbetween100and110(cdpId, cdpManager, price) {
-    const ICR = await cdpManager.getCurrentICR(cdpId, price)
+    const ICR = await cdpManager.getICR(cdpId, price)
     return (ICR.gt(MoneyValues._ICR100)) && (ICR.lt(MoneyValues._MCR))
   }
 
   static async isUndercollateralized(account, cdpManager, price) {
-    const ICR = await cdpManager.getCurrentICR(account, price)
+    const ICR = await cdpManager.getICR(account, price)
     return ICR.lt(MoneyValues._MCR)
   }
 
@@ -240,7 +240,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await contracts.cdpManager.Cdps(account))[1]
       const debt = (await contracts.cdpManager.Cdps(account))[0]
-      const ICR = await contracts.cdpManager.getCurrentICR(account, price)
+      const ICR = await contracts.cdpManager.getICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
 
@@ -266,7 +266,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await cdpManager.Cdps(account))[1]
       const debt = (await cdpManager.Cdps(account))[0]
-      const ICR = await cdpManager.getCurrentICR(account, price)
+      const ICR = await cdpManager.getICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
     }
@@ -313,11 +313,11 @@ class TestHelper {
   }
 
   static async getCdpEntireColl(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[1])
+    return this.toBN((await contracts.cdpManager.getVirtualDebtAndColl(cdp))[1])
   }
 
   static async getCdpEntireDebt(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[0])
+    return this.toBN((await contracts.cdpManager.getVirtualDebtAndColl(cdp))[0])
   }
 
   static async getCdpStake(contracts, cdp) {
@@ -665,7 +665,7 @@ class TestHelper {
 
       if (logging && tx.receipt.status) {
         i++
-        const ICR = await contracts.cdpManager.getCurrentICR(account, price)
+        const ICR = await contracts.cdpManager.getICR(account, price)
         // console.log(`${i}. Cdp opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
       }
       const gas = this.gasUsed(tx)
@@ -805,7 +805,7 @@ class TestHelper {
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.cdpManager.getEntireDebtAndColl(_cdpId)
+      const { debt, coll } = await contracts.cdpManager.getVirtualDebtAndColl(_cdpId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")

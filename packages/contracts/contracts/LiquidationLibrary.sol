@@ -62,7 +62,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getCurrentICR(_cdpId, _price);
+        uint256 _ICR = getICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
         require(
@@ -324,7 +324,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, ) = getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = getVirtualDebtAndColl(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
@@ -347,7 +347,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _partialDebt = _partialState._partialAmount;
 
         // calculate entire debt to repay
-        LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
+        LocalVar_CdpDebtColl memory _debtAndColl = _getVirtualDebtAndColl(_cdpId);
         _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState._price);
         uint newDebt = _debtAndColl.entireDebt - _partialDebt;
 
@@ -421,7 +421,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // get count of liquidatable CDPs
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
+                uint _icr = getICR(_cdpId, _price);
                 bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
@@ -434,7 +434,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _cdpId = _last;
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
+                uint _icr = getICR(_cdpId, _price);
                 bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
@@ -472,7 +472,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // if original ICR is above LICR
         if (_partialState._ICR > LICR) {
             require(
-                getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR,
+                getICR(_cdpId, _partialState._price) >= _partialState._ICR,
                 "!_newICR>=_ICR"
             );
         }
@@ -757,7 +757,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getCurrentICR(vars.cdpId, _price);
+                vars.ICR = getICR(vars.cdpId, _price);
 
                 if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
                     vars.price = _price;
@@ -859,7 +859,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getCurrentICR(vars.cdpId, _price);
+                vars.ICR = getICR(vars.cdpId, _price);
 
                 if (vars.ICR < MCR) {
                     _applyAccumulatedFeeSplit(vars.cdpId);

@@ -49,7 +49,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
+            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
             _sum = (_sum + _cdpState.collShares);
         }
         require(
@@ -62,7 +62,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum + _debt;
         }
         require(
@@ -136,7 +136,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _price = priceFeedMock.getPrice();
         if (_first != sortedCdps.dummyId() && _price > 0) {
             assertGe(
-                cdpManager.getCurrentICR(_first, _price),
+                cdpManager.getICR(_first, _price),
                 cdpManager.getTCR(_price),
                 "System Invariant: sorted_list_2"
             );

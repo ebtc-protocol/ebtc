@@ -75,7 +75,7 @@ contract HintHelpers is LiquityBase {
 
             while (
                 vars.currentCdpUser != address(0) &&
-                cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
+                cdpManager.getICR(vars.currentCdpId, _price) < MCR
             ) {
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
                 vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
@@ -156,7 +156,7 @@ contract HintHelpers is LiquityBase {
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, newColl, ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, newColl, ) = cdpManager.getVirtualDebtAndColl(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;

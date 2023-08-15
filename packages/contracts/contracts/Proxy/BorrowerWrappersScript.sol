@@ -113,7 +113,7 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     function _getNetEBTCAmount(bytes32 _cdpId, uint _collateral) internal returns (uint) {
         uint price = priceFeed.fetchPrice();
-        uint ICR = cdpManager.getCurrentICR(_cdpId, price);
+        uint ICR = cdpManager.getICR(_cdpId, price);
 
         uint EBTCAmount = _collateral.mul(price).div(ICR);
         uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(

@@ -211,8 +211,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getTCR', params)
   }
 
-  async getCurrentICR(user, price) {
-    return this.contract.getCurrentICR(this.getProxyAddressFromUser(user), price)
+  async getICR(user, price) {
+    return this.contract.getICR(this.getProxyAddressFromUser(user), price)
   }
 
   async checkRecoveryMode(...params) {
@@ -255,7 +255,7 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getEntireDebtAndColl(...params) {
+  async getVirtualDebtAndColl(...params) {
     return this.proxyFunction('getEntireDebtAndColl', params)
   }
 }

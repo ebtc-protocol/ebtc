@@ -303,7 +303,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
+    const ICRBefore = await cdpManager.getICR(_aliceCdpId, price)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
 
@@ -318,7 +318,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
+    const ICRAfter = await cdpManager.getICR(_aliceCdpId, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check proxy balances remain the same
@@ -408,7 +408,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
+    const ICRBefore = await cdpManager.getICR(th.DUMMY_BYTES32, price)
     const stakeBefore = await feeRecipient.stakes(alice)
 
     // Alice claims staking rewards and puts them back in the system through the proxy
@@ -422,7 +422,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
+    const ICRAfter = await cdpManager.getICR(th.DUMMY_BYTES32, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check everything remains the same

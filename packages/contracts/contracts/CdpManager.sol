@@ -282,13 +282,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (
             _firstRedemptionHint == _sortedCdps.nonExistId() ||
             !_sortedCdps.contains(_firstRedemptionHint) ||
-            getCurrentICR(_firstRedemptionHint, _price) < MCR
+            getICR(_firstRedemptionHint, _price) < MCR
         ) {
             return false;
         }
 
         bytes32 nextCdp = _sortedCdps.getNext(_firstRedemptionHint);
-        return nextCdp == _sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
+        return nextCdp == _sortedCdps.nonExistId() || getICR(nextCdp, _price) < MCR;
     }
 
     /** 
@@ -364,7 +364,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getCurrentICR(_cId, totals.price) < MCR) {
+            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
                 _cId = sortedCdps.getPrev(_cId);
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }

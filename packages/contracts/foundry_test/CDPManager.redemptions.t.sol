@@ -102,8 +102,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             bytes32 _cdpId = _openTestCDP(_borrowers[i], _collAmt, _debt);
             _cdpIds[i - 1] = _cdpId;
             if (i > 1) {
-                uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
-                uint _prevICR = cdpManager.getCurrentICR(_cdpIds[i - 2], _price);
+                uint _icr = cdpManager.getICR(_cdpId, _price);
+                uint _prevICR = cdpManager.getICR(_cdpIds[i - 2], _price);
                 require(_icr > _prevICR, "!icr");
                 require(_icr > CCR, "!icr>ccr");
             }
@@ -119,7 +119,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.assume(_redeemNumber > 0);
         uint _redeemDebt;
         for (uint i = 0; i < _redeemNumber; ++i) {
-            CdpState memory _state = _getEntireDebtAndColl(_cdpIds[i]);
+            CdpState memory _state = _getVirtualDebtAndColl(_cdpIds[i]);
             _redeemDebt += _state.debt;
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             uint _sugar = eBTCToken.balanceOf(_owner);

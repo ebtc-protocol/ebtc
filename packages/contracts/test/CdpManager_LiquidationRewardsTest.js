@@ -368,7 +368,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate A
-    // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
+    // console.log(`ICR A: ${await cdpManager.getICR(A, price)}`)
     await debtToken.transfer(owner, (await debtToken.balanceOf(B)), {from: B});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(A)), {from: A});
     const txA = await cdpManager.liquidate(_aCdpId, {from: owner})
@@ -475,7 +475,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const denominatorColl_1 = (await cdpManager.getEntireSystemColl()).sub(A_entireColl_0)
 
     // Liquidate A
-    // console.log(`ICR A: ${await cdpManager.getCurrentICR(A, price)}`)
+    // console.log(`ICR A: ${await cdpManager.getICR(A, price)}`)
     await debtToken.transfer(owner, (await debtToken.balanceOf(B)), {from: B});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(A)), {from: A});
     const txA = await cdpManager.liquidate(_aCdpId, {from: owner})
@@ -553,7 +553,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)
-    let _aliceTotalDebt = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getVirtualDebtAndColl(_aliceCdpId))[0];
 
     // Liquidate Alice	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
@@ -915,7 +915,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)	
-    let _aliceTotalDebt = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getVirtualDebtAndColl(_aliceCdpId))[0];
 
     // Liquidate Alice
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});

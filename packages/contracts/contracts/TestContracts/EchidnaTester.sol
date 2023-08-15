@@ -366,7 +366,7 @@ contract EchidnaTester {
     function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(_cdpId);
         uint _debt = entireDebt.add(_change.debtAddition).sub(_change.debtReduction);
         uint _coll = entireColl.add(_change.collAddition).sub(_change.collReduction);
         require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
@@ -413,11 +413,11 @@ contract EchidnaTester {
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
 
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _newPrice);
+        uint _icr = cdpManager.getICR(_cdpId, _newPrice);
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
             echidnaProxy.liquidatePrx(_cdpId);
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
         }
@@ -433,14 +433,14 @@ contract EchidnaTester {
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
 
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _newPrice);
+        uint _icr = cdpManager.getICR(_cdpId, _newPrice);
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
             require(_partialAmount < entireDebt, "!_partialAmount");
             echidnaProxy.partialLiquidatePrx(_cdpId, _partialAmount);
-            (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 _newEntireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
         }
 
@@ -587,7 +587,7 @@ contract EchidnaTester {
         EchidnaProxy echidnaProxy = echidnaProxies[actor];
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
         require(_amount <= entireDebt, "!repayEBTC_amount");
         echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
     }
@@ -612,7 +612,7 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(_cdpId);
         require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
 
         uint price = priceFeedTestnet.getPrice();
@@ -800,7 +800,7 @@ contract EchidnaTester {
         bytes32 currentCdp = sortedCdps.getFirst();
         uint cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(currentCdp);
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(currentCdp);
             cdpsBalance = cdpsBalance.add(entireDebt);
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -852,7 +852,7 @@ contract EchidnaTester {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (, uint _coll, ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (, uint _coll, ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum.add(_coll);
         }
         uint _activeColl = activePool.getSystemCollShares();
@@ -868,7 +868,7 @@ contract EchidnaTester {
         uint _cdpCount = cdpManager.getCdpIdsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum.add(_debt);
         }
         if (!_assertApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance)) {
@@ -921,7 +921,7 @@ contract EchidnaTester {
     function echidna_sorted_list_invariant_2() public view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint _price = priceFeedTestnet.getPrice();
-        uint _firstICR = cdpManager.getCurrentICR(_first, _price);
+        uint _firstICR = cdpManager.getICR(_first, _price);
         uint _TCR = cdpManager.getTCR(_price);
         uint _crTolerance = 1e13; //compared to 1e18
         if (

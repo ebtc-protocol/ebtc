@@ -62,7 +62,7 @@ async function main() {
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 EBTC
 
   // Get cdp's current debt and coll
-  const {0: debt, 1: coll} = await cdpManager.getEntireDebtAndColl(borrower)
+  const {0: debt, 1: coll} = await cdpManager.getVirtualDebtAndColl(borrower)
   
   const newDebt = debt.sub(EBTCRepayment)
   const newColl = coll.add(collIncrease)
