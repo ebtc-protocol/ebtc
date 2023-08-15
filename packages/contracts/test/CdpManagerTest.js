@@ -235,7 +235,7 @@ contract('CdpManager', async accounts => {
     // Drop price
     await priceFeed.setPrice(dec(3714, 13))
 
-    const arrayLength_Before = await cdpManager.getCdpIdsCount()
+    const arrayLength_Before = await cdpManager.getActiveCdpsCount()
     assert.equal(arrayLength_Before, 6)
 
     // Confirm system is not in Recovery Mode
@@ -250,7 +250,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Check length of array has decreased by 1
-    const arrayLength_After = await cdpManager.getCdpIdsCount()
+    const arrayLength_After = await cdpManager.getActiveCdpsCount()
     assert.equal(arrayLength_After, 5)
 
     /* After Carol is removed from array, the last element (Erin's address) should have been moved to fill 
@@ -404,7 +404,7 @@ contract('CdpManager', async accounts => {
     const alice_ICR = (await cdpManager.getICR(_aliceCdpId, price)).toString()
     assert.equal(alice_ICR, '1050080775444264943')
 
-    const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_Before = await cdpManager.getActiveCdpsCount()
 
     assert.equal(activeCdpsCount_Before, 2)
 
@@ -417,7 +417,7 @@ contract('CdpManager', async accounts => {
     await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Check Alice's cdp is removed, and bob remains
-    const activeCdpsCount_After = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_After = await cdpManager.getActiveCdpsCount()
     assert.equal(activeCdpsCount_After, 1)
 
     const alice_isInSortedList = await sortedCdps.contains(_aliceCdpId)
@@ -1232,7 +1232,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     await cdpManager.liquidateCdps(3)
 
-    const CdpOwnersArrayLength = await cdpManager.getCdpIdsCount()
+    const CdpOwnersArrayLength = await cdpManager.getActiveCdpsCount()
     assert.equal(CdpOwnersArrayLength, '3')
 
     // Check Alice, Bob, Carol cdps have been closed

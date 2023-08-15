@@ -208,7 +208,7 @@ contract HintHelpers is LiquityBase {
         uint _numTrials,
         uint _inputRandomSeed
     ) external view returns (bytes32 hint, uint diff, uint latestRandomSeed) {
-        uint arrayLength = cdpManager.getCdpIdsCount();
+        uint arrayLength = cdpManager.getActiveCdpsCount();
 
         if (arrayLength == 0) {
             return (sortedCdps.nonExistId(), 0, _inputRandomSeed);

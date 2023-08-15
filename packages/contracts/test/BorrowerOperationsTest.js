@@ -209,7 +209,7 @@ contract('BorrowerOperations', async accounts => {
 	  // first Cdp
 	  await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
 	  let cdpSize = await sortedCdps.getSize();
-	  let cdpIds = await cdpManager.getCdpIdsCount();
+	  let cdpIds = await cdpManager.getActiveCdpsCount();
 	  assert.isTrue(cdpSize == 1);
 	  assert.isTrue((cdpSize - cdpIds) == 0);
 	  let lastCdpId = await sortedCdps.getLast();
@@ -223,7 +223,7 @@ contract('BorrowerOperations', async accounts => {
 	  // Second Cdp
 	  await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
 	  cdpSize = await sortedCdps.getSize();
-	  cdpIds = await cdpManager.getCdpIdsCount();
+	  cdpIds = await cdpManager.getActiveCdpsCount();
 	  assert.isTrue(cdpSize == 2);
 	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastCdpId = await sortedCdps.getLast();
@@ -245,7 +245,7 @@ contract('BorrowerOperations', async accounts => {
 	  const txClose = await borrowerOperations.closeCdp(lastCdpId, { from: alice });
 	  assert.isTrue(txClose.receipt.status);
 	  cdpSize = await sortedCdps.getSize();
-	  cdpIds = await cdpManager.getCdpIdsCount();
+	  cdpIds = await cdpManager.getActiveCdpsCount();
 	  assert.isTrue(cdpSize == 1);
 	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastCdpId = await sortedCdps.getLast();
@@ -3436,12 +3436,12 @@ contract('BorrowerOperations', async accounts => {
     })
 
     it("openCdp(): adds Cdp ID to CdpID array", async () => {
-      const CdpIdsCount_Before = (await cdpManager.getCdpIdsCount()).toString();
+      const CdpIdsCount_Before = (await cdpManager.getActiveCdpsCount()).toString();
       assert.equal(CdpIdsCount_Before, '0')
 
       await openCdp({ extraEBTCAmount: toBN(dec(5000, 18)), ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
 
-      const CdpIdsCount_After = (await cdpManager.getCdpIdsCount()).toString();
+      const CdpIdsCount_After = (await cdpManager.getActiveCdpsCount()).toString();
       assert.equal(CdpIdsCount_After, '1')
     })
 

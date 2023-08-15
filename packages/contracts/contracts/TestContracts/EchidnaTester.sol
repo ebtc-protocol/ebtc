@@ -377,7 +377,7 @@ contract EchidnaTester {
     }
 
     function _getRandomCdp(uint _i) internal view returns (bytes32) {
-        uint _cdpIdx = _i % cdpManager.getCdpIdsCount();
+        uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
         return cdpManager.CdpIds(_cdpIdx);
     }
 
@@ -454,8 +454,8 @@ contract EchidnaTester {
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
 
-        if (_n > cdpManager.getCdpIdsCount()) {
-            _n = cdpManager.getCdpIdsCount();
+        if (_n > cdpManager.getActiveCdpsCount()) {
+            _n = cdpManager.getActiveCdpsCount();
         }
 
         echidnaProxy.liquidateCdpsPrx(_n);
@@ -523,7 +523,7 @@ contract EchidnaTester {
         }
         echidnaProxy.openCdpPrx(requiredCollAmount, _EBTCAmount, bytes32(0), bytes32(0));
 
-        numberOfCdps = cdpManager.getCdpIdsCount();
+        numberOfCdps = cdpManager.getActiveCdpsCount();
         assert(numberOfCdps > 0);
     }
 
@@ -541,7 +541,7 @@ contract EchidnaTester {
         }
         echidnaProxies[actor].openCdpPrx(_coll, _EBTCAmount, bytes32(0), bytes32(0));
 
-        numberOfCdps = cdpManager.getCdpIdsCount();
+        numberOfCdps = cdpManager.getActiveCdpsCount();
         assert(numberOfCdps > 0);
     }
 
@@ -709,7 +709,7 @@ contract EchidnaTester {
     // --------------------------
 
     function echidna_canary_active_pool_balance() public view returns (bool) {
-        if (cdpManager.getCdpIdsCount() > 0 && collateral.balanceOf(address(activePool)) <= 0) {
+        if (cdpManager.getActiveCdpsCount() > 0 && collateral.balanceOf(address(activePool)) <= 0) {
             return false;
         }
         return true;
@@ -851,7 +851,7 @@ contract EchidnaTester {
     }
 
     function echidna_active_pool_invariant_4() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             (, uint _coll, ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
@@ -867,7 +867,7 @@ contract EchidnaTester {
     }
 
     function echidna_active_pool_invariant_5() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
@@ -880,14 +880,14 @@ contract EchidnaTester {
     }
 
     function echidna_cdp_manager_invariant_1() public view returns (bool) {
-        if (cdpManager.getCdpIdsCount() != sortedCdps.getSize()) {
+        if (cdpManager.getActiveCdpsCount() != sortedCdps.getSize()) {
             return false;
         }
         return true;
     }
 
     function echidna_cdp_manager_invariant_2() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             _sum = _sum.add(cdpManager.getCdpStake(cdpManager.CdpIds(i)));
@@ -899,7 +899,7 @@ contract EchidnaTester {
     }
 
     function echidna_cdp_manager_invariant_3() public view returns (bool) {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
         for (uint i = 0; i < _cdpCount; ++i) {
             if (_stFeePerUnitg < cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i))) {

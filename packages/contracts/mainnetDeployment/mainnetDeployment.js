@@ -465,7 +465,7 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
   // Number of cdps
-  const numCdps = await ebtcCore.cdpManager.getCdpIdsCount()
+  const numCdps = await ebtcCore.cdpManager.getActiveCdpsCount()
   console.log(`number of cdps: ${numCdps} `)
 
   // Sorted list size

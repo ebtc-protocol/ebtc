@@ -35,7 +35,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         assert(sortedCdps.getLast() == "");
 
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 1);
+        assertEq(cdpManager.getActiveCdpsCount(), 1);
         // Make sure valid cdpId returned and user is it's owner
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         assert(cdpId != "");
@@ -61,12 +61,12 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         );
         // Make sure there is no CDPs in the system yet
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 1);
+        assertEq(cdpManager.getActiveCdpsCount(), 1);
 
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Borrow for the second time so user has enough eBTC to close their first CDP
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 2);
+        assertEq(cdpManager.getActiveCdpsCount(), 2);
 
         // Check that user has 2x eBTC balance as they opened 2 CDPs
         assertEq(eBTCToken.balanceOf(user), borrowedAmount * 2);

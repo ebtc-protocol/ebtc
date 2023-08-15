@@ -46,7 +46,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_active_pool_invariant_4() internal view {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
@@ -59,7 +59,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_active_pool_invariant_5() internal view {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
@@ -73,14 +73,14 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
 
     function _assert_cdp_manager_invariant_1() internal {
         assertEq(
-            cdpManager.getCdpIdsCount(),
+            cdpManager.getActiveCdpsCount(),
             sortedCdps.getSize(),
             "System Invariant: cdp_manager_1"
         );
     }
 
     function _assert_cdp_manager_invariant_2() internal {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
             _sum = (_sum + cdpManager.getCdpStake(cdpManager.CdpIds(i)));
@@ -89,7 +89,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_cdp_manager_invariant_3() internal {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
         for (uint i = 0; i < _cdpCount; ++i) {
             assertGe(

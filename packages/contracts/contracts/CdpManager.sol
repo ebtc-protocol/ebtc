@@ -61,12 +61,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Getters ---
 
     /**
-     * @notice Get the count of CDPs in the system
-     * @return The number of CDPs.
+        @notice Get the count of active CDPs in the system
+        @return The number of CDPs.
      */
 
-    function getCdpIdsCount() external view override returns (uint) {
-        return CdpIds.length;
+    function getActiveCdpsCount() external view override returns (uint) {
+        return sortedCdps.getSize();
     }
 
     /**

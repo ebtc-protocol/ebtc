@@ -44,7 +44,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _assert_cdp_manager_invariant_fee3(LocalFeeSplitVar memory _var) internal {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
             assertGt(
@@ -56,7 +56,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal view {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
+        uint _cdpCount = cdpManager.getActiveCdpsCount();
         for (uint i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
             uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.collShares;

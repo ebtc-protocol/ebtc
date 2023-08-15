@@ -8,7 +8,7 @@ import "./ICdpManagerData.sol";
 // Common interface for the Cdp Manager.
 interface ICdpManager is ILiquityBase, ICdpManagerData {
     // --- Functions ---
-    function getCdpIdsCount() external view returns (uint);
+    function getActiveCdpsCount() external view returns (uint);
 
     function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
 
