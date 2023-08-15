@@ -257,7 +257,8 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _stEthBalanceToIncrease
     ) internal {
-        _requireCdpOwner(_cdpId);
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireCdpOwner(_cdpId, _borrower);
         _requireCdpisActive(_cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -272,10 +273,6 @@ contract BorrowerOperations is
         }
         _requireSingularCollChange(_stEthBalanceToIncrease, _stEthBalanceToDecrease);
         _requireNonZeroAdjustment(_stEthBalanceToIncrease, _stEthBalanceToDecrease, _debtChange);
-
-        // Confirm the operation is the borrower adjusting its own cdp
-        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         // Get the collSharesChange based on the collateral value transferred in the transaction
         (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthBalanceChange(
@@ -424,8 +421,11 @@ contract BorrowerOperations is
             _requireNewTCRisAboveCCR(newTCR);
         }
 
-        // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
+
+        // Collision check: collisions should never occur, but if one does we want to ensure an active CDP is not overridden
+        // Overriding an inactive (closed) CDP should function as expected
+        _requireCdpisNotActive(_cdpId);
 
         // Collateral is stored in shares form for normalization
         cdpManager.initializeCdp(
@@ -461,7 +461,8 @@ contract BorrowerOperations is
     allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
     */
     function closeCdp(bytes32 _cdpId) external override {
-        _requireCdpOwner(_cdpId);
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireCdpOwner(_cdpId, _borrower);
         _requireCdpisActive(_cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -586,9 +587,8 @@ contract BorrowerOperations is
 
     // --- 'Require' wrapper functions ---
 
-    function _requireCdpOwner(bytes32 _cdpId) internal view {
-        address _owner = sortedCdps.existCdpOwners(_cdpId);
-        require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
+    function _requireCdpOwner(bytes32 _cdpId, address _borrower) internal view {
+        require(msg.sender == _borrower, "BorrowerOperations: Caller must be cdp owner");
     }
 
     function _requireSingularCollChange(
@@ -622,6 +622,11 @@ contract BorrowerOperations is
     function _requireCdpisActive(bytes32 _cdpId) internal view {
         uint status = cdpManager.getCdpStatus(_cdpId);
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
+    }
+
+    function _requireCdpisNotActive(bytes32 _cdpId) internal view {
+        uint status = cdpManager.getCdpStatus(_cdpId);
+        require(status != 1, "BorrowerOperations: Cdp is active");
     }
 
     function _requireNonZeroDebtChange(uint _debtChange) internal pure {

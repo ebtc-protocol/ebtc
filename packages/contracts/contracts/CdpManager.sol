@@ -359,7 +359,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _cId = _firstRedemptionHint;
 
         if (_isValidFirstRedemptionHint(sortedCdps, _firstRedemptionHint, totals.price)) {
-            currentBorrower = sortedCdps.existCdpOwners(_firstRedemptionHint);
+            currentBorrower = sortedCdps.getOwnerAddress(_firstRedemptionHint);
         } else {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);

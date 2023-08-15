@@ -322,7 +322,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});  
       await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});	  
       let aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-      let aliceCdpOwner = await sortedCdps.existCdpOwners(aliceCdpId);
+      let aliceCdpOwner = await sortedCdps.getOwnerAddress(aliceCdpId);
       assert.isTrue(aliceCdpOwner == alice);
 
       // maniuplate price to liquidate alice
@@ -380,7 +380,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});  
       await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});	  
       let aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-      let aliceCdpOwner = await sortedCdps.existCdpOwners(aliceCdpId);
+      let aliceCdpOwner = await sortedCdps.getOwnerAddress(aliceCdpId);
       assert.isTrue(aliceCdpOwner == alice);
 
       // maniuplate price to liquidate alice

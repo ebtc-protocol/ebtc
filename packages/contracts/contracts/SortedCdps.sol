@@ -96,7 +96,7 @@ contract SortedCdps is ISortedCdps {
         emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
     }
 
-    // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
+    // Adapted from: https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
     /**
      * @dev Creates a CDP ID.
      *
@@ -130,10 +130,6 @@ contract SortedCdps is ISortedCdps {
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
         uint256 _tmp = uint256(cdpId) >> ADDRESS_SHIFT;
         return address(uint160(_tmp));
-    }
-
-    function existCdpOwners(bytes32 cdpId) public view override returns (address) {
-        return cdpOwners[cdpId];
     }
 
     function nonExistId() public pure override returns (bytes32) {

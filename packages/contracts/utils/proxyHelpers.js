@@ -280,10 +280,6 @@ class SortedCdpsProxy extends Proxy {
   async cdpOfOwnerByIndex(...params) {
     return this.forwardFunction(params, 'cdpOfOwnerByIndex(address,uint)')
   }
-
-  async existCdpOwners(...params) {
-    return this.forwardFunction(params, 'existCdpOwners(bytes32)')
-  }
 }
 
 class TokenProxy extends Proxy {

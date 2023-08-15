@@ -3122,7 +3122,7 @@ contract('CdpManager', async accounts => {
     let current = await sortedCdps.getFirst();
 
     while (current !== th.DUMMY_BYTES32) {
-      orderOfCdps.push((await sortedCdps.existCdpOwners(current)));
+      orderOfCdps.push((await sortedCdps.getOwnerAddress(current)));
       current = await sortedCdps.getNext(current);
     }
 

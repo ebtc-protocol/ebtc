@@ -59,8 +59,6 @@ interface ISortedCdps {
 
     function getOwnerAddress(bytes32 _id) external pure returns (address);
 
-    function existCdpOwners(bytes32 _id) external view returns (address);
-
     function nonExistId() external view returns (bytes32);
 
     function cdpCountOf(address owner) external view returns (uint256);
