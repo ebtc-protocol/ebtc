@@ -385,7 +385,7 @@ contract EchidnaTester is
         );
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) iexternal {
+    function partialLiquidate(uint _i, uint _partialAmount) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -429,6 +429,11 @@ contract EchidnaTester is
             vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
             L_12
         );
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     function liquidateCdps(uint _n) external log {
@@ -470,6 +475,11 @@ contract EchidnaTester is
                 cdpsLiquidated[i].icr < cdpManager.MCR() ||
                     (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
+            );
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(cdpsLiquidated[i].id)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
             );
         }
         assertWithMsg(
@@ -525,11 +535,6 @@ contract EchidnaTester is
 
         assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
     }
-
-    // function claimStakingSplitFee() internal {
-    //     // TODO do before/after active pool fees
-    //     cdpManager.claimStakingSplitFee();
-    // }
 
     ///////////////////////////////////////////////////////
     // ActivePool
@@ -661,11 +666,10 @@ contract EchidnaTester is
 
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-        uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
         assertGte(
-            _collWorth,
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
-            "CDP collateral must be above minimum"
+            GENERAL_10
         );
         assertWithMsg(cdpManager.getCdpIdsCount() > 0, "CDPs count must have increased");
     }
@@ -732,6 +736,11 @@ contract EchidnaTester is
             vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
             BO_03
         );
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
@@ -778,6 +787,11 @@ contract EchidnaTester is
         // TODO fix this breaking invariant and remove comments
         // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
         assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
     }
 
@@ -816,6 +830,12 @@ contract EchidnaTester is
         }
 
         _after(_cdpId);
+
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     function repayEBTC(uint _amount, uint256 _i) external log {
@@ -866,6 +886,11 @@ contract EchidnaTester is
         assertEq(vars.actorEbtcBefore, vars.actorEbtcAfter - _amount, BO_07);
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     function closeCdp(uint _i) external log {

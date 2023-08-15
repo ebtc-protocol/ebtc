@@ -64,6 +64,7 @@ abstract contract PropertiesDescriptions {
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
     string constant GENERAL_09 =
         "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode";
+    string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
 
     ///////////////////////////////////////////////////////
     // Liquidations
