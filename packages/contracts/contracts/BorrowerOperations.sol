@@ -417,7 +417,7 @@ contract BorrowerOperations is
 
         // Collision check: collisions should never occur, but if one does we want to ensure an active CDP is not overridden
         // Overriding an inactive (closed) CDP should function as expected
-        _requireCdpisNotActive(_cdpId);
+        _requireCdpisNonExistant(_cdpId);
 
         // Collateral is stored in shares form for normalization
         cdpManager.initializeCdp(
@@ -616,9 +616,9 @@ contract BorrowerOperations is
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    function _requireCdpisNotActive(bytes32 _cdpId) internal view {
+    function _requireCdpisNonExistant(bytes32 _cdpId) internal view {
         uint status = cdpManager.getCdpStatus(_cdpId);
-        require(status != 1, "BorrowerOperations: Cdp is active");
+        require(status == 0, "BorrowerOperations: Cdp is active or has been previously closed");
     }
 
     function _requireNonZeroDebtChange(uint _debtChange) internal pure {
