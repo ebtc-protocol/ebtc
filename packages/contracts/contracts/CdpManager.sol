@@ -577,7 +577,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) internal returns (uint) {
         uint decayedBaseRate = _calcDecayedBaseRate();
 
-        /* Convert the drawn ETH back to EBTC at face value rate (1 EBTC:1 USD), in order to get
+        /* Convert the drawn stEth back to eBTC at face value rate (1:1 value with oracle price), in order to get
          * the fraction of total supply that was redeemed at face value. */
         uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_stEthBalance) * _price) /
             _totalEBTCSupply;
@@ -612,7 +612,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function _getRedemptionFee(uint _stEthBalance) internal view returns (uint) {
-        return _calcRedemptionFee(getRedemptionRate(), _stEthBalance);
+        return _calcRedemptionFee(_calcRedemptionRate(baseRate), _stEthBalance);
     }
 
     function getRedemptionFeeWithDecay(uint _stEthBalance) external view override returns (uint) {
@@ -660,20 +660,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // Using the effective elapsed time that is consumed so far to update lastRedemptionFeeOperationTimestamp
             // instead block.timestamp for consistency with _calcDecayedBaseRate()
             lastRedemptionFeeOperationTimestamp +=
-                _minutesPassedSinceLastFeeOp() *
+                _minutesPassedSinceLastRedemptionFeeOperation() *
                 SECONDS_IN_ONE_MINUTE;
             emit LastRedemptionFeeOperationTimestampUpdated(block.timestamp);
         }
     }
 
     function _calcDecayedBaseRate() internal view returns (uint) {
-        uint minutesPassed = _minutesPassedSinceLastFeeOp();
+        uint minutesPassed = _minutesPassedSinceLastRedemptionFeeOperation();
         uint decayFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
 
         return (baseRate * decayFactor) / DECIMAL_PRECISION;
     }
 
-    function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
+    function _minutesPassedSinceLastRedemptionFeeOperation() internal view returns (uint) {
         return
             block.timestamp > lastRedemptionFeeOperationTimestamp
                 ? ((block.timestamp - lastRedemptionFeeOperationTimestamp) / SECONDS_IN_ONE_MINUTE)

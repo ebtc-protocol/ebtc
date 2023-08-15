@@ -68,7 +68,7 @@ contract CdpManagerTester is CdpManager {
     }
 
     function minutesPassedSinceLastFeeOp() external view returns (uint) {
-        return _minutesPassedSinceLastFeeOp();
+        return _minutesPassedSinceLastRedemptionFeeOperation();
     }
 
     function unprotectedUpdateLastFeeOpTime() external {
@@ -80,7 +80,7 @@ contract CdpManagerTester is CdpManager {
     }
 
     function getDecayedBaseRate() external view returns (uint) {
-        uint minutesPassed = _minutesPassedSinceLastFeeOp();
+        uint minutesPassed = _minutesPassedSinceLastRedemptionFeeOperation();
         uint _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
         return (baseRate * _mulFactor) / DECIMAL_PRECISION;
     }
