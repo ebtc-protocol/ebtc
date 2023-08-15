@@ -436,6 +436,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
         );
 
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         assertGe(
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
