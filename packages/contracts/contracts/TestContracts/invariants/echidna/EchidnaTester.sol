@@ -329,6 +329,11 @@ contract EchidnaTester is
         }
     }
 
+    function _getRandomCdp(uint _i) internal view returns (bytes32) {
+        uint _cdpIdx = _i % cdpManager.getCdpIdsCount();
+        return cdpManager.CdpIds(_cdpIdx);
+    }
+
     // function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
     //     uint price = priceFeedTestnet.getPrice();
     //     (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
@@ -341,59 +346,90 @@ contract EchidnaTester is
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    // function liquidate(uint _i) external {
-    //     actor = actors[msg.sender];
+    function liquidate(uint _i) external {
+        actor = actors[msg.sender];
 
-    //     bool success;
-    //     bytes memory returnData;
+        bool success;
+        bytes memory returnData;
 
-    //     uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-    //     require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
 
-    //     _i = clampBetween(_i, 0, numberOfCdps - 1);
-    //     bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-    //     assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-    //     uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedTestnet.getPrice();
 
-    //     uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
-    //     bool _recovery = cdpManager.checkRecoveryMode(_price);
+        _before(_cdpId);
 
-    //     (success, returnData) =    actor.proxy(
-    //             address(cdpManager),
-    //             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
-    //         );
-    // }
+        (success, returnData) = actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
+        );
 
-    // function partialLiquidate(uint _i, uint _partialAmount) internal {
-    //     actor = actors[msg.sender];
-    //     bytes32 _cdpId = _getRandomCdp(_i);
+        _after(_cdpId);
 
-    //     (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
-    //     priceFeedTestnet.setPrice(_newPrice);
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
 
-    //     uint _icr = cdpManager.getCurrentICR(_cdpId, _newPrice);
-    //     bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
+        assertWithMsg(
+            vars.icrBefore < cdpManager.MCR() ||
+                (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            L_01
+        );
+        assertWithMsg(
+            vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            L_12
+        );
+    }
 
-    //     if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-    //         (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-    //         require(_partialAmount < entireDebt, "!_partialAmount");
-    //         actor.proxy(
-    //             address(cdpManager),
-    //             abi.encodeWithSelector(
-    //                 CdpManager.partiallyLiquidate.selector,
-    //                 _cdpId,
-    //                 _partialAmount,
-    //                 _cdpId,
-    //                 _cdpId
-    //             )
-    //         );
-    //         (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-    //         require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
-    //     }
+    function partialLiquidate(uint _i, uint _partialAmount) iexternal {
+        actor = actors[msg.sender];
 
-    //     priceFeedTestnet.setPrice(_oldPrice);
-    // }
+        bool success;
+        bytes memory returnData;
+
+        bytes32 _cdpId = _getRandomCdp(_i);
+
+        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        require(entireDebt > 0, "CDP must have debt");
+
+        _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
+
+        _before(_cdpId);
+
+        (success, returnData) = actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(
+                CdpManager.partiallyLiquidate.selector,
+                _cdpId,
+                _partialAmount,
+                _cdpId,
+                _cdpId
+            )
+        );
+
+        if (!success) {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+
+        _after(_cdpId);
+
+        (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+
+        assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
+        assertWithMsg(
+            vars.icrBefore < cdpManager.MCR() ||
+                (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            L_01
+        );
+        assertWithMsg(
+            vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            L_12
+        );
+    }
 
     function liquidateCdps(uint _n) external log {
         actor = actors[msg.sender];
@@ -405,7 +441,6 @@ contract EchidnaTester is
 
         uint256 totalCdpsBelowMcr = _totalCdpsBelowMcr();
         uint256 _price = priceFeedTestnet.getPrice();
-        bool isRecoveryMode = cdpManager.checkRecoveryMode(_price);
         Cdp[] memory cdpsBefore = _getCdpIdsAndICRs();
 
         _before(bytes32(0));
@@ -433,7 +468,7 @@ contract EchidnaTester is
         for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
             assertWithMsg(
                 cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                    (cdpsLiquidated[i].icr < cdpManager.CCR() && isRecoveryMode),
+                    (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
         }

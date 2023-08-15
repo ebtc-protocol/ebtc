@@ -4,6 +4,8 @@ abstract contract BeforeAfter {
     struct Vars {
         uint256 nicrBefore;
         uint256 nicrAfter;
+        uint256 icrBefore;
+        uint256 icrAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
         uint256 actorEbtcBefore;

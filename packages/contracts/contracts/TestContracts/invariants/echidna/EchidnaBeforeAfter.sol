@@ -10,7 +10,10 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
     }
 
     function _before(bytes32 _cdpId) internal {
+        uint256 _price = priceFeedTestnet.fetchPrice();
+
         vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getCurrentICR(_cdpId, _price) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
@@ -23,13 +26,16 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeBefore = sortedCdps.getSize();
-        vars.tcrBefore = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
+        vars.tcrBefore = cdpManager.getTCR(_price);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
         vars.ethPerShareBefore = collateral.getEthPerShare();
     }
 
     function _after(bytes32 _cdpId) internal {
+        uint256 _price = priceFeedTestnet.fetchPrice();
+
         vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCurrentICR(_cdpId, _price) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
@@ -42,7 +48,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeAfter = sortedCdps.getSize();
-        vars.tcrAfter = cdpManager.getTCR(priceFeedTestnet.fetchPrice());
+        vars.tcrAfter = cdpManager.getTCR(_price);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
         vars.ethPerShareAfter = collateral.getEthPerShare();
     }
