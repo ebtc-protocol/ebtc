@@ -66,6 +66,12 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         openCdp(0, 1);
     }
 
+    function testGetAllCdpsShouldMaintainAMinimumCollateralSize() public {
+        setEthPerShare(0);
+        openCdp(306448163413226964497420707241366511691019849585554, 1);
+        withdrawColl(186970840931894992, 1379465742659455);
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -137,6 +143,35 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
         console2.log("withdrawEBTC", _amount, _i);
         borrowerOperations.withdrawEBTC(_cdpId, _amount, _cdpId, _cdpId);
+    }
+
+    function withdrawColl(uint _amount, uint256 _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+
+        _amount = clampBetween(
+            _amount,
+            0,
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
+        );
+
+        console2.log("withdrawColl", _amount, _i);
+        borrowerOperations.withdrawColl(_cdpId, _amount, _cdpId, _cdpId);
+    }
+
+    function repayEBTC(uint _amount, uint256 _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+
+        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        _amount = clampBetween(_amount, 0, entireDebt);
+
+        console2.log("repayEBTC", _amount, _i);
+        borrowerOperations.repayEBTC(_cdpId, _amount, _cdpId, _cdpId);
     }
 
     function redeemCollateral(

@@ -65,6 +65,8 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_09 =
         "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
+    string constant GENERAL_11 =
+        "GENERAL-11: The total system Equity = Assets - Liabilities = Collateral * Price - Debt remains constant if there are no price changes or rebase";
 
     ///////////////////////////////////////////////////////
     // Liquidations

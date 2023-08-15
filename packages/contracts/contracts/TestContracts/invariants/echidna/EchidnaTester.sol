@@ -338,18 +338,18 @@ contract EchidnaTester is
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) external {
+    function liquidate(uint _i) internal log {
         actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
 
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
 
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        bytes32 _cdpId = _getRandomCdp(_i);
+
+        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        require(entireDebt > 0, "CDP must have debt");
 
         uint256 _price = priceFeedTestnet.getPrice();
 
@@ -368,22 +368,24 @@ contract EchidnaTester is
                     diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
                 L_12
             );
-        } else {
+            assertWithMsg(
+                vars.icrBefore < cdpManager.MCR() ||
+                    (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
+            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
+        } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertWithMsg(
-            vars.icrBefore < cdpManager.MCR() ||
-                (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            L_01
-        );
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) external {
+    function partialLiquidate(uint _i, uint _partialAmount) external log {
         actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
+
+        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
@@ -416,20 +418,17 @@ contract EchidnaTester is
                     diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
                 L_12
             );
+            assertWithMsg(
+                vars.icrBefore < cdpManager.MCR() ||
+                    (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
+            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
+
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertWithMsg(
-            vars.icrBefore < cdpManager.MCR() ||
-                (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            L_01
-        );
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
     }
 
     function liquidateCdps(uint _n) external log {
@@ -437,6 +436,8 @@ contract EchidnaTester is
 
         bool success;
         bytes memory returnData;
+
+        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
 
         _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
 
@@ -473,19 +474,27 @@ contract EchidnaTester is
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                     L_01
                 );
-                assertGte(
-                    collateral.getPooledEthByShares(cdpManager.getCdpColl(cdpsLiquidated[i].id)),
-                    borrowerOperations.MIN_NET_COLL(),
-                    GENERAL_10
-                );
             }
             assertWithMsg(
                 vars.tcrAfter > vars.tcrBefore ||
                     diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
                 L_12
             );
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
+        } else if (vars.sortedCdpsSizeBefore > _n) {
+            bool atLeastOneCdpIsLiquidatable = false;
+            for (uint256 i = 0; i < cdpsBefore.length; ++i) {
+                if (
+                    cdpsBefore[i].icr < cdpManager.MCR() ||
+                    (cdpsBefore[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore)
+                ) {
+                    atLeastOneCdpIsLiquidatable = true;
+                    break;
+                }
+            }
+            if (atLeastOneCdpIsLiquidatable) {
+                assertRevertReasonNotEqual(returnData, "Panic(17)");
+            }
         }
     }
 
@@ -532,6 +541,7 @@ contract EchidnaTester is
 
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -541,7 +551,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) external log {
+    function flashLoanColl(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -576,7 +586,7 @@ contract EchidnaTester is
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) external log {
+    function flashLoanEBTC(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -637,7 +647,7 @@ contract EchidnaTester is
 
         _before(bytes32(0));
 
-        (success, ) = actor.proxy(
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.openCdp.selector,
@@ -655,11 +665,7 @@ contract EchidnaTester is
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
             assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
             assertEq(
                 vars.sortedCdpsSizeBefore + 1,
                 vars.sortedCdpsSizeAfter,
@@ -729,17 +735,13 @@ contract EchidnaTester is
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
             );
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
 
     function withdrawColl(uint _amount, uint256 _i) external {
@@ -779,18 +781,14 @@ contract EchidnaTester is
 
         if (success) {
             assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+
+            // TODO fix this breaking invariant and remove comments
+            // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        // TODO fix this breaking invariant and remove comments
-        // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
     }
 
     function withdrawEBTC(uint _amount, uint256 _i) external {
@@ -812,7 +810,7 @@ contract EchidnaTester is
 
         _before(_cdpId);
 
-        (success, ) = actor.proxy(
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
                 BorrowerOperations.withdrawEBTC.selector,
@@ -826,21 +824,16 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertGe(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+            assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
             assertEq(
                 vars.actorEbtcAfter,
                 vars.actorEbtcBefore + _amount,
                 "withdrawEBTC must increase debt by requested amount"
             );
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
     }
 
     function repayEBTC(uint _amount, uint256 _i) external log {
@@ -884,19 +877,19 @@ contract EchidnaTester is
             //     "TCR must increase after a repayment"
             // );
 
-            assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, BO_07);
-            assertEq(vars.actorEbtcBefore, vars.actorEbtcAfter - _amount, BO_07);
+            assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
+            assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
     }
 
     function closeCdp(uint _i) external log {
@@ -904,6 +897,8 @@ contract EchidnaTester is
 
         bool success;
         bytes memory returnData;
+
+        require(cdpManager.getCdpIdsCount() > 1, "Cannot close last CDP");
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
         require(numberOfCdps > 0, "Actor must have at least one CDP open");
@@ -914,7 +909,7 @@ contract EchidnaTester is
 
         _before(_cdpId);
 
-        (success, ) = actor.proxy(
+        (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
         );
@@ -932,6 +927,7 @@ contract EchidnaTester is
                 vars.actorCollBefore,
                 "closeCdp increases the collateral balance of the user"
             );
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
             // TODO Update this invariant to consider possible fee split after rebase
             // assertWithMsg(
             //     // not exact due to rounding errors
@@ -942,12 +938,10 @@ contract EchidnaTester is
             //     ),
             //     BO_05
             // );
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
 
     function adjustCdp(
@@ -955,7 +949,7 @@ contract EchidnaTester is
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) external log {
+    ) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -990,18 +984,13 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // TODO add assertions specific to successful adjustCdp
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
     }
 
     ///////////////////////////////////////////////////////

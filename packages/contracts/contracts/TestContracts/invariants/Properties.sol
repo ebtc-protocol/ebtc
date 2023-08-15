@@ -240,6 +240,16 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
     }
 
+    function invariant_GENERAL_11(Vars memory vars) internal view returns (bool) {
+        return
+            (vars.activePoolCollBefore + vars.collSurplusPoolBefore) *
+                vars.priceBefore -
+                vars.debtBefore ==
+            (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
+                vars.priceAfter -
+                vars.debtAfter;
+    }
+
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
     }

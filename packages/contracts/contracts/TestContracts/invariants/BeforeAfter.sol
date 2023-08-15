@@ -30,6 +30,12 @@ abstract contract BeforeAfter {
         uint256 ebtcTotalSupplyAfter;
         uint256 ethPerShareBefore;
         uint256 ethPerShareAfter;
+        uint256 activePoolCollBefore;
+        uint256 activePoolCollAfter;
+        uint256 collSurplusPoolBefore;
+        uint256 collSurplusPoolAfter;
+        uint256 priceBefore;
+        uint256 priceAfter;
         bool isRecoveryModeBefore;
         bool isRecoveryModeAfter;
     }

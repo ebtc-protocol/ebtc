@@ -53,9 +53,14 @@ contract Actor is IERC3156FlashBorrower {
         }
 
         if (data.length != 0) {
-            (address _target, bytes memory _calldata) = abi.decode(data, (address, bytes));
-            (bool success, bytes memory returnData) = address(_target).call(_calldata);
-            require(success, string(returnData));
+            (address[] memory _targets, bytes[] memory _calldatas) = abi.decode(
+                data,
+                (address[], bytes[])
+            );
+            for (uint256 i = 0; i < _targets.length; ++i) {
+                (bool success, bytes memory returnData) = address(_targets[i]).call(_calldatas[i]);
+                require(success, string(returnData));
+            }
         }
 
         IERC20(token).approve(msg.sender, amount + fee);
