@@ -97,6 +97,22 @@ contract SortedCdps is ISortedCdps {
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
+    /**
+     * @dev Creates a CDP ID.
+     *
+     * These are deterministically created by packing the owners's contract address and its specialization setting into
+     * the ID. This saves gas by making this data easily retrievable from a Pool ID with no storage accesses.
+     *
+     * Since a single contract can register multiple Pools, a unique nonce must be provided to ensure Pool IDs are
+     * unique.
+     *
+     * Pool IDs have the following layout:
+     * | 20 bytes pool contract address | 2 bytes specialization setting | 10 bytes nonce |
+     * MSB                                                                              LSB
+     *
+     * 2 bytes for the specialization setting is a bit overkill: there only three of them, which means two bits would
+     * suffice. However, there's nothing else of interest to store in this extra space.
+     */
     function toCdpId(
         address owner,
         uint256 blockHeight,

@@ -867,7 +867,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _cdpId
     ) external view override returns (CdpIndexSnapshots memory indexSnapshots) {
         indexSnapshots.pooledEthPerShareIndex = stFeePerUnitcdp[_cdpId];
-        indexSnapshots.debtRedistributionIndex = rewardSnapshots[_cdpId];
+        indexSnapshots.debtRedistributionIndex = debtRedistributionIndex[_cdpId];
         return indexSnapshots;
     }
 

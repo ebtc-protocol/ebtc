@@ -78,19 +78,19 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public totalCollateralSnapshot;
 
     /*
-     * L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * systemDebtRedistributionIndex track the sums of accumulated liquidation debt increases per unit staked.
      * During its lifetime, each stake earns:
      *
-     * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
+     * A EBTCDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
      *
-     * Where L_EBTCDebt(0) are snapshots of L_EBTCDebt
+     * Where systemDebtRedistributionIndex(0) are snapshots of systemDebtRedistributionIndex
      * for the active Cdp taken at the instant the stake was made
      */
-    uint public L_EBTCDebt;
+    uint public systemDebtRedistributionIndex;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
-    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_EBTCDebt */
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
@@ -99,14 +99,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint) public rewardSnapshots;
+    mapping(bytes32 => uint) public debtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
     // Error trackers for the cdp redistribution calculation
     uint public lastETHError_Redistribution;
-    uint public lastEBTCDebtError_Redistribution;
+    uint public lastEBTCDebtRedistributionError;
 
     constructor(
         address _liquidationLibraryAddress,
@@ -170,7 +170,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        rewardSnapshots[_cdpId] = 0;
+        debtRedistributionIndex[_cdpId] = 0;
         stFeePerUnitcdp[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
@@ -209,7 +209,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             return 0;
         }
 
-        uint rewardPerUnitStaked = L_EBTCDebt - rewardSnapshots[_cdpId];
+        uint rewardPerUnitStaked = systemDebtRedistributionIndex - debtRedistributionIndex[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
@@ -227,14 +227,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId] < L_EBTCDebt);
+        return (debtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
     function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
-        uint _L_EBTCDebt = L_EBTCDebt;
+        uint _systemDebtRedistributionIndex = systemDebtRedistributionIndex;
 
-        rewardSnapshots[_cdpId] = _L_EBTCDebt;
-        emit CdpSnapshotsUpdated(_cdpId, _L_EBTCDebt);
+        debtRedistributionIndex[_cdpId] = _systemDebtRedistributionIndex;
+        emit CdpSnapshotsUpdated(_cdpId, _systemDebtRedistributionIndex);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp

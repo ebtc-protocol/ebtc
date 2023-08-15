@@ -517,12 +517,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   
     Rewards-per-unit-staked from the redistribution should be:
   
-    L_EBTCDebt = 1610 / 6 = 268.333 EBTC
+    systemDebtRedistributionIndex = 1610 / 6 = 268.333 EBTC
     L_STETHColl = 16.820475 /6 =  2.8034125 ether
     */
-    const L_EBTCDebt = (await cdpManager.L_EBTCDebt()).toString()
+    const systemDebtRedistributionIndex = (await cdpManager.systemDebtRedistributionIndex()).toString()
 
-    assert.isAtMost(th.getDifference(L_EBTCDebt, toBN('0').sub(toBN('0')).mul(mv._1e18BN).div(A_coll.add(D_coll))), 100)
+    assert.isAtMost(th.getDifference(systemDebtRedistributionIndex, toBN('0').sub(toBN('0')).mul(mv._1e18BN).div(A_coll.add(D_coll))), 100)
   })
 
   // --- liquidate(), applied to cdp with ICR > 110% that has the lowest ICR 
@@ -566,16 +566,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(dennis)), {from : dennis});
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
-    const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
-    const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
+    const systemDebtRedistributionIndex_Before = (await cdpManager.systemDebtRedistributionIndex()).toString()
+    const _deltaError = await cdpManager.lastEBTCDebtRedistributionError();
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     // Check that redistribution rewards don't change
     const _totalStake = await cdpManager.totalStakes();
-    const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
+    const systemDebtRedistributionIndex_After = (await cdpManager.systemDebtRedistributionIndex()).toString()
     const _liqDebt = _bobColl.mul(price).div(LICR);
     const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
-    const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
+    const _delta2 = toBN(systemDebtRedistributionIndex_After).sub(toBN(systemDebtRedistributionIndex_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtRedistributionError())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
 
     // Check that Bob's Cdp and stake remains active with unchanged coll and debt
@@ -1186,17 +1186,17 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
-    const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
-    const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
+    const systemDebtRedistributionIndex_Before = (await cdpManager.systemDebtRedistributionIndex()).toString()
+    const _deltaError = await cdpManager.lastEBTCDebtRedistributionError();
     await cdpManager.liquidate(_bobCdpId, { from: owner })
 
     /* For this Recovery Mode test case with ICR > 110%, there should be no redistribution of remainder to active Cdps. 
     Redistribution rewards-per-unit-staked should be zero. */
     const _totalStake = await cdpManager.totalStakes();
-    const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
+    const systemDebtRedistributionIndex_After = (await cdpManager.systemDebtRedistributionIndex()).toString()
     const _liqDebt = _bobColl.mul(toBN(_newPrice)).div(LICR);
     const _delta = (_bobDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
-    const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
+    const _delta2 = toBN(systemDebtRedistributionIndex_After).sub(toBN(systemDebtRedistributionIndex_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtRedistributionError())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
   })
 
@@ -1274,8 +1274,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // L2: Try to liquidate Carol. Nothing happens
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});
-    const L_EBTCDebt_Before = (await cdpManager.L_EBTCDebt()).toString()
-    const _deltaError = await cdpManager.lastEBTCDebtError_Redistribution();
+    const systemDebtRedistributionIndex_Before = (await cdpManager.systemDebtRedistributionIndex()).toString()
+    const _deltaError = await cdpManager.lastEBTCDebtRedistributionError();
     await cdpManager.liquidate(_carolCdpId)
     // Check Carol's collateral and debt remains the same
 //    const carol_Coll_After = (await cdpManager.Cdps(_carolCdpId))[1]
@@ -1290,10 +1290,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     //Confirm liquidations have led to some debt redistributions to cdps
     const _totalStake = await cdpManager.totalStakes();
-    const L_EBTCDebt_After = (await cdpManager.L_EBTCDebt()).toString()
+    const systemDebtRedistributionIndex_After = (await cdpManager.systemDebtRedistributionIndex()).toString()
     const _liqDebt = _carolColl.mul(price).div(LICR);
     const _delta = (_carolDebt.sub(_liqDebt)).mul(mv._1e18BN).add(_deltaError);
-    const _delta2 = toBN(L_EBTCDebt_After).sub(toBN(L_EBTCDebt_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtError_Redistribution())
+    const _delta2 = toBN(systemDebtRedistributionIndex_After).sub(toBN(systemDebtRedistributionIndex_Before)).mul(_totalStake).add(await cdpManager.lastEBTCDebtRedistributionError())
     th.assertIsApproximatelyEqual(_delta2.toString(), _delta.toString())
   })
 

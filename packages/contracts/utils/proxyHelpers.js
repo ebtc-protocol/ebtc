@@ -231,12 +231,12 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('L_STETHColl', [])
   }
 
-  async L_EBTCDebt() {
-    return this.proxyFunction('L_EBTCDebt', [])
+  async systemDebtRedistributionIndex() {
+    return this.proxyFunction('systemDebtRedistributionIndex', [])
   }
 
-  async rewardSnapshots(user) {
-    return this.proxyFunctionWithUser('rewardSnapshots', user)
+  async debtRedistributionIndex(user) {
+    return this.proxyFunctionWithUser('debtRedistributionIndex', user)
   }
 
   async lastFeeOperationTime() {

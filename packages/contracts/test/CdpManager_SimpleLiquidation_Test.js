@@ -762,7 +762,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isFalse(await sortedCdps.contains(_cdpId1));
       _cdpDebtColl2 = await cdpManager.getEntireDebtAndColl(_cdpId2);
       _systemDebt = await cdpManager.getSystemDebt();
-      let _distributedError = (await cdpManager.lastEBTCDebtError_Redistribution()).div(mv._1e18BN);
+      let _distributedError = (await cdpManager.lastEBTCDebtRedistributionError()).div(mv._1e18BN);
       th.assertIsApproximatelyEqual(_systemDebt, (_distributedError.add(_cdpDebtColl2[0])), _errorTolerance.toNumber());
   })
   

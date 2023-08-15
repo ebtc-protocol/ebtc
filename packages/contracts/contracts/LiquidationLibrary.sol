@@ -933,7 +933,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         /*
          * Add distributed debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-         * error correction, to keep the cumulative error low in the running totals L_EBTCDebt:
+         * error correction, to keep the cumulative error low in the running totals systemDebtRedistributionIndex:
          *
          * 1) Form numerators which compensate for the floor division errors that occurred the last time this
          * function was called.
@@ -942,20 +942,20 @@ contract LiquidationLibrary is CdpManagerStorage {
          * 4) Store these errors for use in the next correction when this function is called.
          * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
          */
-        uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
+        uint _eBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtRedistributionError;
 
         // Get the per-unit-staked terms
         uint _totalStakes = totalStakes;
-        uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
+        uint _eBTCDebtRewardPerUnitStaked = _eBTCDebtNumerator / _totalStakes;
 
-        lastEBTCDebtError_Redistribution =
-            EBTCDebtNumerator -
-            (EBTCDebtRewardPerUnitStaked * _totalStakes);
+        lastEBTCDebtRedistributionError =
+            _eBTCDebtNumerator -
+            (_eBTCDebtRewardPerUnitStaked * _totalStakes);
 
         // Add per-unit-staked terms to the running totals
-        L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
+        systemDebtRedistributionIndex = systemDebtRedistributionIndex + _eBTCDebtRewardPerUnitStaked;
 
-        emit LTermsUpdated(L_EBTCDebt);
+        emit SystemDebtRedistributionIndexUpdated(systemDebtRedistributionIndex);
     }
 
     // --- 'require' wrapper functions ---

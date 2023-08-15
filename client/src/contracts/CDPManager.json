@@ -684,7 +684,7 @@
           "type": "address"
         }
       ],
-      "name": "rewardSnapshots",
+      "name": "debtRedistributionIndex",
       "outputs": [
         {
           "internalType": "uint256",

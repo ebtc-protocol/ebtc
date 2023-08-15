@@ -65,9 +65,7 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCdpData(bytes32 _cdpId) external view returns (Cdp memory);
 
-    function getCdpIndexSnapshots(
-        bytes32 _cdpId
-    ) external view returns (CdpIndexSnapshots memory);
+    function getCdpIndexSnapshots(bytes32 _cdpId) external view returns (CdpIndexSnapshots memory);
 
     function initializeCdp(
         bytes32 _cdpId,

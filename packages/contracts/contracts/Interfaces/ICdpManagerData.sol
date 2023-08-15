@@ -57,8 +57,8 @@ interface ICdpManagerData {
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_EBTCDebt);
-    event CdpSnapshotsUpdated(bytes32 _cdpId, uint _L_EBTCDebt);
+    event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
+    event CdpSnapshotsUpdated(bytes32 _cdpId, uint _systemDebtRedistributionIndex);
     event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
     event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);

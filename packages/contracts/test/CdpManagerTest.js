@@ -323,7 +323,7 @@ contract('CdpManager', async accounts => {
     assert.equal(totalCollateralSnapshot_After, A_collateral.add(th.applyLiquidationFee(toBN('0'))))
   })
 
-  xit("liquidate(): updates the L_STETHColl and L_EBTCDebt reward-per-unit-staked totals", async () => {
+  xit("liquidate(): updates the L_STETHColl and systemDebtRedistributionIndex reward-per-unit-staked totals", async () => {
     // --- SETUP ---
     const { collateral: A_collateral, totalDebt: A_totalDebt } = await openCdp({ ICR: toBN(dec(8, 18)), extraParams: { from: alice } })
     const { collateral: B_collateral, totalDebt: B_totalDebt } = await openCdp({ ICR: toBN(dec(4, 18)), extraParams: { from: bob } })
@@ -348,10 +348,10 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Carol's ether*0.995 and EBTC should be added to the DefaultPool.
-    const L_EBTCDebt_AfterCarolLiquidated = (await cdpManager.L_EBTCDebt())
+    const systemDebtRedistributionIndex_AfterCarolLiquidated = (await cdpManager.systemDebtRedistributionIndex())
 
-    const L_EBTCDebt_expected_1 = C_totalDebt.sub(C_collateral.mul(toBN(_newPrice)).div(LICR)).mul(mv._1e18BN).div(await cdpManager.totalStakes());
-    assert.isAtMost(th.getDifference(L_EBTCDebt_AfterCarolLiquidated, L_EBTCDebt_expected_1), 100)
+    const systemDebtRedistributionIndex_expected_1 = C_totalDebt.sub(C_collateral.mul(toBN(_newPrice)).div(LICR)).mul(mv._1e18BN).div(await cdpManager.totalStakes());
+    assert.isAtMost(th.getDifference(systemDebtRedistributionIndex_AfterCarolLiquidated, systemDebtRedistributionIndex_expected_1), 100)
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
     const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
@@ -380,11 +380,11 @@ contract('CdpManager', async accounts => {
    
    The system rewards-per-unit-staked should now be:
    
-   L_EBTCDebt = (180 / 20) + (890 / 10) = 98 EBTC */
-    const L_EBTCDebt_AfterBobLiquidated = (await cdpManager.L_EBTCDebt()).div(mv._1e18BN)
+   systemDebtRedistributionIndex = (180 / 20) + (890 / 10) = 98 EBTC */
+    const systemDebtRedistributionIndex_AfterBobLiquidated = (await cdpManager.systemDebtRedistributionIndex()).div(mv._1e18BN)
 
-    const L_EBTCDebt_expected_2 = L_EBTCDebt_expected_1.add((_bobTotalDebt.sub(B_collateral.mul(price).div(LICR))).mul(mv._1e18BN).div(await cdpManager.totalStakes()))
-    assert.isAtMost(th.getDifference(L_EBTCDebt_AfterBobLiquidated, L_EBTCDebt_expected_2), 1000)
+    const systemDebtRedistributionIndex_expected_2 = systemDebtRedistributionIndex_expected_1.add((_bobTotalDebt.sub(B_collateral.mul(price).div(LICR))).mul(mv._1e18BN).div(await cdpManager.totalStakes()))
+    assert.isAtMost(th.getDifference(systemDebtRedistributionIndex_AfterBobLiquidated, systemDebtRedistributionIndex_expected_2), 1000)
   })
 
   it("liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system", async () => {
@@ -4506,11 +4506,11 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
 
     // Confirm there are some pending rewards from liquidation
-    const current_L_EBTCDebt = await cdpManager.L_EBTCDebt()
-    assert.isTrue(current_L_EBTCDebt.gt(toBN('0')))
+    const current_systemDebtRedistributionIndex = await cdpManager.systemDebtRedistributionIndex()
+    assert.isTrue(current_systemDebtRedistributionIndex.gt(toBN('0')))
 
-    const carolSnapshot_L_EBTCDebt = (await cdpManager.rewardSnapshots(_carolCdpId))
-    assert.equal(carolSnapshot_L_EBTCDebt, 0)
+    const carolSnapshot_systemDebtRedistributionIndex = (await cdpManager.debtRedistributionIndex(_carolCdpId))
+    assert.equal(carolSnapshot_systemDebtRedistributionIndex, 0)
 
     const carol_PendingEBTCDebtReward = (await cdpManager.getPendingDebtRedistribution(_carolCdpId))
     assert.isTrue(carol_PendingEBTCDebtReward.gt(toBN('0')))

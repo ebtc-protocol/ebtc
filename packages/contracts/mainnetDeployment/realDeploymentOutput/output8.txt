@@ -72,7 +72,7 @@ Total cdp stakes: 22706.606961025510177440
 Snapshot of total cdp stakes before last liq. : 13721.981761025510177440
 Snapshot of total cdp collateral before last liq. : 13721.981761025510177440
 L_STETHColl: .000000000000000000
-L_EBTCDebt: .000000000000000000
+systemDebtRedistributionIndex: .000000000000000000
 StabilityPool state variables:
 Product P: .997452296010360274
 Current epoch: .000000000000000000
