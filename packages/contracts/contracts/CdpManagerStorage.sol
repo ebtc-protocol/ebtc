@@ -126,8 +126,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         collSurplusPool = ICollSurplusPool(_collSurplusPool);
         ebtcToken = IEBTCToken(_ebtcToken);
         sortedCdps = ISortedCdps(_sortedCdps);
-
-        emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
     }
 
     /**

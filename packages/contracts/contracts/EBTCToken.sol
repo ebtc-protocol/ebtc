@@ -64,10 +64,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _initializeAuthority(_authorityAddress);
 
         cdpManagerAddress = _cdpManagerAddress;
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-
         borrowerOperationsAddress = _borrowerOperationsAddress;
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
 
         bytes32 hashedName = keccak256(bytes(_NAME));
         bytes32 hashedVersion = keccak256(bytes(_VERSION));

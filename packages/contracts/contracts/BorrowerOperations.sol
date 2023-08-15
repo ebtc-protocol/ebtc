@@ -101,15 +101,7 @@ contract BorrowerOperations is
         if (_authorityAddress != address(0)) {
             _initializeAuthority(_authorityAddress);
         }
-
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit ActivePoolAddressChanged(_activePoolAddress);
-        emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
-        emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
 
         // No longer need a concept of ownership if there is no initializer
     }

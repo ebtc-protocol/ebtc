@@ -50,14 +50,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _collTokenAddress
         )
     {
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit ActivePoolAddressChanged(_activePoolAddress);
-        emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
-        emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
-
         stakingRewardSplit = STAKING_REWARD_SPLIT;
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);

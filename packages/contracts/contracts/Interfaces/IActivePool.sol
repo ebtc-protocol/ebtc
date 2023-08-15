@@ -6,13 +6,9 @@ import "./IPool.sol";
 
 interface IActivePool is IPool {
     // --- Events ---
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
+    event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
     event ActivePoolCollBalanceUpdated(uint _coll);
-    event CollateralAddressChanged(address _collTokenAddress);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusAddress);
     event ActivePoolFeeRecipientClaimableCollIncreased(uint _coll, uint _fee);
     event ActivePoolFeeRecipientClaimableCollDecreased(uint _coll, uint _fee);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);

@@ -12,15 +12,7 @@ import "../Dependencies/ICollateralTokenOracle.sol";
 interface ICdpManagerData {
     // --- Events ---
 
-    event LiquidationLibraryAddressChanged(address _liquidationLibraryAddress);
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event PriceFeedAddressChanged(address _newPriceFeedAddress);
-    event EBTCTokenAddressChanged(address _newEBTCTokenAddress);
-    event ActivePoolAddressChanged(address _activePoolAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);

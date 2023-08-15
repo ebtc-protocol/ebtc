@@ -6,9 +6,6 @@ pragma solidity 0.8.17;
 interface ISortedCdps {
     // --- Events ---
 
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event SortedCdpsAddressChanged(address _sortedDoublyLLAddress);
-    event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
     event NodeAdded(bytes32 _id, uint _NICR);
     event NodeRemoved(bytes32 _id);
 
