@@ -60,7 +60,7 @@ interface ICdpManagerData {
     event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
     event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint _systemDebtRedistributionIndex);
     event CdpArrayIndexUpdated(bytes32 _cdpId, uint _newIndex);
-    event StEthIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event StEthIndexUpdated(uint _oldIndex, uint _newIndex);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,
