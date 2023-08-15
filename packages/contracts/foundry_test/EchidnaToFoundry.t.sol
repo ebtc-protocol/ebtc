@@ -78,8 +78,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = clampBetween(
             _newEthPerShare,
-            (currentEthPerShare * 1 ether) / 1.1 ether,
-            (currentEthPerShare * 1.1 ether) / 1 ether
+            (currentEthPerShare * 1e18) / 1.1e18,
+            (currentEthPerShare * 1.1e18) / 1e18
         );
 
         console2.log("setEthPerShare", _newEthPerShare);
@@ -90,8 +90,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
-            (currentPrice * 1 ether) / 1.1 ether,
-            (currentPrice * 1.1 ether) / 1 ether
+            (currentPrice * 1e18) / 1.1e18,
+            (currentPrice * 1.1e18) / 1e18
         );
 
         console2.log("setPrice", _newPrice);
