@@ -22,7 +22,7 @@ contract CollSurplusPoolTester is CollSurplusPool {
     {}
 
     function unprotectedReceiveCollShares(uint _amount) external {
-        StEthColl = StEthColl + _amount;
+        totalSurplusCollShares = totalSurplusCollShares + _amount;
     }
 
     // dummy test functions for sweepToken()

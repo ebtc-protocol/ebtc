@@ -141,7 +141,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _newBalClaimable = await activePool.getFeeRecipientClaimableCollShares();
           await cdpManager.applyPendingGlobalState();
           assert.isTrue(_newBalClaimable.lt(await activePool.getFeeRecipientClaimableCollShares()));
-          assert.isTrue(_newIndex.eq(await cdpManager.stFPPSg()));		  
+          assert.isTrue(_newIndex.eq(await cdpManager.stEthIndex()));		  
       }
   })
   
@@ -594,7 +594,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: bob});  
       let _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _price, _splitFee);
       assert.isTrue(_deltaIndex.lte(_deltaRequiredIdx));  
-      let _idxBefore = await cdpManager.stFPPSg();
+      let _idxBefore = await cdpManager.stEthIndex();
       assert.isTrue(_idxBefore.eq(_oldIndex));
       await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
   })

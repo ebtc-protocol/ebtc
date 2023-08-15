@@ -150,7 +150,7 @@ contract HintHelpers is LiquityBase {
         uint maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
         uint newColl;
-        uint _oldIndex = cdpManager.stFPPSg();
+        uint _oldIndex = cdpManager.stEthIndex();
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {

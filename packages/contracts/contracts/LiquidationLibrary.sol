@@ -500,7 +500,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 totalColReward
     ) internal {
         // update the staking and collateral snapshots
-        _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
+        _updateSystemSnapshotsExcludeCollRemainder(totalColToSend);
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 

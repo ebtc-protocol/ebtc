@@ -138,8 +138,8 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             uint _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
             collateral.setEthPerShare(_oldIdx);
             cdpManager.applyPendingGlobalState();
-            console.log("_oldIndex:", cdpManager.stFPPSg());
-            assertEq(_oldIdx, cdpManager.stFPPSg());
+            console.log("_oldIndex:", cdpManager.stEthIndex());
+            assertEq(_oldIdx, cdpManager.stEthIndex());
             assertLt(_oldIdx, _curIndex);
             collateral.setEthPerShare(_newIndex);
             console.log("_newIndex:", _newIndex);

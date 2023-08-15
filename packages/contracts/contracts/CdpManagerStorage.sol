@@ -89,7 +89,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public systemDebtRedistributionIndex;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
-    uint256 public override stFPPSg;
+    uint256 public override stEthIndex;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
@@ -97,7 +97,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
     mapping(bytes32 => uint256) public stFeePerUnitcdp;
     /* Update timestamp for global index */
-    uint256 lastIndexTimestamp;
+    uint256 stEthIndexLastUpdatedTimestamp;
     // Map active cdps to their eBTC debt redistribution index snapshot
     mapping(bytes32 => uint) public debtRedistributionIndex;
 
@@ -186,7 +186,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      *
      * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
-    function _updateSystemSnapshots_excludeCollRemainder(uint _collRemainder) internal {
+    function _updateSystemSnapshotsExcludeCollRemainder(uint _collRemainder) internal {
         uint _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
@@ -338,7 +338,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         CdpIds[index] = idToMove;
         Cdps[idToMove].arrayIndex = index;
-        emit CdpIndexUpdated(idToMove, index);
+        emit CdpArrayIndexUpdated(idToMove, index);
 
         CdpIds.pop();
     }
@@ -360,25 +360,25 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
     function applyPendingGlobalState() public {
-        (uint _oldIndex, uint _newIndex) = _syncIndex();
+        (uint _oldIndex, uint _newIndex) = _syncStEthIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
                 _newIndex,
                 _oldIndex
             );
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
-            _updateSystemSnapshots_excludeCollRemainder(0);
+            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 
     // Update the global index via collateral token
-    function _syncIndex() internal returns (uint, uint) {
-        uint _oldIndex = stFPPSg;
+    function _syncStEthIndex() internal returns (uint, uint) {
+        uint _oldIndex = stEthIndex;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
-            stFPPSg = _newIndex;
-            lastIndexTimestamp = block.timestamp;
-            emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
+            stEthIndex = _newIndex;
+            stEthIndexLastUpdatedTimestamp = block.timestamp;
+            emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
         return (_oldIndex, _newIndex);
     }

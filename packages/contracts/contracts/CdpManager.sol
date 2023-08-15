@@ -62,7 +62,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
-        _syncIndex();
+        _syncStEthIndex();
         stFeePerUnitg = DECIMAL_PRECISION;
     }
 
@@ -333,22 +333,19 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _maxIterations,
         uint _maxFeePercentage
     ) external override nonReentrantSelfAndBOps {
-        RedemptionTotals memory totals;
-
+        _requireRedemptionsNotPaused();
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
         applyPendingGlobalState();
 
+        RedemptionTotals memory totals;
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
         _requireAmountGreaterThanZero(_EBTCamount);
 
-        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
-
         totals.totalEBTCSupplyAtStart = _getSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
-            ebtcToken,
             msg.sender,
             _EBTCamount,
             totals.totalEBTCSupplyAtStart
@@ -714,12 +711,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
-        IEBTCToken _ebtcToken,
         address _redeemer,
         uint _amount,
         uint _totalSupply
     ) internal view {
-        uint callerBalance = _ebtcToken.balanceOf(_redeemer);
+        uint callerBalance = ebtcToken.balanceOf(_redeemer);
         require(
             callerBalance >= _amount,
             "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
@@ -744,6 +740,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             block.timestamp >= systemDeploymentTime + BOOTSTRAP_PERIOD,
             "CdpManager: Redemptions are not allowed during bootstrap phase"
         );
+    }
+
+    function _requireRedemptionsNotPaused() internal view {
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
     }
 
     function _requireValidMaxFeePercentage(uint _maxFeePercentage) internal view {
@@ -794,8 +794,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
 
         applyPendingGlobalState();
-
-        // decay first according to previous factor
         _decayBaseRate();
 
         // set new factor after decaying
@@ -805,7 +803,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function setBeta(uint _beta) external requiresAuth {
         applyPendingGlobalState();
-
         _decayBaseRate();
 
         beta = _beta;

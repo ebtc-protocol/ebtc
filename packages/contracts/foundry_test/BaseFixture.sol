@@ -422,6 +422,6 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         collateral.setEthPerShare(oldIndex + 1e17);
         newIndex = collateral.getPooledEthByShares(1e18);
 
-        storedIndex = cdpManager.stFPPSg();
+        storedIndex = cdpManager.stEthIndex();
     }
 }

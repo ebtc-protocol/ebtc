@@ -59,8 +59,8 @@ interface ICdpManagerData {
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
     event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint _systemDebtRedistributionIndex);
-    event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
-    event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event CdpArrayIndexUpdated(bytes32 _cdpId, uint _newIndex);
+    event StEthIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,
@@ -221,7 +221,7 @@ interface ICdpManagerData {
 
     function stFeePerUnitgError() external view returns (uint);
 
-    function stFPPSg() external view returns (uint);
+    function stEthIndex() external view returns (uint);
 
     function calcFeeUponStakingReward(
         uint256 _newIndex,
