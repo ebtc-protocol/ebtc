@@ -166,13 +166,13 @@ interface ICdpManagerData {
         uint TCR;
     }
 
-    struct LocalVariables_RedeemCollateralFromCdp {
-        bytes32 _cdpId;
-        uint _maxDebtToReturn;
-        uint _price;
-        bytes32 _upperPartialRedemptionHint;
-        bytes32 _lowerPartialRedemptionHint;
-        uint _partialRedemptionHintNICR;
+    struct SingleCdpRedemptionInputs {
+        bytes32 cdpId;
+        uint maxEBTCToRedeem;
+        uint price;
+        bytes32 upperPartialRedemptionHint;
+        bytes32 lowerPartialRedemptionHint;
+        uint partialRedemptionHintNICR;
     }
 
     struct LiquidationValues {
@@ -208,7 +208,7 @@ interface ICdpManagerData {
 
     struct SingleRedemptionValues {
         uint eBtcToRedeem;
-        uint stEthToRecieve;
+        uint collSharesToRecieve;
         bool cancelledPartial;
         bool fullRedemption;
     }
