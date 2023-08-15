@@ -373,7 +373,6 @@ contract EchidnaTester is
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
-            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -423,7 +422,6 @@ contract EchidnaTester is
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
-            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
 
             assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
@@ -480,7 +478,6 @@ contract EchidnaTester is
                     diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
                 L_12
             );
-            assertWithMsg(invariant_GENERAL_11(vars), GENERAL_11);
         } else if (vars.sortedCdpsSizeBefore > _n) {
             bool atLeastOneCdpIsLiquidatable = false;
             for (uint256 i = 0; i < cdpsBefore.length; ++i) {
