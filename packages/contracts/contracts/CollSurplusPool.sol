@@ -21,9 +21,9 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     ICollateralToken public immutable collateral;
 
     // deposited ether tracker
-    uint256 internal StEthColl;
+    uint256 internal totalSurplusCollShares;
     // Collateral surplus claimable by cdp owners
-    mapping(address => uint) internal collSharesSurplus;
+    mapping(address => uint) internal surplusCollSharesFor;
 
     // --- Contract setters ---
 
@@ -64,7 +64,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @return The current collateral balance tracked by the variable
      */
     function getSystemCollShares() external view override returns (uint) {
-        return StEthColl;
+        return totalSurplusCollShares;
     }
 
     /**
@@ -73,30 +73,30 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @return The collateral balance available to claim
      */
     function getSurplusCollSharesFor(address _account) external view override returns (uint) {
-        return collSharesSurplus[_account];
+        return surplusCollSharesFor[_account];
     }
 
     // --- Pool functionality ---
 
-    function setSurplusCollSharesFor(address _account, uint _amount) external override {
+    function setSurplusCollSharesFor(address _account, uint _collShares) external override {
         _requireCallerIsCdpManager();
 
-        uint newAmount = collSharesSurplus[_account] + _amount;
-        collSharesSurplus[_account] = newAmount;
+        uint newAmount = surplusCollSharesFor[_account] + _collShares;
+        surplusCollSharesFor[_account] = newAmount;
 
         emit CollBalanceUpdated(_account, newAmount);
     }
 
     function claimSurplusCollShares(address _account) external override {
         _requireCallerIsBorrowerOperations();
-        uint claimableColl = collSharesSurplus[_account];
+        uint claimableColl = surplusCollSharesFor[_account];
         require(claimableColl > 0, "CollSurplusPool: No collateral available to claim");
 
-        collSharesSurplus[_account] = 0;
+        surplusCollSharesFor[_account] = 0;
         emit CollBalanceUpdated(_account, 0);
 
-        require(StEthColl >= claimableColl, "!CollSurplusPoolBal");
-        StEthColl = StEthColl - claimableColl;
+        require(totalSurplusCollShares >= claimableColl, "!CollSurplusPoolBal");
+        totalSurplusCollShares = totalSurplusCollShares - claimableColl;
         emit CollateralSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -122,7 +122,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     function receiveCollShares(uint _value) external override {
         _requireCallerIsActivePool();
-        StEthColl = StEthColl + _value;
+        totalSurplusCollShares = totalSurplusCollShares + _value;
     }
 
     // === Governed Functions === //
