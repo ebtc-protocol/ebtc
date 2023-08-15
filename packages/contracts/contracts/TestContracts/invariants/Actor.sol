@@ -52,6 +52,12 @@ contract Actor is IERC3156FlashBorrower {
             require(msg.sender == address(activePool), "!activePoolFLSender");
         }
 
+        if (data.length != 0) {
+            (address _target, bytes memory _calldata) = abi.decode(data, (address, bytes));
+            (bool success, bytes memory returnData) = address(_target).call(_calldata);
+            require(success, string(returnData));
+        }
+
         IERC20(token).approve(msg.sender, amount + fee);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }

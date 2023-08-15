@@ -334,14 +334,6 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
-    // function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
-    //     uint price = priceFeedTestnet.getPrice();
-    //     (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
-    //     uint _debt = entireDebt + _change.debtAddition - _change.debtReduction;
-    //     uint _coll = entireColl + _change.collAddition - _change.collReduction;
-    //     require((_debt * MCR) / price < _coll, "!CDP_MCR");
-    // }
-
     ///////////////////////////////////////////////////////
     // CdpManager
     ///////////////////////////////////////////////////////
@@ -370,7 +362,13 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        if (!success) {
+        if (success) {
+            assertWithMsg(
+                vars.tcrAfter > vars.tcrBefore ||
+                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+                L_12
+            );
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
 
@@ -378,10 +376,6 @@ contract EchidnaTester is
             vars.icrBefore < cdpManager.MCR() ||
                 (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
             L_01
-        );
-        assertWithMsg(
-            vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            L_12
         );
     }
 
@@ -411,23 +405,25 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
+
+            assertWithMsg(
+                vars.tcrAfter > vars.tcrBefore ||
+                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+                L_12
+            );
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
 
-        _after(_cdpId);
-
-        (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
-
-        assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
         assertWithMsg(
             vars.icrBefore < cdpManager.MCR() ||
                 (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
             L_01
-        );
-        assertWithMsg(
-            vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            L_12
         );
         assertGte(
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
@@ -455,37 +451,42 @@ contract EchidnaTester is
             abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n)
         );
 
-        if (!success) {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
-
         _after(bytes32(0));
 
-        Cdp[] memory cdpsAfter = _getCdpIdsAndICRs();
+        if (success) {
+            Cdp[] memory cdpsAfter = _getCdpIdsAndICRs();
 
-        Cdp[] memory cdpsLiquidated = _cdpIdsAndICRsDiff(cdpsBefore, cdpsAfter);
-        assertGte(
-            cdpsLiquidated.length,
-            1,
-            "liquidateCdps must liquidate at least 1 CDP when successful"
-        );
-        assertLte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n CDPs");
-        for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-            assertWithMsg(
-                cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                    (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
-                L_01
-            );
+            Cdp[] memory cdpsLiquidated = _cdpIdsAndICRsDiff(cdpsBefore, cdpsAfter);
             assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(cdpsLiquidated[i].id)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
+                cdpsLiquidated.length,
+                1,
+                "liquidateCdps must liquidate at least 1 CDP when successful"
             );
+            assertLte(
+                cdpsLiquidated.length,
+                _n,
+                "liquidateCdps must not liquidate more than n CDPs"
+            );
+            for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+                assertWithMsg(
+                    cdpsLiquidated[i].icr < cdpManager.MCR() ||
+                        (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                    L_01
+                );
+                assertGte(
+                    collateral.getPooledEthByShares(cdpManager.getCdpColl(cdpsLiquidated[i].id)),
+                    borrowerOperations.MIN_NET_COLL(),
+                    GENERAL_10
+                );
+            }
+            assertWithMsg(
+                vars.tcrAfter > vars.tcrBefore ||
+                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+                L_12
+            );
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-        assertWithMsg(
-            vars.tcrAfter > vars.tcrBefore || diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            L_12
-        );
     }
 
     function redeemCollateral(
@@ -527,94 +528,85 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
-
         _after(bytes32(0));
 
-        assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+        if (success) {
+            assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
     }
 
     ///////////////////////////////////////////////////////
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    // function flashloanColl(uint _amount) internal {
-    //     actor = actors[msg.sender];
+    function flashLoanColl(uint _amount) external log {
+        actor = actors[msg.sender];
 
-    //     _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
+        bool success;
+        bytes memory returnData;
 
-    //     // sugardaddy fee
-    //     uint _fee = activePool.flashFee(address(collateral), _amount);
-    //     require(_fee < address(actor).balance, "!tooMuchFeeCollFL");
+        _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
+        uint _fee = activePool.flashFee(address(collateral), _amount);
 
-    //     actor.proxy(
-    //         address(collateral),
-    //         abi.encodeWithSelector(CollateralTokenTester.deposit.selector, "", _fee)
-    //     );
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        (success, returnData) = actor.proxy(
+            address(activePool),
+            abi.encodeWithSelector(
+                ActivePool.flashLoan.selector,
+                IERC3156FlashBorrower(address(actor)),
+                address(collateral),
+                _amount,
+                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
+                abi.encodePacked("")
+            )
+        );
 
-    //     // take the flashloan which should always cost the fee paid by caller
-    //     uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
-
-    //     actor.proxy(
-    //         address(activePool),
-    //         abi.encodeWithSelector(
-    //             ActivePool.flashLoan.selector,
-    //             IERC3156FlashBorrower(address(actor)),
-    //             address(collateral),
-    //             _amount,
-    //             abi.encodePacked(uint256(0))
-    //         )
-    //     );
-
-    //     uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-    //     assert(_balAfter - _balBefore == _fee);
-    // }
+        if (success) {
+            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+    }
 
     ///////////////////////////////////////////////////////
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    // function flashloanEBTC(uint _amount) internal {
-    //     actor = actors[msg.sender];
+    function flashLoanEBTC(uint _amount) external log {
+        actor = actors[msg.sender];
 
-    //     _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
+        bool success;
+        bytes memory returnData;
 
-    //     // sugardaddy fee
-    //     uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
-    //     actor.proxy(
-    //         address(eBTCToken),
-    //         abi.encodeWithSelector(EBTCTokenTester.unprotectedMint.selector, _fee)
-    //     );
+        _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
 
-    //     // take the flashloan which should always cost the fee paid by caller
-    //     uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-    //     (bool success, ) = actor.proxy(
-    //         address(borrowerOperations),
-    //         abi.encodeWithSelector(
-    //             BorrowerOperations.flashLoan.selector,
-    //             IERC3156FlashBorrower(address(this)),
-    //             address(eBTCToken),
-    //             _amount,
-    //             abi.encodePacked(uint256(0))
-    //         )
-    //     );
-    //     uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-    //     if (success) {
-    //         assert(_balAfter - _balBefore == _fee);
+        uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
 
-    //         // TODO remove?
-    //         actor.proxy(
-    //             address(eBTCToken),
-    //             abi.encodeWithSelector(
-    //                 EBTCTokenTester.unprotectedBurn.selector,
-    //                 borrowerOperations.feeRecipientAddress(),
-    //                 _fee
-    //             )
-    //         );
-    //     }
-    // }
+        // take the flashloan which should always cost the fee paid by caller
+        uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        (success, returnData) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.flashLoan.selector,
+                IERC3156FlashBorrower(address(actor)),
+                address(eBTCToken),
+                _amount,
+                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
+                abi.encodePacked("")
+            )
+        );
+
+        if (success) {
+            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+    }
 
     function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
         actor = actors[msg.sender];
@@ -656,22 +648,26 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
-
         _after(bytes32(0));
 
-        bytes32 _cdpId = abi.decode(returnData, (bytes32));
-
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-        assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
-        assertWithMsg(cdpManager.getCdpIdsCount() > 0, "CDPs count must have increased");
+        if (success) {
+            bytes32 _cdpId = abi.decode(returnData, (bytes32));
+
+            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
+            );
+            assertEq(
+                vars.sortedCdpsSizeBefore + 1,
+                vars.sortedCdpsSizeAfter,
+                "CDPs count must have increased"
+            );
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
     }
 
     function addColl(uint _coll, uint256 _i) external log {
@@ -726,16 +722,17 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            assertWithMsg(
+                vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
+                BO_03
+            );
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
 
-        _after(_cdpId);
-
-        assertWithMsg(
-            vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
-            BO_03
-        );
         assertGte(
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
@@ -778,11 +775,13 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        _after(_cdpId);
 
         // TODO fix this breaking invariant and remove comments
         // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
@@ -792,7 +791,6 @@ contract EchidnaTester is
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
-        assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
     }
 
     function withdrawEBTC(uint _amount, uint256 _i) external {
@@ -825,11 +823,18 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            assertGe(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+            assertEq(
+                vars.actorEbtcAfter,
+                vars.actorEbtcBefore + _amount,
+                "withdrawEBTC must increase debt by requested amount"
+            );
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
-
-        _after(_cdpId);
 
         assertGte(
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
@@ -867,23 +872,24 @@ contract EchidnaTester is
             )
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            // TODO fix this breaking invariant and remove comments
+            // emit LogUint256("TCR before", vars.tcrBefore);
+            // emit LogUint256("TCR after", vars.tcrAfter);
+            // assertWithMsg(
+            //     vars.tcrAfter > vars.tcrBefore ||
+            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            //     "TCR must increase after a repayment"
+            // );
+
+            assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, BO_07);
+            assertEq(vars.actorEbtcBefore, vars.actorEbtcAfter - _amount, BO_07);
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
 
-        _after(_cdpId);
-
-        // TODO fix this breaking invariant and remove comments
-        // emit LogUint256("TCR before", vars.tcrBefore);
-        // emit LogUint256("TCR after", vars.tcrAfter);
-        // assertWithMsg(
-        //     vars.tcrAfter > vars.tcrBefore ||
-        //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-        //     "TCR must increase after a repayment"
-        // );
-
-        assertEq(vars.ebtcTotalSupplyAfter, vars.ebtcTotalSupplyBefore - _amount, BO_07);
-        assertEq(vars.actorEbtcBefore, vars.actorEbtcAfter - _amount, BO_07);
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
         assertGte(
@@ -913,92 +919,90 @@ contract EchidnaTester is
             abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
         );
 
-        if (!success) {
+        _after(_cdpId);
+
+        if (success) {
+            assertEq(
+                vars.sortedCdpsSizeBefore - 1,
+                vars.sortedCdpsSizeAfter,
+                "closeCdp reduces list size by 1"
+            );
+            assertGt(
+                vars.actorCollAfter,
+                vars.actorCollBefore,
+                "closeCdp increases the collateral balance of the user"
+            );
+            // TODO Update this invariant to consider possible fee split after rebase
+            // assertWithMsg(
+            //     // not exact due to rounding errors
+            //     isApproximateEq(
+            //         vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
+            //         vars.actorCollAfter,
+            //         0.01e18
+            //     ),
+            //     BO_05
+            // );
+        } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
 
-        _after(_cdpId);
-
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-        assertEq(
-            vars.sortedCdpsSizeBefore - 1,
-            vars.sortedCdpsSizeAfter,
-            "closeCdp reduces list size by 1"
-        );
-        assertGt(
-            vars.actorCollAfter,
-            vars.actorCollBefore,
-            "closeCdp increases the collateral balance of the user"
-        );
-        // TODO Update this invariant to consider possible fee split after rebase
-        // assertWithMsg(
-        //     // not exact due to rounding errors
-        //     isApproximateEq(
-        //         vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
-        //         vars.actorCollAfter,
-        //         0.01e18
-        //     ),
-        //     BO_05
-        // );
     }
 
-    // function adjustCdp(uint _collWithdrawal, uint _debtChange, bool _isDebtIncrease) internal {
-    //     actor = actors[msg.sender];
-    //     bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
-    //     require(_cdpId != bytes32(0), "!cdpId");
+    function adjustCdp(
+        uint _i,
+        uint _collWithdrawal,
+        uint _EBTCChange,
+        bool _isDebtIncrease
+    ) external log {
+        actor = actors[msg.sender];
 
-    //     (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
-    //     require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
+        bool success;
+        bytes memory returnData;
 
-    //     uint price = priceFeedTestnet.getPrice();
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
 
-    //     uint debtChange = _debtChange;
-    //     CDPChange memory _change;
-    //     if (_isDebtIncrease) {
-    //         _change = CDPChange(0, _collWithdrawal, _debtChange, 0);
-    //     } else {
-    //         // TODO can I change entire debt? remove -1
-    //         _debtChange = clampBetween(_debtChange, 0, entireDebt - 1);
-    //         _change = CDPChange(0, _collWithdrawal, 0, _debtChange);
-    //     }
-    //     // _ensureMCR(_cdpId, _change);
-    //     actor.proxy(
-    //         address(borrowerOperations),
-    //         abi.encodeWithSelector(
-    //             BorrowerOperations.adjustCdp.selector,
-    //             _cdpId,
-    //             _cdpId,
-    //             _collWithdrawal,
-    //             debtChange,
-    //             _isDebtIncrease,
-    //             _cdpId,
-    //             _cdpId
-    //         )
-    //     );
-    //     if (_collWithdrawal > 0 || _isDebtIncrease) {
-    //         assertWithMsg(invariant_GENERAL_01(cdpManager, priceFeedTestnet), GENERAL_01);
-    //         assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-    //     }
-    // }
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-    ///////////////////////////////////////////////////////
-    // EBTC Token
-    ///////////////////////////////////////////////////////
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        _collWithdrawal = clampBetween(_collWithdrawal, 0, entireColl);
+        _EBTCChange = clampBetween(_EBTCChange, 0, entireDebt);
 
-    // TODO evaluate if recipient should be any or should be one of actors
-    // function approveAndTransfer(address recipient, uint256 amount) internal returns (bool) {
-    //     actor = actors[msg.sender];
+        _before(_cdpId);
 
-    //     actor.proxy(
-    //         address(eBTCToken),
-    //         abi.encodeWithSelector(EBTCToken.approve.selector, recipient, amount)
-    //     );
-    //     actor.proxy(
-    //         address(eBTCToken),
-    //         abi.encodeWithSelector(EBTCToken.transfer.selector, recipient, amount)
-    //     );
-    // }
+        (success, returnData) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.adjustCdp.selector,
+                _cdpId,
+                _collWithdrawal,
+                _EBTCChange,
+                _isDebtIncrease,
+                _cdpId,
+                _cdpId
+            )
+        );
+
+        _after(_cdpId);
+
+        if (success) {
+            // TODO add assertions specific to successful adjustCdp
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
+        assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+    }
 
     ///////////////////////////////////////////////////////
     // Collateral Token (Test)
