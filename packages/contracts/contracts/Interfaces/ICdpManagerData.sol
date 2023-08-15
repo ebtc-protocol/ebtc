@@ -54,7 +54,7 @@ interface ICdpManagerData {
         CdpOperation operation
     );
     event BaseRateUpdated(uint _baseRate);
-    event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
+    event LastRedemptionFeeOperationTimestampUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
@@ -196,11 +196,11 @@ interface ICdpManagerData {
     // --- Variable container structs for redemptions ---
 
     struct RedemptionTotals {
-        uint remainingEBTC;
+        uint remainingEBTCToRedeem;
         uint totalEBTCToRedeem;
-        uint totalETHDrawn;
-        uint ETHFee;
-        uint ETHToSendToRedeemer;
+        uint totalStEthToSend;
+        uint stEthRedemptionFee;
+        uint stEthToSend;
         uint decayedBaseRate;
         uint price;
         uint totalEBTCSupplyAtStart;

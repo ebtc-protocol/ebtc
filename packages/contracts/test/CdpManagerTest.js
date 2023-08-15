@@ -2428,7 +2428,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const stEthRedemptionFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2449,10 +2449,10 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(stEthRedemptionFee))
     
     // console.log("*********************************************************************************")
-    // console.log("ETHFee: " + ETHFee)
+    // console.log("stEthRedemptionFee: " + stEthRedemptionFee)
     // console.log("dennis_ETHBalance_Before: " + dennis_ETHBalance_Before)
     // console.log("GAS_USED: " + th.gasUsed(redemptionTx))
     // console.log("dennis_ETHBalance_After: " + dennis_ETHBalance_After)
@@ -2522,7 +2522,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const stEthRedemptionFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2543,7 +2543,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(stEthRedemptionFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2606,7 +2606,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const stEthRedemptionFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2627,7 +2627,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(stEthRedemptionFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2697,7 +2697,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const stEthRedemptionFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2718,7 +2718,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(stEthRedemptionFee))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -3048,12 +3048,12 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const stEthRedemptionFee = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const carol_ETHBalance_After = toBN(await web3.eth.getBalance(carol))
 
     const expectedTotalCollDrawn = toBN(amount).div(price) // convert 100 EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(ETHFee)
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(stEthRedemptionFee)
 
     const receivedETH = carol_ETHBalance_After.sub(carol_ETHBalance_Before)
     assert.isTrue(expectedReceivedETH.eq(receivedETH))
@@ -3905,7 +3905,7 @@ contract('CdpManager', async accounts => {
     const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_1 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
     // 45 seconds pass
     th.fastForwardTime(45, web3.currentProvider)
@@ -3914,7 +3914,7 @@ contract('CdpManager', async accounts => {
     let _m = await cdpManager.minutesPassedSinceLastFeeOp();
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_2 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
     // Check that the last fee operation time did not update, as borrower A's 2nd redemption occured
     // since before minimum interval had passed 
@@ -3930,14 +3930,14 @@ contract('CdpManager', async accounts => {
     // Borrower A triggers a fee
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_3 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
     // Check that the last fee operation time DID update, as A's 2rd redemption occured
     // after minimum interval had passed 
     assert.isTrue(lastFeeOpTime_3.gt(lastFeeOpTime_1))
   })
 
-  it("redeemCollateral(): a redemption made at zero base rate send a non-zero ETHFee to FeeRecipient", async () => {
+  it("redeemCollateral(): a redemption made at zero base rate send a non-zero stEthRedemptionFee to FeeRecipient", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -4098,7 +4098,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
-  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - ETHFee) to the redeemer", async () => {
+  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - stEthRedemptionFee) to the redeemer", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -4784,20 +4784,20 @@ contract('CdpManager', async accounts => {
 	  
   })
   
-  it("CDPManager _updateLastFeeOpTime(): use elapsed minutes instead block.timestamp", async() => {
+  it("CDPManager _updateLastRedemptionFeeOperationTimestamp(): use elapsed minutes instead block.timestamp", async() => {
 	  
-      // advance to sometime later to update lastFeeOperationTime
+      // advance to sometime later to update lastRedemptionFeeOperationTimestamp
       await cdpManager.setLastFeeOpTimeToNow();
-      let _opLastBefore = await cdpManager.lastFeeOperationTime();
+      let _opLastBefore = await cdpManager.lastRedemptionFeeOperationTimestamp();
 	  
       let _minutes = 100
-      let _seconds = 12 // this should not be included in updated lastFeeOperationTime
+      let _seconds = 12 // this should not be included in updated lastRedemptionFeeOperationTimestamp
       await network.provider.send("evm_increaseTime", [_minutes * 60 + _seconds])
       await network.provider.send("evm_mine") 
 	  
       // update to elapsed minute
       await cdpManager.unprotectedUpdateLastFeeOpTime();
-      let _opLastAfter = await cdpManager.lastFeeOperationTime();
+      let _opLastAfter = await cdpManager.lastRedemptionFeeOperationTimestamp();
 	  
       // final check
       let _expectedTime = _opLastBefore.add(toBN(_minutes * 60))

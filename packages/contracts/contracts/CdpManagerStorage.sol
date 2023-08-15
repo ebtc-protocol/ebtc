@@ -65,7 +65,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public stakingRewardSplit;
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
-    uint public lastFeeOperationTime;
+    uint public lastRedemptionFeeOperationTimestamp;
 
     mapping(bytes32 => Cdp) public Cdps;
 

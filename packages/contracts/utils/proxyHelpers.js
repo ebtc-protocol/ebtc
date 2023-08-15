@@ -239,8 +239,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('debtRedistributionIndex', user)
   }
 
-  async lastFeeOperationTime() {
-    return this.proxyFunction('lastFeeOperationTime', [])
+  async lastRedemptionFeeOperationTimestamp() {
+    return this.proxyFunction('lastRedemptionFeeOperationTimestamp', [])
   }
 
   async redeemCollateral(...params) {

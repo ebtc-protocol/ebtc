@@ -183,7 +183,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // No debt left in the Cdp, therefore the cdp gets closed
 
             address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
-            _redeemCloseCdp(_redeemColFromCdp._cdpId, 0, newColl, _borrower);
+            _closeCdpByRedemption(_redeemColFromCdp._cdpId, 0, newColl, _borrower);
             singleRedemption.fullRedemption = true;
 
             emit CdpUpdated(
@@ -249,7 +249,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
      * Any surplus stETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
-    function _redeemCloseCdp(
+    function _closeCdpByRedemption(
         bytes32 _cdpId, // TODO: Remove?
         uint _EBTC,
         uint _stEth,
@@ -291,41 +291,25 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return nextCdp == _sortedCdps.nonExistId() || getICR(nextCdp, _price) < MCR;
     }
 
-    /** 
-    redeems `_EBTCamount` of eBTC for stETH from the system. Decreases the caller’s eBTC balance, and sends them the corresponding amount of stETH. Executes successfully if the caller has sufficient eBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
-    */
-
-    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral
-     * from as many Cdps as are needed to fill the redemption
-     * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
-     *
-     * Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small.
-     * This can be easily avoided by
-     * splitting the total _amount in appropriate chunks and calling the function multiple times.
-     *
-     * Param `_maxIterations` can also be provided, so the loop through Cdps is capped
-     * (if it’s zero, it will be ignored).This makes it easier to
-     * avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough,
-     * without needing to know the “topology”
-     * of the cdp list. It also avoids the need to set the cap in stone in the contract,
-     * nor doing gas calculations, as both gas price and opcode costs can vary.
-     *
-     * All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left,
-     * therefore they will be closed.
-     * If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion
-     * could be anywhere in the list, therefore it requires a hint.
-     * A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption,
-     * and pass a hint for its position
-     * in the sortedCdps list along with the ICR value that the hint was found for.
-     *
-     * If another transaction modifies the list between calling getRedemptionHints()
-     * and passing the hints to redeemCollateral(), it is very likely that the last (partially)
-     * redeemed Cdp would end up with a different ICR than what the hint is for. In this case the
-     * redemption will stop after the last completely redeemed Cdp and the sender will keep the
-     * remaining EBTC amount, which they can attempt to redeem later.
+    /* 
+        @notice Redeems `_eBTCToRedeem` of eBTC for stETH collateral from the system. Decreases the caller’s eBTC balance, and sends them the corresponding amount of stETH. 
+        @notice Executes successfully if the caller has sufficient eBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. 
+        @notice The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
+        @notice Send _eBTCToRedeem EBTC to the system and redeem the corresponding amount of collateral from as many Cdps as are needed to fill the redemption request. 
+        @dev Applies pending state to a Cdp before reducing its debt and coll.
+        @dev Note that if _amount is very large, this function can run out of gas, specially if traversed cdps are small.
+        @dev This can be easily avoided by splitting the total _amount in appropriate chunks and calling the function multiple times.
+        @dev Param `_maxIterations` can also be provided, so the loop through Cdps is capped (if it’s zero, it will be ignored).
+        @dev This makes it easier to avoid OOG for the frontend, as only knowing approximately the average cost of an iteration is enough, without needing to know the “topology” of the cdp list. 
+        @dev It also avoids the need to set the cap in stone in the contract, nor doing gas calculations, as both gas price and opcode costs can vary.
+        @dev All Cdps that are redeemed from -- with the likely exception of the last one -- will end up with no debt left, therefore they will be closed.
+        @dev If the last Cdp does have some remaining debt, it has a finite ICR, and the reinsertion could be anywhere in the list, therefore it requires a hint.
+        @dev A frontend should use getRedemptionHints() to calculate what the ICR of this Cdp will be after redemption, and pass a hint for its position in the sortedCdps list along with the ICR value that the hint was found for.
+        @dev If another transaction modifies the list between calling getRedemptionHints() and passing the hints to redeemCollateral(), it is very likely that the last (partially) redeemed Cdp would end up with a different ICR than what the hint is for.
+        @dev In this case the redemption will stop after the last completely redeemed Cdp and the sender will keep the remaining EBTC amount, which they can attempt to redeem later.
      */
     function redeemCollateral(
-        uint _EBTCamount,
+        uint _eBTCToRedeem,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
@@ -342,16 +326,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         RedemptionTotals memory totals;
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
-        _requireAmountGreaterThanZero(_EBTCamount);
+        _requireAmountGreaterThanZero(_eBTCToRedeem);
 
         totals.totalEBTCSupplyAtStart = _getSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             msg.sender,
-            _EBTCamount,
+            _eBTCToRedeem,
             totals.totalEBTCSupplyAtStart
         );
 
-        totals.remainingEBTC = _EBTCamount;
+        totals.remainingEBTCToRedeem = _eBTCToRedeem;
         address currentBorrower;
         bytes32 _cId = _firstRedemptionHint;
 
@@ -375,7 +359,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _firstRedeemed = _cId;
         bytes32 _lastRedeemed = _cId;
         uint _fullRedeemed;
-        while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
+        while (
+            currentBorrower != address(0) && totals.remainingEBTCToRedeem > 0 && _maxIterations > 0
+        ) {
             _maxIterations--;
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
@@ -387,7 +373,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
                         _cId,
-                        totals.remainingEBTC,
+                        totals.remainingEBTCToRedeem,
                         totals.price,
                         _upperPartialRedemptionHint,
                         _lowerPartialRedemptionHint,
@@ -401,10 +387,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 if (singleRedemption.cancelledPartial) break;
 
                 totals.totalEBTCToRedeem = totals.totalEBTCToRedeem + singleRedemption.eBtcToRedeem;
-                totals.totalETHDrawn = totals.totalETHDrawn + singleRedemption.stEthToRecieve;
-
-                totals.remainingEBTC = totals.remainingEBTC - singleRedemption.eBtcToRedeem;
+                totals.totalStEthToSend = totals.totalStEthToSend + singleRedemption.stEthToRecieve;
+                totals.remainingEBTCToRedeem =
+                    totals.remainingEBTCToRedeem -
+                    singleRedemption.eBtcToRedeem;
                 currentBorrower = nextUserToCheck;
+
                 if (singleRedemption.fullRedemption) {
                     _lastRedeemed = _cId;
                     _fullRedeemed = _fullRedeemed + 1;
@@ -412,7 +400,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _cId = _nextId;
             }
         }
-        require(totals.totalETHDrawn > 0, "CdpManager: Unable to redeem any amount");
+        require(totals.totalStEthToSend > 0, "CdpManager: Unable to redeem any amount");
 
         // remove from sortedCdps
         if (_fullRedeemed == 1) {
@@ -429,19 +417,28 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
         // Use the saved total EBTC supply value, from before it was reduced by the redemption.
         _updateBaseRateFromRedemption(
-            totals.totalETHDrawn,
+            totals.totalStEthToSend,
             totals.price,
             totals.totalEBTCSupplyAtStart
         );
 
         // Calculate the ETH fee
-        totals.ETHFee = _getRedemptionFee(totals.totalETHDrawn);
+        totals.stEthRedemptionFee = _getRedemptionFee(totals.totalStEthToSend);
 
-        _requireUserAcceptsFee(totals.ETHFee, totals.totalETHDrawn, _maxFeePercentage);
+        _requireUserAcceptsFee(
+            totals.stEthRedemptionFee,
+            totals.totalStEthToSend,
+            _maxFeePercentage
+        );
 
-        totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
+        totals.stEthToSend = totals.totalStEthToSend - totals.stEthRedemptionFee;
 
-        emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
+        emit Redemption(
+            _eBTCToRedeem,
+            totals.totalEBTCToRedeem,
+            totals.totalStEthToSend,
+            totals.stEthRedemptionFee
+        );
 
         // Burn the total eBTC that is redeemed
         ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
@@ -450,10 +447,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         activePool.decreaseSystemDebt(totals.totalEBTCToRedeem);
 
         // Allocate the stETH fee to the FeeRecipient
-        activePool.allocateSystemCollSharesToFeeRecipient(totals.ETHFee);
+        activePool.allocateSystemCollSharesToFeeRecipient(totals.stEthRedemptionFee);
 
         // CEI: Send the stETH drawn to the redeemer
-        activePool.transferSystemCollShares(msg.sender, totals.ETHToSendToRedeemer);
+        activePool.transferSystemCollShares(msg.sender, totals.stEthToSend);
 
         // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
         // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
@@ -599,7 +596,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         baseRate = newBaseRate;
         emit BaseRateUpdated(newBaseRate);
 
-        _updateLastFeeOpTime();
+        _updateLastRedemptionFeeOperationTimestamp();
 
         return newBaseRate;
     }
@@ -654,22 +651,24 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         baseRate = decayedBaseRate;
         emit BaseRateUpdated(decayedBaseRate);
 
-        _updateLastFeeOpTime();
+        _updateLastRedemptionFeeOperationTimestamp();
     }
 
     // --- Internal fee functions ---
 
     // Update the last fee operation time only if time passed >= decay interval. This prevents base rate griefing.
-    function _updateLastFeeOpTime() internal {
-        uint timePassed = block.timestamp > lastFeeOperationTime
-            ? block.timestamp - lastFeeOperationTime
+    function _updateLastRedemptionFeeOperationTimestamp() internal {
+        uint timePassed = block.timestamp > lastRedemptionFeeOperationTimestamp
+            ? block.timestamp - lastRedemptionFeeOperationTimestamp
             : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
-            // Using the effective elapsed time that is consumed so far to update lastFeeOperationTime
+            // Using the effective elapsed time that is consumed so far to update lastRedemptionFeeOperationTimestamp
             // instead block.timestamp for consistency with _calcDecayedBaseRate()
-            lastFeeOperationTime += _minutesPassedSinceLastFeeOp() * SECONDS_IN_ONE_MINUTE;
-            emit LastFeeOpTimeUpdated(block.timestamp);
+            lastRedemptionFeeOperationTimestamp +=
+                _minutesPassedSinceLastFeeOp() *
+                SECONDS_IN_ONE_MINUTE;
+            emit LastRedemptionFeeOperationTimestampUpdated(block.timestamp);
         }
     }
 
@@ -682,8 +681,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
         return
-            block.timestamp > lastFeeOperationTime
-                ? ((block.timestamp - lastFeeOperationTime) / SECONDS_IN_ONE_MINUTE)
+            block.timestamp > lastRedemptionFeeOperationTimestamp
+                ? ((block.timestamp - lastRedemptionFeeOperationTimestamp) / SECONDS_IN_ONE_MINUTE)
                 : 0;
     }
 

@@ -63,7 +63,7 @@ contract CdpManagerTester is CdpManager {
         baseRate = _calcDecayedBaseRate();
         assert(baseRate >= 0 && baseRate <= DECIMAL_PRECISION);
 
-        _updateLastFeeOpTime();
+        _updateLastRedemptionFeeOperationTimestamp();
         return baseRate;
     }
 
@@ -72,11 +72,11 @@ contract CdpManagerTester is CdpManager {
     }
 
     function unprotectedUpdateLastFeeOpTime() external {
-        _updateLastFeeOpTime();
+        _updateLastRedemptionFeeOperationTimestamp();
     }
 
     function setLastFeeOpTimeToNow() external {
-        lastFeeOperationTime = block.timestamp;
+        lastRedemptionFeeOperationTimestamp = block.timestamp;
     }
 
     function getDecayedBaseRate() external view returns (uint) {

@@ -2886,12 +2886,12 @@ contract('BorrowerOperations', async accounts => {
       const baseRate_1 = await cdpManager.baseRate()
       assert.isTrue(baseRate_1.gt(toBN('0')))
 
-      const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
+      const lastFeeOpTime_1 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
       // Borrower D triggers a fee
       await openCdp({ extraEBTCAmount: toBN(dec(1, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: D } })
 
-      const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
+      const lastFeeOpTime_2 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
       // Check that the last fee operation time did not update, as borrower D's debt issuance occured
       // since before minimum interval had passed 
@@ -2907,7 +2907,7 @@ contract('BorrowerOperations', async accounts => {
       // Borrower E triggers a fee
       await openCdp({ extraEBTCAmount: toBN(dec(1, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: E } })
 
-      const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
+      const lastFeeOpTime_3 = await cdpManager.lastRedemptionFeeOperationTimestamp()
 
       // Check that the last fee operation time DID update, as borrower's debt issuance occured
       // after minimum interval had passed 

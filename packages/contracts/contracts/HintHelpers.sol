@@ -19,7 +19,7 @@ contract HintHelpers is LiquityBase {
     event CollateralAddressChanged(address _collTokenAddress);
 
     struct LocalVariables_getRedemptionHints {
-        uint remainingEbtcToRedeem;
+        uint remainingEBTCToRedeemToRedeem;
         uint minNetDebtInBTC;
         bytes32 currentCdpId;
         address currentCdpUser;
@@ -69,7 +69,7 @@ contract HintHelpers is LiquityBase {
     {
         LocalVariables_getRedemptionHints memory vars;
         {
-            vars.remainingEbtcToRedeem = _EBTCamount;
+            vars.remainingEBTCToRedeemToRedeem = _EBTCamount;
             vars.currentCdpId = sortedCdps.getLast();
             vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
 
@@ -91,7 +91,7 @@ contract HintHelpers is LiquityBase {
         unchecked {
             while (
                 vars.currentCdpUser != address(0) &&
-                vars.remainingEbtcToRedeem > 0 &&
+                vars.remainingEBTCToRedeemToRedeem > 0 &&
                 _maxIterations-- > 0
             ) {
                 // Apply pending debt
@@ -99,13 +99,12 @@ contract HintHelpers is LiquityBase {
                     cdpManager.getPendingDebtRedistribution(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
-                if (currentCdpDebt > vars.remainingEbtcToRedeem) {
-                    uint _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
-                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
-                        vars,
-                        currentCdpDebt,
-                        _price
-                    );
+                if (currentCdpDebt > vars.remainingEBTCToRedeemToRedeem) {
+                    uint _cachedEbtcToRedeem = vars.remainingEBTCToRedeemToRedeem;
+                    (
+                        partialRedemptionNewColl,
+                        partialRedemptionHintNICR
+                    ) = _calculateCdpStateAfterPartialRedemption(vars, currentCdpDebt, _price);
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
@@ -115,13 +114,15 @@ contract HintHelpers is LiquityBase {
                     ) {
                         partialRedemptionHintNICR = 0; //reset to 0 as there is no partial redemption in this case
                         partialRedemptionNewColl = 0;
-                        vars.remainingEbtcToRedeem = _cachedEbtcToRedeem;
+                        vars.remainingEBTCToRedeemToRedeem = _cachedEbtcToRedeem;
                     } else {
-                        vars.remainingEbtcToRedeem = 0;
+                        vars.remainingEBTCToRedeemToRedeem = 0;
                     }
                     break;
                 } else {
-                    vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - currentCdpDebt;
+                    vars.remainingEBTCToRedeemToRedeem =
+                        vars.remainingEBTCToRedeemToRedeem -
+                        currentCdpDebt;
                 }
 
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
@@ -129,7 +130,7 @@ contract HintHelpers is LiquityBase {
             }
         }
 
-        truncatedEBTCamount = _EBTCamount - vars.remainingEbtcToRedeem;
+        truncatedEBTCamount = _EBTCamount - vars.remainingEBTCToRedeemToRedeem;
     }
 
     /**
@@ -141,13 +142,16 @@ contract HintHelpers is LiquityBase {
      * @return newColl The new collateral amount after partial redemption.
      * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
      */
-    function _calculatePartialRedeem(
+    function _calculateCdpStateAfterPartialRedemption(
         LocalVariables_getRedemptionHints memory vars,
         uint currentCdpDebt,
         uint _price
     ) internal view returns (uint, uint) {
         // maxReemable = min(remainingToRedeem, currentDebt)
-        uint maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
+        uint maxRedeemableEBTC = LiquityMath._min(
+            vars.remainingEBTCToRedeemToRedeem,
+            currentCdpDebt
+        );
 
         uint newColl;
         uint _oldIndex = cdpManager.stEthIndex();
@@ -159,7 +163,7 @@ contract HintHelpers is LiquityBase {
             (, newColl, ) = cdpManager.getVirtualDebtAndColl(vars.currentCdpId);
         }
 
-        vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
+        vars.remainingEBTCToRedeemToRedeem = vars.remainingEBTCToRedeemToRedeem - maxRedeemableEBTC;
         uint collToReceive = collateral.getSharesByPooledEth(
             (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
         );
@@ -173,7 +177,7 @@ contract HintHelpers is LiquityBase {
 
     /**
      * @notice Get the collateral amount of a CDP after applying split fee.
-     * @dev This is an internal function used by _calculatePartialRedeem.
+     * @dev This is an internal function used by _calculateCdpStateAfterPartialRedemption.
      * @param _cdpId The identifier of the CDP.
      * @param _newIndex The new index after the split fee is applied.
      * @param _oldIndex The old index before the split fee is applied.
