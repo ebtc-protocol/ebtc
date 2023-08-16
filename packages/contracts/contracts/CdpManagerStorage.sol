@@ -168,6 +168,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         debtRedistributionIndex[_cdpId] = 0;
         stFeePerUnitcdp[_cdpId] = 0;
 
+        _removeStake(_cdpId);
+
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
 

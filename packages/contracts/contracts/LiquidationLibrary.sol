@@ -327,7 +327,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         (uint256 entireDebt, uint256 entireColl, ) = getVirtualDebtAndColl(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
-        _removeStake(_cdpId);
         uint _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
         if (_sequenceLiq) {
             _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByLiquidation);

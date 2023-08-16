@@ -477,8 +477,6 @@ contract BorrowerOperations is
         );
         _requireNewTCRisAboveCCR(newTCR);
 
-        cdpManager.removeStake(_cdpId);
-
         // We already verified msg.sender is the borrower
         cdpManager.closeCdp(_cdpId, msg.sender, debt, collShares);
 

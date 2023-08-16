@@ -235,7 +235,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) internal {
         uint _liquidatorRewardShares = Cdps[_cdpId].liquidatorRewardShares;
 
-        _removeStake(_cdpId);
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
