@@ -7,8 +7,6 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 contract WhaleSniperPOCTest is eBTCBaseFixture {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
-
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;
