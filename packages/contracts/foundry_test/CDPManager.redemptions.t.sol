@@ -33,6 +33,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         console.log("debt %s", debt);
 
+        // open 2 Cdps as we can't redeem the final one
+        _openTestCDP(user, 100 ether, 1 ether);
         _openTestCDP(user, 10000 ether, debt);
 
         vm.startPrank(user);
@@ -259,6 +261,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint debt = 2e17;
         user = _utils.getNextUserAddress();
         userCdpId = _openTestCDP(user, 10000 ether, debt);
+        _openTestCDP(user, 100 ether, 1 ether);
 
         vm.startPrank(user);
         eBTCToken.approve(address(cdpManager), type(uint256).max);

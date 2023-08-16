@@ -66,7 +66,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      */
 
     function getActiveCdpsCount() external view override returns (uint) {
-        return sortedCdps.getSize();
+        require(CdpIds.length == sortedCdps.getSize(), "active cdp count size mismatch");
+        return CdpIds.length;
     }
 
     /**
@@ -401,6 +402,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             );
             sortedCdps.batchRemove(_toRemoveIds);
         }
+
+        _requireMoreThanOneCdpInSystem(CdpIds.length);
 
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
         // Use the saved total EBTC supply value, from before it was reduced by the redemption.

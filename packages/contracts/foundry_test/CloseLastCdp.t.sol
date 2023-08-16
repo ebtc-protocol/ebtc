@@ -24,14 +24,18 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
         // open one CDP
         bytes32 userCdpId = _openTestCDP(user, OPEN_COLL_SHARES, OPEN_DEBT);
 
+        vm.prank(user);
+        eBTCToken.transfer(marketActor, OPEN_DEBT);
+
         // make redemptions available
         vm.warp(3 weeks);
 
         // expect revert on close
+        assertTrue(eBTCToken.balanceOf(marketActor) >= OPEN_DEBT);
         vm.prank(marketActor);
         vm.expectRevert("CdpManager: Only one cdp in the system");
         cdpManager.redeemCollateral(
-            cdpManager.getCdpDebt(userCdpId),
+            OPEN_DEBT,
             bytes32(0),
             bytes32(0),
             bytes32(0),
@@ -39,6 +43,8 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
             0,
             DECIMAL_PRECISION
         );
+
+        assertTrue(cdpManager.getActiveCdpsCount() == 1);
 
         _ensureSystemInvariants();
     }
@@ -95,14 +101,18 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
         borrowerOperations.closeCdp(afterId);
         vm.stopPrank();
 
+        vm.prank(user);
+        eBTCToken.transfer(marketActor, OPEN_DEBT);
+
         // make redemptions available
         vm.warp(3 weeks);
 
         // expect revert on close
+        assertTrue(eBTCToken.balanceOf(marketActor) >= OPEN_DEBT);
         vm.prank(marketActor);
         vm.expectRevert("CdpManager: Only one cdp in the system");
         cdpManager.redeemCollateral(
-            cdpManager.getCdpDebt(userCdpId),
+            OPEN_DEBT,
             bytes32(0),
             bytes32(0),
             bytes32(0),
@@ -111,6 +121,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
             DECIMAL_PRECISION
         );
 
+        assertTrue(cdpManager.getActiveCdpsCount() == 1);
         _ensureSystemInvariants();
     }
 
