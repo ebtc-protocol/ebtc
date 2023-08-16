@@ -439,7 +439,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         assertTrue(_liquidatorRewardShares == 0);
         assertTrue(_status == expectedStatus);
 
-        assertTrue(cdpManager.rewardSnapshots(cdpId) == 0);
+        assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
         assertTrue(cdpManager.stFeePerUnitcdp(cdpId) == 0);
     }
 
