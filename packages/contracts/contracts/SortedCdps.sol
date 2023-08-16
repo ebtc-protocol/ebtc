@@ -35,7 +35,7 @@ import {IBorrowerOperations} from "./Interfaces/IBorrowerOperations.sol";
  * - Keys have been removed from nodes
  *
  * - Ordering checks for insertion are performed by comparing an NICR argument to the current NICR, calculated at runtime.
- *   The list relies on the property that ordering by ICR is maintained as the ETH:USD price varies.
+ *   The list relies on the property that ordering by ICR is maintained as the stETH:BTC price varies.
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
@@ -200,16 +200,16 @@ contract SortedCdps is ISortedCdps {
         return userCdps;
     }
 
-    function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
+    function cdpOfOwnerByIndex(address owner, uint256 index) external view override returns (bytes32) {
         return _cdpOfOwnerByIndex(owner, index, bytes32(0), 0);
     }
 
-    function cdpCountOf(address owner) public view override returns (uint256) {
+    function cdpCountOf(address owner) external view override returns (uint256) {
         return _cdpCountOf(owner, bytes32(0), 0);
     }
 
     // Returns array of all user owned CDPs
-    function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
+    function getCdpsOf(address owner) external view override returns (bytes32[] memory) {
         // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
         uint _ownedCount = _cdpCountOf(owner, bytes32(0), 0);
