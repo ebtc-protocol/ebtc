@@ -63,16 +63,4 @@ interface ISortedCdps {
     function getCdpsOf(address owner) external view returns (bytes32[] memory);
 
     function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
-
-    // Mapping from cdp owner to list of owned cdp IDs
-    // mapping(address => mapping(uint256 => bytes32)) public _ownedCdps;
-    function _ownedCdps(address, uint256) external view returns (bytes32);
-
-    // Mapping from cdp ID to index within owner cdp list
-    // mapping(bytes32 => uint256) public _ownedCdpIndex;
-    function _ownedCdpIndex(bytes32) external view returns (uint256);
-
-    // Mapping from cdp owner to its owned cdps count
-    // mapping(address => uint256) public _ownedCount;
-    function _ownedCount(address) external view returns (uint256);
 }

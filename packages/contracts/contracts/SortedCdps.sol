@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.17;
 
-import "./Interfaces/ISortedCdps.sol";
-import "./Interfaces/ICdpManager.sol";
-import "./Interfaces/IBorrowerOperations.sol";
+import {ISortedCdps} from "./Interfaces/ISortedCdps.sol";
+import {ICdpManager} from "./Interfaces/ICdpManager.sol";
+import {IBorrowerOperations} from "./Interfaces/IBorrowerOperations.sol";
 
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
@@ -67,19 +67,9 @@ contract SortedCdps is ISortedCdps {
 
     Data public data;
 
-    mapping(bytes32 => address) public cdpOwners;
     uint256 public nextCdpNonce;
     bytes32 public constant dummyId =
         0x0000000000000000000000000000000000000000000000000000000000000000;
-
-    // Mapping from cdp owner to list of owned cdp IDs
-    mapping(address => mapping(uint256 => bytes32)) public override _ownedCdps;
-
-    // Mapping from cdp ID to index within owner cdp list
-    mapping(bytes32 => uint256) public override _ownedCdpIndex;
-
-    // Mapping from cdp owner to its owned cdps count
-    mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
     constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
@@ -134,22 +124,68 @@ contract SortedCdps is ISortedCdps {
     }
 
     function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
-        require(index < _ownedCount[owner], "SortedCdps: index exceeds owned count of owner");
-        return _ownedCdps[owner][index];
+        bytes32 _currentCdpId = data.tail;
+        uint _currentIndex = 0;
+
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                // if the current index of the owner Cdp matches specified index
+                if (_currentIndex == index) {
+                    return _currentCdpId;
+                } else {
+                    // if not, increment the owner index as we've seen a Cdp owned by them
+                    _currentIndex = _currentIndex + 1;
+                }
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
+        }
+
+        // if we reach end without seeing the specified index for the owner, a Cdp of that index doesn't exist (they have fewer active Cdps than that)
+        revert("SortedCdps: index exceeds owned count of owner");
     }
 
     function cdpCountOf(address owner) public view override returns (uint256) {
-        return _ownedCount[owner];
+        // walk the list, until we get to the index
+        bytes32 _currentCdpId = data.tail;
+        uint _ownedCount = 0;
+
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                _ownedCount = _ownedCount + 1;
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
+        }
+        return _ownedCount;
     }
 
     // Returns array of all user owned CDPs
     function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
-        uint countOfCdps = _ownedCount[owner];
-        bytes32[] memory cdps = new bytes32[](countOfCdps);
-        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
-            cdps[cdpIx] = _ownedCdps[owner][cdpIx];
+        // Two-pass strategy, halving the amount of Cdps we can process before relying on pagination or off-chain methods
+        uint _ownedCount = cdpCountOf(owner);
+        bytes32[] memory userCdps = new bytes32[](_ownedCount);
+        uint i = 0;
+
+        // walk the list, until we get to the index
+        bytes32 _currentCdpId = data.tail;
+
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                userCdps[i] = _currentCdpId;
+                i++;
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
         }
-        return cdps;
+
+        return userCdps;
     }
 
     /*
@@ -175,8 +211,6 @@ contract SortedCdps is ISortedCdps {
             ++nextCdpNonce;
         }
 
-        cdpOwners[_id] = owner;
-        _addCdpToOwnerEnumeration(owner, _id);
         return _id;
     }
 
@@ -228,10 +262,6 @@ contract SortedCdps is ISortedCdps {
     function remove(bytes32 _id) external override {
         _requireCallerIsCdpManager();
         _remove(_id);
-
-        address _owner = cdpOwners[_id];
-        _removeCdpFromOwnerEnumeration(_owner, _id);
-        delete cdpOwners[_id];
     }
 
     function batchRemove(bytes32[] memory _ids) external override {
@@ -265,8 +295,6 @@ contract SortedCdps is ISortedCdps {
 
         // delete node & owner storages to get gas refund
         for (uint i = 0; i < _len; ++i) {
-            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
-            delete cdpOwners[_ids[i]];
             delete data.nodes[_ids[i]];
             emit NodeRemoved(_ids[i]);
         }
@@ -337,39 +365,6 @@ contract SortedCdps is ISortedCdps {
         _remove(_id);
 
         _insert(_id, _newNICR, _prevId, _nextId);
-    }
-
-    /**
-     * @dev Private function to add a cdp to ownership-tracking data structures.
-     * @param to address representing the owner of the given cdp ID
-     * @param cdpId bytes32 ID of the cdp to be added to the owned list of the given owner
-     */
-    function _addCdpToOwnerEnumeration(address to, bytes32 cdpId) private {
-        uint256 length = _ownedCount[to];
-        _ownedCdps[to][length] = cdpId;
-        _ownedCdpIndex[cdpId] = length;
-        _ownedCount[to] = length + 1;
-    }
-
-    /**
-     * @dev Private function to remove a cdp from ownership-tracking data structures.
-     * This has O(1) time complexity, but alters the ordering within the _ownedCdps.
-     * @param from address representing the owner of the given cdp ID
-     * @param cdpId bytes32 ID of the cdp to be removed from the owned list of the given owner
-     */
-    function _removeCdpFromOwnerEnumeration(address from, bytes32 cdpId) private {
-        uint256 lastCdpIndex = _ownedCount[from] - 1;
-        uint256 cdpIndex = _ownedCdpIndex[cdpId];
-
-        if (cdpIndex != lastCdpIndex) {
-            bytes32 lastCdpId = _ownedCdps[from][lastCdpIndex];
-            _ownedCdps[from][cdpIndex] = lastCdpId; // Move the last cdp to the slot of the to-delete cdp
-            _ownedCdpIndex[lastCdpId] = cdpIndex; // Update the moved cdp's index
-        }
-
-        delete _ownedCdpIndex[cdpId];
-        delete _ownedCdps[from][lastCdpIndex];
-        _ownedCount[from] = lastCdpIndex;
     }
 
     /**
