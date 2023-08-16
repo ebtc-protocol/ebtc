@@ -426,6 +426,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         storedIndex = cdpManager.stFPPSg();
     }
 
+    /// @dev Ensure data fields for Cdp are in expected post-close state
     function _assertCdpClosed(bytes32 cdpId, uint expectedStatus) internal {
         (uint _debt, uint _coll, uint _stake, uint _liquidatorRewardShares, , ) = cdpManager.Cdps(
             cdpId
