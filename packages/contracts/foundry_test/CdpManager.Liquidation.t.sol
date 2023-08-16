@@ -8,7 +8,6 @@ import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
     mapping(bytes32 => bool) private _cdpLeftActive;
 
     ////////////////////////////////////////////////////////////////////////////

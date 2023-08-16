@@ -7,8 +7,6 @@ import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
-
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;

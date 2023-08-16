@@ -31,6 +31,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     // TODO: Modify these constants to increase/decrease amount of users
     uint internal constant AMOUNT_OF_USERS = 100;
     uint internal constant AMOUNT_OF_CDPS = 3;
+    uint internal DECIMAL_PRECISION = 1e18;
 
     uint internal constant MAX_BPS = 10000;
 
