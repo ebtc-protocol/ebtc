@@ -72,6 +72,48 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         withdrawColl(186970840931894992, 1379465742659455);
     }
 
+    function testGetRedemptionMustSatisfyAccountingEquation() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(313025303777237127496675, 1);
+        openCdp(
+            3352225288317311202032007496640886572550824479399475529334293962347630660369,
+            130881814726979393
+        );
+        setEthPerShare(0);
+
+        uint256 activePoolCollBefore = activePool.getStEthColl();
+        uint256 collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        uint256 debtBefore = activePool.getEBTCDebt();
+        uint256 priceBefore = priceFeedMock.getPrice();
+
+        redeemCollateral(1, 0, 0);
+
+        uint256 activePoolCollAfter = activePool.getStEthColl();
+        uint256 collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        uint256 debtAfter = activePool.getEBTCDebt();
+        uint256 priceAfter = priceFeedMock.getPrice();
+
+        uint256 beforeEquity = (activePoolCollBefore + collSurplusPoolBefore) *
+            priceBefore -
+            debtBefore;
+        uint256 afterEquity = (activePoolCollAfter + collSurplusPoolAfter) * priceAfter - debtAfter;
+    }
+
+    function testGetLiquidateCdpsRequirement() public {
+        setPrice(3264556868619879573026084322651197177268672182083607397683096094371498037850);
+        openCdp(69652862183452624822016556040736808781, 1);
+        setPrice(35214457645965492516898328250219169724615509157237329333267235674754740177);
+        setEthPerShare(0);
+        setPrice(0);
+        openCdp(
+            25680956500934176239642042885176745386278813810605282339941673502986668712,
+            703271415273598548
+        );
+        setPrice(697741474626659514621642131614254585334739556886403282679043574150546445);
+        setEthPerShare(0);
+        liquidateCdps(2252467458);
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -92,7 +134,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         collateral.setEthPerShare(_newEthPerShare);
     }
 
-    function setPrice(uint256 _newPrice) external {
+    function setPrice(uint256 _newPrice) internal {
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
@@ -202,5 +244,12 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
             0,
             _maxFeePercentage
         );
+    }
+
+    function liquidateCdps(uint _n) internal {
+        _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
+
+        console2.log("liquidateCdps", _n);
+        cdpManager.liquidateCdps(_n);
     }
 }
