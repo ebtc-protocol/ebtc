@@ -200,7 +200,10 @@ contract SortedCdps is ISortedCdps {
         return userCdps;
     }
 
-    function cdpOfOwnerByIndex(address owner, uint256 index) external view override returns (bytes32) {
+    function cdpOfOwnerByIndex(
+        address owner,
+        uint256 index
+    ) external view override returns (bytes32) {
         return _cdpOfOwnerByIndex(owner, index, bytes32(0), 0);
     }
 

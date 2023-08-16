@@ -118,7 +118,7 @@ contract('CollSurplusPool', async accounts => {
   })
 
   it('CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager', async () => {
-    await th.assertRevert(collSurplusPool.setSurplusCollSharesFor(A, 1), 'CollSurplusPool: Caller is not CdpManager')
+    await th.assertRevert(collSurplusPool.increaseSurplusCollSharesFor(A, 1), 'CollSurplusPool: Caller is not CdpManager')
   })  
 	  
     it('sweepToken(): move unprotected token to fee recipient', async () => {

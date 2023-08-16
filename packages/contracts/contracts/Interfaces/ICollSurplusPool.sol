@@ -5,8 +5,8 @@ pragma solidity 0.8.17;
 interface ICollSurplusPool {
     // --- Events ---
 
-    event CollBalanceUpdated(address indexed _account, uint _newBalance);
-    event CollateralSent(address _to, uint _amount);
+    event SurplusCollSharesUpdated(address indexed _account, uint _newBalance);
+    event SurpluseCollSharesSent(address _to, uint _amount);
 
     event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
 
@@ -16,7 +16,7 @@ interface ICollSurplusPool {
 
     function getSurplusCollSharesFor(address _account) external view returns (uint);
 
-    function setSurplusCollSharesFor(address _account, uint _amount) external;
+    function increaseSurplusCollSharesFor(address _account, uint _amount) external;
 
     function claimSurplusCollShares(address _account) external;
 

@@ -73,13 +73,13 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     // --- Pool functionality ---
 
-    function setSurplusCollSharesFor(address _account, uint _collShares) external override {
+    function increaseSurplusCollSharesFor(address _account, uint _collShares) external override {
         _requireCallerIsCdpManager();
 
         uint newAmount = surplusCollSharesFor[_account] + _collShares;
         surplusCollSharesFor[_account] = newAmount;
 
-        emit CollBalanceUpdated(_account, newAmount);
+        emit SurplusCollSharesUpdated(_account, newAmount);
     }
 
     function claimSurplusCollShares(address _account) external override {
@@ -88,11 +88,11 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(claimableColl > 0, "CollSurplusPool: No collateral available to claim");
 
         surplusCollSharesFor[_account] = 0;
-        emit CollBalanceUpdated(_account, 0);
+        emit SurplusCollSharesUpdated(_account, 0);
 
         require(totalSurplusCollShares >= claimableColl, "!CollSurplusPoolBal");
         totalSurplusCollShares = totalSurplusCollShares - claimableColl;
-        emit CollateralSent(_account, claimableColl);
+        emit SurpluseCollSharesSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferShares(_account, claimableColl);

@@ -283,7 +283,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 true
             );
             if (_collSurplus > 0) {
-                collSurplusPool.setSurplusCollSharesFor(_borrower, _collSurplus);
+                collSurplusPool.increaseSurplusCollSharesFor(_borrower, _collSurplus);
                 _recoveryState.totalColSurplus = _recoveryState.totalColSurplus + _collSurplus;
             }
             if (_debtToRedistribute > 0) {
