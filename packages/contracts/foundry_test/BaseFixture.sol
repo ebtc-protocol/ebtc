@@ -425,4 +425,36 @@ contract eBTCBaseFixture is Test, BytecodeReader {
 
         storedIndex = cdpManager.stEthIndex();
     }
+
+    /// @dev Ensure data fields for Cdp are in expected post-close state
+    function _assertCdpClosed(bytes32 cdpId, uint expectedStatus) internal {
+        (uint _debt, uint _coll, uint _stake, uint _liquidatorRewardShares, , ) = cdpManager.Cdps(
+            cdpId
+        );
+        uint _status = cdpManager.getCdpStatus(cdpId);
+
+        assertTrue(_debt == 0);
+        assertTrue(_coll == 0);
+        assertTrue(_stake == 0);
+        assertTrue(_liquidatorRewardShares == 0);
+        assertTrue(_status == expectedStatus);
+
+        assertTrue(cdpManager.rewardSnapshots(cdpId) == 0);
+        assertTrue(cdpManager.stFeePerUnitcdp(cdpId) == 0);
+    }
+
+    /// @dev Ensure a given CdpId is not in the Sorted Cdps LL.
+    /// @dev a Cdp should only be present in the LL when it is active.
+    function _assertCdpNotInSortedCdps(bytes32 cdpId) internal {
+        // use stated O(1) method to see if node with given Id is presnt
+        assertTrue(sortedCdps.contains(cdpId) == false);
+
+        // validate by walking list
+        bytes32 _currentCdpId = sortedCdps.getLast();
+
+        while (_currentCdpId != sortedCdps.nonExistId()) {
+            assertTrue(_currentCdpId != cdpId);
+            _currentCdpId = sortedCdps.getPrev(_currentCdpId);
+        }
+    }
 }

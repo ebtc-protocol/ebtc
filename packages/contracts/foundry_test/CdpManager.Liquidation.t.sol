@@ -237,6 +237,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             if (_fully) {
                 assertFalse(sortedCdps.contains(cdpId1));
                 assertTrue(cdpManager.getCdpStatus(cdpId1) == 3);
+
+                _assertCdpClosed(cdpId1, 3);
+                _assertCdpNotInSortedCdps(cdpId1);
             } else {
                 assertTrue(sortedCdps.contains(cdpId1));
                 assertTrue(cdpManager.getCdpStatus(cdpId1) == 1);
