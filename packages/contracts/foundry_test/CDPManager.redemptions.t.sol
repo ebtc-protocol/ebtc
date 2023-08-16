@@ -150,7 +150,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // post checks
         require(_debtBalAfter + _redeemDebt == _debtBalBefore, "!redemption debt reduction");
         for (uint i = 0; i < _redeemNumber; ++i) {
-            require(cdpManager.getCdpStatus(_cdpIds[i]) == 4, "redemption leave CDP not closed!");
+            require(
+                cdpManager.getCdpStatus(_cdpIds[i]) == 4,
+                "redemption leaves CDP not closed with correct status"
+            );
+            _assertCdpClosed(_cdpIds[i], 4);
+            _assertCdpNotInSortedCdps(_cdpIds[i]);
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             require(
                 collSurplusPool.getCollateral(_owner) > cdpManager.LIQUIDATOR_REWARD(),
