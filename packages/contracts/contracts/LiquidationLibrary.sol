@@ -590,7 +590,6 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     function _batchLiquidate(bool _sequenceLiq, bytes32[] memory _cdps, uint _n) internal {
-        LocalVariables_OuterLiquidationFunction memory vars;
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
