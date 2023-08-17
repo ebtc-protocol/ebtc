@@ -75,7 +75,7 @@ abstract contract PropertiesDescriptions {
 
     string constant L_01 =
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
-    string constant L_12 = "L-12: TCR must increase after a liquidation";
+    string constant L_12 = "L-12: TCR must increase after a liquidation with no redistributions";
 
     ///////////////////////////////////////////////////////
     // eBTC

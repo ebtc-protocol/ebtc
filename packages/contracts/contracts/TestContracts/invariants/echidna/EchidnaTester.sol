@@ -29,9 +29,9 @@ import "./EchidnaBeforeAfter.sol";
 import "./EchidnaAssertionHelper.sol";
 
 // Run with:
-// cd <your-path-to-ebtc-repo-root>
-// rm -f packages/contracts/fuzzTests/corpus/* # (optional)
-// echidna packages/contracts/contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config packages/contracts/fuzzTests/echidna_config.yaml
+// cd <your-path-to-ebtc-repo-root>/packages/contracts
+// rm -f fuzzTests/corpus/* # (optional)
+// echidna contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml
 contract EchidnaTester is
     EchidnaBeforeAfter,
     EchidnaProperties,
@@ -369,12 +369,10 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            // assertWithMsg(
-            //     vars.tcrAfter > vars.tcrBefore ||
-            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            //     L_12
-            // );
+            if (vars.icrBefore < 1e18) {
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+            }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
@@ -419,12 +417,10 @@ contract EchidnaTester is
             (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
 
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            // assertWithMsg(
-            //     vars.tcrAfter > vars.tcrBefore ||
-            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            //     L_12
-            // );
+            if (vars.icrBefore < 1e18) {
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+            }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
@@ -475,20 +471,22 @@ contract EchidnaTester is
                 _n,
                 "liquidateCdps must not liquidate more than n CDPs"
             );
+            uint256 minIcrBefore = type(uint256).max;
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-                bool rv = cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                    (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore);
-                emit LogUint256("icr", cdpsLiquidated[i].icr);
-                emit LogUint256(" RM", vars.isRecoveryModeBefore ? 1 : 0);
-                emit LogUint256(" rv", rv ? 1 : 0);
-                assertWithMsg(rv, L_01);
+                assertWithMsg(
+                    cdpsLiquidated[i].icr < cdpManager.MCR() ||
+                        (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                    L_01
+                );
+                if (cdpsLiquidated[i].icr < minIcrBefore) {
+                    minIcrBefore = cdpsLiquidated[i].icr;
+                }
             }
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            // assertWithMsg(
-            //     vars.tcrAfter > vars.tcrBefore ||
-            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            //     L_12
-            // );
+
+            if (minIcrBefore < 1e18) {
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+            }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             bool atLeastOneCdpIsLiquidatable = false;
             for (uint256 i = 0; i < cdpsBefore.length; ++i) {
