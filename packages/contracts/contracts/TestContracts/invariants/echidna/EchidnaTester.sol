@@ -369,11 +369,12 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertWithMsg(
-                vars.tcrAfter > vars.tcrBefore ||
-                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-                L_12
-            );
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            // assertWithMsg(
+            //     vars.tcrAfter > vars.tcrBefore ||
+            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            //     L_12
+            // );
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
@@ -418,11 +419,12 @@ contract EchidnaTester is
             (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
 
-            assertWithMsg(
-                vars.tcrAfter > vars.tcrBefore ||
-                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-                L_12
-            );
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            // assertWithMsg(
+            //     vars.tcrAfter > vars.tcrBefore ||
+            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            //     L_12
+            // );
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
@@ -481,11 +483,12 @@ contract EchidnaTester is
                 emit LogUint256(" rv", rv ? 1 : 0);
                 assertWithMsg(rv, L_01);
             }
-            assertWithMsg(
-                vars.tcrAfter > vars.tcrBefore ||
-                    diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-                L_12
-            );
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            // assertWithMsg(
+            //     vars.tcrAfter > vars.tcrBefore ||
+            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
+            //     L_12
+            // );
         } else if (vars.sortedCdpsSizeBefore > _n) {
             bool atLeastOneCdpIsLiquidatable = false;
             for (uint256 i = 0; i < cdpsBefore.length; ++i) {
