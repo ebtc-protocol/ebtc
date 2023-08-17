@@ -66,6 +66,86 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         openCdp(0, 1);
     }
 
+    function testTCRMustIncreaseAfterLiquidation() public {
+        // setEthPerShare 982343204100130190
+        // openCdp 2200000000000000016 1
+        // withdrawColl 1640157506641381371 0
+        // openCdp 2232664843905093514 132673875684216277
+        // setEthPerShare 893039276454663809
+        // setEthPerShare 820056407903603577
+        // setEthPerShare 745505825366912342
+        // liquidateCdps 1
+
+        vm.stopPrank();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 100 ether}();
+
+        collateral.setEthPerShare(982343204100130190);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, 2200000000000000016);
+        console2.log("cdpId");
+        console2.logBytes32(_cdpId);
+        borrowerOperations.withdrawColl(_cdpId, 1640157506641381371, _cdpId, _cdpId); // NOTE: THIS IS AN ILLEGAL MOVE // NOTE: Changing order is irrelevant, it's not a ordering issue
+        bytes32 secondCdpId = borrowerOperations.openCdp(132673875684216277, HINT, HINT, 2232664843905093514);
+
+        console2.log("Cdp Ordering afrer open - first - last");
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR FIRST", cdpManager.getNominalICR(sortedCdps.getFirst()));
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR LAST", cdpManager.getNominalICR(sortedCdps.getLast()));
+
+        console2.log("secondCdpId");
+        console2.logBytes32(secondCdpId);
+        collateral.setEthPerShare(893039276454663809);
+        collateral.setEthPerShare(820056407903603577);
+        collateral.setEthPerShare(745505825366912342);
+
+        cdpManager.applyPendingGlobalState();
+        uint256 _price = priceFeedMock.getPrice();
+
+        uint256 tcrBeforeAnyLocal = cdpManager.getTCR(_price);
+        console2.log("tcrBeforeAnyLocal", tcrBeforeAnyLocal);
+
+        // Log the details of both CDPs
+        console2.log("First CDP CR", cdpManager.getCurrentICR(_cdpId, _price));
+        console2.log("Second CDP CR", cdpManager.getCurrentICR(secondCdpId, _price));
+
+        // Prank BO for local
+        vm.stopPrank();
+        vm.startPrank(address(borrowerOperations));
+        cdpManager.applyPendingState(_cdpId);
+        cdpManager.applyPendingState(secondCdpId);
+        console2.log("AFTER First CDP CR", cdpManager.getCurrentICR(_cdpId, _price));
+        console2.log("AFTER Second CDP CR", cdpManager.getCurrentICR(secondCdpId, _price));
+        // Resume prank
+        vm.stopPrank();
+        vm.startPrank(user);
+
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+        console2.log("before", tcrBefore);
+
+        console2.log("Cdp Ordering before liquidation - First - Last");
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR FIRST", cdpManager.getNominalICR(sortedCdps.getFirst()));
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR LAST", cdpManager.getNominalICR(sortedCdps.getLast()));
+
+        cdpManager.liquidateCdps(1);
+
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+        console2.log("after", tcrAfter);
+
+        assertGt(tcrAfter, tcrBefore, L_12);
+        vm.stopPrank();
+
+        console2.log("Cdp Ordering at end");
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR FIRST", cdpManager.getNominalICR(sortedCdps.getFirst()));
+        console2.logBytes32(sortedCdps.getFirst());
+        console2.log("NICR LAST", cdpManager.getNominalICR(sortedCdps.getLast()));
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -98,7 +178,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         priceFeedMock.setPrice(_newPrice);
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) internal {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) internal returns (bytes32) {
         uint price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * CCR) / (price);
@@ -111,7 +191,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         collateral.approve(address(borrowerOperations), _col);
 
         console2.log("openCdp", _col, _EBTCAmount);
-        borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
+        bytes32 id = borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
+        return id;
     }
 
     function addColl(uint _coll, uint256 _i) internal {
