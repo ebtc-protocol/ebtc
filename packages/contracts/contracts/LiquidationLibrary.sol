@@ -71,30 +71,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
 
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
-        // LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
-        //     _cdpId,
-        //     _partialAmount,
-        //     _price,
-        //     _ICR,
-        //     _upperPartialHint,
-        //     _lowerPartialHint,
-        //     (_recoveryModeAtStart),
-        //     _TCR,
-        //     0,
-        //     0,
-        //     0,
-        //     0,
-        //     0,
-        //     false
-        // );
-
-        /**
-            _partialAmount
-            _upperPartialHint
-            _lowerPartialHint
-            _recoveryModeAtStart
-            _TCR is never used
-         */
 
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
