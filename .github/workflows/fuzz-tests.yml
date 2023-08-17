@@ -1,0 +1,21 @@
+name: Fuzz tests
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - packages/contracts/contracts/**
+
+
+jobs:
+  fuzz-tests:
+    name: Run fuzz tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create job 
+        run: |
+          curl -XPOST -H 'Content-Type: application/json'  \
+          -H 'x-api-key: ${{ secrets.FUZZY_FYI_API_KEY }}' \
+          https://app.fuzzy.fyi/api/job --data             \
+          '{"templateId":"76285270-e5f3-47ee-9435-945e6510baf5","ref":"${{ github.head_ref || github.ref_name }}","pullRequestNumber":"${{ github.event.number }}"}'
