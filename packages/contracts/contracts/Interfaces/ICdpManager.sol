@@ -43,8 +43,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function closeCdp(bytes32 _cdpId, address _borrower, uint _debt, uint _coll) external;
 
-    function removeStake(bytes32 _cdpId) external;
-
     function getRedemptionRate() external view returns (uint);
 
     function getRedemptionRateWithDecay() external view returns (uint);

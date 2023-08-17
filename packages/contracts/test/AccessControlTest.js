@@ -68,18 +68,6 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
       }
     })
 
-    // removeStake
-    it("removeStake(): reverts when called by an account that is not BorrowerOperations", async () => {
-      // Attempt call from alice
-      try {
-        const txAlice = await cdpManager.removeStake(bob, { from: alice })
-        
-      } catch (err) {
-        assert.include(err.message, "revert")
-        // assert.include(err.message, "Caller is not the BorrowerOperations contract")
-      }
-    })
-
     // updateStakeAndTotalStakes
     it("updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice

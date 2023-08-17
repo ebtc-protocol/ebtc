@@ -479,11 +479,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _applyPendingState(_cdpId);
     }
 
-    function removeStake(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations();
-        return _removeStake(_cdpId);
-    }
-
     // get totalStakes after split fee taken removed
     function getTotalStakeForFeeTaken(uint _feeTaken) public view override returns (uint, uint) {
         uint stake = _computeNewStake(_feeTaken);
