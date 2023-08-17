@@ -664,12 +664,21 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 : 0;
     }
 
+    /**
+        @notice Get official deployment time of the system, defined by the deployment timestamp of this contract (CdpManager) 
+        @return timestamp value of system deployment
+     */
     function getDeploymentStartTime() public view returns (uint256) {
         return deploymentStartTime;
     }
 
-    // Check whether or not the system *would be* in Recovery Mode,
-    // given an ETH:USD price, and the entire system coll and debt.
+    /**
+        @notice Check if system would be in Recovery mode given a price and system collateral and debt values 
+        @param _systemCollShares system collateral shares value to check RM for.
+        @param _systemDebt system debt value to check RM for.
+        @param _price price value to check RM for.
+        @return true if system would be in Recovery mode, false if system would be in Normal mode
+     */
     function checkPotentialRecoveryMode(
         uint _systemCollShares,
         uint _systemDebt,

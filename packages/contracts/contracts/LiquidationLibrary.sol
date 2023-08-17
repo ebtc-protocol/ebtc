@@ -70,7 +70,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             "CdpManager: ICR is not below liquidation threshold in current mode"
         );
 
-        bool _recoveryModeAtStart = _TCR < CCR ? true : false;
+        bool _recoveryModeAtStart = _checkRecoveryModeForTCR(_TCR);
 
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
@@ -573,7 +573,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         uint price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(price);
-        bool recoveryModeAtStart = _TCR < CCR ? true : false;
+        bool recoveryModeAtStart = _checkRecoveryModeForTCR(_TCR);
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
         if (recoveryModeAtStart) {
