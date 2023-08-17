@@ -64,13 +64,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         // prepare local variables
         uint256 _ICR = getICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
-
-        require(
-            _ICR < MCR || (_TCR < CCR && _ICR < _TCR),
-            "CdpManager: ICR is not below liquidation threshold in current mode"
-        );
-
         bool _recoveryModeAtStart = _checkRecoveryModeForTCR(_TCR);
+
+        _requireLiquidatableInCurrentMode(_ICR, _TCR);
 
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
             _cdpId,
@@ -690,6 +686,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
 
         _batchLiquidate(false, _cdpArray, 0);
+    }
+
+    function _requireLiquidatableInCurrentMode(uint _ICR, uint _TCR) internal {
+        require(
+            _ICR < MCR || (_TCR < CCR && _ICR < _TCR),
+            "CdpManager: ICR is not below liquidation threshold in current mode"
+        );
     }
 
     /*

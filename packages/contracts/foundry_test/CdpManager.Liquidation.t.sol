@@ -406,6 +406,67 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _ensureSystemInvariants();
     }
 
+    function test_RedistributedDebtIsHandledProperlyOnPartialLiquidation() public {
+        // create 2 CDPs
+        address alice = users[0];
+        address bob = users[1];
+        address marketActor = users[2];
+
+        priceFeedMock.setPrice(1 ether);
+
+        uint collShares = 20 ether;
+        uint debt = 10 ether;
+
+        bytes32 aliceCdpId = _openTestCDP(alice, collShares, debt);
+        bytes32 bobCdpId = _openTestCDP(bob, collShares, debt);
+
+        vm.prank(alice);
+        eBTCToken.transfer(marketActor, debt);
+
+        vm.prank(bob);
+        eBTCToken.transfer(marketActor, debt);
+
+        // make liquidatable at price where ICR < 100
+        priceFeedMock.setPrice(0.4 ether);
+
+        // fully liquidate one CDP, distributing bad debt
+        vm.startPrank(marketActor);
+        cdpManager.liquidate(bobCdpId);
+
+        // check bad debt status
+        (uint aliceDebt, uint aliceCollShares, uint pendingBadDebt) = cdpManager.getVirtualDebtAndColl(aliceCdpId);
+
+        console.log("aliceDebt:", aliceDebt);
+        console.log("aliceCollShares:", aliceCollShares);
+        console.log("pendingBadDebt:", pendingBadDebt);
+        console.log("systemDebtRedistributionIndex:", cdpManager.systemDebtRedistributionIndex());
+        console.log("alice debtRedistributionIndex:", cdpManager.debtRedistributionIndex(aliceCdpId));
+
+        // bring to ICR < MCR && ICR > 100
+        priceFeedMock.setPrice(0.52 ether);
+
+        // partially liquidate remaining CDP
+        cdpManager.partiallyLiquidate(aliceCdpId, debt / 2, bytes32(0), bytes32(0));
+
+        (aliceDebt, aliceCollShares, pendingBadDebt) = cdpManager.getVirtualDebtAndColl(aliceCdpId);
+
+        // ensure bad debt is accounted for properly
+        console.log("aliceDebt:", aliceDebt);
+        console.log("aliceCollShares:", aliceCollShares);
+        console.log("pendingBadDebt:", pendingBadDebt);
+        console.log("systemDebtRedistributionIndex:", cdpManager.systemDebtRedistributionIndex());
+        console.log("alice debtRedistributionIndex:", cdpManager.debtRedistributionIndex(aliceCdpId));
+
+        /**
+            Check:
+                bad debt global and Cdp index before & after
+                pending bad debt before and after 
+                print CDP state before and after to confirm
+
+                The CDP should apply pending state before any operations
+         */
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateSingleCDP with the appropriate arguments
