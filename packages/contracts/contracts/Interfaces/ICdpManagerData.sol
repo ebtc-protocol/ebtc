@@ -111,40 +111,16 @@ interface ICdpManagerData {
 
     struct LocalVar_InternalLiquidate {
         bytes32 _cdpId;
-        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
         uint256 _price;
         uint256 _ICR;
-        bytes32 _upperPartialHint;
-        bytes32 _lowerPartialHint;
-        bool _recoveryModeAtStart;
-        uint256 _TCR;
         uint256 totalColSurplus;
         uint256 totalColToSend;
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
-        bool sequenceLiq;
-    }
-
-    struct LocalVar_RecoveryLiquidate {
         uint256 systemDebt;
         uint256 entireSystemColl;
-        uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalColSurplus;
-        bytes32 _cdpId;
-        uint256 _price;
-        uint256 _ICR;
-        uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
         bool sequenceLiq;
-    }
-
-    struct LocalVariables_OuterLiquidationFunction {
-        uint price;
-        bool recoveryModeAtStart;
-        uint liquidatedDebt;
-        uint liquidatedColl;
     }
 
     struct LocalVariables_LiquidationSequence {
