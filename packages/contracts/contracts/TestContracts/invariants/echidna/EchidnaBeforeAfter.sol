@@ -24,6 +24,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
         vars.debtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
+        vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
@@ -48,6 +49,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
         vars.debtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
+        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));

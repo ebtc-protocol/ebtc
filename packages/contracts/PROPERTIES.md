@@ -35,6 +35,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | BO-05 | When a borrower closes their active CDP, the gas compensation is refunded to the user: the amount of shares sent by the user are transferred back from the GasPool to the user. Note that these shares may represent a larger amount of stETH than before due to the accrued yield. Same SHARES, different amount. | Unit Tests | ✅ |
 | BO-06 | Each time I change my ICR, the TCR changes by an impact that is equal to the relative weight of collateral and debt from my position | State Transitions | |
 | BO-07 | eBTC tokens are burned upon repayment of a CDP's debt | State Transitions | ✅ |
+| BO-08 | TCR must increase after a repayment | Variable Transitions | ✅ |
 
 ## Collateral Surplus Pool
 

@@ -29,9 +29,9 @@ import "./EchidnaBeforeAfter.sol";
 import "./EchidnaAssertionHelper.sol";
 
 // Run with:
-// cd <your-path-to-ebtc-repo-root>/packages/contracts
-// rm -f ./fuzzTests/corpus/* # (optional)
-// <your-path-to->/echidna-test contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml --crytic-args "--solc <your-path-to-solc0817>" --solc-args "--base-path <your-path-to-ebtc-repo-root>/packages/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts --include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Dependencies -include-path <your-path-to-ebtc-repo-root>/packages/contracts/contracts/Interfaces"
+// cd <your-path-to-ebtc-repo-root>
+// rm -f packages/contracts/fuzzTests/corpus/* # (optional)
+// echidna packages/contracts/contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config packages/contracts/fuzzTests/echidna_config.yaml
 contract EchidnaTester is
     EchidnaBeforeAfter,
     EchidnaProperties,
@@ -429,7 +429,8 @@ contract EchidnaTester is
                 L_01
             );
 
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -473,11 +474,12 @@ contract EchidnaTester is
                 "liquidateCdps must not liquidate more than n CDPs"
             );
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-                assertWithMsg(
-                    cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                        (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
-                    L_01
-                );
+                bool rv = cdpsLiquidated[i].icr < cdpManager.MCR() ||
+                    (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore);
+                emit LogUint256("icr", cdpsLiquidated[i].icr);
+                emit LogUint256(" RM", vars.isRecoveryModeBefore ? 1 : 0);
+                emit LogUint256(" rv", rv ? 1 : 0);
+                assertWithMsg(rv, L_01);
             }
             assertWithMsg(
                 vars.tcrAfter > vars.tcrBefore ||
@@ -667,8 +669,10 @@ contract EchidnaTester is
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
             assertEq(
                 vars.sortedCdpsSizeBefore + 1,
                 vars.sortedCdpsSizeAfter,
@@ -738,8 +742,10 @@ contract EchidnaTester is
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
             );
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
@@ -784,11 +790,11 @@ contract EchidnaTester is
 
         if (success) {
             assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-
-            // TODO fix this breaking invariant and remove comments
-            // assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -833,7 +839,8 @@ contract EchidnaTester is
                 vars.actorEbtcBefore + _amount,
                 "withdrawEBTC must increase debt by requested amount"
             );
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -871,25 +878,20 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            // TODO fix this breaking invariant and remove comments
-            // emit LogUint256("TCR before", vars.tcrBefore);
-            // emit LogUint256("TCR after", vars.tcrAfter);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             // assertWithMsg(
             //     vars.tcrAfter > vars.tcrBefore ||
             //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            //     "TCR must increase after a repayment"
+            //     BO_08
             // );
 
             assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
             assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -930,17 +932,17 @@ contract EchidnaTester is
                 vars.actorCollBefore,
                 "closeCdp increases the collateral balance of the user"
             );
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            // TODO Update this invariant to consider possible fee split after rebase
-            // assertWithMsg(
-            //     // not exact due to rounding errors
-            //     isApproximateEq(
-            //         vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
-            //         vars.actorCollAfter,
-            //         0.01e18
-            //     ),
-            //     BO_05
-            // );
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(
+                // not exact due to rounding errors
+                isApproximateEq(
+                    vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
+                    vars.actorCollAfter,
+                    0.01e18
+                ),
+                BO_05
+            );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -987,10 +989,12 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }

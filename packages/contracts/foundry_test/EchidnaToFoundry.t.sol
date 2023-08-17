@@ -114,6 +114,61 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         liquidateCdps(2252467458);
     }
 
+    function testGetLiquidationPrecondition() public {
+        setEthPerShare(4676074530337448333154874636284405909660288077692074436378651732565385820);
+        setEthPerShare(121723041127249310969693481616406928693460288241266723901306125760671698189);
+        setEthPerShare(5009376261553868904870699697388021000813000619345695951626510062434371576);
+        openCdp(331122237537735863278688276997565185798016290397008375268300287328688032, 1);
+        openCdp(
+            5431275612983197753898029233276238246222276901738759866963494316953057560184,
+            939336331742640342
+        );
+        setEthPerShare(126708291550348242045596698306381078560921466586869136435238349973189731358);
+        setEthPerShare(0);
+        liquidateCdps(32196079);
+    }
+
+    function testGetICRMustBeAboveMCRorCCR() public {
+        openCdp(75300317850386881515037613066457986, 1);
+        openCdp(
+            3247335123189069439632999755254158605220646892775811768642425889390169656571,
+            621779537595273744
+        );
+        setEthPerShare(569167568057158159980723842815614925281518516805731465637553840);
+        setEthPerShare(0);
+        repayEBTC(
+            9134837060512050891165910624894753554151602525392217144768174063888028620303,
+            22962890867158867814049967727650951797802352273713784497290262518250038227473
+        );
+    }
+
+    function testGetGasRefund() public {
+        // TODO convert to foundry test
+        setEthPerShare(320990760767759855665581119236317863482547217297538940976328986384347);
+        openCdp(26813322668106373355851675928577557790421707851094448227301944, 1);
+        setEthPerShare(5344609922436460377681113694659206750079290288127281100932756);
+        addColl(8998373131940891300701418953323269805182346149013003655641488006448, 0);
+        openCdp(0, 1);
+        closeCdp(0);
+    }
+
+    function testGetTCRMustIncreaseAfterLiquidation() public {
+        setEthPerShare(12400542648256292754961779260076532665041890555330100137126831902070556);
+        openCdp(412840791364640467162300642920, 1);
+        withdrawColl(
+            44587864534782987197058919504145324787930113096565080678163339697467,
+            3035020603323
+        );
+        openCdp(
+            2285243171284733437318174962905631735518539885491274999644636718241370058,
+            132673875684216277
+        );
+        setEthPerShare(0);
+        setEthPerShare(455164160439835708458810255348816459178554101974349799990005);
+        setEthPerShare(0);
+        liquidateCdps(0);
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -160,6 +215,17 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
         console2.log("openCdp", _col, _EBTCAmount);
         borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
+    }
+
+    function closeCdp(uint _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), _i);
+
+        console2.log("closeCdp", _i);
+        borrowerOperations.closeCdp(_cdpId);
     }
 
     function addColl(uint _coll, uint256 _i) internal {
