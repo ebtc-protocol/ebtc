@@ -509,6 +509,54 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         assertGt(tcrAfter, tcrBefore, L_12);
     }
 
+    function testTCRMustIncreaseAfterLiquidationGoogleSheetsPOC() public {
+        address user = _utils.getNextUserAddress();
+        uint256 _price;
+
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 500 * 1e18}();
+
+        priceFeedMock.setPrice(1 * 1e18);
+        _price = priceFeedMock.getPrice();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(100 * 1e18, HINT, HINT, 250 * 1e18);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(100 * 1e18, HINT, HINT, 120 * 1e18);
+
+        console.log(
+            "Initial state",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        priceFeedMock.setPrice((priceFeedMock.getPrice() * 10) / 19);
+        _price = priceFeedMock.getPrice();
+
+        console.log(
+            "Price drops",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+
+        cdpManager.liquidateCdps(1);
+
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+
+        console.log(
+            "CDP2 is liquidated and its debt is redistributed",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        assertGt(tcrAfter, tcrBefore, L_12);
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateSingleCDP with the appropriate arguments
