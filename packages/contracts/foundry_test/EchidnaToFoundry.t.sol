@@ -73,6 +73,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
     }
 
     function testGetRedemptionMustSatisfyAccountingEquation() public {
+        // TODO verify this shares/coll
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
         openCdp(313025303777237127496675, 1);
         openCdp(

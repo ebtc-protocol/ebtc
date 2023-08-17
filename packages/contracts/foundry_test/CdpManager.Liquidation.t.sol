@@ -468,7 +468,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         collateral.setEthPerShare(982343204100130190);
         bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, 2200000000000000016);
         borrowerOperations.withdrawColl(_cdpId, 1640157506641381371, _cdpId, _cdpId);
-        borrowerOperations.openCdp(132673875684216277, HINT, HINT, 2232664843905093514);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            132673875684216277,
+            HINT,
+            HINT,
+            2232664843905093514
+        );
         collateral.setEthPerShare(893039276454663809);
         collateral.setEthPerShare(820056407903603577);
         collateral.setEthPerShare(745505825366912342);
@@ -476,12 +481,30 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _price = priceFeedMock.getPrice();
 
         uint256 tcrBefore = cdpManager.getTCR(_price);
-        console.log("before", tcrBefore);
+        console.log(
+            "icr",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price)
+        );
+        console.log("b0", tcrBefore);
+        console.log(
+            "b1",
+            collateral.getPooledEthByShares(cdpManager.getEntireSystemColl()),
+            cdpManager.getEntireSystemColl(),
+            cdpManager.getEntireSystemDebt()
+        );
 
         cdpManager.liquidateCdps(1);
 
         uint256 tcrAfter = cdpManager.getTCR(_price);
-        console.log("after", tcrAfter);
+
+        console.log("a0", tcrAfter);
+        console.log(
+            "a1",
+            collateral.getPooledEthByShares(cdpManager.getEntireSystemColl()),
+            cdpManager.getEntireSystemColl(),
+            cdpManager.getEntireSystemDebt()
+        );
 
         assertGt(tcrAfter, tcrBefore, L_12);
     }

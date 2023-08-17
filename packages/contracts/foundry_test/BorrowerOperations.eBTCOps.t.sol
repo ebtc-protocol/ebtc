@@ -463,16 +463,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 debtBefore = activePool.getEBTCDebt();
         uint256 priceBefore = priceFeedMock.getPrice();
 
-        cdpManager.redeemCollateral(
-            1,
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            0,
-            0,
-            5000000000000000 
-        );
-        
+        cdpManager.redeemCollateral(1, bytes32(0), bytes32(0), bytes32(0), 0, 0, 5000000000000000);
+
         uint256 activePoolCollAfter = activePool.getStEthColl();
         uint256 collSurplusPoolAfter = collSurplusPool.getStEthColl();
         uint256 debtAfter = activePool.getEBTCDebt();
