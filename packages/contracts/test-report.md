@@ -25,7 +25,6 @@ $ hardhat test
     CdpManager
       ✓ applyPendingState(): reverts when called by an account that is not BorrowerOperations
       ✓ updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations
-      ✓ updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations
       ✓ closeCdp(): reverts when called by an account that is not BorrowerOperations
       ✓ addCdpOwnerToArray(): reverts when called by an account that is not BorrowerOperations
       ✓ setCdpStatus(): reverts when called by an account that is not BorrowerOperations

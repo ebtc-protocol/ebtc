@@ -486,11 +486,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return (_newTotalStakes, stake);
     }
 
-    function updateStakeAndTotalStakes(bytes32 _cdpId) external override returns (uint) {
-        _requireCallerIsBorrowerOperations();
-        return _updateStakeAndTotalStakes(_cdpId);
-    }
-
     function closeCdp(
         bytes32 _cdpId,
         address _borrower,
