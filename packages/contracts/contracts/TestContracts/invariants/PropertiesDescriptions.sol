@@ -26,7 +26,7 @@ abstract contract PropertiesDescriptions {
     string constant CDPM_03 =
         "CDPM-03: The stFeePerUnit tracker for individual CDP is equal to or less than the global variable";
     string constant CDPM_04 =
-        "CDPM-04: The total system Assets - Liabilities remains constant during redemptions";
+        "CDPM-04: The total system Assets - Liabilities remain constant during redemptions";
 
     ///////////////////////////////////////////////////////
     // Collateral Surplus Pool
