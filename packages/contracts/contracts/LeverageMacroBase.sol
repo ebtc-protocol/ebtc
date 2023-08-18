@@ -69,7 +69,8 @@ contract LeverageMacroBase {
 
     enum FlashLoanType {
         stETH,
-        eBTC
+        eBTC,
+        noFlashloan // Use this to not perform a FL and just `doOperation`
     }
 
     enum PostOperationCheck {
@@ -157,8 +158,8 @@ contract LeverageMacroBase {
                 abi.encode(operation)
             );
         } else {
-            // TODO: If enum OOB reverts, can remove this, can also leave as explicity
-            revert("Must be valid due to forwarding of users");
+            // No leverage, just do the operation
+            _handleOperation(operation);
         }
 
         /**
@@ -216,14 +217,14 @@ contract LeverageMacroBase {
          */
         // Safe unchecked because known tokens
         uint256 ebtcBal = ebtcToken.balanceOf(address(this));
-        uint256 collateralBal = stETH.balanceOf(address(this));
+        uint256 collateralBal = stETH.sharesOf(address(this));
 
         if (ebtcBal > 0) {
             ebtcToken.transfer(msg.sender, ebtcBal);
         }
 
         if (collateralBal > 0) {
-            stETH.transfer(msg.sender, collateralBal);
+            stETH.transferShares(msg.sender, collateralBal);
         }
     }
 
