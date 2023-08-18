@@ -660,7 +660,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal log {
+    function flashLoanColl(uint _amount) external log {
         actor = actors[msg.sender];
 
         bool success;

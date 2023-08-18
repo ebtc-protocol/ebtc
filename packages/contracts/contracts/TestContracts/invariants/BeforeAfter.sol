@@ -6,6 +6,8 @@ abstract contract BeforeAfter {
         uint256 nicrAfter;
         uint256 icrBefore;
         uint256 icrAfter;
+        uint256 feeRecipientTotalCollBefore;
+        uint256 feeRecipientTotalCollAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
         uint256 actorEbtcBefore;
