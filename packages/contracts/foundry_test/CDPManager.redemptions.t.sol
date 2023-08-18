@@ -250,12 +250,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
-    function test_RedemptionMustSatisfyAccountingEquation() public {
+    function test_RedemptionMustSatisfyAccountingEquation(uint256 redeem) public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-
-        //           openCdp 2200000000000000016 1
-        //   openCdp 2200000000000000016 1
-        //   redeemCollateral 1 23493578618251733659817882 956041569236485562
 
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -264,8 +260,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
-        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+        priceFeedMock.setPrice(1 * 1e18);
+
+        borrowerOperations.openCdp(100 * 1e18, bytes32(0), bytes32(0), 250 * 1e18);
+        bytes32 _cdpId = borrowerOperations.openCdp(100 * 1e18, bytes32(0), bytes32(0), 120 * 1e18);
 
         vars.activePoolCollBefore = activePool.getStEthColl();
         vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
@@ -282,13 +280,13 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         );
 
         cdpManager.redeemCollateral(
+            100 * 1e18,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0),
+            100 * 1e18,
             1,
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            23493578618251733659817882,
-            0,
-            956041569236485562
+            1e18
         );
 
         vars.activePoolCollAfter = activePool.getStEthColl();
