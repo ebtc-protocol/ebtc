@@ -434,13 +434,17 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.liquidate(bobCdpId);
 
         // check bad debt status
-        (uint aliceDebt, uint aliceCollShares, uint pendingBadDebt) = cdpManager.getVirtualDebtAndColl(aliceCdpId);
+        (uint aliceDebt, uint aliceCollShares, uint pendingBadDebt) = cdpManager
+            .getVirtualDebtAndColl(aliceCdpId);
 
         console.log("aliceDebt:", aliceDebt);
         console.log("aliceCollShares:", aliceCollShares);
         console.log("pendingBadDebt:", pendingBadDebt);
         console.log("systemDebtRedistributionIndex:", cdpManager.systemDebtRedistributionIndex());
-        console.log("alice debtRedistributionIndex:", cdpManager.debtRedistributionIndex(aliceCdpId));
+        console.log(
+            "alice debtRedistributionIndex:",
+            cdpManager.debtRedistributionIndex(aliceCdpId)
+        );
 
         // bring to ICR < MCR && ICR > 100
         priceFeedMock.setPrice(0.52 ether);
@@ -455,7 +459,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         console.log("aliceCollShares:", aliceCollShares);
         console.log("pendingBadDebt:", pendingBadDebt);
         console.log("systemDebtRedistributionIndex:", cdpManager.systemDebtRedistributionIndex());
-        console.log("alice debtRedistributionIndex:", cdpManager.debtRedistributionIndex(aliceCdpId));
+        console.log(
+            "alice debtRedistributionIndex:",
+            cdpManager.debtRedistributionIndex(aliceCdpId)
+        );
 
         /**
             Check:

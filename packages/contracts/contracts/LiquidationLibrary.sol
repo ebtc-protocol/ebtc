@@ -331,12 +331,11 @@ contract LiquidationLibrary is CdpManagerStorage {
     // This function would return the liquidated debt and collateral of the given CDP
     function _partiallyLiquidateCDP(
         LocalVar_InternalLiquidate memory _partialState,
-        uint _partialAmount,
+        uint _partialDebt,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) private returns (uint256, uint256) {
         bytes32 _cdpId = _partialState._cdpId;
-        uint _partialDebt = _partialAmount;
 
         // calculate entire debt to repay
         LocalVar_CdpDebtColl memory _debtAndColl = _getVirtualDebtAndColl(_cdpId);
@@ -358,40 +357,43 @@ contract LiquidationLibrary is CdpManagerStorage {
         }
 
         // If we have coll remaining, it must meet minimum CDP size requirements:
-        // Only check when the collateral exchange rate from share is above 1e18
-        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
-        if (collateral.getPooledEthByShares(DECIMAL_PRECISION) >= DECIMAL_PRECISION) {
-            _requirePartialLiqCollSize(collateral.getPooledEthByShares(newColl));
-        }
+        _requirePartialLiqCollSize(collateral.getPooledEthByShares(newColl));
 
         // apply pending debt if any
         // and update CDP internal accounting for debt
         // if there is liquidation redistribution
-        uint256 _cachedDebt = Cdps[_cdpId].debt;
-        {
-            if (_debtAndColl.pendingDebtReward > 0) {
-                Cdps[_cdpId].debt = _cachedDebt + _debtAndColl.pendingDebtReward;
-            }
-        }
 
         // updating the CDP accounting for partial liquidation
         _partiallyReduceCdpDebt(_cdpId, _partialDebt, _partialColl);
 
+        // ensure new ICR does NOT decrease due to partial liquidation
+        // if original ICR is above LICR
+        if (_partialState._ICR > LICR) {
+            require(getICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
+        }
+
         // reInsert into sorted CDP list after partial liquidation
         {
-            _reInsertPartialLiquidation(
-                _partialState,
-                LiquityMath._computeNominalCR(newColl, newDebt),
-                _cachedDebt,
-                _debtAndColl.entireColl,
-                _upperPartialHint,
-                _lowerPartialHint
-            );
+            uint _newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
+            sortedCdps.reInsert(_cdpId, _newNICR, _upperPartialHint, _lowerPartialHint);
+            address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+
             emit CdpPartiallyLiquidated(
                 _cdpId,
-                sortedCdps.getOwnerAddress(_cdpId),
+                _borrower,
                 _partialDebt,
                 _partialColl,
+                CdpOperation.partiallyLiquidate
+            );
+
+            emit CdpUpdated(
+                _cdpId,
+                _borrower,
+                _debtAndColl.entireDebt,
+                _debtAndColl.entireColl,
+                Cdps[_cdpId].debt,
+                Cdps[_cdpId].collShares,
+                Cdps[_cdpId].stake,
                 CdpOperation.partiallyLiquidate
             );
         }
@@ -457,31 +459,12 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _reInsertPartialLiquidation(
         LocalVar_InternalLiquidate memory _partialState,
         uint _newNICR,
-        uint _oldDebt,
-        uint _oldColl,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) internal {
         bytes32 _cdpId = _partialState._cdpId;
-
-        // ensure new ICR does NOT decrease due to partial liquidation
-        // if original ICR is above LICR
-        if (_partialState._ICR > LICR) {
-            require(getICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
-        }
-
         // reInsert into sorted CDP list
         sortedCdps.reInsert(_cdpId, _newNICR, _upperPartialHint, _lowerPartialHint);
-        emit CdpUpdated(
-            _cdpId,
-            sortedCdps.getOwnerAddress(_cdpId),
-            _oldDebt,
-            _oldColl,
-            Cdps[_cdpId].debt,
-            Cdps[_cdpId].collShares,
-            Cdps[_cdpId].stake,
-            CdpOperation.partiallyLiquidate
-        );
     }
 
     function _finalizeLiquidation(
