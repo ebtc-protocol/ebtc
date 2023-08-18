@@ -23,7 +23,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | CDPM-01 | The count of active CDPs is equal to the SortedCdp list length | High Level | ✅ |
 | CDPM-02 | The sum of active CDPs stake is equal to totalStakes | High Level | 🚧 Redistributions? |
 | CDPM-03 | The stFeePerUnit tracker for individual CDP is equal to or less than the global variable | High Level | 🚧 Negative Rebase + Pending Rewards? |
-| P-45 | Anyone can open more than 1 CDP, and can open even if one of the CDPs is undercollateralized | Unit Tests | |
+| CDPM-04 | CDPM-04: The total system Assets - Liabilities remains constant during redemptions | High Level | ✅ |
 
 ## Borrower Operations
 
@@ -32,7 +32,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | BO-03 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | BO-04 | Reoving collateral decreases the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | BO-05 | If an existing CDP's adjustment reduces its ICR in Recovery Mode, the transaction is only executed if the resulting TCR is above 125% | State Transitions | TODO: May change to TCR + Buffer. KEY invariant |
-| BO-05 | When a borrower closes their active CDP, the gas compensation is refunded to the user: the amount of shares sent by the user are transferred back from the GasPool to the user. Note that these shares may represent a larger amount of stETH than before due to the accrued yield. Same SHARES, different amount. | Unit Tests | ✅ |
+| BO-05 | When a borrower closes their active CDP, the gas compensation is refunded to the user: the amount of shares sent by the user is transferred back from the GasPool to the user | Unit Tests | ✅ TODO: Note that these shares may represent a larger amount of stETH than before due to the accrued yield. Same SHARES, different amount. |
 | BO-06 | Each time I change my ICR, the TCR changes by an impact that is equal to the relative weight of collateral and debt from my position | State Transitions | |
 | BO-07 | eBTC tokens are burned upon repayment of a CDP's debt | State Transitions | ✅ |
 | BO-08 | TCR must increase after a repayment | Variable Transitions | ✅ |
@@ -61,7 +61,6 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level | TODO: redistribution and pending fee split (prob need to look into this more) |
 | GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
 | GENERAL-10 | All CDPs should maintain a minimum collateral size | High Level | ✅ |
-| GENERAL-11 | The total system Equity = Assets - Liabilities = Collateral * Price - Debt remains constant if there are no price changes or rebase | High Level | ✅ |
 
 ## Redemptions
 

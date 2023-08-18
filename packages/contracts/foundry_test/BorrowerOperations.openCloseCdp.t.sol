@@ -337,19 +337,16 @@ contract CDPTest is eBTCBaseFixture, Properties {
 
         uint _price = priceFeedMock.getPrice();
 
-        //   setEthPerShare 605709822226663913
+        //   setEthPerShare 910635822138744547
         //   openCdp 2200000000000000016 1
-        //   openCdp 9473892878009383464 562976610382829603
-        //   closeCdp 1
+        //   addColl 94021985275614476877 0
+        //   openCdp 2200000000000000016 1
+        //   closeCdp 0
 
-        collateral.setEthPerShare(605709822226663913);
+        collateral.setEthPerShare(910635822138744547);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 94021985275614476877);
         borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
-        bytes32 _cdpId = borrowerOperations.openCdp(
-            562976610382829603,
-            bytes32(0),
-            bytes32(0),
-            9473892878009383464
-        );
 
         uint256 userCollBefore = collateral.balanceOf(user);
         uint256 cdpCollBefore = cdpManager.getCdpColl(_cdpId);

@@ -443,38 +443,4 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             GENERAL_10
         );
     }
-
-    function testRedemptionMustSatisfyAccountingEquation() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-
-        address user = _utils.getNextUserAddress();
-
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10 ether}();
-
-        borrowerOperations.openCdp(1, HINT, HINT, 2200000000000000016);
-        borrowerOperations.openCdp(130881814726979393, HINT, HINT, 2202507652244537442);
-        collateral.setEthPerShare(909090909090909090);
-
-        uint256 activePoolCollBefore = activePool.getStEthColl();
-        uint256 collSurplusPoolBefore = collSurplusPool.getStEthColl();
-        uint256 debtBefore = activePool.getEBTCDebt();
-        uint256 priceBefore = priceFeedMock.getPrice();
-
-        cdpManager.redeemCollateral(1, bytes32(0), bytes32(0), bytes32(0), 0, 0, 5000000000000000);
-
-        uint256 activePoolCollAfter = activePool.getStEthColl();
-        uint256 collSurplusPoolAfter = collSurplusPool.getStEthColl();
-        uint256 debtAfter = activePool.getEBTCDebt();
-        uint256 priceAfter = priceFeedMock.getPrice();
-
-        uint256 beforeEquity = (activePoolCollBefore + collSurplusPoolBefore) *
-            priceBefore -
-            debtBefore;
-        uint256 afterEquity = (activePoolCollAfter + collSurplusPoolAfter) * priceAfter - debtAfter;
-
-        assertEq(beforeEquity, afterEquity, GENERAL_11);
-    }
 }

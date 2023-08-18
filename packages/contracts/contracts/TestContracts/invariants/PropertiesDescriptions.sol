@@ -25,6 +25,8 @@ abstract contract PropertiesDescriptions {
     string constant CDPM_02 = "CDPM-02: The sum of active CDPs stake is equal to totalStakes";
     string constant CDPM_03 =
         "CDPM-03: The stFeePerUnit tracker for individual CDP is equal to or less than the global variable";
+    string constant CDPM_04 =
+        "CDPM-04: The total system Assets - Liabilities remains constant during redemptions";
 
     ///////////////////////////////////////////////////////
     // Collateral Surplus Pool
@@ -66,8 +68,6 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_09 =
         "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
-    string constant GENERAL_11 =
-        "GENERAL-11: The total system Equity = Assets - Liabilities = Collateral * Price - Debt remains constant if there are no price changes or rebase";
 
     ///////////////////////////////////////////////////////
     // Liquidations

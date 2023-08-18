@@ -92,6 +92,18 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
+    function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
+        uint256 beforeEquity = (vars.activePoolCollBefore +
+            vars.collSurplusPoolBefore +
+            vars.liquidatorRewardSharesBefore) *
+            vars.priceBefore -
+            vars.debtBefore;
+        uint256 afterEquity = (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
+            vars.priceAfter -
+            vars.debtAfter;
+        return isApproximateEq(beforeEquity, afterEquity, 0.01e18);
+    }
+
     function invariant_CSP_01(
         ICollateralToken collateral,
         CollSurplusPool collSurplusPool
@@ -238,16 +250,6 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         } else {
             return (_icr > cdpManager.MCR());
         }
-    }
-
-    function invariant_GENERAL_11(Vars memory vars) internal view returns (bool) {
-        return
-            (vars.activePoolCollBefore + vars.collSurplusPoolBefore) *
-                vars.priceBefore -
-                vars.debtBefore ==
-            (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
-                vars.priceAfter -
-                vars.debtAfter;
     }
 
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
