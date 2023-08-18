@@ -137,10 +137,12 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _requireValidRecipient(recipient);
         _transfer(sender, recipient, amount);
 
-        uint256 cachedAllowances = _allowances[sender][msg.sender];
-        require(cachedAllowances >= amount, "ERC20: transfer amount exceeds allowance");
-        unchecked {
-            _approve(sender, msg.sender, cachedAllowances - amount);
+        uint256 cachedAllowance = _allowances[sender][msg.sender];
+        if (cachedAllowance != type(uint256).max) {
+            require(cachedAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+            unchecked {
+                _approve(sender, msg.sender, cachedAllowance - amount);
+            }
         }
         return true;
     }
