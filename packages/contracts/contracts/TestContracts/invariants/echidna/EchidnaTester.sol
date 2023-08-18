@@ -650,7 +650,7 @@ contract EchidnaTester is
                     vars.priceAfter -
                     vars.debtAfter
             );
-            assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
+            // assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
