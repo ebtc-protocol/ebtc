@@ -504,7 +504,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getVirtualDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndColl(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -513,7 +513,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getVirtualDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndColl(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
@@ -534,26 +534,23 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     // Return the Cdps entire debt and coll struct
-    function _getVirtualDebtAndColl(
+    function getVirtualDebtAndColl(
         bytes32 _cdpId
-    ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getVirtualDebtAndColl(
-            _cdpId
-        );
-        return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
+    ) external view returns (uint debt, uint coll, uint pendingDebtReward) {
+        (debt, coll, pendingDebtReward) = _getVirtualDebtAndColl(_cdpId);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function getVirtualDebtAndColl(
+    function _getVirtualDebtAndColl(
         bytes32 _cdpId
-    ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
+    ) internal view returns (uint debt, uint coll, uint pendingDebtReward) {
         debt = Cdps[_cdpId].debt;
         (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
         coll = _newColl;
 
-        pendingEBTCDebtReward = getPendingDebtRedistribution(_cdpId);
+        pendingDebtReward = getPendingDebtRedistribution(_cdpId);
 
-        debt = debt + pendingEBTCDebtReward;
+        debt = debt + pendingDebtReward;
     }
 }

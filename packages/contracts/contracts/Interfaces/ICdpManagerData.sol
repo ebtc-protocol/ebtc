@@ -103,13 +103,13 @@ interface ICdpManagerData {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
-    struct LocalVar_CdpDebtColl {
+    struct CdpDebtColl {
         uint256 entireDebt;
         uint256 entireColl;
         uint256 pendingDebtReward;
     }
 
-    struct LocalVar_InternalLiquidate {
+    struct InternalLiquidateLocals {
         bytes32 _cdpId;
         uint256 _price;
         uint256 _ICR;
@@ -123,7 +123,7 @@ interface ICdpManagerData {
         bool sequenceLiq;
     }
 
-    struct LocalVariables_LiquidationSequence {
+    struct LiquidationSequenceLocals {
         uint i;
         uint ICR;
         bytes32 cdpId;
