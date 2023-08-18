@@ -75,19 +75,19 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
     function testGetRedemptionMustSatisfyAccountingEquation() public {
         // TODO verify this shares/coll
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-        openCdp(313025303777237127496675, 1);
-        openCdp(
-            3352225288317311202032007496640886572550824479399475529334293962347630660369,
-            130881814726979393
-        );
-        setEthPerShare(0);
+        openCdp(0, 1);
+        openCdp(1828606215349100341988253, 1);
 
         uint256 activePoolCollBefore = activePool.getStEthColl();
         uint256 collSurplusPoolBefore = collSurplusPool.getStEthColl();
         uint256 debtBefore = activePool.getEBTCDebt();
         uint256 priceBefore = priceFeedMock.getPrice();
 
-        redeemCollateral(1, 0, 0);
+        redeemCollateral(
+            267224566682603742894677068940478181638925,
+            5279735678434044700290797275852570643,
+            27357718822422017583571346323979249982276265
+        );
 
         uint256 activePoolCollAfter = activePool.getStEthColl();
         uint256 collSurplusPoolAfter = collSurplusPool.getStEthColl();
@@ -145,12 +145,18 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
     function testGetGasRefund() public {
         // TODO convert to foundry test
-        setEthPerShare(320990760767759855665581119236317863482547217297538940976328986384347);
-        openCdp(26813322668106373355851675928577557790421707851094448227301944, 1);
-        setEthPerShare(5344609922436460377681113694659206750079290288127281100932756);
-        addColl(8998373131940891300701418953323269805182346149013003655641488006448, 0);
-        openCdp(0, 1);
-        closeCdp(0);
+        setEthPerShare(1916640516301015335229222248944179420227614681695804116188480500445756885052);
+        setEthPerShare(1039469189342856316638038520664321486069349396592151165287212889225754086);
+        setEthPerShare(0);
+        setEthPerShare(3409563700395658155902285219204003096342929274934351113345918850053068792);
+        setEthPerShare(0);
+        setEthPerShare(197410687747751582129699208443946996281376487837101755664516298366848);
+        openCdp(38931750719067581388430395898018684356728190989849, 1);
+        openCdp(
+            1294353219788004583217001085880696364291001812861809540943245101185584965,
+            562976610382829603
+        );
+        closeCdp(11588771222678413008115407624802452299490137359535459853);
     }
 
     function testGetTCRMustIncreaseAfterLiquidation() public {
