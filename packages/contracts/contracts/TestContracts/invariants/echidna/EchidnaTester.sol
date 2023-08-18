@@ -340,7 +340,84 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
-    function _getFlashLoanActions(uint _seed) internal view returns (bytes32) {}
+    function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
+        uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
+        uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
+        uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
+        uint256 _n = clampBetween(value, 1, cdpManager.getCdpIdsCount());
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        uint256 _i = clampBetween(value, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
+        address[] memory _targets = new address[](_actions);
+        bytes[] memory _calldatas = new bytes[](_actions);
+
+        address[] memory _allTargets = new address[](7);
+        bytes[] memory _allCalldatas = new bytes[](7);
+
+        _allTargets[0] = address(borrowerOperations);
+        _allCalldatas[0] = abi.encodeWithSelector(
+            BorrowerOperations.openCdp.selector,
+            _EBTCAmount,
+            bytes32(0),
+            bytes32(0),
+            _col
+        );
+
+        _allTargets[1] = address(borrowerOperations);
+        _allCalldatas[1] = abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId);
+
+        _allTargets[2] = address(borrowerOperations);
+        _allCalldatas[2] = abi.encodeWithSelector(
+            BorrowerOperations.addColl.selector,
+            _cdpId,
+            _cdpId,
+            _cdpId,
+            _col
+        );
+
+        _allTargets[3] = address(borrowerOperations);
+        _allCalldatas[3] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawColl.selector,
+            _cdpId,
+            _col,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[4] = address(borrowerOperations);
+        _allCalldatas[4] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawEBTC.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[5] = address(borrowerOperations);
+        _allCalldatas[5] = abi.encodeWithSelector(
+            BorrowerOperations.repayEBTC.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[6] = address(cdpManager);
+        _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
+
+        for (uint256 j = 0; j < _actions; ++j) {
+            uint256 index = uint256(keccak256(abi.encodePacked(j, value))) % _allTargets.length;
+
+            _targets[j] = _allTargets[index];
+            _calldatas[j] = _allCalldatas[index];
+        }
+
+        return abi.encode(_targets, _calldatas);
+    }
 
     ///////////////////////////////////////////////////////
     // CdpManager
@@ -552,16 +629,24 @@ contract EchidnaTester is
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
 
-            emit L1(vars.liquidatorRewardSharesBefore);
+            emit L3(
+                vars.liquidatorRewardSharesBefore,
+                vars.feeRecipientTotalCollBefore,
+                vars.feeRecipientTotalCollAfter
+            );
             emit L3(vars.activePoolCollBefore, vars.collSurplusPoolBefore, vars.debtBefore);
             emit L3(vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
             emit L2(
                 (vars.activePoolCollBefore +
                     vars.collSurplusPoolBefore +
-                    vars.liquidatorRewardSharesBefore) *
+                    vars.liquidatorRewardSharesBefore +
+                    vars.feeRecipientTotalCollBefore) *
                     vars.priceBefore -
                     vars.debtBefore,
-                (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
+                (vars.activePoolCollAfter +
+                    vars.collSurplusPoolAfter +
+                    vars.liquidatorRewardSharesAfter +
+                    vars.feeRecipientTotalCollAfter) *
                     vars.priceAfter -
                     vars.debtAfter
             );
@@ -593,8 +678,7 @@ contract EchidnaTester is
                 IERC3156FlashBorrower(address(actor)),
                 address(collateral),
                 _amount,
-                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
-                abi.encodePacked("")
+                _getFlashLoanActions(_amount)
             )
         );
 
@@ -629,8 +713,7 @@ contract EchidnaTester is
                 IERC3156FlashBorrower(address(actor)),
                 address(eBTCToken),
                 _amount,
-                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
-                abi.encodePacked("")
+                _getFlashLoanActions(_amount)
             )
         );
 
