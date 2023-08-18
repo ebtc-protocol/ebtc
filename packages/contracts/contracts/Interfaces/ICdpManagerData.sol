@@ -106,7 +106,7 @@ interface ICdpManagerData {
     struct CdpDebtColl {
         uint256 entireDebt;
         uint256 entireColl;
-        uint256 pendingDebtReward;
+        uint256 pendingDebtRedistribution;
     }
 
     struct InternalLiquidateLocals {
@@ -211,7 +211,7 @@ interface ICdpManagerData {
 
     function hasPendingDebtRedistribution(bytes32 _cdpId) external view returns (bool);
 
-    function getVirtualDebtAndColl(
+    function getVirtualDebtAndCollShares(
         bytes32 _cdpId
     ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 }

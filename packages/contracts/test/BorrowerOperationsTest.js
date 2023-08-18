@@ -679,7 +679,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
-      const aliceColl = (await cdpManager.getVirtualDebtAndColl(aliceIndex))[1]
+      const aliceColl = (await cdpManager.getVirtualDebtAndCollShares(aliceIndex))[1]
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
@@ -826,9 +826,9 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
       // Check A and B have pending rewards
-      const pendingDebtReward_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
-      const pendingDebtReward_B = (await cdpManager.getPendingDebtRedistribution(bobIndex))
-      for (reward of [pendingDebtReward_A, pendingDebtReward_B]) {
+      const pendingDebtRedistribution_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
+      const pendingDebtRedistribution_B = (await cdpManager.getPendingDebtRedistribution(bobIndex))
+      for (reward of [pendingDebtRedistribution_A, pendingDebtRedistribution_B]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
 
@@ -847,9 +847,9 @@ contract('BorrowerOperations', async accounts => {
 
       // Check rewards have been applied to cdps
       th.assertIsApproximatelyEqual(aliceCollAfter, aliceCollBefore.sub(aliceCollWithdrawal), 10000)
-      th.assertIsApproximatelyEqual(aliceDebtAfter, aliceDebtBefore.add(pendingDebtReward_A), 10000)
+      th.assertIsApproximatelyEqual(aliceDebtAfter, aliceDebtBefore.add(pendingDebtRedistribution_A), 10000)
       th.assertIsApproximatelyEqual(bobCollAfter, bobCollBefore.sub(bobCollWithdrawal), 10000)
-      th.assertIsApproximatelyEqual(bobDebtAfter, bobDebtBefore.add(pendingDebtReward_B), 10000)
+      th.assertIsApproximatelyEqual(bobDebtAfter, bobDebtBefore.add(pendingDebtRedistribution_B), 10000)
 
       /* After top up, both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_STETHColl and systemDebtRedistributionIndex */
@@ -2233,7 +2233,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isFalse(await th.checkRecoveryMode(contracts))
 
       // Alice attempts to close her cdp
-      await assertRevert(borrowerOperations.closeCdp(aliceIndex, { from: alice }), "CdpManager: Only one cdp in the system")
+      await assertRevert(borrowerOperations.closeCdp(aliceIndex, { from: alice }), "CdpManager: Zero Cdps remain in the system")
     })
 
     it("closeCdp(): reduces a Cdp's collateral to zero", async () => {
@@ -2562,7 +2562,7 @@ contract('BorrowerOperations', async accounts => {
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
       const carolIndex = await sortedCdps.cdpOfOwnerByIndex(carol,0)
 	  
-      let _carolDebtColl = await cdpManager.getVirtualDebtAndColl(carolIndex)
+      let _carolDebtColl = await cdpManager.getVirtualDebtAndCollShares(carolIndex)
       let _carolDebt = _carolDebtColl[0]
       let _carolColl = _carolDebtColl[1]
 
@@ -2599,8 +2599,8 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const pendingDebtReward_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
-      assert.isTrue(pendingDebtReward_A.gt(toBN('0')))
+      const pendingDebtRedistribution_A = (await cdpManager.getPendingDebtRedistribution(aliceIndex))
+      assert.isTrue(pendingDebtRedistribution_A.gt(toBN('0')))
 
       // Close Alice's cdp. Alice's pending rewards should be removed from the DefaultPool when she close.
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
@@ -3768,11 +3768,11 @@ contract('BorrowerOperations', async accounts => {
         await priceFeed.setPrice(_newPrice)
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3812,11 +3812,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3858,11 +3858,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3903,11 +3903,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3947,11 +3947,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndColl(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndColl(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getVirtualDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 

@@ -158,7 +158,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         );
 
         uint CdpIdsArrayLength = CdpIds.length;
-        _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
 
         Cdps[_cdpId].status = closedStatus;
         Cdps[_cdpId].collShares = 0;
@@ -169,8 +168,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         stFeePerUnitcdp[_cdpId] = 0;
 
         _removeStake(_cdpId);
-
         _removeCdp(_cdpId, CdpIdsArrayLength);
+
+        _requireAtLeastOneCdpInSystem(CdpIds.length);
     }
 
     /*
@@ -492,10 +492,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
     }
 
-    function _requireMoreThanOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
+    function _requireAtLeastOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
         require(
-            CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
-            "CdpManager: Only one cdp in the system"
+            CdpOwnersArrayLength >= 1 && sortedCdps.getSize() >= 1,
+            "CdpManager: Zero Cdps remain in the system"
         );
     }
 
@@ -504,7 +504,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndCollShares(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -513,7 +513,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = _getVirtualDebtAndCollShares(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
@@ -534,23 +534,23 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     // Return the Cdps entire debt and coll struct
-    function getVirtualDebtAndColl(
+    function getVirtualDebtAndCollShares(
         bytes32 _cdpId
-    ) external view returns (uint debt, uint coll, uint pendingDebtReward) {
-        (debt, coll, pendingDebtReward) = _getVirtualDebtAndColl(_cdpId);
+    ) external view returns (uint debt, uint collShares, uint pendingDebtRedistribution) {
+        (debt, collShares, pendingDebtRedistribution) = _getVirtualDebtAndCollShares(_cdpId);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function _getVirtualDebtAndColl(
+    function _getVirtualDebtAndCollShares(
         bytes32 _cdpId
-    ) internal view returns (uint debt, uint coll, uint pendingDebtReward) {
+    ) internal view returns (uint debt, uint collShares, uint pendingDebtRedistribution) {
         debt = Cdps[_cdpId].debt;
-        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
-        coll = _newColl;
+        (, uint _newCollShares) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
+        collShares = _newCollShares;
 
-        pendingDebtReward = getPendingDebtRedistribution(_cdpId);
+        pendingDebtRedistribution = getPendingDebtRedistribution(_cdpId);
 
-        debt = debt + pendingDebtReward;
+        debt = debt + pendingDebtRedistribution;
     }
 }

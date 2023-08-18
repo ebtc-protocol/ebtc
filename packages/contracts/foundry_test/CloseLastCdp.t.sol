@@ -33,7 +33,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
         // expect revert on close
         assertTrue(eBTCToken.balanceOf(marketActor) >= OPEN_DEBT);
         vm.prank(marketActor);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         cdpManager.redeemCollateral(
             OPEN_DEBT,
             bytes32(0),
@@ -61,7 +61,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
 
         // expect revert on close
         vm.prank(marketActor);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         cdpManager.liquidate(userCdpId);
 
         _ensureSystemInvariants();
@@ -75,7 +75,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
 
         // expect revert on close
         vm.prank(user);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         borrowerOperations.closeCdp(userCdpId);
 
         _ensureSystemInvariants();
@@ -110,7 +110,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
         // expect revert on close
         assertTrue(eBTCToken.balanceOf(marketActor) >= OPEN_DEBT);
         vm.prank(marketActor);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         cdpManager.redeemCollateral(
             OPEN_DEBT,
             bytes32(0),
@@ -150,7 +150,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
 
         // expect revert on close
         vm.prank(marketActor);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         cdpManager.liquidate(userCdpId);
 
         _ensureSystemInvariants();
@@ -178,7 +178,7 @@ contract CloseLastCdpTest is eBTCBaseInvariants {
 
         // expect revert on close
         vm.prank(user);
-        vm.expectRevert("CdpManager: Only one cdp in the system");
+        vm.expectRevert("CdpManager: Zero Cdps remain in the system");
         borrowerOperations.closeCdp(userCdpId);
 
         _ensureSystemInvariants();

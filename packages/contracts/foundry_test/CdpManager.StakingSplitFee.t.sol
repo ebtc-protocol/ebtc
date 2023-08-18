@@ -44,7 +44,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _assert_cdp_manager_invariant_fee3(LocalFeeSplitVar memory _var) internal {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            CdpState memory _cdpState = _getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             assertGt(
                 collateral.getPooledEthByShares(_cdpState.collShares),
                 _targetCdpPrevCollUnderlyings[cdpManager.CdpIds(i)],
@@ -56,7 +56,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal view {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            CdpState memory _cdpState = _getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.collShares;
 
             require(
@@ -180,7 +180,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _populateCdpStatus(bytes32 _cdpId) internal {
-        CdpState memory _cdpState = _getVirtualDebtAndColl(_cdpId);
+        CdpState memory _cdpState = _getVirtualDebtAndCollShares(_cdpId);
         _targetCdpPrevColls[_cdpId] = _cdpState.collShares;
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(
             _cdpState.collShares

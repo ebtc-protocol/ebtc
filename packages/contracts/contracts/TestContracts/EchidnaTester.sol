@@ -366,7 +366,7 @@ contract EchidnaTester {
     function _ensureMCR(bytes32 _cdpId, CDPChange memory _change) internal view {
         uint price = priceFeedTestnet.getPrice();
         require(price > 0);
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
         uint _debt = entireDebt.add(_change.debtAddition).sub(_change.debtReduction);
         uint _coll = entireColl.add(_change.collAddition).sub(_change.collReduction);
         require(_debt.mul(MCR).div(price) < _coll, "!CDP_MCR");
@@ -417,7 +417,7 @@ contract EchidnaTester {
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
             echidnaProxy.liquidatePrx(_cdpId);
             require(!sortedCdps.contains(_cdpId), "!ClosedByLiquidation");
         }
@@ -437,10 +437,10 @@ contract EchidnaTester {
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
-            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+            (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
             require(_partialAmount < entireDebt, "!_partialAmount");
             echidnaProxy.partialLiquidatePrx(_cdpId, _partialAmount);
-            (uint256 _newEntireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+            (uint256 _newEntireDebt, , ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
             require(_newEntireDebt < entireDebt, "!reducedByPartialLiquidation");
         }
 
@@ -587,7 +587,7 @@ contract EchidnaTester {
         EchidnaProxy echidnaProxy = echidnaProxies[actor];
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
-        (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
         require(_amount <= entireDebt, "!repayEBTC_amount");
         echidnaProxy.repayEBTCPrx(_cdpId, _amount, _cdpId, _cdpId);
     }
@@ -612,7 +612,7 @@ contract EchidnaTester {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(echidnaProxy), 0);
         require(_cdpId != bytes32(0), "!cdpId");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndCollShares(_cdpId);
         require(_collWithdrawal < entireColl, "!adjustCdpExt_collWithdrawal");
 
         uint price = priceFeedTestnet.getPrice();
@@ -800,7 +800,7 @@ contract EchidnaTester {
         bytes32 currentCdp = sortedCdps.getFirst();
         uint cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndColl(
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getVirtualDebtAndCollShares(
                 currentCdp
             );
             cdpsBalance = cdpsBalance.add(entireDebt);
@@ -854,7 +854,7 @@ contract EchidnaTester {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (, uint _coll, ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            (, uint _coll, ) = cdpManager.getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = _sum.add(_coll);
         }
         uint _activeColl = activePool.getSystemCollShares();
@@ -870,7 +870,7 @@ contract EchidnaTester {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            (uint _debt, , ) = cdpManager.getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = _sum.add(_debt);
         }
         if (!_assertApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance)) {

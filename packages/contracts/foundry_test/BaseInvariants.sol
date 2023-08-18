@@ -49,7 +49,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            CdpState memory _cdpState = _getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = (_sum + _cdpState.collShares);
         }
         require(
@@ -62,7 +62,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
         uint _sum;
         for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            (uint _debt, , ) = cdpManager.getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = _sum + _debt;
         }
         require(

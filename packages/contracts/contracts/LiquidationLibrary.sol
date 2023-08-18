@@ -57,7 +57,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     ) internal {
         _requireCdpIsActive(_cdpId);
 
-        _applyAccumulatedFeeSplit(_cdpId);
+        _applyPendingState(_cdpId);
 
         uint256 _price = priceFeed.fetchPrice();
 
@@ -312,7 +312,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, ) = _getVirtualDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = _getVirtualDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         uint _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
@@ -336,7 +336,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bytes32 _cdpId = _partialState._cdpId;
 
         // calculate entire debt to repay
-        (uint _entireDebt, uint _entireColl, ) = _getVirtualDebtAndColl(_cdpId);
+        (uint _entireDebt, uint _entireColl, ) = _getVirtualDebtAndCollShares(_cdpId);
         _requirePartialLiqDebtSize(_partialDebt, _entireDebt, _partialState._price);
         uint newDebt = _entireDebt - _partialDebt;
 

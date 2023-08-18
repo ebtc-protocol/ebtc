@@ -121,7 +121,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.assume(_redeemNumber > 0);
         uint _redeemDebt;
         for (uint i = 0; i < _redeemNumber; ++i) {
-            CdpState memory _state = _getVirtualDebtAndColl(_cdpIds[i]);
+            CdpState memory _state = _getVirtualDebtAndCollShares(_cdpIds[i]);
             _redeemDebt += _state.debt;
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             uint _sugar = eBTCToken.balanceOf(_owner);

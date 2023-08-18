@@ -152,7 +152,7 @@ contract HintHelpers is LiquityBase {
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, newColl, ) = cdpManager.getVirtualDebtAndColl(vars.currentCdpId);
+            (, newColl, ) = cdpManager.getVirtualDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEBTCToRedeemToRedeem = vars.remainingEBTCToRedeemToRedeem - maxRedeemableEBTC;

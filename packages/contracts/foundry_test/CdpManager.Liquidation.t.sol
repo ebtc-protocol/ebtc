@@ -92,7 +92,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getVirtualDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getVirtualDebtAndCollShares(cdpId1);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -102,7 +102,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getVirtualDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             uint _ICR = cdpManager.getICR(cdpId1, price);
@@ -165,7 +165,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getVirtualDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getVirtualDebtAndCollShares(cdpId1);
 
         // Price falls
         uint _newPrice = _curPrice / 2;
@@ -176,7 +176,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Partially Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getVirtualDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getVirtualDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
@@ -277,7 +277,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
         for (uint i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            (uint _cdpDebt, , ) = cdpManager.getVirtualDebtAndColl(cdpManager.CdpIds(i));
+            (uint _cdpDebt, , ) = cdpManager.getVirtualDebtAndCollShares(cdpManager.CdpIds(i));
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
@@ -337,8 +337,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getVirtualDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getVirtualDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getVirtualDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getVirtualDebtAndCollShares(cdpId2);
 
             bytes32[] memory _emptyCdps;
             _multipleCDPsLiq(2, _emptyCdps, users[0]);
@@ -388,8 +388,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getVirtualDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getVirtualDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getVirtualDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getVirtualDebtAndCollShares(cdpId2);
 
             bytes32[] memory _cdps = new bytes32[](2);
             _cdps[0] = cdpId1;
@@ -435,7 +435,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // check bad debt status
         (uint aliceDebt, uint aliceCollShares, uint pendingBadDebt) = cdpManager
-            .getVirtualDebtAndColl(aliceCdpId);
+            .getVirtualDebtAndCollShares(aliceCdpId);
 
         console.log("aliceDebt:", aliceDebt);
         console.log("aliceCollShares:", aliceCollShares);
@@ -450,18 +450,32 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         priceFeedMock.setPrice(0.52 ether);
 
         // partially liquidate remaining CDP
+
+        uint aliceDebtAfterPartialLiquidationWithoutRedistribution = debt / 2;
         cdpManager.partiallyLiquidate(aliceCdpId, debt / 2, bytes32(0), bytes32(0));
 
-        (aliceDebt, aliceCollShares, pendingBadDebt) = cdpManager.getVirtualDebtAndColl(aliceCdpId);
+        (uint aliceDebtAfter, uint aliceCollSharesAfter, uint pendingBadDebtAfter) = cdpManager
+            .getVirtualDebtAndCollShares(aliceCdpId);
 
         // ensure bad debt is accounted for properly
-        console.log("aliceDebt:", aliceDebt);
-        console.log("aliceCollShares:", aliceCollShares);
-        console.log("pendingBadDebt:", pendingBadDebt);
+        console.log("aliceDebt:", aliceDebtAfter);
+        console.log("aliceCollShares:", aliceCollSharesAfter);
+        console.log("pendingBadDebt:", pendingBadDebtAfter);
         console.log("systemDebtRedistributionIndex:", cdpManager.systemDebtRedistributionIndex());
         console.log(
             "alice debtRedistributionIndex:",
             cdpManager.debtRedistributionIndex(aliceCdpId)
+        );
+
+        assertGt(
+            aliceDebtAfter,
+            aliceDebtAfterPartialLiquidationWithoutRedistribution,
+            "Alice debt should increase after Cdp action following a debt redistribution"
+        );
+        assertEq(
+            pendingBadDebtAfter,
+            0,
+            "Alice pending debt should be 0 immediately after a Cdp action following a debt redistribution, if no subsequent redistribution happened afterwards in the same block."
         );
 
         /**
