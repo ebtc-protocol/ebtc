@@ -33,6 +33,17 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         closeCdp(0);
     }
 
+    function testGetEquity() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(0, 1);
+        openCdp(420101651846, 1);
+        redeemCollateral(
+            3101801316311532027964824508,
+            23493578618251733659817882,
+            67108033879056041636681745741
+        );
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));

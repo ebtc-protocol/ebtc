@@ -253,6 +253,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     function test_RedemptionMustSatisfyAccountingEquation() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
+        //           openCdp 2200000000000000016 1
+        //   openCdp 2200000000000000016 1
+        //   redeemCollateral 1 23493578618251733659817882 956041569236485562
+
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         uint256 funds = type(uint96).max;
@@ -282,9 +286,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             bytes32(0),
             bytes32(0),
             bytes32(0),
-            5279735678434044700290797275852570643,
+            23493578618251733659817882,
             0,
-            292575212237476113
+            956041569236485562
         );
 
         vars.activePoolCollAfter = activePool.getStEthColl();

@@ -340,6 +340,8 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
+    function _getFlashLoanActions(uint _seed) internal view returns (bytes32) {}
+
     ///////////////////////////////////////////////////////
     // CdpManager
     ///////////////////////////////////////////////////////
@@ -527,26 +529,42 @@ contract EchidnaTester is
             cdpManager.DECIMAL_PRECISION()
         );
 
-        _before(bytes32(0));
+        bytes32 _cdpId = sortedCdps.getLast();
+        _before(_cdpId);
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(
                 CdpManager.redeemCollateral.selector,
                 _EBTCAmount,
-                bytes32(0),
-                bytes32(0),
-                bytes32(0),
+                _cdpId,
+                _cdpId,
+                _cdpId,
                 _partialRedemptionHintNICR,
-                0,
+                // redeem a maximum of 1 CDP to make invariand CDPM_04 easier to calculate
+                1,
                 _maxFeePercentage
             )
         );
 
-        _after(bytes32(0));
+        _after(_cdpId);
 
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+
+            emit L1(vars.liquidatorRewardSharesBefore);
+            emit L3(vars.activePoolCollBefore, vars.collSurplusPoolBefore, vars.debtBefore);
+            emit L3(vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
+            emit L2(
+                (vars.activePoolCollBefore +
+                    vars.collSurplusPoolBefore +
+                    vars.liquidatorRewardSharesBefore) *
+                    vars.priceBefore -
+                    vars.debtBefore,
+                (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
+                    vars.priceAfter -
+                    vars.debtAfter
+            );
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
