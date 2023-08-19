@@ -15,6 +15,7 @@ interface IBorrowerOperations {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
+    event DelegateSet(address _borrower, address _delegate, bool _isDelegate);
 
     // --- Functions ---
 
@@ -23,6 +24,14 @@ interface IBorrowerOperations {
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
+    ) external returns (bytes32);
+
+    function openCdpFor(
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount,
+        address _borrower
     ) external returns (bytes32);
 
     function addColl(
@@ -77,4 +86,8 @@ interface IBorrowerOperations {
     function claimCollateral() external;
 
     function feeRecipientAddress() external view returns (address);
+
+    function isDelegate(address _borrower, address _delegate) external view returns (bool);
+
+    function setDelegate(address _borrower, address _delegate, bool _isDelegate) external;
 }

@@ -36,6 +36,8 @@ contract BorrowerOperations is
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
+    mapping(address => mapping(address => bool)) public delegates;
+
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
@@ -149,6 +151,16 @@ contract BorrowerOperations is
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
     }
 
+    function openCdpFor(
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount,
+        address _borrower
+    ) external override nonReentrantSelfAndCdpM returns (bytes32) {
+        return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, _borrower);
+    }
+
     // Function that adds the received stETH to the caller's specified Cdp.
     function addColl(
         bytes32 _cdpId,
@@ -257,7 +269,10 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
-        _requireCdpOwner(_cdpId);
+        // Confirm the operation is the borrower or approved delegate adjusting its own cdp
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireBorrowerOrApprovedDelegate(_borrower);
+
         _requireCdpisActive(cdpManager, _cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -272,10 +287,6 @@ contract BorrowerOperations is
         }
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
         _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
-
-        // Confirm the operation is the borrower adjusting its own cdp
-        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
@@ -308,7 +319,7 @@ contract BorrowerOperations is
         // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
         if (!_isDebtIncrease && _EBTCChange > 0) {
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
-            _requireSufficientEBTCBalance(ebtcToken, _borrower, vars.netDebtChange);
+            _requireSufficientEBTCBalance(ebtcToken, msg.sender, vars.netDebtChange);
             _requireNonZeroDebt(vars.debt - vars.netDebtChange);
         }
 
@@ -359,6 +370,7 @@ contract BorrowerOperations is
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
+        _requireBorrowerOrApprovedDelegate(_borrower);
 
         LocalVariables_openCdp memory vars;
 
@@ -440,7 +452,9 @@ contract BorrowerOperations is
     allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
     */
     function closeCdp(bytes32 _cdpId) external override {
-        _requireCdpOwner(_cdpId);
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireBorrowerOrApprovedDelegate(_borrower);
+
         _requireCdpisActive(cdpManager, _cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -483,6 +497,23 @@ contract BorrowerOperations is
     function claimCollateral() external override {
         // send ETH from CollSurplus Pool to owner
         collSurplusPool.claimColl(msg.sender);
+    }
+
+    function isDelegate(address _borrower, address _delegate) external view returns (bool) {
+        return _isDelegate(_borrower, _delegate);
+    }
+
+    function _isDelegate(address _borrower, address _delegate) internal view returns (bool) {
+        return delegates[_borrower][_delegate];
+    }
+
+    function setDelegate(address _borrower, address _delegate, bool _isDelegate) external {
+        require(
+            _borrower == msg.sender,
+            "BorrowerOperations: Only borrower can set delegate status for own account"
+        );
+        delegates[_borrower][_delegate] = _isDelegate;
+        emit DelegateSet(_borrower, _delegate, _isDelegate);
     }
 
     // --- Helper functions ---
@@ -549,22 +580,10 @@ contract BorrowerOperations is
 
     // --- 'Require' wrapper functions ---
 
-    function _requireCdpOwner(bytes32 _cdpId) internal view {
-        address _owner = sortedCdps.existCdpOwners(_cdpId);
-        require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
-    }
-
     function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"
-        );
-    }
-
-    function _requireCallerIsBorrower(address _borrower) internal view {
-        require(
-            msg.sender == _borrower,
-            "BorrowerOperations: Caller must be the borrower for a withdrawal"
         );
     }
 
@@ -687,12 +706,19 @@ contract BorrowerOperations is
 
     function _requireSufficientEBTCBalance(
         IEBTCToken _ebtcToken,
-        address _borrower,
+        address _account,
         uint _debtRepayment
     ) internal view {
         require(
-            _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
+            _ebtcToken.balanceOf(_account) >= _debtRepayment,
             "BorrowerOperations: Caller doesnt have enough EBTC to make repayment"
+        );
+    }
+
+    function _requireBorrowerOrApprovedDelegate(address _borrower) internal view {
+        require(
+            _borrower == msg.sender || _isDelegate(_borrower, msg.sender),
+            "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf"
         );
     }
 

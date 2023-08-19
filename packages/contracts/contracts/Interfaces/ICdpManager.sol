@@ -61,6 +61,8 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getCdpColl(bytes32 _cdpId) external view returns (uint);
 
+    function getCdpStEthBalance(bytes32 _cdpId) external view returns (uint);
+
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
 
     function initializeCdp(
