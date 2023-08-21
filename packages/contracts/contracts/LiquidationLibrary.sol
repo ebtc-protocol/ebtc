@@ -980,6 +980,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // Can liquidate in RM if ICR < TCR AND Enough time has passed
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
-        return _icr < tcr && block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
+        return icr < tcr && block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
     }
 }
