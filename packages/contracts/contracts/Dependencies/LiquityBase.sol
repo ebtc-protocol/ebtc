@@ -45,6 +45,14 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;
 
+    // TODO: IMROVE
+    // NOTE: No packing cause it's the last var, no need for u64
+    uint256 constant UNSET_TIMESTAMP_FLAG = type(uint256).max;
+
+    // TODO: IMPROVE THIS!!!
+    uint256 lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
+    // TODO: IMPROVE THIS!!
+
     constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
         activePool = IActivePool(_activePoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -95,7 +103,21 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _checkRecoveryModeForTCR(uint256 _tcr) internal returns (bool) {
-        return _tcr < CCR;
+        bool result = _tcr < CCR;
+
+        // If we're on RM, store the result
+        // If we're out of RM, unset the result
+        if(result) {
+            // Check if not set, then set
+            if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG){
+                lastRecoveryModeTimestamp = block.timestamp; // Set to now, used exclusively by liquidations
+            }
+        } else {
+            // Set to 0, we pay 100 anyway, it's ok
+            lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
+        }
+        
+        return result;
     }
 
     function _requireUserAcceptsFee(uint _fee, uint _amount, uint _maxFeePercentage) internal pure {
