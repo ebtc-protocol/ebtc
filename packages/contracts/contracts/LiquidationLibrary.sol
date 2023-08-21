@@ -66,9 +66,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
         require(
-            _ICR < MCR || (_TCR < CCR && _ICR < _TCR),
+            _ICR < MCR || (_TCR < CCR && canLiquidateRecoveryMode(_ICR, _TCR)),
             "CdpManager: ICR is not below liquidation threshold in current mode"
-        );
+        ); // TODO: Re check for RM Blocker
 
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
@@ -419,7 +419,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
+                bool _liquidatable = _recovery ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR)) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
                 }
@@ -432,7 +432,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
+                bool _liquidatable = _recovery ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR)) : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
@@ -756,9 +756,12 @@ contract LiquidationLibrary is CdpManagerStorage {
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
                 vars.ICR = getCurrentICR(vars.cdpId, _price);
 
-                if (!vars.backToNormalMode && (vars.ICR < MCR || vars.ICR < _TCR)) {
+                if (!vars.backToNormalMode && (vars.ICR < MCR || (canLiquidateRecoveryMode(vars.ICR, _TCR)))) {
+                    // TODO: If RM, make sure we've been in RM for a while
+
                     vars.price = _price;
                     _applyAccumulatedFeeSplit(vars.cdpId);
+                    // TODO: RECOVERY MODE LIQUIDATIONS
                     _getLiquidationValuesRecoveryMode(
                         _price,
                         vars.entireSystemDebt,
@@ -973,5 +976,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             _entireColl >= MIN_NET_COLL,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
+    }
+
+    // Can liquidate in RM if ICR < TCR AND Enough time has passed
+    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
+        return _icr < tcr && block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
     }
 }
