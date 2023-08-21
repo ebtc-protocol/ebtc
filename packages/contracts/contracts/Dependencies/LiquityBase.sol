@@ -111,7 +111,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         if(result) {
             // Check if not set, then set
             if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG){
-                lastRecoveryModeTimestamp = block.timestamp; // Set to now, used exclusively by liquidations
+                lastRecoveryModeTimestamp = uint64(block.timestamp); // Set to now, used exclusively by liquidations
             }
         } else {
             // Set to 0, we pay 100 anyway, it's ok
