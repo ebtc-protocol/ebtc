@@ -393,7 +393,7 @@ contract LeverageMacroBase {
 
         // Exact approve
         // Approve can be given anywhere because this is a router, and after call we will delete all approvals
-        IERC20(swapData.tokenForSwap).approve(
+        IERC20(swapData.tokenForSwap).safeApprove(
             swapData.addressForApprove,
             swapData.exactApproveAmount
         );
@@ -415,7 +415,7 @@ contract LeverageMacroBase {
         // Enforce exact approval
         // Can use max because the tokens are OZ
         // val -> 0 -> 0 -> val means this is safe to repeat since even if full approve is unused, we always go back to 0 after
-        IERC20(swapData.tokenForSwap).approve(swapData.addressForApprove, 0);
+        IERC20(swapData.tokenForSwap).safeApprove(swapData.addressForApprove, 0);
 
         // Do the balance checks after the call to the aggregator
         _doSwapChecks(swapData.swapChecks);
