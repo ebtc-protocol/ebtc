@@ -47,11 +47,12 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
     // TODO: IMROVE
     // NOTE: No packing cause it's the last var, no need for u64
-    uint64 constant UNSET_TIMESTAMP_FLAG = type(uint64).max;
+    uint128 constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
 
     // TODO: IMPROVE THIS!!!
-    uint64 lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
-    uint64 waitTimeFromRMTriggerToLiquidations = 10 minutes; 
+    uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
+    uint128 public waitTimeFromRMTriggerToLiquidations = 10 minutes;
+
     // TODO: IMPROVE THIS!!
 
     constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
@@ -108,9 +109,9 @@ contract LiquityBase is BaseMath, ILiquityBase {
 
         // If we're on RM, store the result
         // If we're out of RM, unset the result
-        if(result) {
+        if (result) {
             // Check if not set, then set
-            if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG){
+            if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
                 lastRecoveryModeTimestamp = uint64(block.timestamp); // Set to now, used exclusively by liquidations
             }
         } else {

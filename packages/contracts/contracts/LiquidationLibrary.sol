@@ -419,7 +419,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR)) : _icr < MCR;
+                bool _liquidatable = _recovery
+                    ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
+                    : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
                 }
@@ -432,7 +434,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR)) : _icr < MCR;
+                bool _liquidatable = _recovery
+                    ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
+                    : _icr < MCR;
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
@@ -756,7 +760,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
                 vars.ICR = getCurrentICR(vars.cdpId, _price);
 
-                if (!vars.backToNormalMode && (vars.ICR < MCR || (canLiquidateRecoveryMode(vars.ICR, _TCR)))) {
+                if (
+                    !vars.backToNormalMode &&
+                    (vars.ICR < MCR || (canLiquidateRecoveryMode(vars.ICR, _TCR)))
+                ) {
                     // TODO: If RM, make sure we've been in RM for a while
 
                     vars.price = _price;
@@ -980,6 +987,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     // Can liquidate in RM if ICR < TCR AND Enough time has passed
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
-        return icr < tcr && block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
+        // ICR < TCR and we have waited enough
+        return
+            icr < tcr &&
+            lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG &&
+            block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
     }
 }
