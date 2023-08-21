@@ -588,7 +588,7 @@ contract BorrowerOperations is
         require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
 
-    function _requireNotInRecoveryMode(uint _tcr) internal view {
+    function _requireNotInRecoveryMode(uint _tcr) internal {
         require(
             !_checkRecoveryModeForTCR(_tcr),
             "BorrowerOperations: Operation not permitted during Recovery Mode"

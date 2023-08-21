@@ -548,7 +548,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /**
     reveals whether or not the system is in Recovery Mode (i.e. whether the Total Collateralization Ratio (TCR) is below the Critical Collateralization Ratio (CCR)).
     */
-    function checkRecoveryMode(uint _price) external view override returns (bool) {
+    function checkRecoveryMode(uint _price) external override returns (bool) {
         return _checkRecoveryMode(_price);
     }
 

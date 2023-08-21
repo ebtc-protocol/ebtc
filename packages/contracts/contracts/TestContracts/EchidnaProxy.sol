@@ -42,7 +42,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     // helper functions
-    function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
+    function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal {
         uint _price = priceFeed.getPrice();
         if (_price > 0) {
             bool _recovery = cdpManager.checkRecoveryMode(_price);
@@ -55,7 +55,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         }
     }
 
-    function _ensureNoRecoveryModeTriggered() internal view {
+    function _ensureNoRecoveryModeTriggered() internal {
         uint _price = priceFeed.getPrice();
         if (_price > 0) {
             require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");

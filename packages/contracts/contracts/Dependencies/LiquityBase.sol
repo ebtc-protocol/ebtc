@@ -90,11 +90,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return (TCR, entireSystemColl, entireSystemDebt);
     }
 
-    function _checkRecoveryMode(uint256 _price) internal view returns (bool) {
+    function _checkRecoveryMode(uint256 _price) internal returns (bool) {
         return _checkRecoveryModeForTCR(_getTCR(_price));
     }
 
-    function _checkRecoveryModeForTCR(uint256 _tcr) internal view returns (bool) {
+    function _checkRecoveryModeForTCR(uint256 _tcr) internal returns (bool) {
         return _tcr < CCR;
     }
 

@@ -82,5 +82,5 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function getTCR(uint _price) external view returns (uint);
 
-    function checkRecoveryMode(uint _price) external view returns (bool);
+    function checkRecoveryMode(uint _price) external returns (bool);
 }
