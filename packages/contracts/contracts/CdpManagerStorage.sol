@@ -18,6 +18,44 @@ import "./Dependencies/AuthNoOwner.sol";
     @dev Shared functions were also added here to de-dup code
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
+
+    // TODO: IMPROVE
+    // NOTE: No packing cause it's the last var, no need for u64
+    uint128 constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
+
+    // TODO: IMPROVE THIS!!!
+    uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
+    uint128 public waitTimeFromRMTriggerToLiquidations = 10 minutes;
+
+    // TODO: Pitfal is fee split
+
+    /// @dev Checks that the system is in RM
+    function beginRMLiquidationCooldown() external {
+        // Require we're in RM
+        uint256 price = priceFeed.fetchPrice();
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
+        require(isRecoveryMode);
+
+        // Arm the countdown
+        if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
+            lastRecoveryModeTimestamp = uint128(block.timestamp);
+        }
+    }
+
+    /// @dev Checks that the system is not in RM
+    function stopRMLiquidationCooldown() external {
+        // Require we're in RM
+        uint256 price = priceFeed.fetchPrice();
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
+        require(!isRecoveryMode);
+
+        // Disarm the countdown
+        if(lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
+            lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
+        }
+    }
+
+
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
