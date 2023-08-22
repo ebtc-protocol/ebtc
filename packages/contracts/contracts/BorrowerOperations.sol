@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IBorrowerOperations.sol";
+import "./Interfaces/IRmLiquidationsChecker.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/IEBTCToken.sol";
@@ -350,7 +351,7 @@ contract BorrowerOperations is
             _processTokenMovesFromAdjustment(_varMvTokens);
         }
 
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
+        IRmLiquidationsChecker(address(cdpManager)).checkLiquidateCoolDownAndReset(); // TODO: Check this
     }
 
     function _openCdp(
@@ -435,7 +436,7 @@ contract BorrowerOperations is
             "BorrowerOperations: deposited collateral mismatch!"
         );
 
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
+        IRmLiquidationsChecker(address(cdpManager)).checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         return _cdpId;
     }
@@ -478,7 +479,7 @@ contract BorrowerOperations is
         // CEI: Send the collateral and liquidator reward shares back to the user
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
 
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
+        IRmLiquidationsChecker(address(cdpManager)).checkLiquidateCoolDownAndReset(); // TODO: Check this
     }
 
     /**
