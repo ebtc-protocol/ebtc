@@ -266,6 +266,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -373,6 +374,7 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         vars.debt = _EBTCAmount;
 
@@ -447,6 +449,7 @@ contract BorrowerOperations is
 
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
