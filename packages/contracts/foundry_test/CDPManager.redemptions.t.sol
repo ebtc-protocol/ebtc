@@ -250,7 +250,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
-    function test_RedemptionMustSatisfyAccountingEquationSimple(uint256 redeem) public {
+    function test_RedemptionMustSatisfyAccountingEquationComplex(uint256 redeem) public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
         address user = _utils.getNextUserAddress();
@@ -259,99 +259,20 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.deal(user, funds);
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
-
-        priceFeedMock.setPrice(1 * 1e18);
-
-        borrowerOperations.openCdp(
-            100 * 1e18,
-            bytes32(0),
-            bytes32(0),
-            250 * 1e18 + cdpManager.LIQUIDATOR_REWARD()
-        );
-        bytes32 _cdpId = borrowerOperations.openCdp(
-            100 * 1e18,
-            bytes32(0),
-            bytes32(0),
-            120 * 1e18 + cdpManager.LIQUIDATOR_REWARD()
-        );
-
-        vars.activePoolCollBefore = activePool.getStEthColl();
-        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
-        vars.debtBefore = activePool.getEBTCDebt();
-        vars.priceBefore = priceFeedMock.getPrice();
-        vars.actorEbtcBefore = eBTCToken.balanceOf(user);
-        console2.log("price", vars.priceBefore);
-        console2.log("liq", vars.liquidatorRewardSharesBefore);
-        console2.log(
-            "before",
-            vars.activePoolCollBefore,
-            vars.collSurplusPoolBefore,
-            vars.debtBefore
-        );
-
-        cdpManager.redeemCollateral(
-            100 * 1e18,
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            100 * 1e18,
-            1,
-            1e18
-        );
-
-        vars.activePoolCollAfter = activePool.getStEthColl();
-        vars.liquidatorRewardSharesAfter = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
-        vars.debtAfter = activePool.getEBTCDebt();
-        vars.priceAfter = priceFeedMock.getPrice();
-        vars.actorEbtcAfter = eBTCToken.balanceOf(user);
-
-        uint256 redeemed = (vars.actorEbtcBefore - vars.actorEbtcAfter);
-
-        console2.log("liq", vars.liquidatorRewardSharesAfter);
-        console2.log("after", vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
-        console2.log("redeemed", redeemed);
-
-        uint256 beforeEquity = (vars.activePoolCollBefore +
-            vars.liquidatorRewardSharesBefore +
-            vars.collSurplusPoolBefore) *
-            vars.priceBefore -
-            vars.debtBefore;
-        uint256 afterEquity = (vars.activePoolCollAfter +
-            vars.liquidatorRewardSharesAfter +
-            vars.collSurplusPoolAfter +
-            redeemed) *
-            vars.priceAfter -
-            vars.debtAfter;
-
-        console2.log("equity", beforeEquity, afterEquity);
-
-        assertTrue(invariant_CDPM_04(vars), CDPM_04);
-    }
-
-    function test_RedemptionMustSatisfyAccountingEquation(uint256 redeem) public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-
-        address user = _utils.getNextUserAddress();
-        vm.startPrank(user);
-        uint256 funds = type(uint96).max;
-        vm.deal(user, funds);
-        collateral.approve(address(borrowerOperations), funds);
-        collateral.deposit{value: funds}();
-
-        bytes32 _cdpId0 = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
-
-        priceFeedMock.setPrice(69995479637841615);
 
         bytes32 _cdpId1 = borrowerOperations.openCdp(
-            127823963372775726,
+            6017477493556148,
             bytes32(0),
             bytes32(0),
-            2282718184698143204
+            2301263420395061725
         );
 
-        priceFeedMock.setPrice(63632254216219650);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            1817137256320022,
+            bytes32(0),
+            bytes32(0),
+            2230579181077006293
+        );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
@@ -361,6 +282,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vars.debtBefore = activePool.getEBTCDebt();
         vars.priceBefore = priceFeedMock.getPrice();
         vars.actorEbtcBefore = eBTCToken.balanceOf(user);
+        vars.actorCollBefore = collateral.balanceOf(user);
+        vars.feeRecipientTotalCollBefore =
+            activePool.getFeeRecipientClaimableColl() +
+            collateral.balanceOf(activePool.feeRecipientAddress());
         console2.log("price", vars.priceBefore);
         console2.log("liq", vars.liquidatorRewardSharesBefore);
         console2.log(
@@ -371,13 +296,13 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         );
 
         cdpManager.redeemCollateral(
-            98215801481317169,
+            7117407739516878,
             bytes32(0),
             bytes32(0),
             bytes32(0),
-            2347992561060245004992293402286186860456117725,
+            1384110347060895451294098103757437540301390035862529508464766486079565,
             1,
-            658751657467780472
+            809662003071938392
         );
 
         vars.activePoolCollAfter = activePool.getStEthColl();
@@ -386,24 +311,33 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vars.debtAfter = activePool.getEBTCDebt();
         vars.priceAfter = priceFeedMock.getPrice();
         vars.actorEbtcAfter = eBTCToken.balanceOf(user);
+        vars.actorCollAfter = collateral.balanceOf(user);
+        vars.feeRecipientTotalCollAfter =
+            activePool.getFeeRecipientClaimableColl() +
+            collateral.balanceOf(activePool.feeRecipientAddress());
 
-        uint256 redeemed = (vars.actorEbtcBefore - vars.actorEbtcAfter);
+        uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
+        uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
+        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
 
         console2.log("liq", vars.liquidatorRewardSharesAfter);
         console2.log("after", vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
-        console2.log("redeemed", redeemed);
+        console2.log("user delta", redeemedColl, paidEbtc);
+        console2.log("fee", fee);
 
-        uint256 beforeEquity = (vars.activePoolCollBefore +
+        uint256 beforeEquity = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
-            vars.collSurplusPoolBefore) *
-            vars.priceBefore -
+            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            1e18 -
             vars.debtBefore;
-        uint256 afterEquity = (vars.activePoolCollAfter +
+        uint256 afterEquity = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
-            vars.collSurplusPoolAfter +
-            redeemed) *
-            vars.priceAfter -
-            vars.debtAfter;
+            vars.collSurplusPoolAfter -
+            redeemedColl -
+            fee) * vars.priceAfter) /
+            1e18 -
+            vars.debtAfter +
+            paidEbtc;
 
         console2.log("equity", beforeEquity, afterEquity);
 
@@ -426,7 +360,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getCurrentICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+            cdpManager.getCurrentICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);

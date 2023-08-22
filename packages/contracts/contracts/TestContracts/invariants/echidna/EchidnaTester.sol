@@ -631,9 +631,9 @@ contract EchidnaTester is
             abi.encodeWithSelector(
                 CdpManager.redeemCollateral.selector,
                 _EBTCAmount,
-                _cdpId,
-                _cdpId,
-                _cdpId,
+                bytes32(0),
+                bytes32(0),
+                bytes32(0),
                 _partialRedemptionHintNICR,
                 // redeem a maximum of 1 CDP to make invariand CDPM_04 easier to calculate
                 1,
