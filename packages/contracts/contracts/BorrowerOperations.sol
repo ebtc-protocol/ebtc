@@ -266,7 +266,6 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         if (_isDebtIncrease) {
             _requireNonZeroDebtChange(_EBTCChange);
@@ -350,6 +349,8 @@ contract BorrowerOperations is
             );
             _processTokenMovesFromAdjustment(_varMvTokens);
         }
+
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
     }
 
     function _openCdp(
@@ -374,7 +375,6 @@ contract BorrowerOperations is
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         vars.debt = _EBTCAmount;
 
@@ -435,6 +435,8 @@ contract BorrowerOperations is
             "BorrowerOperations: deposited collateral mismatch!"
         );
 
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
+
         return _cdpId;
     }
 
@@ -449,7 +451,6 @@ contract BorrowerOperations is
 
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));
-        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
 
         uint coll = cdpManager.getCdpColl(_cdpId);
         uint debt = cdpManager.getCdpDebt(_cdpId);
@@ -476,6 +477,8 @@ contract BorrowerOperations is
 
         // CEI: Send the collateral and liquidator reward shares back to the user
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
+
+        cdpManager.checkLiquidateCoolDownAndReset(); // TODO: Check this
     }
 
     /**
