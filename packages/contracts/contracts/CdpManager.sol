@@ -111,6 +111,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function liquidate(bytes32 _cdpId) external override {
         _delegate(liquidationLibrary);
+        _checkLiquidateCoolDownAndReset(); // TODO: Make this better
     }
 
     /// @notice Partially liquidate a single CDP.
@@ -126,6 +127,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _lowerPartialHint
     ) external override {
         _delegate(liquidationLibrary);
+        _checkLiquidateCoolDownAndReset(); // TODO: Make this better
     }
 
     // --- Batch/Sequence liquidation functions ---
@@ -137,6 +139,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _n Maximum number of CDPs to liquidate.
     function liquidateCdps(uint _n) external override {
         _delegate(liquidationLibrary);
+        _checkLiquidateCoolDownAndReset(); // TODO: Make this better
     }
 
     /// @notice Attempt to liquidate a custom list of CDPs provided by the caller
@@ -145,6 +148,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpArray Array of CDPs to liquidate.
     function batchLiquidateCdps(bytes32[] memory _cdpArray) external override {
         _delegate(liquidationLibrary);
+        _checkLiquidateCoolDownAndReset(); // TODO: Make this better
     }
 
     // --- Redemption functions ---

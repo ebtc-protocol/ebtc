@@ -36,10 +36,16 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
         require(isRecoveryMode);
 
+        _beginRMLiquidationCooldown();
+    }
+
+    function _beginRMLiquidationCooldown() internal {
         // Arm the countdown
         if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = uint128(block.timestamp);
         }
+
+        // TODO: EVENT
     }
 
     /// @dev Checks that the system is not in RM
@@ -49,9 +55,27 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
         require(!isRecoveryMode);
 
+        _stopRMLiquidationCooldown();
+    }
+
+    function _stopRMLiquidationCooldown() internal {
         // Disarm the countdown
         if(lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
+        }
+
+        // TODO: Event
+    }
+
+    /// TODO: obv optimizations
+    function _checkLiquidateCoolDownAndReset() internal {
+        uint256 price = priceFeed.fetchPrice();
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
+
+        if(isRecoveryMode) {
+            _beginRMLiquidationCooldown();
+        } else {
+            _stopRMLiquidationCooldown();
         }
     }
 
