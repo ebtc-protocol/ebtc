@@ -68,7 +68,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     /// TODO: obv optimizations
-    function _checkLiquidateCoolDownAndReset() internal {
+    function checkLiquidateCoolDownAndReset() public {
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
 
