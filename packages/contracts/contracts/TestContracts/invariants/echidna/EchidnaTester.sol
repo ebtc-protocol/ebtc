@@ -411,12 +411,12 @@ contract EchidnaTester is
         _allTargets[6] = address(cdpManager);
         _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
 
-        for (uint256 j = 0; j < _actions; ++j) {
-            _i = uint256(keccak256(abi.encodePacked(value, j, i))) % _allTargets.length;
-            emit FlashLoanAction(j, _i);
+        for (uint256 _j = 0; _j < _actions; ++_j) {
+            _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;
+            emit FlashLoanAction(_j, _i);
 
-            _targets[j] = _allTargets[_i];
-            _calldatas[j] = _allCalldatas[_i];
+            _targets[_j] = _allTargets[_i];
+            _calldatas[_j] = _allCalldatas[_i];
         }
 
         return abi.encode(_targets, _calldatas);
