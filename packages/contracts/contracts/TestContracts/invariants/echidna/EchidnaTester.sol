@@ -410,10 +410,10 @@ contract EchidnaTester is
         _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
 
         for (uint256 j = 0; j < _actions; ++j) {
-            uint256 index = uint256(keccak256(abi.encodePacked(j, value))) % _allTargets.length;
+            _i = uint256(keccak256(abi.encodePacked(j, value))) % _allTargets.length;
 
-            _targets[j] = _allTargets[index];
-            _calldatas[j] = _allCalldatas[index];
+            _targets[j] = _allTargets[_i];
+            _calldatas[j] = _allCalldatas[_i];
         }
 
         return abi.encode(_targets, _calldatas);
@@ -650,6 +650,7 @@ contract EchidnaTester is
                     vars.priceAfter -
                     vars.debtAfter
             );
+            // 
             // assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
