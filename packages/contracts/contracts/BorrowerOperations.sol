@@ -36,6 +36,7 @@ contract BorrowerOperations is
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
+    // Mapping of borrowers to approved delegates: cdpOwner(borrower) -> delegate -> true/false
     mapping(address => mapping(address => bool)) public delegates;
 
     /* --- Variable container structs  ---
