@@ -340,6 +340,8 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
+    event FlashLoanAction(uint, uint);
+
     function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
         uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
         uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
@@ -410,7 +412,8 @@ contract EchidnaTester is
         _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
 
         for (uint256 j = 0; j < _actions; ++j) {
-            _i = uint256(keccak256(abi.encodePacked(j, value))) % _allTargets.length;
+            _i = uint256(keccak256(abi.encodePacked(value, j, i))) % _allTargets.length;
+            emit FlashLoanAction(j, _i);
 
             _targets[j] = _allTargets[_i];
             _calldatas[j] = _allCalldatas[_i];
@@ -650,7 +653,7 @@ contract EchidnaTester is
                     vars.priceAfter -
                     vars.debtAfter
             );
-            // 
+            //
             // assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -684,7 +687,7 @@ contract EchidnaTester is
         );
 
         if (success) {
-            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+            uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
             assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
