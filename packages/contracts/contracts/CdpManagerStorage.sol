@@ -18,7 +18,6 @@ import "./Dependencies/AuthNoOwner.sol";
     @dev Shared functions were also added here to de-dup code
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
-
     // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
     uint128 constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
@@ -41,7 +40,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     function _beginRMLiquidationCooldown() internal {
         // Arm the countdown
-        if(lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
+        if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = uint128(block.timestamp);
         }
 
@@ -60,7 +59,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     function _stopRMLiquidationCooldown() internal {
         // Disarm the countdown
-        if(lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
+        if (lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
         }
 
@@ -72,13 +71,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
 
-        if(isRecoveryMode) {
+        if (isRecoveryMode) {
             _beginRMLiquidationCooldown();
         } else {
             _stopRMLiquidationCooldown();
         }
     }
-
 
     string public constant NAME = "CdpManager";
 
