@@ -26,7 +26,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
     uint128 public waitTimeFromRMTriggerToLiquidations = 10 minutes;
 
-    // TODO: Pitfal is fee split
+    // TODO: Pitfal is fee split // NOTE: Solved by calling `checkLiquidateCoolDownAndReset` on external operations from BO
 
     /// @dev Checks that the system is in RM
     function beginRMLiquidationCooldown() external {
