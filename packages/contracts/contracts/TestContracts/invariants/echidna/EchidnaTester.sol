@@ -422,6 +422,20 @@ contract EchidnaTester is
         return abi.encode(_targets, _calldatas);
     }
 
+    function _getFirstCdpWithIcrGteMcr() internal returns (bytes32) {
+        bytes32 _cId = sortedCdps.getLast();
+        address currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        // Find the first cdp with ICR >= MCR
+        while (
+            currentBorrower != address(0) &&
+            cdpManager.getCurrentICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+        ) {
+            _cId = sortedCdps.getPrev(_cId);
+            currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        }
+        return _cId;
+    }
+
     ///////////////////////////////////////////////////////
     // CdpManager
     ///////////////////////////////////////////////////////
@@ -609,7 +623,7 @@ contract EchidnaTester is
             cdpManager.DECIMAL_PRECISION()
         );
 
-        bytes32 _cdpId = sortedCdps.getLast();
+        bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
@@ -631,30 +645,8 @@ contract EchidnaTester is
 
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
-
-            emit L3(
-                vars.liquidatorRewardSharesBefore,
-                vars.feeRecipientTotalCollBefore,
-                vars.feeRecipientTotalCollAfter
-            );
-            emit L3(vars.activePoolCollBefore, vars.collSurplusPoolBefore, vars.debtBefore);
-            emit L3(vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
-            emit L2(
-                (vars.activePoolCollBefore +
-                    vars.collSurplusPoolBefore +
-                    vars.liquidatorRewardSharesBefore +
-                    vars.feeRecipientTotalCollBefore) *
-                    vars.priceBefore -
-                    vars.debtBefore,
-                (vars.activePoolCollAfter +
-                    vars.collSurplusPoolAfter +
-                    vars.liquidatorRewardSharesAfter +
-                    vars.feeRecipientTotalCollAfter) *
-                    vars.priceAfter -
-                    vars.debtAfter
-            );
-            //
-            // assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
+            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -664,7 +656,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) external log {
+    function flashLoanColl(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;

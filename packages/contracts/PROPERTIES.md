@@ -23,7 +23,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | CDPM-01 | The count of active CDPs is equal to the SortedCdp list length | High Level | ✅ |
 | CDPM-02 | The sum of active CDPs stake is equal to totalStakes | High Level | 🚧 Redistributions? |
 | CDPM-03 | The stFeePerUnit tracker for individual CDP is equal to or less than the global variable | High Level | 🚧 Negative Rebase + Pending Rewards? |
-| CDPM-04 | CDPM-04: The total system Assets - Liabilities remain constant during redemptions | High Level | ✅ |
+| CDPM-04 | The total system Assets - Liabilities remain constant during redemptions | Unit Tests | ✅ |
+| CDPM-05 | Redemptions do not increase the total system debt | Unit Tests | ✅ |
 
 ## Borrower Operations
 
