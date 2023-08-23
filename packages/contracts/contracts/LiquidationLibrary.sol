@@ -65,10 +65,14 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _ICR = getCurrentICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
-        require(
-            _ICR < MCR || (_TCR < CCR && canLiquidateRecoveryMode(_ICR, _TCR)),
-            "CdpManager: ICR is not below liquidation threshold in current mode"
-        );
+        if(_ICR >= MCR) {
+            // We must be in RM
+            require(_TCR < CCR, "CdpManager: ICR is not below liquidation threshold in current mode");
+
+            // Grace period
+            require(lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG, "Grace period not started, call `notifyBeginRM`");
+            require(block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations, "Grace period yet to finish");
+        } // Implies ICR < MRC, meaning the CDP is liquidatable
 
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
