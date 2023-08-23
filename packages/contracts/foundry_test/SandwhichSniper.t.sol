@@ -101,6 +101,6 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
-        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 3); //closedByLiquidation
+        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 1); //Still Open (And safe until end of Grace Period)
     }
 }
