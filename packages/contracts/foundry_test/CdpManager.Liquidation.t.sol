@@ -114,10 +114,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
             uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
 
-            // Grace Period
-            // Check never reverts so it's safe to use
-            cdpManager.checkLiquidateCoolDownAndReset();
-            vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+            _waitUntilRMColldown();
 
             vm.prank(users[0]);
             cdpManager.liquidate(cdpId1);
@@ -217,6 +214,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
                 uint _collSystemBefore = cdpManager.getEntireSystemColl();
                 vm.prank(users[0]);
+
+                _waitUntilRMColldown();
+
                 cdpManager.partiallyLiquidate(cdpId1, _partialLiq._repaidDebt, cdpId1, cdpId1);
                 uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
                 uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
@@ -269,6 +269,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
         uint _debtLiquidatorBefore = eBTCToken.balanceOf(_liquidator);
+
+        _waitUntilRMColldown();
 
         vm.prank(_liquidator);
         if (_n > 0) {

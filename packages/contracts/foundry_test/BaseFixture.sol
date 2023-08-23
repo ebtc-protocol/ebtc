@@ -457,4 +457,10 @@ contract eBTCBaseFixture is Test, BytecodeReader {
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);
         }
     }
+
+    // Grace Period, check never reverts so it's safe to use
+    function _waitUntilRMColldown() internal {
+        cdpManager.checkLiquidateCoolDownAndReset();
+        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+    }
 }
