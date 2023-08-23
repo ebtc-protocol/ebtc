@@ -8,6 +8,7 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
+import {console2 as console} from "forge-std/console2.sol";
 
 contract LiquidationLibrary is CdpManagerStorage {
     constructor(
@@ -420,7 +421,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _n,
         bool _recovery,
         uint _price
-    ) internal view returns (bytes32[] memory _array) {
+    ) internal returns (bytes32[] memory _array) {
         if (_n > 0) {
             bytes32 _last = sortedCdps.getLast();
             bytes32 _first = sortedCdps.getFirst();
@@ -434,9 +435,11 @@ contract LiquidationLibrary is CdpManagerStorage {
                 uint _icr = getCurrentICR(_cdpId, _price);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    console.log("before count addition", uint256(_cdpId));
                     _cnt += 1;
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
+                console.log("after prevOne", uint256(_cdpId));
             }
 
             // retrieve liquidatable CDPs
@@ -445,12 +448,16 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
+                console.log("before liquidatable check", uint256(_cdpId));
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
+                console.log("after liquidatable check", uint256(_cdpId));
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    console.log("before array subtraction", uint256(_cdpId));
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
+                console.log("after prevTwo", uint256(_cdpId));
             }
             require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
         }
@@ -590,7 +597,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
         bytes32[] memory _batchedCdps;
         if (vars.recoveryModeAtStart) {
+            // TODO: Need to enforce that RM is actually ongoing
             _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
+            console.log("before totals RM");
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
@@ -598,18 +607,23 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _batchedCdps,
                 true
             );
+            console.log("after totals");
         } else {
             // if !vars.recoveryModeAtStart
             _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
+            console.log("b4 totals normal");
             totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
+            console.log("after totals");
         }
 
         require(totals.totalDebtInSequence > 0, "LiquidationLibrary: nothing to liquidate");
 
+         console.log("Before stETHcoll");
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
             activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
         }
+        console.log("After stETHcoll");
 
         _finalizeExternalLiquidation(
             totals.totalDebtToOffset,
@@ -710,6 +724,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.
         if (vars.recoveryModeAtStart) {
+            // TODO: Verify delay has passed
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
@@ -754,27 +769,36 @@ contract LiquidationLibrary is CdpManagerStorage {
         vars.backToNormalMode = false;
         vars.entireSystemDebt = _systemDebt;
         vars.entireSystemColl = _systemColl;
+        console.log("before TCR");
         uint _TCR = _computeTCRWithGivenSystemValues(
             vars.entireSystemColl,
             vars.entireSystemDebt,
             _price
         );
+        console.log("after TCR");
         uint _cnt = _cdpArray.length;
+        require(_cnt > 1, "LiquidationLibrary: nothing to liquidate, check Grace Period");
         bool[] memory _liqFlags = new bool[](_cnt);
         uint _liqCnt;
+        
+        console.log("Before Liq");
         uint _start = sequenceLiq ? _cnt - 1 : 0;
+        console.log("_start", _start);
         for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
                 vars.ICR = getCurrentICR(vars.cdpId, _price);
-
+                console.log("Logging Current ICR");
                 if (
                     !vars.backToNormalMode &&
                     (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
+                    console.log("After IF");
                     vars.price = _price;
+                    console.log("B4 split");
                     _applyAccumulatedFeeSplit(vars.cdpId);
+                    console.log("after split");
                     _getLiquidationValuesRecoveryMode(
                         _price,
                         vars.entireSystemDebt,
@@ -783,6 +807,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                         singleLiquidation,
                         sequenceLiq
                     );
+                    console.log("after values");
 
                     // Update aggregate trackers
                     vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
@@ -791,8 +816,10 @@ contract LiquidationLibrary is CdpManagerStorage {
                         singleLiquidation.totalCollToSendToLiquidator -
                         singleLiquidation.collSurplus;
 
+                    console.log("b4 totals");
                     // Add liquidation values to their respective running totals
                     totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
+                     console.log("after totals");
 
                     _TCR = _computeTCRWithGivenSystemValues(
                         vars.entireSystemColl,
@@ -992,7 +1019,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     // Can liquidate in RM if ICR < TCR AND Enough time has passed
-    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
+    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) internal view returns (bool) {
         // ICR < TCR and we have waited enough
         return
             icr < tcr &&

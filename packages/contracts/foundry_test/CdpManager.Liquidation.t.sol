@@ -151,6 +151,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _collToLiquidator;
     }
 
+     function testInspectChaineLiq() public {
+        testSequenceLiquidateMultipleCDPs(28823831936814314, 87634639443028109922, 3072803409328101467331);
+     }
+
     // Test single CDP partial liquidation with variable ratio for partial repayment:
     // - when its ICR is higher than LICR then the collateral to liquidator is (repaidDebt * LICR) / price
     // - when its ICR is lower than LICR then the collateral to liquidator is (repaidDebt * ICR) / price

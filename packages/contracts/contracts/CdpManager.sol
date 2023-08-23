@@ -562,7 +562,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _entireSystemColl,
         uint _entireSystemDebt,
         uint _price
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
         return TCR < CCR;
     }
@@ -687,7 +687,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint _entireSystemColl,
         uint _entireSystemDebt,
         uint _price
-    ) external view returns (bool) {
+    ) external returns (bool) {
         return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
     }
 

@@ -8,4 +8,4 @@ gas_reports = ["*"]
 
 [fuzz]
 max_test_rejects=2147483647
-runs=40
+runs=40000

@@ -10,7 +10,7 @@ import "./Dependencies/LiquityBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
-
+import {console2 as console} from "forge-std/console2.sol";
 /**
     @notice CDP Manager storage and shared functions
     @dev CDP Manager was split to get around contract size limitations, liquidation related functions are delegated to LiquidationLibrary contract code.
@@ -430,8 +430,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _entireSystemColl,
         uint _entireSystemDebt,
         uint _price
-    ) internal view returns (uint) {
+    ) internal returns (uint) {
+        console.log("_computeTCRWithGivenSystemValues");
         uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
+        console.log("before Math");
         return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
     }
 
