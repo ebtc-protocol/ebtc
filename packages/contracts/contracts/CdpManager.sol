@@ -693,13 +693,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- 'require' wrapper functions ---
 
-    function _requireCallerIsBorrowerOperations() internal view {
-        require(
-            msg.sender == borrowerOperationsAddress,
-            "CdpManager: Caller is not the BorrowerOperations contract"
-        );
-    }
-
     function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
         IEBTCToken _ebtcToken,
         address _redeemer,
