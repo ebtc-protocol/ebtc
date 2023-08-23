@@ -97,10 +97,10 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         // We can now liquidate victim
         /** SANDWHICH 3 */
         vm.startPrank(users[0]);
+        vm.expectRevert("Grace period not started, call `notifyBeginRM`");
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
         assertEq(cdpManager.getCdpStatus(cdpIdVictim), 3); //closedByLiquidation
-        //assertGt(tcrEnd, 1250000000000000000);
     }
 }
