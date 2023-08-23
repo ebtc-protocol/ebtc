@@ -391,7 +391,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let aliceDebt = await cdpManager.getCdpDebt(aliceCdpId);
       let aliceColl = await cdpManager.getCdpColl(aliceCdpId);		  
       let prevDebtOfOwner = await debtToken.balanceOf(owner);
-      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));
+      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));	  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.checkLiquidateCoolDownAndReset();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 	  
       // liquidate alice in recovery mode	  
       let prevETHOfOwner = await ethers.provider.getBalance(owner);	

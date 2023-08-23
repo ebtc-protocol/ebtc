@@ -281,7 +281,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _partialDebtRepaid = minDebt;
       let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(_MCR).div(toBN(_newPrice));
       let _expectedLiquidatedColl = _expectedSeizedColl.mul(mv._1e18BN).div(_newIndex);
-      let _collBeforeLiquidator = await collToken.balanceOf(owner);	
+      let _collBeforeLiquidator = await collToken.balanceOf(owner);		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.checkLiquidateCoolDownAndReset();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 	  
       await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
       let _collAfterLiquidator = await collToken.balanceOf(owner);	
