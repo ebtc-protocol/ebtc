@@ -93,18 +93,23 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        uint256 beforeEquity = (vars.activePoolCollBefore +
-            vars.collSurplusPoolBefore +
+        uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
+        uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
+        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
+
+        uint256 beforeEquity = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
-            vars.feeRecipientTotalCollBefore) *
-            vars.priceBefore -
+            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            1e18 -
             vars.debtBefore;
-        uint256 afterEquity = (vars.activePoolCollAfter +
-            vars.collSurplusPoolAfter +
+        uint256 afterEquity = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
-            vars.feeRecipientTotalCollAfter) *
-            vars.priceAfter -
-            vars.debtAfter;
+            vars.collSurplusPoolAfter -
+            redeemedColl -
+            fee) * vars.priceAfter) /
+            1e18 -
+            vars.debtAfter +
+            paidEbtc;
         return isApproximateEq(beforeEquity, afterEquity, 0.01e18);
     }
 

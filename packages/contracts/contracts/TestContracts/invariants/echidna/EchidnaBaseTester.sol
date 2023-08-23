@@ -51,6 +51,7 @@ abstract contract EchidnaBaseTester {
     uint internal constant diff_tolerance = 0.000000000002e18; //compared to 1e18
     uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
     uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
+    uint internal constant MAX_FLASHLOAN_ACTIONS = 4;
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager

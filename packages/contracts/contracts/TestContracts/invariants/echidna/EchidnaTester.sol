@@ -340,7 +340,101 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
-    function _getFlashLoanActions(uint _seed) internal view returns (bytes32) {}
+    event FlashLoanAction(uint, uint);
+
+    function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
+        uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
+        uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
+        uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
+        uint256 _n = clampBetween(value, 1, cdpManager.getCdpIdsCount());
+
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        uint256 _i = clampBetween(value, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
+        assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+
+        address[] memory _targets = new address[](_actions);
+        bytes[] memory _calldatas = new bytes[](_actions);
+
+        address[] memory _allTargets = new address[](7);
+        bytes[] memory _allCalldatas = new bytes[](7);
+
+        _allTargets[0] = address(borrowerOperations);
+        _allCalldatas[0] = abi.encodeWithSelector(
+            BorrowerOperations.openCdp.selector,
+            _EBTCAmount,
+            bytes32(0),
+            bytes32(0),
+            _col
+        );
+
+        _allTargets[1] = address(borrowerOperations);
+        _allCalldatas[1] = abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId);
+
+        _allTargets[2] = address(borrowerOperations);
+        _allCalldatas[2] = abi.encodeWithSelector(
+            BorrowerOperations.addColl.selector,
+            _cdpId,
+            _cdpId,
+            _cdpId,
+            _col
+        );
+
+        _allTargets[3] = address(borrowerOperations);
+        _allCalldatas[3] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawColl.selector,
+            _cdpId,
+            _col,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[4] = address(borrowerOperations);
+        _allCalldatas[4] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawEBTC.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[5] = address(borrowerOperations);
+        _allCalldatas[5] = abi.encodeWithSelector(
+            BorrowerOperations.repayEBTC.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
+
+        _allTargets[6] = address(cdpManager);
+        _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
+
+        for (uint256 _j = 0; _j < _actions; ++_j) {
+            _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;
+            emit FlashLoanAction(_j, _i);
+
+            _targets[_j] = _allTargets[_i];
+            _calldatas[_j] = _allCalldatas[_i];
+        }
+
+        return abi.encode(_targets, _calldatas);
+    }
+
+    function _getFirstCdpWithIcrGteMcr() internal returns (bytes32) {
+        bytes32 _cId = sortedCdps.getLast();
+        address currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        // Find the first cdp with ICR >= MCR
+        while (
+            currentBorrower != address(0) &&
+            cdpManager.getCurrentICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+        ) {
+            _cId = sortedCdps.getPrev(_cId);
+            currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        }
+        return _cId;
+    }
 
     ///////////////////////////////////////////////////////
     // CdpManager
@@ -529,7 +623,7 @@ contract EchidnaTester is
             cdpManager.DECIMAL_PRECISION()
         );
 
-        bytes32 _cdpId = sortedCdps.getLast();
+        bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
@@ -537,9 +631,9 @@ contract EchidnaTester is
             abi.encodeWithSelector(
                 CdpManager.redeemCollateral.selector,
                 _EBTCAmount,
-                _cdpId,
-                _cdpId,
-                _cdpId,
+                bytes32(0),
+                bytes32(0),
+                bytes32(0),
                 _partialRedemptionHintNICR,
                 // redeem a maximum of 1 CDP to make invariand CDPM_04 easier to calculate
                 1,
@@ -551,20 +645,7 @@ contract EchidnaTester is
 
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
-
-            emit L1(vars.liquidatorRewardSharesBefore);
-            emit L3(vars.activePoolCollBefore, vars.collSurplusPoolBefore, vars.debtBefore);
-            emit L3(vars.activePoolCollAfter, vars.collSurplusPoolAfter, vars.debtAfter);
-            emit L2(
-                (vars.activePoolCollBefore +
-                    vars.collSurplusPoolBefore +
-                    vars.liquidatorRewardSharesBefore) *
-                    vars.priceBefore -
-                    vars.debtBefore,
-                (vars.activePoolCollAfter + vars.collSurplusPoolAfter) *
-                    vars.priceAfter -
-                    vars.debtAfter
-            );
+            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -593,13 +674,12 @@ contract EchidnaTester is
                 IERC3156FlashBorrower(address(actor)),
                 address(collateral),
                 _amount,
-                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
-                abi.encodePacked("")
+                _getFlashLoanActions(_amount)
             )
         );
 
         if (success) {
-            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+            uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
             assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -629,8 +709,7 @@ contract EchidnaTester is
                 IERC3156FlashBorrower(address(actor)),
                 address(eBTCToken),
                 _amount,
-                // NOTE: this is a dummy flash loan, it is not doing anything inside the `onFlashLoan` callback. It can be improved to pass an arbitrary calldata to be sent back to the system
-                abi.encodePacked("")
+                _getFlashLoanActions(_amount)
             )
         );
 
