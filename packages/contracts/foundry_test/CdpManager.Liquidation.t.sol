@@ -405,6 +405,55 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         _ensureSystemInvariants();
     }
+    
+    /// @dev Test a sequence of liquidations where RM is exited during the sequence
+    /// @dev All subsequent CDPs in the sequence that are only liquidatable in RM should be skipped
+    function test_SequenceLiqRecoveryModeSwitch() public {
+
+    }
+
+    /// @dev Test a batch of liquidations where RM is exited during the sequence
+    /// @dev All subsequent CDPs in the batch that are only liquidatable in RM should be skipped
+    function test_BatchLiqRecoveryModeSwitch() public {
+
+    }
+
+    /// @dev Cdp ICR below 100% 
+    /// @dev premium = 3%
+    /// @dev bad debt redistribution
+    function test_LiqPremiumWithCdpUndercollaterlized() public {
+        (address user, bytes32 userCdpid) = _singleCdpSetup(100);
+
+    }
+
+    /// @dev Cdp ICR below 3% 
+    /// @dev premium = 3%
+    /// @dev bad debt redistribution
+    function test_LiqPremiumWithCdpDeeplyUndercollateralized_BelowMinPremium() public {
+        (address user, bytes32 userCdpid) = _singleCdpSetup(3);
+        
+    }
+
+    /// @dev Cdp ICR between 110% (MCR) and 100% 
+    /// @dev premium = ICR-100%
+    function test_LiqPremiumWithCdpOvercollateralized_BelowMaxPremium(uint ICR) public {
+        vm.assume(ICR > 100);
+        vm.assume(ICR <= 110);
+
+        (address user, bytes32 userCdpid) = _singleCdpSetup(ICR);
+
+        uint expectedPremiumPercentage = ICR - 100;
+
+    }
+
+    /// @dev Cdp ICR between 125% (CCR) and 110% (MCR) 
+    /// @dev premium = 110%
+    function test_LiqPremiumWithCdpOvercollateralized_AboveMaxPremium(uint ICR) public {
+        vm.assume(ICR > 110);
+        vm.assume(ICR <= 125);
+        // must be in recovery mode so CDPs MCR<ICR<=CCR can be liquidated
+        (address user, bytes32 userCdpid) = _singleCdpSetup(ICR);
+    }
 
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
@@ -422,5 +471,45 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Set up a test case where the CDP is partially liquidated but the amount of collateral sent is 0, resulting in a retry with full liquidation
         // Call _liquidateSingleCDP with the appropriate arguments
         // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
+    }
+
+    function _sequenceRecoveryModeSwitchSetup() internal returns (bytes32[] memory) {
+        user = users[0];
+        bytes32[] memory cdpIds = bytes[](4);
+
+        /** 
+            open a sequence of Cdps. once we enter recovery mode, they will have the following status:
+
+            [1] < 100%
+            [2] < MCR
+            [3] > MCR < CCR
+            [4] > MCR < CCR
+
+            once 1-3 are liquidated, the system should _switch_ to normal mode. 4 should therefore not be liquidated from the sequence
+        */
+
+        // price is 2x final price
+        priceFeedMock.setPrice(2 ether);
+        uint price = priceFeedMock.fetchPrice();
+
+        // [1] 190% -> 95%
+        cdpIds[0] = _openTestCDP(user, 20.2 ether, 9 ether);
+        assertEq(cdpManager.getCurrentICR(cdpIds[0], price) == 1.9 ether);
+
+        // [2] 210% -> 105%
+        // cdpIds[1] = _openTestCDP(user, 21.2 ether, 10 ether);
+
+        // [3] 250% -> 125%
+        // cdpIds[2] = _openTestCDP(user, 21.2 ether, 10 ether);
+
+        // [4] 250% -> 125%     
+        // cdpIds[3] = _openTestCDP(user, 21.2 ether, 10 ether);
+
+        // set price to final price
+        priceFeedMock.setPrice(1 ether);
+        uint price = priceFeedMock.fetchPrice();
+
+        assertEq(cdpManager.getCurrentICR(cdpIds[0], price) == 1.9 ether);
+        
     }
 }
