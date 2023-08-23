@@ -481,7 +481,7 @@ contract('BorrowerOperations', async accounts => {
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOperations: Caller must be cdp owner")
+        assert.include(error.message, "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf")
       }
     })
 
@@ -509,7 +509,7 @@ contract('BorrowerOperations', async accounts => {
         assert.isFalse(txBob.receipt.status)
       } catch (error) {
         assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOperations: Caller must be cdp owner")
+        assert.include(error.message, "BorrowerOperations: Cdp does not exist or is closed")
       }
     })
 
