@@ -101,3 +101,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 ## Governance
 
 | GOV-01 | Only authorized accounts can call functions which require authorization (`requiresAuth` modifier) | Unit Tests | |
+
+## Price Feed
+
+| PF-01 | The price feed must never revert | Unit Tests | |

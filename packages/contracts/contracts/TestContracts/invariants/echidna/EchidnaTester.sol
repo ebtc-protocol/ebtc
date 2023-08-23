@@ -28,10 +28,6 @@ import "./EchidnaProperties.sol";
 import "./EchidnaBeforeAfter.sol";
 import "./EchidnaAssertionHelper.sol";
 
-// Run with:
-// cd <your-path-to-ebtc-repo-root>/packages/contracts
-// rm -f fuzzTests/corpus/* # (optional)
-// echidna contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode property --contract EchidnaTester --config fuzzTests/echidna_config.yaml
 contract EchidnaTester is
     EchidnaBeforeAfter,
     EchidnaProperties,

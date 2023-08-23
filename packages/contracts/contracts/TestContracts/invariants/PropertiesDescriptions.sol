@@ -84,4 +84,10 @@ abstract contract PropertiesDescriptions {
 
     string constant EBTC_02 =
         "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode";
+
+    ///////////////////////////////////////////////////////
+    // Price Feed
+    ///////////////////////////////////////////////////////
+
+    string constant PF_01 = "PF-01: The price feed must never revert";
 }
