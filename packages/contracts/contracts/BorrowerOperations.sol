@@ -405,12 +405,12 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are in RM, Edge case is Depositing Coll could exit RM
             // We check with newTCR
-            if(newTCR < CCR) {
+            if (newTCR < CCR) {
                 // Notify RM
                 IRmLiquidationsChecker(address(cdpManager)).notifyBeginRM();
             } else {
                 // Notify Back to Normal Mode
-                 IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+                IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
             }
         } else {
             _requireICRisAboveMCR(vars.ICR);
@@ -496,8 +496,6 @@ contract BorrowerOperations is
 
         // CEI: Send the collateral and liquidator reward shares back to the user
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
-
-        
     }
 
     /**
@@ -647,7 +645,7 @@ contract BorrowerOperations is
          * - The new ICR is above MCR
          * - The adjustment won't pull the TCR below CCR
          */
-        
+
         _vars.newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(_vars.collChange),
             _vars.isCollIncrease,
@@ -662,18 +660,17 @@ contract BorrowerOperations is
                 _requireICRisAboveCCR(_vars.newICR);
                 _requireNewICRisAboveOldICR(_vars.newICR, _vars.oldICR);
             }
-            
+
             // == Grace Period == //
             // We are in RM, Edge case is Depositing Coll could exit RM
             // We check with newTCR
-            if(_vars.newTCR < CCR) {
+            if (_vars.newTCR < CCR) {
                 // Notify RM
                 IRmLiquidationsChecker(address(cdpManager)).notifyBeginRM();
             } else {
                 // Notify Back to Normal Mode
-                 IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+                IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
             }
-
         } else {
             // if Normal Mode
             _requireICRisAboveMCR(_vars.newICR);
