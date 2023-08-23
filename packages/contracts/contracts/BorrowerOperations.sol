@@ -350,8 +350,6 @@ contract BorrowerOperations is
             );
             _processTokenMovesFromAdjustment(_varMvTokens);
         }
-
-        IRmLiquidationsChecker(address(cdpManager)).checkLiquidateCoolDownAndReset(); // TODO: Check this
     }
 
     function _openCdp(
