@@ -3,7 +3,9 @@ pragma solidity 0.8.17;
 
 // Interface for State Updates that can trigger RM Liquidations
 interface IRmLiquidationsChecker {
-    function checkLiquidateCoolDownAndReset() external;
+    function syncRMLiquidationGracePeriod() external;
+
+    function notifyRMLiquidationGracePeriod(bool isRecoveryMode) external;
 
     function notifyBeginRM() external;
 

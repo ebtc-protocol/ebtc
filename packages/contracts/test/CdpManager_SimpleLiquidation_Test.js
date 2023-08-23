@@ -394,7 +394,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));	  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.checkLiquidateCoolDownAndReset();
+      await cdpManager.syncRMLiquidationGracePeriod();
       await ethers.provider.send("evm_increaseTime", [901]);
       await ethers.provider.send("evm_mine");
 	  

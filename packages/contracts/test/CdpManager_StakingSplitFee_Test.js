@@ -284,7 +284,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collBeforeLiquidator = await collToken.balanceOf(owner);		  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.checkLiquidateCoolDownAndReset();
+      await cdpManager.syncRMLiquidationGracePeriod();
       await ethers.provider.send("evm_increaseTime", [901]);
       await ethers.provider.send("evm_mine");
 	  

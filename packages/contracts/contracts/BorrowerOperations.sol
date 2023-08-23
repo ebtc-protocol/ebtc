@@ -396,28 +396,15 @@ contract BorrowerOperations is
             Additionally, the new system TCR after the CDPs addition must be >CCR
         */
         uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price);
+
         if (isRecoveryMode) {
             _requireICRisAboveCCR(vars.ICR);
-
-            // == Grace Period == //
-            // We are in RM, Edge case is Depositing Coll could exit RM
-            // We check with newTCR
-            if (newTCR < CCR) {
-                // Notify RM
-                cdpManager.notifyBeginRM();
-            } else {
-                // Notify Back to Normal Mode
-                cdpManager.notifyEndRM();
-            }
         } else {
             _requireICRisAboveMCR(vars.ICR);
             _requireNewTCRisAboveCCR(newTCR);
-
-            // == Grace Period == //
-            // We are not in RM, no edge case, we always stay above RM
-            // Always Notify Back to Normal Mode
-            cdpManager.notifyEndRM();
         }
+
+        cdpManager.notifyRMLiquidationGracePeriod(newTCR < CCR);
 
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);

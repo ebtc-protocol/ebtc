@@ -26,7 +26,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
     uint128 public waitTimeFromRMTriggerToLiquidations = 15 minutes;
 
-    // TODO: Pitfal is fee split // NOTE: Solved by calling `checkLiquidateCoolDownAndReset` on external operations from BO
+    // TODO: Pitfal is fee split // NOTE: Solved by calling `syncRMLiquidationGracePeriod` on external operations from BO
 
     /// @dev Trusted Function from BO
     /// @dev BO accrues totals before adjusting them
@@ -46,16 +46,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         _stopRMLiquidationCooldown();
     }
 
-    /// @dev Checks that the system is in RM
-    function beginRMLiquidationCooldown() external {
-        // Require we're in RM
-        uint256 price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(isRecoveryMode);
-
-        _beginRMLiquidationCooldown();
-    }
-
     function _beginRMLiquidationCooldown() internal {
         // Arm the countdown
         if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
@@ -63,16 +53,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         // TODO: EVENT
-    }
-
-    /// @dev Checks that the system is not in RM
-    function stopRMLiquidationCooldown() external {
-        // Require we're in RM
-        uint256 price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(!isRecoveryMode);
-
-        _stopRMLiquidationCooldown();
     }
 
     function _stopRMLiquidationCooldown() internal {
@@ -85,11 +65,28 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     /// TODO: obv optimizations
-    function checkLiquidateCoolDownAndReset() public {
+    /**
+        @notice Set the status of liquidation grace period cooldown based on current recovery mode status
+    */
+    function syncRMLiquidationGracePeriod() public {
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
 
         if (isRecoveryMode) {
+            _beginRMLiquidationCooldown();
+        } else {
+            _stopRMLiquidationCooldown();
+        }
+    }
+
+    /**
+        @notice Set the status of liquidation grace period cooldown based on current recovery mode status
+        @notice This is a privledged variant that is only for BO operations where the isRecoveryMode flag is trusted
+    */
+    function notifyRMLiquidationGracePeriod(bool isRecoveryMode) external {
+         _requireCallerIsBorrowerOperations();
+
+         if (isRecoveryMode) {
             _beginRMLiquidationCooldown();
         } else {
             _stopRMLiquidationCooldown();
