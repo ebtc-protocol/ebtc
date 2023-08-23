@@ -991,7 +991,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _recovery,
         uint256 _icr,
         uint256 _TCR
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         bool _liquidatable = _recovery
             ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
             : _icr < MCR;
