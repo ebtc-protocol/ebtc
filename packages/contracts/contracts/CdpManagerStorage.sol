@@ -28,6 +28,24 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // TODO: Pitfal is fee split // NOTE: Solved by calling `checkLiquidateCoolDownAndReset` on external operations from BO
 
+    /// @dev Trusted Function from BO
+    /// @dev BO accrues totals before adjusting them
+    ///     To maintain CEI compliance we use this trusted function
+    function notifyBeginRM() external {
+        _requireCallerIsBorrowerOperations();
+
+        _beginRMLiquidationCooldown();
+    }
+
+    /// @dev Trusted Function from BO
+    /// @dev BO accrues totals before adjusting them
+    ///     To maintain CEI compliance we use this trusted function
+    function notifyEndRM() external {
+        _requireCallerIsBorrowerOperations();
+
+        _stopRMLiquidationCooldown();
+    }
+
     /// @dev Checks that the system is in RM
     function beginRMLiquidationCooldown() external {
         // Require we're in RM
@@ -561,6 +579,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(
             CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
             "CdpManager: Only one cdp in the system"
+        );
+    }
+
+    function _requireCallerIsBorrowerOperations() internal view {
+        require(
+            msg.sender == borrowerOperationsAddress,
+            "CdpManager: Caller is not the BorrowerOperations contract"
         );
     }
 
