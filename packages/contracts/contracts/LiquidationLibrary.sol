@@ -419,9 +419,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery
-                    ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
-                    : _icr < MCR;
+                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
                 }
@@ -434,9 +432,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
                 uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery
-                    ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
-                    : _icr < MCR;
+                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
@@ -989,5 +985,15 @@ contract LiquidationLibrary is CdpManagerStorage {
             icr < tcr &&
             lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG &&
             block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
+    }
+
+    function _canLiquidateInCurrentMode(
+        bool _recovery,
+        uint256 _icr,
+        uint256 _TCR
+    ) internal pure returns (bool) {
+        bool _liquidatable = _recovery
+            ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
+            : _icr < MCR;
     }
 }
