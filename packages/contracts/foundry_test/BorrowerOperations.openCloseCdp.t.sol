@@ -326,4 +326,47 @@ contract CDPTest is eBTCBaseFixture, Properties {
 
         assertTrue(!isRecoveryModeBefore ? !isRecoveryModeAfter : true, GENERAL_01);
     }
+
+    function testCloseCdpGetGasRefund() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
+
+        uint _price = priceFeedMock.getPrice();
+
+        //   setEthPerShare 910635822138744547
+        //   openCdp 2200000000000000016 1
+        //   addColl 94021985275614476877 0
+        //   openCdp 2200000000000000016 1
+        //   closeCdp 0
+
+        collateral.setEthPerShare(910635822138744547);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 94021985275614476877);
+        borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+
+        uint256 userCollBefore = collateral.balanceOf(user);
+        uint256 cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        uint256 liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+
+        borrowerOperations.closeCdp(_cdpId);
+
+        uint256 userCollAfter = collateral.balanceOf(user);
+
+        console.log("before", userCollBefore, cdpCollBefore, liquidatorRewardSharesBefore);
+        console.log("after", userCollAfter);
+
+        assertTrue(
+            // not exact due to rounding errors
+            isApproximateEq(
+                userCollBefore + cdpCollBefore + liquidatorRewardSharesBefore,
+                userCollAfter,
+                0.01e18
+            ),
+            BO_05
+        );
+    }
 }

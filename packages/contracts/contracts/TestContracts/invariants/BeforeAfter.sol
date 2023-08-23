@@ -4,6 +4,10 @@ abstract contract BeforeAfter {
     struct Vars {
         uint256 nicrBefore;
         uint256 nicrAfter;
+        uint256 icrBefore;
+        uint256 icrAfter;
+        uint256 feeRecipientTotalCollBefore;
+        uint256 feeRecipientTotalCollAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
         uint256 actorEbtcBefore;
@@ -28,6 +32,12 @@ abstract contract BeforeAfter {
         uint256 ebtcTotalSupplyAfter;
         uint256 ethPerShareBefore;
         uint256 ethPerShareAfter;
+        uint256 activePoolCollBefore;
+        uint256 activePoolCollAfter;
+        uint256 collSurplusPoolBefore;
+        uint256 collSurplusPoolAfter;
+        uint256 priceBefore;
+        uint256 priceAfter;
         bool isRecoveryModeBefore;
         bool isRecoveryModeAfter;
     }

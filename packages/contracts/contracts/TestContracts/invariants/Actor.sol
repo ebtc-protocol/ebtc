@@ -7,18 +7,12 @@ import {ActivePool} from "../../ActivePool.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";
 
 contract Actor is IERC3156FlashBorrower {
-    EBTCTokenTester immutable ebtcToken;
-    BorrowerOperations immutable borrowerOperations;
-    ActivePool immutable activePool;
+    address[] internal tokens;
+    address[] internal callers;
 
-    constructor(
-        EBTCTokenTester _ebtcToken,
-        BorrowerOperations _borrowerOperations,
-        ActivePool _activePool
-    ) payable {
-        ebtcToken = _ebtcToken;
-        borrowerOperations = _borrowerOperations;
-        activePool = _activePool;
+    constructor(address[] memory _tokens, address[] memory _callers) payable {
+        tokens = _tokens;
+        callers = _callers;
     }
 
     function proxy(
@@ -46,13 +40,28 @@ contract Actor is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
-        if (token == address(ebtcToken)) {
-            require(msg.sender == address(borrowerOperations), "!borrowerOperationsFLSender");
-        } else {
-            require(msg.sender == address(activePool), "!activePoolFLSender");
+        bool isValidCaller = false;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (token == tokens[i]) {
+                isValidCaller = msg.sender == callers[i];
+                break;
+            }
+        }
+        require(isValidCaller, "Invalid caller");
+
+        if (data.length != 0) {
+            (address[] memory _targets, bytes[] memory _calldatas) = abi.decode(
+                data,
+                (address[], bytes[])
+            );
+            for (uint256 i = 0; i < _targets.length; ++i) {
+                (bool success, bytes memory returnData) = address(_targets[i]).call(_calldatas[i]);
+                require(success, string(returnData));
+            }
         }
 
         IERC20(token).approve(msg.sender, amount + fee);
+
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }

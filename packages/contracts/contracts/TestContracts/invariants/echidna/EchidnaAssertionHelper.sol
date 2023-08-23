@@ -4,6 +4,11 @@ import {AssertionHelper} from "../AssertionHelper.sol";
 import {PropertiesAsserts} from "@crytic/properties/contracts/util/PropertiesHelper.sol";
 
 abstract contract EchidnaAssertionHelper is AssertionHelper, PropertiesAsserts {
+    event L1(uint256);
+    event L2(uint256, uint256);
+    event L3(uint256, uint256, uint256);
+    event L4(uint256, uint256, uint256, uint256);
+
     function assertRevertReasonNotEqual(
         bytes memory returnData,
         string memory reason

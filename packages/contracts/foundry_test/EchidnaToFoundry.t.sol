@@ -24,46 +24,27 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         collateral.deposit{value: funds}();
     }
 
-    function testGetValuesRedemptions() public {
-        vm.warp(block.timestamp + 60 * 60 * 24 * 365); // Warp a year to go over min time
-        openCdp(4975011538218946772755711718445854401649461238704126722046796672, 1);
-        setEthPerShare(0);
-        openCdp(3605950849545190917236707431640872421373248423478238946946259069, 2);
-        redeemCollateral(
-            547127325038,
-            947890426751454568089952789385716404489268405604644114758048974194620,
-            57939920126045711308615423797531076503306665406531885559654882737632016156
-        );
-        openCdp(4975011538218946772755711718445854401649461238704126722046796672, 1);
-        setEthPerShare(0);
-        openCdp(3605950849545190917236707431640872421373248423478238946946259069, 2);
-        redeemCollateral(
-            547127325038,
-            947890426751454568089952789385716404489268405604644114758048974194620,
-            57939920126045711308615423797531076503306665406531885559654882737632016156
-        );
-
-        console2.log(
-            "collateral.sharesOf(address(collSurplusPool)",
-            collateral.sharesOf(address(collSurplusPool))
-        );
-        console2.log("collSurplusPool.getStEthColl()", collSurplusPool.getStEthColl());
-        // assertTrue(invariant_CSP_01(collateral, collSurplusPool), "CSP-01");
+    function testGetGasRefund() public {
+        // TODO convert to foundry test
+        setEthPerShare(166472971329298343907410417081817146937181310074112353288);
+        openCdp(0, 1);
+        addColl(120719409312262194023192469707599498, 169959741405433799125898596825763);
+        openCdp(0, 1);
+        closeCdp(0);
     }
 
-    function testGetValues() public {
-        openCdp(298, 1);
-        addColl(
-            1643239628397191314697579057448420627080273462830700079102449130509,
-            365742980907456965584449763965903736633480494004802033305060593621986
+    function testGetEquity() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(0, 6017477493556148);
+        openCdp(
+            116241465726706579940676160693764388857475194631576631540259024322658,
+            1817137256320022
         );
-        withdrawEBTC(
-            1184219647878146906,
-            2441064729135930468687515109208933352881429821330765071021434864906412112313
+        redeemCollateral(
+            26614308365956830740674967552436143289186716835450083370339261669379702,
+            1384110347060895451294098103757437540301390035862529508464766486079565,
+            4111505908023053120587254978547282594806873281945684814578972428283812304
         );
-        setEthPerShare(534740885114938036571112017074595968544303330274215367894);
-        setEthPerShare(0);
-        openCdp(0, 1);
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
@@ -78,20 +59,20 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = clampBetween(
             _newEthPerShare,
-            (currentEthPerShare * 1 ether) / 1.1 ether,
-            (currentEthPerShare * 1.1 ether) / 1 ether
+            (currentEthPerShare * 1e18) / 1.1e18,
+            (currentEthPerShare * 1.1e18) / 1e18
         );
 
         console2.log("setEthPerShare", _newEthPerShare);
         collateral.setEthPerShare(_newEthPerShare);
     }
 
-    function setPrice(uint256 _newPrice) external {
+    function setPrice(uint256 _newPrice) internal {
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
-            (currentPrice * 1 ether) / 1.1 ether,
-            (currentPrice * 1.1 ether) / 1 ether
+            (currentPrice * 1e18) / 1.1e18,
+            (currentPrice * 1.1e18) / 1e18
         );
 
         console2.log("setPrice", _newPrice);
@@ -112,6 +93,17 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
         console2.log("openCdp", _col, _EBTCAmount);
         borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
+    }
+
+    function closeCdp(uint _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));
+        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), _i);
+
+        console2.log("closeCdp", _i);
+        borrowerOperations.closeCdp(_cdpId);
     }
 
     function addColl(uint _coll, uint256 _i) internal {
@@ -137,6 +129,35 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
 
         console2.log("withdrawEBTC", _amount, _i);
         borrowerOperations.withdrawEBTC(_cdpId, _amount, _cdpId, _cdpId);
+    }
+
+    function withdrawColl(uint _amount, uint256 _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+
+        _amount = clampBetween(
+            _amount,
+            0,
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
+        );
+
+        console2.log("withdrawColl", _amount, _i);
+        borrowerOperations.withdrawColl(_cdpId, _amount, _cdpId, _cdpId);
+    }
+
+    function repayEBTC(uint _amount, uint256 _i) internal {
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+
+        _i = clampBetween(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+
+        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        _amount = clampBetween(_amount, 0, entireDebt);
+
+        console2.log("repayEBTC", _amount, _i);
+        borrowerOperations.repayEBTC(_cdpId, _amount, _cdpId, _cdpId);
     }
 
     function redeemCollateral(
@@ -167,5 +188,12 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties {
             0,
             _maxFeePercentage
         );
+    }
+
+    function liquidateCdps(uint _n) internal {
+        _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
+
+        console2.log("liquidateCdps", _n);
+        cdpManager.liquidateCdps(_n);
     }
 }
