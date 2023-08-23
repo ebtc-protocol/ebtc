@@ -995,5 +995,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _liquidatable = _recovery
             ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
             : _icr < MCR;
+
+        return _liquidatable;
     }
 }
