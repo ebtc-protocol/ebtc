@@ -213,9 +213,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
                 uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
                 uint _collSystemBefore = cdpManager.getEntireSystemColl();
-                vm.prank(users[0]);
-
                 _waitUntilRMColldown();
+                vm.prank(users[0]);
 
                 cdpManager.partiallyLiquidate(cdpId1, _partialLiq._repaidDebt, cdpId1, cdpId1);
                 uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
