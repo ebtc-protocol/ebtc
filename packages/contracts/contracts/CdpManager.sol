@@ -449,7 +449,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
         // TODO: E part of code is here for new TCR and notification
-        // New coll = eth - totalETHDrawn, 
+        // New coll = eth - totalETHDrawn,
         // New debt = debt - totalEBTCToRedeem
         // Compute TCR and then notify self
 

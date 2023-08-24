@@ -55,7 +55,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             uint256 coll2 = _utils.calculateCollAmount(debt2, _curPrice, 1.15e18); // Fairly risky
             cdps[1 + i] = _openTestCDP(users[1], coll2, debt2);
         }
-        
+
         // Move past bootstrap phase to allow redemptions
         vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
 
@@ -70,7 +70,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 debt2 = 2e18;
         uint256 coll2 = _utils.calculateCollAmount(debt2, _curPrice, 1.105e18); // Extremely Risky
         bytes32 cdp = _openTestCDP(users[0], coll2, debt2);
-        
+
         // Move past bootstrap phase to allow redemptions
         vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
 
@@ -171,18 +171,13 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _checkLiquidationsFSMForRmCdps(rmLiquidatableCdps); // Verify rest of behaviour is consistent with Grace Period
     }
 
-
     /// Verify that if the Grace Period is not started, true liquidations still happen
     /// Verify that if the Grace Period is started, true liquidations still happen
     /// Verify that if the Grace Period is finished, true liquidations still happen
 
-
-
     /// Verify Grace Period Synching applies to all external functions
-    
-    
-    /// Claim Fee Split prob doesn't
 
+    /// Claim Fee Split prob doesn't
 
     /// @dev Verifies liquidations wrt Grace Period and Cdps that can be always be liquidated
     function _checkLiquidationsForDegen(bytes32 cdp) internal {
@@ -250,14 +245,18 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
     /// @dev Enumerate variants of ways the grace period could be reset
     /// @dev "Valid" actions are actions that can trigger grace period and also keep the system in recovery mode
-    function test_GracePeriodResetWhenRecoveryModeExitedViaAction(uint8 priceDecreaseAction, uint8 validA) public {
+    function test_GracePeriodResetWhenRecoveryModeExitedViaAction(
+        uint8 priceDecreaseAction,
+        uint8 validA
+    ) public {
         // setup: create Cdps, enter RM via price change or rebase
     }
 
     function _execValidRMAction(bytes32[] memory cdps, uint256 action) internal {
         address borrower = sortedCdps.getOwnerAddress(cdps[0]);
         uint256 price = priceFeedMock.fetchPrice();
-        if (action == 0) { // openCdp
+        if (action == 0) {
+            // openCdp
             uint256 debt = 2e18;
             uint256 coll = _utils.calculateCollAmount(debt, price, 1.3 ether);
 
@@ -268,7 +267,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
             uint256 TCR = cdpManager.getTCR(price);
             assertLt(TCR, 1.25e18, "!RM");
-        } else if (action == 1) { // adjustCdp: addColl
+        } else if (action == 1) {
+            // adjustCdp: addColl
             dealCollateral(borrower, 1);
 
             vm.prank(borrower);
@@ -276,7 +276,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
             uint256 TCR = cdpManager.getTCR(price);
             assertLt(TCR, 1.25e18, "!RM");
-        } else if (action == 2) { //adjustCdp: repayEBTC
+        } else if (action == 2) {
+            //adjustCdp: repayEBTC
             vm.prank(borrower);
             borrowerOperations.repayEBTC(cdps[0], 1, bytes32(0), bytes32(0));
 
@@ -341,16 +342,13 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
         vm.revertTo(snapshotId);
 
-
         // Try liquidating a cdp via the list (1)
         cdpManager.liquidateCdps(1);
         vm.revertTo(snapshotId);
 
         console2.log("About to batchLiquidateCdps", uint256(cdp));
 
-
         console2.log("This log if batchLiquidateCdps didn't revert");
-
 
         vm.stopPrank();
     }
@@ -376,7 +374,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         cdpsToLiquidateBatch[0] = cdps[1];
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
         vm.revertTo(snapshotId);
-        
+
         vm.stopPrank();
     }
 }

@@ -438,7 +438,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
-    /// @dev BO can call this without trigggering a 
+    /// @dev BO can call this without trigggering a
     function applyPendingGlobalState() external {
         _requireCallerIsBorrowerOperations();
         _applyPendingGlobalState();
@@ -460,7 +460,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Call this if you want to accrue feeSplit
     function syncPendingGlobalState() public {
         _applyPendingGlobalState(); // Apply // Could trigger RM
-        checkLiquidateCoolDownAndReset(); // Synch Grace Period 
+        checkLiquidateCoolDownAndReset(); // Synch Grace Period
     }
 
     // Update the global index via collateral token

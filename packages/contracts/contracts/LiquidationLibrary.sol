@@ -522,7 +522,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         // E: Total Coll = Coll - totalColToSend
         // From here we can determine if we're in RM or not
 
-
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
             _redistributeDebt(totalDebtToRedistribute);
