@@ -32,13 +32,13 @@ library Strings {
         return string(buffer);
     }
 
-     function bytes32ToString(bytes32 _bytes) public pure returns (string memory) {
+    function bytes32ToString(bytes32 _bytes) public pure returns (string memory) {
         bytes memory charset = "0123456789abcdef";
-        bytes memory result = new bytes(64);  // as each byte will be represented by 2 chars in hex
+        bytes memory result = new bytes(64); // as each byte will be represented by 2 chars in hex
 
         for (uint256 i = 0; i < 32; i++) {
-            result[i*2] = charset[uint8(_bytes[i] >> 4)];
-            result[i*2 + 1] = charset[uint8(_bytes[i] & 0x0F)];
+            result[i * 2] = charset[uint8(_bytes[i] >> 4)];
+            result[i * 2 + 1] = charset[uint8(_bytes[i] & 0x0F)];
         }
 
         return string(result);
