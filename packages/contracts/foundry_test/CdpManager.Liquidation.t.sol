@@ -434,6 +434,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         assertTrue(sortedCdps.contains(cdpIds[1]) == false);
         assertTrue(sortedCdps.contains(cdpIds[2]) == true);
         assertTrue(sortedCdps.contains(cdpIds[3]) == true);
+
+        // ensure RM is exited
+        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         assertEq(
             _liquidatorBalAfter,
@@ -469,6 +472,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         assertTrue(sortedCdps.contains(cdpIds[1]) == false);
         assertTrue(sortedCdps.contains(cdpIds[2]) == true);
         assertTrue(sortedCdps.contains(cdpIds[3]) == true);
+
+        // ensure RM is exited
+        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         assertEq(
             _liquidatorBalAfter,
@@ -666,9 +672,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             [1] < 100%
             [2] < MCR
-            [3] > MCR < CCR
-            [4] > MCR < CCR
-
+            ...
+			
             once a few CDPs are liquidated, the system should _switch_ to normal mode. the rest CDP should therefore not be liquidated from the sequence
         */
         uint _price = priceFeedMock.fetchPrice();
@@ -689,19 +694,19 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             ICR_COMPARE_TOLERANCE
         );
 
-        // [3] 252%
-        (, cdpIds[2]) = _singleCdpSetup(user, 252e16);
+        // [3] 270%
+        (, cdpIds[2]) = _singleCdpSetup(user, 270e16);
         _utils.assertApproximateEq(
             cdpManager.getCurrentICR(cdpIds[2], _price),
-            252e16,
+            270e16,
             ICR_COMPARE_TOLERANCE
         );
 
-        // [4] 252%
-        (, cdpIds[3]) = _singleCdpSetup(user, 252e16);
+        // [4] 290%
+        (, cdpIds[3]) = _singleCdpSetup(user, 290e16);
         _utils.assertApproximateEq(
             cdpManager.getCurrentICR(cdpIds[3], _price),
-            252e16,
+            290e16,
             ICR_COMPARE_TOLERANCE
         );
 
