@@ -28,8 +28,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     // RM Triggered via User Operation
     // All operations where the system is in RM should trigger the countdown
 
-    // RM untriggered via Price
-    // RM untriggered via Split
+    // RM untriggered via Price - DONE
+    // RM untriggered via Split - DONE
 
     // RM untriggered via User Operations
     // All operations where the system goes off of RM should cancel the countdown
@@ -41,6 +41,11 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         - 1 healthy Cdps at 130% (1000 scale)
         - 5 unhealthy Cdps at 115% (2 scale each)
 
+        TCR somewhat above RM thresold ~130%
+
+        - price drop via market price or rebase
+
+        TCR just below RM threshold ~124.5%
 
      */
     function _openCdps(uint256 numberOfCdpsAtRisk) internal returns (bytes32[] memory) {
@@ -127,8 +132,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         priceFeedMock.setPrice((priceFeedMock.getPrice() * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         uint256 reducedPrice = priceFeedMock.getPrice();
 
-        _printSystemState();
-
         // Check if we are in RM
         uint256 TCR = cdpManager.getTCR(reducedPrice);
         assertLt(TCR, 1.25e18, "!RM");
@@ -145,8 +148,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // 4% Downward Price will trigger RM but not Liquidations
         collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         uint256 price = priceFeedMock.getPrice();
-
-        _printSystemState();
 
         // Check if we are in RM
         uint256 TCR = cdpManager.getTCR(price);
@@ -286,6 +287,38 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _postExitRMLiquidationChecks(cdps);
     }
 
+    /// @dev Recovery mode is "virtually" entered and subsequently exited via price movement
+    /// @dev When no action is taken during RM, actions after RM naturally exited via price should behave as expected from NM
+    function test_GracePeriodResetWhenRecoveryModeExited_WithoutAction_WithoutGracePeriodSet(
+        uint8 priceDecreaseAction,
+        uint8 priceIncreaseAction
+    ) public {
+        // setup: create Cdps, enter RM via price change or rebase
+        vm.assume(priceDecreaseAction <= 1);
+        vm.assume(priceIncreaseAction <= 1);
+
+        // setup: create Cdps, enter RM via price change or rebase
+        bytes32[] memory cdps = _openCdps(5);
+        assertTrue(cdps.length == 5 + 1, "length"); // 5 created, 1 safe (first)
+
+        _execPriceDecreaseAction(priceDecreaseAction);
+        uint256 price = priceFeedMock.getPrice();
+
+        // Check if we are in RM
+        uint256 TCR = cdpManager.getTCR(price);
+        assertLt(TCR, 1.25e18, "!RM");
+
+        _assertRevertOnAllLiquidations(cdps);
+
+        _execPriceIncreaseAction(priceIncreaseAction);
+
+        // Confirm no longer in RM
+        TCR = cdpManager.getTCR(priceFeedMock.getPrice());
+        assertGt(TCR, 1.25e18, "still in RM");
+
+        _assertRevertOnAllLiquidations(cdps);
+    }
+
     function test_GracePeriodResetWhenRecoveryModeExitedViaAction_WithGracePeriodSet(
         uint8 priceDecreaseAction,
         uint8 action
@@ -338,9 +371,25 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
+            uint toRedeem = 5e17;
             //redemption
+            (
+                bytes32 firstRedemptionHint,
+                uint partialRedemptionHintNICR,
+                uint truncatedEBTCamount,
+                uint partialRedemptionNewColl
+            ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
+
             vm.prank(borrower);
-            cdpManager.redeemCollateral(1e18, ZERO_ID, ZERO_ID, ZERO_ID, 1e18, 0, 1e18);
+            cdpManager.redeemCollateral(
+                toRedeem,
+                firstRedemptionHint,
+                ZERO_ID,
+                ZERO_ID,
+                partialRedemptionHintNICR,
+                0,
+                1e18
+            );
         }
 
         uint256 TCR = cdpManager.getTCR(price);
@@ -396,12 +445,23 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         assertGt(TCR, 1.25e18, "!RM");
     }
 
-    function _execPriceDecreaseAction(uint8 priceDecreaseAction) internal {
-        // 4% Downward Price will trigger
-        if (priceDecreaseAction == 0) {
+    /// @dev Trigger recovery mode via a dependency action that decreases price
+    function _execPriceDecreaseAction(uint8 action) internal {
+        // 4% Downward Price will trigger RM
+        if (action == 0) {
             priceFeedMock.setPrice((priceFeedMock.getPrice() * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         } else {
             collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
+        }
+    }
+
+    /// @dev Trigger exit of recovery mode via a dependency action that decreases price
+    function _execPriceIncreaseAction(uint8 action) internal {
+        // Upward Price will leave RM
+        if (action == 0) {
+            priceFeedMock.setPrice((priceFeedMock.getPrice() * 105) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
+        } else {
+            collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 105) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         }
     }
 
