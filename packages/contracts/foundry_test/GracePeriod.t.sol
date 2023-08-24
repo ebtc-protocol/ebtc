@@ -34,7 +34,15 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     // RM untriggered via User Operations
     // All operations where the system goes off of RM should cancel the countdown
 
-    /// @dev Setup function to ensure we liquidate the correct amount of CDPs
+    /**
+        @dev Setup function to ensure we liquidate the correct amount of CDPs
+
+        Current use:
+        - 1 healthy Cdps at 130% (1000 scale)
+        - 5 unhealthy Cdps at 115% (2 scale each)
+
+
+     */
     function _openCdps(uint256 numberOfCdpsAtRisk) internal returns (bytes32[] memory) {
         address payable[] memory users;
         users = _utils.createUsers(2);
@@ -56,6 +64,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[1 + i] = _openTestCDP(users[1], coll2, debt2);
         }
 
+        uint TCR = cdpManager.getTCR(_curPrice);
+        assertGt(TCR, CCR);
+        
         // Move past bootstrap phase to allow redemptions
         vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
 
@@ -116,6 +127,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         priceFeedMock.setPrice((priceFeedMock.getPrice() * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         uint256 reducedPrice = priceFeedMock.getPrice();
 
+        _printSystemState();
+
         // Check if we are in RM
         uint256 TCR = cdpManager.getTCR(reducedPrice);
         assertLt(TCR, 1.25e18, "!RM");
@@ -132,6 +145,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // 4% Downward Price will trigger RM but not Liquidations
         collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 96) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
         uint256 price = priceFeedMock.getPrice();
+
+        _printSystemState();
 
         // Check if we are in RM
         uint256 TCR = cdpManager.getTCR(price);
@@ -222,7 +237,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     */
     function test_GracePeriodViaValidAction(uint8 priceDecreaseAction, uint8 action) public {
         vm.assume(priceDecreaseAction <= 1);
-        vm.assume(action <= 2);
+        vm.assume(action <= 3);
 
         // setup: create Cdps, enter RM via price change or rebase
         bytes32[] memory cdps = _openCdps(5);
@@ -245,11 +260,27 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
     /// @dev Enumerate variants of ways the grace period could be reset
     /// @dev "Valid" actions are actions that can trigger grace period and also keep the system in recovery mode
-    function test_GracePeriodResetWhenRecoveryModeExitedViaAction(
-        uint8 priceDecreaseAction,
-        uint8 validA
-    ) public {
+    function test_GracePeriodResetWhenRecoveryModeExitedViaAction(uint8 priceDecreaseAction, uint8 action) public {
         // setup: create Cdps, enter RM via price change or rebase
+        vm.assume(priceDecreaseAction <= 1);
+        vm.assume(action <= 3);
+
+        // setup: create Cdps, enter RM via price change or rebase
+        bytes32[] memory cdps = _openCdps(5);
+        assertTrue(cdps.length == 5 + 1, "length"); // 5 created, 1 safe (first)
+
+        _execPriceDecreaseAction(priceDecreaseAction);
+        uint256 price = priceFeedMock.getPrice();
+
+        // Check if we are in RM
+        uint256 TCR = cdpManager.getTCR(price);
+        assertLt(TCR, 1.25e18, "!RM");
+        
+        _assertRevertOnAllLiquidations(cdps);
+
+        _execExitRMAction(cdps, action);
+
+        _postExitRMLiquidationChecks(cdps);
     }
 
     function _execValidRMAction(bytes32[] memory cdps, uint256 action) internal {
@@ -263,27 +294,65 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             dealCollateral(borrower, coll);
 
             vm.prank(borrower);
-            borrowerOperations.openCdp(coll, bytes32(0), bytes32(0), debt);
+            borrowerOperations.openCdp(debt, ZERO_ID, ZERO_ID, coll);
 
-            uint256 TCR = cdpManager.getTCR(price);
-            assertLt(TCR, 1.25e18, "!RM");
-        } else if (action == 1) {
-            // adjustCdp: addColl
+        } else if (action == 1) { // adjustCdp: addColl
             dealCollateral(borrower, 1);
 
             vm.prank(borrower);
-            borrowerOperations.addColl(cdps[0], bytes32(0), bytes32(0), 1);
+            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, 1);
 
-            uint256 TCR = cdpManager.getTCR(price);
-            assertLt(TCR, 1.25e18, "!RM");
-        } else if (action == 2) {
-            //adjustCdp: repayEBTC
+        } else if (action == 2) { //adjustCdp: repayEBTC
             vm.prank(borrower);
-            borrowerOperations.repayEBTC(cdps[0], 1, bytes32(0), bytes32(0));
+            borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
 
-            uint256 TCR = cdpManager.getTCR(price);
-            assertLt(TCR, 1.25e18, "!RM");
+        } else if (action == 3) { //redemption
+            vm.prank(borrower);
+            cdpManager.redeemCollateral(1e18, ZERO_ID, ZERO_ID, ZERO_ID, 1e18, 0, 1e18);
         }
+
+        uint256 TCR = cdpManager.getTCR(price);
+        assertLt(TCR, 1.25e18, "!RM");
+    }
+
+    function _execExitRMAction(bytes32[] memory cdps, uint256 action) internal {
+        address borrower = sortedCdps.getOwnerAddress(cdps[0]);
+        uint256 price = priceFeedMock.fetchPrice();
+
+        // Debt and coll values to push us out of RM
+        uint256 debt = 1e18;
+        uint256 coll = _utils.calculateCollAmount(debt, price, 1.3 ether) * 100000;
+        if (action == 0) { // openCdp
+            dealCollateral(borrower, coll);
+
+            vm.prank(borrower);
+            borrowerOperations.openCdp(debt, ZERO_ID, ZERO_ID, coll);
+
+        } else if (action == 1) { // adjustCdp: addColl (increase coll)
+            dealCollateral(borrower, coll);
+
+            vm.prank(borrower);
+            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, coll);
+
+        } else if (action == 2) { //adjustCdp: withdrawEBTC (reduce debt)
+            debt = cdpManager.getCdpDebt(cdps[0]);
+            console.log(debt);
+
+            vm.prank(borrower);
+            borrowerOperations.repayEBTC(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
+
+        } else if (action == 3) { //adjustCdp: adjustCdpWithColl (reduce debt + increase coll)
+            debt = cdpManager.getCdpDebt(cdps[0]);
+            dealCollateral(borrower, coll);
+
+            vm.prank(borrower);
+            borrowerOperations.adjustCdpWithColl(cdps[0], 0, debt - 1, false, ZERO_ID, ZERO_ID, coll);
+        }
+
+        uint256 TCR = cdpManager.getTCR(price);
+        console.log(TCR);
+        console.log(1.25e18);
+        assertGt(TCR, 1.25e18, "!RM");
     }
 
     function _execPriceDecreaseAction(uint8 priceDecreaseAction) internal {
@@ -295,13 +364,40 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         }
     }
 
+    /// @dev Run these checks immediately after action that sets grace period
     function _postValidActionLiquidationChecks(bytes32[] memory cdps) internal {
+        // Grace period timestamp is now
+        uint recoveryModeSetTimestamp = block.timestamp;
+        assertEq(cdpManager.lastRecoveryModeTimestamp(), block.timestamp, "lastRecoveryModeTimestamp set time");
+
         // Liquidations still revert
         _assertRevertOnAllLiquidations(cdps);
 
-        // Grace Period Ended, liquidations work
+        // Grace Period Ended
         vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        
+        // Grace period timestamp hasn't changed
+        assertEq(cdpManager.lastRecoveryModeTimestamp(), recoveryModeSetTimestamp, "lastRecoveryModeTimestamp set time");
+
+        // Liquidations work
         _assertAllLiquidationSuccess(cdps);
+    }
+    
+    function _postExitRMLiquidationChecks(bytes32[] memory cdps) internal {
+        // Grace period timestamp is now
+        assertEq(cdpManager.lastRecoveryModeTimestamp(), cdpManager.UNSET_TIMESTAMP_FLAG(), "lastRecoveryModeTimestamp unset");
+
+        // Liquidations still revert
+        _assertRevertOnAllLiquidations(cdps);
+
+        // Grace Period Ended
+        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        
+        // Grace period timestamp hasn't changed
+        assertEq(cdpManager.lastRecoveryModeTimestamp(), cdpManager.UNSET_TIMESTAMP_FLAG(), "lastRecoveryModeTimestamp unset");
+
+        // Only liquidations valid under normal work
+        _assertRevertOnAllLiquidations(cdps);
     }
 
     function _assertRevertOnAllLiquidations(bytes32[] memory cdps) internal {

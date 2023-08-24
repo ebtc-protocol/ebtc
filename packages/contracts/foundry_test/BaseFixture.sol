@@ -18,10 +18,11 @@ import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenT
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
+import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 
-contract eBTCBaseFixture is Test, BytecodeReader {
+contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint public constant CCR = 125e16; // 125%
@@ -32,6 +33,7 @@ contract eBTCBaseFixture is Test, BytecodeReader {
     uint internal constant AMOUNT_OF_USERS = 100;
     uint internal constant AMOUNT_OF_CDPS = 3;
     uint internal DECIMAL_PRECISION = 1e18;
+    bytes32 constant public ZERO_ID = bytes32(0);
 
     uint internal constant MAX_BPS = 10000;
 
@@ -442,6 +444,43 @@ contract eBTCBaseFixture is Test, BytecodeReader {
         assertTrue(cdpManager.rewardSnapshots(cdpId) == 0);
         assertTrue(cdpManager.stFeePerUnitcdp(cdpId) == 0);
     }
+    
+    function _printSystemState() internal {
+        uint price = priceFeedMock.fetchPrice();
+        console.log("== Core State ==");
+        console.log("systemCollShares   :", activePool.getStEthColl());
+        console.log("systemStEthBalance :", collateral.getPooledEthByShares(activePool.getStEthColl()));
+        console.log("systemDebt         :", activePool.getEBTCDebt());
+        console.log("TCR                :", cdpManager.getTCR(price));
+        console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
+        console.log("stEthGlobalIndex   :", cdpManager.stFPPSg());
+        console.log("price              :", price);
+    }
+
+    function _getICR(bytes32 cdpId) internal returns (uint) {
+        uint price = priceFeedMock.fetchPrice();
+        return cdpManager.getCurrentICR(cdpId, price);
+    }
+
+    function _printAllCdps() internal {
+        uint price = priceFeedMock.fetchPrice();
+        uint numCdps = sortedCdps.getSize();
+        bytes32 node = sortedCdps.getLast();
+        address borrower = sortedCdps.getOwnerAddress(node);
+
+        while (borrower != address(0)) {    
+            console.log("=== ", bytes32ToString(node));
+            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
+            console.log("collShares (realized) :", cdpManager.getCdpColl(node));
+            console.log("ICR                   :", cdpManager.getCurrentICR(node, price));
+            console.log("Percent of System     :", cdpManager.getCdpColl(node) * DECIMAL_PRECISION / activePool.getStEthColl());
+            console.log("");
+
+            node = sortedCdps.getPrev(node);
+            borrower = sortedCdps.getOwnerAddress(node);
+        }
+    }
+
 
     /// @dev Ensure a given CdpId is not in the Sorted Cdps LL.
     /// @dev a Cdp should only be present in the LL when it is active.
