@@ -19,7 +19,6 @@ import "./Dependencies/AuthNoOwner.sol";
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     // TODO: IMPROVE
-    // NOTE: No packing cause it's the last var, no need for u64
     uint128 constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
 
     // TODO: IMPROVE THIS!!!
