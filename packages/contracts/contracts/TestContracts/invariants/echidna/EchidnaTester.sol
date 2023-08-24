@@ -652,7 +652,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal log {
+    function flashLoanColl(uint _amount) external log {
         actor = actors[msg.sender];
 
         bool success;
@@ -686,7 +686,7 @@ contract EchidnaTester is
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal log {
+    function flashLoanEBTC(uint _amount) external log {
         actor = actors[msg.sender];
 
         bool success;
