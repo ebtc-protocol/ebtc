@@ -104,4 +104,4 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Price Feed
 
-| PF-01 | The price feed must never revert | Unit Tests | |
+| PF-01 | The price feed must never revert | High Level | ✅ |
