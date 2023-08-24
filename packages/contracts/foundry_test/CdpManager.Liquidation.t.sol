@@ -445,6 +445,54 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
     }
 
+    function test_RecoveryModeSwitchPOC() public {
+        (bytes32[] memory cdpIds, uint _newPrice) = _alteredSequenceRecoveryModeSwitch();
+
+        // ensure we are in RM now
+        uint _currentTCR = cdpManager.getTCR(_newPrice);
+        assertTrue(_currentTCR < cdpManager.CCR());
+
+        // prepare sequence liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        // FIXME _waitUntilRMColldown();
+
+
+        vm.prank(_liquidator);
+        cdpManager.liquidateCdps(4);
+        assertTrue(sortedCdps.contains(cdpIds[0]) == true, "First");
+        assertTrue(sortedCdps.contains(cdpIds[1]) == false, "Second");
+        assertTrue(sortedCdps.contains(cdpIds[2]) == false, "Third");
+        assertTrue(sortedCdps.contains(cdpIds[3]) == false, "Fourth");
+    }
+
+    function test_RecoveryModeSwitchPOCStepWise() public {
+        (bytes32[] memory cdpIds, uint _newPrice) = _alteredSequenceRecoveryModeSwitch();
+
+        // ensure we are in RM now
+        uint _currentTCR = cdpManager.getTCR(_newPrice);
+        assertTrue(_currentTCR < cdpManager.CCR());
+
+        // prepare sequence liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        // FIXME _waitUntilRMColldown();
+        bool reverted;
+        uint256 count;
+        vm.startPrank(_liquidator);
+        while(!reverted) {
+            uint _currentTCR = cdpManager.getTCR(_newPrice);
+            console.log("_currentTCR", _currentTCR);
+            try cdpManager.liquidateCdps(1) {
+                count += 1;
+            } catch {
+                reverted = true;
+            }
+        }
+
+        console.log("count", count);
+    }
+
     /// @dev Test a batch of liquidations where RM is exited during the batch
     /// @dev All subsequent CDPs in the batch that are only liquidatable in RM should be skipped
     function test_BatchLiqRecoveryModeSwitch() public {
@@ -712,6 +760,62 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // price drop to half
         uint _newPrice = _price / 2;
+        priceFeedMock.setPrice(_newPrice);
+
+        return (cdpIds, _newPrice);
+    }
+    function _alteredSequenceRecoveryModeSwitch() internal returns (bytes32[] memory, uint) {
+        address user = users[0];
+        bytes32[] memory cdpIds = new bytes32[](4);
+
+        /** 
+            open a sequence of Cdps. once we enter recovery mode, they will have the following status:
+
+            [1] < 100%
+            [2] < MCR
+            ...
+			
+            once a few CDPs are liquidated, the system should _switch_ to normal mode. the rest CDP should therefore not be liquidated from the sequence
+        */
+        uint _price = priceFeedMock.fetchPrice();
+
+        // [0] 300%
+        (, cdpIds[0]) = _singleCdpSetup(user, 200e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[0], _price),
+            200e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // [1] 126%
+        (, cdpIds[1]) = _singleCdpSetup(user, 126e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[1], _price),
+            126e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // [2] 190%
+        (, cdpIds[2]) = _singleCdpSetup(user, 126e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[2], _price),
+            126e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+
+        // [3] 190%
+        (, cdpIds[3]) = _singleCdpSetup(user, 126e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[3], _price),
+            126e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+
+
+        // price drop to half
+        uint _newPrice = _price * 90 / 100;
         priceFeedMock.setPrice(_newPrice);
 
         return (cdpIds, _newPrice);
