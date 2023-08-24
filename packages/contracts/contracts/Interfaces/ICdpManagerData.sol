@@ -223,7 +223,8 @@ interface ICdpManagerData {
         uint256 _prevIndex
     ) external view returns (uint256, uint256, uint256);
 
-    function applyPendingGlobalState() external;
+    function applyPendingGlobalState() external; // Accrues StEthFeeSplit without influencing Grace Period
+    function syncPendingGlobalState() external; // Accrues StEthFeeSplit and influences Grace Period
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
