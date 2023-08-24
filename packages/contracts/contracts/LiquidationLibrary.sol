@@ -518,6 +518,11 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 
+        // E: Total Debt = Debt - TotalDebtToBurn
+        // E: Total Coll = Coll - totalColToSend
+        // From here we can determine if we're in RM or not
+
+
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
             _redistributeDebt(totalDebtToRedistribute);
@@ -531,6 +536,8 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
+
+        // checkLiquidateCoolDownAndReset(); NOTE: If you place this here, you may as well place it in the external functions in CdpManager
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus

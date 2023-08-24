@@ -448,6 +448,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
+        // TODO: E part of code is here for new TCR and notification
+        // New coll = eth - totalETHDrawn, 
+        // New debt = debt - totalEBTCToRedeem
+        // Compute TCR and then notify self
+
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 
         // Burn the total eBTC that is redeemed
@@ -464,6 +469,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
         // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
+        checkLiquidateCoolDownAndReset(); // TODO: Else you would do it here in the I part since all totals have accrued now
     }
 
     // --- Helper functions ---
