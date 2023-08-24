@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IBorrowerOperations.sol";
-import "./Interfaces/IRmLiquidationsChecker.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/IEBTCToken.sol";
@@ -405,10 +404,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (newTCR < CCR) {
                 // Notify RM
-                IRmLiquidationsChecker(address(cdpManager)).notifyBeginRM();
+                cdpManager.notifyBeginRM();
             } else {
                 // Notify Back to Normal Mode
-                IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+                cdpManager.notifyEndRM();
             }
         } else {
             _requireICRisAboveMCR(vars.ICR);
@@ -417,7 +416,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+            cdpManager.notifyEndRM();
         }
 
         // Set the cdp struct's properties
@@ -482,7 +481,7 @@ contract BorrowerOperations is
 
         // == Grace Period == //
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
-        IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+        cdpManager.notifyEndRM();
 
         cdpManager.removeStake(_cdpId);
 
@@ -664,10 +663,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (_vars.newTCR < CCR) {
                 // Notify RM
-                IRmLiquidationsChecker(address(cdpManager)).notifyBeginRM();
+                cdpManager.notifyBeginRM();
             } else {
                 // Notify Back to Normal Mode
-                IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+                cdpManager.notifyEndRM();
             }
         } else {
             // if Normal Mode
@@ -677,7 +676,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            IRmLiquidationsChecker(address(cdpManager)).notifyEndRM();
+            cdpManager.notifyEndRM();
         }
     }
 
