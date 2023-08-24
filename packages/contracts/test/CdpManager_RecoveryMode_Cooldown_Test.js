@@ -61,7 +61,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
     splitFeeRecipient = await LQTYContracts.feeRecipient;
   })  
   
-  it("Happy case: 2 CDPs with 1st Safe and 2nd Unsafe and ensure you must wait cooldown", async() => {      	  
+  it("Happy case: 3 CDPs with 1st Safe and 2 other Unsafe and ensure you must wait cooldown for one of them", async() => {      	  
       
       await openCdp({ ICR: toBN(dec(149, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10")), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(139, 16)), extraParams: { from: bob } }) 
@@ -97,10 +97,127 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       assert.isFalse((await sortedCdps.contains(_carolCdpId)));
 	 
       // pass the cooldown wait 
-      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_increaseTime", [_coolDownWait.toNumber() + 1]);
       await ethers.provider.send("evm_mine");
       await cdpManager.liquidate(_bobCdpId, {from: owner});
       assert.isFalse((await sortedCdps.contains(_bobCdpId)));
+  })
+  
+  it("openCDP() in RM: should notifyBeginRM() if RM persist or notifyEndRM() if RM exit", async() => {      	  
+      
+      await openCdp({ ICR: toBN(dec(149, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10")), extraParams: { from: alice } })
+      let _initVal = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_initVal.gt(toBN('0')));
+      await openCdp({ ICR: toBN(dec(129, 16)), extraParams: { from: carol } }) 
+	  
+      // price drops to trigger RM	  
+      let _newPrice = dec(6000, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcrBefore = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
+      let _stillInitVal = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_stillInitVal.eq(_initVal));
+	  	  
+      // trigger RM cooldown by open a new CDP
+      await openCdp({ ICR: _CCR.add(toBN('1234567890123456789')), extraParams: { from: bob } }) 
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _bobICRBefore = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
+      let _tcrInMiddle = await cdpManager.getTCR(_newPrice);
+      console.log('_tcrInMiddle=' + _tcrInMiddle);
+      assert.isTrue(toBN(_tcrInMiddle.toString()).lt(_CCR));
+      let _rmTriggerTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmTriggerTimestamp.gt(toBN('0')));
+      assert.isTrue(_rmTriggerTimestamp.lt(_initVal));
+	  	  
+      // trigger RM exit by open another new CDP
+      await openCdp({ ICR: toBN(dec(349, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("100")), extraParams: { from: owner } }) 
+      let _tcrFinal = await cdpManager.getTCR(_newPrice);
+      console.log('_tcrFinal=' + _tcrFinal);
+      assert.isTrue(toBN(_tcrFinal.toString()).gt(_CCR));
+      let _rmExitTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmExitTimestamp.eq(_initVal));
+  })
+  
+  it("closeCDP(): should always notifyEndRM() since TCR after close is aboce CCR", async() => {      	  
+      
+      await openCdp({ ICR: toBN(dec(155, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10")), extraParams: { from: alice } })
+      let _initVal = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_initVal.gt(toBN('0')));
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: carol } })
+	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+	  
+      // price drops to trigger RM & cooldown
+      let _originalPrice = await priceFeed.getPrice();
+      let _newPrice = dec(5992, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcrBefore = await cdpManager.getTCR(_newPrice);
+      let _aliceICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      console.log('_tcrBefore=' + _tcrBefore + ',_aliceICRBefore=' + _aliceICRBefore);
+      assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
+      await cdpManager.checkLiquidateCoolDownAndReset();
+      let _rmTriggerTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmTriggerTimestamp.gt(toBN('0')));
+      assert.isTrue(_rmTriggerTimestamp.lt(_initVal));
+	  	  
+      // reset RM cooldown by close a CDP
+      await priceFeed.setPrice(_originalPrice);
+      await borrowerOperations.closeCdp(_carolCdpId, { from: carol } ); 
+      assert.isFalse((await sortedCdps.contains(_carolCdpId)));
+      let _tcrAfter = await cdpManager.getTCR(_originalPrice);
+      assert.isTrue(toBN(_tcrAfter.toString()).gt(_CCR));
+      let _rmExitTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmExitTimestamp.eq(_initVal));
+  })
+  
+  it("adjustCDP(): should notifyBeginRM() if RM persist or notifyEndRM() if RM exit", async() => {      	  
+      let _dustVal = 123456789;
+      await openCdp({ ICR: toBN(dec(155, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("10")), extraParams: { from: alice } })
+      let _initVal = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_initVal.gt(toBN('0')));
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: carol } })
+	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      let _carolDebt = await cdpManager.getCdpDebt(_carolCdpId);
+	  
+      // price drops to trigger RM & cooldown
+      let _originalPrice = await priceFeed.getPrice();
+      let _newPrice = dec(5992, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcrBefore = await cdpManager.getTCR(_newPrice);
+      let _aliceICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
+      await cdpManager.checkLiquidateCoolDownAndReset();
+      let _rmTriggerTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmTriggerTimestamp.gt(toBN('0')));
+      assert.isTrue(_rmTriggerTimestamp.lt(_initVal));
+	  	  
+      // reset RM cooldown by adjust a CDP in Normal Mode (withdraw more debt)
+      await priceFeed.setPrice(_originalPrice);
+      let _tcrAfter = await cdpManager.getTCR(_originalPrice);
+      assert.isTrue(toBN(_tcrAfter.toString()).gt(_CCR));	  
+      await borrowerOperations.withdrawEBTC(_carolCdpId, _dustVal, _carolCdpId, _carolCdpId, { from: carol } ); 
+      let _rmExitTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmExitTimestamp.eq(_initVal));
+	  
+      // price drops to trigger RM & cooldown again by adjust CDP (add more collateral)
+      await priceFeed.setPrice(_newPrice);	  
+      await collToken.deposit({from : carol, value: _dustVal}); 
+      await borrowerOperations.addColl(_carolCdpId, _carolCdpId, _carolCdpId, _dustVal, { from: carol } );
+      let _adjustRmTriggerTimestamp = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_adjustRmTriggerTimestamp.gt(_rmTriggerTimestamp));
+      assert.isTrue(_adjustRmTriggerTimestamp.lt(_initVal));
+	  
+      // end RM cooldown by adjust a CDP in RM (repayment)
+      await debtToken.approve(borrowerOperations.address, _carolDebt, {from: carol});	  
+      await borrowerOperations.repayEBTC(_carolCdpId, _carolDebt, _carolCdpId, _carolCdpId, { from: carol } );
+      let _tcrFinal = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(toBN(_tcrFinal.toString()).gt(_CCR));
+      let _rmExitFinal = await cdpManager.lastRecoveryModeTimestamp();
+      assert.isTrue(_rmExitFinal.eq(_initVal));
+	  
   })
   
   
