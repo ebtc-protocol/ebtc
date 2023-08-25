@@ -13,15 +13,21 @@ import "../../../PriceFeed.sol";
 import "../PropertiesDescriptions.sol";
 
 contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
+    event Log2(string, uint256, uint256);
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
     MockAggregator internal ethBtcCLFeed;
     AuthNoOwner internal authority;
     IFallbackCaller internal fallbackCaller;
 
-    uint256 internal MAX_PRICE_CHANGE = 0.8e18;
-    uint256 internal MAX_ROUND_ID_CHANGE = 5;
-    uint256 internal MAX_UPDATE_TIME_CHANGE = 2 days;
+    uint256 internal constant MAX_PRICE_CHANGE = 1.2e18;
+    uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
+    uint256 internal constant MAX_UPDATE_TIME_CHANGE = 2 days;
+    uint256 internal constant MAX_STATUS_HISTORY_OPERATIONS = 32;
+    uint256 internal constant MAX_REVERT_PERCENTAGE = 0.1e18;
+
+    uint256 internal statusHistoryOperations = 0;
+    IPriceFeed.Status[MAX_STATUS_HISTORY_OPERATIONS] internal statusHistory;
 
     constructor() payable {
         authority = new AuthNoOwner();
@@ -50,17 +56,46 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
             address(collEthCLFeed),
             address(ethBtcCLFeed)
         );
+
+        statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
+            .status();
     }
 
-    // uint private updateTime;
-    // uint private prevUpdateTime;
+    function setLatestRevert(bool flag, uint256 seed) public log {
+        MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
+        seed = clampBetween(seed, 0, 1e18);
+        bool reverted = aggregator.latestRevert();
+        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
+            aggregator.setLatestRevert();
+        }
+    }
 
-    function setDecimals(uint8 decimals, bool flag) external {
+    function setPrevRevert(bool flag, uint256 seed) public log {
+        MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
+        seed = clampBetween(seed, 0, 1e18);
+        bool reverted = aggregator.prevRevert();
+        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
+            aggregator.setPrevRevert();
+        }
+    }
+
+    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
+    function setDecimals(uint8 decimals, bool flag) internal {
+        // https://github.com/d-xo/weird-erc20
+        // GUSD 2
+        // USDC 6
+        // YAM-V2 24
+        decimals = uint8(clampBetween(uint256(decimals), 0, 24));
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setDecimals(decimals);
     }
 
-    function setLatest(uint80 latestRoundId, int256 price, uint256 updateTime, bool flag) external {
+    function setLatest(
+        uint80 latestRoundId,
+        int256 price,
+        uint256 updateTime,
+        bool flag
+    ) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         (
             uint80 roundId,
@@ -79,8 +114,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         price = (
             clampBetween(
                 price,
-                (answer * int256(MAX_PRICE_CHANGE)) / 1e18,
-                (answer * 1e18) / int256(MAX_PRICE_CHANGE)
+                (answer * 1e18) / int256(MAX_PRICE_CHANGE),
+                (answer * int256(MAX_PRICE_CHANGE)) / 1e18
             )
         );
         updateTime = (clampBetween(updateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE));
@@ -94,7 +129,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         int256 prevPrice,
         uint256 prevUpdateTime,
         bool flag
-    ) external {
+    ) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         (
             uint80 roundId,
@@ -113,8 +148,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         prevPrice = (
             clampBetween(
                 prevPrice,
-                (answer * int256(MAX_PRICE_CHANGE)) / 1e18,
-                (answer * 1e18) / int256(MAX_PRICE_CHANGE)
+                (answer * 1e18) / int256(MAX_PRICE_CHANGE),
+                (answer * int256(MAX_PRICE_CHANGE)) / 1e18
             )
         );
         prevUpdateTime = (
@@ -125,13 +160,36 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function fetchPrice() public {
+    function fetchPrice() public log {
         IPriceFeed.Status statusBefore = priceFeed.status();
-        try priceFeed.fetchPrice() {
+        uint256 fallbackResponse;
+
+        if (address(fallbackCaller) != address(0)) {
+            (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();
+        }
+        try priceFeed.fetchPrice() returns (uint256 price) {
             IPriceFeed.Status statusAfter = priceFeed.status();
             assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
+
+            if (
+                statusAfter == IPriceFeed.Status.chainlinkWorking ||
+                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+            ) {
+                assertEq(price, priceFeed.lastGoodPrice(), PF_04);
+
+                // Note: this isn't being tested since for now we do not use a fallback oracle
+                if (address(fallbackCaller) != address(0)) {
+                    assertNeq(price, fallbackResponse, PF_05);
+                }
+            }
+
+            statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = statusAfter;
+            if (statusHistoryOperations >= MAX_STATUS_HISTORY_OPERATIONS) {
+                // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
+                // assertWithMsg(_hasNotDeadlocked(), PF_03);
+            }
         } catch {
-            // assertWithMsg(false, PF_01);
+            assertWithMsg(false, PF_01);
         }
     }
 
@@ -139,8 +197,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         IPriceFeed.Status statusBefore,
         IPriceFeed.Status statusAfter
     ) internal returns (bool) {
-        emit LogUint256("statusBefore", uint256(statusBefore));
-        emit LogUint256("statusAfter", uint256(statusAfter));
+        emit Log2("status transition", uint256(statusBefore), uint256(statusAfter));
         return
             // CASE 1
             (statusBefore == IPriceFeed.Status.chainlinkWorking &&
@@ -183,5 +240,26 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
                 statusAfter == IPriceFeed.Status.chainlinkWorking) ||
             (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
                 statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);
+    }
+
+    function _hasNotDeadlocked() internal returns (bool) {
+        uint256 statusSeen = 0;
+
+        for (uint256 i = 0; i < MAX_STATUS_HISTORY_OPERATIONS; ++i) {
+            IPriceFeed.Status status = statusHistory[i];
+            statusSeen |= (1 << uint256(status));
+        }
+
+        // has not deadlocked if during past MAX_STATUS_HISTORY_OPERATIONS all statuses have been seen
+        // Note: there is a probability of false positive
+        return statusSeen == 31; // 0b1111
+    }
+
+    modifier log() {
+        for (uint256 i = 0; i < MAX_STATUS_HISTORY_OPERATIONS; ++i) {
+            IPriceFeed.Status status = statusHistory[i];
+            emit Log2("status", i, uint256(status));
+        }
+        _;
     }
 }

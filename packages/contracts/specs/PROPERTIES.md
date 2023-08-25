@@ -106,6 +106,6 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 | PF-01 | The price feed must never revert | High Level | ✅ |
 | PF-02 | The price feed must follow valid status transitions | State Transitions | ✅ |
-| PF-03 | The price feed must never deadlock | State Transitions |  |
-| PF-04 | The price feed should never report an outdated price if chainlink is Working | State Transitions |  |
-| PF-05 | The price feed should never use the fallback if chainlink is Working | State Transitions |  |
+| PF-03 | The price feed must never deadlock | State Transitions | TODO: this is hard to test, as we may have false positives due to the random nature of the tests |
+| PF-04 | The price feed should never report an outdated price if chainlink is Working | High Level |  |
+| PF-05 | The price feed should never use the fallback if chainlink is Working | High Level |  |
