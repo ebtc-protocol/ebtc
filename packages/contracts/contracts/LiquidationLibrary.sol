@@ -65,10 +65,24 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _ICR = getCurrentICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
-        require(
-            _ICR < MCR || (_TCR < CCR && _ICR < _TCR),
-            "CdpManager: ICR is not below liquidation threshold in current mode"
-        );
+        // If CDP is above MCR
+        if (_ICR >= MCR) {
+            // We must be in RM
+            require(
+                _TCR < CCR,
+                "CdpManager: ICR is not below liquidation threshold in current mode"
+            );
+
+            // == Grace Period == //
+            require(
+                lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG,
+                "Grace period not started, call `notifyBeginRM`"
+            );
+            require(
+                block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations,
+                "Grace period yet to finish"
+            );
+        } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
 
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         LocalVar_InternalLiquidate memory _liqState = LocalVar_InternalLiquidate(
@@ -609,7 +623,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
-        applyPendingGlobalState();
+        _applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
@@ -730,7 +744,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
-        applyPendingGlobalState();
+        _applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
