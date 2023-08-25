@@ -470,10 +470,6 @@ contract BorrowerOperations is
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
-        uint sc = getEntireSystemColl();
-        uint tc = collateral.getPooledEthByShares(sc);
-        uint td = _getEntireSystemDebt();
-
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
             false,
