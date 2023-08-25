@@ -90,4 +90,6 @@ abstract contract PropertiesDescriptions {
     ///////////////////////////////////////////////////////
 
     string constant PF_01 = "PF-01: The price feed must never revert";
+    string constant PF_02 = "PF-02: The price feed must follow valid status transitions";
+    string constant PF_03 = "PF-03: The price feed must never deadlock";
 }

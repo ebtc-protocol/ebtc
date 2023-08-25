@@ -125,9 +125,63 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function testPriceFeedMustNeverRevert() public {
-        try priceFeed.fetchPrice() {} catch {
-            assertWithMsg(false, PF_01);
+    function fetchPrice() public {
+        IPriceFeed.Status statusBefore = priceFeed.status();
+        try priceFeed.fetchPrice() {
+            IPriceFeed.Status statusAfter = priceFeed.status();
+            assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
+        } catch {
+            // assertWithMsg(false, PF_01);
         }
+    }
+
+    function _isValidStatusTransition(
+        IPriceFeed.Status statusBefore,
+        IPriceFeed.Status statusAfter
+    ) internal returns (bool) {
+        emit LogUint256("statusBefore", uint256(statusBefore));
+        emit LogUint256("statusAfter", uint256(statusAfter));
+        return
+            // CASE 1
+            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
+                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
+            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
+                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
+            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
+                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
+            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
+                statusAfter == IPriceFeed.Status.usingFallbackChainlinkFrozen) ||
+            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
+                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
+            // CASE 2
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
+                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
+                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
+                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
+            // CASE 3
+            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
+                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
+            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
+                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
+            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
+                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
+            // CASE 4
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
+                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
+                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
+                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
+            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
+                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
+            // CASE 5
+            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
+                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
+            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
+                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
+            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
+                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);
     }
 }

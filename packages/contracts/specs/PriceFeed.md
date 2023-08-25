@@ -10,10 +10,12 @@ flowchart TD
     %% CASE 2
     Status.usingFallbackChainlinkUntrusted --> Status.chainlinkWorking
     Status.usingFallbackChainlinkUntrusted --> Status.bothOraclesUntrusted
+    Status.usingFallbackChainlinkUntrusted --> Status.usingFallbackChainlinkUntrusted
 
     %% CASE 3
     Status.bothOraclesUntrusted --> Status.usingChainlinkFallbackUntrusted
     Status.bothOraclesUntrusted --> Status.chainlinkWorking
+    Status.bothOraclesUntrusted --> Status.bothOraclesUntrusted
 
     %% CASE 4
     Status.usingFallbackChainlinkFrozen --> Status.bothOraclesUntrusted
@@ -24,6 +26,7 @@ flowchart TD
     %% CASE 5
     Status.usingChainlinkFallbackUntrusted --> Status.bothOraclesUntrusted
     Status.usingChainlinkFallbackUntrusted --> Status.chainlinkWorking
+    Status.usingChainlinkFallbackUntrusted --> Status.usingChainlinkFallbackUntrusted
 
     style Status.chainlinkWorking fill:green
     style Status.usingFallbackChainlinkUntrusted fill:green
