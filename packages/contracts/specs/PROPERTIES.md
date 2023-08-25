@@ -72,6 +72,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level | TODO: redistribution and pending fee split (prob need to look into this more) |
 | GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
 | GENERAL-10 | All CDPs should maintain a minimum collateral size | High Level | ✅ |
+| GENERAL-11 | The TCR pre-computed (TCRNotified) is the same as the one after all calls | High Level | ✅ |
 
 ## Redemptions
 

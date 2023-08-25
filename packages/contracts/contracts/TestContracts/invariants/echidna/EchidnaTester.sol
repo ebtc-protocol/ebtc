@@ -336,6 +336,47 @@ contract EchidnaTester is
         return cdpManager.CdpIds(_cdpIdx);
     }
 
+    function _getNewTCR(
+        uint _collChange,
+        bool _isCollIncrease,
+        uint _debtChange,
+        bool _isDebtIncrease,
+        uint _price
+    ) internal returns (uint) {
+        try
+            this._getNewTCRExternal(
+                _collChange,
+                _isCollIncrease,
+                _debtChange,
+                _isDebtIncrease,
+                _price
+            )
+        returns (uint newTCR) {
+            return newTCR;
+        } catch {
+            assertWithMsg(false, "_getNewTCR should never revert");
+            return 0;
+        }
+    }
+
+    function _getNewTCRExternal(
+        uint _collChange,
+        bool _isCollIncrease,
+        uint _debtChange,
+        bool _isDebtIncrease,
+        uint _price
+    ) external view returns (uint) {
+        uint _shareColl = activePool.getStEthColl();
+        uint totalColl = collateral.getPooledEthByShares(_shareColl);
+        uint totalDebt = activePool.getEBTCDebt();
+
+        totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
+        totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
+
+        uint newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
+        return newTCR;
+    }
+
     event FlashLoanAction(uint, uint);
 
     function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
@@ -745,6 +786,13 @@ contract EchidnaTester is
         assertWithMsg(success, "Approve never fails");
 
         _before(bytes32(0));
+        uint256 newTCR = _getNewTCR(
+            _col - borrowerOperations.LIQUIDATOR_REWARD(),
+            true,
+            _EBTCAmount,
+            true,
+            vars.priceBefore
+        );
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -761,6 +809,8 @@ contract EchidnaTester is
 
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
+
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
@@ -817,6 +867,7 @@ contract EchidnaTester is
         assertWithMsg(success, "Approve never fails");
 
         _before(_cdpId);
+        uint256 newTCR = _getNewTCR(_coll, true, 0, false, vars.priceBefore);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -832,6 +883,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
             assertWithMsg(
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
@@ -868,6 +920,7 @@ contract EchidnaTester is
         );
 
         _before(_cdpId);
+        uint256 newTCR = _getNewTCR(_amount, false, 0, false, vars.priceBefore);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -883,6 +936,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
             assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
@@ -912,6 +966,7 @@ contract EchidnaTester is
         _amount = clampBetween(_amount, 0, type(uint128).max);
 
         _before(_cdpId);
+        uint256 newTCR = _getNewTCR(0, false, _amount, true, vars.priceBefore);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -927,6 +982,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
             assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
             assertEq(
                 vars.actorEbtcAfter,
@@ -957,6 +1013,7 @@ contract EchidnaTester is
         _amount = clampBetween(_amount, 0, entireDebt);
 
         _before(_cdpId);
+        uint256 newTCR = _getNewTCR(0, false, _amount, false, vars.priceBefore);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -972,6 +1029,8 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
+
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             // assertWithMsg(
             //     vars.tcrAfter > vars.tcrBefore ||
@@ -1007,6 +1066,13 @@ contract EchidnaTester is
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         _before(_cdpId);
+        uint newTCR = _getNewTCR(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            false,
+            cdpManager.getCdpDebt(_cdpId),
+            false,
+            vars.priceBefore
+        );
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -1016,6 +1082,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
@@ -1054,7 +1121,7 @@ contract EchidnaTester is
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) internal log {
+    ) external log {
         actor = actors[msg.sender];
 
         bool success;
@@ -1072,6 +1139,13 @@ contract EchidnaTester is
         _EBTCChange = clampBetween(_EBTCChange, 0, entireDebt);
 
         _before(_cdpId);
+        uint newTCR = _getNewTCR(
+            _collWithdrawal,
+            false,
+            _EBTCChange,
+            _isDebtIncrease,
+            vars.priceBefore
+        );
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
@@ -1089,6 +1163,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(newTCR, vars.tcrAfter, GENERAL_11);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
 
