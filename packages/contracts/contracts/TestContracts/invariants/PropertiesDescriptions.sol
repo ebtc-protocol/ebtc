@@ -96,4 +96,5 @@ abstract contract PropertiesDescriptions {
         "PF-04: The price feed should never report an outdated price if chainlink is Working";
     string constant PF_05 =
         "PF-05: The price feed should never use the fallback if chainlink is Working";
+    string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
 }

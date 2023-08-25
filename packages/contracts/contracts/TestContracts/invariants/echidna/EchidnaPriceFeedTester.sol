@@ -183,6 +183,15 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
                 }
             }
 
+            if (address(fallbackCaller) == address(0)) {
+                assertWithMsg(
+                    statusAfter == IPriceFeed.Status.chainlinkWorking ||
+                        statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||
+                        statusAfter == IPriceFeed.Status.bothOraclesUntrusted,
+                    PF_06
+                );
+            }
+
             statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = statusAfter;
             if (statusHistoryOperations >= MAX_STATUS_HISTORY_OPERATIONS) {
                 // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
