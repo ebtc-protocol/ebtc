@@ -10,7 +10,6 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
   Tests around GracePeriod
  */
 contract GracePeriodBaseTests is eBTCBaseFixture {
-
     event TCRNotified(uint TCR); /// NOTE: Mostly for debugging to ensure synch
 
     function setUp() public override {
@@ -33,7 +32,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         bytes32[] memory cdps = _openRiskyCdps(1);
 
-
         // Adjust and close one cdp
         // TODO
 
@@ -41,7 +39,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Get TCR after Redeem
         // Snapshot back
         // Then expect it to work
-        
+
         uint256 biggerSnap = vm.snapshot();
         uint256 price = priceFeedMock.fetchPrice();
         vm.startPrank(safeUser);
@@ -71,13 +69,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Get TCR after Liquidation
         uint256 EXPECTED_TCR_FIRST_LIQ = cdpManager.getTCR(price);
         // Revert so we can verify Event
-        vm.revertTo(liquidationSnapshotId); 
-        
+        vm.revertTo(liquidationSnapshotId);
+
         // Verify it worked
         vm.expectEmit(false, false, false, true);
         emit TCRNotified(EXPECTED_TCR_FIRST_LIQ);
         cdpManager.liquidate(cdps[0]);
-        
 
         // == Liquidate 2 == //
         console.log("Liq 2");
@@ -94,7 +91,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         vm.expectEmit(false, false, false, true);
         emit TCRNotified(EXPECTED_TCR_SECOND_LIQ);
         cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
-
 
         // == Liquidate 3 == //
         console.log("Liq 3");
@@ -162,12 +158,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 debt1 = 1000e18;
         uint256 coll1 = _utils.calculateCollAmount(debt1, _curPrice, 1.30e18); // Comfy unliquidatable
 
-
         // TODO: Add a check here for TCR being computed correctly and sent properly
 
         return _openTestCDP(safeUser, coll1, debt1);
     }
-
 
     function _openRiskyCdps(uint256 numberOfCdpsAtRisk) internal returns (bytes32[] memory) {
         address payable[] memory users;
