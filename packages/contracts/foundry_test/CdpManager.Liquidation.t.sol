@@ -413,6 +413,159 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _ensureSystemInvariants();
     }
 
+    function testLiquidationPrecondition() public {
+        address user = _utils.getNextUserAddress();
+
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 100 ether}();
+
+        collateral.setEthPerShare(1088704246636946029);
+        collateral.setEthPerShare(1139591179277319409);
+        collateral.setEthPerShare(1072186404582250158);
+
+        bytes32 _cdpId1 = borrowerOperations.openCdp(1, HINT, HINT, 2200000000000000016);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            939336331742640342,
+            HINT,
+            HINT,
+            15807356148065433865
+        );
+        collateral.setEthPerShare(1057654250579485462);
+        collateral.setEthPerShare(961503864163168601);
+
+        uint256 _price = priceFeedMock.getPrice();
+
+        uint256 icrBefore1 = cdpManager.getCurrentICR(_cdpId1, _price);
+        uint256 icrBefore2 = cdpManager.getCurrentICR(_cdpId2, _price);
+        bool isRecoveryModeBefore = cdpManager.checkRecoveryMode(_price);
+        console.log("before", icrBefore1, icrBefore2, isRecoveryModeBefore);
+
+        cdpManager.liquidateCdps(2);
+
+        uint256 status1 = cdpManager.getCdpStatus(_cdpId1);
+        uint256 status2 = cdpManager.getCdpStatus(_cdpId2);
+        bool isRecoveryModeAfter = cdpManager.checkRecoveryMode(_price);
+        console.log("after", status1, status2, isRecoveryModeAfter);
+
+        if (status1 == 3) {
+            assertTrue(
+                icrBefore1 < cdpManager.MCR() ||
+                    (icrBefore1 < cdpManager.CCR() && isRecoveryModeBefore),
+                L_01
+            );
+        } else if (status2 == 3) {
+            assertTrue(
+                icrBefore2 < cdpManager.MCR() ||
+                    (icrBefore2 < cdpManager.CCR() && isRecoveryModeBefore),
+                L_01
+            );
+        } else {
+            assertTrue(false, "Exactly 1 CDP must have been liquidated");
+        }
+    }
+
+    function testTCRMustIncreaseAfterLiquidation() public {
+        address user = _utils.getNextUserAddress();
+
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 100 ether}();
+
+        collateral.setEthPerShare(982343204100130190);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, 2200000000000000016);
+        borrowerOperations.withdrawColl(_cdpId, 1640157506641381371, _cdpId, _cdpId);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            132673875684216277,
+            HINT,
+            HINT,
+            2232664843905093514
+        );
+        collateral.setEthPerShare(893039276454663809);
+        collateral.setEthPerShare(820056407903603577);
+        collateral.setEthPerShare(745505825366912342);
+
+        uint256 _price = priceFeedMock.getPrice();
+
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+        console.log(
+            "icr",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price)
+        );
+        console.log("b0", tcrBefore);
+        console.log(
+            "b1",
+            collateral.getPooledEthByShares(cdpManager.getEntireSystemColl()),
+            cdpManager.getEntireSystemColl(),
+            cdpManager.getEntireSystemDebt()
+        );
+
+        cdpManager.liquidateCdps(1);
+
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+
+        console.log("a0", tcrAfter);
+        console.log(
+            "a1",
+            collateral.getPooledEthByShares(cdpManager.getEntireSystemColl()),
+            cdpManager.getEntireSystemColl(),
+            cdpManager.getEntireSystemDebt()
+        );
+
+        assertGt(tcrAfter, tcrBefore, L_12);
+    }
+
+    function testTCRMustIncreaseAfterLiquidationGoogleSheetsPOC() public {
+        address user = _utils.getNextUserAddress();
+        uint256 _price;
+
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 500 * 1e18}();
+
+        priceFeedMock.setPrice(1 * 1e18);
+        _price = priceFeedMock.getPrice();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(100 * 1e18, HINT, HINT, 250 * 1e18);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(100 * 1e18, HINT, HINT, 120 * 1e18);
+
+        console.log(
+            "Initial state",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        priceFeedMock.setPrice((priceFeedMock.getPrice() * 10) / 19);
+        _price = priceFeedMock.getPrice();
+
+        console.log(
+            "Price drops",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+
+        cdpManager.liquidateCdps(1);
+
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+
+        console.log(
+            "CDP2 is liquidated and its debt is redistributed",
+            cdpManager.getCurrentICR(_cdpId, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price),
+            cdpManager.getTCR(_price)
+        );
+
+        assertGt(tcrAfter, tcrBefore, L_12);
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateSingleCDP with the appropriate arguments

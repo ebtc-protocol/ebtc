@@ -470,6 +470,10 @@ contract BorrowerOperations is
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
+        uint sc = getEntireSystemColl();
+        uint tc = collateral.getPooledEthByShares(sc);
+        uint td = _getEntireSystemDebt();
+
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
             false,
@@ -823,8 +827,9 @@ contract BorrowerOperations is
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "BorrowerOperations: Flash Loans Paused");
         require(amount > 0, "BorrowerOperations: 0 Amount");
-        uint256 fee = flashFee(token, amount); // NOTE: Check for `eBTCToken` is implicit here // NOTE: Pause check is here
+        uint256 fee = flashFee(token, amount); // NOTE: Check for `eBTCToken` is implicit here
         require(amount <= maxFlashLoan(token), "BorrowerOperations: Too much");
 
         // Issue EBTC

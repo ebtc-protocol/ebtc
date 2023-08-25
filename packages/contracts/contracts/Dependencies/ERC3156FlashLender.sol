@@ -12,6 +12,6 @@ abstract contract ERC3156FlashLender is IERC3156FlashLender {
     bytes32 public constant FLASH_SUCCESS_VALUE = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
     // Functions to modify these variables must be included in impelemnting contracts if desired
-    uint16 public feeBps = 3; // may be subject to future adjustments through protocol governance
+    uint16 public feeBps = 50; // 50 BP
     bool public flashLoansPaused;
 }

@@ -1,0 +1,3 @@
+[submodule "packages/contracts/lib/properties"]
+	path = packages/contracts/lib/properties
+	url = https://github.com/crytic/properties

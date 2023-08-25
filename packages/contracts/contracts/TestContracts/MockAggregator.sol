@@ -15,9 +15,9 @@ contract MockAggregator is AggregatorV3Interface {
     uint80 private latestRoundId;
     uint80 private prevRoundId;
 
-    bool latestRevert;
-    bool prevRevert;
-    bool decimalsRevert;
+    bool public latestRevert;
+    bool public prevRevert;
+    bool public decimalsRevert;
 
     // --- Functions ---
 

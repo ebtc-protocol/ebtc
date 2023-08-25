@@ -3,7 +3,7 @@
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
 
-eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stTEH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
+eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stETH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
 
@@ -158,7 +158,7 @@ In order to fulfill the redemption request, CDPs are redeemed from in ascending 
 
 A redemption sequence of `n` steps will **fully** redeem from up to `n-1` CDPs, and, and **partially** redeems from up to 1 CDP, which is always the last CDP in the redemption sequence.
 
-Redemptions are blocked when TCR < 110% (there is no need to restrict ICR < TCR). At that TCR redemptions would likely be unprofitable, as eBTC is probably trading above $1 if the system has crashed that badly, but it could be a way for an attacker with a lot of eBTC to lower the TCR even further.
+Redemptions are blocked when TCR < 110% (there is no need to restrict ICR < TCR). At that TCR redemptions would likely be unprofitable, as eBTC is probably trading below the price of 1 BTC if the system has crashed that badly, but it could be a way for an attacker with a lot of eBTC to lower the TCR even further.
 
 Note that redemptions are disabled during the first 14 days of operation since deployment of the eBTC protocol to protect the monetary system in its infancy.
 
@@ -289,7 +289,7 @@ The PriceFeed logic consists of automatic on-chain decision-making for obtaining
 
 The PriceFeed logic is complex, and although we would prefer simplicity, it does allow the system a chance of switching to an accurate price source in case of a Chainlink failure or timeout, and also the possibility of returning to an honest Chainlink price after it has failed and recovered.
 
-We believe the benefit of the fallback logic is worth the complexity. Ff we had no fallback logic and Chainlink were to be hacked or permanently fail, eBTC would become unusable without a backup.
+We believe the benefit of the fallback logic is worth the complexity. If we had no fallback logic and Chainlink were to be hacked or permanently fail, eBTC would become unusable without a backup.
 
 Governance is also capable of setting a new backup oracle feed, as long as it conforms to the tellor interface.
 
@@ -704,7 +704,7 @@ Gas compensation per liquidated CDP is given by the formula:
 - Full liquidation Gas compensation = `max(1.03, min(ICR, 1.1)) + Gas Stipend`
 - Partial liquidation Gas compensation = `max(1.03, min(ICR, 1.1))`
 
-This means that liquidations are always incentivized within the eBTC ecosystem with a percentage of the collateral that can go from 3% to 10%, plus tha gas stipend when the liquidation results in the closing of the CDP. This also applies to CDPs being liquidated during Recovery Mode, the max incentive is capped at 10%. In the same way, CDPs that are liquidated at or below the 103% ICR mark are also subject to a fixed 3% incentive. In these cases, CDPs will remain with a portion of bad dept reamianing and no collateral. Then, and only then, this outstanding debt will be subject to [redistribution](#redistributions-and-corrected-stakes).
+This means that liquidations are always incentivized within the eBTC ecosystem with a percentage of the collateral that can go from 3% to 10%, plus tha gas stipend when the liquidation results in the closing of the CDP. This also applies to CDPs being liquidated during Recovery Mode, the max incentive is capped at 10%. In the same way, CDPs that are liquidated at or below the 103% ICR mark are also subject to a fixed 3% incentive. In these cases, CDPs will remain with a portion of bad dept remaining and no collateral. Then, and only then, this outstanding debt will be subject to [redistribution](#redistributions-and-corrected-stakes).
 
 ### Gas compensation schedule
 
@@ -718,7 +718,7 @@ The purpose of the 0.2 stETH Liquidation Reserve is to provide a minimum level o
 
 When a CDP is liquidated, all of the collateral is transferred to the liquidator. Therefore, the compensation incentive percentage will depend on the ICR at which the ICR is liquidated according to the equations [above](#gas-compensation). For example, a liquidation at 110% ICR will mean a 10% profit for the liquidator plus the Gas Stipend. 
 
-As mentioned as well, if liquidated below 103%, the liquidator is guaranteed a 3% incentive. For intance, if the liquidation occurs at 97% ICR, the system will estimate the debt to be repaid based equivalent to that required to yield a 103% ICR. Therefore, the liquiadtor will be required to pay a debt amount 3% lower in value than the total available collateral and profit from that difference. Undercollateralized liquidations are also incentivized with the Gas Stipend.
+As mentioned as well, if liquidated below 103%, the liquidator is guaranteed a 3% incentive. For intance, if the liquidation occurs at 97% ICR, the system will estimate the debt to be repaid based equivalent to that required to yield a 103% ICR. Therefore, the liquidator will be required to pay a debt amount 3% lower in value than the total available collateral and profit from that difference. Undercollateralized liquidations are also incentivized with the Gas Stipend.
 
 ### Gas compensation and redemptions
 
@@ -825,7 +825,7 @@ PDFs of these can be found in https://github.com/liquity/dev/blob/main/papers
 
 _**CDP:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
 
-_**eBTC**_:  The soft-pegged asset that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with the US dollar, and can always be redeemed directly with the system: 1 eBTC is always exchangeable for $1 USD worth of stETH.
+_**eBTC**_:  The soft-pegged asset that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with the US dollar, and can always be redeemed directly with the system: 1 eBTC is always exchangeable for 1 BTC worth of stETH.
 
 _**Active CDP:**_ an Ethereum address owns an “active Cdp” if there is a node in the `SortedCdps` list with ID equal to the address, and non-zero collateral is recorded on the CDP struct for that address.
 
@@ -857,7 +857,7 @@ _**Entire system debt:**_ the sum of the debt in the ActivePool and DefaultPool
 
 _**Total collateralization ratio (TCR):**_ the ratio of the dollar value of the entire system collateral at the current stETH:BTC price, to the entire system debt
 
-_**Critical collateralization ratio (CCR):**_ 150%. When the TCR is below the CCR, the system enters Recovery Mode.
+_**Critical collateralization ratio (CCR):**_ 125%. When the TCR is below the CCR, the system enters Recovery Mode.
 
 _**Borrower:**_ an externally owned account or contract that locks collateral in a CDP and issues eBTC tokens to their own address. They “borrow” eBTC tokens against their stETH collateral.
 

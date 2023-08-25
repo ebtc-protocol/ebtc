@@ -265,8 +265,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
+        require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
         require(amount > 0, "ActivePool: 0 Amount");
-        uint256 fee = flashFee(token, amount); // NOTE: Check for `token` is implicit in the requires above // also checks for paused
+        uint256 fee = flashFee(token, amount); // NOTE: Check for `token` is implicit in the requires above
         require(amount <= maxFlashLoan(token), "ActivePool: Too much");
 
         uint256 amountWithFee = amount + fee;
@@ -346,7 +347,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
 
         unchecked {
             _FeeRecipientColl -= _shares;
@@ -368,7 +369,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
 
         address cachedFeeRecipientAddress = feeRecipientAddress; // Saves an SLOAD
 
@@ -383,7 +384,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
             "ActivePool: Cannot set fee recipient to zero address"
         );
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
 
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
@@ -392,7 +393,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function setFeeBps(uint _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
 
         // set new flash fee
         uint _oldFee = feeBps;
@@ -401,7 +402,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).applyPendingGlobalState();
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);

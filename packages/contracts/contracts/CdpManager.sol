@@ -338,7 +338,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
-        _applyPendingGlobalState(); // Apply state, we will checkLiquidateCoolDownAndReset at end of function
+        applyPendingGlobalState();
 
         totals.price = priceFeed.fetchPrice();
         _requireTCRoverMCR(totals.price);
@@ -715,6 +715,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- 'require' wrapper functions ---
 
+    function _requireCallerIsBorrowerOperations() internal view {
+        require(
+            msg.sender == borrowerOperationsAddress,
+            "CdpManager: Caller is not the BorrowerOperations contract"
+        );
+    }
+
     function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
         IEBTCToken _ebtcToken,
         address _redeemer,
@@ -763,7 +770,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
-        syncPendingGlobalState();
+        applyPendingGlobalState();
 
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
@@ -779,7 +786,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new redemption fee floor is higher than maximum"
         );
 
-        syncPendingGlobalState();
+        applyPendingGlobalState();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -795,7 +802,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
-        syncPendingGlobalState();
+        applyPendingGlobalState();
 
         // decay first according to previous factor
         _decayBaseRate();
@@ -806,7 +813,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
-        syncPendingGlobalState();
+        applyPendingGlobalState();
 
         _decayBaseRate();
 
@@ -815,7 +822,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setRedemptionsPaused(bool _paused) external requiresAuth {
-        syncPendingGlobalState();
+        applyPendingGlobalState();
         _decayBaseRate();
 
         redemptionsPaused = _paused;

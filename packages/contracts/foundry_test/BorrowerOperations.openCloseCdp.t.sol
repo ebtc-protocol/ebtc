@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
-import {eBTCBaseInvariants} from "./BaseInvariants.sol";
+
+import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract OpenCloseCdpTest is eBTCBaseInvariants {
+contract CDPTest is eBTCBaseFixture, Properties {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
@@ -270,5 +272,105 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
         _ensureSystemInvariants();
+    }
+
+    function testCdpsOpenRebaseClose() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint256).max);
+
+        uint256 coll = borrowerOperations.MIN_NET_COLL() +
+            borrowerOperations.LIQUIDATOR_REWARD() +
+            16;
+
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: coll}();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll);
+        collateral.setEthPerShare(1.015149924993973008e18);
+
+        // TODO uncomment these lines after this issue is fixed: https://github.com/Badger-Finance/ebtc-fuzz-review/issues/1
+        // vm.expectRevert("CdpManager: Only one cdp in the system");
+        // borrowerOperations.closeCdp(_cdpId);
+    }
+
+    function testOpenCdpMustNotTriggerRecoveryMode() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
+
+        uint price = priceFeedMock.getPrice();
+
+        // openCdp
+        collateral.approve(address(borrowerOperations), 2200000000000000016);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+
+        // addColl
+        collateral.approve(address(borrowerOperations), 19055591963114510547);
+        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 19055591963114510547);
+
+        // withdrawEBTC
+        borrowerOperations.withdrawEBTC(_cdpId, 1184219647878146906, _cdpId, _cdpId);
+
+        // setEthPerShare
+        collateral.setEthPerShare(926216476604259366);
+
+        // setEthPerShare
+        collateral.setEthPerShare(842014978731144878);
+
+        bool isRecoveryModeBefore = cdpManager.checkRecoveryMode(priceFeedMock.getPrice());
+        // openCdp
+        collateral.approve(address(borrowerOperations), 2200000000000000016);
+        borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+
+        bool isRecoveryModeAfter = cdpManager.checkRecoveryMode(priceFeedMock.getPrice());
+
+        assertTrue(!isRecoveryModeBefore ? !isRecoveryModeAfter : true, GENERAL_01);
+    }
+
+    function testCloseCdpGetGasRefund() public {
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
+
+        uint _price = priceFeedMock.getPrice();
+
+        //   setEthPerShare 910635822138744547
+        //   openCdp 2200000000000000016 1
+        //   addColl 94021985275614476877 0
+        //   openCdp 2200000000000000016 1
+        //   closeCdp 0
+
+        collateral.setEthPerShare(910635822138744547);
+        bytes32 _cdpId = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 94021985275614476877);
+        borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+
+        uint256 userCollBefore = collateral.balanceOf(user);
+        uint256 cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        uint256 liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+
+        borrowerOperations.closeCdp(_cdpId);
+
+        uint256 userCollAfter = collateral.balanceOf(user);
+
+        console.log("before", userCollBefore, cdpCollBefore, liquidatorRewardSharesBefore);
+        console.log("after", userCollAfter);
+
+        assertTrue(
+            // not exact due to rounding errors
+            isApproximateEq(
+                userCollBefore + cdpCollBefore + liquidatorRewardSharesBefore,
+                userCollAfter,
+                0.01e18
+            ),
+            BO_05
+        );
     }
 }

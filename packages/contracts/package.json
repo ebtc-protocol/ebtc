@@ -18,6 +18,8 @@
     "prepare:compile": "hardhat compile",
     "prepare:set-version": "node scripts/set-version.js",
     "test": "hardhat test --show-stack-traces",
+    "echidna": "echidna contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode assertion --contract EchidnaTester --config fuzzTests/echidna_config.yaml --corpus-dir echidna",
+    "echidna-price-feed": "echidna contracts/TestContracts/invariants/echidna/EchidnaPriceFeedTester.sol --test-mode assertion --contract EchidnaPriceFeedTester --config fuzzTests/echidna_config.yaml --corpus-dir echidna-price-feed",
     "coverage": "hardhat coverage",
     "coveralls": "cat coverage/lcov.info | coveralls",
     "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat --show-stack-traces",
@@ -39,6 +41,7 @@
     "xmlhttprequest": "^1.8.0"
   },
   "devDependencies": {
+    "@crytic/properties": "https://github.com/crytic/properties.git",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.2",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
