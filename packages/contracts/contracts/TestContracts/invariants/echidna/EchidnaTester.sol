@@ -1108,7 +1108,7 @@ contract EchidnaTester is
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function setEthPerShare(uint256 _newEthPerShare) internal {
+    function setEthPerShare(uint256 _newEthPerShare) external {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = clampBetween(
             _newEthPerShare,
