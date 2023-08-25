@@ -448,10 +448,29 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
+        // == GRACE PERIOD == //
         // TODO: E part of code is here for new TCR and notification
         // New coll = eth - totalETHDrawn,
-        // New debt = debt - totalEBTCToRedeem
+        // New debt = debt - totalEBTCToRedeem totalEBTCSupplyAtStart
         // Compute TCR and then notify self
+        {
+            // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
+            uint256 totalCollAtStart = collateral.getPooledEthByShares(getEntireSystemColl());
+
+            uint256 newTotalColl = totalCollAtStart - totals.totalETHDrawn;
+            uint256 newTotalDebt = totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem;
+            // Compute new TCR with these
+            uint newTCR = LiquityMath._computeCR(newTotalColl, newTotalDebt, totals.price);
+            
+            if(newTCR < CCR) {
+                // Notify RM
+                _notifyBeginRM(newTCR);
+            } else {
+                // Notify outside RM
+                _notifyEndRM(newTCR);
+            }
+        }
+
 
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 
@@ -469,7 +488,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
         // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
-        checkLiquidateCoolDownAndReset(); // TODO: Else you would do it here in the I part since all totals have accrued now
     }
 
     // --- Helper functions ---

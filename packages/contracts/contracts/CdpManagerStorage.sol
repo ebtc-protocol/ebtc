@@ -34,6 +34,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function notifyBeginRM(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
 
+        _notifyBeginRM(tcr);
+    }
+
+    /// @dev Internal notify called by Redemptions and Liquidations
+    function _notifyBeginRM(uint256 tcr) internal {
         emit TCRNotified(tcr);
 
         _beginRMLiquidationCooldown();
@@ -45,6 +50,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function notifyEndRM(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
 
+        _notifyEndRM(tcr);
+    }
+
+    /// @dev Internal notify called by Redemptions and Liquidations
+    function _notifyEndRM(uint256 tcr) internal {
         emit TCRNotified(tcr);
 
         _stopRMLiquidationCooldown();
