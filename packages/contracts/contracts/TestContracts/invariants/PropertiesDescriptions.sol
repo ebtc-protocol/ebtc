@@ -84,4 +84,17 @@ abstract contract PropertiesDescriptions {
 
     string constant EBTC_02 =
         "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode";
+
+    ///////////////////////////////////////////////////////
+    // Price Feed
+    ///////////////////////////////////////////////////////
+
+    string constant PF_01 = "PF-01: The price feed must never revert";
+    string constant PF_02 = "PF-02: The price feed must follow valid status transitions";
+    string constant PF_03 = "PF-03: The price feed must never deadlock";
+    string constant PF_04 =
+        "PF-04: The price feed should never report an outdated price if chainlink is Working";
+    string constant PF_05 =
+        "PF-05: The price feed should never use the fallback if chainlink is Working";
+    string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
 }

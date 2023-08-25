@@ -10,7 +10,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Active Pool
 
-| Property | Description | Tested |
+| Property | Description | Category | Tested |
 | --- | --- | --- | --- |
 | AP-01 | The collateral balance in the active pool is greater than or equal to its accounting number | High Level | ✅ |
 | AP-02 | The collateral balance of the ActivePool is positive if there is at least one CDP open | High Level | ✅ |
@@ -20,6 +20,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## CDP Manager
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | CDPM-01 | The count of active CDPs is equal to the SortedCdp list length | High Level | ✅ |
 | CDPM-02 | The sum of active CDPs stake is equal to totalStakes | High Level | 🚧 Redistributions? |
 | CDPM-03 | The stFeePerUnit tracker for individual CDP is equal to or less than the global variable | High Level | 🚧 Negative Rebase + Pending Rewards? |
@@ -28,6 +30,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Borrower Operations
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | BO-01 | Users can only open CDPs with healthy ICR | Unit Tests | TODO: Opening CDP can never directly trigger RM, Can NEVER open below 110 |
 | BO-02 | Users must repay all debt to close a CDP | State Transitions | TODO: Always, at all time, in all conditions |
 | BO-03 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
@@ -40,11 +44,15 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Collateral Surplus Pool
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | CSP-01 | The collateral balance in the collSurplus pool is greater than or equal to its accounting number | High Level | 🚧 TODO: Verify if the balance is equal to the shares at all times ? |
 | CSP-02 | When a CDP is open, the total collateral is the sum of the collaterals split into the `CollSurplusPool`, the gas addresses, and ?? | Valid States | TODO: ask team about [Full redemption](./README.md#full-redemption) |
 
 ## Sorted List
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | SL-01 | The NICR ranking in the sorted list should follow descending order | High Level | ⚠️ |
 | SL-02 | The the first(highest) ICR in the sorted list should be greater or equal to TCR | High Level | ⚠️ |
 | SL-03 | All CDPs have status active and stake greater than zero | High Level | ✅ |
@@ -52,6 +60,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## General
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | GENERAL-01 | After any user operation, the system should not enter in Recovery Mode | High Level | ✅ |
 | GENERAL-02 | The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100% | High-Level | ✅ |
 | GENERAL-03 | CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations | Valid States | TODO: verify if the implementation is correct |
@@ -65,6 +75,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Redemptions
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | R-01 | When a user redeems eBTC, it is exchanged for stETH, at face value (minus a redemption fee) | Unit Tests | |
 | R-02 | When eBTC is redeemed for stETH, the system cancels the eBTC with debt from CDPs, and the stETH is drawn from their collateral in exact amounts (totalDebt Decrease is equal to TS decrease). The debt reduction is pro-rata to all CDPs open based on their size | Unit Tests | |
 | R-03 | A redemption sequence of n steps will fully redeem from up to n-1 CDPs, and, and partially redeems from up to 1 CDP, which is always the last CDP in the redemption sequence. | Unit Tests | TODO: check that if the system has at least 1 CDP, it may never go back to 0 CDPs. Interesting to check last partial redemption. |
@@ -75,6 +87,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Liquidations
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | L-01 | Liquidation only succeeds if ICR < 110% in normal mode, or if ICR < 125% in Recovery Mode. | State Transitions | ✅ |
 | L-02 | Any user can liquidate a CDP that does not have enough collateral | High-Level | TODO: check that liquidation always succeeds if MCR < 110% and the user has sufficient eBTC to repay |
 | L-03 | As a reward for their service, the liquidator receives a percentage of the CDP's collateral, ranging from 3% to 10%. Additionally, the liquidator also receives a "Gas Stipend" of 0.2 stETH. The liquidator will always recieve 3% minimum bonus of collateral versus debt returned. However, they only get the 0.2 stETH stipend in a full liquidation. For a partial liquidation, only the % bonus is recieved based on the debt value returned. I'll actually need to check what happens if the CDP is below 3% ICR. I'd also clarify that the stipend is not strictly 0.2 stETH. It is stored as shares within the system upon opening of the CDP and therefore will differ based on rebases, and this can be checked through `cdpManager.getCdpLiquidatorRewardShares(cdpId)`  | Unit Tests | TODO: This may break when doing a debt redistributions |
@@ -90,14 +104,31 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 ## Fees
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | F-01 | All fees generated by the core system are recieved at the `FeeRecipient` address after being claimed. Before being claimed, they are tracked in a variable `FeeRecipientColl` | Unit Tests | |
 
 ## eBTC
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | EBTC-01 | Anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not | Unit Tests | TODO: use [crytic/properties](https://github.com/crytic/properties) |
 | EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode | High Level | TODO: verify if this is true for MCR or CCR |
 | EBTC-03 | The eBTC token contract implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers | Unit Tests | TODO: this can be partially & easily implemented with [crytic/properties](https://github.com/crytic/properties) |
 
 ## Governance
 
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
 | GOV-01 | Only authorized accounts can call functions which require authorization (`requiresAuth` modifier) | Unit Tests | |
+
+## Price Feed
+
+| Property | Description | Category | Tested |
+| --- | --- | --- | --- |
+| PF-01 | The price feed must never revert | High Level | ✅ |
+| PF-02 | The price feed must follow valid status transitions | State Transitions | ✅ |
+| PF-03 | The price feed must never deadlock | State Transitions | TODO: this is hard to test, as we may have false positives due to the random nature of the tests |
+| PF-04 | The price feed should never report an outdated price if chainlink is Working | High Level | ✅ |
+| PF-05 | The price feed should never use the fallback if chainlink is Working | High Level | ✅ |
+| PF-06 | The system never tries to use the fallback if it is not set | High Level | ✅ |

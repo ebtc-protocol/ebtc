@@ -41,7 +41,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
      */
     uint256 public constant MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES = 5e16; // 5%
 
-    // The last good price seen from an oracle by Liquity
+    // The last good price seen from an oracle by eBTC
     uint256 public lastGoodPrice;
 
     // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
