@@ -522,6 +522,38 @@ contract LiquidationLibrary is CdpManagerStorage {
         // E: Total Coll = Coll - totalColToSend
         // From here we can determine if we're in RM or not
 
+        // We need the totalDebt
+        // We need the totalColl
+        // Then compute
+        // TODO: WE CALL THIS TWICE FOR NOW, FIX AFTER TESTED
+        {
+            uint256 price = priceFeed.fetchPrice(); // We 100% Had this
+            // Most likely we also had the rest of the stuff
+
+            // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
+            // TODO: Virtual Accounting here requires: CollNew = CollAtStart - Surplus - TotalColToSend
+            // TODO: Verify
+            
+            uint256 totalCollAtStart = collateral.getPooledEthByShares(getEntireSystemColl()); // NOTE: This is getting the updated coll after ColSurplus
+            // Changing this value requires being cognizant of the changes from Surplus, not just to AP
+
+            uint256 totalEBTCSupplyAtStart = _getEntireSystemDebt();
+
+            uint256 newTotalColl = totalCollAtStart - totalColToSend;
+            uint256 newTotalDebt = totalEBTCSupplyAtStart - totalDebtToBurn;
+            // Compute new TCR with these
+            uint newTCR = LiquityMath._computeCR(newTotalColl, newTotalDebt, price);
+            
+            if(newTCR < CCR) {
+                // Notify RM
+                _notifyBeginRM(newTCR);
+            } else {
+                // Notify outside RM
+                _notifyEndRM(newTCR);
+            }
+        }
+
+
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
             _redistributeDebt(totalDebtToRedistribute);
@@ -535,8 +567,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
-
-        // checkLiquidateCoolDownAndReset(); NOTE: If you place this here, you may as well place it in the external functions in CdpManager
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
