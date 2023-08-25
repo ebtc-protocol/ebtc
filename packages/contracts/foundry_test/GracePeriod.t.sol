@@ -237,8 +237,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         - redemptions
     */
     function test_GracePeriodViaValidAction(uint8 priceDecreaseAction, uint8 action) public {
-        vm.assume(priceDecreaseAction <= 1);
-        vm.assume(action <= 3);
+        // vm.assume(priceDecreaseAction <= 1);
+        // vm.assume(action <= 3);
+        priceDecreaseAction = priceDecreaseAction % 2;
+        action = action % 4;
 
         // setup: create Cdps, enter RM via price change or rebase
         bytes32[] memory cdps = _openCdps(5);
@@ -266,8 +268,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        vm.assume(priceDecreaseAction <= 1);
-        vm.assume(action <= 3);
+        // vm.assume(priceDecreaseAction <= 1);
+        // vm.assume(action <= 3);
+        priceDecreaseAction = priceDecreaseAction % 2;
+        action = action % 4;
 
         // setup: create Cdps, enter RM via price change or rebase
         bytes32[] memory cdps = _openCdps(5);
@@ -294,8 +298,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 priceIncreaseAction
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        vm.assume(priceDecreaseAction <= 1);
-        vm.assume(priceIncreaseAction <= 1);
+        // vm.assume(priceDecreaseAction <= 1);
+        // vm.assume(priceIncreaseAction <= 1);
+        priceDecreaseAction = priceDecreaseAction % 2;
+        priceIncreaseAction = priceIncreaseAction % 2;
 
         // setup: create Cdps, enter RM via price change or rebase
         bytes32[] memory cdps = _openCdps(5);
@@ -324,8 +330,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        vm.assume(priceDecreaseAction <= 1);
-        vm.assume(action <= 3);
+        // vm.assume(priceDecreaseAction <= 1);
+        // vm.assume(action <= 3);
+        priceDecreaseAction = priceDecreaseAction % 2;
+        action = action % 2;
 
         // setup: create Cdps, enter RM via price change or rebase
         bytes32[] memory cdps = _openCdps(5);
@@ -459,9 +467,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     function _execPriceIncreaseAction(uint8 action) internal {
         // Upward Price will leave RM
         if (action == 0) {
-            priceFeedMock.setPrice((priceFeedMock.getPrice() * 105) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
+            priceFeedMock.setPrice((priceFeedMock.getPrice() * 105) / 100); // 5% appreciation, sufficient to exit RM after 4% drawdown
         } else {
-            collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 105) / 100); // 4% downturn, 5% should be enough to liquidate in-spite of RM
+            collateral.setEthPerShare((collateral.getSharesByPooledEth(1e18) * 105) / 100); // 5% appreciation, sufficient to exit RM after 4% drawdown
         }
     }
 
