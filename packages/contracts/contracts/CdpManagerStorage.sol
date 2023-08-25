@@ -31,8 +31,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @dev Trusted Function from BO
     /// @dev BO accrues totals before adjusting them
     ///     To maintain CEI compliance we use this trusted function
-    function notifyBeginRM() external {
+    function notifyBeginRM(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
+
+        emit TCRNotified(tcr);
 
         _beginRMLiquidationCooldown();
     }
@@ -40,8 +42,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @dev Trusted Function from BO
     /// @dev BO accrues totals before adjusting them
     ///     To maintain CEI compliance we use this trusted function
-    function notifyEndRM() external {
+    function notifyEndRM(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
+
+        emit TCRNotified(tcr);
 
         _stopRMLiquidationCooldown();
     }
@@ -60,9 +64,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // Arm the countdown
         if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = uint128(block.timestamp);
-        }
 
-        // TODO: EVENT
+            emit GracePeriodStart();
+        }
     }
 
     /// @dev Checks that the system is not in RM
@@ -79,15 +83,18 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // Disarm the countdown
         if (lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
-        }
 
-        // TODO: Event
+            emit GracePeriodEnd();
+        }
     }
 
     /// TODO: obv optimizations
     function checkLiquidateCoolDownAndReset() public {
         uint256 price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
+        uint256 tcr = _getTCR(price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
+
+        emit TCRNotified(tcr);
 
         if (isRecoveryMode) {
             _beginRMLiquidationCooldown();

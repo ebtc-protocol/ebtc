@@ -404,10 +404,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (newTCR < CCR) {
                 // Notify RM
-                cdpManager.notifyBeginRM();
+                cdpManager.notifyBeginRM(newTCR);
             } else {
                 // Notify Back to Normal Mode
-                cdpManager.notifyEndRM();
+                cdpManager.notifyEndRM(newTCR);
             }
         } else {
             _requireICRisAboveMCR(vars.ICR);
@@ -416,7 +416,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            cdpManager.notifyEndRM();
+            cdpManager.notifyEndRM(newTCR);
         }
 
         // Set the cdp struct's properties
@@ -481,7 +481,7 @@ contract BorrowerOperations is
 
         // == Grace Period == //
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
-        cdpManager.notifyEndRM();
+        cdpManager.notifyEndRM(newTCR);
 
         cdpManager.removeStake(_cdpId);
 
@@ -663,10 +663,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (_vars.newTCR < CCR) {
                 // Notify RM
-                cdpManager.notifyBeginRM();
+                cdpManager.notifyBeginRM(_vars.newTCR);
             } else {
                 // Notify Back to Normal Mode
-                cdpManager.notifyEndRM();
+                cdpManager.notifyEndRM(_vars.newTCR);
             }
         } else {
             // if Normal Mode
@@ -676,7 +676,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            cdpManager.notifyEndRM();
+            cdpManager.notifyEndRM(_vars.newTCR);
         }
     }
 
