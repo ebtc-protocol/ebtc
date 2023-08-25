@@ -533,7 +533,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
             // TODO: Virtual Accounting here requires: CollNew = CollAtStart - Surplus - TotalColToSend
             // TODO: Verify
-            
+
             uint256 totalSharesAtStart = getEntireSystemColl(); // NOTE: This is getting the updated coll after ColSurplus
             // Changing this value requires being cognizant of the changes from Surplus, not just to AP
 
@@ -542,9 +542,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 newTotalShares = totalSharesAtStart - totalColToSend;
             uint256 newTotalDebt = totalEBTCSupplyAtStart - totalDebtToBurn;
             // Compute new TCR with these
-            uint newTCR = LiquityMath._computeCR(collateral.getPooledEthByShares(newTotalShares), newTotalDebt, price);
-            
-            if(newTCR < CCR) {
+            uint newTCR = LiquityMath._computeCR(
+                collateral.getPooledEthByShares(newTotalShares),
+                newTotalDebt,
+                price
+            );
+
+            if (newTCR < CCR) {
                 // Notify RM
                 _notifyBeginRM(newTCR);
             } else {
@@ -552,7 +556,6 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _notifyEndRM(newTCR);
             }
         }
-
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {

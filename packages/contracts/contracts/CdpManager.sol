@@ -460,8 +460,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             uint256 newTotalDebt = totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem;
             // Compute new TCR with these
             uint newTCR = LiquityMath._computeCR(newTotalColl, newTotalDebt, totals.price);
-            
-            if(newTCR < CCR) {
+
+            if (newTCR < CCR) {
                 // Notify RM
                 _notifyBeginRM(newTCR);
             } else {
@@ -469,7 +469,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _notifyEndRM(newTCR);
             }
         }
-
 
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 
