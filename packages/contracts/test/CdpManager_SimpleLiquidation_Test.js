@@ -23,6 +23,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let sortedCdps
   let collSurplusPool;
   let _MCR;
+  let _CCR;
   let collToken;
 
   const openCdp = async (params) => th.openCdp(contracts, params)
@@ -42,6 +43,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
     liqReward = await contracts.cdpManager.LIQUIDATOR_REWARD();	
     _MCR = await cdpManager.MCR();
+    _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
@@ -872,6 +874,81 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _ownerPendingDebt = await cdpManager.getPendingEBTCDebtReward(_ownerCdpId);
       let _bobPendingDebt = await cdpManager.getPendingEBTCDebtReward(_bobCdpId);
       th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString()); 
+  })
+  
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
+      // Cdps undercollateralized under minimum liq premium [<3% ICR]
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      // Cdps undercollateralized [3% < ICR < 100%]
+      await openCdp({ ICR: toBN(dec(500, 16)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      // Cdps overcollateralized but liquidatable [100% <= ICR < MCR]
+      await openCdp({ ICR: toBN(dec(4500, 16)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      // Cdps overcollateralized but liquidatable in recovery mode [MCR <= ICR < TCR]
+      await openCdp({ ICR: toBN(dec(4800, 16)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+      // Cdps overcollateralized and unliquidatable [ICR >= TCR]
+      await openCdp({ ICR: toBN(dec(5400, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(3)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+	  
+      // price slump to recovery mode
+      let _newPrice = dec(175, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcr = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(_tcr.gt(await cdpManager.getCurrentICR(_dennisCdpId, _newPrice)));
+      assert.isTrue(_tcr.lt(_CCR));
+	  
+      // check sequenceLiqToBatchLiq() results
+      // riskiest CDP at last
+      let _batch1 = await cdpManager._sequenceLiqToBatchLiq(1, true, _newPrice);
+      assert.isTrue(_batch1[0] == _aliceCdpId);
+      let _batch2 = await cdpManager._sequenceLiqToBatchLiq(2, true, _newPrice);
+      assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
+      let _batch3 = await cdpManager._sequenceLiqToBatchLiq(3, true, _newPrice);
+      assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
+      let _batch4 = await cdpManager._sequenceLiqToBatchLiq(4, true, _newPrice);
+      assert.isTrue(_batch4.length == 4 && _batch4[3] == _aliceCdpId && _batch4[2] == _bobCdpId && _batch4[1] == _carolCdpId && _batch4[0] == _dennisCdpId);
+      let _batch5 = await cdpManager._sequenceLiqToBatchLiq(5, true, _newPrice);
+      assert.isTrue(_batch5.length == 4 && _batch5[3] == _aliceCdpId && _batch5[2] == _bobCdpId && _batch5[1] == _carolCdpId && _batch5[0] == _dennisCdpId);	  
+  })
+  
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Normal Mode", async () => {
+      // Cdps undercollateralized under minimum liq premium [<3% ICR]
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      // Cdps undercollateralized [3% < ICR < 100%]
+      await openCdp({ ICR: toBN(dec(500, 16)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      // Cdps overcollateralized but liquidatable [100% <= ICR < MCR]
+      await openCdp({ ICR: toBN(dec(4500, 16)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      // Cdps overcollateralized but liquidatable in recovery mode [MCR <= ICR < TCR]
+      await openCdp({ ICR: toBN(dec(4800, 16)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+      // Cdps overcollateralized and unliquidatable [ICR >= TCR]
+      await openCdp({ ICR: toBN(dec(5800, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(4)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+	  
+      // price slump to recovery mode
+      let _newPrice = dec(175, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcr = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(_tcr.gt(_CCR));
+	  
+      // check sequenceLiqToBatchLiq() results
+      // riskiest CDP at last
+      let _batch1 = await cdpManager._sequenceLiqToBatchLiq(1, false, _newPrice);
+      assert.isTrue(_batch1[0] == _aliceCdpId);
+      let _batch2 = await cdpManager._sequenceLiqToBatchLiq(2, false, _newPrice);
+      assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
+      let _batch3 = await cdpManager._sequenceLiqToBatchLiq(3, false, _newPrice);
+      assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
+      let _batch4 = await cdpManager._sequenceLiqToBatchLiq(4, false, _newPrice);
+      assert.isTrue(_batch4.length == 3 && _batch4[2] == _aliceCdpId && _batch4[1] == _bobCdpId && _batch4[0] == _carolCdpId);
+      let _batch5 = await cdpManager._sequenceLiqToBatchLiq(5, false, _newPrice);
+      assert.isTrue(_batch5.length == 3 && _batch5[2] == _aliceCdpId && _batch5[1] == _bobCdpId && _batch5[0] == _carolCdpId);	  
   })
   
 })
