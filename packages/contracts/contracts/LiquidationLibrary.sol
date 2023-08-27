@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-
+import "forge-std/Test.sol";
 import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
@@ -129,13 +129,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 totalColToSend;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
+        uint256 totalColSurplus;
 
         if (_liqState._partialAmount == 0) {
             (
                 totalDebtToBurn,
                 totalColToSend,
                 totalDebtToRedistribute,
-                totalColReward
+                totalColReward,
+                totalColSurplus
             ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
         } else {
             (totalDebtToBurn, totalColToSend) = _liquidateCDPPartially(_liqState);
@@ -145,7 +147,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                     totalDebtToBurn,
                     totalColToSend,
                     totalDebtToRedistribute,
-                    totalColReward
+                    totalColReward,
+                    totalColSurplus
                 ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
             }
         }
@@ -154,7 +157,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             totalDebtToBurn,
             totalColToSend,
             totalDebtToRedistribute,
-            totalColReward
+            totalColReward,
+            totalColSurplus,
+            _recoveryState.entireSystemDebt,
+            _recoveryState.entireSystemColl,
+            _liqState._price
         );
     }
 
@@ -163,7 +170,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _liquidateCDPByExternalLiquidator(
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
-    ) private returns (uint256, uint256, uint256, uint256) {
+    ) private returns (uint256, uint256, uint256, uint256, uint256) {
         if (_liqState._recoveryModeAtStart) {
             LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
                 _recoveryState
@@ -178,7 +185,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _outputState.totalDebtToBurn,
                 _outputState.totalColToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward
+                _outputState.totalColReward,
+                _outputState.totalColSurplus
             );
         } else {
             LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
@@ -188,7 +196,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _outputState.totalDebtToBurn,
                 _outputState.totalColToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward
+                _outputState.totalColReward,
+                _outputState.totalColSurplus
             );
         }
     }
@@ -511,12 +520,23 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 totalDebtToBurn,
         uint256 totalColToSend,
         uint256 totalDebtToRedistribute,
-        uint256 totalColReward
+        uint256 totalColReward,
+        uint256 totalColSurplus,
+        uint256 systemInitialCollShares,
+        uint256 systemInitialDebt,
+        uint256 price
     ) internal {
         // update the staking and collateral snapshots
         _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
+        console.log("totalDebtToBurn         :", totalDebtToBurn);
+        console.log("totalColToSend          :", totalColToSend);
+        console.log("totalDebtToRedistribute :", totalDebtToRedistribute);
+        console.log("totalColReward          :", totalColReward);
+        console.log("totalColSurplus         :", totalColSurplus);
+        console.log("systemInitialCollShares :", systemInitialCollShares);
+        console.log("systemInitialDebt       :", systemInitialDebt);
 
         // E: Total Debt = Debt - TotalDebtToBurn
         // E: Total Coll = Coll - totalColToSend
@@ -527,7 +547,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         // Then compute
         // TODO: WE CALL THIS TWICE FOR NOW, FIX AFTER TESTED
         {
-            uint256 price = priceFeed.fetchPrice(); // We 100% Had this
             // Most likely we also had the rest of the stuff
 
             // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
@@ -539,14 +558,41 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             uint256 totalEBTCSupplyAtStart = _getEntireSystemDebt();
 
-            uint256 newTotalShares = totalSharesAtStart - totalColToSend;
-            uint256 newTotalDebt = totalEBTCSupplyAtStart - totalDebtToBurn;
+            console.log("totalSharesAtStart", systemInitialCollShares);
+            console.log("totalEBTCSupplyAtStart", systemInitialCollShares);
+
+            uint256 newTotalShares2 = totalSharesAtStart - totalColToSend;
+            uint256 newTotalDebt2 = totalEBTCSupplyAtStart - totalDebtToBurn;
+
+            console.log("newTotalShares with true supply", newTotalShares2);
+            console.log("newTotalDebt with true supply", newTotalDebt2);
+
+            console.log("systemInitialCollShares", systemInitialCollShares);
+            console.log(
+                "systemInitialCollShares - totalColToSend",
+                systemInitialCollShares - totalColToSend
+            );
+            console.log(
+                "systemInitialCollShares - totalColSurplus",
+                systemInitialCollShares - totalColSurplus
+            );
+            console.log(
+                "systemInitialCollShares - totalColToSend - totalColSurplus",
+                systemInitialCollShares - totalColToSend - totalColSurplus
+            );
+            uint256 newTotalShares = systemInitialCollShares - totalColToSend - totalColSurplus;
+
+            console.log("systemInitialDebt", systemInitialDebt);
+            console.log("systemInitialDebt - totalDebtToBurn", systemInitialDebt - totalDebtToBurn);
+            uint256 newTotalDebt = systemInitialDebt - totalDebtToBurn;
             // Compute new TCR with these
             uint newTCR = LiquityMath._computeCR(
                 collateral.getPooledEthByShares(newTotalShares),
                 newTotalDebt,
                 price
             );
+
+            console.log("newTCR", newTCR);
 
             if (newTCR < CCR) {
                 // Notify RM
@@ -657,7 +703,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
-            totals.totalCollReward
+            totals.totalCollReward,
+            totals.totalCollSurplus,
+            systemColl,
+            systemDebt,
+            vars.price
         );
     }
 
@@ -775,7 +825,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
-            totals.totalCollReward
+            totals.totalCollReward,
+            totals.totalCollSurplus,
+            systemColl,
+            systemDebt,
+            vars.price
         );
     }
 
