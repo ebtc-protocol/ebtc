@@ -14,7 +14,6 @@ contract EchidnaERC20ExternalTester is CryticERC20ExternalBasicProperties {
         token.transfer(USER1, INITIAL_BALANCE);
         token.transfer(USER2, INITIAL_BALANCE);
         token.transfer(USER3, INITIAL_BALANCE);
-        token.transfer(msg.sender, INITIAL_BALANCE);
     }
 
     function setEthPerShare(uint256 _newEthPerShare) external {

@@ -1034,13 +1034,14 @@ contract EchidnaTester is
                 vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter
             );
-            assertWithMsg(
-                // not exact due to rounding errors
-                isApproximateEq(
-                    vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
-                    vars.actorCollAfter,
-                    0.01e18
-                ),
+            assertEq(
+                vars.actorCollBefore +
+                    // ActivePool transfer SHARES not ETH directly
+                    collateral.getPooledEthByShares(
+                        vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+                    ),
+                vars.actorCollAfter,
+                0.01e18,
                 BO_05
             );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
