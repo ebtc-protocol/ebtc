@@ -125,42 +125,47 @@ contract LiquidationLibrary is CdpManagerStorage {
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
     ) internal {
-        uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
-        uint256 totalColSurplus;
+        LiquidationValues memory liquidationValues;
+
+        uint256 startingSystemDebt = _recoveryState.entireSystemDebt;
+        uint256 startingSystemColl = _recoveryState.entireSystemColl;
 
         if (_liqState._partialAmount == 0) {
             (
-                totalDebtToBurn,
-                totalColToSend,
-                totalDebtToRedistribute,
-                totalColReward,
-                totalColSurplus
+                liquidationValues.debtToOffset,
+                liquidationValues.totalCollToSendToLiquidator,
+                liquidationValues.debtToRedistribute,
+                liquidationValues.collReward,
+                liquidationValues.collSurplus
             ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
         } else {
-            (totalDebtToBurn, totalColToSend) = _liquidateCDPPartially(_liqState);
-            if (totalColToSend == 0 && totalDebtToBurn == 0) {
+            (
+                liquidationValues.debtToOffset,
+                liquidationValues.totalCollToSendToLiquidator
+            ) = _liquidateCDPPartially(_liqState);
+            if (
+                liquidationValues.totalCollToSendToLiquidator == 0 &&
+                liquidationValues.debtToOffset == 0
+            ) {
                 // retry with fully liquidation
                 (
-                    totalDebtToBurn,
-                    totalColToSend,
-                    totalDebtToRedistribute,
-                    totalColReward,
-                    totalColSurplus
+                    liquidationValues.debtToOffset,
+                    liquidationValues.totalCollToSendToLiquidator,
+                    liquidationValues.debtToRedistribute,
+                    liquidationValues.collReward,
+                    liquidationValues.collSurplus
                 ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
             }
         }
 
         _finalizeExternalLiquidation(
-            totalDebtToBurn,
-            totalColToSend,
-            totalDebtToRedistribute,
-            totalColReward,
-            totalColSurplus,
-            _recoveryState.entireSystemDebt,
-            _recoveryState.entireSystemColl,
+            liquidationValues.debtToOffset,
+            liquidationValues.totalCollToSendToLiquidator,
+            liquidationValues.debtToRedistribute,
+            liquidationValues.collReward,
+            liquidationValues.collSurplus,
+            startingSystemColl,
+            startingSystemDebt,
             _liqState._price
         );
     }
@@ -530,13 +535,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
-        console.log("totalDebtToBurn         :", totalDebtToBurn);
-        console.log("totalColToSend          :", totalColToSend);
-        console.log("totalDebtToRedistribute :", totalDebtToRedistribute);
-        console.log("totalColReward          :", totalColReward);
-        console.log("totalColSurplus         :", totalColSurplus);
-        console.log("systemInitialCollShares :", systemInitialCollShares);
-        console.log("systemInitialDebt       :", systemInitialDebt);
 
         // E: Total Debt = Debt - TotalDebtToBurn
         // E: Total Coll = Coll - totalColToSend
@@ -553,37 +551,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // TODO: Virtual Accounting here requires: CollNew = CollAtStart - Surplus - TotalColToSend
             // TODO: Verify
 
-            uint256 totalSharesAtStart = getEntireSystemColl(); // NOTE: This is getting the updated coll after ColSurplus
-            // Changing this value requires being cognizant of the changes from Surplus, not just to AP
-
-            uint256 totalEBTCSupplyAtStart = _getEntireSystemDebt();
-
-            console.log("totalSharesAtStart", systemInitialCollShares);
-            console.log("totalEBTCSupplyAtStart", systemInitialCollShares);
-
-            uint256 newTotalShares2 = totalSharesAtStart - totalColToSend;
-            uint256 newTotalDebt2 = totalEBTCSupplyAtStart - totalDebtToBurn;
-
-            console.log("newTotalShares with true supply", newTotalShares2);
-            console.log("newTotalDebt with true supply", newTotalDebt2);
-
-            console.log("systemInitialCollShares", systemInitialCollShares);
-            console.log(
-                "systemInitialCollShares - totalColToSend",
-                systemInitialCollShares - totalColToSend
-            );
-            console.log(
-                "systemInitialCollShares - totalColSurplus",
-                systemInitialCollShares - totalColSurplus
-            );
-            console.log(
-                "systemInitialCollShares - totalColToSend - totalColSurplus",
-                systemInitialCollShares - totalColToSend - totalColSurplus
-            );
             uint256 newTotalShares = systemInitialCollShares - totalColToSend - totalColSurplus;
-
-            console.log("systemInitialDebt", systemInitialDebt);
-            console.log("systemInitialDebt - totalDebtToBurn", systemInitialDebt - totalDebtToBurn);
             uint256 newTotalDebt = systemInitialDebt - totalDebtToBurn;
             // Compute new TCR with these
             uint newTCR = LiquityMath._computeCR(
