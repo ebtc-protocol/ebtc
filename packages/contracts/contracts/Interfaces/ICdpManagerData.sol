@@ -195,16 +195,21 @@ interface ICdpManagerData is IRmLiquidationsChecker {
         uint remainingEBTC;
         uint totalEBTCToRedeem;
         uint totalETHDrawn;
+        uint totalCollSharesSurplus;
         uint ETHFee;
         uint ETHToSendToRedeemer;
         uint decayedBaseRate;
         uint price;
         uint totalEBTCSupplyAtStart;
+        uint totalCollSharesAtStart;
+        uint tcrAtStart;
     }
 
     struct SingleRedemptionValues {
         uint eBtcToRedeem;
         uint stEthToRecieve;
+        uint collSurplus;
+        uint liquidatorRewardShares;
         bool cancelledPartial;
         bool fullRedemption;
     }

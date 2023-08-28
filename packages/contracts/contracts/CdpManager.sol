@@ -181,21 +181,33 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (newDebt == 0) {
             // No debt remains, close CDP
             // No debt left in the Cdp, therefore the cdp gets closed
+            {
+                address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
+                uint _liquidatorRewardShares = Cdps[_redeemColFromCdp._cdpId].liquidatorRewardShares;
 
-            address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
-            _redeemCloseCdp(_redeemColFromCdp._cdpId, 0, newColl, _borrower);
-            singleRedemption.fullRedemption = true;
+                singleRedemption.collSurplus = newColl; // Collateral surplus processed on full redemption
+                singleRedemption.liquidatorRewardShares = _liquidatorRewardShares;
+                singleRedemption.fullRedemption = true;
 
-            emit CdpUpdated(
-                _redeemColFromCdp._cdpId,
-                _borrower,
-                _oldDebtAndColl.entireDebt,
-                _oldDebtAndColl.entireColl,
-                0,
-                0,
-                0,
-                CdpOperation.redeemCollateral
-            );
+                _closeCdpByRedemption(
+                    _redeemColFromCdp._cdpId,
+                    0,
+                    newColl,
+                    _liquidatorRewardShares,
+                    _borrower
+                );
+
+                emit CdpUpdated(
+                    _redeemColFromCdp._cdpId,
+                    _borrower,
+                    _oldDebtAndColl.entireDebt,
+                    _oldDebtAndColl.entireColl,
+                    0,
+                    0,
+                    0,
+                    CdpOperation.redeemCollateral
+                );
+            }
         } else {
             // Debt remains, reinsert CDP
             uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
@@ -249,14 +261,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
      * Any surplus stETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
-    function _redeemCloseCdp(
+    function _closeCdpByRedemption(
         bytes32 _cdpId, // TODO: Remove?
         uint _EBTC,
-        uint _stEth,
+        uint _collSurplus,
+        uint _liquidatorRewardShares,
         address _borrower
     ) internal {
-        uint _liquidatorRewardShares = Cdps[_cdpId].liquidatorRewardShares;
-
         _removeStake(_cdpId);
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
@@ -264,31 +275,35 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         activePool.decreaseEBTCDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
-        collSurplusPool.accountSurplus(_borrower, _stEth + _liquidatorRewardShares);
+        collSurplusPool.accountSurplus(_borrower, _collSurplus + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
         activePool.sendStEthCollAndLiquidatorReward(
             address(collSurplusPool),
-            _stEth,
+            _collSurplus,
             _liquidatorRewardShares
         );
     }
 
+    /// @notice Returns true if the CdpId specified is the lowest-ICR Cdp in the linked list that still has MCR > ICR
+    /// @dev Returns false if the specified CdpId hint is blank
+    /// @dev Returns false if the specified CdpId hint doesn't exist in the list
+    /// @dev Returns false if the ICR of the specified CdpId is < MCR
+    /// @dev Returns true if the specified CdpId is not blank, exists in the list, has an ICR > MCR, and the next lower Cdp in the list is either blank or has an ICR < MCR.
     function _isValidFirstRedemptionHint(
-        ISortedCdps _sortedCdps,
         bytes32 _firstRedemptionHint,
         uint _price
     ) internal view returns (bool) {
         if (
-            _firstRedemptionHint == _sortedCdps.nonExistId() ||
-            !_sortedCdps.contains(_firstRedemptionHint) ||
+            _firstRedemptionHint == sortedCdps.nonExistId() ||
+            !sortedCdps.contains(_firstRedemptionHint) ||
             getCurrentICR(_firstRedemptionHint, _price) < MCR
         ) {
             return false;
         }
 
-        bytes32 nextCdp = _sortedCdps.getNext(_firstRedemptionHint);
-        return nextCdp == _sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
+        bytes32 nextCdp = sortedCdps.getNext(_firstRedemptionHint);
+        return nextCdp == sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
     }
 
     /** 
@@ -341,12 +356,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _applyPendingGlobalState(); // Apply state, we will checkLiquidateCoolDownAndReset at end of function
 
         totals.price = priceFeed.fetchPrice();
-        _requireTCRoverMCR(totals.price);
+        {
+            (
+                uint tcrAtStart,
+                uint totalCollSharesAtStart,
+                uint totalEBTCSupplyAtStart
+            ) = _getTCRWithTotalCollAndDebt(totals.price);
+            totals.tcrAtStart = tcrAtStart;
+            totals.totalCollSharesAtStart = totalCollSharesAtStart;
+            totals.totalEBTCSupplyAtStart = totalEBTCSupplyAtStart;
+        }
+
+        _requireTCRoverMCR(totals.price, totals.tcrAtStart);
         _requireAmountGreaterThanZero(_EBTCamount);
 
         require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
-        totals.totalEBTCSupplyAtStart = _getEntireSystemDebt();
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,
             msg.sender,
@@ -358,7 +383,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         address currentBorrower;
         bytes32 _cId = _firstRedemptionHint;
 
-        if (_isValidFirstRedemptionHint(sortedCdps, _firstRedemptionHint, totals.price)) {
+        if (_isValidFirstRedemptionHint(_firstRedemptionHint, totals.price)) {
             currentBorrower = sortedCdps.existCdpOwners(_firstRedemptionHint);
         } else {
             _cId = sortedCdps.getLast();
@@ -375,16 +400,17 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (_maxIterations == 0) {
             _maxIterations = type(uint256).max;
         }
+
         bytes32 _firstRedeemed = _cId;
         bytes32 _lastRedeemed = _cId;
-        uint _fullRedeemed;
+        uint _numCdpsFullyRedeemed;
+
+        /**
+            Core Redemption Loop
+        */
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
-            _maxIterations--;
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                bytes32 _nextId = sortedCdps.getPrev(_cId);
-                address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
-
                 _applyPendingState(_cId);
 
                 LocalVariables_RedeemCollateralFromCdp
@@ -405,25 +431,32 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
                 totals.totalEBTCToRedeem = totals.totalEBTCToRedeem + singleRedemption.eBtcToRedeem;
                 totals.totalETHDrawn = totals.totalETHDrawn + singleRedemption.stEthToRecieve;
-
                 totals.remainingEBTC = totals.remainingEBTC - singleRedemption.eBtcToRedeem;
-                currentBorrower = nextUserToCheck;
+                totals.totalCollSharesSurplus =
+                    totals.totalCollSharesSurplus +
+                    singleRedemption.collSurplus;
+
                 if (singleRedemption.fullRedemption) {
                     _lastRedeemed = _cId;
-                    _fullRedeemed = _fullRedeemed + 1;
+                    _numCdpsFullyRedeemed = _numCdpsFullyRedeemed + 1;
                 }
+
+                bytes32 _nextId = sortedCdps.getPrev(_cId);
+                address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
+                currentBorrower = nextUserToCheck;
                 _cId = _nextId;
             }
+            _maxIterations--;
         }
         require(totals.totalETHDrawn > 0, "CdpManager: Unable to redeem any amount");
 
         // remove from sortedCdps
-        if (_fullRedeemed == 1) {
+        if (_numCdpsFullyRedeemed == 1) {
             sortedCdps.remove(_firstRedeemed);
-        } else if (_fullRedeemed > 1) {
+        } else if (_numCdpsFullyRedeemed > 1) {
             bytes32[] memory _toRemoveIds = _getCdpIdsToRemove(
                 _lastRedeemed,
-                _fullRedeemed,
+                _numCdpsFullyRedeemed,
                 _firstRedeemed
             );
             sortedCdps.batchRemove(_toRemoveIds);
@@ -450,16 +483,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // New debt = debt - totalEBTCToRedeem totalEBTCSupplyAtStart
         // Compute TCR and then notify self
         {
-            // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
-            uint256 totalCollAtStart = collateral.getPooledEthByShares(getEntireSystemColl());
             // TODO: Desynch issue with this one as well
             // TODO: CollSurplus is handled early so it may not be tracked unless we ask the AP for it's current balance
             // TODO: INVESTIGATE BALANCES FULLY
 
-            uint256 newTotalColl = totalCollAtStart - totals.totalETHDrawn;
+            uint256 newTotalColl = totals.totalCollSharesAtStart -
+                totals.totalETHDrawn -
+                totals.totalCollSharesSurplus;
+
+            uint newTotalStEthBalance = collateral.getPooledEthByShares(newTotalColl);
+
             uint256 newTotalDebt = totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem;
+
             // Compute new TCR with these
-            uint newTCR = LiquityMath._computeCR(newTotalColl, newTotalDebt, totals.price);
+            uint newTCR = LiquityMath._computeCR(newTotalStEthBalance, newTotalDebt, totals.price);
 
             if (newTCR < CCR) {
                 // Notify RM
@@ -484,8 +521,25 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // CEI: Send the stETH drawn to the redeemer
         activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
 
-        // TODO: an alternative is we could track a variable on the activePool and avoid the transfer, for claim at-will be feeRecipient
-        // Then we can avoid the whole feeRecipient contract in every other contract. It can then be governable and switched out. ActivePool can handle sending any extra metadata to the recipient
+        // TODO: Debug checks, to remove
+        require(
+            activePool.getStEthColl() ==
+                totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
+            "live getStEthColl after transfers does not match Grace Period accounting"
+        );
+        require(
+            activePool.getEBTCDebt() == totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
+            "lives getEBTCDebt after transfers does not match Grace Period accounting"
+        );
+        require(
+            getEntireSystemColl() ==
+                totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
+            "live getEntireSystemColl after transfers does not match Grace Period accounting"
+        );
+        require(
+            _getEntireSystemDebt() == totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
+            "lives _getEntireSystemDebt after transfers does not match Grace Period accounting"
+        );
     }
 
     // --- Helper functions ---
@@ -736,8 +790,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         require(_amount > 0, "CdpManager: Amount must be greater than zero");
     }
 
-    function _requireTCRoverMCR(uint _price) internal view {
-        require(_getTCR(_price) >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
+    function _requireTCRoverMCR(uint _price, uint _TCR) internal view {
+        require(_TCR >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
     }
 
     function _requireAfterBootstrapPeriod() internal view {
