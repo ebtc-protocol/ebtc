@@ -126,47 +126,6 @@ contract CdpManagerTester is CdpManager {
         sortedCdps.batchRemove(_cdpIds);
     }
 
-    // copied from LiquidationLibrary
-    function _sequenceLiqToBatchLiq(
-        uint _n,
-        bool _recovery,
-        uint _price
-    ) external view returns (bytes32[] memory _array) {
-        if (_n > 0) {
-            bytes32 _last = sortedCdps.getLast();
-            bytes32 _first = sortedCdps.getFirst();
-            bytes32 _cdpId = _last;
-
-            uint _TCR = _getTCR(_price);
-
-            // get count of liquidatable CDPs
-            uint _cnt;
-            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _cnt += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-
-            // retrieve liquidatable CDPs
-            _array = new bytes32[](_cnt);
-            _cdpId = _last;
-            uint _j;
-            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _array[_cnt - _j - 1] = _cdpId;
-                    _j += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
-        }
-    }
-
     function forward(address _dest, bytes calldata _data) external payable {
         (bool success, bytes memory returnData) = _dest.call{value: msg.value}(_data);
         require(success, string(returnData));

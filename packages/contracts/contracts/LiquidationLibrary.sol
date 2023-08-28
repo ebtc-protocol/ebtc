@@ -397,48 +397,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         return (_partialDebt, _partialColl);
     }
 
-    // return CdpId array (in NICR-decreasing order same as SortedCdps)
-    // including the last N CDPs in sortedCdps for batch liquidation
-    function _sequenceLiqToBatchLiq(
-        uint _n,
-        bool _recovery,
-        uint _price
-    ) internal view returns (bytes32[] memory _array) {
-        if (_n > 0) {
-            bytes32 _last = sortedCdps.getLast();
-            bytes32 _first = sortedCdps.getFirst();
-            bytes32 _cdpId = _last;
-
-            uint _TCR = _getTCR(_price);
-
-            // get count of liquidatable CDPs
-            uint _cnt;
-            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _cnt += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-
-            // retrieve liquidatable CDPs
-            _array = new bytes32[](_cnt);
-            _cdpId = _last;
-            uint _j;
-            for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
-                bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _array[_cnt - _j - 1] = _cdpId;
-                    _j += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
-        }
-    }
-
     function _partiallyReduceCdpDebt(bytes32 _cdpId, uint _partialDebt, uint _partialColl) internal {
         Cdp storage _cdp = Cdps[_cdpId];
 

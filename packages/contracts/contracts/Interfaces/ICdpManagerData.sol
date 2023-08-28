@@ -238,6 +238,12 @@ interface ICdpManagerData {
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 
+    function sequenceLiqToBatchLiq(
+        uint _n,
+        bool _recovery,
+        uint _price
+    ) external view returns (bytes32[] memory _array);
+
     function getEntireDebtAndColl(
         bytes32 _cdpId
     ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);

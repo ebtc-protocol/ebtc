@@ -876,7 +876,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString()); 
   })
   
-  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
+  it.only("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
       // Cdps undercollateralized under minimum liq premium [<3% ICR]
       await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
@@ -892,7 +892,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // Cdps overcollateralized and unliquidatable [ICR >= TCR]
       await openCdp({ ICR: toBN(dec(5400, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(3)), extraParams: { from: owner } })
       let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
-	  
+
       // price slump to recovery mode
       let _newPrice = dec(175, 13);
       await priceFeed.setPrice(_newPrice);
@@ -902,15 +902,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // check sequenceLiqToBatchLiq() results
       // riskiest CDP at last
-      let _batch1 = await cdpManager._sequenceLiqToBatchLiq(1, true, _newPrice);
+      let _batch1 = await cdpManager.sequenceLiqToBatchLiq(1, true, _newPrice);
       assert.isTrue(_batch1[0] == _aliceCdpId);
-      let _batch2 = await cdpManager._sequenceLiqToBatchLiq(2, true, _newPrice);
+      let _batch2 = await cdpManager.sequenceLiqToBatchLiq(2, true, _newPrice);
       assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
-      let _batch3 = await cdpManager._sequenceLiqToBatchLiq(3, true, _newPrice);
+      let _batch3 = await cdpManager.sequenceLiqToBatchLiq(3, true, _newPrice);
       assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
-      let _batch4 = await cdpManager._sequenceLiqToBatchLiq(4, true, _newPrice);
+      let _batch4 = await cdpManager.sequenceLiqToBatchLiq(4, true, _newPrice);
       assert.isTrue(_batch4.length == 4 && _batch4[3] == _aliceCdpId && _batch4[2] == _bobCdpId && _batch4[1] == _carolCdpId && _batch4[0] == _dennisCdpId);
-      let _batch5 = await cdpManager._sequenceLiqToBatchLiq(5, true, _newPrice);
+      let _batch5 = await cdpManager.sequenceLiqToBatchLiq(5, true, _newPrice);
       assert.isTrue(_batch5.length == 4 && _batch5[3] == _aliceCdpId && _batch5[2] == _bobCdpId && _batch5[1] == _carolCdpId && _batch5[0] == _dennisCdpId);	  
   })
   
@@ -939,15 +939,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // check sequenceLiqToBatchLiq() results
       // riskiest CDP at last
-      let _batch1 = await cdpManager._sequenceLiqToBatchLiq(1, false, _newPrice);
+      let _batch1 = await cdpManager.sequenceLiqToBatchLiq(1, false, _newPrice);
       assert.isTrue(_batch1[0] == _aliceCdpId);
-      let _batch2 = await cdpManager._sequenceLiqToBatchLiq(2, false, _newPrice);
+      let _batch2 = await cdpManager.sequenceLiqToBatchLiq(2, false, _newPrice);
       assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
-      let _batch3 = await cdpManager._sequenceLiqToBatchLiq(3, false, _newPrice);
+      let _batch3 = await cdpManager.sequenceLiqToBatchLiq(3, false, _newPrice);
       assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
-      let _batch4 = await cdpManager._sequenceLiqToBatchLiq(4, false, _newPrice);
+      let _batch4 = await cdpManager.sequenceLiqToBatchLiq(4, false, _newPrice);
       assert.isTrue(_batch4.length == 3 && _batch4[2] == _aliceCdpId && _batch4[1] == _bobCdpId && _batch4[0] == _carolCdpId);
-      let _batch5 = await cdpManager._sequenceLiqToBatchLiq(5, false, _newPrice);
+      let _batch5 = await cdpManager.sequenceLiqToBatchLiq(5, false, _newPrice);
       assert.isTrue(_batch5.length == 3 && _batch5[2] == _aliceCdpId && _batch5[1] == _bobCdpId && _batch5[0] == _carolCdpId);	  
   })
   
