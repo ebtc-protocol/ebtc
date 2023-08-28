@@ -463,7 +463,7 @@ contract EchidnaTester is
         if (success) {
             if (vars.icrBefore < cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+                assertGt(vars.tcrAfter, vars.tcrBefore, L_12);
             }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
