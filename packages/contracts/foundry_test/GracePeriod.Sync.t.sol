@@ -24,11 +24,79 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     address risky;
 
     function testBasicSynchOnEachOperation() public {
+        uint256 price = priceFeedMock.fetchPrice();
+
         // SKIPPED CAUSE BORING AF
-        // Open
+        // == Open == //
+        console2.log("Open");
+        uint256 openSnap = vm.snapshot();
+
+        {
         _openSafeCdp();
+        uint256 EXPECTED_OPEN_TCR = cdpManager.getTCR(price);
+        vm.revertTo(openSnap);
+
+        // vm.expectEmit(false, false, false, true);
+        // emit TCRNotified(EXPECTED_OPEN_TCR);
+        bytes32 safeId = _openSafeCdp();
+        // TODO: Open CDP differenty because event catches something else
+
+        
         // Adjust
+        console2.log("Adjust");
+        
+        dealCollateral(safeUser, 12345);
+        uint256 adjustSnap = vm.snapshot();
+
+        vm.startPrank(safeUser);
+        borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+        uint256 EXPECTED_ADJUST_TCR = cdpManager.getTCR(price);
+        vm.revertTo(adjustSnap);
+
+        vm.expectEmit(false, false, false, true);
+        emit TCRNotified(EXPECTED_ADJUST_TCR);
+        borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+        vm.stopPrank();
+        vm.revertTo(adjustSnap);
+        }
+
+        
+
+
+
+        
         // Close
+        {
+        console2.log("Close");
+        uint256 closeSnapshot = vm.snapshot();
+        // Open another so we can close it
+        bytes32 safeIdSecond = _openSafeCdp();
+
+
+        vm.startPrank(safeUser);
+        borrowerOperations.closeCdp(safeIdSecond);
+        uint256 EXPECTED_CLOSE_TCR = cdpManager.getTCR(price);
+        vm.revertTo(closeSnapshot);
+        vm.stopPrank();
+
+        // Open another so we can close it
+        safeIdSecond = _openSafeCdp();
+
+        vm.startPrank(safeUser);
+        vm.expectEmit(false, false, false, true);
+        emit TCRNotified(EXPECTED_CLOSE_TCR);
+        borrowerOperations.closeCdp(safeIdSecond);
+        vm.stopPrank();
+        }
+
+
+        // Revert back to here
+        vm.revertTo(openSnap);
+
+
+        // Do the rest (Redemptions and liquidations)
+        _openSafeCdp();
+
 
         bytes32[] memory cdps = _openRiskyCdps(1);
 
@@ -41,15 +109,14 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Then expect it to work
 
         uint256 biggerSnap = vm.snapshot();
-        uint256 price = priceFeedMock.fetchPrice();
         vm.startPrank(safeUser);
         _partialRedemption(1e17, price);
         // Get TCR here
-        uint256 EXPECTED_TCR = cdpManager.getTCR(price);
+        uint256 EXPECTED_REDEMPTION_TCR = cdpManager.getTCR(price);
         vm.revertTo(biggerSnap);
 
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR);
+        emit TCRNotified(EXPECTED_REDEMPTION_TCR);
         _partialRedemption(1e17, price);
 
         // Trigger Liquidations via Split (so price is constant)
@@ -62,21 +129,24 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 liquidationSnapshotId = vm.snapshot(); // New snap for liquidations
 
         // == Liquidation 1 == //
+        {
         console.log("Liq 1");
 
         // Try liquidating a cdp
         cdpManager.liquidate(cdps[0]);
         // Get TCR after Liquidation
-        uint256 EXPECTED_TCR_FIRST_LIQ = cdpManager.getTCR(price);
+        uint256 EXPECTED_TCR_FIRST_LIQ_TCR = cdpManager.getTCR(price);
         // Revert so we can verify Event
         vm.revertTo(liquidationSnapshotId);
 
         // Verify it worked
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_FIRST_LIQ);
+        emit TCRNotified(EXPECTED_TCR_FIRST_LIQ_TCR);
         cdpManager.liquidate(cdps[0]);
+        }
 
         // == Liquidate 2 == //
+        {
         console.log("Liq 2");
 
         // Re-revert for next Op
@@ -84,15 +154,17 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Try liquidating a cdp partially
         cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
-        uint256 EXPECTED_TCR_SECOND_LIQ = cdpManager.getTCR(price);
+        uint256 EXPECTED_TCR_SECOND_LIQ_TCR = cdpManager.getTCR(price);
         vm.revertTo(liquidationSnapshotId);
 
         // Verify it worked
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_SECOND_LIQ);
+        emit TCRNotified(EXPECTED_TCR_SECOND_LIQ_TCR);
         cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
+        }
 
         // == Liquidate 3 == //
+        {
         console.log("Liq 3");
 
         // Re-revert for next Op
@@ -100,15 +172,17 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Try liquidating a cdp via the list (1)
         cdpManager.liquidateCdps(1);
-        uint256 EXPECTED_TCR_THIRD_LIQ = cdpManager.getTCR(price);
+        uint256 EXPECTED_TCR_THIRD_LIQ_TCR = cdpManager.getTCR(price);
         vm.revertTo(liquidationSnapshotId);
 
         // Verify it worked
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_THIRD_LIQ);
+        emit TCRNotified(EXPECTED_TCR_THIRD_LIQ_TCR);
         cdpManager.liquidateCdps(1);
+        }
 
         // == Liquidate 4 == //
+        {
         console.log("Liq 4");
 
         // Re-revert for next Op
@@ -118,13 +192,14 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
         cdpsToLiquidateBatch[0] = cdps[0];
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
-        uint256 EXPECTED_TCR_FOURTH_LIQ = cdpManager.getTCR(price);
+        uint256 EXPECTED_TCR_FOURTH_LIQ_TCR = cdpManager.getTCR(price);
         vm.revertTo(liquidationSnapshotId);
 
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_FOURTH_LIQ);
+        emit TCRNotified(EXPECTED_TCR_FOURTH_LIQ_TCR);
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
         vm.revertTo(liquidationSnapshotId);
+        }
 
         vm.stopPrank();
     }
