@@ -65,7 +65,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // Require we're in RM
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(isRecoveryMode);
+        require(isRecoveryMode, "Grace Period can only start in RM");
 
         _beginRMLiquidationCooldown();
     }
@@ -84,7 +84,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // Require we're in RM
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(!isRecoveryMode);
+        require(!isRecoveryMode, "Grace Period can end only outside RM");
 
         _stopRMLiquidationCooldown();
     }
