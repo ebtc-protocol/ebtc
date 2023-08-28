@@ -49,7 +49,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     }
 
     function totalSupply() public view override returns (uint) {
-        return _totalBalance;
+        uint _tmp = _mul(_ethPerShare, _totalBalance);
+        return _div(_tmp, 1e18);
     }
 
     // helper to set allowance in test
