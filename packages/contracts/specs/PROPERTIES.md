@@ -83,7 +83,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | R-04 | Redemptions are disabled during the first 14 days of operation since deployment of the eBTC protocol | Valid States | ✅ |
 | R-05 | Partially redeemed CDP is re-inserted into the sorted list of CDPs, and remains active, with reduced collateral and debt. Linked List invariant is maintained. And new values correspond with tokens burned and transferred. | Unit Tests | |
 | R-06 | If the redemption causes a CDP's full debt to be cancelled, the CDP is then closed: Gas Stipend from the Liquidation Reserve becomes avaiable for the borrower to reclaim along of the CDP's Collateral Surplus. The original CDP owner gets the stipend when a CDP is fully closed by redemption | Unit Tests | |
-| R-07 | TCR should be slightly improved after every redemption | High Level | |
+| R-07 | TCR should be slightly improved after every redemption | Unit Tests | ✅ |
+| R-08 | The user eBTC balance should be used to pay the system debt | Unit Tests | ✅ |
 
 ## Liquidations
 

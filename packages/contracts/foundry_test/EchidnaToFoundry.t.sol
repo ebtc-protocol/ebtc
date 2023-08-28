@@ -83,6 +83,43 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
     }
 
+    function testBrokenCdpm4() public {
+        openCdp(72141099106195067837191398095614470036586507560146867, 3841);
+        openCdp(138711028362710431195438633179531745921712852901503794761514, 22613);
+        setEthPerShare(24422684974255655458766413850138378431721);
+        vm.warp(block.timestamp + 348292 + 390247 + 396978 + 14374);
+
+        cdpManager.applyPendingGlobalState(); // Accrue change in stETH Value
+
+        uint256 valueBefore = _getValue();
+        console.log("valueBefore", valueBefore);
+        redeemCollateral(
+            5693805027259487391817279795949662737234119713540967169331,
+            5442622424533550139791733199345932418401974502572419280832,
+            32829286642066383138421349005089843612094010323700170406627
+        );
+        uint256 valueAfter = _getValue();
+        console.log("valueAfter", valueAfter);
+        assertLe(valueBefore, valueAfter, "value cahnge");
+    }
+
+    //
+    function _getValue() internal returns (uint256) {
+        uint256 currentPrice = priceFeedMock.getPrice();
+
+        uint256 totalColl = cdpManager.getEntireSystemColl();
+        uint256 totalDebt = cdpManager.getEntireSystemDebt();
+        uint256 totalCollFeeRecipient = activePool.getFeeRecipientClaimableColl();
+
+        uint256 surplusColl = collSurplusPool.getStEthColl();
+
+        uint256 totalValue = ((totalCollFeeRecipient * currentPrice) / 1e18) +
+            ((totalColl * currentPrice) / 1e18) +
+            ((surplusColl * currentPrice) / 1e18) -
+            totalDebt;
+        return totalValue;
+    }
+
     function testDebugLiquidateZero() public {
         openCdp(0, 1);
         openCdp(
@@ -247,7 +284,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
             bytes32(0),
             bytes32(0),
             _partialRedemptionHintNICR,
-            0,
+            1,
             _maxFeePercentage
         );
     }

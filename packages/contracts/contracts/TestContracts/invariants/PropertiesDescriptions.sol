@@ -71,6 +71,13 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
 
     ///////////////////////////////////////////////////////
+    // Redemptions
+    ///////////////////////////////////////////////////////
+
+    string constant R_07 = "TCR should be slightly improved after every redemption";
+    string constant R_08 = "The user eBTC balance should be used to pay the system debt";
+
+    ///////////////////////////////////////////////////////
     // Liquidations
     ///////////////////////////////////////////////////////
 

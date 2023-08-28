@@ -642,6 +642,13 @@ contract EchidnaTester is
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            assertGt(vars.tcrAfter, vars.tcrBefore, R_07);
+            assertEq(
+                (vars.actorEbtcBefore - vars.actorEbtcAfter),
+                vars.debtBefore - vars.debtAfter,
+                R_08
+            );
+
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");

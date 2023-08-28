@@ -25,6 +25,13 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.debtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
+        (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
+            cdpManager.stFPPSg()
+            ? cdpManager.calcFeeUponStakingReward(
+                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
+                cdpManager.stFPPSg()
+            )
+            : (0, 0, 0);
         vars.feeRecipientTotalCollBefore =
             activePool.getFeeRecipientClaimableColl() +
             collateral.balanceOf(activePool.feeRecipientAddress());
@@ -53,6 +60,13 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.debtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
+        (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
+            cdpManager.stFPPSg()
+            ? cdpManager.calcFeeUponStakingReward(
+                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
+                cdpManager.stFPPSg()
+            )
+            : (0, 0, 0);
         vars.feeRecipientTotalCollAfter =
             activePool.getFeeRecipientClaimableColl() +
             collateral.balanceOf(activePool.feeRecipientAddress());
