@@ -36,10 +36,22 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 EXPECTED_OPEN_TCR = cdpManager.getTCR(price);
         vm.revertTo(openSnap);
 
-        // vm.expectEmit(false, false, false, true);
-        // emit TCRNotified(EXPECTED_OPEN_TCR);
-        bytes32 safeId = _openSafeCdp();
-        // TODO: Open CDP differenty because event catches something else
+
+        // NOTE: Ported the same code of open because foundry doesn't find the event
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        safeUser = users[0];
+
+        uint256 debt1 = 1000e18;
+        uint256 coll1 = _utils.calculateCollAmount(debt1, price, 1.30e18); // Comfy unliquidatable
+        dealCollateral(safeUser, coll1);
+        vm.startPrank(safeUser);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        vm.expectEmit(false, false, false, true);
+        emit TCRNotified(EXPECTED_OPEN_TCR);
+        bytes32 safeId = borrowerOperations.openCdp(debt1, bytes32(0), bytes32(0), coll1);
+        vm.stopPrank();
+
 
         
         // Adjust
