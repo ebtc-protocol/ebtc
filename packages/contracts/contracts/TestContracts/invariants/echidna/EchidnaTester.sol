@@ -1041,7 +1041,6 @@ contract EchidnaTester is
                         vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
                     ),
                 vars.actorCollAfter,
-                0.01e18,
                 BO_05
             );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
