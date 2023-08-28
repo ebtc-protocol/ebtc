@@ -113,6 +113,28 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
     }
 
+    /// @dev Sync grace period status given system collShares and debt amounts
+    function _syncRecoveryModeGracePeriod(
+        uint systemCollShares,
+        uint systemDebt,
+        uint price
+    ) internal {
+        // Compute new TCR with these
+        uint newTCR = LiquityMath._computeCR(
+            collateral.getPooledEthByShares(systemCollShares),
+            systemDebt,
+            price
+        );
+
+        if (newTCR < CCR) {
+            // Notify RM
+            _notifyBeginRM(newTCR);
+        } else {
+            // Notify outside RM
+            _notifyEndRM(newTCR);
+        }
+    }
+
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---

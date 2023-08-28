@@ -477,35 +477,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
-        // == GRACE PERIOD == //
-        // TODO: E part of code is here for new TCR and notification
-        // New coll = eth - totalETHDrawn,
-        // New debt = debt - totalEBTCToRedeem totalEBTCSupplyAtStart
-        // Compute TCR and then notify self
-        {
-            // TODO: Desynch issue with this one as well
-            // TODO: CollSurplus is handled early so it may not be tracked unless we ask the AP for it's current balance
-            // TODO: INVESTIGATE BALANCES FULLY
-
-            uint256 newTotalColl = totals.totalCollSharesAtStart -
-                totals.totalETHDrawn -
-                totals.totalCollSharesSurplus;
-
-            uint newTotalStEthBalance = collateral.getPooledEthByShares(newTotalColl);
-
-            uint256 newTotalDebt = totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem;
-
-            // Compute new TCR with these
-            uint newTCR = LiquityMath._computeCR(newTotalStEthBalance, newTotalDebt, totals.price);
-
-            if (newTCR < CCR) {
-                // Notify RM
-                _notifyBeginRM(newTCR);
-            } else {
-                // Notify outside RM
-                _notifyEndRM(newTCR);
-            }
-        }
+        _syncRecoveryModeGracePeriod(
+            totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
+            totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
+            totals.price
+        );
 
         emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
 

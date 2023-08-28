@@ -536,40 +536,11 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 
-        // E: Total Debt = Debt - TotalDebtToBurn
-        // E: Total Coll = Coll - totalColToSend
-        // From here we can determine if we're in RM or not
-
-        // We need the totalDebt
-        // We need the totalColl
-        // Then compute
-        // TODO: WE CALL THIS TWICE FOR NOW, FIX AFTER TESTED
-        {
-            // Most likely we also had the rest of the stuff
-
-            // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
-            // TODO: Virtual Accounting here requires: CollNew = CollAtStart - Surplus - TotalColToSend
-            // TODO: Verify
-
-            uint256 newTotalShares = systemInitialCollShares - totalColToSend - totalColSurplus;
-            uint256 newTotalDebt = systemInitialDebt - totalDebtToBurn;
-            // Compute new TCR with these
-            uint newTCR = LiquityMath._computeCR(
-                collateral.getPooledEthByShares(newTotalShares),
-                newTotalDebt,
-                price
-            );
-
-            console.log("newTCR", newTCR);
-
-            if (newTCR < CCR) {
-                // Notify RM
-                _notifyBeginRM(newTCR);
-            } else {
-                // Notify outside RM
-                _notifyEndRM(newTCR);
-            }
-        }
+        _syncRecoveryModeGracePeriod(
+            systemInitialCollShares - totalColToSend - totalColSurplus,
+            systemInitialDebt - totalDebtToBurn,
+            price
+        );
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
