@@ -5,14 +5,18 @@ import {EBTCTokenTester} from "../EBTCTokenTester.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
 import {ActivePool} from "../../ActivePool.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";
+import {AssertionHelper} from "./AssertionHelper.sol";
 
-contract Actor is IERC3156FlashBorrower {
+contract Actor is IERC3156FlashBorrower, AssertionHelper {
     address[] internal tokens;
     address[] internal callers;
 
     constructor(address[] memory _tokens, address[] memory _callers) payable {
         tokens = _tokens;
         callers = _callers;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).approve(callers[i], type(uint256).max);
+        }
     }
 
     function proxy(
@@ -56,7 +60,7 @@ contract Actor is IERC3156FlashBorrower {
             );
             for (uint256 i = 0; i < _targets.length; ++i) {
                 (bool success, bytes memory returnData) = address(_targets[i]).call(_calldatas[i]);
-                require(success, string(returnData));
+                require(success, _getRevertMsg(returnData));
             }
         }
 
