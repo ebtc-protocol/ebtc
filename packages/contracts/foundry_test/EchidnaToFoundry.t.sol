@@ -13,6 +13,7 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
  */
 contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     address user;
+    uint internal constant INITIAL_COLL_BALANCE = 1e21;
     uint256 private constant MAX_FLASHLOAN_ACTIONS = 4;
 
     function setUp() public override {
@@ -21,10 +22,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         eBTCBaseFixture.connectLQTYContractsToCore();
         user = address(this);
         vm.startPrank(address(this));
-        uint256 funds = type(uint96).max;
-        vm.deal(user, funds);
-        collateral.approve(address(borrowerOperations), funds);
-        collateral.deposit{value: funds}();
+        vm.deal(user, INITIAL_COLL_BALANCE);
+        collateral.deposit{value: INITIAL_COLL_BALANCE}();
 
         IERC20(collateral).approve(address(activePool), type(uint256).max);
         IERC20(eBTCToken).approve(address(borrowerOperations), type(uint256).max);
@@ -58,6 +57,30 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         setEthPerShare(0);
 
         flashLoanColl(216);
+    }
+
+    function testBO05() public {
+        openCdp(0, 1);
+        setEthPerShare(0);
+        addColl(89746347972992101541, 29594050145240);
+        openCdp(0, 1);
+        uint256 balanceBefore = collateral.balanceOf(address(this));
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), 0);
+        uint256 cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        uint256 liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        console2.log("before %s", balanceBefore);
+        closeCdp(0);
+        uint256 balanceAfter = collateral.balanceOf(address(this));
+        console2.log("after %s %s %s %s", balanceAfter, cdpCollBefore, liquidatorRewardSharesBefore);
+        console2.log(
+            "isApproximateEq? %s",
+            isApproximateEq(
+                balanceBefore +
+                    collateral.getPooledEthByShares(cdpCollBefore + liquidatorRewardSharesBefore),
+                balanceAfter,
+                0.0e18
+            )
+        );
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
