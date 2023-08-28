@@ -83,6 +83,32 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
     }
 
+    function testDebugLiquidateZero() public {
+        openCdp(0, 1);
+        openCdp(
+            89987264111579281160927512855035343800112805104904539378532907880159583883,
+            1106532110377617551
+        );
+        setEthPerShare(0);
+        setEthPerShare(0);
+        setEthPerShare(0);
+        uint256 _price = priceFeedMock.getPrice();
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+        uint256 feeRecipientBalanceBefore = collateral.balanceOf(activePool.feeRecipientAddress()) +
+            activePool.getFeeRecipientClaimableColl();
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), 0);
+        // cdpManager.applyPendingGlobalState();
+
+        liquidateCdps(0);
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+        uint256 feeRecipientBalanceAfter = collateral.balanceOf(activePool.feeRecipientAddress()) +
+            activePool.getFeeRecipientClaimableColl();
+        console.log("\ttcr %s %s %s", tcrBefore, tcrAfter, cdpManager.getCurrentICR(_cdpId, _price));
+        console.log("\tfee %s %s", feeRecipientBalanceBefore, feeRecipientBalanceAfter);
+        console.log("\tLICR", cdpManager.LICR(), collateral.getSharesByPooledEth(cdpManager.LICR()));
+        // assertGt(tcrAfter, tcrBefore, L_12);
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));

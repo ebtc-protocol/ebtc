@@ -461,7 +461,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            if (vars.icrBefore < cdpManager.LICR()) {
+            if (vars.icrBefore < collateral.getSharesByPooledEth(cdpManager.LICR())) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.tcrAfter, vars.tcrBefore, L_12);
             }
