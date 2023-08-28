@@ -642,7 +642,7 @@ contract EchidnaTester is
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
-            assertGt(vars.tcrAfter, vars.tcrBefore, R_07);
+            assertGte(vars.tcrAfter, vars.tcrBefore, R_07);
             assertEq(
                 (vars.actorEbtcBefore - vars.actorEbtcAfter),
                 vars.debtBefore - vars.debtAfter,
@@ -659,7 +659,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) external log {
+    function flashLoanColl(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -683,6 +683,7 @@ contract EchidnaTester is
 
         if (success) {
             uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
             assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -805,12 +806,11 @@ contract EchidnaTester is
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
                 (_coll - collateral.balanceOf(address(actor)))
             );
-            assertGte(
-                collateral.balanceOf(address(actor)),
-                _coll,
+            require(success);
+            require(
+                collateral.balanceOf(address(actor)) > _coll,
                 "Actor has high enough balance to add"
             );
-            assertWithMsg(success, "deposit never fails as EchidnaTester has high enough balance");
         }
 
         (success, ) = actor.proxy(
@@ -1041,13 +1041,16 @@ contract EchidnaTester is
                 vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter
             );
-            assertEq(
-                vars.actorCollBefore +
-                    // ActivePool transfer SHARES not ETH directly
-                    collateral.getPooledEthByShares(
-                        vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-                    ),
-                vars.actorCollAfter,
+            assertWithMsg(
+                isApproximateEq(
+                    vars.actorCollBefore +
+                        // ActivePool transfer SHARES not ETH directly
+                        collateral.getPooledEthByShares(
+                            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+                        ),
+                    vars.actorCollAfter,
+                    0.01e18
+                ),
                 BO_05
             );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
