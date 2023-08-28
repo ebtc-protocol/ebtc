@@ -255,6 +255,29 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
+    function test_SingleRedemptionCollSurplus() public {
+        // setup healthy whale Cdp
+        // set 1 Cdp that is valid to redeem
+        // calculate expected collSurplus from redemption of Cdp
+        // calculate expected system debt after valid redemption
+        // calculate expected system coll after valid redemption
+        // fully redeem single Cdp
+        // borrower of Redeemed Cdp should have expected collSurplus available
+        // confirm expected system debt and coll
+    }
+
+    function test_MultipleRedemptionCollSurplus() public {
+        // setup healthy whale Cdp
+        // set 3 Cdps that are valid to redeem at same ICR, different borrowers
+        // calculate expected collSurplus from full redemption of Cdps
+        // calculate expected system debt after all valid redemptions
+        // calculate expected system coll after all valid redemptions
+        // fully redeem 2 Cdps, partially redeem the third
+        // borrowers of full Redeemed Cdps should have expected collSurplus available
+        // borrowers of partially redeemed Cdp should have no collSurplus available
+        // confirm expected system debt and coll
+    }
+
     function _singleCdpRedemptionSetup() internal returns (address user, bytes32 userCdpId) {
         uint debt = 2e17;
         user = _utils.getNextUserAddress();
