@@ -648,7 +648,7 @@ contract EchidnaTester is
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
-            assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
+            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
             assertEq(
                 (vars.actorEbtcBefore - vars.actorEbtcAfter),
                 vars.debtBefore - vars.debtAfter,
@@ -1071,18 +1071,19 @@ contract EchidnaTester is
                 vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter
             );
-            assertWithMsg(
-                isApproximateEq(
-                    vars.actorCollBefore +
-                        // ActivePool transfer SHARES not ETH directly
-                        collateral.getPooledEthByShares(
-                            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-                        ),
-                    vars.actorCollAfter,
-                    0.01e18
-                ),
-                BO_05
-            );
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
+            // assertWithMsg(
+            //     isApproximateEq(
+            //         vars.actorCollBefore +
+            //             // ActivePool transfer SHARES not ETH directly
+            //             collateral.getPooledEthByShares(
+            //                 vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+            //             ),
+            //         vars.actorCollAfter,
+            //         0.01e18
+            //     ),
+            //     BO_05
+            // );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");

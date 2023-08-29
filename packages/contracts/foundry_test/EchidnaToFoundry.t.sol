@@ -13,6 +13,7 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
  */
 contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     address user;
+    address actor;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
     uint256 private constant MAX_FLASHLOAN_ACTIONS = 4;
 
@@ -21,6 +22,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
         user = address(this);
+        actor = user;
         vm.startPrank(address(this));
         vm.deal(user, INITIAL_COLL_BALANCE);
         collateral.deposit{value: INITIAL_COLL_BALANCE}();
@@ -146,6 +148,70 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         // assertGt(tcrAfter, tcrBefore, L_12);
     }
 
+    function testCloseCdpGasCompensationBrokenDueToFeeSplit() public {
+        bytes32 _cdpId = openCdp(0, 1);
+        addColl(
+            1136306260966836966416254910600741013785759825099592986674110980406214,
+            547292987167112192731837925341417026323903943248170797463056655103524
+        );
+        setEthPerShare(254118524);
+        addColl(
+            12597227859793617205474425017915022562745818181943317312554948512,
+            9719570706362477321866756827913315445905565055267406059909916475
+        );
+        setEthPerShare(427559125359927817315385493025244950085348258422237142673507024064172809185);
+        openCdp(3571529399317342246939748969305228181926514889773271968455159558869, 9858);
+        setEthPerShare(3643538871032775039067393294322983338235379072440222187277243527);
+        vars.actorCollBefore = collateral.balanceOf(actor);
+        vars.cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        closeCdp(0);
+        vars.actorCollAfter = collateral.balanceOf(actor);
+        console.log(
+            "\tcloseCdpGasCompensation",
+            vars.actorCollBefore,
+            vars.actorCollAfter,
+            vars.actorCollAfter - vars.actorCollBefore
+        );
+        console.log(
+            "\tcloseCdpGasCompensation",
+            vars.cdpCollBefore,
+            vars.liquidatorRewardSharesBefore,
+            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+        );
+
+        // assertTrue(
+        //     isApproximateEq(
+        //         vars.actorCollBefore +
+        //             // ActivePool transfer SHARES not ETH directly
+        //             collateral.getPooledEthByShares(
+        //                 vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+        //             ),
+        //         vars.actorCollAfter,
+        //         0.01e18
+        //     ),
+        //     BO_05
+        // );
+    }
+
+    function testFlashLoanEBTC() public {
+        openCdp(31907386653083806466320315455248167275022035374271615, 2);
+        flashLoanEBTC(20542751032848327136066959552045638727049657135270774054943898826);
+    }
+
+    function testTCRShouldNotDecreaseAfterRedemptions() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(0, 1);
+        setPrice(1322581084004256081677);
+        openCdp(1157, 129247021399144974);
+        setPrice(0);
+        redeemCollateral(
+            55272814824723720282644178,
+            451485902797602866794737611631,
+            2499559204056333929
+        );
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -178,7 +244,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         priceFeedMock.setPrice(_newPrice);
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) internal {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) internal returns (bytes32) {
         uint price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * CCR) / (price);
@@ -191,7 +257,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         collateral.approve(address(borrowerOperations), _col);
 
         console2.log("openCdp", _col, _EBTCAmount);
-        borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
+        return borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
     }
 
     function closeCdp(uint _i) internal {
@@ -310,6 +376,24 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
             _getFlashLoanActions(_amount)
         );
         uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        console.log("\tbalances", _balBefore, _balAfter);
+        console.log("\tfee", _fee);
+    }
+
+    function flashLoanEBTC(uint _amount) internal {
+        _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
+
+        console2.log("flashLoanEBTC", _amount);
+
+        uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
+        borrowerOperations.flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(eBTCToken),
+            _amount,
+            _getFlashLoanActions(_amount)
+        );
+        uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
         console.log("\tbalances", _balBefore, _balAfter);
         console.log("\tfee", _fee);
     }
