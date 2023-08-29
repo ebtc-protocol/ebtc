@@ -496,26 +496,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // CEI: Send the stETH drawn to the redeemer
         activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
-
-        // TODO: Debug checks, to remove
-        require(
-            activePool.getStEthColl() ==
-                totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
-            "live getStEthColl after transfers does not match Grace Period accounting"
-        );
-        require(
-            activePool.getEBTCDebt() == totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
-            "lives getEBTCDebt after transfers does not match Grace Period accounting"
-        );
-        require(
-            getEntireSystemColl() ==
-                totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
-            "live getEntireSystemColl after transfers does not match Grace Period accounting"
-        );
-        require(
-            _getEntireSystemDebt() == totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
-            "lives _getEntireSystemDebt after transfers does not match Grace Period accounting"
-        );
     }
 
     // --- Helper functions ---
