@@ -6,11 +6,11 @@ import "./ICollSurplusPool.sol";
 import "./IEBTCToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
-import "./IRmLiquidationsChecker.sol";
+import "./IRecoveryModeGracePeriod.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManagerData is IRmLiquidationsChecker {
+interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
     event LiquidationLibraryAddressChanged(address _liquidationLibraryAddress);

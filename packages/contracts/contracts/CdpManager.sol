@@ -353,7 +353,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
-        _applyPendingGlobalState(); // Apply state, we will checkLiquidateCoolDownAndReset at end of function
+        _applyPendingGlobalState(); // Apply state, we will syncGracePeriod at end of function
 
         totals.price = priceFeed.fetchPrice();
         {
@@ -477,7 +477,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
 
-        _syncRecoveryModeGracePeriod(
+        _syncGracePeriodForGivenValues(
             totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
             totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
             totals.price
