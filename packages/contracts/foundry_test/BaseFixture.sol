@@ -54,6 +54,8 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     bytes4 private constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
     bytes4 private constant SET_REDEMPETIONS_PAUSED_SIG =
         bytes4(keccak256(bytes("setRedemptionsPaused(bool)")));
+    bytes4 private constant SET_GRACE_PERIOD_SIG =
+        bytes4(keccak256(bytes("setGracePeriod(uint128)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -332,6 +334,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_BETA_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPETIONS_PAUSED_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
@@ -426,5 +429,85 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         newIndex = collateral.getPooledEthByShares(1e18);
 
         storedIndex = cdpManager.stFPPSg();
+    }
+
+    /// @dev Ensure data fields for Cdp are in expected post-close state
+    function _assertCdpClosed(bytes32 cdpId, uint expectedStatus) internal {
+        (uint _debt, uint _coll, uint _stake, uint _liquidatorRewardShares, , ) = cdpManager.Cdps(
+            cdpId
+        );
+        uint _status = cdpManager.getCdpStatus(cdpId);
+
+        assertTrue(_debt == 0);
+        assertTrue(_coll == 0);
+        assertTrue(_stake == 0);
+        assertTrue(_liquidatorRewardShares == 0);
+        assertTrue(_status == expectedStatus);
+
+        assertTrue(cdpManager.rewardSnapshots(cdpId) == 0);
+        assertTrue(cdpManager.stFeePerUnitcdp(cdpId) == 0);
+    }
+
+    function _printSystemState() internal {
+        uint price = priceFeedMock.fetchPrice();
+        console.log("== Core State ==");
+        console.log("systemCollShares   :", activePool.getStEthColl());
+        console.log(
+            "systemStEthBalance :",
+            collateral.getPooledEthByShares(activePool.getStEthColl())
+        );
+        console.log("systemDebt         :", activePool.getEBTCDebt());
+        console.log("TCR                :", cdpManager.getTCR(price));
+        console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
+        console.log("stEthGlobalIndex   :", cdpManager.stFPPSg());
+        console.log("price              :", price);
+    }
+
+    function _getICR(bytes32 cdpId) internal returns (uint) {
+        uint price = priceFeedMock.fetchPrice();
+        return cdpManager.getCurrentICR(cdpId, price);
+    }
+
+    function _printAllCdps() internal {
+        uint price = priceFeedMock.fetchPrice();
+        uint numCdps = sortedCdps.getSize();
+        bytes32 node = sortedCdps.getLast();
+        address borrower = sortedCdps.getOwnerAddress(node);
+
+        while (borrower != address(0)) {
+            console.log("=== ", bytes32ToString(node));
+            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
+            console.log("collShares (realized) :", cdpManager.getCdpColl(node));
+            console.log("ICR                   :", cdpManager.getCurrentICR(node, price));
+            console.log(
+                "Percent of System     :",
+                (cdpManager.getCdpColl(node) * DECIMAL_PRECISION) / activePool.getStEthColl()
+            );
+            console.log("");
+
+            node = sortedCdps.getPrev(node);
+            borrower = sortedCdps.getOwnerAddress(node);
+        }
+    }
+
+    /// @dev Ensure a given CdpId is not in the Sorted Cdps LL.
+    /// @dev a Cdp should only be present in the LL when it is active.
+    function _assertCdpNotInSortedCdps(bytes32 cdpId) internal {
+        // use stated O(1) method to see if node with given Id is presnt
+        assertTrue(sortedCdps.contains(cdpId) == false);
+
+        // validate by walking list
+        bytes32 _currentCdpId = sortedCdps.getLast();
+
+        while (_currentCdpId != sortedCdps.nonExistId()) {
+            assertTrue(_currentCdpId != cdpId);
+            _currentCdpId = sortedCdps.getPrev(_currentCdpId);
+        }
+    }
+
+    // Grace Period, check never reverts so it's safe to use
+    function _waitUntilRMColldown() internal {
+        cdpManager.syncGracePeriod();
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
     }
 }

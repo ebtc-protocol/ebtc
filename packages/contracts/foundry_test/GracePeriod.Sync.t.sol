@@ -24,107 +24,179 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     address risky;
 
     function testBasicSynchOnEachOperation() public {
+        uint256 price = priceFeedMock.fetchPrice();
+
         // SKIPPED CAUSE BORING AF
-        // Open
+        // == Open CDP == //
+        console2.log("Open");
+        uint256 openSnap = vm.snapshot();
+
+        {
+            _openSafeCdp();
+            uint256 EXPECTED_OPEN_TCR = cdpManager.getTCR(price);
+            vm.revertTo(openSnap);
+
+            // NOTE: Ported the same code of open because foundry doesn't find the event
+            address payable[] memory users;
+            users = _utils.createUsers(1);
+            safeUser = users[0];
+
+            uint256 debt1 = 1000e18;
+            uint256 coll1 = _utils.calculateCollAmount(debt1, price, 1.30e18); // Comfy unliquidatable
+            dealCollateral(safeUser, coll1);
+            vm.startPrank(safeUser);
+            collateral.approve(address(borrowerOperations), type(uint256).max);
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_OPEN_TCR);
+            bytes32 safeId = borrowerOperations.openCdp(debt1, bytes32(0), bytes32(0), coll1);
+            vm.stopPrank();
+
+            // == Adjust CDP == //
+            console2.log("Adjust");
+
+            dealCollateral(safeUser, 12345);
+            uint256 adjustSnap = vm.snapshot();
+
+            vm.startPrank(safeUser);
+            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+            uint256 EXPECTED_ADJUST_TCR = cdpManager.getTCR(price);
+            vm.revertTo(adjustSnap);
+
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_ADJUST_TCR);
+            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+            vm.stopPrank();
+            vm.revertTo(adjustSnap);
+        }
+
+        // == Close CDP == //
+        {
+            console2.log("Close");
+            uint256 closeSnapshot = vm.snapshot();
+            // Open another so we can close it
+            bytes32 safeIdSecond = _openSafeCdp();
+
+            vm.startPrank(safeUser);
+            borrowerOperations.closeCdp(safeIdSecond);
+            uint256 EXPECTED_CLOSE_TCR = cdpManager.getTCR(price);
+            vm.revertTo(closeSnapshot);
+            vm.stopPrank();
+
+            // Open another so we can close it
+            safeIdSecond = _openSafeCdp();
+
+            vm.startPrank(safeUser);
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_CLOSE_TCR);
+            borrowerOperations.closeCdp(safeIdSecond);
+            vm.stopPrank();
+        }
+
+        // Revert back to here
+        vm.revertTo(openSnap);
+
+        // Do the rest (Redemptions and liquidations)
         _openSafeCdp();
-        // Adjust
-        // Close
 
         bytes32[] memory cdps = _openRiskyCdps(1);
 
-        // Adjust and close one cdp
-        // TODO
-
-        // Redeem
+        // == Redemptions == //
         // Get TCR after Redeem
         // Snapshot back
         // Then expect it to work
 
         uint256 biggerSnap = vm.snapshot();
-        uint256 price = priceFeedMock.fetchPrice();
         vm.startPrank(safeUser);
         _partialRedemption(1e17, price);
         // Get TCR here
-        uint256 EXPECTED_TCR = cdpManager.getTCR(price);
+        uint256 EXPECTED_REDEMPTION_TCR = cdpManager.getTCR(price);
         vm.revertTo(biggerSnap);
 
         vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR);
+        emit TCRNotified(EXPECTED_REDEMPTION_TCR);
         _partialRedemption(1e17, price);
 
         // Trigger Liquidations via Split (so price is constant)
         _triggerRMViaSplit();
-        cdpManager.beginRMLiquidationCooldown();
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        cdpManager.syncGracePeriod();
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
 
         // Liquidate 4x
         vm.startPrank(safeUser);
         uint256 liquidationSnapshotId = vm.snapshot(); // New snap for liquidations
 
         // == Liquidation 1 == //
-        console.log("Liq 1");
+        {
+            console.log("Liq 1");
 
-        // Try liquidating a cdp
-        cdpManager.liquidate(cdps[0]);
-        // Get TCR after Liquidation
-        uint256 EXPECTED_TCR_FIRST_LIQ = cdpManager.getTCR(price);
-        // Revert so we can verify Event
-        vm.revertTo(liquidationSnapshotId);
+            // Try liquidating a cdp
+            cdpManager.liquidate(cdps[0]);
+            // Get TCR after Liquidation
+            uint256 EXPECTED_TCR_FIRST_LIQ_TCR = cdpManager.getTCR(price);
+            // Revert so we can verify Event
+            vm.revertTo(liquidationSnapshotId);
 
-        // Verify it worked
-        vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_FIRST_LIQ);
-        cdpManager.liquidate(cdps[0]);
+            // Verify it worked
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_TCR_FIRST_LIQ_TCR);
+            cdpManager.liquidate(cdps[0]);
+        }
 
         // == Liquidate 2 == //
-        console.log("Liq 2");
+        {
+            console.log("Liq 2");
 
-        // Re-revert for next Op
-        vm.revertTo(liquidationSnapshotId);
+            // Re-revert for next Op
+            vm.revertTo(liquidationSnapshotId);
 
-        // Try liquidating a cdp partially
-        cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
-        uint256 EXPECTED_TCR_SECOND_LIQ = cdpManager.getTCR(price);
-        vm.revertTo(liquidationSnapshotId);
+            // Try liquidating a cdp partially
+            cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
+            uint256 EXPECTED_TCR_SECOND_LIQ_TCR = cdpManager.getTCR(price);
+            vm.revertTo(liquidationSnapshotId);
 
-        // Verify it worked
-        vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_SECOND_LIQ);
-        cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
+            // Verify it worked
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_TCR_SECOND_LIQ_TCR);
+            cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
+        }
 
         // == Liquidate 3 == //
-        console.log("Liq 3");
+        {
+            console.log("Liq 3");
 
-        // Re-revert for next Op
-        vm.revertTo(liquidationSnapshotId);
+            // Re-revert for next Op
+            vm.revertTo(liquidationSnapshotId);
 
-        // Try liquidating a cdp via the list (1)
-        cdpManager.liquidateCdps(1);
-        uint256 EXPECTED_TCR_THIRD_LIQ = cdpManager.getTCR(price);
-        vm.revertTo(liquidationSnapshotId);
+            // Try liquidating a cdp via the list (1)
+            cdpManager.liquidateCdps(1);
+            uint256 EXPECTED_TCR_THIRD_LIQ_TCR = cdpManager.getTCR(price);
+            vm.revertTo(liquidationSnapshotId);
 
-        // Verify it worked
-        vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_THIRD_LIQ);
-        cdpManager.liquidateCdps(1);
+            // Verify it worked
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_TCR_THIRD_LIQ_TCR);
+            cdpManager.liquidateCdps(1);
+        }
 
         // == Liquidate 4 == //
-        console.log("Liq 4");
+        {
+            console.log("Liq 4");
 
-        // Re-revert for next Op
-        vm.revertTo(liquidationSnapshotId);
+            // Re-revert for next Op
+            vm.revertTo(liquidationSnapshotId);
 
-        // Try liquidating a cdp via the list (2)
-        bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
-        cdpsToLiquidateBatch[0] = cdps[0];
-        cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
-        uint256 EXPECTED_TCR_FOURTH_LIQ = cdpManager.getTCR(price);
-        vm.revertTo(liquidationSnapshotId);
+            // Try liquidating a cdp via the list (2)
+            bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
+            cdpsToLiquidateBatch[0] = cdps[0];
+            cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
+            uint256 EXPECTED_TCR_FOURTH_LIQ_TCR = cdpManager.getTCR(price);
+            vm.revertTo(liquidationSnapshotId);
 
-        vm.expectEmit(false, false, false, true);
-        emit TCRNotified(EXPECTED_TCR_FOURTH_LIQ);
-        cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
-        vm.revertTo(liquidationSnapshotId);
+            vm.expectEmit(false, false, false, true);
+            emit TCRNotified(EXPECTED_TCR_FOURTH_LIQ_TCR);
+            cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
+            vm.revertTo(liquidationSnapshotId);
+        }
 
         vm.stopPrank();
     }
@@ -157,8 +229,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 _curPrice = priceFeedMock.getPrice();
         uint256 debt1 = 1000e18;
         uint256 coll1 = _utils.calculateCollAmount(debt1, _curPrice, 1.30e18); // Comfy unliquidatable
-
-        // TODO: Add a check here for TCR being computed correctly and sent properly
 
         return _openTestCDP(safeUser, coll1, debt1);
     }

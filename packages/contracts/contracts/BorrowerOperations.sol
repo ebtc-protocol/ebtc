@@ -399,10 +399,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (newTCR < CCR) {
                 // Notify RM
-                cdpManager.notifyBeginRM(newTCR);
+                cdpManager.notifyStartGracePeriod(newTCR);
             } else {
                 // Notify Back to Normal Mode
-                cdpManager.notifyEndRM(newTCR);
+                cdpManager.notifyEndGracePeriod(newTCR);
             }
         } else {
             _requireICRisAboveMCR(vars.ICR);
@@ -411,7 +411,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            cdpManager.notifyEndRM(newTCR);
+            cdpManager.notifyEndGracePeriod(newTCR);
         }
 
         // Set the cdp struct's properties
@@ -476,7 +476,7 @@ contract BorrowerOperations is
 
         // == Grace Period == //
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
-        cdpManager.notifyEndRM(newTCR);
+        cdpManager.notifyEndGracePeriod(newTCR);
 
         cdpManager.removeStake(_cdpId);
 
@@ -658,10 +658,10 @@ contract BorrowerOperations is
             // We check with newTCR
             if (_vars.newTCR < CCR) {
                 // Notify RM
-                cdpManager.notifyBeginRM(_vars.newTCR);
+                cdpManager.notifyStartGracePeriod(_vars.newTCR);
             } else {
                 // Notify Back to Normal Mode
-                cdpManager.notifyEndRM(_vars.newTCR);
+                cdpManager.notifyEndGracePeriod(_vars.newTCR);
             }
         } else {
             // if Normal Mode
@@ -671,7 +671,7 @@ contract BorrowerOperations is
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
             // Always Notify Back to Normal Mode
-            cdpManager.notifyEndRM(_vars.newTCR);
+            cdpManager.notifyEndGracePeriod(_vars.newTCR);
         }
     }
 

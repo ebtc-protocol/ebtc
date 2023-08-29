@@ -20,7 +20,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
     // == DELAY TEST == //
     // Delay of 15 minutes is enforced to liquidate CDPs in RM that are not below MCR - DONE
-    // No Delay for the Portion of CDPs which is below MCR - TODO
+    // No Delay for the Portion of CDPs which is below MCR - DONE
 
     // RM Triggered via Price - DONE
     // RM Triggered via Split - DONE
@@ -31,7 +31,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     // RM untriggered via Price - DONE
     // RM untriggered via Split - DONE
 
-    // RM untriggered via User Operations
+    // RM untriggered via User Operations - DONE
     // All operations where the system goes off of RM should cancel the countdown
 
     /**
@@ -200,12 +200,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         _assertSuccessOnAllLiquidationsDegen(cdp);
     }
 
@@ -214,12 +214,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertRevertOnAllLiquidations(cdps);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         _assertAllLiquidationSuccess(cdps);
     }
 
@@ -347,7 +347,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         assertLt(TCR, 1.25e18, "!RM");
 
         // Set grace period before action which exits RM
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
 
         _assertRevertOnAllLiquidations(cdps);
 
@@ -478,22 +478,22 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace period timestamp is now
         uint recoveryModeSetTimestamp = block.timestamp;
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp(),
             block.timestamp,
-            "lastRecoveryModeTimestamp set time"
+            "lastGracePeriodStartTimestamp set time"
         );
 
         // Liquidations still revert
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp(),
             recoveryModeSetTimestamp,
-            "lastRecoveryModeTimestamp set time"
+            "lastGracePeriodStartTimestamp set time"
         );
 
         // Liquidations work
@@ -503,22 +503,22 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     function _postExitRMLiquidationChecks(bytes32[] memory cdps) internal {
         // Grace period timestamp is now
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
-            cdpManager.UNSET_TIMESTAMP_FLAG(),
-            "lastRecoveryModeTimestamp unset"
+            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.UNSET_TIMESTAMP(),
+            "lastGracePeriodStartTimestamp unset"
         );
 
         // Liquidations still revert
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
-            cdpManager.UNSET_TIMESTAMP_FLAG(),
-            "lastRecoveryModeTimestamp unset"
+            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.UNSET_TIMESTAMP(),
+            "lastGracePeriodStartTimestamp unset"
         );
 
         // Only liquidations valid under normal work

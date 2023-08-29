@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-
 import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
@@ -75,12 +74,12 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             // == Grace Period == //
             require(
-                lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG,
-                "Grace period not started, call `notifyBeginRM`"
+                lastGracePeriodStartTimestamp != UNSET_TIMESTAMP,
+                "CdpManager: Recovery Mode grace period not started"
             );
             require(
-                block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations,
-                "Grace period yet to finish"
+                block.timestamp > lastGracePeriodStartTimestamp + recoveryModeGracePeriod,
+                "CdpManager: Recovery mode grace period still in effect"
             );
         } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
 
@@ -125,36 +124,48 @@ contract LiquidationLibrary is CdpManagerStorage {
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
     ) internal {
-        uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
+        LiquidationValues memory liquidationValues;
+
+        uint256 startingSystemDebt = _recoveryState.entireSystemDebt;
+        uint256 startingSystemColl = _recoveryState.entireSystemColl;
 
         if (_liqState._partialAmount == 0) {
             (
-                totalDebtToBurn,
-                totalColToSend,
-                totalDebtToRedistribute,
-                totalColReward
+                liquidationValues.debtToOffset,
+                liquidationValues.totalCollToSendToLiquidator,
+                liquidationValues.debtToRedistribute,
+                liquidationValues.collReward,
+                liquidationValues.collSurplus
             ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
         } else {
-            (totalDebtToBurn, totalColToSend) = _liquidateCDPPartially(_liqState);
-            if (totalColToSend == 0 && totalDebtToBurn == 0) {
+            (
+                liquidationValues.debtToOffset,
+                liquidationValues.totalCollToSendToLiquidator
+            ) = _liquidateCDPPartially(_liqState);
+            if (
+                liquidationValues.totalCollToSendToLiquidator == 0 &&
+                liquidationValues.debtToOffset == 0
+            ) {
                 // retry with fully liquidation
                 (
-                    totalDebtToBurn,
-                    totalColToSend,
-                    totalDebtToRedistribute,
-                    totalColReward
+                    liquidationValues.debtToOffset,
+                    liquidationValues.totalCollToSendToLiquidator,
+                    liquidationValues.debtToRedistribute,
+                    liquidationValues.collReward,
+                    liquidationValues.collSurplus
                 ) = _liquidateCDPByExternalLiquidator(_liqState, _recoveryState);
             }
         }
 
         _finalizeExternalLiquidation(
-            totalDebtToBurn,
-            totalColToSend,
-            totalDebtToRedistribute,
-            totalColReward
+            liquidationValues.debtToOffset,
+            liquidationValues.totalCollToSendToLiquidator,
+            liquidationValues.debtToRedistribute,
+            liquidationValues.collReward,
+            liquidationValues.collSurplus,
+            startingSystemColl,
+            startingSystemDebt,
+            _liqState._price
         );
     }
 
@@ -163,7 +174,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _liquidateCDPByExternalLiquidator(
         LocalVar_InternalLiquidate memory _liqState,
         LocalVar_RecoveryLiquidate memory _recoveryState
-    ) private returns (uint256, uint256, uint256, uint256) {
+    ) private returns (uint256, uint256, uint256, uint256, uint256) {
         if (_liqState._recoveryModeAtStart) {
             LocalVar_RecoveryLiquidate memory _outputState = _liquidateSingleCDPInRecoveryMode(
                 _recoveryState
@@ -178,7 +189,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _outputState.totalDebtToBurn,
                 _outputState.totalColToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward
+                _outputState.totalColReward,
+                _outputState.totalColSurplus
             );
         } else {
             LocalVar_InternalLiquidate memory _outputState = _liquidateSingleCDPInNormalMode(
@@ -188,7 +200,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _outputState.totalDebtToBurn,
                 _outputState.totalColToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward
+                _outputState.totalColReward,
+                _outputState.totalColSurplus
             );
         }
     }
@@ -507,51 +520,22 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 totalDebtToBurn,
         uint256 totalColToSend,
         uint256 totalDebtToRedistribute,
-        uint256 totalColReward
+        uint256 totalColReward,
+        uint256 totalColSurplus,
+        uint256 systemInitialCollShares,
+        uint256 systemInitialDebt,
+        uint256 price
     ) internal {
         // update the staking and collateral snapshots
         _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 
-        // E: Total Debt = Debt - TotalDebtToBurn
-        // E: Total Coll = Coll - totalColToSend
-        // From here we can determine if we're in RM or not
-
-        // We need the totalDebt
-        // We need the totalColl
-        // Then compute
-        // TODO: WE CALL THIS TWICE FOR NOW, FIX AFTER TESTED
-        {
-            uint256 price = priceFeed.fetchPrice(); // We 100% Had this
-            // Most likely we also had the rest of the stuff
-
-            // TODO: RE-CHECK!! // TODO: Ideally bring up || Can do by adding to struct
-            // TODO: Virtual Accounting here requires: CollNew = CollAtStart - Surplus - TotalColToSend
-            // TODO: Verify
-
-            uint256 totalSharesAtStart = getEntireSystemColl(); // NOTE: This is getting the updated coll after ColSurplus
-            // Changing this value requires being cognizant of the changes from Surplus, not just to AP
-
-            uint256 totalEBTCSupplyAtStart = _getEntireSystemDebt();
-
-            uint256 newTotalShares = totalSharesAtStart - totalColToSend;
-            uint256 newTotalDebt = totalEBTCSupplyAtStart - totalDebtToBurn;
-            // Compute new TCR with these
-            uint newTCR = LiquityMath._computeCR(
-                collateral.getPooledEthByShares(newTotalShares),
-                newTotalDebt,
-                price
-            );
-
-            if (newTCR < CCR) {
-                // Notify RM
-                _notifyBeginRM(newTCR);
-            } else {
-                // Notify outside RM
-                _notifyEndRM(newTCR);
-            }
-        }
+        _syncGracePeriodForGivenValues(
+            systemInitialCollShares - totalColToSend - totalColSurplus,
+            systemInitialDebt - totalDebtToBurn,
+            price
+        );
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
@@ -566,8 +550,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
-
-        // checkLiquidateCoolDownAndReset(); // TODO: This works correctly, use this to compare vs new impl
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -629,6 +611,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bytes32[] memory _batchedCdps;
         if (vars.recoveryModeAtStart) {
             _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
+            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
@@ -639,6 +622,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         } else {
             // if !vars.recoveryModeAtStart
             _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
+            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
             totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
         }
 
@@ -653,7 +637,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
-            totals.totalCollReward
+            totals.totalCollReward,
+            totals.totalCollSurplus,
+            systemColl,
+            systemDebt,
+            vars.price
         );
     }
 
@@ -771,7 +759,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
-            totals.totalCollReward
+            totals.totalCollReward,
+            totals.totalCollSurplus,
+            systemColl,
+            systemDebt,
+            vars.price
         );
     }
 
@@ -1034,8 +1026,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         // ICR < TCR and we have waited enough
         return
             icr < tcr &&
-            lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG &&
-            block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
+            lastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
+            block.timestamp > lastGracePeriodStartTimestamp + recoveryModeGracePeriod;
     }
 
     function _canLiquidateInCurrentMode(

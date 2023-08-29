@@ -20,97 +20,105 @@ import "./Dependencies/AuthNoOwner.sol";
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
-    uint128 public constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
+    uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
+    uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes;
 
     // TODO: IMPROVE THIS!!!
-    uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
-    uint128 public waitTimeFromRMTriggerToLiquidations = 15 minutes;
+    uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
+    uint128 public recoveryModeGracePeriod = MINIMUM_GRACE_PERIOD;
 
-    // TODO: Pitfal is fee split // NOTE: Solved by calling `checkLiquidateCoolDownAndReset` on external operations from BO
+    // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
 
-    /// @dev Trusted Function from BO
-    /// @dev BO accrues totals before adjusting them
-    ///     To maintain CEI compliance we use this trusted function
-    function notifyBeginRM(uint256 tcr) external {
+    /// @notice Start the recovery mode grace period, if the system is in RM and the grace period timestamp has not already been set
+    /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
+    /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
+    /// @dev To maintain CEI compliance we use this trusted function
+    function notifyStartGracePeriod(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
+        _startGracePeriod(tcr);
+    }
 
-        _notifyBeginRM(tcr);
+    /// @notice End the recovery mode grace period, if the system is no longer in RM
+    /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
+    /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
+    /// @dev To maintain CEI compliance we use this trusted function
+    function notifyEndGracePeriod(uint256 tcr) external {
+        _requireCallerIsBorrowerOperations();
+        _endGracePeriod(tcr);
     }
 
     /// @dev Internal notify called by Redemptions and Liquidations
-    function _notifyBeginRM(uint256 tcr) internal {
-        emit TCRNotified(tcr);
+    /// @dev Specified TCR is emitted for notification pruposes regardless of whether the Grace Period timestamp is set
+    function _startGracePeriod(uint256 _tcr) internal {
+        emit TCRNotified(_tcr);
 
-        _beginRMLiquidationCooldown();
-    }
-
-    /// @dev Trusted Function from BO
-    /// @dev BO accrues totals before adjusting them
-    ///     To maintain CEI compliance we use this trusted function
-    function notifyEndRM(uint256 tcr) external {
-        _requireCallerIsBorrowerOperations();
-
-        _notifyEndRM(tcr);
-    }
-
-    /// @dev Internal notify called by Redemptions and Liquidations
-    function _notifyEndRM(uint256 tcr) internal {
-        emit TCRNotified(tcr);
-
-        _stopRMLiquidationCooldown();
-    }
-
-    /// @dev Checks that the system is in RM
-    function beginRMLiquidationCooldown() external {
-        // Require we're in RM
-        uint256 price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(isRecoveryMode);
-
-        _beginRMLiquidationCooldown();
-    }
-
-    function _beginRMLiquidationCooldown() internal {
-        // Arm the countdown
-        if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
-            lastRecoveryModeTimestamp = uint128(block.timestamp);
+        if (lastGracePeriodStartTimestamp == UNSET_TIMESTAMP) {
+            lastGracePeriodStartTimestamp = uint128(block.timestamp);
 
             emit GracePeriodStart();
         }
     }
 
-    /// @dev Checks that the system is not in RM
-    function stopRMLiquidationCooldown() external {
-        // Require we're in RM
-        uint256 price = priceFeed.fetchPrice();
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
-        require(!isRecoveryMode);
+    /// @notice Clear RM Grace Period timestamp if it has been set
+    /// @notice No input validation, calling function must confirm that the system is not in recovery mode to be valid
+    /// @dev Specified TCR is emitted for notification pruposes regardless of whether the Grace Period timestamp is set
+    /// @dev Internal notify called by Redemptions and Liquidations
+    function _endGracePeriod(uint256 _tcr) internal {
+        emit TCRNotified(_tcr);
 
-        _stopRMLiquidationCooldown();
-    }
-
-    function _stopRMLiquidationCooldown() internal {
-        // Disarm the countdown
-        if (lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
-            lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
+        if (lastGracePeriodStartTimestamp != UNSET_TIMESTAMP) {
+            lastGracePeriodStartTimestamp = UNSET_TIMESTAMP;
 
             emit GracePeriodEnd();
         }
     }
 
     /// TODO: obv optimizations
-    function checkLiquidateCoolDownAndReset() public {
+    function syncGracePeriod() public {
         uint256 price = priceFeed.fetchPrice();
         uint256 tcr = _getTCR(price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
 
-        emit TCRNotified(tcr);
-
         if (isRecoveryMode) {
-            _beginRMLiquidationCooldown();
+            _startGracePeriod(tcr);
         } else {
-            _stopRMLiquidationCooldown();
+            _endGracePeriod(tcr);
         }
+    }
+
+    /// @dev Set RM grace period based on specified system collShares, system debt, and price
+    /// @dev Variant for internal use in redemptions and liquidations
+    function _syncGracePeriodForGivenValues(
+        uint systemCollShares,
+        uint systemDebt,
+        uint price
+    ) internal {
+        // Compute TCR with specified values
+        uint newTCR = LiquityMath._computeCR(
+            collateral.getPooledEthByShares(systemCollShares),
+            systemDebt,
+            price
+        );
+
+        if (newTCR < CCR) {
+            // Notify system is in RM
+            _startGracePeriod(newTCR);
+        } else {
+            // Notify system is outside RM
+            _endGracePeriod(newTCR);
+        }
+    }
+
+    /// @notice Set grace period duratin
+    /// @notice Permissioned governance function, must set grace period duration above hardcoded minimum
+    /// @param _gracePeriod new grace period duration, in seconds
+    function setGracePeriod(uint128 _gracePeriod) external requiresAuth {
+        require(
+            _gracePeriod >= MINIMUM_GRACE_PERIOD,
+            "CdpManager: Grace period below minimum duration"
+        );
+        recoveryModeGracePeriod = _gracePeriod;
+        emit GracePeriodSet(_gracePeriod);
     }
 
     string public constant NAME = "CdpManager";
@@ -478,7 +486,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Call this if you want to accrue feeSplit
     function syncPendingGlobalState() public {
         _applyPendingGlobalState(); // Apply // Could trigger RM
-        checkLiquidateCoolDownAndReset(); // Synch Grace Period
+        syncGracePeriod(); // Synch Grace Period
     }
 
     // Update the global index via collateral token

@@ -6,11 +6,11 @@ import "./ICollSurplusPool.sol";
 import "./IEBTCToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
-import "./IRmLiquidationsChecker.sol";
+import "./IRecoveryModeGracePeriod.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManagerData is IRmLiquidationsChecker {
+interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
     event LiquidationLibraryAddressChanged(address _liquidationLibraryAddress);
@@ -195,16 +195,21 @@ interface ICdpManagerData is IRmLiquidationsChecker {
         uint remainingEBTC;
         uint totalEBTCToRedeem;
         uint totalETHDrawn;
+        uint totalCollSharesSurplus;
         uint ETHFee;
         uint ETHToSendToRedeemer;
         uint decayedBaseRate;
         uint price;
         uint totalEBTCSupplyAtStart;
+        uint totalCollSharesAtStart;
+        uint tcrAtStart;
     }
 
     struct SingleRedemptionValues {
         uint eBtcToRedeem;
         uint stEthToRecieve;
+        uint collSurplus;
+        uint liquidatorRewardShares;
         bool cancelledPartial;
         bool fullRedemption;
     }
