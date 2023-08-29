@@ -612,6 +612,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bytes32[] memory _batchedCdps;
         if (vars.recoveryModeAtStart) {
             _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
+            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
@@ -622,6 +623,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         } else {
             // if !vars.recoveryModeAtStart
             _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
+            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
             totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
         }
 
