@@ -221,6 +221,18 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertEq(cdpManager.beta(), newBeta);
     }
 
+    function test_CdpManagerSetGracePeriod_Auth(uint128 newGracePeriod) public {
+        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        address noPermissionsUser = _utils.getNextUserAddress();
+        vm.prank(noPermissionsUser);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        cdpManager.setGracePeriod(newGracePeriod);
+    }
+
     function test_CdpManagerSetGracePeriodValid_Succeeds(uint128 newGracePeriod) public {
         vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
@@ -233,7 +245,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertEq(cdpManager.recoveryModeGracePeriod(), newGracePeriod);
     }
 
-     /// @dev Confirm extending the grace period works
+    /// @dev Confirm extending the grace period works
     function test_CdpManagerSetGracePeriodValid_IsEnforcedForUnsetGracePeriod(
         uint128 newGracePeriod
     ) public {
