@@ -27,7 +27,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.fetchPrice();
 
         // SKIPPED CAUSE BORING AF
-        // == Open == //
+        // == Open CDP == //
         console2.log("Open");
         uint256 openSnap = vm.snapshot();
 
@@ -51,7 +51,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             bytes32 safeId = borrowerOperations.openCdp(debt1, bytes32(0), bytes32(0), coll1);
             vm.stopPrank();
 
-            // Adjust
+            // == Adjust CDP == //
             console2.log("Adjust");
 
             dealCollateral(safeUser, 12345);
@@ -69,7 +69,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.revertTo(adjustSnap);
         }
 
-        // Close
+        // == Close CDP == //
         {
             console2.log("Close");
             uint256 closeSnapshot = vm.snapshot();
@@ -100,10 +100,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         bytes32[] memory cdps = _openRiskyCdps(1);
 
-        // Adjust and close one cdp
-        // TODO
-
-        // Redeem
+        // == Redemptions == //
         // Get TCR after Redeem
         // Snapshot back
         // Then expect it to work
@@ -232,8 +229,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 _curPrice = priceFeedMock.getPrice();
         uint256 debt1 = 1000e18;
         uint256 coll1 = _utils.calculateCollAmount(debt1, _curPrice, 1.30e18); // Comfy unliquidatable
-
-        // TODO: Add a check here for TCR being computed correctly and sent properly
 
         return _openTestCDP(safeUser, coll1, debt1);
     }

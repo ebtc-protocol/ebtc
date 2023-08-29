@@ -20,7 +20,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
     // == DELAY TEST == //
     // Delay of 15 minutes is enforced to liquidate CDPs in RM that are not below MCR - DONE
-    // No Delay for the Portion of CDPs which is below MCR - TODO
+    // No Delay for the Portion of CDPs which is below MCR - DONE
 
     // RM Triggered via Price - DONE
     // RM Triggered via Split - DONE
@@ -31,7 +31,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     // RM untriggered via Price - DONE
     // RM untriggered via Split - DONE
 
-    // RM untriggered via User Operations
+    // RM untriggered via User Operations - DONE
     // All operations where the system goes off of RM should cancel the countdown
 
     /**
