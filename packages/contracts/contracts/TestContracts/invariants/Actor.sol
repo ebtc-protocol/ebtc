@@ -8,6 +8,8 @@ import {IERC20} from "../../Dependencies/IERC20.sol";
 import {AssertionHelper} from "./AssertionHelper.sol";
 
 contract Actor is IERC3156FlashBorrower, AssertionHelper {
+    error Simulate(bool, bytes);
+
     address[] internal tokens;
     address[] internal callers;
 
@@ -32,6 +34,20 @@ contract Actor is IERC3156FlashBorrower, AssertionHelper {
         uint256 value
     ) public returns (bool success, bytes memory returnData) {
         (success, returnData) = address(_target).call{value: value}(_calldata);
+    }
+
+    function simulate(address[] memory _targets, bytes[] memory _calldatas) public {
+        uint256 length = _targets.length;
+
+        bool success;
+        bytes memory returnData;
+
+        for (uint256 i = 0; i < length; i++) {
+            (success, returnData) = address(_targets[i]).call(_calldatas[i]);
+            require(success, _getRevertMsg(returnData));
+        }
+
+        revert Simulate(success, returnData);
     }
 
     receive() external payable {}
