@@ -876,7 +876,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_ownerPendingDebt.add(_bobPendingDebt).toString(), _badDebt.toString()); 
   })
   
-  it.only("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
       // Cdps undercollateralized under minimum liq premium [<3% ICR]
       await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
@@ -893,7 +893,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await openCdp({ ICR: toBN(dec(5400, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(3)), extraParams: { from: owner } })
       let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
 
-      // price slump to recovery mode
+      // price slump to Recovery Mode
       let _newPrice = dec(175, 13);
       await priceFeed.setPrice(_newPrice);
       let _tcr = await cdpManager.getTCR(_newPrice);
@@ -931,7 +931,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await openCdp({ ICR: toBN(dec(5800, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(4)), extraParams: { from: owner } })
       let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
 	  
-      // price slump to recovery mode
+      // price keep system in Normal Mode
       let _newPrice = dec(175, 13);
       await priceFeed.setPrice(_newPrice);
       let _tcr = await cdpManager.getTCR(_newPrice);
