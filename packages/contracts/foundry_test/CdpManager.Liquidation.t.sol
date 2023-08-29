@@ -635,6 +635,84 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
     }
 
+    /// @dev open Cdp then with price change to a fuzzed _liqICR
+    /// @dev According to the specific range for given _liqICR
+    /// @dev full liquidation premium should match expected calculation:
+    /// @dev Cdps <3% ICR: all Coll as incentive, all debt redistributed
+    /// @dev Cdps [3% < ICR < 100%]: 3% as incentive, all remaining debt redistributed
+    /// @dev Cdps [100% <= ICR < 110%]: min(3%, 110%-ICR) as incentive, all remaining debt redistributed if below 103%
+    /// @dev Cdps [110% <= ICR < TCR]: 10% as Incentive, no debt redistribution
+    function test_SingleLiqPremiumFuzz(uint _liqICR) public {
+        uint _goodICR = 135e16;
+        uint _belowCCR = 124e16;
+
+        // ensure liquidation ICR falls in reasonable range
+        vm.assume(_liqICR >= 1e15);
+        vm.assume(_liqICR < _belowCCR);
+
+        // ensure price change would give expected fuzz ICR
+        uint _originalPrice = priceFeedMock.fetchPrice();
+        uint _newPrice = (_originalPrice * _liqICR) / _goodICR;
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], _goodICR);
+        bool _noNeedRM = _liqICR < cdpManager.MCR();
+
+        // ensure more than one CDP
+        uint _userColl = cdpManager.getCdpColl(userCdpid);
+        uint _userDebt = cdpManager.getCdpDebt(userCdpid);
+        if (_noNeedRM) {
+            _singleCdpSetup(users[0], 8000e16);
+        } else {
+            uint _debt = ((_userColl * 2 * _newPrice) / _belowCCR) - _userDebt;
+            _openTestCDP(users[0], _userColl + cdpManager.LIQUIDATOR_REWARD(), _debt);
+        }
+
+        // price drop
+        priceFeedMock.setPrice(_newPrice);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(userCdpid, _newPrice),
+            _liqICR,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        if (!_noNeedRM) {
+            assertTrue(cdpManager.getTCR(_newPrice) < cdpManager.CCR());
+            // FIXME _waitUntilRMColldown();
+        }
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _liqStipend = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+        uint _maxReward = _userColl + _liqStipend;
+        uint _expectedReward;
+        if (_noNeedRM) {
+            _expectedReward = _maxReward;
+        } else {
+            _expectedReward = _liqStipend + ((_userDebt * cdpManager.MCR()) / _newPrice);
+            if (_expectedReward > _maxReward) {
+                _expectedReward = _maxReward;
+            }
+        }
+
+        vm.prank(_liquidator);
+        if (_liqICR % 2 == 0) {
+            cdpManager.liquidate(userCdpid);
+        } else {
+            bytes32[] memory _cids = new bytes32[](1);
+            _cids[0] = userCdpid;
+            cdpManager.batchLiquidateCdps(_cids);
+        }
+        assertTrue(sortedCdps.contains(userCdpid) == false);
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after fuzz-premium single CDP liquidation!!!"
+        );
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateSingleCDP with the appropriate arguments
