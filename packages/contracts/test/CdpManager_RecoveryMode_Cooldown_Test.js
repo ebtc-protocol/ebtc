@@ -49,7 +49,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
-    _coolDownWait = await cdpManager.waitTimeFromRMTriggerToLiquidations();
+    _coolDownWait = await cdpManager.recoveryModeGracePeriod();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;

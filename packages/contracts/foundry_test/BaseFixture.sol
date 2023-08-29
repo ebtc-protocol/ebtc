@@ -54,6 +54,8 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     bytes4 private constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
     bytes4 private constant SET_REDEMPETIONS_PAUSED_SIG =
         bytes4(keccak256(bytes("setRedemptionsPaused(bool)")));
+    bytes4 private constant SET_GRACE_PERIOD_SIG =
+        bytes4(keccak256(bytes("setGracePeriod(uint128)")));
 
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
@@ -332,6 +334,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_BETA_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPETIONS_PAUSED_SIG, true);
+        authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
 
@@ -505,6 +508,6 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
         cdpManager.syncGracePeriod();
-        vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
     }
 }

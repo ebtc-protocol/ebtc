@@ -21,10 +21,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
     uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
+    uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes;
 
     // TODO: IMPROVE THIS!!!
     uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
-    uint128 public waitTimeFromRMTriggerToLiquidations = 15 minutes;
+    uint128 public recoveryModeGracePeriod = MINIMUM_GRACE_PERIOD;
 
     // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
 
@@ -106,6 +107,18 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             // Notify system is outside RM
             _endGracePeriod(newTCR);
         }
+    }
+
+    /// @notice Set grace period duratin
+    /// @notice Permissioned governance function, must set grace period duration above hardcoded minimum
+    /// @param _gracePeriod new grace period duration, in seconds
+    function setGracePeriod(uint128 _gracePeriod) external requiresAuth {
+        require(
+            _gracePeriod >= MINIMUM_GRACE_PERIOD,
+            "CdpManager: Grace period below minimum duration"
+        );
+        recoveryModeGracePeriod = _gracePeriod;
+        emit GracePeriodSet(_gracePeriod);
     }
 
     string public constant NAME = "CdpManager";

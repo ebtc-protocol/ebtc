@@ -8,6 +8,7 @@ interface IRecoveryModeGracePeriod {
     // NOTE: Ts is implicit in events (it's added by GETH)
     event GracePeriodStart();
     event GracePeriodEnd();
+    event GracePeriodSet(uint256 _recoveryModeGracePeriod);
 
     function syncGracePeriod() external;
 
