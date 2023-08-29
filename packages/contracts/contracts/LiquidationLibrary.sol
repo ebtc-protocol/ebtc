@@ -74,11 +74,12 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             // == Grace Period == //
             require(
-                lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG,
-                "Grace period not started, call `notifyBeginRM`"
+                lastGracePeriodStartTimestamp != UNSET_TIMESTAMP,
+                "Grace period not started, call `notifyStartGracePeriod`"
             );
             require(
-                block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations,
+                block.timestamp >
+                    lastGracePeriodStartTimestamp + waitTimeFromRMTriggerToLiquidations,
                 "Grace period yet to finish"
             );
         } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
@@ -531,7 +532,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 
-        _syncRecoveryModeGracePeriod(
+        _syncGracePeriodForGivenValues(
             systemInitialCollShares - totalColToSend - totalColSurplus,
             systemInitialDebt - totalDebtToBurn,
             price
@@ -1024,8 +1025,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         // ICR < TCR and we have waited enough
         return
             icr < tcr &&
-            lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG &&
-            block.timestamp > lastRecoveryModeTimestamp + waitTimeFromRMTriggerToLiquidations;
+            lastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
+            block.timestamp > lastGracePeriodStartTimestamp + waitTimeFromRMTriggerToLiquidations;
     }
 
     function _canLiquidateInCurrentMode(

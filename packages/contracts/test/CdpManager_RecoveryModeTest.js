@@ -2840,7 +2840,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -2914,7 +2914,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -2982,7 +2982,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3048,7 +3048,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3165,7 +3165,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3536,7 +3536,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3588,7 +3588,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3658,7 +3658,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3726,7 +3726,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3792,7 +3792,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3847,7 +3847,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -3919,7 +3919,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
 
@@ -4196,7 +4196,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // but not E as there are not enough funds in liquidator	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.checkLiquidateCoolDownAndReset();
+    await cdpManager.syncGracePeriod();
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
     

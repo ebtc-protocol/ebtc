@@ -200,7 +200,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
@@ -214,7 +214,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertRevertOnAllLiquidations(cdps);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertRevertOnAllLiquidations(cdps);
 
@@ -347,7 +347,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         assertLt(TCR, 1.25e18, "!RM");
 
         // Set grace period before action which exits RM
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.syncGracePeriod();
 
         _assertRevertOnAllLiquidations(cdps);
 
@@ -478,9 +478,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace period timestamp is now
         uint recoveryModeSetTimestamp = block.timestamp;
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp(),
             block.timestamp,
-            "lastRecoveryModeTimestamp set time"
+            "lastGracePeriodStartTimestamp set time"
         );
 
         // Liquidations still revert
@@ -491,9 +491,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp(),
             recoveryModeSetTimestamp,
-            "lastRecoveryModeTimestamp set time"
+            "lastGracePeriodStartTimestamp set time"
         );
 
         // Liquidations work
@@ -503,9 +503,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     function _postExitRMLiquidationChecks(bytes32[] memory cdps) internal {
         // Grace period timestamp is now
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
-            cdpManager.UNSET_TIMESTAMP_FLAG(),
-            "lastRecoveryModeTimestamp unset"
+            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.UNSET_TIMESTAMP(),
+            "lastGracePeriodStartTimestamp unset"
         );
 
         // Liquidations still revert
@@ -516,9 +516,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastRecoveryModeTimestamp(),
-            cdpManager.UNSET_TIMESTAMP_FLAG(),
-            "lastRecoveryModeTimestamp unset"
+            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.UNSET_TIMESTAMP(),
+            "lastGracePeriodStartTimestamp unset"
         );
 
         // Only liquidations valid under normal work
