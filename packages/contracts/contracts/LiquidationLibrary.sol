@@ -550,8 +550,6 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
         activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
-
-        // checkLiquidateCoolDownAndReset(); // TODO: This works correctly, use this to compare vs new impl
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
