@@ -76,7 +76,7 @@ abstract contract PropertiesDescriptions {
     // Redemptions
     ///////////////////////////////////////////////////////
 
-    string constant R_07 = "R-07: TCR should be slightly improved after every redemption";
+    string constant R_07 = "R-07: TCR should not decrease after redemptions";
     string constant R_08 = "R-08: The user eBTC balance should be used to pay the system debt";
 
     ///////////////////////////////////////////////////////

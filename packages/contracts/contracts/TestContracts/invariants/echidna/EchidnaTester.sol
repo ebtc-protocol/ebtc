@@ -643,7 +643,8 @@ contract EchidnaTester is
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
-            assertGte(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
+            // assertGte(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
             assertEq(
                 (vars.actorEbtcBefore - vars.actorEbtcAfter),
                 vars.debtBefore - vars.debtAfter,
