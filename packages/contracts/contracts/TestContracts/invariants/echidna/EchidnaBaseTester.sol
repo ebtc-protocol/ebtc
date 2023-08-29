@@ -47,7 +47,7 @@ abstract contract EchidnaBaseTester {
 
     uint internal numberOfCdps;
 
-    address internal constant hevm = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
+    IHevm internal constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     uint internal constant diff_tolerance = 0.000000000002e18; //compared to 1e18
     uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
     uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
