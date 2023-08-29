@@ -321,12 +321,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        // Only check when the collateral exchange rate from share is above 1e18
-        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
-        if (collateral.getPooledEthByShares(DECIMAL_PRECISION) >= DECIMAL_PRECISION) {
-            //@audit why do we get this value again? we can calculate it locally
-            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
-        }
+        _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
 
         cdpManager.updateCdp(_cdpId, _borrower, vars.coll, vars.debt, vars.newColl, vars.newDebt);
 

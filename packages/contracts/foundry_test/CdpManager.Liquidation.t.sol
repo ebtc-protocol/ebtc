@@ -9,6 +9,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
     mapping(bytes32 => bool) private _cdpLeftActive;
+    uint private ICR_COMPARE_TOLERANCE = 1000000; //in the scale of 1e18
 
     ////////////////////////////////////////////////////////////////////////////
     // Liquidation Invariants for ebtc system
@@ -413,6 +414,234 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _ensureSystemInvariants();
     }
 
+    /// @dev Test a sequence of liquidations where RM is exited during the sequence
+    /// @dev All subsequent CDPs in the sequence that are only liquidatable in RM should be skipped
+    function test_SequenceLiqRecoveryModeSwitch() public {
+        (bytes32[] memory cdpIds, uint _newPrice) = _sequenceRecoveryModeSwitchSetup();
+
+        // ensure we are in RM now
+        uint _currentTCR = cdpManager.getTCR(_newPrice);
+        assertTrue(_currentTCR < cdpManager.CCR());
+
+        // prepare sequence liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        // FIXME _waitUntilRMColldown();
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
+            cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
+            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getCurrentICR(cdpIds[1], _newPrice))) /
+                _newPrice) +
+            cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
+
+        vm.prank(_liquidator);
+        cdpManager.liquidateCdps(4);
+        assertTrue(sortedCdps.contains(cdpIds[0]) == false);
+        assertTrue(sortedCdps.contains(cdpIds[1]) == false);
+        assertTrue(sortedCdps.contains(cdpIds[2]) == true);
+        assertTrue(sortedCdps.contains(cdpIds[3]) == true);
+
+        // ensure RM is exited
+        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after sequence liquidation in RM!!!"
+        );
+    }
+
+    /// @dev Test a batch of liquidations where RM is exited during the batch
+    /// @dev All subsequent CDPs in the batch that are only liquidatable in RM should be skipped
+    function test_BatchLiqRecoveryModeSwitch() public {
+        (bytes32[] memory cdpIds, uint _newPrice) = _sequenceRecoveryModeSwitchSetup();
+
+        // ensure we are in RM now
+        uint _currentTCR = cdpManager.getTCR(_newPrice);
+        assertTrue(_currentTCR < cdpManager.CCR());
+
+        // prepare batch liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        // FIXME _waitUntilRMColldown();
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
+            cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
+            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getCurrentICR(cdpIds[1], _newPrice))) /
+                _newPrice) +
+            cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
+
+        vm.prank(_liquidator);
+        cdpManager.batchLiquidateCdps(cdpIds);
+        assertTrue(sortedCdps.contains(cdpIds[0]) == false);
+        assertTrue(sortedCdps.contains(cdpIds[1]) == false);
+        assertTrue(sortedCdps.contains(cdpIds[2]) == true);
+        assertTrue(sortedCdps.contains(cdpIds[3]) == true);
+
+        // ensure RM is exited
+        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after sequence liquidation in RM!!!"
+        );
+    }
+
+    /// @dev Cdp ICR below 100%
+    /// @dev premium = 3%
+    /// @dev bad debt redistribution
+    function test_LiqPremiumWithCdpUndercollaterlized() public {
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 126e16);
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], 130e16);
+
+        // price drop
+        uint _originalPrice = priceFeedMock.fetchPrice();
+        uint _newPrice = (_originalPrice * 1e18) / 130e16;
+        priceFeedMock.setPrice(_newPrice);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(userCdpid, _newPrice),
+            1e18,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = cdpManager.getCdpColl(userCdpid) +
+            cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        assertTrue(sortedCdps.contains(userCdpid) == false);
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after Deeply-Under-Collaterlized CDP liquidation!!!"
+        );
+    }
+
+    /// @dev Cdp ICR below 3%
+    /// @dev premium = 3%
+    /// @dev bad debt redistribution
+    function test_LiqPremiumWithCdpDeeplyUndercollateralized_BelowMinPremium() public {
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 126e16);
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], 130e16);
+
+        // price drop
+        uint _originalPrice = priceFeedMock.fetchPrice();
+        uint _newPrice = (_originalPrice * 3e16) / 130e16;
+        priceFeedMock.setPrice(_newPrice);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(userCdpid, _newPrice),
+            3e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = cdpManager.getCdpColl(userCdpid) +
+            cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        assertTrue(sortedCdps.contains(userCdpid) == false);
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after Under-Collaterlized CDP liquidation!!!"
+        );
+    }
+
+    /// @dev Cdp ICR between 110% (MCR) and 100%
+    /// @dev premium = ICR-100%
+    function test_LiqPremiumWithCdpOvercollateralized_BelowMaxPremium(uint ICR) public {
+        vm.assume(ICR > cdpManager.MCR());
+        vm.assume(ICR <= cdpManager.CCR());
+
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 156e16);
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], ICR);
+
+        // price drop
+        uint _originalPrice = priceFeedMock.fetchPrice();
+        uint _newPrice = (_originalPrice * 105e16) / ICR;
+        priceFeedMock.setPrice(_newPrice);
+        uint _currentICR = cdpManager.getCurrentICR(userCdpid, _newPrice);
+        _utils.assertApproximateEq(_currentICR, 105e16, ICR_COMPARE_TOLERANCE);
+        assertTrue(_currentICR > 103e16);
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = ((cdpManager.getCdpDebt(userCdpid) * _currentICR) / _newPrice) +
+            cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertTrue(sortedCdps.contains(userCdpid) == false);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after Over-Collaterlized CDP liquidation!!!"
+        );
+    }
+
+    /// @dev Cdp ICR between 125% (CCR) and 110% (MCR)
+    /// @dev premium = 110%
+    function test_LiqPremiumWithCdpOvercollateralized_AboveMaxPremium(uint ICR) public {
+        vm.assume(ICR >= 111e16);
+        vm.assume(ICR <= 120e16);
+
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 170e16);
+        _singleCdpSetup(users[0], ICR);
+        (, bytes32 userCdpid) = _singleCdpSetup(users[0], ICR);
+
+        // price drop to trigger RM
+        uint _originalPrice = priceFeedMock.fetchPrice();
+        uint _newPrice = (_originalPrice * 1102e15) / ICR;
+        priceFeedMock.setPrice(_newPrice);
+        uint _currentICR = cdpManager.getCurrentICR(userCdpid, _newPrice);
+        _utils.assertApproximateEq(_currentICR, 1102e15, ICR_COMPARE_TOLERANCE);
+        uint _currentTCR = cdpManager.getTCR(_newPrice);
+        assertTrue(_currentTCR < cdpManager.CCR());
+        assertTrue(_currentICR < _currentTCR);
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+        // FIXME _waitUntilRMColldown();
+
+        uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
+        uint _expectedReward = ((cdpManager.getCdpDebt(userCdpid) * cdpManager.MCR()) / _newPrice) +
+            cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
+        assertTrue(sortedCdps.contains(userCdpid) == false);
+        assertEq(
+            _liquidatorBalAfter,
+            _liquidatorBalBefore + _expectedReward,
+            "Liquidator balance mismatch after Over-Collaterlized CDP liquidation in RM!!!"
+        );
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateSingleCDP with the appropriate arguments
@@ -429,5 +658,69 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Set up a test case where the CDP is partially liquidated but the amount of collateral sent is 0, resulting in a retry with full liquidation
         // Call _liquidateSingleCDP with the appropriate arguments
         // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
+    }
+
+    function _singleCdpSetup(address _usr, uint _icr) internal returns (address, bytes32) {
+        uint _price = priceFeedMock.fetchPrice();
+        uint _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint _debt = (_coll * _price) / _icr;
+        bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
+        uint _cdpICR = cdpManager.getCurrentICR(_cdpId, _price);
+        _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
+        return (_usr, _cdpId);
+    }
+
+    function _sequenceRecoveryModeSwitchSetup() internal returns (bytes32[] memory, uint) {
+        address user = users[0];
+        bytes32[] memory cdpIds = new bytes32[](4);
+
+        /** 
+            open a sequence of Cdps. once we enter recovery mode, they will have the following status:
+
+            [1] < 100%
+            [2] < MCR
+            ...
+			
+            once a few CDPs are liquidated, the system should _switch_ to normal mode. the rest CDP should therefore not be liquidated from the sequence
+        */
+        uint _price = priceFeedMock.fetchPrice();
+
+        // [1] 190%
+        (, cdpIds[0]) = _singleCdpSetup(user, 190e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[0], _price),
+            190e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // [2] 210%
+        (, cdpIds[1]) = _singleCdpSetup(user, 210e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[1], _price),
+            210e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // [3] 270%
+        (, cdpIds[2]) = _singleCdpSetup(user, 270e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[2], _price),
+            270e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // [4] 290%
+        (, cdpIds[3]) = _singleCdpSetup(user, 290e16);
+        _utils.assertApproximateEq(
+            cdpManager.getCurrentICR(cdpIds[3], _price),
+            290e16,
+            ICR_COMPARE_TOLERANCE
+        );
+
+        // price drop to half
+        uint _newPrice = _price / 2;
+        priceFeedMock.setPrice(_newPrice);
+
+        return (cdpIds, _newPrice);
     }
 }
