@@ -200,7 +200,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.startGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
@@ -214,7 +214,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertRevertOnAllLiquidations(cdps);
 
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.startGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertRevertOnAllLiquidations(cdps);
 
@@ -347,7 +347,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         assertLt(TCR, 1.25e18, "!RM");
 
         // Set grace period before action which exits RM
-        cdpManager.beginRMLiquidationCooldown();
+        cdpManager.startGracePeriod();
 
         _assertRevertOnAllLiquidations(cdps);
 

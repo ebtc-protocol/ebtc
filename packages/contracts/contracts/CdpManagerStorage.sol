@@ -19,14 +19,11 @@ import "./Dependencies/AuthNoOwner.sol";
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     // TODO: IMPROVE
-    // NOTE: No packing cause it's the last var, no need for u64
     uint128 public constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
 
-    // TODO: IMPROVE THIS!!!
+    /// @dev Pack both in one slot since TS could work with u64 but we don't want to share slot with anything you cannot see here
     uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
     uint128 public waitTimeFromRMTriggerToLiquidations = 15 minutes;
-
-    // TODO: Pitfal is fee split // NOTE: Solved by calling `checkLiquidateCoolDownAndReset` on external operations from BO
 
     /// @dev Trusted Function from BO
     /// @dev BO accrues totals before adjusting them
@@ -41,7 +38,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _notifyBeginRM(uint256 tcr) internal {
         emit TCRNotified(tcr);
 
-        _beginRMLiquidationCooldown();
+        _startGracePeriod();
     }
 
     /// @dev Trusted Function from BO
@@ -57,20 +54,20 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _notifyEndRM(uint256 tcr) internal {
         emit TCRNotified(tcr);
 
-        _stopRMLiquidationCooldown();
+        _cancelGracePeriod();
     }
 
     /// @dev Checks that the system is in RM
-    function beginRMLiquidationCooldown() external {
+    function startGracePeriod() external {
         // Require we're in RM
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
         require(isRecoveryMode, "CdpManagerStorage: Not in RM");
 
-        _beginRMLiquidationCooldown();
+        _startGracePeriod();
     }
 
-    function _beginRMLiquidationCooldown() internal {
+    function _startGracePeriod() internal {
         // Arm the countdown
         if (lastRecoveryModeTimestamp == UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = uint128(block.timestamp);
@@ -80,26 +77,27 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     /// @dev Checks that the system is not in RM
-    function stopRMLiquidationCooldown() external {
+    function cancelGracePeriod() external {
         // Require we're in RM
         uint256 price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(price));
         require(!isRecoveryMode, "CdpManagerStorage: RM still ongoing");
 
-        _stopRMLiquidationCooldown();
+        _cancelGracePeriod();
     }
 
-    function _stopRMLiquidationCooldown() internal {
+    function _cancelGracePeriod() internal {
         // Disarm the countdown
         if (lastRecoveryModeTimestamp != UNSET_TIMESTAMP_FLAG) {
             lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG;
 
-            emit GracePeriodEnd();
+            emit GracePeriodCancelled();
         }
     }
 
-    /// TODO: obv optimizations
-    function checkLiquidateCoolDownAndReset() public {
+    /// @notice Checks the current TCR, starts or ends the Grace Period accordingly
+    /// @notice Call `CdpManager.syncPendingGlobalState` if you want to ensure the TCR is cognizant of the Fee Split
+    function checkAndSynchGracePeriod() public {
         uint256 price = priceFeed.fetchPrice();
         uint256 tcr = _getTCR(price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
@@ -107,9 +105,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         emit TCRNotified(tcr);
 
         if (isRecoveryMode) {
-            _beginRMLiquidationCooldown();
+            _startGracePeriod();
         } else {
-            _stopRMLiquidationCooldown();
+            _cancelGracePeriod();
         }
     }
 
@@ -500,7 +498,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Call this if you want to accrue feeSplit
     function syncPendingGlobalState() public {
         _applyPendingGlobalState(); // Apply // Could trigger RM
-        checkLiquidateCoolDownAndReset(); // Synch Grace Period
+        checkAndSynchGracePeriod(); // Synch Grace Period
     }
 
     // Update the global index via collateral token

@@ -504,7 +504,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
 
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
-        cdpManager.checkLiquidateCoolDownAndReset();
+        cdpManager.checkAndSynchGracePeriod();
         vm.warp(block.timestamp + cdpManager.waitTimeFromRMTriggerToLiquidations() + 1);
     }
 }

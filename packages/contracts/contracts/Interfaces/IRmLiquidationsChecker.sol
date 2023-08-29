@@ -7,9 +7,9 @@ interface IRmLiquidationsChecker {
 
     // NOTE: Ts is implicit in events (it's added by GETH)
     event GracePeriodStart();
-    event GracePeriodEnd();
+    event GracePeriodCancelled();
 
-    function checkLiquidateCoolDownAndReset() external;
+    function checkAndSynchGracePeriod() external;
 
     function notifyBeginRM(uint256 tcr) external;
 
