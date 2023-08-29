@@ -502,9 +502,9 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            if (vars.icrBefore < cdpManager.LICR()) {
+            if (vars.icrBefore < collateral.getSharesByPooledEth(cdpManager.LICR())) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+                assertGt(vars.tcrAfter, vars.tcrBefore, L_12);
             }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
@@ -683,6 +683,13 @@ contract EchidnaTester is
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            assertGte(vars.tcrAfter, vars.tcrBefore, R_07);
+            assertEq(
+                (vars.actorEbtcBefore - vars.actorEbtcAfter),
+                vars.debtBefore - vars.debtAfter,
+                R_08
+            );
+
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -693,7 +700,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) external log {
+    function flashLoanColl(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -717,6 +724,7 @@ contract EchidnaTester is
 
         if (success) {
             uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
             assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -848,12 +856,11 @@ contract EchidnaTester is
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
                 (_coll - collateral.balanceOf(address(actor)))
             );
-            assertGte(
-                collateral.balanceOf(address(actor)),
-                _coll,
+            require(success);
+            require(
+                collateral.balanceOf(address(actor)) > _coll,
                 "Actor has high enough balance to add"
             );
-            assertWithMsg(success, "deposit never fails as EchidnaTester has high enough balance");
         }
 
         (success, ) = actor.proxy(
@@ -1102,9 +1109,12 @@ contract EchidnaTester is
                 vars.actorCollAfter
             );
             assertWithMsg(
-                // not exact due to rounding errors
                 isApproximateEq(
-                    vars.actorCollBefore + vars.cdpCollBefore + vars.liquidatorRewardSharesBefore,
+                    vars.actorCollBefore +
+                        // ActivePool transfer SHARES not ETH directly
+                        collateral.getPooledEthByShares(
+                            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
+                        ),
                     vars.actorCollAfter,
                     0.01e18
                 ),
@@ -1183,7 +1193,7 @@ contract EchidnaTester is
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function setEthPerShare(uint256 _newEthPerShare) internal {
+    function setEthPerShare(uint256 _newEthPerShare) external {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = clampBetween(
             _newEthPerShare,

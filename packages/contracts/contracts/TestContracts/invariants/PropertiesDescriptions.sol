@@ -73,6 +73,13 @@ abstract contract PropertiesDescriptions {
         "GENERAL-11: The TCR pre-computed (TCRNotified) is the same as the one after all calls";
 
     ///////////////////////////////////////////////////////
+    // Redemptions
+    ///////////////////////////////////////////////////////
+
+    string constant R_07 = "R-07: TCR should be slightly improved after every redemption";
+    string constant R_08 = "R-08: The user eBTC balance should be used to pay the system debt";
+
+    ///////////////////////////////////////////////////////
     // Liquidations
     ///////////////////////////////////////////////////////
 

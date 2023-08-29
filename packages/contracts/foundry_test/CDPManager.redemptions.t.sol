@@ -255,7 +255,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
-    function test_RedemptionMustSatisfyAccountingEquationComplex(uint256 redeem) public {
+    function test_RedemptionMustSatisfyAccountingEquationComplex() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
         address user = _utils.getNextUserAddress();
@@ -291,6 +291,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vars.feeRecipientTotalCollBefore =
             activePool.getFeeRecipientClaimableColl() +
             collateral.balanceOf(activePool.feeRecipientAddress());
+        console2.log("Feeb", vars.feeRecipientTotalCollBefore);
         console2.log("price", vars.priceBefore);
         console2.log("liq", vars.liquidatorRewardSharesBefore);
         console2.log(
@@ -345,6 +346,109 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             paidEbtc;
 
         console2.log("equity", beforeEquity, afterEquity);
+
+        assertTrue(invariant_CDPM_04(vars), CDPM_04);
+    }
+
+    function test_RedemptionMustSatisfyAccountingEquationPositiveRebase() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
+
+        bytes32 _cdpId1 = borrowerOperations.openCdp(
+            3841,
+            bytes32(0),
+            bytes32(0),
+            2200000000000064637
+        );
+
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            22613,
+            bytes32(0),
+            bytes32(0),
+            2200000000000380536
+        );
+
+        collateral.setEthPerShare(1045925763644468144);
+
+        bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
+
+        vars.activePoolCollBefore = activePool.getStEthColl();
+        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        vars.debtBefore = activePool.getEBTCDebt();
+        vars.priceBefore = priceFeedMock.getPrice();
+        vars.actorEbtcBefore = eBTCToken.balanceOf(user);
+        vars.actorCollBefore = collateral.balanceOf(user);
+
+        (vars.feeSplitBefore, , ) = cdpManager.calcFeeUponStakingReward(
+            collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
+            cdpManager.stFPPSg()
+        );
+
+        vars.feeRecipientTotalCollBefore =
+            activePool.getFeeRecipientClaimableColl() +
+            collateral.balanceOf(activePool.feeRecipientAddress()) +
+            vars.feeSplitBefore;
+
+        cdpManager.redeemCollateral(
+            25926,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0),
+            5442622424533550139791733199345932418401974502572419280832,
+            1,
+            614847956617174531
+        );
+
+        vars.activePoolCollAfter = activePool.getStEthColl();
+        vars.liquidatorRewardSharesAfter = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        vars.debtAfter = activePool.getEBTCDebt();
+        vars.priceAfter = priceFeedMock.getPrice();
+        vars.actorEbtcAfter = eBTCToken.balanceOf(user);
+        vars.actorCollAfter = collateral.balanceOf(user);
+        vars.feeRecipientTotalCollAfter =
+            activePool.getFeeRecipientClaimableColl() +
+            collateral.balanceOf(activePool.feeRecipientAddress());
+
+        uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
+        uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
+        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
+
+        console2.log("ActivePool", vars.activePoolCollBefore, vars.activePoolCollAfter);
+        console2.log("CollSurplusPool", vars.collSurplusPoolBefore, vars.collSurplusPoolAfter);
+        console2.log(
+            "LiquidatorRewards",
+            vars.liquidatorRewardSharesBefore,
+            vars.liquidatorRewardSharesAfter
+        );
+        console2.log("Debt", vars.debtBefore, vars.debtAfter);
+        console2.log("Paid", paidEbtc);
+        console2.log("Redeemed", redeemedColl);
+        console2.log("Fee", fee);
+
+        uint256 beforeValue = ((vars.activePoolCollBefore +
+            vars.liquidatorRewardSharesBefore +
+            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            1e18 -
+            vars.debtBefore;
+        uint256 afterValue = ((vars.activePoolCollAfter +
+            vars.liquidatorRewardSharesAfter +
+            vars.collSurplusPoolAfter -
+            redeemedColl -
+            fee +
+            vars.feeSplitBefore) * vars.priceAfter) /
+            1e18 -
+            vars.debtAfter +
+            paidEbtc;
+
+        console2.log("value", beforeValue, afterValue);
 
         assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }

@@ -19,6 +19,7 @@
     "prepare:set-version": "node scripts/set-version.js",
     "test": "hardhat test --show-stack-traces",
     "echidna": "echidna contracts/TestContracts/invariants/echidna/EchidnaTester.sol --test-mode assertion --contract EchidnaTester --config fuzzTests/echidna_config.yaml --corpus-dir echidna",
+    "echidna-collateral-token-tester": "echidna contracts/TestContracts/invariants/echidna/EchidnaCollateralTokenTester.sol --test-mode assertion --contract EchidnaCollateralTokenTester --config fuzzTests/echidna_config.yaml --corpus-dir echidna-collateral-token-tester",
     "echidna-price-feed": "echidna contracts/TestContracts/invariants/echidna/EchidnaPriceFeedTester.sol --test-mode assertion --contract EchidnaPriceFeedTester --config fuzzTests/echidna_config.yaml --corpus-dir echidna-price-feed",
     "coverage": "hardhat coverage",
     "coveralls": "cat coverage/lcov.info | coveralls",

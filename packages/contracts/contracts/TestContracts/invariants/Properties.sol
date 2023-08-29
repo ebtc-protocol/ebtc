@@ -97,20 +97,21 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
         uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
 
-        uint256 beforeEquity = ((vars.activePoolCollBefore +
+        uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore) * vars.priceBefore) /
             1e18 -
             vars.debtBefore;
-        uint256 afterEquity = ((vars.activePoolCollAfter +
+        uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter -
             redeemedColl -
-            fee) * vars.priceAfter) /
+            fee +
+            vars.feeSplitBefore) * vars.priceAfter) /
             1e18 -
             vars.debtAfter +
             paidEbtc;
-        return isApproximateEq(beforeEquity, afterEquity, 0.01e18);
+        return isApproximateEq(beforeValue, afterValue, 0.01e18);
     }
 
     function invariant_CSP_01(
