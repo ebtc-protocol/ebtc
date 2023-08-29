@@ -133,6 +133,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             price
         );
 
+        // == Grace Period == //
+        // We are in RM, Edge case is Depositing Coll could exit RM
+        // We check with newTCR
         if (newTCR < CCR) {
             // Notify RM
             _notifyBeginRM(newTCR);
