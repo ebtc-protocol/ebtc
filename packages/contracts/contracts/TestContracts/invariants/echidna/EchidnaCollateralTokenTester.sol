@@ -4,7 +4,7 @@ import {CryticERC20ExternalBasicProperties} from "@crytic/properties/contracts/E
 import {PropertiesConstants} from "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "../../CollateralTokenTester.sol";
 
-contract EchidnaERC20ExternalTester is CryticERC20ExternalBasicProperties {
+contract EchidnaCollateralTokenTester is CryticERC20ExternalBasicProperties {
     uint256 private constant MAX_REBASE_PERCENT = 1.1e18;
 
     constructor() payable {

@@ -55,6 +55,7 @@
     "test-live": "run-s test-live:*",
     "coverage": "yarn workspace @ebtc/contracts coverage",
     "echidna": "yarn workspace @ebtc/contracts echidna",
+    "echidna-collateral-token-tester": "yarn workspace @ebtc/contracts echidna-collateral-token-tester",
     "echidna-price-feed": "yarn workspace @ebtc/contracts echidna-price-feed",
     "prettier": "yarn workspace @ebtc/contracts prettier --write '(contracts|foundry_test)/**/*.sol'",
     "prettier-check": "yarn workspace @ebtc/contracts prettier --check '(contracts|foundry_test)/**/*.sol'"
