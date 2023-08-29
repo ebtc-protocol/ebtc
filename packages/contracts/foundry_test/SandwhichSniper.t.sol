@@ -97,7 +97,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         // We can now liquidate victim
         /** SANDWHICH 3 */
         vm.startPrank(users[0]);
-        vm.expectRevert("Grace period not started, call `notifyStartGracePeriod`");
+        vm.expectRevert("CdpManager: Recovery Mode grace period not started");
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
