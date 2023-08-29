@@ -18,12 +18,21 @@ import "./Dependencies/AuthNoOwner.sol";
     @dev Shared functions were also added here to de-dup code
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
-    // TODO: IMPROVE
+    // TODO: IMPROVE / Move to correct place
     uint128 public constant UNSET_TIMESTAMP_FLAG = type(uint128).max;
+    uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes - 1; // 1 sec less so we save gas in comparison
 
     /// @dev Pack both in one slot since TS could work with u64 but we don't want to share slot with anything you cannot see here
     uint128 public lastRecoveryModeTimestamp = UNSET_TIMESTAMP_FLAG; // use max to signify
     uint128 public waitTimeFromRMTriggerToLiquidations = 15 minutes;
+
+
+    // TODO: Event + Tests
+    function functionSetGracePeriodDuration(uint128 newGracePeriodDuration) external requiresAuth {
+        require(newGracePeriodDuration > MINIMUM_GRACE_PERIOD);
+        
+        waitTimeFromRMTriggerToLiquidations = newGracePeriodDuration;
+    }
 
     /// @dev Trusted Function from BO
     /// @dev BO accrues totals before adjusting them
