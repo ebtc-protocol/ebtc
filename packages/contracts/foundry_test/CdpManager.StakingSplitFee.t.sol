@@ -115,7 +115,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
         uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableColl();
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncPendingGlobalState();
 
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
         uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));

@@ -56,7 +56,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("tcr b4", tcr);
 
         // And show that the TCR goes down once you claim
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncPendingGlobalState();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter", tcrAfter);
@@ -135,7 +135,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             // hack manipulation to sync global index in attacker's benefit
             uint _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
             collateral.setEthPerShare(_oldIdx);
-            cdpManager.applyPendingGlobalState();
+            cdpManager.syncPendingGlobalState();
             console.log("_oldIndex:", cdpManager.stFPPSg());
             assertEq(_oldIdx, cdpManager.stFPPSg());
             assertLt(_oldIdx, _curIndex);
@@ -156,7 +156,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         }
 
         // Now we take the split
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncPendingGlobalState();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);
@@ -213,7 +213,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
 
         // Now we take the split
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncPendingGlobalState();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);

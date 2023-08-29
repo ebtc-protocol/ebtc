@@ -114,6 +114,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
             uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
+
+            _waitUntilRMColldown();
+
             vm.prank(users[0]);
             cdpManager.liquidate(cdpId1);
             uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
@@ -211,7 +214,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 uint _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
                 uint _debtSystemBefore = cdpManager.getEntireSystemDebt();
                 uint _collSystemBefore = cdpManager.getEntireSystemColl();
+                _waitUntilRMColldown();
                 vm.prank(users[0]);
+
                 cdpManager.partiallyLiquidate(cdpId1, _partialLiq._repaidDebt, cdpId1, cdpId1);
                 uint _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
                 uint _debtSystemAfter = cdpManager.getEntireSystemDebt();
@@ -264,6 +269,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
         uint _debtLiquidatorBefore = eBTCToken.balanceOf(_liquidator);
+
+        _waitUntilRMColldown();
 
         vm.prank(_liquidator);
         if (_n > 0) {
@@ -419,7 +426,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // prepare sequence liquidation
         address _liquidator = users[users.length - 1];
         deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
-        // FIXME _waitUntilRMColldown();
+        _waitUntilRMColldown();
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
         uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
@@ -618,7 +625,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // prepare liquidation
         address _liquidator = users[users.length - 1];
         deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
-        // FIXME _waitUntilRMColldown();
+        _waitUntilRMColldown();
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
         uint _expectedReward = ((cdpManager.getCdpDebt(userCdpid) * cdpManager.MCR()) / _newPrice) +
