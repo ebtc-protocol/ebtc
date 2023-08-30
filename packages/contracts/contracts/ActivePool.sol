@@ -103,16 +103,16 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function transferSystemCollShares(address _account, uint256 _shares) public override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedStEthColl = systemCollShares;
-        require(cachedStEthColl >= _shares, "!ActivePoolBal");
+        uint256 cachedStEthCollShares = systemCollShares;
+        require(cachedStEthCollShares >= _shares, "!ActivePoolBal");
         unchecked {
             // Can use unchecked due to above
-            cachedStEthColl -= _shares; // Updating here avoids an SLOAD
+            cachedStEthCollShares -= _shares; // Updating here avoids an SLOAD
         }
 
-        systemCollShares = cachedStEthColl;
+        systemCollShares = cachedStEthCollShares;
 
-        emit ActivePoolCollBalanceUpdated(cachedStEthColl);
+        emit ActivePoolCollBalanceUpdated(cachedStEthCollShares);
         emit CollateralSent(_account, _shares);
 
         _transferCollSharesWithContractHooks(_account, _shares);
@@ -136,16 +136,16 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     ) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedStEthColl = systemCollShares;
-        require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+        uint256 cachedStEthCollShares = systemCollShares;
+        require(cachedStEthCollShares >= _shares, "ActivePool: Insufficient collateral shares");
         uint256 totalShares = _shares + _liquidatorRewardShares; // TODO: Is this safe?
         unchecked {
             // Safe per the check above
-            cachedStEthColl -= _shares;
+            cachedStEthCollShares -= _shares;
         }
-        systemCollShares = cachedStEthColl;
+        systemCollShares = cachedStEthCollShares;
 
-        emit ActivePoolCollBalanceUpdated(cachedStEthColl);
+        emit ActivePoolCollBalanceUpdated(cachedStEthCollShares);
         emit CollateralSent(_account, totalShares);
 
         _transferCollSharesWithContractHooks(_account, totalShares);
@@ -160,20 +160,20 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function allocateSystemCollSharesToFeeRecipient(uint256 _shares) external override {
         _requireCallerIsCdpManager();
 
-        uint256 cachedStEthColl = systemCollShares;
+        uint256 cachedStEthCollShares = systemCollShares;
 
-        require(cachedStEthColl >= _shares, "ActivePool: Insufficient collateral shares");
+        require(cachedStEthCollShares >= _shares, "ActivePool: Insufficient collateral shares");
         unchecked {
             // Safe per the check above
-            cachedStEthColl -= _shares;
+            cachedStEthCollShares -= _shares;
         }
 
-        systemCollShares = cachedStEthColl;
+        systemCollShares = cachedStEthCollShares;
 
         uint256 _FeeRecipientColl = feeRecipientCollShares + _shares;
         feeRecipientCollShares = _FeeRecipientColl;
 
-        emit ActivePoolCollBalanceUpdated(cachedStEthColl);
+        emit ActivePoolCollBalanceUpdated(cachedStEthCollShares);
         emit ActivePoolFeeRecipientClaimableCollIncreased(_FeeRecipientColl, _shares);
     }
 
@@ -245,9 +245,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function receiveColl(uint256 _value) external override {
         _requireCallerIsBorrowerOperations();
 
-        uint256 cachedStEthColl = systemCollShares + _value;
-        systemCollShares = cachedStEthColl;
-        emit ActivePoolCollBalanceUpdated(cachedStEthColl);
+        uint256 cachedStEthCollShares = systemCollShares + _value;
+        systemCollShares = cachedStEthCollShares;
+        emit ActivePoolCollBalanceUpdated(cachedStEthCollShares);
     }
 
     // === Flashloans === //
