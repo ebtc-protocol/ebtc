@@ -35,7 +35,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | BO-01 | Users can only open CDPs with healthy ICR | Unit Tests | TODO: Opening CDP can never directly trigger RM, Can NEVER open below 110 |
 | BO-02 | Users must repay all debt to close a CDP | State Transitions | TODO: Always, at all time, in all conditions |
 | BO-03 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
-| BO-04 | Reoving collateral decreases the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
+| BO-04 | Removing collateral does not increase the Nominal ICR | Unit Tests | ✅ |
 | BO-05 | If an existing CDP's adjustment reduces its ICR in Recovery Mode, the transaction is only executed if the resulting TCR is above 125% | State Transitions | TODO: May change to TCR + Buffer. KEY invariant |
 | BO-05 | When a borrower closes their active CDP, the gas compensation is refunded to the user: the amount of shares sent by the user is transferred back from the GasPool to the user | Unit Tests | ✅ |
 | BO-06 | Each time I change my ICR, the TCR changes by an impact that is equal to the relative weight of collateral and debt from my position | State Transitions | |

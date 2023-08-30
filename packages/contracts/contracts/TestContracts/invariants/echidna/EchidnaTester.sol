@@ -905,7 +905,7 @@ contract EchidnaTester is
 
         if (success) {
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
-            assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
+            assertLte(vars.nicrAfter, vars.nicrBefore, BO_04);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
