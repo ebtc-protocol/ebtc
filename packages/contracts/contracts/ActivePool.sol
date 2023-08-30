@@ -348,7 +348,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
-
         unchecked {
             _FeeRecipientColl -= _shares;
         }
