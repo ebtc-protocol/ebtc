@@ -363,12 +363,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @notice because recipient are fixed, this function is safe to be called by anyone
 
     function sweepToken(address token, uint256 amount) public nonReentrant requiresAuth {
+        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Accrue State First
+
         require(token != address(collateral), "ActivePool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "ActivePool: Attempt to sweep more than balance");
-
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
 
         address cachedFeeRecipientAddress = feeRecipientAddress; // Saves an SLOAD
 
@@ -378,21 +378,21 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     }
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
+        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Accrue State First
+
         require(
             _feeRecipientAddress != address(0),
             "ActivePool: Cannot set fee recipient to zero address"
         );
-
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
 
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
     function setFeeBps(uint _newFee) external requiresAuth {
-        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
+        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Accrue State First
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
         // set new flash fee
         uint _oldFee = feeBps;
@@ -401,7 +401,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
+        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Accrue State First
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);
