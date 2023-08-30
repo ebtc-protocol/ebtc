@@ -246,11 +246,11 @@ $ hardhat test
 
   Contract: CollSurplusPool
     ✓ CollSurplusPool::getSystemCollShares(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
-    ✓ CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations
-    ✓ CollSurplusPool: claimColl(): Reverts if nothing to claim
-    ✓ CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus (723ms)
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if caller is not Borrower Operations
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if nothing to claim
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if owner cannot receive ETH surplus (723ms)
     ✓ CollSurplusPool: reverts trying to send ETH to it
-    ✓ CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager
+    ✓ CollSurplusPool: increaseSurplusCollShares: reverts if caller is not Cdp Manager
 
   Contract: Deployment script - Sets correct contract addresses dependencies after deployment
     ✓ Sets the correct PriceFeed address in CdpManager

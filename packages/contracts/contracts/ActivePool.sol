@@ -186,7 +186,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         collateral.transferShares(_account, _shares);
 
         if (_account == collSurplusPoolAddress) {
-            ICollSurplusPool(_account).receiveColl(_shares);
+            ICollSurplusPool(_account).increaseTotalSurplusCollShares(_shares);
         }
     }
 

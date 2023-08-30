@@ -98,7 +98,7 @@ contract BorrowerOperationsScript {
         );
     }
 
-    function claimCollateral() external {
-        borrowerOperations.claimCollateral();
+    function claimSurplusCollShares() external {
+        borrowerOperations.claimSurplusCollShares();
     }
 }

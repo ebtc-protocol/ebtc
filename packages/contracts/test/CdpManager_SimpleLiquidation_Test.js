@@ -422,7 +422,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
       let _expectClaimSurplus = toBN(aliceColl.toString()).sub(_cappedLiqColl);
-      let _toClaimSurplus = await collSurplusPool.getCollateral(alice);
+      let _toClaimSurplus = await collSurplusPool.getSurplusCollShares(alice);
       assert.isTrue(toBN(_toClaimSurplus.toString()).gt(toBN('0')));
       assert.equal(_toClaimSurplus.toString(), _expectClaimSurplus.toString());
 
@@ -433,7 +433,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // alice could claim whatever surplus is
       let prevETHOfAlice = await ethers.provider.getBalance(alice);	
       let _collClaimatorPre = await collToken.balanceOf(alice);
-      let _claimTx = await borrowerOperations.claimCollateral({ from: alice});	
+      let _claimTx = await borrowerOperations.claimSurplusCollShares({ from: alice});	
       let postETHOfAlice = await ethers.provider.getBalance(alice);
       let _collClaimatorPost = await collToken.balanceOf(alice);
       let _gasEtherUsedClaim = toBN(_claimTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_claimTx)).toString()));

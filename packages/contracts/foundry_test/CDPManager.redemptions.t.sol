@@ -160,7 +160,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             _assertCdpNotInSortedCdps(_cdpIds[i]);
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             require(
-                collSurplusPool.getCollateral(_owner) > cdpManager.LIQUIDATOR_REWARD(),
+                collSurplusPool.getSurplusCollShares(_owner) > cdpManager.LIQUIDATOR_REWARD(),
                 "redemption leave wrong surplus to claim!"
             );
         }
@@ -409,7 +409,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         assertTrue(sortedCdps.contains(_cdpId) == false);
         assertEq(
             _expectedCollSurplus,
-            collSurplusPool.getCollateral(_cdpOwner),
+            collSurplusPool.getSurplusCollShares(_cdpOwner),
             "coll surplus balance mismatch after full redemption!!!"
         );
     }
@@ -418,7 +418,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         assertTrue(sortedCdps.contains(_cdpId) == true);
         assertEq(
             0,
-            collSurplusPool.getCollateral(_cdpOwner),
+            collSurplusPool.getSurplusCollShares(_cdpOwner),
             "coll surplus not zero after partial redemption!!!"
         );
     }

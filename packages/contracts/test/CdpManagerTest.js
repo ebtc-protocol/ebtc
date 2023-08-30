@@ -4348,11 +4348,11 @@ contract('CdpManager', async accounts => {
     const C_balanceBefore = toBN(await contracts.collateral.balanceOf(C))
 
     // CollSurplusPool endpoint cannot be called directly
-    await assertRevert(collSurplusPool.claimColl(A), 'CollSurplusPool: Caller is not Borrower Operations')
+    await assertRevert(collSurplusPool.claimSurplusCollShares(A), 'CollSurplusPool: Caller is not Borrower Operations')
 
-    const A_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: A, gasPrice: GAS_PRICE  }))
-    const B_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: B, gasPrice: GAS_PRICE  }))
-    const C_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: C, gasPrice: GAS_PRICE  }))
+    const A_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: A, gasPrice: GAS_PRICE  }))
+    const B_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: B, gasPrice: GAS_PRICE  }))
+    const C_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: C, gasPrice: GAS_PRICE  }))
 
     const A_expectedBalance = A_balanceBefore
     const B_expectedBalance = B_balanceBefore
@@ -4400,9 +4400,9 @@ contract('CdpManager', async accounts => {
     const B_balanceBefore = toBN(await contracts.collateral.balanceOf(B))
     const C_balanceBefore = toBN(await contracts.collateral.balanceOf(C))
 
-    const A_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: A, gasPrice: GAS_PRICE  }))
-    const B_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: B, gasPrice: GAS_PRICE  }))
-    const C_GAS = th.gasUsed(await borrowerOperations.claimCollateral({ from: C, gasPrice: GAS_PRICE  }))
+    const A_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: A, gasPrice: GAS_PRICE  }))
+    const B_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: B, gasPrice: GAS_PRICE  }))
+    const C_GAS = th.gasUsed(await borrowerOperations.claimSurplusCollShares({ from: C, gasPrice: GAS_PRICE  }))
 
     const A_expectedBalance = A_balanceBefore
     const B_expectedBalance = B_balanceBefore

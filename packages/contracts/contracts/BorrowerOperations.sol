@@ -499,9 +499,9 @@ contract BorrowerOperations is
 
       when a borrower’s Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their stETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
      */
-    function claimCollateral() external override {
+    function claimSurplusCollShares() external override {
         // send ETH from CollSurplus Pool to owner
-        collSurplusPool.claimColl(msg.sender);
+        collSurplusPool.claimSurplusCollShares(msg.sender);
     }
 
     // --- Helper functions ---

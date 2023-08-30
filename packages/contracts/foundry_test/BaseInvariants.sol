@@ -111,7 +111,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     function _assert_coll_surplus_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(collSurplusPool)),
-            collSurplusPool.getStEthColl(),
+            collSurplusPool.getTotalSurplusCollShares(),
             "System Invariant: coll_surplus_pool_1"
         );
     }

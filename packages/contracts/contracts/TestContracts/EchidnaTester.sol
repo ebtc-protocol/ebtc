@@ -908,7 +908,10 @@ contract EchidnaTester {
     }
 
     function echidna_coll_surplus_pool_invariant_1() public view returns (bool) {
-        if (collateral.sharesOf(address(collSurplusPool)) < collSurplusPool.getStEthColl()) {
+        if (
+            collateral.sharesOf(address(collSurplusPool)) <
+            collSurplusPool.getTotalSurplusCollShares()
+        ) {
             return false;
         }
         return true;
