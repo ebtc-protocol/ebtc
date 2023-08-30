@@ -6,10 +6,11 @@ import "./ICollSurplusPool.sol";
 import "./IEBTCToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
+import "./IRecoveryModeGracePeriod.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManagerData {
+interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
     event LiquidationLibraryAddressChanged(address _liquidationLibraryAddress);
@@ -194,16 +195,21 @@ interface ICdpManagerData {
         uint remainingEBTC;
         uint totalEBTCToRedeem;
         uint totalETHDrawn;
+        uint totalCollSharesSurplus;
         uint ETHFee;
         uint ETHToSendToRedeemer;
         uint decayedBaseRate;
         uint price;
         uint totalEBTCSupplyAtStart;
+        uint totalCollSharesAtStart;
+        uint tcrAtStart;
     }
 
     struct SingleRedemptionValues {
         uint eBtcToRedeem;
         uint stEthToRecieve;
+        uint collSurplus;
+        uint liquidatorRewardShares;
         bool cancelledPartial;
         bool fullRedemption;
     }
@@ -223,7 +229,9 @@ interface ICdpManagerData {
         uint256 _prevIndex
     ) external view returns (uint256, uint256, uint256);
 
-    function applyPendingGlobalState() external;
+    function applyPendingGlobalState() external; // Accrues StEthFeeSplit without influencing Grace Period
+
+    function syncPendingGlobalState() external; // Accrues StEthFeeSplit and influences Grace Period
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,

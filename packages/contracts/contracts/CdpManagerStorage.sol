@@ -18,6 +18,109 @@ import "./Dependencies/AuthNoOwner.sol";
     @dev Shared functions were also added here to de-dup code
  */
 contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
+    // TODO: IMPROVE
+    // NOTE: No packing cause it's the last var, no need for u64
+    uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
+    uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes;
+
+    // TODO: IMPROVE THIS!!!
+    uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
+    uint128 public recoveryModeGracePeriod = MINIMUM_GRACE_PERIOD;
+
+    // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
+
+    /// @notice Start the recovery mode grace period, if the system is in RM and the grace period timestamp has not already been set
+    /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
+    /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
+    /// @dev To maintain CEI compliance we use this trusted function
+    function notifyStartGracePeriod(uint256 tcr) external {
+        _requireCallerIsBorrowerOperations();
+        _startGracePeriod(tcr);
+    }
+
+    /// @notice End the recovery mode grace period, if the system is no longer in RM
+    /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
+    /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
+    /// @dev To maintain CEI compliance we use this trusted function
+    function notifyEndGracePeriod(uint256 tcr) external {
+        _requireCallerIsBorrowerOperations();
+        _endGracePeriod(tcr);
+    }
+
+    /// @dev Internal notify called by Redemptions and Liquidations
+    /// @dev Specified TCR is emitted for notification pruposes regardless of whether the Grace Period timestamp is set
+    function _startGracePeriod(uint256 _tcr) internal {
+        emit TCRNotified(_tcr);
+
+        if (lastGracePeriodStartTimestamp == UNSET_TIMESTAMP) {
+            lastGracePeriodStartTimestamp = uint128(block.timestamp);
+
+            emit GracePeriodStart();
+        }
+    }
+
+    /// @notice Clear RM Grace Period timestamp if it has been set
+    /// @notice No input validation, calling function must confirm that the system is not in recovery mode to be valid
+    /// @dev Specified TCR is emitted for notification pruposes regardless of whether the Grace Period timestamp is set
+    /// @dev Internal notify called by Redemptions and Liquidations
+    function _endGracePeriod(uint256 _tcr) internal {
+        emit TCRNotified(_tcr);
+
+        if (lastGracePeriodStartTimestamp != UNSET_TIMESTAMP) {
+            lastGracePeriodStartTimestamp = UNSET_TIMESTAMP;
+
+            emit GracePeriodEnd();
+        }
+    }
+
+    /// TODO: obv optimizations
+    function syncGracePeriod() public {
+        uint256 price = priceFeed.fetchPrice();
+        uint256 tcr = _getTCR(price);
+        bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
+
+        if (isRecoveryMode) {
+            _startGracePeriod(tcr);
+        } else {
+            _endGracePeriod(tcr);
+        }
+    }
+
+    /// @dev Set RM grace period based on specified system collShares, system debt, and price
+    /// @dev Variant for internal use in redemptions and liquidations
+    function _syncGracePeriodForGivenValues(
+        uint systemCollShares,
+        uint systemDebt,
+        uint price
+    ) internal {
+        // Compute TCR with specified values
+        uint newTCR = LiquityMath._computeCR(
+            collateral.getPooledEthByShares(systemCollShares),
+            systemDebt,
+            price
+        );
+
+        if (newTCR < CCR) {
+            // Notify system is in RM
+            _startGracePeriod(newTCR);
+        } else {
+            // Notify system is outside RM
+            _endGracePeriod(newTCR);
+        }
+    }
+
+    /// @notice Set grace period duratin
+    /// @notice Permissioned governance function, must set grace period duration above hardcoded minimum
+    /// @param _gracePeriod new grace period duration, in seconds
+    function setGracePeriod(uint128 _gracePeriod) external requiresAuth {
+        require(
+            _gracePeriod >= MINIMUM_GRACE_PERIOD,
+            "CdpManager: Grace period below minimum duration"
+        );
+        recoveryModeGracePeriod = _gracePeriod;
+        emit GracePeriodSet(_gracePeriod);
+    }
+
     string public constant NAME = "CdpManager";
 
     // --- Connected contract declarations ---
@@ -361,7 +464,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
-    function applyPendingGlobalState() public {
+    /// @dev BO can call this without trigggering a
+    function applyPendingGlobalState() external {
+        _requireCallerIsBorrowerOperations();
+        _applyPendingGlobalState();
+    }
+
+    function _applyPendingGlobalState() internal {
         (uint _oldIndex, uint _newIndex) = _syncIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
@@ -371,6 +480,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
             _updateSystemSnapshots_excludeCollRemainder(0);
         }
+    }
+
+    /// @notice Claim Fee Split, toggles Grace Period accordingly
+    /// @notice Call this if you want to accrue feeSplit
+    function syncPendingGlobalState() public {
+        _applyPendingGlobalState(); // Apply // Could trigger RM
+        syncGracePeriod(); // Synch Grace Period
     }
 
     // Update the global index via collateral token
@@ -434,7 +550,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
-        applyPendingGlobalState();
+        _applyPendingGlobalState();
 
         uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
         uint _stFeePerUnitg = stFeePerUnitg;
@@ -501,6 +617,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(
             CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
             "CdpManager: Only one cdp in the system"
+        );
+    }
+
+    function _requireCallerIsBorrowerOperations() internal view {
+        require(
+            msg.sender == borrowerOperationsAddress,
+            "CdpManager: Caller is not the BorrowerOperations contract"
         );
     }
 

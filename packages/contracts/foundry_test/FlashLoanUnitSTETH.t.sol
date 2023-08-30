@@ -3,18 +3,17 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {UselessFlashReceiver, WETHFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
+import {UselessFlashReceiver, STETHFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
 
 /*
  * Unit Tests for Flashloans
  * Basic Considerations:
  * Flash Fee can go to zero due to rounding, that's marginal
- * Minting is capped at u112 for UniV2 Compatibility, but mostly arbitrary
  */
-contract FlashLoanUnitWETH is eBTCBaseFixture {
+contract FlashLoanUnitSTETH is eBTCBaseFixture {
     // Flashloans
     UselessFlashReceiver internal uselessReceiver;
-    WETHFlashReceiver internal wethReceiver;
+    STETHFlashReceiver internal stethReceiver;
     FlashLoanSpecReceiver internal specReceiver;
     FlashLoanWrongReturn internal wrongReturnReceiver;
 
@@ -26,7 +25,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
 
         uselessReceiver = new UselessFlashReceiver();
-        wethReceiver = new WETHFlashReceiver();
+        stethReceiver = new STETHFlashReceiver();
         specReceiver = new FlashLoanSpecReceiver();
         wrongReturnReceiver = new FlashLoanWrongReturn();
     }
@@ -34,8 +33,8 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     ///   TODO: Add a max / max - 1 test to show what happens
-    function testBasicLoanWETH(uint128 loanAmount, uint128 giftAmount) public {
-        require(address(wethReceiver) != address(0));
+    function testBasicLoanSTETH(uint128 loanAmount, uint128 giftAmount) public {
+        require(address(stethReceiver) != address(0));
 
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
 
@@ -48,7 +47,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // Cannot deal if not enough
         vm.assume(fee > 1800e18);
 
-        dealCollateral(address(wethReceiver), fee);
+        dealCollateral(address(stethReceiver), fee);
 
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
         uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
@@ -58,7 +57,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         uint256 prevFeeBalance = collateral.balanceOf(activePool.feeRecipientAddress());
         // Perform flashloan
         activePool.flashLoan(
-            wethReceiver,
+            stethReceiver,
             address(collateral),
             loanAmount,
             abi.encodePacked(uint256(0))
@@ -71,14 +70,14 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
-    function testZeroCaseWETH() public {
+    function testZeroCaseSTETH() public {
         // Zero test case
         uint256 loanAmount = 0;
 
         vm.expectRevert("ActivePool: 0 Amount");
         // Perform flashloan
         activePool.flashLoan(
-            wethReceiver,
+            stethReceiver,
             address(collateral),
             loanAmount,
             abi.encodePacked(uint256(0))
@@ -95,7 +94,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     /// @dev Amount too high, we overflow when computing fees
-    function testOverflowCaseWETH() public {
+    function testOverflowCaseSTETH() public {
         // Zero Overflow Case
         uint256 loanAmount = type(uint256).max / 1e18;
 
@@ -103,7 +102,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
 
         try
             activePool.flashLoan(
-                wethReceiver,
+                stethReceiver,
                 address(collateral),
                 loanAmount,
                 abi.encodePacked(uint256(0))
@@ -114,14 +113,14 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
     }
 
     // Do nothing (no fee), check that it reverts
-    function testWETHRevertsIfUnpaid(uint128 loanAmount) public {
+    function testSTETHRevertsIfUnpaid(uint128 loanAmount) public {
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
 
         vm.deal(address(activePool), loanAmount);
 
-        // NOTE: WETH has no error message
+        // NOTE: STETH has no error message
         // Source: https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code#L68
         vm.expectRevert();
         // Perform flashloan
@@ -137,7 +136,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
-    function testWETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
+    function testSTETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(randomToken != address(collateral));
         vm.assume(amount > 0);
         vm.assume(flashFee <= activePool.MAX_FEE_BPS());
@@ -174,6 +173,32 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("ActivePool: collateral Only");
         activePool.flashLoan(specReceiver, randomToken, amount, abi.encodePacked(uint256(0)));
+
+        // Pause FL
+        vm.startPrank(defaultGovernance);
+        activePool.setFlashLoansPaused(true);
+        vm.stopPrank();
+
+        // If the FL is paused, flashFee Reverts
+        vm.expectRevert("ActivePool: Flash Loans Paused");
+        activePool.flashFee(address(collateral), amount);
+
+        // If the FL is paused, maxFlashLoan returns 0
+        assertEq(activePool.maxFlashLoan(address(collateral)), 0);
+
+        // if the FL is paused, flashLoan Reverts
+        vm.expectRevert("ActivePool: Flash Loans Paused");
+        activePool.flashLoan(
+            specReceiver,
+            address(collateral),
+            amount,
+            abi.encodePacked(uint256(0))
+        );
+
+        // Unpause
+        vm.startPrank(defaultGovernance);
+        activePool.setFlashLoansPaused(false);
+        vm.stopPrank();
 
         if (fee > 0) {
             dealCollateral(address(specReceiver), fee);
@@ -217,7 +242,7 @@ contract FlashLoanUnitWETH is eBTCBaseFixture {
         assertTrue(returnValue);
     }
 
-    function testWETHReturnValue() public {
+    function testSTETHReturnValue() public {
         // NOTE: Send funds for spec
         dealCollateral(address(activePool), 123);
 

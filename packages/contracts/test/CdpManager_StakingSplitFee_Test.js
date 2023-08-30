@@ -110,7 +110,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFee = _fees[0].mul(_newIndex).div(mv._1e18BN);
       
       let _feeBalBefore = await activePool.getFeeRecipientClaimableCollShares();
-      await cdpManager.applyPendingGlobalState();  
+      await cdpManager.syncPendingGlobalState();  
       let _feeBalAfter = await activePool.getFeeRecipientClaimableCollShares();
 	  
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _fees[0]);
@@ -133,13 +133,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_icrAfter.toString()).gt(toBN(_icrBefore.toString())));
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
-      // ensure applyPendingGlobalState() could be called any time
+      // ensure syncPendingGlobalState() could be called any time
       let _loop = 10;
       for(let i = 0;i < _loop;i++){
           _newIndex = _newIndex.add(_deltaIndex.div(toBN("10")));
-          await collToken.setEthPerShare(_newIndex);  
+          await collToken.setEthPerShare(_newIndex); 
           let _newBalClaimable = await activePool.getFeeRecipientClaimableCollShares();
-          await cdpManager.applyPendingGlobalState();
+          await cdpManager.syncPendingGlobalState();
           assert.isTrue(_newBalClaimable.lt(await activePool.getFeeRecipientClaimableCollShares()));
           assert.isTrue(_newIndex.eq(await cdpManager.stFPPSg()));		  
       }
@@ -199,7 +199,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _expectedFeeShare = _fees[0];
           let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
           let _feeBalBefore = await activePool.getFeeRecipientClaimableCollShares(); 
-          await cdpManager.applyPendingGlobalState();  	 
+          await cdpManager.syncPendingGlobalState();  	 
           let _feeBalAfter = await activePool.getFeeRecipientClaimableCollShares();
           let _actualFee = _feeBalAfter.sub(_feeBalBefore);
 	  
@@ -281,7 +281,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _partialDebtRepaid = minDebt;
       let _expectedSeizedColl = toBN(_partialDebtRepaid.toString()).mul(_MCR).div(toBN(_newPrice));
       let _expectedLiquidatedColl = _expectedSeizedColl.mul(mv._1e18BN).div(_newIndex);
-      let _collBeforeLiquidator = await collToken.balanceOf(owner);	
+      let _collBeforeLiquidator = await collToken.balanceOf(owner);		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 	  
       await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
       let _collAfterLiquidator = await collToken.balanceOf(owner);	
@@ -330,9 +335,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _fees = await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex);
       let _expectedFeeShare = _fees[0];
       let _expectedFee = _expectedFeeShare.mul(_newIndex).div(mv._1e18BN);
-	  
       let _feeBalBefore = await activePool.getFeeRecipientClaimableCollShares();
-      await cdpManager.applyPendingGlobalState();  
+      await cdpManager.syncPendingGlobalState();  
       let _feeBalAfter = await activePool.getFeeRecipientClaimableCollShares();
 	  
       let _stFeePerUnitg = await cdpManager.stFeePerUnitg();
@@ -420,7 +424,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);  
 	  
       // claim fee
-      await cdpManager.applyPendingGlobalState();
+      await cdpManager.syncPendingGlobalState();
 	  
       // final check
       _cdpDebtColl = await cdpManager.getEntireDebtAndColl(_cdpId);

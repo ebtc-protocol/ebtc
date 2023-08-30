@@ -7,8 +7,6 @@ import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
-
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;
@@ -117,7 +115,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
         uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableCollShares();
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncPendingGlobalState();
 
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
         uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));

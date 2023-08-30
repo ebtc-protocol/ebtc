@@ -75,6 +75,8 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         borrowerOperations.closeCdp(cdpId);
         // Make sure CDP is now not active anymore. Enum Status.2 == closedByOwner
         assertEq(cdpManager.getCdpStatus(cdpId), 2);
+        _assertCdpClosed(cdpId, 2);
+        _assertCdpNotInSortedCdps(cdpId);
         vm.stopPrank();
     }
 

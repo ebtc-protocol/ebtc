@@ -1113,7 +1113,12 @@ contract('CdpManager', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     await priceFeed.setPrice(dec(2500, 13))
-    await borrowerOperations.addColl(_eCdpId, _eCdpId, _eCdpId, dec(10, 'ether'), { from: E })
+    await borrowerOperations.addColl(_eCdpId, _eCdpId, _eCdpId, dec(10, 'ether'), { from: E })	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     // Try to liquidate C again. 
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(D)).toString()), {from: D});	

@@ -64,6 +64,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   })
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000)
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -2837,7 +2838,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
+    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C.
     With 253 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated. 
@@ -2906,7 +2912,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
     assert.isTrue(ICR_D.gt(mv._MCR) && ICR_D.lt(TCR))
-    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))
+    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C, D, E.
      With 300 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated.
@@ -2969,7 +2980,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
     assert.isTrue(ICR_D.gt(mv._MCR) && ICR_D.lt(TCR))
-    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))
+    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C, D, E.
      With 301 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated.
@@ -3030,7 +3046,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C, D, E.
     With 253 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated. 
@@ -3142,7 +3163,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))
+    assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* Liquidate cdps. Cdps are ordered by ICR, from low to high:  A, B, C, D, E.
     With 253 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated. 
@@ -3508,7 +3534,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
+    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3555,7 +3586,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
+    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3620,7 +3656,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
     assert.isTrue(ICR_D.gt(mv._MCR) && ICR_D.lt(TCR))
-    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))
+    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* With 300 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated.
      That leaves 97 EBTC in the Pool that won’t be enough to absorb Carol,
@@ -3683,7 +3724,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
     assert.isTrue(ICR_D.gt(mv._MCR) && ICR_D.lt(TCR))
-    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))
+    assert.isTrue(ICR_E.gt(mv._MCR) && ICR_E.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     /* With 301 in the SP, Alice (102 debt) and Bob (101 debt) should be entirely liquidated.
      That leaves 97 EBTC in the Pool that won’t be enough to absorb Carol,
@@ -3744,7 +3790,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
     const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3794,7 +3845,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
+    assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3861,7 +3917,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-    assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))
+    assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -4133,7 +4194,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // B and E are still in range 110-TCR.
     // Attempt to liquidate B, G, H, I, E.
     // Expected liquidator to fully absorb B (92 EBTC + 10 virtual debt), 
-    // but not E as there are not enough funds in liquidator
+    // but not E as there are not enough funds in liquidator	  
+	  	  
+    // trigger cooldown and pass the liq wait
+    await cdpManager.syncGracePeriod();
+    await ethers.provider.send("evm_increaseTime", [901]);
+    await ethers.provider.send("evm_mine");
     
     const dEbtBefore = (await cdpManager.Cdps(_eCdpId))[0]
 

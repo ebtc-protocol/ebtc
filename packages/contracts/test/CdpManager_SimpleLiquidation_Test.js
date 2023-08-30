@@ -28,6 +28,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000);
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -391,7 +392,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let aliceDebt = await cdpManager.getCdpDebt(aliceCdpId);
       let aliceColl = await cdpManager.getCdpCollShares(aliceCdpId);		  
       let prevDebtOfOwner = await debtToken.balanceOf(owner);
-      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));
+      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));	  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 	  
       // liquidate alice in recovery mode	  
       let prevETHOfOwner = await ethers.provider.getBalance(owner);	
@@ -794,7 +800,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _partialAmount = toBN("1");
       await debtToken.unprotectedMint(owner, _partialAmount);
       let _totalSupplyBefore = await debtToken.totalSupply();
-      await cdpManager.partiallyLiquidate(_cdpId1, _partialAmount, _cdpId1, _cdpId1);
+      await assertRevert(cdpManager.partiallyLiquidate(_cdpId1, _partialAmount, _cdpId1, _cdpId1), "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum");
       let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
       if (_totalSupplyDiff.lt(_partialAmount)) {
           await debtToken.unprotectedBurn(owner, _partialAmount.sub(_totalSupplyDiff));
