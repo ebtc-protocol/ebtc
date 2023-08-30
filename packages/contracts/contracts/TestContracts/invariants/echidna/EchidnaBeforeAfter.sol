@@ -95,8 +95,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
                 // Slice the sighash.
                 reason := add(reason, 0x04)
             }
-            (bool success, bytes memory returnData) = abi.decode(reason, (bool, bytes));
-            require(success, "Actor.simulate did not work");
+            bytes memory returnData = abi.decode(reason, (bytes));
             vars.newTcrAfterSyncPendingGlobalState = abi.decode(returnData, (uint256));
         }
     }

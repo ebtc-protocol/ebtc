@@ -8,7 +8,7 @@ import {IERC20} from "../../Dependencies/IERC20.sol";
 import {AssertionHelper} from "./AssertionHelper.sol";
 
 contract Actor is IERC3156FlashBorrower, AssertionHelper {
-    error Simulate(bool, bytes);
+    error Simulate(bytes);
 
     address[] internal tokens;
     address[] internal callers;
@@ -47,7 +47,7 @@ contract Actor is IERC3156FlashBorrower, AssertionHelper {
             require(success, _getRevertMsg(returnData));
         }
 
-        revert Simulate(success, returnData);
+        revert Simulate(returnData);
     }
 
     receive() external payable {}

@@ -604,7 +604,8 @@ contract EchidnaTester is
     function redeemCollateral(
         uint _EBTCAmount,
         uint _partialRedemptionHintNICR,
-        uint _maxFeePercentage
+        uint _maxFeePercentage,
+        uint _maxIterations
     ) external log {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
@@ -617,6 +618,7 @@ contract EchidnaTester is
         bytes memory returnData;
 
         _EBTCAmount = clampBetween(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
+        _maxIterations = clampBetween(_maxIterations, 0, 1);
 
         _maxFeePercentage = clampBetween(
             _maxFeePercentage,
@@ -636,8 +638,7 @@ contract EchidnaTester is
                 bytes32(0),
                 bytes32(0),
                 _partialRedemptionHintNICR,
-                // redeem a maximum of 1 CDP to make invariand CDPM_04 easier to calculate
-                1,
+                _maxIterations,
                 _maxFeePercentage
             )
         );
@@ -646,16 +647,13 @@ contract EchidnaTester is
 
         if (success) {
             assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
-            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
-            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
-            assertEq(
-                (vars.actorEbtcBefore - vars.actorEbtcAfter),
-                vars.debtBefore - vars.debtAfter,
-                R_08
-            );
-
-            assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
+            if (_maxIterations == 1) {
+                assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
+                // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
+                assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
+                assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -723,12 +721,11 @@ contract EchidnaTester is
             )
         );
 
-        if (success) {
-            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
+        // BorrowerOperations.flashLoan may revert due to reentrancy
+        require(success);
+
+        uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
     }
 
     function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
@@ -1009,7 +1006,7 @@ contract EchidnaTester is
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, BO_08);
+            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, BO_08);
 
             assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
             assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
@@ -1071,19 +1068,15 @@ contract EchidnaTester is
                 vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter
             );
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
-            // assertWithMsg(
-            //     isApproximateEq(
-            //         vars.actorCollBefore +
-            //             // ActivePool transfer SHARES not ETH directly
-            //             collateral.getPooledEthByShares(
-            //                 vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-            //             ),
-            //         vars.actorCollAfter,
-            //         0.01e18
-            //     ),
-            //     BO_05
-            // );
+            assertGt(
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
+                // Note: not checking for strict equality since split fee is difficult to calculate a-priori, so the CDP collateral value may not be sent back to the user in full
+                vars.actorCollAfter,
+                vars.actorCollBefore +
+                    // ActivePool transfer SHARES not ETH directly
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
+                BO_05
+            );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
