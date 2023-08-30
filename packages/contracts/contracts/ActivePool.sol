@@ -254,7 +254,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
     /// @notice Borrow assets with a flash loan
     /// @dev The Collateral checks may cause reverts if you trigger a fee change big enough
-    ///         consider calling `cdpManagerAddress.syncPendingGlobalState()`
+    ///         consider calling `cdpManagerAddress.syncGlobalAccountingAndGracePeriod()`
     /// @param receiver The address to receive the flash loan
     /// @param token The address of the token to loan
     /// @param amount The amount of tokens to loan
@@ -347,7 +347,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @dev Is likely safe as an open permission though caution should be taken.
     /// @param _shares The amount of shares to claim to feeRecipient
     function claimFeeRecipientCollShares(uint256 _shares) external override requiresAuth {
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Calling this increases shares so do it first
+        ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Calling this increases shares so do it first
 
         uint256 _FeeRecipientColl = feeRecipientCollShares;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
@@ -382,7 +382,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     }
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
-       ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
+        ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
         require(
             _feeRecipientAddress != address(0),
