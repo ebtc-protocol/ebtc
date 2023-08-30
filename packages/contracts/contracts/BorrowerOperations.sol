@@ -260,7 +260,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingState(_cdpId);
+        cdpManager.syncAccounting(_cdpId);
 
         LocalVariables_adjustCdp memory vars;
 
@@ -454,7 +454,7 @@ contract BorrowerOperations is
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
 
-        cdpManager.applyPendingState(_cdpId);
+        cdpManager.syncAccounting(_cdpId);
 
         uint price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));

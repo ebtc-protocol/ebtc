@@ -75,7 +75,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         openCdp,
         closeCdp,
         adjustCdp,
-        applyPendingState,
+        syncAccounting,
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,

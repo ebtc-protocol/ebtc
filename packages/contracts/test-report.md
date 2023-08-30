@@ -23,7 +23,7 @@ $ hardhat test
     BorrowerOperations
       ✓ moveETHGainToCdp(): reverts when called by an account that is not StabilityPool
     CdpManager
-      ✓ applyPendingState(): reverts when called by an account that is not BorrowerOperations
+      ✓ syncAccounting(): reverts when called by an account that is not BorrowerOperations
       ✓ updatedebtRedistributionIndex(): reverts when called by an account that is not BorrowerOperations
       ✓ removeStake(): reverts when called by an account that is not BorrowerOperations
       ✓ updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations

@@ -411,7 +411,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                _applyPendingState(_cId);
+                _syncAccounting(_cId);
 
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
@@ -521,10 +521,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _toRemoveIds;
     }
 
-    function applyPendingState(bytes32 _cdpId) external override {
+    function syncAccounting(bytes32 _cdpId) external override {
         // TODO: Open this up for anyone?
         _requireCallerIsBorrowerOperations();
-        return _applyPendingState(_cdpId);
+        return _syncAccounting(_cdpId);
     }
 
     function removeStake(bytes32 _cdpId) external override {

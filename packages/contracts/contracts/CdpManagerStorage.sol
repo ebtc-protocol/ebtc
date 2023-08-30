@@ -343,7 +343,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
-    function _applyPendingState(bytes32 _cdpId) internal {
+    function _syncAccounting(bytes32 _cdpId) internal {
         _applyAccumulatedFeeSplit(_cdpId);
 
         // Compute pending rewards
@@ -368,7 +368,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
                 _newDebt,
                 prevColl,
                 Cdps[_cdpId].stake,
-                CdpOperation.applyPendingState
+                CdpOperation.syncAccounting
             );
         }
     }
