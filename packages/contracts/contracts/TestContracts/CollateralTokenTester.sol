@@ -56,7 +56,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         if (!isUncappedMinter[msg.sender]) {
             require(
                 lastMintTime[msg.sender] == 0 ||
-                    lastMintTime[msg.sender] + mintCooldown > block.timestamp,
+                    lastMintTime[msg.sender] + mintCooldown < block.timestamp,
                 "Cooldown period not completed"
             );
             mintAmount = mintCap;
