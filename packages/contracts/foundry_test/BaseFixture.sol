@@ -384,9 +384,9 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getEntireDebtAndColl(bytes32 cdpId) internal view returns (CdpState memory) {
+    function _getDebtAndCollShares(bytes32 cdpId) internal view returns (CdpState memory) {
         (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
-            .getEntireDebtAndColl(cdpId);
+            .getDebtAndCollShares(cdpId);
         return CdpState(debt, coll, pendingEBTCDebtReward);
     }
 
@@ -428,7 +428,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         collateral.setEthPerShare(oldIndex + 1e17);
         newIndex = collateral.getPooledEthByShares(1e18);
 
-        storedIndex = cdpManager.stFPPSg();
+        storedIndex = cdpManager.stEthIndex();
     }
 
     /// @dev Ensure data fields for Cdp are in expected post-close state
@@ -459,7 +459,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         console.log("systemDebt         :", activePool.getSystemDebt());
         console.log("TCR                :", cdpManager.getTCR(price));
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
-        console.log("stEthGlobalIndex   :", cdpManager.stFPPSg());
+        console.log("stEthGlobalIndex   :", cdpManager.stEthIndex());
         console.log("price              :", price);
     }
 

@@ -351,7 +351,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, ) = getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = getDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         _removeStake(_cdpId);
@@ -374,7 +374,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint _partialDebt = _partialState._partialAmount;
 
         // calculate entire debt to repay
-        LocalVar_CdpDebtColl memory _debtAndColl = _getEntireDebtAndColl(_cdpId);
+        LocalVar_CdpDebtColl memory _debtAndColl = _getDebtAndCollShares(_cdpId);
         _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState._price);
         uint newDebt = _debtAndColl.entireDebt - _partialDebt;
 
@@ -527,7 +527,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 price
     ) internal {
         // update the staking and collateral snapshots
-        _updateSystemSnapshots_excludeCollRemainder(totalColToSend);
+        _updateSystemSnapshotsExcludeCollRemainder(totalColToSend);
 
         emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
 
@@ -1002,7 +1002,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // Add per-unit-staked terms to the running totals
         systemDebtRedistributionIndex = systemDebtRedistributionIndex + EBTCDebtRewardPerUnitStaked;
 
-        emit LTermsUpdated(systemDebtRedistributionIndex);
+        emit SystemDebtRedistributionIndexUpdated(systemDebtRedistributionIndex);
     }
 
     // --- 'require' wrapper functions ---

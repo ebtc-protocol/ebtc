@@ -27,7 +27,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_liq2() internal {
         uint _sumColl;
-        for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
+        for (uint i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
             (, uint _coll, , , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
@@ -93,7 +93,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -103,7 +103,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             uint _ICR = cdpManager.getICR(cdpId1, price);
@@ -169,7 +169,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getEntireDebtAndColl(cdpId1);
+        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
 
         // Price falls
         uint _newPrice = _curPrice / 2;
@@ -180,7 +180,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Partially Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpId1);
+            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
@@ -284,8 +284,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // calc debt in system by summing up all CDPs debt
         uint _leftTotalDebt;
-        for (uint i = 0; i < cdpManager.getCdpIdsCount(); ++i) {
-            (uint _cdpDebt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+        for (uint i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
+            (uint _cdpDebt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
@@ -345,8 +345,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
 
             bytes32[] memory _emptyCdps;
             _multipleCDPsLiq(2, _emptyCdps, users[0]);
@@ -396,8 +396,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getEntireDebtAndColl(cdpId1);
-            CdpState memory _cdpState2 = _getEntireDebtAndColl(cdpId2);
+            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
 
             bytes32[] memory _cdps = new bytes32[](2);
             _cdps[0] = cdpId1;

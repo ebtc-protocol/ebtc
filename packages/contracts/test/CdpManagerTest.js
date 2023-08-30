@@ -235,7 +235,7 @@ contract('CdpManager', async accounts => {
     // Drop price
     await priceFeed.setPrice(dec(3714, 13))
 
-    const arrayLength_Before = await cdpManager.getCdpIdsCount()
+    const arrayLength_Before = await cdpManager.getActiveCdpsCount()
     assert.equal(arrayLength_Before, 6)
 
     // Confirm system is not in Recovery Mode
@@ -250,7 +250,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await sortedCdps.contains(_carolCdpId))
 
     // Check length of array has decreased by 1
-    const arrayLength_After = await cdpManager.getCdpIdsCount()
+    const arrayLength_After = await cdpManager.getActiveCdpsCount()
     assert.equal(arrayLength_After, 5)
 
     /* After Carol is removed from array, the last element (Erin's address) should have been moved to fill 
@@ -355,7 +355,7 @@ contract('CdpManager', async accounts => {
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
     const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
-    let _bobTotalDebt = (await cdpManager.getEntireDebtAndColl(_bobCdpId))[0]
+    let _bobTotalDebt = (await cdpManager.getDebtAndCollShares(_bobCdpId))[0]
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
@@ -404,7 +404,7 @@ contract('CdpManager', async accounts => {
     const alice_ICR = (await cdpManager.getICR(_aliceCdpId, price)).toString()
     assert.equal(alice_ICR, '1050080775444264943')
 
-    const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_Before = await cdpManager.getActiveCdpsCount()
 
     assert.equal(activeCdpsCount_Before, 2)
 
@@ -417,7 +417,7 @@ contract('CdpManager', async accounts => {
     await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Check Alice's cdp is removed, and bob remains
-    const activeCdpsCount_After = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_After = await cdpManager.getActiveCdpsCount()
     assert.equal(activeCdpsCount_After, 1)
 
     const alice_isInSortedList = await sortedCdps.contains(_aliceCdpId)
@@ -1102,9 +1102,9 @@ contract('CdpManager', async accounts => {
     await borrowerOperations.repayEBTC(_eCdpId, _repayAmt, _eCdpId, _eCdpId, {from: E})
 
     // Check D & E pending rewards already applied
-    assert.isTrue(await cdpManager.hasPendingRewards(_cCdpId))
-    assert.isFalse(await cdpManager.hasPendingRewards(_dCdpId))
-    assert.isFalse(await cdpManager.hasPendingRewards(_eCdpId))
+    assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))
+    assert.isFalse(await cdpManager.hasPendingRedistributedDebt(_dCdpId))
+    assert.isFalse(await cdpManager.hasPendingRedistributedDebt(_eCdpId))
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingEBTCDebt_C = (await cdpManager.getPendingRedistributedDebt(_cCdpId))
@@ -1237,7 +1237,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
     await cdpManager.liquidateCdps(3)
 
-    const CdpOwnersArrayLength = await cdpManager.getCdpIdsCount()
+    const CdpOwnersArrayLength = await cdpManager.getActiveCdpsCount()
     assert.equal(CdpOwnersArrayLength, '3')
 
     // Check Alice, Bob, Carol cdps have been closed
@@ -1876,9 +1876,9 @@ contract('CdpManager', async accounts => {
     await borrowerOperations.repayEBTC(_eCdpId, dec(1, 15), _eCdpId, _eCdpId, {from: E})
 
     // Check all pending rewards already applied
-    assert.isTrue(await cdpManager.hasPendingRewards(_cCdpId))
-    assert.isFalse(await cdpManager.hasPendingRewards(_dCdpId))
-    assert.isFalse(await cdpManager.hasPendingRewards(_eCdpId))
+    assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))
+    assert.isFalse(await cdpManager.hasPendingRedistributedDebt(_dCdpId))
+    assert.isFalse(await cdpManager.hasPendingRedistributedDebt(_eCdpId))
 
     // Check C's pending coll and debt rewards are <= the coll and debt in the DefaultPool
     const pendingEBTCDebt_C = (await cdpManager.getPendingRedistributedDebt(_cCdpId))
@@ -3910,16 +3910,16 @@ contract('CdpManager', async accounts => {
     const baseRate_1 = await cdpManager.baseRate()
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
-    const lastFeeOpTime_1 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_1 = await cdpManager.lastRedemptionTimestamp()
 
     // 45 seconds pass
     th.fastForwardTime(45, web3.currentProvider)
 
     // Borrower A triggers a fee
-    let _m = await cdpManager.minutesPassedSinceLastFeeOp();
+    let _m = await cdpManager.minutesPassedSinceLastRedemption();
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_2 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_2 = await cdpManager.lastRedemptionTimestamp()
 
     // Check that the last fee operation time did not update, as borrower A's 2nd redemption occured
     // since before minimum interval had passed 
@@ -3935,7 +3935,7 @@ contract('CdpManager', async accounts => {
     // Borrower A triggers a fee
     await th.redeemCollateral(A, contracts, dec(1, 18), GAS_PRICE)
 
-    const lastFeeOpTime_3 = await cdpManager.lastFeeOperationTime()
+    const lastFeeOpTime_3 = await cdpManager.lastRedemptionTimestamp()
 
     // Check that the last fee operation time DID update, as A's 2rd redemption occured
     // after minimum interval had passed 
@@ -4724,8 +4724,8 @@ contract('CdpManager', async accounts => {
     assert.equal(C_Status, '0')  // non-existent
   })
 
-  it("hasPendingRewards(): Returns false it cdp is not active", async () => {
-    assert.isFalse(await cdpManager.hasPendingRewards(alice))
+  it("hasPendingRedistributedDebt(): Returns false it cdp is not active", async () => {
+    assert.isFalse(await cdpManager.hasPendingRedistributedDebt(alice))
   })
   
   it("CDPManager governance permissioned: requiresAuth() should only allow authorized caller", async() => {	  
@@ -4789,20 +4789,20 @@ contract('CdpManager', async accounts => {
 	  
   })
   
-  it("CDPManager _updateLastFeeOpTime(): use elapsed minutes instead block.timestamp", async() => {
+  it("CDPManager _updateLastRedemptionTimestamp(): use elapsed minutes instead block.timestamp", async() => {
 	  
-      // advance to sometime later to update lastFeeOperationTime
+      // advance to sometime later to update lastRedemptionTimestamp
       await cdpManager.setLastFeeOpTimeToNow();
-      let _opLastBefore = await cdpManager.lastFeeOperationTime();
+      let _opLastBefore = await cdpManager.lastRedemptionTimestamp();
 	  
       let _minutes = 100
-      let _seconds = 12 // this should not be included in updated lastFeeOperationTime
+      let _seconds = 12 // this should not be included in updated lastRedemptionTimestamp
       await network.provider.send("evm_increaseTime", [_minutes * 60 + _seconds])
       await network.provider.send("evm_mine") 
 	  
       // update to elapsed minute
       await cdpManager.unprotectedUpdateLastFeeOpTime();
-      let _opLastAfter = await cdpManager.lastFeeOperationTime();
+      let _opLastAfter = await cdpManager.lastRedemptionTimestamp();
 	  
       // final check
       let _expectedTime = _opLastBefore.add(toBN(_minutes * 60))
@@ -4896,7 +4896,7 @@ contract('CdpManager', async accounts => {
 
     const _leftColl = MIN_CDP_SIZE.mul(toBN("10001")).div(toBN("10000"))
     assert.isTrue((await collToken.getSharesByPooledEth(_leftColl)).lt(MIN_CDP_SIZE));
-    let _aColl = (await cdpManager.getEntireDebtAndColl(_aCdpID))[1]
+    let _aColl = (await cdpManager.getDebtAndCollShares(_aCdpID))[1]
     const _partialRedeem_EBTC = (_aColl).sub(_leftColl).mul(price).div(mv._1e18BN)
 
     let firstRedemptionHint

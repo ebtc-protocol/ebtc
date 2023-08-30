@@ -11,7 +11,7 @@ interface ICollSurplusPool {
     event CollateralAddressChanged(address _collTokenAddress);
 
     event SurplusCollSharesUpdated(address indexed _account, uint _newBalance);
-    event CollateralSent(address _to, uint _amount);
+    event CollSharesTransferred(address _to, uint _amount);
 
     event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
 

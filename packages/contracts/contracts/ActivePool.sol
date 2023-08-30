@@ -112,8 +112,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         systemCollShares = cachedSystemCollShares;
 
-        emit ActivePoolCollBalanceUpdated(cachedSystemCollShares);
-        emit CollateralSent(_account, _shares);
+        emit SystemCollSharesUpdated(cachedSystemCollShares);
+        emit CollSharesTransferred(_account, _shares);
 
         _transferCollSharesWithContractHooks(_account, _shares);
     }
@@ -145,8 +145,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         }
         systemCollShares = cachedSystemCollShares;
 
-        emit ActivePoolCollBalanceUpdated(cachedSystemCollShares);
-        emit CollateralSent(_account, totalShares);
+        emit SystemCollSharesUpdated(cachedSystemCollShares);
+        emit CollSharesTransferred(_account, totalShares);
 
         _transferCollSharesWithContractHooks(_account, totalShares);
     }
@@ -173,8 +173,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         uint256 _FeeRecipientColl = feeRecipientCollShares + _shares;
         feeRecipientCollShares = _FeeRecipientColl;
 
-        emit ActivePoolCollBalanceUpdated(cachedSystemCollShares);
-        emit ActivePoolFeeRecipientClaimableCollIncreased(_FeeRecipientColl, _shares);
+        emit SystemCollSharesUpdated(cachedSystemCollShares);
+        emit FeeRecipientClaimableCollSharesIncreased(_FeeRecipientColl, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -242,12 +242,12 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @notice Notify that stETH collateral shares have been recieved, updating internal accounting accordingly
     /// @param _value The amount of collateral to receive
 
-    function receiveColl(uint256 _value) external override {
+    function increaseSystemCollShares(uint256 _value) external override {
         _requireCallerIsBorrowerOperations();
 
         uint256 cachedSystemCollShares = systemCollShares + _value;
         systemCollShares = cachedSystemCollShares;
-        emit ActivePoolCollBalanceUpdated(cachedSystemCollShares);
+        emit SystemCollSharesUpdated(cachedSystemCollShares);
     }
 
     // === Flashloans === //
@@ -357,7 +357,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         }
 
         feeRecipientCollShares = _FeeRecipientColl;
-        emit ActivePoolFeeRecipientClaimableCollDecreased(_FeeRecipientColl, _shares);
+        emit FeeRecipientClaimableCollSharesDecreased(_FeeRecipientColl, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }

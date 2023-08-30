@@ -553,7 +553,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)
-    let _aliceTotalDebt = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[0];
 
     // Liquidate Alice	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
@@ -915,7 +915,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)	
-    let _aliceTotalDebt = (await cdpManager.getEntireDebtAndColl(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[0];
 
     // Liquidate Alice
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});

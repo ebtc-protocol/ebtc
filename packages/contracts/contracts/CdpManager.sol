@@ -73,7 +73,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * @return The number of CDPs.
      */
 
-    function getCdpIdsCount() external view override returns (uint) {
+    function getActiveCdpsCount() external view override returns (uint) {
         return CdpIds.length;
     }
 
@@ -627,7 +627,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         baseRate = newBaseRate;
         emit BaseRateUpdated(newBaseRate);
 
-        _updateLastFeeOpTime();
+        _updateLastRedemptionTimestamp();
 
         return newBaseRate;
     }
@@ -676,36 +676,36 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         baseRate = decayedBaseRate;
         emit BaseRateUpdated(decayedBaseRate);
 
-        _updateLastFeeOpTime();
+        _updateLastRedemptionTimestamp();
     }
 
     // --- Internal fee functions ---
 
     // Update the last fee operation time only if time passed >= decay interval. This prevents base rate griefing.
-    function _updateLastFeeOpTime() internal {
-        uint timePassed = block.timestamp > lastFeeOperationTime
-            ? block.timestamp - lastFeeOperationTime
+    function _updateLastRedemptionTimestamp() internal {
+        uint timePassed = block.timestamp > lastRedemptionTimestamp
+            ? block.timestamp - lastRedemptionTimestamp
             : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
-            // Using the effective elapsed time that is consumed so far to update lastFeeOperationTime
+            // Using the effective elapsed time that is consumed so far to update lastRedemptionTimestamp
             // instead block.timestamp for consistency with _calcDecayedBaseRate()
-            lastFeeOperationTime += _minutesPassedSinceLastFeeOp() * SECONDS_IN_ONE_MINUTE;
+            lastRedemptionTimestamp += _minutesPassedSinceLastRedemption() * SECONDS_IN_ONE_MINUTE;
             emit LastFeeOpTimeUpdated(block.timestamp);
         }
     }
 
     function _calcDecayedBaseRate() internal view returns (uint) {
-        uint minutesPassed = _minutesPassedSinceLastFeeOp();
+        uint minutesPassed = _minutesPassedSinceLastRedemption();
         uint decayFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
 
         return (baseRate * decayFactor) / DECIMAL_PRECISION;
     }
 
-    function _minutesPassedSinceLastFeeOp() internal view returns (uint) {
+    function _minutesPassedSinceLastRedemption() internal view returns (uint) {
         return
-            block.timestamp > lastFeeOperationTime
-                ? ((block.timestamp - lastFeeOperationTime) / SECONDS_IN_ONE_MINUTE)
+            block.timestamp > lastRedemptionTimestamp
+                ? ((block.timestamp - lastRedemptionTimestamp) / SECONDS_IN_ONE_MINUTE)
                 : 0;
     }
 

@@ -250,7 +250,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
         // allocate as system colalteral before allocating as fee
         vm.prank(address(borrowerOperations));
-        activePool.receiveColl(amount);
+        activePool.increaseSystemCollShares(amount);
         assertGe(
             activePool.getSystemCollShares(),
             amount,

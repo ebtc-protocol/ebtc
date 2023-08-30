@@ -82,7 +82,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
     }
 
     function unprotectedActivePoolReceiveColl(uint _amt) external {
-        activePool.receiveColl(_amt);
+        activePool.increaseSystemCollShares(_amt);
     }
 
     // Payable fallback function

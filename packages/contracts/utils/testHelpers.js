@@ -313,11 +313,11 @@ class TestHelper {
   }
 
   static async getCdpEntireColl(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[1])
+    return this.toBN((await contracts.cdpManager.getDebtAndCollShares(cdp))[1])
   }
 
   static async getCdpEntireDebt(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getEntireDebtAndColl(cdp))[0])
+    return this.toBN((await contracts.cdpManager.getDebtAndCollShares(cdp))[0])
   }
 
   static async getCdpStake(contracts, cdp) {
@@ -805,7 +805,7 @@ class TestHelper {
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.cdpManager.getEntireDebtAndColl(_cdpId)
+      const { debt, coll } = await contracts.cdpManager.getDebtAndCollShares(_cdpId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")

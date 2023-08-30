@@ -377,7 +377,7 @@ def pending_liquidations(contracts, price_ether_current):
     stability_pool_balance = 0 ## Stability Pool is gone
     cdp = last_cdp
     for i in range(NUM_LIQUIDATIONS):
-        debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
+        debt = contracts.cdpManager.getDebtAndCollShares(cdp)[0]
         if stability_pool_balance >= debt:
             return True
         cdp = contracts.sortedCdps.getPrev(cdp)
@@ -457,7 +457,7 @@ def liquidate_cdps(accounts, contracts, active_accounts, inactive_accounts, pric
             cdp = contracts.sortedCdps.getLast() ## Note: Get last so we get at risk CDP
             for i in range(NUM_LIQUIDATIONS):
                 print(f"i: {i}")
-                debt = contracts.cdpManager.getEntireDebtAndColl(cdp)[0]
+                debt = contracts.cdpManager.getDebtAndCollShares(cdp)[0]
                 print(f"debt: {debt / 1e18}")
                 if stability_pool_balance >= debt:
                     print("True!")
@@ -538,7 +538,7 @@ def close_cdps(accounts, contracts, active_accounts, inactive_accounts, price_et
         account_index = active_accounts[drops[i]]['index']
         account = accounts[account_index]
         cdp_id = active_accounts[drops[i]]['cdp_id']
-        amounts = contracts.cdpManager.getEntireDebtAndColl(cdp_id)
+        amounts = contracts.cdpManager.getDebtAndCollShares(cdp_id)
         coll = amounts['coll']
         debt = amounts['debt']
         pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
@@ -653,7 +653,7 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
 
         current_icr = contracts.cdpManager.getICR(cdp_id,
                                                            floatToWei(price_ether_current)) / 1e18
-        amounts = contracts.cdpManager.getEntireDebtAndColl(cdp_id)
+        amounts = contracts.cdpManager.getDebtAndCollShares(cdp_id)
         coll = amounts['coll'] / 1e18
         debt = amounts['debt'] / 1e18
 

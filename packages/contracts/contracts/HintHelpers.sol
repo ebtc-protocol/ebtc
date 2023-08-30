@@ -147,13 +147,13 @@ contract HintHelpers is LiquityBase {
         uint maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
         uint newColl;
-        uint _oldIndex = cdpManager.stFPPSg();
+        uint _oldIndex = cdpManager.stEthIndex();
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, newColl, ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, newColl, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
@@ -209,7 +209,7 @@ contract HintHelpers is LiquityBase {
         uint _numTrials,
         uint _inputRandomSeed
     ) external view returns (bytes32 hint, uint diff, uint latestRandomSeed) {
-        uint arrayLength = cdpManager.getCdpIdsCount();
+        uint arrayLength = cdpManager.getActiveCdpsCount();
 
         if (arrayLength == 0) {
             return (sortedCdps.nonExistId(), 0, _inputRandomSeed);

@@ -550,7 +550,7 @@ contract BorrowerOperations is
     function _activePoolAddColl(uint _amount, uint _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _amount);
-        activePool.receiveColl(_sharesToTrack);
+        activePool.increaseSystemCollShares(_sharesToTrack);
     }
 
     // Issue the specified amount of EBTC to _account and increases

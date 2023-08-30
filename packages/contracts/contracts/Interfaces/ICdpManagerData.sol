@@ -58,10 +58,10 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
-    event LTermsUpdated(uint _L_EBTCDebt);
-    event CdpSnapshotsUpdated(bytes32 _cdpId, uint _L_EBTCDebt);
-    event CdpIndexUpdated(bytes32 _cdpId, uint _newIndex);
-    event CollateralGlobalIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
+    event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
+    event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint _debtRedistributionIndex);
+    event CdpArrayIndexUpdated(bytes32 _cdpId, uint _newIndex);
+    event StEthIndexUpdated(uint _oldIndex, uint _newIndex, uint _updTimestamp);
     event CollateralFeePerUnitUpdated(uint _oldPerUnit, uint _newPerUnit, uint _feeTaken);
     event CdpFeeSplitApplied(
         bytes32 _cdpId,
@@ -222,7 +222,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function stFeePerUnitgError() external view returns (uint);
 
-    function stFPPSg() external view returns (uint);
+    function stEthIndex() external view returns (uint);
 
     function calcFeeUponStakingReward(
         uint256 _newIndex,
@@ -244,9 +244,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getPendingRedistributedDebt(bytes32 _cdpId) external view returns (uint);
 
-    function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
+    function hasPendingRedistributedDebt(bytes32 _cdpId) external view returns (bool);
 
-    function getEntireDebtAndColl(
+    function getDebtAndCollShares(
         bytes32 _cdpId
     ) external view returns (uint debt, uint coll, uint pendingEBTCDebtReward);
 }

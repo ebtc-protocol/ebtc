@@ -12,7 +12,7 @@ interface IFeeRecipient {
     event CollateralAddressSet(address _collTokenAddress);
 
     event ReceiveFee(address indexed _sender, address indexed _token, uint _amount);
-    event CollateralSent(address _account, uint _amount);
+    event CollSharesTransferred(address _account, uint _amount);
 
     // --- Functions ---
 

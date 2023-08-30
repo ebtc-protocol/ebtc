@@ -295,8 +295,8 @@ $ hardhat test
     ✓ sendETHToActivePool(): fails if receiver cannot receive ETH
 
   Contract: Fee arithmetic tests
-    ✓ minutesPassedSinceLastFeeOp(): returns minutes passed for no time increase (197ms)
-    ✓ minutesPassedSinceLastFeeOp(): returns minutes passed between time of last fee operation and current block.timestamp, rounded down to nearest minutes (982ms)
+    ✓ minutesPassedSinceLastRedemption(): returns minutes passed for no time increase (197ms)
+    ✓ minutesPassedSinceLastRedemption(): returns minutes passed between time of last fee operation and current block.timestamp, rounded down to nearest minutes (982ms)
     ✓ decayBaseRateFromBorrowing(): returns the initial base rate for no time increase
     ✓ decayBaseRateFromBorrowing(): returns the initial base rate for less than one minute passed  (386ms)
     ✓ decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.01 (2908ms)
@@ -1209,7 +1209,7 @@ gasUsed:  636956
     ✓ getCdpColl(): Returns coll (494ms)
     ✓ getCdpDebt(): Returns debt (400ms)
     ✓ getCdpStatus(): Returns status (434ms)
-    ✓ hasPendingRewards(): Returns false it cdp is not active
+    ✓ hasPendingRedistributedDebt(): Returns false it cdp is not active
 
   Contract: Unipool
     Unipool

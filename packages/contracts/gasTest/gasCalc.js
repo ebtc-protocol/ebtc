@@ -967,7 +967,7 @@ contract('Gas cost tests', async accounts => {
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 	let _first = await sortedCdps.getFirst();
-	let _firstDebtAndColl = await cdpManager.getEntireDebtAndColl(_first);
+	let _firstDebtAndColl = await cdpManager.getDebtAndCollShares(_first);
     const gas = await th.redeemCollateral(_liquidator, contracts, _firstDebtAndColl[0])
     th.logGas(gas, message)
 
@@ -1306,8 +1306,8 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
     await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isFalse(hasPendingRewards)
+    const hasPendingRedistributedDebt = await cdpManager.hasPendingRedistributedDebt(_cdpIdLiq3)
+    assert.isFalse(hasPendingRedistributedDebt)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1348,8 +1348,8 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(dec(3014, 13))
     await cdpManager.liquidate(_cdpIdLiq4, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingRedistributedDebt = await cdpManager.hasPendingRedistributedDebt(_cdpIdLiq3)
+    assert.isTrue(hasPendingRedistributedDebt)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1385,8 +1385,8 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
     await cdpManager.liquidate(_cdpIdLiq2, { from: _liquidator })
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingRedistributedDebt = await cdpManager.hasPendingRedistributedDebt(_cdpIdLiq3)
+    assert.isTrue(hasPendingRedistributedDebt)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 
@@ -1429,8 +1429,8 @@ contract('Gas cost tests', async accounts => {
     // Price drops
     await priceFeed.setPrice(dec(1500, 13))
 
-    const hasPendingRewards = await cdpManager.hasPendingRewards(_cdpIdLiq3)
-    assert.isTrue(hasPendingRewards)
+    const hasPendingRedistributedDebt = await cdpManager.hasPendingRedistributedDebt(_cdpIdLiq3)
+    assert.isTrue(hasPendingRedistributedDebt)
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 

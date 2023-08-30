@@ -170,7 +170,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public stakingRewardSplit;
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
-    uint public lastFeeOperationTime;
+    uint public lastRedemptionTimestamp;
 
     mapping(bytes32 => Cdp) public Cdps;
 
@@ -194,7 +194,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public systemDebtRedistributionIndex;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
-    uint256 public override stFPPSg;
+    uint256 public override stEthIndex;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
@@ -292,7 +292,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      *
      * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
-    function _updateSystemSnapshots_excludeCollRemainder(uint _collRemainder) internal {
+    function _updateSystemSnapshotsExcludeCollRemainder(uint _collRemainder) internal {
         uint _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
@@ -339,7 +339,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _L_EBTCDebt = systemDebtRedistributionIndex;
 
         debtRedistributionIndex[_cdpId] = _L_EBTCDebt;
-        emit CdpSnapshotsUpdated(_cdpId, _L_EBTCDebt);
+        emit CdpDebtRedistributionIndexUpdated(_cdpId, _L_EBTCDebt);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
@@ -445,7 +445,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         CdpIds[index] = idToMove;
         Cdps[idToMove].arrayIndex = index;
-        emit CdpIndexUpdated(idToMove, index);
+        emit CdpArrayIndexUpdated(idToMove, index);
 
         CdpIds.pop();
     }
@@ -480,7 +480,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
                 _oldIndex
             );
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
-            _updateSystemSnapshots_excludeCollRemainder(0);
+            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 
@@ -493,12 +493,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Update the global index via collateral token
     function _syncStEthIndex() internal returns (uint, uint) {
-        uint _oldIndex = stFPPSg;
+        uint _oldIndex = stEthIndex;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
-            stFPPSg = _newIndex;
+            stEthIndex = _newIndex;
             lastIndexTimestamp = block.timestamp;
-            emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
+            emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
         return (_oldIndex, _newIndex);
     }
@@ -634,7 +634,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = getDebtAndCollShares(_cdpId);
 
         uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
@@ -643,7 +643,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+        (uint currentEBTCDebt, uint currentETH, ) = getDebtAndCollShares(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
         uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
@@ -659,15 +659,15 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         return _getPendingRedistributedDebt(_cdpId);
     }
 
-    function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
+    function hasPendingRedistributedDebt(bytes32 _cdpId) public view returns (bool) {
         return _hasRedistributedDebt(_cdpId);
     }
 
     // Return the Cdps entire debt and coll struct
-    function _getEntireDebtAndColl(
+    function _getDebtAndCollShares(
         bytes32 _cdpId
     ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getEntireDebtAndColl(
+        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getDebtAndCollShares(
             _cdpId
         );
         return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
@@ -675,7 +675,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function getEntireDebtAndColl(
+    function getDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;

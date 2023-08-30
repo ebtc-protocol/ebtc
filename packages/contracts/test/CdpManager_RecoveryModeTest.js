@@ -557,7 +557,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(toBN(alice_ICR).lt(mv._MCR))
     assert.isTrue(toBN(dennis_ICR).lt(mv._MCR))
 
-    let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+    let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
     let _bobDebt = _bobDebtAndColl[0];
     let _bobColl = _bobDebtAndColl[1];
 
@@ -1056,7 +1056,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     expect Bob's cdp to only be partially repaid, and remain active after liquidation */
 
     // Check Bob is in Cdp owners array
-    const arrayLength = (await cdpManager.getCdpIdsCount()).toNumber()
+    const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
     let addressIdx = 0;
 
@@ -1180,7 +1180,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
-    let _bobDebtAndColl = await cdpManager.getEntireDebtAndColl(_bobCdpId);
+    let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
     let _bobDebt = _bobDebtAndColl[0];
     let _bobColl = _bobDebtAndColl[1];
 	
@@ -1215,7 +1215,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    let _carolDebtAndCollOriginal = await cdpManager.getEntireDebtAndColl(_carolCdpId);
+    let _carolDebtAndCollOriginal = await cdpManager.getDebtAndCollShares(_carolCdpId);
     let _carolDebtOriginal = _carolDebtAndCollOriginal[0];
 
     // --- TEST ---
@@ -1267,7 +1267,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
 
     // get total debt with redistributed
-    let _carolDebtAndColl = await cdpManager.getEntireDebtAndColl(_carolCdpId);
+    let _carolDebtAndColl = await cdpManager.getDebtAndCollShares(_carolCdpId);
     let _carolDebt = _carolDebtAndColl[0];
     let _carolColl = _carolDebtAndColl[1];
 
@@ -1354,7 +1354,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const alice_ICR = (await cdpManager.getICR(_aliceCdpId, price)).toString()
     assert.equal(alice_ICR, '1055465805061927840')
 
-    const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_Before = await cdpManager.getActiveCdpsCount()
 
     assert.equal(activeCdpsCount_Before, 1)
 
@@ -1362,7 +1362,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await assertRevert(cdpManager.liquidate(_aliceCdpId, { from: owner }), "CdpManager: nothing to liquidate")
 
     // Check Alice's cdp has not been removed
-    const activeCdpsCount_After = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_After = await cdpManager.getActiveCdpsCount()
     assert.equal(activeCdpsCount_After, 1)
 
     const alice_isInSortedList = await sortedCdps.contains(_aliceCdpId)
@@ -1388,7 +1388,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const alice_ICR = (await cdpManager.getICR(_aliceCdpId, price)).toString()
     assert.equal(alice_ICR, '1055465805061927840')
 
-    const activeCdpsCount_Before = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_Before = await cdpManager.getActiveCdpsCount()
 
     assert.equal(activeCdpsCount_Before, 2)
 
@@ -1399,7 +1399,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Check Alice's cdp is removed, and bob remains
-    const activeCdpsCount_After = await cdpManager.getCdpIdsCount()
+    const activeCdpsCount_After = await cdpManager.getActiveCdpsCount()
     assert.equal(activeCdpsCount_After, 1)
 
     const alice_isInSortedList = await sortedCdps.contains(_aliceCdpId)
@@ -2086,7 +2086,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check system still in Recovery Mode after liquidation tx
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
-    const CdpOwnersArrayLength = await cdpManager.getCdpIdsCount()
+    const CdpOwnersArrayLength = await cdpManager.getActiveCdpsCount()
     assert.equal(CdpOwnersArrayLength, '3')
 
     // Check Alice, Bob, Carol cdps have been closed
@@ -2856,7 +2856,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.liquidateCdps(10)
 
     // Check C is in Cdp owners array
-    const arrayLength = (await cdpManager.getCdpIdsCount()).toNumber()
+    const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
     let addressIdx = 0;
 
@@ -3600,7 +3600,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.batchLiquidateCdps(cdpsToLiquidate)
 
     // Check C is in Cdp owners array
-    const arrayLength = (await cdpManager.getCdpIdsCount()).toNumber()
+    const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
     let addressIdx = 0;
 

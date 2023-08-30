@@ -97,7 +97,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
         require(totalSurplusCollShares >= claimableColl, "!CollSurplusPoolBal");
         totalSurplusCollShares = totalSurplusCollShares - claimableColl;
-        emit CollateralSent(_account, claimableColl);
+        emit CollSharesTransferred(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferShares(_account, claimableColl);
