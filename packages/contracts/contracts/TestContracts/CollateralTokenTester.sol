@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "./Dependencies/ICollateralToken.sol";
-import "./Dependencies/ICollateralTokenOracle.sol";
-import "./Dependencies/Ownable.sol";
+import "../Dependencies/ICollateralToken.sol";
+import "../Dependencies/ICollateralTokenOracle.sol";
+import "../Dependencies/Ownable.sol";
 
 interface IEbtcInternalPool {
     function receiveColl(uint _value) external;
