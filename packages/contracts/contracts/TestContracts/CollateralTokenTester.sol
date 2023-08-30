@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../Dependencies/ICollateralToken.sol";
-import "../Dependencies/ICollateralTokenOracle.sol";
+import "./Dependencies/ICollateralToken.sol";
+import "./Dependencies/ICollateralTokenOracle.sol";
+import "./Dependencies/Ownable.sol";
 
 interface IEbtcInternalPool {
     function receiveColl(uint _value) external;
 }
 
 // based on WETH9 contract
-contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
+contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Ownable {
     string public override name = "Collateral Token Tester in eBTC";
     string public override symbol = "CollTester";
     uint8 public override decimals = 18;
@@ -17,9 +18,19 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     event Transfer(address indexed src, address indexed dst, uint wad, uint _share);
     event Deposit(address indexed dst, uint wad, uint _share);
     event Withdrawal(address indexed src, uint wad, uint _share);
+    event UncappedMinterAdded(address indexed account);
+    event UncappedMinterRemoved(address indexed account);
+    event MintCapSet(uint indexed newCap);
+    event MintCooldownSet(uint indexed newCooldown);
 
     mapping(address => uint) private balances;
     mapping(address => mapping(address => uint)) public override allowance;
+    mapping(address => bool) public isUncappedMinter;
+    mapping(address => uint) public lastMintTime;
+
+    // Faucet capped at 10 Collateral tokens per day
+    uint public mintCap = 10e18;
+    uint public mintCooldown = 60 * 60 * 24;
 
     uint private _ethPerShare = 1e18;
     uint private _totalBalance;
@@ -41,10 +52,20 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
 
     /// @dev Deposit collateral without ether for testing purposes
     function forceDeposit(uint ethToDeposit) external {
-        uint _share = getSharesByPooledEth(ethToDeposit);
+        uint mintAmount = ethToDeposit;
+        if (!isUncappedMinter[msg.sender]) {
+            require(
+                lastMintTime[msg.sender] == 0 ||
+                    lastMintTime[msg.sender] + mintCooldown > block.timestamp,
+                "Cooldown period not completed"
+            );
+            mintAmount = mintCap;
+            lastMintTime[msg.sender] = block.timestamp;
+        }
+        uint _share = getSharesByPooledEth(mintAmount);
         balances[msg.sender] += _share;
         _totalBalance += _share;
-        emit Deposit(msg.sender, ethToDeposit, _share);
+        emit Deposit(msg.sender, mintAmount, _share);
     }
 
     function withdraw(uint wad) public {
@@ -58,6 +79,27 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
 
     function totalSupply() public view override returns (uint) {
         return _totalBalance;
+    }
+
+    // Permissioned functions
+    function addUncappedMinter(address account) external onlyOwner {
+        isUncappedMinter[account] = true;
+        emit UncappedMinterAdded(account);
+    }
+
+    function removeUncappedMinter(address account) external onlyOwner {
+        isUncappedMinter[account] = false;
+        emit UncappedMinterRemoved(account);
+    }
+
+    function setMintCap(uint newCap) external onlyOwner {
+        mintCap = newCap;
+        emit MintCapSet(newCap);
+    }
+
+    function setMintCooldown(uint newCooldown) external onlyOwner {
+        mintCooldown = newCooldown;
+        emit MintCooldownSet(newCooldown);
     }
 
     // helper to set allowance in test
