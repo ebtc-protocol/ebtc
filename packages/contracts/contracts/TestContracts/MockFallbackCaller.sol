@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import {IFallbackCaller} from "../interfaces/IFallbackCaller.sol";
+import {IFallbackCaller} from "../Interfaces/IFallbackCaller.sol";
 
 contract MockFallbackCaller is IFallbackCaller {
     uint256 public _answer;
