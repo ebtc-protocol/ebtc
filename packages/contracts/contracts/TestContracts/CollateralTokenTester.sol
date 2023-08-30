@@ -39,6 +39,14 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         emit Deposit(msg.sender, msg.value, _share);
     }
 
+    /// @dev Deposit collateral without ether for testing purposes
+    function forceDeposit(uint ethToDeposit) external {
+        uint _share = getSharesByPooledEth(ethToDeposit);
+        balances[msg.sender] += _share;
+        _totalBalance += _share;
+        emit Deposit(msg.sender, ethToDeposit, _share);
+    }
+
     function withdraw(uint wad) public {
         uint _share = getSharesByPooledEth(wad);
         require(balances[msg.sender] >= _share);
