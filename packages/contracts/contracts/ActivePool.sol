@@ -343,10 +343,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @param _shares The amount of shares to claim to feeRecipient
 
     function claimFeeRecipientColl(uint256 _shares) external override requiresAuth {
+        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState(); // Calling this increases shares so do it first
+
         uint256 _FeeRecipientColl = FeeRecipientColl;
         require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
 
-        ICdpManagerData(cdpManagerAddress).syncPendingGlobalState();
 
         unchecked {
             _FeeRecipientColl -= _shares;
