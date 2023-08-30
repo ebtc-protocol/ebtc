@@ -21,7 +21,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     ICollateralToken public immutable collateral;
 
     // deposited ether tracker
-    uint256 internal StEthColl;
+    uint256 internal StEthCollShares;
     // Collateral surplus claimable by cdp owners
     mapping(address => uint) internal balances;
 
@@ -64,7 +64,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @return The current collateral balance tracked by the variable
      */
     function getStEthColl() external view override returns (uint) {
-        return StEthColl;
+        return StEthCollShares;
     }
 
     /**
@@ -95,8 +95,8 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         balances[_account] = 0;
         emit CollBalanceUpdated(_account, 0);
 
-        require(StEthColl >= claimableColl, "!CollSurplusPoolBal");
-        StEthColl = StEthColl - claimableColl;
+        require(StEthCollShares >= claimableColl, "!CollSurplusPoolBal");
+        StEthCollShares = StEthCollShares - claimableColl;
         emit CollateralSent(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
@@ -122,7 +122,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     function receiveColl(uint _value) external override {
         _requireCallerIsActivePool();
-        StEthColl = StEthColl + _value;
+        StEthCollShares = StEthCollShares + _value;
     }
 
     // === Governed Functions === //
