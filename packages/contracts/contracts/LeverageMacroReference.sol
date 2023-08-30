@@ -44,4 +44,14 @@ contract LeverageMacroReference is LeverageMacroBase {
     function owner() public override returns (address) {
         return theOwner;
     }
+
+    /// @notice use this if you broke the approvals
+    /// @dev diamond wallets can re-approve separately
+    function resetApprovals() external {
+        _assertOwner();
+
+        ebtcToken.approve(address(borrowerOperations), type(uint256).max);
+        stETH.approve(address(borrowerOperations), type(uint256).max);
+        stETH.approve(address(activePool), type(uint256).max);
+    }
 }

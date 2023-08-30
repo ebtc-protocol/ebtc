@@ -112,7 +112,7 @@ contract SimplifiedDiamondLike {
 
         uint256 length = ops.length;
         for (uint256 i; i < length; ) {
-            _executeOne(ops[i], i);
+            _executeOne(ops[i]);
 
             unchecked {
                 ++i;
@@ -131,7 +131,7 @@ contract SimplifiedDiamondLike {
     }
 
     /// @dev Execute one tx
-    function _executeOne(Operation calldata op, uint256 counter) internal {
+    function _executeOne(Operation calldata op) internal {
         bool success;
         bytes memory data = op.data;
         uint256 txGas = op.capGas ? op.gas : gasleft();

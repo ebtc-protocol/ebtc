@@ -16,29 +16,6 @@ interface IBorrowerOperations {
     event CollateralAddressChanged(address _collTokenAddress);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
 
-    event CdpCreated(
-        bytes32 indexed _cdpId,
-        address indexed _borrower,
-        address indexed _creator,
-        uint arrayIndex
-    );
-    event CdpUpdated(
-        bytes32 indexed _cdpId,
-        address indexed _borrower,
-        uint _oldDebt,
-        uint _oldColl,
-        uint _debt,
-        uint _coll,
-        uint _stake,
-        BorrowerOperation _operation
-    );
-
-    enum BorrowerOperation {
-        openCdp,
-        closeCdp,
-        adjustCdp
-    }
-
     // --- Functions ---
 
     function openCdp(

@@ -28,6 +28,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000);
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -64,8 +65,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // normal mode	  
       let _aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, (await priceFeed.getPrice()));
       assert.isTrue(_aliceICR.gt(_MCR));
-      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");  
+      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");  
 	  
       // recovery mode	  
       let _newPrice = dec(2400, 13);
@@ -77,8 +78,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       _aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
       let _TCR = await cdpManager.getTCR(_newPrice);
       assert.isTrue(_aliceICR.gt(_TCR));
-      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "!_ICR");
-      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "!_ICR");	  
+      await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
+      await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");	  
   })
   
   it("Liquidator should prepare enough asset for repayment", async () => {
@@ -357,7 +358,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
       th.assertIsApproximatelyEqual(_liquidatedEvents[0].args[2].toString(), _expectedDebtRepaid.toString());
       assert.equal(_liquidatedEvents[0].args[3].toString(), aliceColl.toString(), '!liquidated CDP collateral');
-      assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
+      assert.equal(_liquidatedEvents[0].args[4].toString(), '5', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
 
@@ -391,7 +392,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let aliceDebt = await cdpManager.getCdpDebt(aliceCdpId);
       let aliceColl = await cdpManager.getCdpColl(aliceCdpId);		  
       let prevDebtOfOwner = await debtToken.balanceOf(owner);
-      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));
+      assert.isTrue(toBN(prevDebtOfOwner.toString()).gt(toBN(aliceDebt.toString())));	  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 	  
       // liquidate alice in recovery mode	  
       let prevETHOfOwner = await ethers.provider.getBalance(owner);	
@@ -412,7 +418,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(_liquidatedEvents[0].args[1], alice, '!liquidated CDP owner');
       assert.equal(_liquidatedEvents[0].args[2].toString(), aliceDebt.toString(), '!liquidated CDP debt');
       assert.equal(_liquidatedEvents[0].args[3].toString(), _cappedLiqColl.toString(), '!liquidated CDP collateral');
-      assert.equal(_liquidatedEvents[0].args[4].toString(), '2', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
+      assert.equal(_liquidatedEvents[0].args[4].toString(), '5', '!liquidateInRecoveryMode');// alice was liquidated in recovery mode
       let _gasEtherUsed = toBN(_liquidateRecoveryTx.receipt.effectiveGasPrice.toString()).mul(toBN((th.gasUsed(_liquidateRecoveryTx)).toString()));
       let _ethSeizedByLiquidator = toBN(_collLiquidatorPost.toString()).sub(toBN(_collLiquidatorPre.toString()));
       let _expectClaimSurplus = toBN(aliceColl.toString()).sub(_cappedLiqColl);
@@ -574,7 +580,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(troveUpdatedEvents[0].args[4].toString(), _debtRemaining.toString(), '!partially liquidated CDP remaining debt');
       assert.equal(troveUpdatedEvents[0].args[5].toString(), _collRemaining.toString(), '!partially liquidated CDP remaining collateral');
       assert.equal(troveUpdatedEvents[0].args[6].toString(), _stakeRemaining.toString(), '!partially liquidated CDP remaining stake');
-      assert.equal(troveUpdatedEvents[0].args[7], 4, '!CdpManagerOperation.partiallyLiquidate');
+      assert.equal(troveUpdatedEvents[0].args[7], 7, '!CdpOperation.partiallyLiquidate');
 
       // check CdpPartiallyLiquidated event
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpPartiallyLiquidated')
@@ -583,7 +589,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal(liquidationEvents[0].args[1], alice, '!partially liquidated CDP owner');
       assert.equal(liquidationEvents[0].args[2].toString(), _debtLiquidated.toString(), '!partially liquidated CDP debt');
       assert.equal(liquidationEvents[0].args[3].toString(), _collLiquidated.toString(), '!partially liquidated CDP collateral');
-      assert.equal(liquidationEvents[0].args[4], 4, '!CdpManagerOperation.partiallyLiquidate');
+      assert.equal(liquidationEvents[0].args[4], 7, '!CdpOperation.partiallyLiquidate');
 	  
       // check liquidator balance change
       let _gasUsed = th.gasUsed(tx);
@@ -794,7 +800,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _partialAmount = toBN("1");
       await debtToken.unprotectedMint(owner, _partialAmount);
       let _totalSupplyBefore = await debtToken.totalSupply();
-      await cdpManager.partiallyLiquidate(_cdpId1, _partialAmount, _cdpId1, _cdpId1);
+      await assertRevert(cdpManager.partiallyLiquidate(_cdpId1, _partialAmount, _cdpId1, _cdpId1), "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum");
       let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
       if (_totalSupplyDiff.lt(_partialAmount)) {
           await debtToken.unprotectedBurn(owner, _partialAmount.sub(_totalSupplyDiff));

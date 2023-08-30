@@ -16,7 +16,7 @@ interface IActivePool is IPool {
     event ActivePoolFeeRecipientClaimableCollIncreased(uint _coll, uint _fee);
     event ActivePoolFeeRecipientClaimableCollDecreased(uint _coll, uint _fee);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
-    event SweepTokenSuccess(address _token, uint _amount, address _recipient);
+    event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
 
     // --- Functions ---
     function sendStEthColl(address _account, uint _amount) external;

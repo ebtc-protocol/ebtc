@@ -109,11 +109,14 @@ contract HintHelpers is LiquityBase {
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
-                    if (partialRedemptionNewColl < MIN_NET_COLL) {
+                    if (collateral.getPooledEthByShares(partialRedemptionNewColl) < MIN_NET_COLL) {
                         partialRedemptionHintNICR = 0; //reset to 0 as there is no partial redemption in this case
+                        partialRedemptionNewColl = 0;
                         vars.remainingEbtcToRedeem = _cachedEbtcToRedeem;
-                        break;
+                    } else {
+                        vars.remainingEbtcToRedeem = 0;
                     }
+                    break;
                 } else {
                     vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - currentCdpDebt;
                 }
@@ -145,7 +148,7 @@ contract HintHelpers is LiquityBase {
 
         uint newColl;
         uint _oldIndex = cdpManager.stFPPSg();
-        uint _newIndex = collateral.getPooledEthByShares(1e18);
+        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
@@ -188,12 +191,7 @@ contract HintHelpers is LiquityBase {
             _oldIndex
         );
         _newStFeePerUnit = _deltaFeePerUnit + cdpManager.stFeePerUnitg();
-        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(
-            _cdpId,
-            _newStFeePerUnit,
-            _perUnitError,
-            cdpManager.totalStakes()
-        );
+        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _newStFeePerUnit);
         return newColl;
     }
 

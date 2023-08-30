@@ -70,10 +70,6 @@ contract BorrowerOperationsTester is BorrowerOperations {
             );
     }
 
-    function getUSDValue(uint _coll, uint _price) external pure returns (uint) {
-        return _getUSDValue(_coll, _price);
-    }
-
     function callInternalAdjustLoan(
         address _borrower,
         uint _collWithdrawal,

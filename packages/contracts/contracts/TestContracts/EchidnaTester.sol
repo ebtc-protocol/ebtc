@@ -485,7 +485,7 @@ contract EchidnaTester {
     }
 
     function claimSplitFee() external {
-        cdpManager.claimStakingSplitFee();
+        cdpManager.applyPendingGlobalState();
     }
 
     ///////////////////////////////////////////////////////

@@ -9,6 +9,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
     uint public mintAmount = 1e18;
+    uint private ICR_COMPARE_TOLERANCE = 1000000; //in the scale of 1e18
+    address payable[] users;
 
     function setUp() public override {
         super.setUp();
@@ -29,8 +31,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         collateral.approve(address(borrowerOperations), type(uint256).max);
 
-        assertEq(cdpManager.getBorrowingRateWithDecay(), 0);
-
         uint debt = 2e17;
 
         console.log("debt %s", debt);
@@ -38,7 +38,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         _openTestCDP(user, 10000 ether, debt);
 
         vm.startPrank(user);
-        assertEq(cdpManager.getBorrowingRateWithDecay(), 0);
 
         // Set minute decay factor
         cdpManager.setMinuteDecayFactor(newMinuteDecayFactor);
@@ -153,7 +152,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // post checks
         require(_debtBalAfter + _redeemDebt == _debtBalBefore, "!redemption debt reduction");
         for (uint i = 0; i < _redeemNumber; ++i) {
-            require(cdpManager.getCdpStatus(_cdpIds[i]) == 4, "redemption leave CDP not closed!");
+            require(
+                cdpManager.getCdpStatus(_cdpIds[i]) == 4,
+                "redemption leaves CDP not closed with correct status"
+            );
+            _assertCdpClosed(_cdpIds[i], 4);
+            _assertCdpNotInSortedCdps(_cdpIds[i]);
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             require(
                 collSurplusPool.getCollateral(_owner) > cdpManager.LIQUIDATOR_REWARD(),
@@ -197,5 +201,225 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         }
 
         return _decMul(x, y);
+    }
+
+    function test_ValidRedemptionsRevertWhenPaused() public {
+        (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
+        uint debt = 1;
+
+        vm.prank(defaultGovernance);
+        cdpManager.setRedemptionsPaused(true);
+        assertEq(true, cdpManager.redemptionsPaused());
+
+        vm.startPrank(user);
+
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+
+        vm.expectRevert("CdpManager: Redemptions Paused");
+        cdpManager.redeemCollateral(
+            debt,
+            firstRedemptionHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_ValidRedemptionNoLongerRevertsWhenUnpausedAfterBeingPaused() public {
+        (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
+        uint debt = 1;
+
+        vm.startPrank(defaultGovernance);
+        cdpManager.setRedemptionsPaused(true);
+        cdpManager.setRedemptionsPaused(false);
+        assertEq(false, cdpManager.redemptionsPaused());
+        vm.stopPrank();
+
+        vm.startPrank(user);
+
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        cdpManager.redeemCollateral(
+            debt,
+            firstRedemptionHint,
+            bytes32(0),
+            bytes32(0),
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_SingleRedemptionCollSurplus(uint _toRedeemICR) public {
+        // setup healthy whale Cdp
+        // set 1 Cdp that is valid to redeem
+        // calculate expected collSurplus from redemption of Cdp
+        // calculate expected system debt after valid redemption
+        // calculate expected system coll after valid redemption
+        // fully redeem single Cdp
+        // borrower of Redeemed Cdp should have expected collSurplus available
+        // confirm expected system debt and coll
+        address user = _utils.getNextUserAddress();
+
+        // ensure redemption ICR falls in reasonable range
+        vm.assume(_toRedeemICR > cdpManager.MCR());
+        vm.assume(_toRedeemICR <= cdpManager.CCR());
+
+        uint _originalPrice = priceFeedMock.fetchPrice();
+
+        // ensure there is more than one CDP
+        _singleCdpSetupWithICR(user, 200e16);
+        (, bytes32 userCdpid) = _singleCdpSetupWithICR(user, _toRedeemICR);
+        uint _totalCollBefore = cdpManager.getEntireSystemColl();
+        uint _totalDebtBefore = cdpManager.getEntireSystemDebt();
+        uint _redeemedDebt = cdpManager.getCdpDebt(userCdpid);
+        uint _cdpColl = cdpManager.getCdpColl(userCdpid);
+        uint _cdpLiqReward = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+
+        // perform redemption
+        _performRedemption(user, _redeemedDebt, userCdpid, userCdpid);
+
+        {
+            _checkFullyRedeemedCdp(userCdpid, user, _cdpColl, _redeemedDebt);
+            _utils.assertApproximateEq(
+                _totalCollBefore - _cdpColl,
+                cdpManager.getEntireSystemColl(),
+                ICR_COMPARE_TOLERANCE
+            );
+            assertEq(
+                _totalDebtBefore - _redeemedDebt,
+                cdpManager.getEntireSystemDebt(),
+                "total debt mismatch after redemption!!!"
+            );
+        }
+    }
+
+    function test_MultipleRedemptionCollSurplus(uint _toRedeemICR) public {
+        // setup healthy whale Cdp
+        // set 3 Cdps that are valid to redeem at same ICR, different borrowers
+        // calculate expected collSurplus from full redemption of Cdps
+        // calculate expected system debt after all valid redemptions
+        // calculate expected system coll after all valid redemptions
+        // fully redeem 2 Cdps, partially redeem the third
+        // borrowers of full Redeemed Cdps should have expected collSurplus available
+        // borrowers of partially redeemed Cdp should have no collSurplus available
+        // confirm expected system debt and coll
+        users = _utils.createUsers(3);
+
+        // ensure redemption ICR falls in reasonable range
+        vm.assume(_toRedeemICR > cdpManager.MCR());
+        vm.assume(_toRedeemICR <= cdpManager.CCR());
+
+        uint _originalPrice = priceFeedMock.fetchPrice();
+
+        // ensure there is more than one CDP
+        _singleCdpSetupWithICR(users[0], 200e16);
+        (, bytes32 userCdpid1) = _singleCdpSetupWithICR(users[0], _toRedeemICR);
+        (, bytes32 userCdpid2) = _singleCdpSetupWithICR(users[1], _toRedeemICR + 2e16);
+        (, bytes32 userCdpid3) = _singleCdpSetupWithICR(users[2], _toRedeemICR + 4e16);
+        uint _totalCollBefore = cdpManager.getEntireSystemColl();
+        uint _totalDebtBefore = cdpManager.getEntireSystemDebt();
+        uint _cdpDebt1 = cdpManager.getCdpDebt(userCdpid1);
+        uint _cdpDebt2 = cdpManager.getCdpDebt(userCdpid2);
+        uint _cdpDebt3 = cdpManager.getCdpDebt(userCdpid3);
+        uint _cdpColl1 = cdpManager.getCdpColl(userCdpid1);
+        uint _cdpColl2 = cdpManager.getCdpColl(userCdpid2);
+        uint _redeemedDebt = _cdpDebt1 + _cdpDebt2 + (_cdpDebt3 / 2);
+        deal(address(eBTCToken), users[0], _redeemedDebt); // sugardaddy redeemer
+
+        // perform redemption
+        _performRedemption(users[0], _redeemedDebt, userCdpid1, userCdpid1);
+
+        {
+            _checkFullyRedeemedCdp(userCdpid1, users[0], _cdpColl1, _cdpDebt1);
+            _checkFullyRedeemedCdp(userCdpid2, users[1], _cdpColl2, _cdpDebt2);
+            _checkPartiallyRedeemedCdp(userCdpid3, users[2]);
+            _utils.assertApproximateEq(
+                _totalCollBefore -
+                    _cdpColl1 -
+                    _cdpColl2 -
+                    (((_cdpDebt3 * 1e18) / 2) / _originalPrice),
+                cdpManager.getEntireSystemColl(),
+                ICR_COMPARE_TOLERANCE
+            );
+            assertEq(
+                _totalDebtBefore - _redeemedDebt,
+                cdpManager.getEntireSystemDebt(),
+                "total debt mismatch after redemption!!!"
+            );
+        }
+    }
+
+    function _singleCdpRedemptionSetup() internal returns (address user, bytes32 userCdpId) {
+        uint debt = 2e17;
+        user = _utils.getNextUserAddress();
+        userCdpId = _openTestCDP(user, 10000 ether, debt);
+
+        vm.startPrank(user);
+        eBTCToken.approve(address(cdpManager), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function _singleCdpSetupWithICR(address _usr, uint _icr) internal returns (address, bytes32) {
+        uint _price = priceFeedMock.fetchPrice();
+        uint _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint _debt = (_coll * _price) / _icr;
+        bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
+        uint _cdpICR = cdpManager.getCurrentICR(_cdpId, _price);
+        _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
+        return (_usr, _cdpId);
+    }
+
+    function _performRedemption(
+        address _redeemer,
+        uint _redeemedDebt,
+        bytes32 _upperPartialRedemptionHint,
+        bytes32 _lowerPartialRedemptionHint
+    ) internal {
+        (bytes32 firstRedemptionHint, uint partialRedemptionHintNICR, , ) = hintHelpers
+            .getRedemptionHints(_redeemedDebt, priceFeedMock.fetchPrice(), 0);
+        vm.prank(_redeemer);
+        cdpManager.redeemCollateral(
+            _redeemedDebt,
+            firstRedemptionHint,
+            _upperPartialRedemptionHint,
+            _lowerPartialRedemptionHint,
+            partialRedemptionHintNICR,
+            0,
+            1e18
+        );
+    }
+
+    function _checkFullyRedeemedCdp(
+        bytes32 _cdpId,
+        address _cdpOwner,
+        uint _cdpColl,
+        uint _cdpDebt
+    ) internal {
+        uint _expectedCollSurplus = _cdpColl +
+            cdpManager.LIQUIDATOR_REWARD() -
+            ((_cdpDebt * 1e18) / priceFeedMock.fetchPrice());
+        assertTrue(sortedCdps.contains(_cdpId) == false);
+        assertEq(
+            _expectedCollSurplus,
+            collSurplusPool.getCollateral(_cdpOwner),
+            "coll surplus balance mismatch after full redemption!!!"
+        );
+    }
+
+    function _checkPartiallyRedeemedCdp(bytes32 _cdpId, address _cdpOwner) internal {
+        assertTrue(sortedCdps.contains(_cdpId) == true);
+        assertEq(
+            0,
+            collSurplusPool.getCollateral(_cdpOwner),
+            "coll surplus not zero after partial redemption!!!"
+        );
     }
 }

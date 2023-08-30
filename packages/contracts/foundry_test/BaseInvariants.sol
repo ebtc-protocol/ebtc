@@ -100,6 +100,14 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         }
     }
 
+    function _assert_cdp_manager_invariant_4() internal {
+        assertEq(
+            cdpManager.stFPPSg(),
+            collateral.getPooledEthByShares(1e18),
+            "System Invariant: stFPPSg is not synced to real collateral index"
+        );
+    }
+
     function _assert_coll_surplus_pool_invariant_1() internal {
         assertGe(
             collateral.sharesOf(address(collSurplusPool)),
@@ -144,6 +152,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         _assert_cdp_manager_invariant_1();
         _assert_cdp_manager_invariant_2();
         _assert_cdp_manager_invariant_3();
+        _assert_cdp_manager_invariant_4();
         _assert_coll_surplus_pool_invariant_1();
         _assert_sorted_list_invariant_1();
         _assert_sorted_list_invariant_2();
