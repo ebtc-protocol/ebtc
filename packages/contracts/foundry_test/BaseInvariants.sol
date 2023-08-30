@@ -136,7 +136,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
         uint _price = priceFeedMock.getPrice();
         if (_first != sortedCdps.dummyId() && _price > 0) {
             assertGe(
-                cdpManager.getCurrentICR(_first, _price),
+                cdpManager.getICR(_first, _price),
                 cdpManager.getTCR(_price),
                 "System Invariant: sorted_list_2"
             );

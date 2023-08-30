@@ -49,12 +49,12 @@ contract CDPOpsTest is eBTCBaseFixture {
         assertEq(netColl, collateral.getPooledEthByShares(coll));
 
         // Get ICR for CDP:
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
 
         // Add more collateral and make sure ICR changes
         borrowerOperations.addColl(cdpId, "hint", "hint", collAmount);
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
 
         assertGt(newIcr, initialIcr);
 
@@ -129,11 +129,11 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure collateral is as expected
         assertEq(netColl, cdpManager.getCdpColl(cdpId));
         // Get ICR for CDP:
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
         // Add more collateral and make sure ICR changes
         borrowerOperations.addColl(cdpId, "hint", "hint", increaseAmnt);
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         // Make sure collateral increased by increaseAmnt
         assertEq((netColl + increaseAmnt), cdpManager.getCdpColl(cdpId));
@@ -191,11 +191,11 @@ contract CDPOpsTest is eBTCBaseFixture {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint randCollIncrease = _utils.generateRandomNumber(10 ether, 1000 ether, user);
             uint netColl = cdpManager.getCdpColl(cdpIds[cdpIx]);
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             borrowerOperations.addColl(cdpIds[cdpIx], "hint", "hint", randCollIncrease);
             assertEq(netColl + randCollIncrease, cdpManager.getCdpColl(cdpIds[cdpIx]));
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
             _utils.mineBlocks(100);
@@ -227,10 +227,10 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint initialIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         // Withdraw collateral and make sure ICR changes
         borrowerOperations.withdrawColl(cdpId, withdrawnColl, "hint", "hint");
-        uint newIcr = cdpManager.getCurrentICR(cdpId, priceFeedMock.fetchPrice());
+        uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure collateral was reduced by `withdrawnColl` amount
         assertEq(
@@ -284,11 +284,11 @@ contract CDPOpsTest is eBTCBaseFixture {
                 (cdpManager.getCdpColl(cdpIds[cdpIx]) / 5),
                 user
             );
-            uint initialIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Withdraw
             vm.prank(user);
             borrowerOperations.withdrawColl(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
-            uint newIcr = cdpManager.getCurrentICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
             _utils.mineBlocks(100);

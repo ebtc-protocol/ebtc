@@ -413,7 +413,7 @@ contract EchidnaTester {
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
 
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _newPrice);
+        uint _icr = cdpManager.getICR(_cdpId, _newPrice);
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
@@ -433,7 +433,7 @@ contract EchidnaTester {
         (uint _oldPrice, uint _newPrice) = _getNewPriceForLiquidation(_i);
         priceFeedTestnet.setPrice(_newPrice);
 
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _newPrice);
+        uint _icr = cdpManager.getICR(_cdpId, _newPrice);
         bool _recovery = cdpManager.checkRecoveryMode(_newPrice);
 
         if (_icr < cdpManager.MCR() || (_recovery && _icr < cdpManager.getTCR(_newPrice))) {
@@ -921,7 +921,7 @@ contract EchidnaTester {
     function echidna_sorted_list_invariant_2() public view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint _price = priceFeedTestnet.getPrice();
-        uint _firstICR = cdpManager.getCurrentICR(_first, _price);
+        uint _firstICR = cdpManager.getICR(_first, _price);
         uint _TCR = cdpManager.getTCR(_price);
         uint _crTolerance = 1e13; //compared to 1e18
         if (

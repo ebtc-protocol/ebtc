@@ -62,7 +62,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
-        _syncIndex();
+        _syncStEthIndex();
         stFeePerUnitg = DECIMAL_PRECISION;
     }
 
@@ -297,13 +297,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (
             _firstRedemptionHint == sortedCdps.nonExistId() ||
             !sortedCdps.contains(_firstRedemptionHint) ||
-            getCurrentICR(_firstRedemptionHint, _price) < MCR
+            getICR(_firstRedemptionHint, _price) < MCR
         ) {
             return false;
         }
 
         bytes32 nextCdp = sortedCdps.getNext(_firstRedemptionHint);
-        return nextCdp == sortedCdps.nonExistId() || getCurrentICR(nextCdp, _price) < MCR;
+        return nextCdp == sortedCdps.nonExistId() || getICR(nextCdp, _price) < MCR;
     }
 
     /** 
@@ -389,7 +389,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getCurrentICR(_cId, totals.price) < MCR) {
+            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
                 _cId = sortedCdps.getPrev(_cId);
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
@@ -773,7 +773,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new staking reward split exceeds max"
         );
 
-        syncPendingGlobalState();
+        syncGlobalAccountingAndGracePeriod();
 
         stakingRewardSplit = _stakingRewardSplit;
         emit StakingRewardSplitSet(_stakingRewardSplit);
@@ -789,7 +789,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new redemption fee floor is higher than maximum"
         );
 
-        syncPendingGlobalState();
+        syncGlobalAccountingAndGracePeriod();
 
         redemptionFeeFloor = _redemptionFeeFloor;
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
@@ -805,7 +805,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             "CDPManager: new minute decay factor out of range"
         );
 
-        syncPendingGlobalState();
+        syncGlobalAccountingAndGracePeriod();
 
         // decay first according to previous factor
         _decayBaseRate();
@@ -816,7 +816,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setBeta(uint _beta) external requiresAuth {
-        syncPendingGlobalState();
+        syncGlobalAccountingAndGracePeriod();
 
         _decayBaseRate();
 
@@ -825,7 +825,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function setRedemptionsPaused(bool _paused) external requiresAuth {
-        syncPendingGlobalState();
+        syncGlobalAccountingAndGracePeriod();
         _decayBaseRate();
 
         redemptionsPaused = _paused;

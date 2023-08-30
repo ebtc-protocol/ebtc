@@ -56,7 +56,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("tcr b4", tcr);
 
         // And show that the TCR goes down once you claim
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter", tcrAfter);
@@ -121,7 +121,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         // Once a CDP is open
         // Just take some yield
-        // NOTE: We must do this here due to `updateCdpRewardSnapshots` resynching the index after each open
+        // NOTE: We must do this here due to `updateCdpDebtRedistributionIndex` resynching the index after each open
         {
             uint _curIndex = collateral.getPooledEthByShares(1e18);
             uint _newIndex = _curIndex + 5e16;
@@ -135,7 +135,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             // hack manipulation to sync global index in attacker's benefit
             uint _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
             collateral.setEthPerShare(_oldIdx);
-            cdpManager.syncPendingGlobalState();
+            cdpManager.syncGlobalAccountingAndGracePeriod();
             console.log("_oldIndex:", cdpManager.stFPPSg());
             assertEq(_oldIdx, cdpManager.stFPPSg());
             assertLt(_oldIdx, _curIndex);
@@ -156,7 +156,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         }
 
         // Now we take the split
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);
@@ -199,7 +199,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         // Once a CDP is open
         // Just take some yield
-        // NOTE: We must do this here due to `updateCdpRewardSnapshots` resynching the index after each open
+        // NOTE: We must do this here due to `updateCdpDebtRedistributionIndex` resynching the index after each open
         uint _curIndex = collateral.getPooledEthByShares(1e18);
         uint _newIndex = _curIndex + 5e16;
         collateral.setEthPerShare(_newIndex);
@@ -213,7 +213,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
 
         // Now we take the split
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         uint256 tcrAfter = cdpManager.getTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);

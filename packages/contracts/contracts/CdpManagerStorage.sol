@@ -117,6 +117,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             _gracePeriod >= MINIMUM_GRACE_PERIOD,
             "CdpManager: Grace period below minimum duration"
         );
+
+        syncGlobalAccountingAndGracePeriod();
         recoveryModeGracePeriod = _gracePeriod;
         emit GracePeriodSet(_gracePeriod);
     }
@@ -181,19 +183,19 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint public totalCollateralSnapshot;
 
     /*
-     * L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * systemDebtRedistributionIndex track the sums of accumulated liquidation rewards per unit staked.
      * During its lifetime, each stake earns:
      *
-     * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
+     * A EBTCDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
      *
-     * Where L_EBTCDebt(0) are snapshots of L_EBTCDebt
+     * Where systemDebtRedistributionIndex(0) are snapshots of systemDebtRedistributionIndex
      * for the active Cdp taken at the instant the stake was made
      */
-    uint public L_EBTCDebt;
+    uint public systemDebtRedistributionIndex;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stFPPSg;
-    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_EBTCDebt */
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
     uint256 public override stFeePerUnitg;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override stFeePerUnitgError;
@@ -202,14 +204,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint) public rewardSnapshots;
+    mapping(bytes32 => uint) public debtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
     // Error trackers for the cdp redistribution calculation
     uint public lastETHError_Redistribution;
-    uint public lastEBTCDebtError_Redistribution;
+    uint public lastEBTCDebtErrorRedistribution;
 
     constructor(
         address _liquidationLibraryAddress,
@@ -273,7 +275,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        rewardSnapshots[_cdpId] = 0;
+        debtRedistributionIndex[_cdpId] = 0;
         stFeePerUnitcdp[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
@@ -303,7 +305,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /**
     get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     */
-    function _getRedistributedEBTCDebt(
+    function _getPendingRedistributedDebt(
         bytes32 _cdpId
     ) internal view returns (uint pendingEBTCDebtReward) {
         Cdp storage cdp = Cdps[_cdpId];
@@ -312,7 +314,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             return 0;
         }
 
-        uint rewardPerUnitStaked = L_EBTCDebt - rewardSnapshots[_cdpId];
+        uint rewardPerUnitStaked = systemDebtRedistributionIndex - debtRedistributionIndex[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
@@ -330,13 +332,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId] < L_EBTCDebt);
+        return (debtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
     function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
-        uint _L_EBTCDebt = L_EBTCDebt;
+        uint _L_EBTCDebt = systemDebtRedistributionIndex;
 
-        rewardSnapshots[_cdpId] = _L_EBTCDebt;
+        debtRedistributionIndex[_cdpId] = _L_EBTCDebt;
         emit CdpSnapshotsUpdated(_cdpId, _L_EBTCDebt);
     }
 
@@ -345,7 +347,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         _applyAccumulatedFeeSplit(_cdpId);
 
         // Compute pending rewards
-        uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
+        uint pendingEBTCDebtReward = _getPendingRedistributedDebt(_cdpId);
         if (pendingEBTCDebtReward > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
             uint prevDebt = _cdp.debt;
@@ -471,7 +473,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     function _applyPendingGlobalState() internal {
-        (uint _oldIndex, uint _newIndex) = _syncIndex();
+        (uint _oldIndex, uint _newIndex) = _syncStEthIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
                 _newIndex,
@@ -484,13 +486,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     /// @notice Claim Fee Split, toggles Grace Period accordingly
     /// @notice Call this if you want to accrue feeSplit
-    function syncPendingGlobalState() public {
+    function syncGlobalAccountingAndGracePeriod() public {
         _applyPendingGlobalState(); // Apply // Could trigger RM
         syncGracePeriod(); // Synch Grace Period
     }
 
     // Update the global index via collateral token
-    function _syncIndex() internal returns (uint, uint) {
+    function _syncStEthIndex() internal returns (uint, uint) {
         uint _oldIndex = stFPPSg;
         uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
@@ -640,7 +642,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getCurrentICR(bytes32 _cdpId, uint _price) public view returns (uint) {
+    function getICR(bytes32 _cdpId, uint _price) public view returns (uint) {
         (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
 
         uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
@@ -651,10 +653,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /**
     get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     */
-    function getPendingEBTCDebtReward(
+    function getPendingRedistributedDebt(
         bytes32 _cdpId
     ) public view returns (uint pendingEBTCDebtReward) {
-        return _getRedistributedEBTCDebt(_cdpId);
+        return _getPendingRedistributedDebt(_cdpId);
     }
 
     function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
@@ -680,7 +682,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
         coll = _newColl;
 
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        pendingEBTCDebtReward = getPendingRedistributedDebt(_cdpId);
 
         debt = debt + pendingEBTCDebtReward;
     }

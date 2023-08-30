@@ -46,7 +46,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         uint _price = priceFeed.getPrice();
         if (_price > 0) {
             bool _recovery = cdpManager.checkRecoveryMode(_price);
-            uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+            uint _icr = cdpManager.getICR(_cdpId, _price);
             if (_recovery) {
                 require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
             } else {

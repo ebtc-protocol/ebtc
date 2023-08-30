@@ -613,10 +613,10 @@ contract('Gas cost tests', async accounts => {
     th.appendData(gasResults, message, data)
   })
 
-  // --- getCurrentICR() ---
+  // --- getICR() ---
 
   it("", async () => {
-    const message = 'single getCurrentICR() call'
+    const message = 'single getICR() call'
 
     await th.openCdp_allAccounts([accounts[1]], contracts, dec(200, 'ether'), dec(1, 18))
     let _cdpId = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
@@ -624,17 +624,17 @@ contract('Gas cost tests', async accounts => {
     await borrowerOperations.withdrawEBTC(_cdpId, randEBTCAmount, accounts[1], accounts[1], { from: accounts[1] })
 
     const price = await priceFeed.getPrice()
-    const tx = await functionCaller.cdpManager_getCurrentICR(accounts[1], price)
+    const tx = await functionCaller.cdpManager_getICR(accounts[1], price)
 
     const gas = th.gasUsed(tx) - 21000
     th.logGas(gas, message)
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether and 100 EBTC withdrawn'
+    const message = 'getICR(), Cdps with 10 ether and 100 EBTC withdrawn'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
 
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
+    const gasResults = await th.getICR_allAccounts(_10_Accounts, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -642,7 +642,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether and random EBTC amount withdrawn'
+    const message = 'getICR(), Cdps with 10 ether and random EBTC amount withdrawn'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -654,17 +654,17 @@ contract('Gas cost tests', async accounts => {
     }
     await th.withdrawEBTC_allAccounts_randomAmount(1, 10, _10_Accounts, contracts, _allCdpIds)
 	
-    const gasResults = await th.getCurrentICR_allAccounts(_10_Accounts, contracts, functionCaller)
+    const gasResults = await th.getICR_allAccounts(_10_Accounts, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
     th.appendData(gasResults, message, data)
   })
 
-  // --- getCurrentICR() with pending distribution rewards ---
+  // --- getICR() with pending distribution rewards ---
 
   it("", async () => {
-    const message = 'single getCurrentICR() call, WITH pending rewards'
+    const message = 'single getICR() call, WITH pending rewards'
 
     const randEBTCAmount = th.randAmountInWei(1, 10)
     let _randColl = toBN(randEBTCAmount.toString()).div(await priceFeed.getPrice()).mul(toBN('2000000000000000000'));
@@ -685,7 +685,7 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     const price = await priceFeed.getPrice()
-    const tx = await functionCaller.cdpManager_getCurrentICR(_cdpId, price)
+    const tx = await functionCaller.cdpManager_getICR(_cdpId, price)
 
     const gas = th.gasUsed(tx) - 21000
     th.logGas(gas, message)
@@ -694,7 +694,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), new Cdps with 10 ether and no withdrawals,  WITH pending rewards'
+    const message = 'getICR(), new Cdps with 10 ether and no withdrawals,  WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(3, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -716,7 +716,7 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
+    const gasResults = await th.getICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -724,7 +724,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether and 2 EBTC withdrawn, WITH pending rewards'
+    const message = 'getICR(), Cdps with 10 ether and 2 EBTC withdrawn, WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -746,7 +746,7 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
+    const gasResults = await th.getICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -754,7 +754,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getCurrentICR(), Cdps with 10 ether WITH pending rewards'
+    const message = 'getICR(), Cdps with 10 ether WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(2, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -776,7 +776,7 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    const gasResults = await th.getCurrentICR_allAccounts(_allCdpIds, contracts, functionCaller)
+    const gasResults = await th.getICR_allAccounts(_allCdpIds, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -1061,7 +1061,7 @@ contract('Gas cost tests', async accounts => {
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
     let _droppedPrice = dec(3314, 13);
     await priceFeed.setPrice(_droppedPrice)	
-	console.log('icr='+ (await cdpManager.getCurrentICR(_cdpIdLiq, _droppedPrice)));
+	console.log('icr='+ (await cdpManager.getICR(_cdpIdLiq, _droppedPrice)));
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)

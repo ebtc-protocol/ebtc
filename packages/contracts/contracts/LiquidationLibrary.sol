@@ -61,7 +61,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getCurrentICR(_cdpId, _price);
+        uint256 _ICR = getICR(_cdpId, _price);
         (uint _TCR, uint systemColl, uint systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
         // If CDP is above MCR
@@ -441,7 +441,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // get count of liquidatable CDPs
             uint _cnt;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
+                uint _icr = getICR(_cdpId, _price);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
@@ -454,7 +454,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _cdpId = _last;
             uint _j;
             for (uint i = 0; i < _n && _cdpId != _first; ++i) {
-                uint _icr = getCurrentICR(_cdpId, _price);
+                uint _icr = getICR(_cdpId, _price);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _array[_cnt - _j - 1] = _cdpId;
@@ -491,10 +491,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // ensure new ICR does NOT decrease due to partial liquidation
         // if original ICR is above LICR
         if (_partialState._ICR > LICR) {
-            require(
-                getCurrentICR(_cdpId, _partialState._price) >= _partialState._ICR,
-                "!_newICR>=_ICR"
-            );
+            require(getICR(_cdpId, _partialState._price) >= _partialState._ICR, "!_newICR>=_ICR");
         }
 
         // reInsert into sorted CDP list
@@ -797,7 +794,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getCurrentICR(vars.cdpId, _price);
+                vars.ICR = getICR(vars.cdpId, _price);
 
                 if (
                     !vars.backToNormalMode &&
@@ -902,7 +899,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getCurrentICR(vars.cdpId, _price);
+                vars.ICR = getICR(vars.cdpId, _price);
 
                 if (vars.ICR < MCR) {
                     _applyAccumulatedFeeSplit(vars.cdpId);
@@ -976,7 +973,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         /*
          * Add distributed debt rewards-per-unit-staked to the running totals. Division uses a "feedback"
-         * error correction, to keep the cumulative error low in the running totals L_EBTCDebt:
+         * error correction, to keep the cumulative error low in the running totals systemDebtRedistributionIndex:
          *
          * 1) Form numerators which compensate for the floor division errors that occurred the last time this
          * function was called.
@@ -985,20 +982,20 @@ contract LiquidationLibrary is CdpManagerStorage {
          * 4) Store these errors for use in the next correction when this function is called.
          * 5) Note: static analysis tools complain about this "division before multiplication", however, it is intended.
          */
-        uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtError_Redistribution;
+        uint EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtErrorRedistribution;
 
         // Get the per-unit-staked terms
         uint _totalStakes = totalStakes;
         uint EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
-        lastEBTCDebtError_Redistribution =
+        lastEBTCDebtErrorRedistribution =
             EBTCDebtNumerator -
             (EBTCDebtRewardPerUnitStaked * _totalStakes);
 
         // Add per-unit-staked terms to the running totals
-        L_EBTCDebt = L_EBTCDebt + EBTCDebtRewardPerUnitStaked;
+        systemDebtRedistributionIndex = systemDebtRedistributionIndex + EBTCDebtRewardPerUnitStaked;
 
-        emit LTermsUpdated(L_EBTCDebt);
+        emit LTermsUpdated(systemDebtRedistributionIndex);
     }
 
     // --- 'require' wrapper functions ---

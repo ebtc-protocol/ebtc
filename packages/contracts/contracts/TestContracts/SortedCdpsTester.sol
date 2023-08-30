@@ -27,7 +27,7 @@ contract SortedCdpsTester {
         return 1;
     }
 
-    function getCurrentICR(bytes32, uint) external pure returns (uint) {
+    function getICR(bytes32, uint) external pure returns (uint) {
         return 1;
     }
 

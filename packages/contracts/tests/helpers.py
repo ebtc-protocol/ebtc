@@ -39,7 +39,7 @@ def logGlobalState(contracts):
     if stakes_snapshot > 0:
         print('Snapshot ratio  ', coll_snapshot / stakes_snapshot)
     last_cdp = contracts.sortedCdps.getLast()
-    last_ICR = contracts.cdpManager.getCurrentICR(last_cdp, price_ether_current).to("ether")
+    last_ICR = contracts.cdpManager.getICR(last_cdp, price_ether_current).to("ether")
     #print('Last cdp      ', last_cdp)
     print('Last cdp’s ICR', last_ICR)
     print(' ----------------------\n')

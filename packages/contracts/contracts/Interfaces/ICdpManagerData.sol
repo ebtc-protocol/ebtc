@@ -231,7 +231,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function applyPendingGlobalState() external; // Accrues StEthFeeSplit without influencing Grace Period
 
-    function syncPendingGlobalState() external; // Accrues StEthFeeSplit and influences Grace Period
+    function syncGlobalAccountingAndGracePeriod() external; // Accrues StEthFeeSplit and influences Grace Period
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
@@ -240,9 +240,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);
 
-    function getCurrentICR(bytes32 _cdpId, uint _price) external view returns (uint);
+    function getICR(bytes32 _cdpId, uint _price) external view returns (uint);
 
-    function getPendingEBTCDebtReward(bytes32 _cdpId) external view returns (uint);
+    function getPendingRedistributedDebt(bytes32 _cdpId) external view returns (uint);
 
     function hasPendingRewards(bytes32 _cdpId) external view returns (bool);
 

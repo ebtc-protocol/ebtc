@@ -487,7 +487,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt > _debt, "!CDP debt already maximized thus can't increase any more");
         uint256 _totalDebt = _targetDebt - _debt;
@@ -542,7 +542,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt < _debt, "!CDP debt already minimized thus can't decrease any more");
         uint256 _totalDebt = _debt - _targetDebt;

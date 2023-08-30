@@ -32,7 +32,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   const skyrocketPriceAndCheckAllCdpsSafe = async () => {
         // price skyrockets, therefore no undercollateralized troes
         await priceFeed.setPrice(dec(1000, 18));
-        const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), dec(1000, 18))
+        const lowestICR = await cdpManager.getICR(await sortedCdps.getLast(), dec(1000, 18))
         assert.isTrue(lowestICR.gt(toBN(dec(110, 16))))
   }
 
@@ -46,7 +46,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     const liquidatedETH = (await cdpManager.Cdps(randomDefaulter))[1]
 
     const price = await priceFeed.getPrice()
-    const ICR = (await cdpManager.getCurrentICR(randomDefaulter, price)).toString()
+    const ICR = (await cdpManager.getICR(randomDefaulter, price)).toString()
     const ICRPercent = ICR.slice(0, ICR.length - 16)
 
     console.log(`SP address: ${stabilityPool.address}`)
@@ -103,13 +103,13 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
   }
 
   const systemContainsCdpUnder110 = async (price) => {
-    const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), price)
+    const lowestICR = await cdpManager.getICR(await sortedCdps.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(110, 16)): ${lowestICR.lt(toBN(dec(110, 16)))}`)
     return lowestICR.lt(dec(110, 16))
   }
 
   const systemContainsCdpUnder100 = async (price) => {
-    const lowestICR = await cdpManager.getCurrentICR(await sortedCdps.getLast(), price)
+    const lowestICR = await cdpManager.getICR(await sortedCdps.getLast(), price)
     console.log(`lowestICR: ${lowestICR}, lowestICR.lt(dec(100, 16)): ${lowestICR.lt(toBN(dec(100, 16)))}`)
     return lowestICR.lt(dec(100, 16))
   }
@@ -119,7 +119,7 @@ contract("PoolManager - random liquidations/deposits, then check all depositors 
     let cdp = await sortedCdps.getLast()
 
     for (let i = 0; i < n; i++) {
-      const ICR = await cdpManager.getCurrentICR(cdp, price)
+      const ICR = await cdpManager.getICR(cdp, price)
       const debt = ICR.lt(toBN(dec(110, 16))) ? (await cdpManager.getEntireDebtAndColl(cdp))[0] : ZERO
 
       totalDebt = totalDebt.add(debt)

@@ -355,14 +355,14 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);
         whaleCdpId = _openTestCDP(whale, 1100.2e18, 1000e18);
 
-        assertEq(cdpManager.getCurrentICR(whaleCdpId, price), 220e16, "unexpected ICR");
+        assertEq(cdpManager.getICR(whaleCdpId, price), 220e16, "unexpected ICR");
         assertEq(cdpManager.getTCR(price), 220e16, "unexpected TCR");
 
         // original price
         priceFeedMock.setPrice(1 ether);
         price = priceFeedMock.fetchPrice();
 
-        assertEq(cdpManager.getCurrentICR(whaleCdpId, price), 110e16, "unexpected ICR");
+        assertEq(cdpManager.getICR(whaleCdpId, price), 110e16, "unexpected ICR");
         assertEq(cdpManager.getTCR(price), 110e16, "unexpected TCR");
     }
 }

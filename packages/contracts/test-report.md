@@ -24,7 +24,7 @@ $ hardhat test
       ✓ moveETHGainToCdp(): reverts when called by an account that is not StabilityPool
     CdpManager
       ✓ applyPendingState(): reverts when called by an account that is not BorrowerOperations
-      ✓ updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations
+      ✓ updatedebtRedistributionIndex(): reverts when called by an account that is not BorrowerOperations
       ✓ removeStake(): reverts when called by an account that is not BorrowerOperations
       ✓ updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations
       ✓ closeCdp(): reverts when called by an account that is not BorrowerOperations
@@ -73,7 +73,7 @@ $ hardhat test
       ✓ addColl(), active Cdp: adds the correct collateral amount to the Cdp (194ms)
       ✓ addColl(), active Cdp: Cdp is in sortedList before and after (213ms)
       ✓ addColl(), active Cdp: updates the stake and updates the total stakes (225ms)
-      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (736ms)
+      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, systemDebtRedistributionIndex snapshots (736ms)
       ✓ addColl(), reverts if cdp is non-existent or closed (831ms)
       ✓ addColl(): can add collateral in Recovery Mode (252ms)
       ✓ withdrawColl(): reverts when withdrawal would leave cdp with ICR < MCR (349ms)
@@ -88,7 +88,7 @@ $ hardhat test
       ✓ withdrawColl(): reduces ActivePool ETH and raw ether by correct amount (291ms)
       ✓ withdrawColl(): updates the stake and updates the total stakes (342ms)
       ✓ withdrawColl(): sends the correct amount of ETH to the user (289ms)
-      ✓ withdrawColl(): applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (1205ms)
+      ✓ withdrawColl(): applies pending rewards and updates user's L_STETHColl, systemDebtRedistributionIndex snapshots (1205ms)
       ✓ withdrawEBTC(): reverts when withdrawal would leave cdp with ICR < MCR (516ms)
       ✓ withdrawEBTC(): decays a non-zero base rate (1192ms)
       ✓ withdrawEBTC(): reverts if max fee > 100% (668ms)
@@ -216,7 +216,7 @@ $ hardhat test
       ✓ openCdp(): creates a stake and adds it to total stakes (281ms)
       ✓ openCdp(): inserts Cdp to Sorted Cdps list (370ms)
       ✓ openCdp(): Increases the activePool ETH and raw ether balance by correct amount (294ms)
-      ✓ openCdp(): records up-to-date initial snapshots of L_STETHColl and L_EBTCDebt (639ms)
+      ✓ openCdp(): records up-to-date initial snapshots of L_STETHColl and systemDebtRedistributionIndex (639ms)
       ✓ openCdp(): allows a user to open a Cdp, then close it, then re-open it (687ms)
       ✓ openCdp(): increases the Cdp's EBTC debt by the correct amount (129ms)
       ✓ openCdp(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
@@ -327,7 +327,7 @@ $ hardhat test
     ✓ _getCompositeDebt(): returns (debt + 50) when collateral < $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) collateral = $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value (52ms)
-    ✓ getCurrentICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
+    ✓ getICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
     ✓ Gas compensation from pool-offset liquidations. All collateral paid as compensation (1340ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder (1199ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder (1333ms)
@@ -1117,7 +1117,7 @@ gasUsed:  636956
     ✓ liquidate(): removes the Cdp's stake from the total stakes (608ms)
     ✓ liquidate(): Removes the correct cdp from the CdpOwners array, and moves the last array element to the new empty slot (1276ms)
     ✓ liquidate(): updates the snapshots of total stakes and total collateral (422ms)
-    ✓ liquidate(): updates the L_STETHColl and L_EBTCDebt reward-per-unit-staked totals (984ms)
+    ✓ liquidate(): updates the L_STETHColl and systemDebtRedistributionIndex reward-per-unit-staked totals (984ms)
     ✓ liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system (503ms)
     ✓ liquidate(): reverts if cdp is non-existent (303ms)
     ✓ liquidate(): reverts if cdp has been closed (745ms)
@@ -1193,7 +1193,7 @@ gasUsed:  636956
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner to claim (5373ms)
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner after re-opening cdp (2154ms)
     ✓ redeemCollateral(): reverts if fee eats up all returned collateral (1412ms)
-    ✓ getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward (618ms)
+    ✓ getPendingRedistributedDebt(): Returns 0 if there is no pending EBTCDebt reward (618ms)
     ✓ getPendingETHReward(): Returns 0 if there is no pending ETH reward (620ms)
     ✓ computeICR(): Returns 0 if cdp's coll is worth 0
     ✓ computeICR(): Returns 2^256-1 for ETH:USD = 100, coll = 1 ETH, debt = 100 EBTC

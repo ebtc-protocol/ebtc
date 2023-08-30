@@ -75,7 +75,7 @@ contract HintHelpers is LiquityBase {
 
             while (
                 vars.currentCdpUser != address(0) &&
-                cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
+                cdpManager.getICR(vars.currentCdpId, _price) < MCR
             ) {
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
                 vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
@@ -96,7 +96,7 @@ contract HintHelpers is LiquityBase {
             ) {
                 // Apply pending debt
                 uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
-                    cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
+                    cdpManager.getPendingRedistributedDebt(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
