@@ -14,7 +14,7 @@ That's because the contract has a balance that is higher than these
 
 You can also flashloan a value that is greater than `systemCollShares`
 
-It may be best to prevent that, and cap the amount to `stETHColl`
+It may be best to prevent that, and cap the amount to `systemCollShares`
 
 That said, the check that is saving the system is the check for lack of rate changes
 
