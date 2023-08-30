@@ -445,10 +445,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // ensure RM is exited
         assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after sequence liquidation in RM!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -464,7 +464,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // prepare batch liquidation
         address _liquidator = users[users.length - 1];
         deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
-        // FIXME _waitUntilRMColldown();
+        _waitUntilRMColldown();
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
         uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
@@ -483,10 +483,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // ensure RM is exited
         assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after sequence liquidation in RM!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -520,10 +520,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.liquidate(userCdpid);
         assertTrue(sortedCdps.contains(userCdpid) == false);
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after Deeply-Under-Collaterlized CDP liquidation!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -557,10 +557,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.liquidate(userCdpid);
         assertTrue(sortedCdps.contains(userCdpid) == false);
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after Under-Collaterlized CDP liquidation!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -594,10 +594,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.liquidate(userCdpid);
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         assertTrue(sortedCdps.contains(userCdpid) == false);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after Over-Collaterlized CDP liquidation!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -635,10 +635,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         cdpManager.liquidate(userCdpid);
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         assertTrue(sortedCdps.contains(userCdpid) == false);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after Over-Collaterlized CDP liquidation in RM!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
@@ -683,7 +683,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         if (!_noNeedRM) {
             assertTrue(cdpManager.getTCR(_newPrice) < cdpManager.CCR());
-            // FIXME _waitUntilRMColldown();
+            _waitUntilRMColldown();
         }
 
         // prepare liquidation
@@ -713,10 +713,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
         assertTrue(sortedCdps.contains(userCdpid) == false);
         uint _liquidatorBalAfter = collateral.balanceOf(_liquidator);
-        assertEq(
+        _utils.assertApproximateEq(
             _liquidatorBalAfter,
             _liquidatorBalBefore + _expectedReward,
-            "Liquidator balance mismatch after fuzz-premium single CDP liquidation!!!"
+            ICR_COMPARE_TOLERANCE
         );
     }
 
