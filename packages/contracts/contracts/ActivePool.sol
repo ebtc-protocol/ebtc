@@ -253,6 +253,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     // === Flashloans === //
 
     /// @notice Borrow assets with a flash loan
+    /// @dev The Collateral checks may cause reverts if you trigger a fee change big enough
+    ///         consider calling `cdpManagerAddress.syncPendingGlobalState()`
     /// @param receiver The address to receive the flash loan
     /// @param token The address of the token to loan
     /// @param amount The amount of tokens to loan
