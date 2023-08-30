@@ -88,21 +88,35 @@ contract DelegatesTest is eBTCBaseInvariants {
     function test_UserCannotSetDelegatesForOthers() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
 
+        vm.startPrank(user);
+        address _otherUser = _utils.getNextUserAddress();
         // attempt set delegate
+        vm.expectRevert("BorrowerOperations: Only borrower can set delegate status for own account");
+        borrowerOperations.setDelegate(_otherUser, delegate, true);
         // confirm correct state
+        assertFalse(borrowerOperations.isDelegate(_otherUser, delegate));
 
-        // attempt unset delegate
-        // confirm correct state
-
-        // attempt set delegate again
-        // confirm correct state
+        vm.stopPrank();
     }
 
     function test_DelegateCanOpenCdp() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-
+        uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
         vm.prank(delegate);
-        borrowerOperations.openCdp(STANDARD_DEBT, bytes32(0), bytes32(0), STANDARD_COLL);
+        bytes32 _cdpOpenedByDelegate = borrowerOperations.openCdpFor(
+            STANDARD_DEBT,
+            bytes32(0),
+            bytes32(0),
+            STANDARD_COLL,
+            user
+        );
+        assertTrue(sortedCdps.contains(_cdpOpenedByDelegate));
+        assertTrue(sortedCdps.getOwnerAddress(_cdpOpenedByDelegate) == user);
+        assertEq(
+            sortedCdps.cdpCountOf(user),
+            _cdpOfUserBefore + 1,
+            "CDP number mismatch for user after delegate openCdpFor()"
+        );
     }
 
     function test_DelegateCanWithdrawColl(uint collToWithdraw) public {
@@ -114,22 +128,43 @@ contract DelegatesTest is eBTCBaseInvariants {
             cdpManager.getCdpStEthBalance(userCdpId) - collToWithdraw > cdpManager.MIN_NET_COLL()
         );
 
+        // FIXME? collateral withdrawn to delegate instead CDP owner?
+        uint _balBefore = collateral.balanceOf(delegate);
         vm.prank(delegate);
         borrowerOperations.withdrawColl(userCdpId, collToWithdraw, bytes32(0), bytes32(0));
+        assertEq(
+            collateral.balanceOf(delegate),
+            _balBefore + collToWithdraw,
+            "collateral not sent to correct recipient after withdrawColl()"
+        );
     }
 
     function test_DelegateCanAddColl() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-
+        uint _cdpColl = cdpManager.getCdpColl(userCdpId);
+        uint _collChange = 1e17;
         vm.prank(delegate);
-        borrowerOperations.addColl(userCdpId, bytes32(0), bytes32(0), 1e17);
+        borrowerOperations.addColl(userCdpId, bytes32(0), bytes32(0), _collChange);
+        assertEq(
+            cdpManager.getCdpColl(userCdpId),
+            _cdpColl + _collChange,
+            "collateral in CDP mismatch after delegate addColl()"
+        );
     }
 
     function test_DelegateCanWithdrawEBTC() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
 
+        // FIXME? debt withdrawn to delegate instead CDP owner?
+        uint _balBefore = eBTCToken.balanceOf(delegate);
+        uint _debtChange = 1e17;
         vm.prank(delegate);
-        borrowerOperations.withdrawEBTC(userCdpId, 1e17, bytes32(0), bytes32(0));
+        borrowerOperations.withdrawEBTC(userCdpId, _debtChange, bytes32(0), bytes32(0));
+        assertEq(
+            eBTCToken.balanceOf(delegate),
+            _balBefore + _debtChange,
+            "debt not sent to correct recipient after withdrawEBTC()"
+        );
     }
 
     function test_DelegateCanRepayEBTC() public {
@@ -153,14 +188,22 @@ contract DelegatesTest is eBTCBaseInvariants {
         );
     }
 
-    function test_DelegateCanWAdjustCdp() public {
+    function test_DelegateCanAdjustCdp() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
 
+        // FIXME? debt withdrawn to delegate instead CDP owner?
+        uint _balBefore = eBTCToken.balanceOf(delegate);
+        uint _debtChange = 1e17;
         vm.prank(delegate);
-        borrowerOperations.adjustCdp(userCdpId, 0, 1e17, true, bytes32(0), bytes32(0));
+        borrowerOperations.adjustCdp(userCdpId, 0, _debtChange, true, bytes32(0), bytes32(0));
+        assertEq(
+            eBTCToken.balanceOf(delegate),
+            _balBefore + _debtChange,
+            "debt not sent to correct recipient after adjustCdp(_isDebtIncrease=true)"
+        );
     }
 
-    function test_DelegateCanWAdjustCdpWithColl() public {
+    function test_DelegateCanAdjustCdpWithColl() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
 
         BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
@@ -201,7 +244,14 @@ contract DelegatesTest is eBTCBaseInvariants {
         console.log("cdpManager.getCdpDebt(userCdpId): ", cdpManager.getCdpDebt(userCdpId));
         assertGe(eBTCToken.balanceOf(delegate), cdpManager.getCdpDebt(userCdpId));
 
+        uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
         vm.prank(delegate);
         borrowerOperations.closeCdp(userCdpId);
+        assertFalse(sortedCdps.contains(userCdpId));
+        assertEq(
+            sortedCdps.cdpCountOf(user),
+            _cdpOfUserBefore - 1,
+            "CDP number mismatch for user after delegate closeCdp()"
+        );
     }
 }
