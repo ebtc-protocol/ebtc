@@ -646,7 +646,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+            assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
             if (_maxIterations == 1) {
                 assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
@@ -768,16 +768,16 @@ contract EchidnaTester is
             )
         );
 
-        _after(bytes32(0));
-
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         if (success) {
+            bytes32 _cdpId = abi.decode(returnData, (bytes32));
+            _after(_cdpId);
+
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
 
-            bytes32 _cdpId = abi.decode(returnData, (bytes32));
-
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
                 collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
@@ -848,13 +848,24 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            emit L3(
+                vars.isRecoveryModeBefore ? 1 : 0,
+                vars.hasGracePeriodPassedBefore ? 1 : 0,
+                vars.icrAfter
+            );
+            emit L3(
+                block.timestamp,
+                cdpManager.lastGracePeriodStartTimestamp(),
+                cdpManager.recoveryModeGracePeriod()
+            );
+
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
             assertWithMsg(
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
                 collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
@@ -907,7 +918,7 @@ contract EchidnaTester is
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
             assertLte(vars.nicrAfter, vars.nicrBefore, BO_04);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
@@ -1011,7 +1022,7 @@ contract EchidnaTester is
             assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
             assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
@@ -1061,7 +1072,7 @@ contract EchidnaTester is
                 "closeCdp increases the collateral balance of the user"
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             emit L4(
                 vars.actorCollBefore,
                 vars.cdpCollBefore,
@@ -1125,7 +1136,7 @@ contract EchidnaTester is
         if (success) {
             assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4

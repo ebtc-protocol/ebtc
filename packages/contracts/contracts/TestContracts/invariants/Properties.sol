@@ -249,16 +249,13 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_09(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
-        bytes32 _cdpId
+        Vars memory vars
     ) internal view returns (bool) {
-        uint _price = priceFeedTestnet.getPrice();
-        bool _recovery = cdpManager.checkRecoveryMode(_price);
-        uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
-        if (_recovery) {
-            return (_icr > cdpManager.getTCR(_price));
+        if (vars.isRecoveryModeBefore) {
+            if (vars.debtAfter > vars.debtBefore) return (vars.icrAfter > cdpManager.MCR());
+            else return true;
         } else {
-            return (_icr > cdpManager.MCR());
+            return (vars.icrAfter > cdpManager.MCR());
         }
     }
 

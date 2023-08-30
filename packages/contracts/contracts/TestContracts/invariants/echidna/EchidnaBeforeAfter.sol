@@ -44,6 +44,10 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareBefore = collateral.getEthPerShare();
         vars.activePoolCollBefore = activePool.getStEthColl();
         vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        vars.hasGracePeriodPassedBefore =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
+            block.timestamp >
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -79,6 +83,10 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareAfter = collateral.getEthPerShare();
         vars.activePoolCollAfter = activePool.getStEthColl();
         vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        vars.hasGracePeriodPassedAfter =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
+            block.timestamp >
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
 
         address[] memory _targets = new address[](2);
         bytes[] memory _calldatas = new bytes[](2);

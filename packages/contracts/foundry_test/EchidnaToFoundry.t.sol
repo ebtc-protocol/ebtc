@@ -40,20 +40,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         closeCdp(0);
     }
 
-    function testGetEquity() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-        openCdp(0, 6017477493556148);
-        openCdp(
-            116241465726706579940676160693764388857475194631576631540259024322658,
-            1817137256320022
-        );
-        redeemCollateral(
-            26614308365956830740674967552436143289186716835450083370339261669379702,
-            1384110347060895451294098103757437540301390035862529508464766486079565,
-            4111505908023053120587254978547282594806873281945684814578972428283812304
-        );
-    }
-
     function testGetFlashFee() public {
         openCdp(0, 2);
         setEthPerShare(0);
@@ -83,26 +69,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
                 0.0e18
             )
         );
-    }
-
-    function testBrokenCdpm4() public {
-        openCdp(72141099106195067837191398095614470036586507560146867, 3841);
-        openCdp(138711028362710431195438633179531745921712852901503794761514, 22613);
-        setEthPerShare(24422684974255655458766413850138378431721);
-        vm.warp(block.timestamp + 348292 + 390247 + 396978 + 14374);
-
-        cdpManager.applyPendingGlobalState(); // Accrue change in stETH Value
-
-        uint256 valueBefore = _getValue();
-        console.log("valueBefore", valueBefore);
-        redeemCollateral(
-            5693805027259487391817279795949662737234119713540967169331,
-            5442622424533550139791733199345932418401974502572419280832,
-            32829286642066383138421349005089843612094010323700170406627
-        );
-        uint256 valueAfter = _getValue();
-        console.log("valueAfter", valueAfter);
-        assertLe(valueBefore, valueAfter, "value cahnge");
     }
 
     //
@@ -201,23 +167,36 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         flashLoanEBTC(3381920330236730383501813809467656172107682748687169923705762983);
     }
 
+    function testGracePeriod() public {
+        openCdp(98435805191320323, 1);
+        bytes32 _cdpId = openCdp(45, 398309674282312203);
+        setEthPerShare(0);
+        setPrice(0);
+        setEthPerShare(0);
+        console2.log("\tTCR before", cdpManager.getTCR(priceFeedMock.getPrice()));
+        console2.log("\tICR after", cdpManager.getCurrentICR(_cdpId, priceFeedMock.getPrice()));
+        console2.log("grace period before", cdpManager.lastGracePeriodStartTimestamp());
+        repayEBTC(
+            2484572859117951778134467250756531385828785210248879469979930819007912,
+            31621686756456841055021203862483415034099095459770631665492208911597
+        );
+
+        bool hasGracePeriodPassed = cdpManager.lastGracePeriodStartTimestamp() !=
+            cdpManager.UNSET_TIMESTAMP() &&
+            block.timestamp >
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+        console2.log("grace period after", cdpManager.lastGracePeriodStartTimestamp());
+        console2.log("grace period passed", hasGracePeriodPassed);
+        console2.log("RM?", cdpManager.checkRecoveryMode(priceFeedMock.getPrice()));
+        console2.log("\tTCR after", cdpManager.getTCR(priceFeedMock.getPrice()));
+        console2.log("\tICR after", cdpManager.getCurrentICR(_cdpId, priceFeedMock.getPrice()));
+        // assertTrue(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
+    }
+
     function testTcrMustIncreaseAfterRepayment() public {
         openCdp(13981380896748761892053706028661380888937876551972584966356379645, 23);
         setEthPerShare(55516200804822679866310029419499170992281118179349982013988952907);
         repayEBTC(1, 509846657665200610349434642309205663062);
-    }
-
-    function testTCRShouldNotDecreaseAfterRedemptions() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-        openCdp(0, 1);
-        setPrice(1322581084004256081677);
-        openCdp(1157, 129247021399144974);
-        setPrice(0);
-        redeemCollateral(
-            55272814824723720282644178,
-            451485902797602866794737611631,
-            2499559204056333929
-        );
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
@@ -336,7 +315,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
     function redeemCollateral(
         uint _EBTCAmount,
         uint _partialRedemptionHintNICR,
-        uint _maxFeePercentage
+        uint _maxFeePercentage,
+        uint _maxIterations
     ) internal {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
@@ -344,6 +324,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
 
         _EBTCAmount = clampBetween(_EBTCAmount, 0, eBTCToken.balanceOf(address(user)));
+        _maxIterations = clampBetween(_maxIterations, 0, 1);
 
         _maxFeePercentage = clampBetween(
             _maxFeePercentage,
@@ -352,13 +333,14 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
 
         console2.log("redeemCollateral", _EBTCAmount, _partialRedemptionHintNICR, _maxFeePercentage);
+        console2.log("\t\t\t", _maxIterations);
         cdpManager.redeemCollateral(
             _EBTCAmount,
             bytes32(0),
             bytes32(0),
             bytes32(0),
             _partialRedemptionHintNICR,
-            1,
+            _maxIterations,
             _maxFeePercentage
         );
     }

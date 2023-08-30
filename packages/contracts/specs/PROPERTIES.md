@@ -70,7 +70,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-06 | At all times, the total debt is equal to the sum of all debts from all CDP + toRedistribute | High Level | ✅ TODO: + toRedistribute is not being checked |
 | GENERAL-07 | Without a price change, a rebasing event, or a redistribution, my position can never reduce in absolute value | State Transitions | |
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level | TODO: redistribution and pending fee split (prob need to look into this more) |
-| GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
+| GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR | High Level | ✅ |
 | GENERAL-10 | All CDPs should maintain a minimum collateral size | High Level | ✅ |
 | GENERAL-11 | The TCR pre-computed (TCRNotified) is the same as the one after all calls | High Level | ✅ |
 
@@ -115,7 +115,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
 | EBTC-01 | Anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not | Unit Tests | TODO: use [crytic/properties](https://github.com/crytic/properties) |
-| EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode | High Level | TODO: verify if this is true for MCR or CCR |
+| EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR | High Level | TODO: verify if this is true for MCR or CCR |
 | EBTC-03 | The eBTC token contract implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers | Unit Tests | TODO: this can be partially & easily implemented with [crytic/properties](https://github.com/crytic/properties) |
 
 ## Governance

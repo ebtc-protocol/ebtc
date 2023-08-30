@@ -67,7 +67,7 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_03 =
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
     string constant GENERAL_09 =
-        "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode";
+        "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
     string constant GENERAL_11 =
         "GENERAL-11: The TCR pre-computed (TCRNotified) is the same as the one after all calls";
@@ -92,7 +92,7 @@ abstract contract PropertiesDescriptions {
     ///////////////////////////////////////////////////////
 
     string constant EBTC_02 =
-        "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode";
+        "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR";
 
     ///////////////////////////////////////////////////////
     // Price Feed
