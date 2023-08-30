@@ -63,7 +63,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(stakingRewardSplit);
 
         _syncStEthIndex();
-        stFeePerUnitg = DECIMAL_PRECISION;
+        systemStEthFeePerUnitIndex = DECIMAL_PRECISION;
     }
 
     // --- Getters ---
@@ -591,11 +591,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // Check whether or not the system *would be* in Recovery Mode,
     // given an ETH:USD price, and the entire system coll and debt.
     function _checkPotentialRecoveryMode(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) internal view returns (bool) {
-        uint TCR = _computeTCRWithGivenSystemValues(_entireSystemColl, _entireSystemDebt, _price);
+        uint TCR = _computeTCRWithGivenSystemValues(_systemCollShares, _systemDebt, _price);
         return TCR < CCR;
     }
 
@@ -691,7 +691,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // Using the effective elapsed time that is consumed so far to update lastRedemptionTimestamp
             // instead block.timestamp for consistency with _calcDecayedBaseRate()
             lastRedemptionTimestamp += _minutesPassedSinceLastRedemption() * SECONDS_IN_ONE_MINUTE;
-            emit LastFeeOpTimeUpdated(block.timestamp);
+            emit LastRedemptionTimestampUpdated(block.timestamp);
         }
     }
 
@@ -716,11 +716,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // Check whether or not the system *would be* in Recovery Mode,
     // given an ETH:USD price, and the entire system coll and debt.
     function checkPotentialRecoveryMode(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) external view returns (bool) {
-        return _checkPotentialRecoveryMode(_entireSystemColl, _entireSystemDebt, _price);
+        return _checkPotentialRecoveryMode(_systemCollShares, _systemDebt, _price);
     }
 
     // --- 'require' wrapper functions ---
@@ -850,7 +850,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     /// @notice Get stored collateral value of a CDP, in stETH shares. Does not include pending changes from redistributions or unprocessed staking yield.
-    function getCdpColl(bytes32 _cdpId) external view override returns (uint) {
+    function getCdpCollShares(bytes32 _cdpId) external view override returns (uint) {
         return Cdps[_cdpId].coll;
     }
 
@@ -920,7 +920,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) external {
         _requireCallerIsBorrowerOperations();
 
-        _setCdpColl(_cdpId, _newColl);
+        _setCdpCollShares(_cdpId, _newColl);
         _setCdpDebt(_cdpId, _newDebt);
 
         uint stake = _updateStakeAndTotalStakes(_cdpId);
@@ -942,7 +942,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * @param _cdpId The ID of the CDP
      * @param _newColl New collateral value, in stETH shares
      */
-    function _setCdpColl(bytes32 _cdpId, uint _newColl) internal {
+    function _setCdpCollShares(bytes32 _cdpId, uint _newColl) internal {
         Cdps[_cdpId].coll = _newColl;
     }
 

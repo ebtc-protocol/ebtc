@@ -445,7 +445,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         assertTrue(_status == expectedStatus);
 
         assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
-        assertTrue(cdpManager.stFeePerUnitcdp(cdpId) == 0);
+        assertTrue(cdpManager.stFeePerUnitIndex(cdpId) == 0);
     }
 
     function _printSystemState() internal {
@@ -477,11 +477,12 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         while (borrower != address(0)) {
             console.log("=== ", bytes32ToString(node));
             console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
-            console.log("collShares (realized) :", cdpManager.getCdpColl(node));
+            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
             console.log("ICR                   :", cdpManager.getICR(node, price));
             console.log(
                 "Percent of System     :",
-                (cdpManager.getCdpColl(node) * DECIMAL_PRECISION) / activePool.getSystemCollShares()
+                (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
+                    activePool.getSystemCollShares()
             );
             console.log("");
 

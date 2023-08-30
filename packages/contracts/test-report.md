@@ -1206,7 +1206,7 @@ gasUsed:  636956
     ✓ checkRecoveryMode(): Returns false when TCR > 150% (365ms)
     ✓ checkRecoveryMode(): Returns false when TCR == 0 (604ms)
     ✓ getCdpStake(): Returns stake (511ms)
-    ✓ getCdpColl(): Returns coll (494ms)
+    ✓ getCdpCollShares(): Returns coll (494ms)
     ✓ getCdpDebt(): Returns debt (400ms)
     ✓ getCdpStatus(): Returns status (434ms)
     ✓ hasPendingRedistributedDebt(): Returns false it cdp is not active

@@ -187,8 +187,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('getCdpDebt', user)
   }
 
-  async getCdpColl(user) {
-    return this.proxyFunctionWithUser('getCdpColl', user)
+  async getCdpCollShares(user) {
+    return this.proxyFunctionWithUser('getCdpCollShares', user)
   }
 
   async totalStakes() {

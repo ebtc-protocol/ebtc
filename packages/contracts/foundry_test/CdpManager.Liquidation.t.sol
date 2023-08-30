@@ -429,7 +429,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _waitUntilRMColldown();
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
-        uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
+        uint _expectedReward = cdpManager.getCdpCollShares(cdpIds[0]) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
             ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getICR(cdpIds[1], _newPrice))) /
                 _newPrice) +
@@ -467,7 +467,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _waitUntilRMColldown();
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
-        uint _expectedReward = cdpManager.getCdpColl(cdpIds[0]) +
+        uint _expectedReward = cdpManager.getCdpCollShares(cdpIds[0]) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
             ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getICR(cdpIds[1], _newPrice))) /
                 _newPrice) +
@@ -513,7 +513,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
-        uint _expectedReward = cdpManager.getCdpColl(userCdpid) +
+        uint _expectedReward = cdpManager.getCdpCollShares(userCdpid) +
             cdpManager.getCdpLiquidatorRewardShares(userCdpid);
 
         vm.prank(_liquidator);
@@ -550,7 +550,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
 
         uint _liquidatorBalBefore = collateral.balanceOf(_liquidator);
-        uint _expectedReward = cdpManager.getCdpColl(userCdpid) +
+        uint _expectedReward = cdpManager.getCdpCollShares(userCdpid) +
             cdpManager.getCdpLiquidatorRewardShares(userCdpid);
 
         vm.prank(_liquidator);
@@ -664,7 +664,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _noNeedRM = _liqICR < cdpManager.MCR();
 
         // ensure more than one CDP
-        uint _userColl = cdpManager.getCdpColl(userCdpid);
+        uint _userColl = cdpManager.getCdpCollShares(userCdpid);
         uint _userDebt = cdpManager.getCdpDebt(userCdpid);
         if (_noNeedRM) {
             _singleCdpSetup(users[0], 8000e16);

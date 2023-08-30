@@ -3370,7 +3370,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     // check system is no longer in Recovery Mode
     const recoveryMode_After = await th.checkRecoveryMode(contracts)
-    console.log('TCR=' + (await cdpManager.getTCR(price)) + ',aliceColl=' + (await cdpManager.getCdpColl(_aliceCdpId)) + ',aliceDebt=' + (await cdpManager.getCdpDebt(_aliceCdpId)));
+    console.log('TCR=' + (await cdpManager.getTCR(price)) + ',aliceColl=' + (await cdpManager.getCdpCollShares(_aliceCdpId)) + ',aliceDebt=' + (await cdpManager.getCdpDebt(_aliceCdpId)));
     assert.isFalse(recoveryMode_After)
 
     // get all Cdps

@@ -43,7 +43,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint coll = cdpManager.getCdpColl(cdpId);
+        uint coll = cdpManager.getCdpCollShares(cdpId);
 
         // Make sure collateral is as expected
         assertEq(netColl, collateral.getPooledEthByShares(coll));
@@ -60,7 +60,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         // Make sure collateral increased by 2x
         uint expected = (collAmount * 2) - borrowerOperations.LIQUIDATOR_REWARD();
-        assertEq(expected, cdpManager.getCdpColl(cdpId));
+        assertEq(expected, cdpManager.getCdpCollShares(cdpId));
         vm.stopPrank();
     }
 
@@ -127,7 +127,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Make sure collateral is as expected
-        assertEq(netColl, cdpManager.getCdpColl(cdpId));
+        assertEq(netColl, cdpManager.getCdpCollShares(cdpId));
         // Get ICR for CDP:
         uint initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
@@ -136,7 +136,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         // Make sure collateral increased by increaseAmnt
-        assertEq((netColl + increaseAmnt), cdpManager.getCdpColl(cdpId));
+        assertEq((netColl + increaseAmnt), cdpManager.getCdpCollShares(cdpId));
 
         // Make sure TCR increased after collateral was added
         uint newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
@@ -190,11 +190,11 @@ contract CDPOpsTest is eBTCBaseFixture {
             // Randomize collateral increase amount for each user
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint randCollIncrease = _utils.generateRandomNumber(10 ether, 1000 ether, user);
-            uint netColl = cdpManager.getCdpColl(cdpIds[cdpIx]);
+            uint netColl = cdpManager.getCdpCollShares(cdpIds[cdpIx]);
             uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             borrowerOperations.addColl(cdpIds[cdpIx], "hint", "hint", randCollIncrease);
-            assertEq(netColl + randCollIncrease, cdpManager.getCdpColl(cdpIds[cdpIx]));
+            assertEq(netColl + randCollIncrease, cdpManager.getCdpCollShares(cdpIds[cdpIx]));
             uint newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
@@ -235,7 +235,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure collateral was reduced by `withdrawnColl` amount
         assertEq(
             (collAmount - borrowerOperations.LIQUIDATOR_REWARD() - withdrawnColl),
-            cdpManager.getCdpColl(cdpId)
+            cdpManager.getCdpCollShares(cdpId)
         );
         vm.stopPrank();
     }
@@ -281,7 +281,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             uint randCollWithdraw = _utils.generateRandomNumber(
                 // Max value to withdraw is 20% of collateral
                 0.1 ether,
-                (cdpManager.getCdpColl(cdpIds[cdpIx]) / 5),
+                (cdpManager.getCdpCollShares(cdpIds[cdpIx]) / 5),
                 user
             );
             uint initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());

@@ -15,27 +15,27 @@ contract BorrowerOperationsScript {
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _stEthBalance
     ) external {
-        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount);
+        borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _stEthBalance);
     }
 
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _stEthBalanceIncrease
     ) external {
-        borrowerOperations.addColl(_cdpId, _upperHint, _lowerHint, _collAmount);
+        borrowerOperations.addColl(_cdpId, _upperHint, _lowerHint, _stEthBalanceIncrease);
     }
 
     function withdrawColl(
         bytes32 _cdpId,
-        uint _amount,
+        uint _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.withdrawColl(_cdpId, _amount, _upperHint, _lowerHint);
+        borrowerOperations.withdrawColl(_cdpId, _stEthBalanceDecrease, _upperHint, _lowerHint);
     }
 
     function withdrawEBTC(
@@ -62,7 +62,7 @@ contract BorrowerOperationsScript {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _collWithdrawal,
+        uint _stEthBalanceDecrease,
         uint _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
@@ -70,7 +70,7 @@ contract BorrowerOperationsScript {
     ) external {
         borrowerOperations.adjustCdp(
             _cdpId,
-            _collWithdrawal,
+            _stEthBalanceDecrease,
             _debtChange,
             isDebtIncrease,
             _upperHint,
@@ -80,21 +80,21 @@ contract BorrowerOperationsScript {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _collWithdrawal,
+        uint _stEthBalanceDecrease,
         uint _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _stEthBalanceIncrease
     ) external {
         borrowerOperations.adjustCdpWithColl(
             _cdpId,
-            _collWithdrawal,
+            _stEthBalanceDecrease,
             _debtChange,
             isDebtIncrease,
             _upperHint,
             _lowerHint,
-            _collAmount
+            _stEthBalanceIncrease
         );
     }
 

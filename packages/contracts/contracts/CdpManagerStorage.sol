@@ -196,11 +196,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stEthIndex;
     /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
-    uint256 public override stFeePerUnitg;
+    uint256 public override systemStEthFeePerUnitIndex;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
-    uint256 public override stFeePerUnitgError;
+    uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
-    mapping(bytes32 => uint256) public stFeePerUnitcdp;
+    mapping(bytes32 => uint256) public stFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
@@ -276,7 +276,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
         debtRedistributionIndex[_cdpId] = 0;
-        stFeePerUnitcdp[_cdpId] = 0;
+        stFeePerUnitIndex[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -454,12 +454,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Calculate TCR given an price, and the entire system coll and debt.
     function _computeTCRWithGivenSystemValues(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
+        uint _systemCollShares,
+        uint _systemDebt,
         uint _price
     ) internal view returns (uint) {
-        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
-        return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
+        uint _totalColl = collateral.getPooledEthByShares(_systemCollShares);
+        return LiquityMath._computeCR(_totalColl, _systemDebt, _price);
     }
 
     // --- Staking-Reward Fee split functions ---
@@ -505,8 +505,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Calculate fee for given pair of collateral indexes, following are returned values:
     // - fee split in collateral token which will be deduced from current total system collateral
-    // - fee split increase per unit, used to update stFeePerUnitg
-    // - fee split calculation error, used to update stFeePerUnitgError
+    // - fee split increase per unit, used to update systemStEthFeePerUnitIndex
+    // - fee split calculation error, used to update systemStEthFeePerUnitIndexError
     function calcFeeUponStakingReward(
         uint256 _newIndex,
         uint256 _prevIndex
@@ -520,7 +520,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
-        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) + stFeePerUnitgError;
+        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
+            systemStEthFeePerUnitIndexError;
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);
@@ -533,11 +534,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
     ) internal {
-        uint _oldPerUnit = stFeePerUnitg;
+        uint _oldPerUnit = systemStEthFeePerUnitIndex;
         uint _newPerUnit = _oldPerUnit + _deltaPerUnit;
 
-        stFeePerUnitg = _newPerUnit;
-        stFeePerUnitgError = _newErrorPerUnit;
+        systemStEthFeePerUnitIndex = _newPerUnit;
+        systemStEthFeePerUnitIndexError = _newErrorPerUnit;
 
         require(activePool.getSystemCollShares() > _feeTaken, "CDPManager: fee split is too big");
         activePool.allocateSystemCollSharesToFeeRecipient(_feeTaken);
@@ -548,36 +549,36 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Apply accumulated fee split distributed to the CDP
     // and update its accumulator tracker accordingly
     function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
-        // TODO Ensure global states like stFeePerUnitg get timely updated
+        // TODO Ensure global states like systemStEthFeePerUnitIndex get timely updated
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
         _applyPendingGlobalState();
 
-        uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
-        uint _stFeePerUnitg = stFeePerUnitg;
+        uint _oldPerUnitCdp = stFeePerUnitIndex[_cdpId];
+        uint _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
-        if (_oldPerUnitCdp == _stFeePerUnitg) {
+        if (_oldPerUnitCdp == _systemStEthFeePerUnitIndex) {
             // @audit this case is much more frequent, so can be handled first
             return;
         }
 
         if (_oldPerUnitCdp == 0) {
-            stFeePerUnitcdp[_cdpId] = _stFeePerUnitg;
+            stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
             return;
         }
 
         (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
             _cdpId,
-            _stFeePerUnitg
+            _systemStEthFeePerUnitIndex
         );
         Cdps[_cdpId].coll = _newColl;
-        stFeePerUnitcdp[_cdpId] = _stFeePerUnitg;
+        stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
 
         emit CdpFeeSplitApplied(
             _cdpId,
             _oldPerUnitCdp,
-            _stFeePerUnitg,
+            _systemStEthFeePerUnitIndex,
             _feeSplitDistributed,
             _newColl
         );
@@ -586,16 +587,21 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg
+        uint _systemStEthFeePerUnitIndex
     ) public view returns (uint, uint) {
-        uint _stFeePerUnitcdp = stFeePerUnitcdp[_cdpId];
+        uint _stFeePerUnitIndex = stFeePerUnitIndex[_cdpId];
         uint _cdpCol = Cdps[_cdpId].coll;
 
-        if (_stFeePerUnitcdp == 0 || _cdpCol == 0 || _stFeePerUnitcdp == _stFeePerUnitg) {
+        if (
+            _stFeePerUnitIndex == 0 ||
+            _cdpCol == 0 ||
+            _stFeePerUnitIndex == _systemStEthFeePerUnitIndex
+        ) {
             return (0, _cdpCol);
         }
 
-        uint _feeSplitDistributed = Cdps[_cdpId].stake * (_stFeePerUnitg - _stFeePerUnitcdp);
+        uint _feeSplitDistributed = Cdps[_cdpId].stake *
+            (_systemStEthFeePerUnitIndex - _stFeePerUnitIndex);
 
         uint _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
@@ -679,7 +685,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId
     ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;
-        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
+        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, systemStEthFeePerUnitIndex);
         coll = _newColl;
 
         pendingEBTCDebtReward = getPendingRedistributedDebt(_cdpId);

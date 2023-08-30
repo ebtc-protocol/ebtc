@@ -13,7 +13,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
     mapping(bytes32 => uint) private _targetCdpPrevFeeApplied;
 
     struct LocalFeeSplitVar {
-        uint _prevStFeePerUnitg;
+        uint _prevSystemStEthFeePerUnitIndex;
         uint _prevTotalCollUnderlying;
     }
 

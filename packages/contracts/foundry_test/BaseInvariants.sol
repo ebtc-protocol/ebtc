@@ -90,11 +90,11 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
 
     function _assert_cdp_manager_invariant_3() internal {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
+        uint _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint i = 0; i < _cdpCount; ++i) {
             assertGe(
-                _stFeePerUnitg,
-                cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i)),
+                _systemStEthFeePerUnitIndex,
+                cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i)),
                 "System Invariant: cdp_manager_3"
             );
         }

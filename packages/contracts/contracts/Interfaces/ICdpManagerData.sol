@@ -55,7 +55,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         CdpOperation operation
     );
     event BaseRateUpdated(uint _baseRate);
-    event LastFeeOpTimeUpdated(uint _lastFeeOpTime);
+    event LastRedemptionTimestampUpdated(uint _lastFeeOpTime);
     event TotalStakesUpdated(uint _newTotalStakes);
     event SystemSnapshotsUpdated(uint _totalStakesSnapshot, uint _totalCollateralSnapshot);
     event SystemDebtRedistributionIndexUpdated(uint _systemDebtRedistributionIndex);
@@ -218,9 +218,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function ebtcToken() external view returns (IEBTCToken);
 
-    function stFeePerUnitg() external view returns (uint);
+    function systemStEthFeePerUnitIndex() external view returns (uint);
 
-    function stFeePerUnitgError() external view returns (uint);
+    function systemStEthFeePerUnitIndexError() external view returns (uint);
 
     function stEthIndex() external view returns (uint);
 
@@ -235,7 +235,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg
+        uint _systemStEthFeePerUnitIndex
     ) external view returns (uint, uint);
 
     function getNominalICR(bytes32 _cdpId) external view returns (uint);

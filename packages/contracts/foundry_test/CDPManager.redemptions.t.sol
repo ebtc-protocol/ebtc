@@ -280,7 +280,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint _totalCollBefore = cdpManager.getEntireSystemColl();
         uint _totalDebtBefore = cdpManager.getEntireSystemDebt();
         uint _redeemedDebt = cdpManager.getCdpDebt(userCdpid);
-        uint _cdpColl = cdpManager.getCdpColl(userCdpid);
+        uint _cdpColl = cdpManager.getCdpCollShares(userCdpid);
         uint _cdpLiqReward = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
 
         // perform redemption
@@ -329,8 +329,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint _cdpDebt1 = cdpManager.getCdpDebt(userCdpid1);
         uint _cdpDebt2 = cdpManager.getCdpDebt(userCdpid2);
         uint _cdpDebt3 = cdpManager.getCdpDebt(userCdpid3);
-        uint _cdpColl1 = cdpManager.getCdpColl(userCdpid1);
-        uint _cdpColl2 = cdpManager.getCdpColl(userCdpid2);
+        uint _cdpColl1 = cdpManager.getCdpCollShares(userCdpid1);
+        uint _cdpColl2 = cdpManager.getCdpCollShares(userCdpid2);
         uint _redeemedDebt = _cdpDebt1 + _cdpDebt2 + (_cdpDebt3 / 2);
         deal(address(eBTCToken), users[0], _redeemedDebt); // sugardaddy redeemer
 

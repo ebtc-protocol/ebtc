@@ -898,9 +898,9 @@ contract EchidnaTester {
 
     function echidna_cdp_manager_invariant_3() public view returns (bool) {
         uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
+        uint _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint i = 0; i < _cdpCount; ++i) {
-            if (_stFeePerUnitg < cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i))) {
+            if (_systemStEthFeePerUnitIndex < cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i))) {
                 return false;
             }
         }

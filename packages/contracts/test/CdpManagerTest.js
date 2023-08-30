@@ -2789,8 +2789,8 @@ contract('CdpManager', async accounts => {
     th.assertIsApproximatelyEqual(dennis_Debt, D_totalDebt)
     th.assertIsApproximatelyEqual(erin_Debt, E_totalDebt)
 
-    const dennis_Coll = await cdpManager.getCdpColl(_dennisCdpId)
-    const erin_Coll = await cdpManager.getCdpColl(_erinCdpId)
+    const dennis_Coll = await cdpManager.getCdpCollShares(_dennisCdpId)
+    const erin_Coll = await cdpManager.getCdpCollShares(_erinCdpId)
 
     assert.equal(dennis_Coll.toString(), D_coll.toString())
     assert.equal(erin_Coll.toString(), E_coll.toString())
@@ -4219,10 +4219,10 @@ contract('CdpManager', async accounts => {
     const C_balanceBefore = toBN(await web3.eth.getBalance(C))
     const D_balanceBefore = toBN(await web3.eth.getBalance(D))
 
-    const A_collBefore = await cdpManager.getCdpColl(_aCdpId)
-    const B_collBefore = await cdpManager.getCdpColl(_bCdpId)
-    const C_collBefore = await cdpManager.getCdpColl(_cCdpId)
-    const D_collBefore = await cdpManager.getCdpColl(_dCdpId)
+    const A_collBefore = await cdpManager.getCdpCollShares(_aCdpId)
+    const B_collBefore = await cdpManager.getCdpCollShares(_bCdpId)
+    const C_collBefore = await cdpManager.getCdpCollShares(_cCdpId)
+    const D_collBefore = await cdpManager.getCdpCollShares(_dCdpId)
 
     // Confirm baseRate before redemption is 0
     const baseRate = await cdpManager.baseRate()
@@ -4253,15 +4253,15 @@ contract('CdpManager', async accounts => {
     const D_balanceAfter = toBN(await web3.eth.getBalance(D))
 
     // Check A, B, C’s cdp collateral balance is zero (fully redeemed-from cdps)
-    const A_collAfter = await cdpManager.getCdpColl(_aCdpId)
-    const B_collAfter = await cdpManager.getCdpColl(_bCdpId)
-    const C_collAfter = await cdpManager.getCdpColl(_cCdpId)
+    const A_collAfter = await cdpManager.getCdpCollShares(_aCdpId)
+    const B_collAfter = await cdpManager.getCdpCollShares(_bCdpId)
+    const C_collAfter = await cdpManager.getCdpCollShares(_cCdpId)
     assert.isTrue(A_collAfter.eq(toBN(0)))
     assert.isTrue(B_collAfter.eq(toBN(0)))
     assert.isTrue(C_collAfter.eq(toBN(0)))
 
     // check D's cdp collateral balances have decreased (the partially redeemed-from cdp)
-    const D_collAfter = await cdpManager.getCdpColl(_dCdpId)
+    const D_collAfter = await cdpManager.getCdpCollShares(_dCdpId)
     assert.isTrue(D_collAfter.lt(D_collBefore))
 
     // Check A, B, C (fully redeemed-from cdps), and D's (the partially redeemed-from cdp) balance has not changed
@@ -4388,9 +4388,9 @@ contract('CdpManager', async accounts => {
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
     let _cCdpId = await sortedCdps.cdpOfOwnerByIndex(C, 0);
 
-    const A_collAfter = await cdpManager.getCdpColl(_aCdpId)
-    const B_collAfter = await cdpManager.getCdpColl(_bCdpId)
-    const C_collAfter = await cdpManager.getCdpColl(_cCdpId)
+    const A_collAfter = await cdpManager.getCdpCollShares(_aCdpId)
+    const B_collAfter = await cdpManager.getCdpCollShares(_bCdpId)
+    const C_collAfter = await cdpManager.getCdpCollShares(_cCdpId)
 
     assert.isTrue(A_collAfter.eq(A_coll))
     assert.isTrue(B_collAfter.eq(B_coll))
@@ -4680,14 +4680,14 @@ contract('CdpManager', async accounts => {
     assert.equal(B_Stake, B_coll.toString())
   })
 
-  it("getCdpColl(): Returns coll", async () => {
+  it("getCdpCollShares(): Returns coll", async () => {
     const { collateral: A_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: A } })
     const { collateral: B_coll } = await openCdp({ ICR: toBN(dec(1501, 15)), extraParams: { from: B } })
     let _aCdpId = await sortedCdps.cdpOfOwnerByIndex(A, 0);
     let _bCdpId = await sortedCdps.cdpOfOwnerByIndex(B, 0);
 
-    assert.equal(await cdpManager.getCdpColl(_aCdpId), A_coll.toString())
-    assert.equal(await cdpManager.getCdpColl(_bCdpId), B_coll.toString())
+    assert.equal(await cdpManager.getCdpCollShares(_aCdpId), A_coll.toString())
+    assert.equal(await cdpManager.getCdpCollShares(_bCdpId), B_coll.toString())
   })
 
   it("getCdpDebt(): Returns debt", async () => {
@@ -4916,7 +4916,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(firstRedemptionHint == _aCdpID);
     assert.isTrue(truncatedEBTCamount.eq(_partialRedeem_EBTC));	
     let _deltaFeePerUnit = (await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex))[1];
-    let _newStFeePerUnit = _deltaFeePerUnit.add(await cdpManager.stFeePerUnitg());
+    let _newStFeePerUnit = _deltaFeePerUnit.add(await cdpManager.systemStEthFeePerUnitIndex());
     let _collAfterFee = (await cdpManager.getAccumulatedFeeSplitApplied(_aCdpID, _newStFeePerUnit))[1];
     let _partialNewColl = _collAfterFee.sub(await collToken.getSharesByPooledEth(_partialRedeem_EBTC.mul(mv._1e18BN).div(price)));	
     let _newPartialNICR = _partialNewColl.mul(toBN(dec(1,20))).div(A_totalDebt.sub(_partialRedeem_EBTC))

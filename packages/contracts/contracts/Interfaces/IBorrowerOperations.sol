@@ -22,19 +22,19 @@ interface IBorrowerOperations {
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _stEthBalance
     ) external returns (bytes32);
 
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _stEthBalanceIncrease
     ) external;
 
     function withdrawColl(
         bytes32 _cdpId,
-        uint _amount,
+        uint _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
@@ -57,7 +57,7 @@ interface IBorrowerOperations {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _collWithdrawal,
+        uint _stEthBalanceDecrease,
         uint _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
@@ -66,12 +66,12 @@ interface IBorrowerOperations {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _collWithdrawal,
+        uint _stEthBalanceDecrease,
         uint _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAddAmount
+        uint _stEthBalanceIncrease
     ) external;
 
     function claimSurplusCollShares() external;
