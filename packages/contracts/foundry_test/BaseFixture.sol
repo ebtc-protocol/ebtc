@@ -75,7 +75,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     bytes4 private constant SWEEP_TOKEN_SIG =
         bytes4(keccak256(bytes("sweepToken(address,uint256)")));
     bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
-        bytes4(keccak256(bytes("claimFeeRecipientColl(uint256)")));
+        bytes4(keccak256(bytes("claimFeeRecipientCollShares(uint256)")));
 
     // Fee Recipient
     bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
@@ -451,12 +451,12 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     function _printSystemState() internal {
         uint price = priceFeedMock.fetchPrice();
         console.log("== Core State ==");
-        console.log("systemCollShares   :", activePool.getStEthColl());
+        console.log("systemCollShares   :", activePool.getSystemCollShares());
         console.log(
             "systemStEthBalance :",
-            collateral.getPooledEthByShares(activePool.getStEthColl())
+            collateral.getPooledEthByShares(activePool.getSystemCollShares())
         );
-        console.log("systemDebt         :", activePool.getEBTCDebt());
+        console.log("systemDebt         :", activePool.getSystemDebt());
         console.log("TCR                :", cdpManager.getTCR(price));
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
         console.log("stEthGlobalIndex   :", cdpManager.stFPPSg());
@@ -481,7 +481,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
             console.log("ICR                   :", cdpManager.getICR(node, price));
             console.log(
                 "Percent of System     :",
-                (cdpManager.getCdpColl(node) * DECIMAL_PRECISION) / activePool.getStEthColl()
+                (cdpManager.getCdpColl(node) * DECIMAL_PRECISION) / activePool.getSystemCollShares()
             );
             console.log("");
 

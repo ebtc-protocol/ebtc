@@ -20,7 +20,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function _assert_cdp_manager_invariant_liq1() internal {
         assertEq(
             cdpManager.totalCollateralSnapshot(),
-            activePool.getStEthColl(),
+            activePool.getSystemCollShares(),
             "System Invariant: cdp_manager_liq1"
         );
     }
@@ -299,7 +299,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         console.log("_debtSystemAfter", _debtSystemAfter);
         console.log("_debtLiquidatorAfter", _debtLiquidatorAfter);
         console.log("_leftTotalDebt", _leftTotalDebt);
-        console.log("activePool.getEBTCDebt()", activePool.getEBTCDebt());
+        console.log("activePool.getSystemDebt()", activePool.getSystemDebt());
         console.log("_liquidatedDebt", _liquidatedDebt);
 
         assertEq(

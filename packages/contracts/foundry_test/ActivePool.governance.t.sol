@@ -117,12 +117,12 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         authority.setUserRole(user, 6, true);
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableColl();
+        uint availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         console.log("availableFees", availableFees);
         console.log(
-            "activePool.getFeeRecipientClaimableColl()1",
-            activePool.getFeeRecipientClaimableColl()
+            "activePool.getFeeRecipientClaimableCollShares()1",
+            activePool.getFeeRecipientClaimableCollShares()
         );
         console.log(
             "collateral.balanceOf(feeRecipientAddress)1",
@@ -130,12 +130,12 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         );
 
         vm.prank(user);
-        activePool.claimFeeRecipientColl(availableFees);
+        activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableColl();
+        uint claimableColl = activePool.getFeeRecipientClaimableCollShares();
         uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
-        console.log("activePool.getFeeRecipientClaimableColl()2", claimableColl);
+        console.log("activePool.getFeeRecipientClaimableCollShares()2", claimableColl);
         console.log("collateral.balanceOf(feeRecipientAddress)2", feeRecipientColl);
 
         assertEq(claimableColl, 0, "claimable coll remaining should be 0");
@@ -155,13 +155,13 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableColl();
+        uint availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         vm.prank(user);
         vm.expectRevert("Auth: UNAUTHORIZED");
-        activePool.claimFeeRecipientColl(availableFees);
+        activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableColl();
+        uint claimableColl = activePool.getFeeRecipientClaimableCollShares();
         uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
         assertEq(
@@ -252,16 +252,16 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         vm.prank(address(borrowerOperations));
         activePool.receiveColl(amount);
         assertGe(
-            activePool.getStEthColl(),
+            activePool.getSystemCollShares(),
             amount,
             "at least amount of shares should be allocated as system coll"
         );
 
         // allocate from system -> claimable fee
         vm.prank(address(cdpManager));
-        activePool.allocateFeeRecipientColl(amount);
+        activePool.allocateSystemCollSharesToFeeRecipient(amount);
         assertGe(
-            activePool.getFeeRecipientClaimableColl(),
+            activePool.getFeeRecipientClaimableCollShares(),
             amount,
             "at lesat amount of shares should be allocated as claimable coll"
         );

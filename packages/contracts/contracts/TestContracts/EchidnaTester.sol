@@ -761,7 +761,7 @@ contract EchidnaTester {
     }
 
     function echidna_accounting_balances() public view returns (bool) {
-        if (collateral.sharesOf(address(activePool)) < activePool.getStEthColl()) {
+        if (collateral.sharesOf(address(activePool)) < activePool.getSystemCollShares()) {
             return false;
         }
 
@@ -828,21 +828,21 @@ contract EchidnaTester {
     ////////////////////////////////////////////////////////////////////////////
 
     function echidna_active_pool_invariant_1() public view returns (bool) {
-        if (collateral.sharesOf(address(activePool)) < activePool.getStEthColl()) {
+        if (collateral.sharesOf(address(activePool)) < activePool.getSystemCollShares()) {
             return false;
         }
         return true;
     }
 
     function echidna_active_pool_invariant_2() public view returns (bool) {
-        if (eBTCToken.totalSupply() < activePool.getEBTCDebt()) {
+        if (eBTCToken.totalSupply() < activePool.getSystemDebt()) {
             return false;
         }
         return true;
     }
 
     function echidna_active_pool_invariant_3() public view returns (bool) {
-        if (eBTCToken.totalSupply() != (activePool.getEBTCDebt())) {
+        if (eBTCToken.totalSupply() != (activePool.getSystemDebt())) {
             return false;
         }
         return true;
@@ -855,7 +855,7 @@ contract EchidnaTester {
             (, uint _coll, ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
             _sum = _sum.add(_coll);
         }
-        uint _activeColl = activePool.getStEthColl();
+        uint _activeColl = activePool.getSystemCollShares();
         uint _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
         uint _divisor = _sum > _activeColl ? _sum : _activeColl;
         if (_diff * 1e18 > diff_tolerance * _activeColl) {
@@ -908,7 +908,7 @@ contract EchidnaTester {
     }
 
     function echidna_coll_surplus_pool_invariant_1() public view returns (bool) {
-        if (collateral.sharesOf(address(collSurplusPool)) < collSurplusPool.getStEthColl()) {
+        if (collateral.sharesOf(address(collSurplusPool)) < collSurplusPool.getSystemCollShares()) {
             return false;
         }
         return true;

@@ -1258,7 +1258,7 @@ class TestHelper {
 
   // --- Misc. functions  ---
 
-  static async forcesendStEthColl(from, receiver, value) {
+  static async forceTransferSystemCollShares(from, receiver, value) {
     const destructible = await Destructible.new()
     await web3.eth.sendTransaction({ to: destructible.address, from, value })
     await destructible.destruct(receiver)

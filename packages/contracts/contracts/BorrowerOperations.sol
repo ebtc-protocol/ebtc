@@ -487,7 +487,11 @@ contract BorrowerOperations is
         _repayEBTC(msg.sender, debt);
 
         // CEI: Send the collateral and liquidator reward shares back to the user
-        activePool.sendStEthCollAndLiquidatorReward(msg.sender, coll, liquidatorRewardShares);
+        activePool.transferSystemCollSharesAndLiquidatorReward(
+            msg.sender,
+            coll,
+            liquidatorRewardShares
+        );
     }
 
     /**
@@ -534,7 +538,7 @@ contract BorrowerOperations is
             _activePoolAddColl(_varMvTokens.collAddUnderlying, _varMvTokens.collChange);
         } else {
             // Coll decrease: send change value of stETH to user, decrement ActivePool stETH internal accounting
-            activePool.sendStEthColl(_varMvTokens.user, _varMvTokens.collChange);
+            activePool.transferSystemCollShares(_varMvTokens.user, _varMvTokens.collChange);
         }
     }
 
@@ -552,13 +556,13 @@ contract BorrowerOperations is
     // Issue the specified amount of EBTC to _account and increases
     // the total active debt
     function _withdrawEBTC(address _account, uint _EBTCAmount, uint _netDebtIncrease) internal {
-        activePool.increaseEBTCDebt(_netDebtIncrease);
+        activePool.increaseSystemDebt(_netDebtIncrease);
         ebtcToken.mint(_account, _EBTCAmount);
     }
 
     // Burn the specified amount of EBTC from _account and decreases the total active debt
     function _repayEBTC(address _account, uint _EBTC) internal {
-        activePool.decreaseEBTCDebt(_EBTC);
+        activePool.decreaseSystemDebt(_EBTC);
         ebtcToken.burn(_account, _EBTC);
     }
 

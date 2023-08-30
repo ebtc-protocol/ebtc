@@ -155,9 +155,9 @@ contract('CdpManager', async accounts => {
     // --- TEST ---
 
     // check ActivePool ETH and EBTC debt before
-    const activePool_ETH_Before = (await activePool.getStEthColl()).toString()
+    const activePool_ETH_Before = (await activePool.getSystemCollShares()).toString()
     const activePool_collateral_Before = (await contracts.collateral.balanceOf(activePool.address)).toString()
-    const activePool_EBTCDebt_Before = (await activePool.getEBTCDebt()).toString()
+    const activePool_EBTCDebt_Before = (await activePool.getSystemDebt()).toString()
 
     assert.equal(activePool_ETH_Before, A_collateral.add(B_collateral))
     assert.equal(activePool_collateral_Before, A_collateral.add(liqReward).add(B_collateral).add(liqReward))
@@ -176,9 +176,9 @@ contract('CdpManager', async accounts => {
     await cdpManager.liquidate(_bobCdpId, { from: owner });
 
     // check ActivePool ETH and EBTC debt 
-    const activePool_ETH_After = (await activePool.getStEthColl()).toString()
+    const activePool_ETH_After = (await activePool.getSystemCollShares()).toString()
     const activePool_RawEther_After = (await contracts.collateral.balanceOf(activePool.address)).toString()
-    const activePool_EBTCDebt_After = (await activePool.getEBTCDebt()).toString()
+    const activePool_EBTCDebt_After = (await activePool.getSystemDebt()).toString()
 
     assert.equal(activePool_ETH_After, A_collateral)
     assert.equal(activePool_RawEther_After, A_collateral.add(liqReward))
@@ -873,10 +873,10 @@ contract('CdpManager', async accounts => {
     // Liquidate A, B and C
 
     await cdpManager.liquidate(_aliceCdpId, {from: whale})
-    const activeEBTCDebt_A = await activePool.getEBTCDebt()
+    const activeEBTCDebt_A = await activePool.getSystemDebt()
 
     await cdpManager.liquidate(_bobCdpId, {from: whale})
-    const activeEBTCDebt_B = await activePool.getEBTCDebt()
+    const activeEBTCDebt_B = await activePool.getSystemDebt()
 
     await cdpManager.liquidate(_carolCdpId, {from: whale})
 
@@ -3414,8 +3414,8 @@ contract('CdpManager', async accounts => {
     const totalColl = W_coll.add(A_coll).add(B_coll).add(C_coll).add(D_coll)
 
     // Get active debt and coll before redemption
-    const activePool_debt_before = await activePool.getEBTCDebt()
-    const activePool_coll_before = await activePool.getStEthColl()
+    const activePool_debt_before = await activePool.getSystemDebt()
+    const activePool_coll_before = await activePool.getSystemCollShares()
 
     th.assertIsApproximatelyEqual(activePool_debt_before, totalDebt)
     assert.equal(activePool_coll_before.toString(), totalColl)
@@ -3447,7 +3447,7 @@ contract('CdpManager', async accounts => {
       { from: erin })
 
     // Check activePool debt reduced
-    const activePool_debt_after = await activePool.getEBTCDebt()
+    const activePool_debt_after = await activePool.getSystemDebt()
     assert.equal(activePool_debt_before.sub(activePool_debt_after).toString(), dec(400, 18))
 
     // Check Erin's balance after
@@ -3479,8 +3479,8 @@ contract('CdpManager', async accounts => {
     const totalColl = W_coll.add(A_coll).add(B_coll).add(C_coll).add(D_coll)
 
     // Get active debt and coll before redemption
-    const activePool_debt_before = await activePool.getEBTCDebt()
-    const activePool_coll_before = (await activePool.getStEthColl()).toString()
+    const activePool_debt_before = await activePool.getSystemDebt()
+    const activePool_coll_before = (await activePool.getSystemCollShares()).toString()
 
     th.assertIsApproximatelyEqual(activePool_debt_before, totalDebt)
     assert.equal(activePool_coll_before, totalColl)
@@ -3629,7 +3629,7 @@ contract('CdpManager', async accounts => {
     const _950_EBTC = '950000000000000000000'
 
     // Check Ether in activePool
-    const activeETH_0 = await activePool.getStEthColl()
+    const activeETH_0 = await activePool.getSystemCollShares()
     assert.equal(activeETH_0, totalColl.toString());
 
     let firstRedemptionHint
@@ -3666,7 +3666,7 @@ contract('CdpManager', async accounts => {
     ETH removed = (120/200) = 0.6 ETH
     Total active ETH = 280 - 0.6 = 279.4 ETH */
 
-    const activeETH_1 = await activePool.getStEthColl()
+    const activeETH_1 = await activePool.getSystemCollShares()
     assert.equal(activeETH_1.toString(), activeETH_0.sub(toBN(_120_EBTC).mul(mv._1e18BN).div(price)));
 
     // Flyn redeems 373 EBTC
@@ -3695,7 +3695,7 @@ contract('CdpManager', async accounts => {
     /* 373 EBTC redeemed.  Expect $373 worth of ETH removed. At ETH:USD price of $200, 
     ETH removed = (373/200) = 1.865 ETH
     Total active ETH = 279.4 - 1.865 = 277.535 ETH */
-    const activeETH_2 = await activePool.getStEthColl()
+    const activeETH_2 = await activePool.getSystemCollShares()
     assert.equal(activeETH_2.toString(), activeETH_1.sub(toBN(_373_EBTC).mul(mv._1e18BN).div(price)));
 
     // Graham redeems 950 EBTC
@@ -3724,7 +3724,7 @@ contract('CdpManager', async accounts => {
     /* 950 EBTC redeemed.  Expect $950 worth of ETH removed. At ETH:USD price of $200, 
     ETH removed = (950/200) = 4.75 ETH
     Total active ETH = 277.535 - 4.75 = 272.785 ETH */
-    const activeETH_3 = (await activePool.getStEthColl()).toString()
+    const activeETH_3 = (await activePool.getSystemCollShares()).toString()
     assert.equal(activeETH_3.toString(), activeETH_2.sub(toBN(_950_EBTC).mul(mv._1e18BN).div(price)));
   })
 
@@ -3776,7 +3776,7 @@ contract('CdpManager', async accounts => {
     const { collateral: D_coll, totalDebt: D_totalDebt } = await openCdp({ ICR: toBN(dec(1000, 16)), extraEBTCAmount: dec(40, 18), extraParams: { from: dennis } })
 
     const totalDebt = C_totalDebt.add(D_totalDebt)
-    th.assertIsApproximatelyEqual((await activePool.getEBTCDebt()).toString(), totalDebt)
+    th.assertIsApproximatelyEqual((await activePool.getSystemDebt()).toString(), totalDebt)
 
     const price = await priceFeed.getPrice()
     const {
@@ -3975,7 +3975,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check LQTY Staking contract balance after is non-zero
-    const lqtyStakingBalance_After = toBN(await contracts.activePool.getFeeRecipientClaimableColl())
+    const lqtyStakingBalance_After = toBN(await contracts.activePool.getFeeRecipientClaimableCollShares())
     assert.isTrue(lqtyStakingBalance_After.gt(toBN('0')))
   })
 
@@ -4090,7 +4090,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(baseRate_1.gt(toBN('0')))
 
     // Check feeRecipient balance beforehand
-    const feeRecipientBalanceBefore = toBN(await contracts.activePool.getFeeRecipientClaimableColl())
+    const feeRecipientBalanceBefore = toBN(await contracts.activePool.getFeeRecipientClaimableCollShares())
 
     // B redeems 10 EBTC
     await th.redeemCollateral(B, contracts, dec(10, 18), GAS_PRICE)
@@ -4099,7 +4099,7 @@ contract('CdpManager', async accounts => {
     assert.equal(await ebtcToken.balanceOf(B), B_balanceBefore.sub(toBN(dec(10, 18))).toString())
     
     // Ensure balance has increased
-    const feeRecipientBalanceAfter = toBN(await contracts.activePool.getFeeRecipientClaimableColl())
+    const feeRecipientBalanceAfter = toBN(await contracts.activePool.getFeeRecipientClaimableCollShares())
     assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
@@ -4124,7 +4124,7 @@ contract('CdpManager', async accounts => {
     assert.equal(baseRate, '0')
 
     // Check total EBTC supply
-    const activeEBTC = await activePool.getEBTCDebt()
+    const activeEBTC = await activePool.getSystemDebt()
 
     const totalEBTCSupply = activeEBTC
     th.assertIsApproximatelyEqual(totalEBTCSupply, totalDebt)

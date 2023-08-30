@@ -186,7 +186,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      * systemDebtRedistributionIndex track the sums of accumulated liquidation rewards per unit staked.
      * During its lifetime, each stake earns:
      *
-     * A EBTCDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
+     * A systemDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
      *
      * Where systemDebtRedistributionIndex(0) are snapshots of systemDebtRedistributionIndex
      * for the active Cdp taken at the instant the stake was made
@@ -296,7 +296,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
-        uint _totalCollateralSnapshot = activePool.getStEthColl() - _collRemainder;
+        uint _totalCollateralSnapshot = activePool.getSystemCollShares() - _collRemainder;
         totalCollateralSnapshot = _totalCollateralSnapshot;
 
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
@@ -539,8 +539,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         stFeePerUnitg = _newPerUnit;
         stFeePerUnitgError = _newErrorPerUnit;
 
-        require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
-        activePool.allocateFeeRecipientColl(_feeTaken);
+        require(activePool.getSystemCollShares() > _feeTaken, "CDPManager: fee split is too big");
+        activePool.allocateSystemCollSharesToFeeRecipient(_feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, _newPerUnit, _feeTaken);
     }

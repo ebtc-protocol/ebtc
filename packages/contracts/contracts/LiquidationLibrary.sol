@@ -182,7 +182,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
             // housekeeping leftover collateral for liquidated CDP
             if (_outputState.totalColSurplus > 0) {
-                activePool.sendStEthColl(address(collSurplusPool), _outputState.totalColSurplus);
+                activePool.transferSystemCollShares(
+                    address(collSurplusPool),
+                    _outputState.totalColSurplus
+                );
             }
 
             return (
@@ -543,10 +546,14 @@ contract LiquidationLibrary is CdpManagerStorage {
         ebtcToken.burn(msg.sender, totalDebtToBurn);
 
         // offset debt from Active Pool
-        activePool.decreaseEBTCDebt(totalDebtToBurn);
+        activePool.decreaseSystemDebt(totalDebtToBurn);
 
         // CEI: ensure sending back collateral to liquidator is last thing to do
-        activePool.sendStEthCollAndLiquidatorReward(msg.sender, totalColToSend, totalColReward);
+        activePool.transferSystemCollSharesAndLiquidatorReward(
+            msg.sender,
+            totalColToSend,
+            totalColReward
+        );
     }
 
     // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
@@ -627,7 +634,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
+            activePool.transferSystemCollShares(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         _finalizeExternalLiquidation(
@@ -749,7 +756,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // housekeeping leftover collateral for liquidated CDPs
         if (totals.totalCollSurplus > 0) {
-            activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
+            activePool.transferSystemCollShares(address(collSurplusPool), totals.totalCollSurplus);
         }
 
         _finalizeExternalLiquidation(

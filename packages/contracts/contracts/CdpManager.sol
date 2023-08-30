@@ -272,13 +272,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
-        activePool.decreaseEBTCDebt(_EBTC);
+        activePool.decreaseSystemDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
         collSurplusPool.accountSurplus(_borrower, _collSurplus + _liquidatorRewardShares);
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
-        activePool.sendStEthCollAndLiquidatorReward(
+        activePool.transferSystemCollSharesAndLiquidatorReward(
             address(collSurplusPool),
             _collSurplus,
             _liquidatorRewardShares
@@ -489,13 +489,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
 
         // Update Active Pool eBTC debt internal accounting
-        activePool.decreaseEBTCDebt(totals.totalEBTCToRedeem);
+        activePool.decreaseSystemDebt(totals.totalEBTCToRedeem);
 
         // Allocate the stETH fee to the FeeRecipient
-        activePool.allocateFeeRecipientColl(totals.ETHFee);
+        activePool.allocateSystemCollSharesToFeeRecipient(totals.ETHFee);
 
         // CEI: Send the stETH drawn to the redeemer
-        activePool.sendStEthColl(msg.sender, totals.ETHToSendToRedeemer);
+        activePool.transferSystemCollShares(msg.sender, totals.ETHToSendToRedeemer);
     }
 
     // --- Helper functions ---
@@ -569,7 +569,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Recovery Mode and TCR functions ---
 
     /**
-    Returns the systemic entire debt assigned to Cdps, i.e. the sum of the EBTCDebt in the Active Pool and the Default Pool.
+    Returns the systemic entire debt assigned to Cdps, i.e. the systemDebt value of the Active Pool.
      */
     function getEntireSystemDebt() public view returns (uint entireSystemDebt) {
         return _getEntireSystemDebt();

@@ -49,8 +49,8 @@ contract('CollSurplusPool', async accounts => {
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
   })
 
-  it("CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption", async () => {
-    const ETH_1 = await collSurplusPool.getStEthColl()
+  it("CollSurplusPool::getSystemCollShares(): Returns the ETH balance of the CollSurplusPool after redemption", async () => {
+    const ETH_1 = await collSurplusPool.getSystemCollShares()
     assert.equal(ETH_1, '0')
 
     const price = toBN(dec(100, 18))
@@ -65,7 +65,7 @@ contract('CollSurplusPool', async accounts => {
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
-    const ETH_2 = await collSurplusPool.getStEthColl()
+    const ETH_2 = await collSurplusPool.getSystemCollShares()
     th.assertIsApproximatelyEqual(ETH_2, B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price)).add(liqReward))
   })
 
@@ -102,7 +102,7 @@ contract('CollSurplusPool', async accounts => {
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus for B
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
 
-    const ETH_2 = await collSurplusPool.getStEthColl()
+    const ETH_2 = await collSurplusPool.getSystemCollShares()
     let _expected = B_coll.sub(B_netDebt.mul(mv._1e18BN).div(price));
     th.assertIsApproximatelyEqual(ETH_2, _expected)
 

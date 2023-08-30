@@ -810,7 +810,7 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const EBTCinDefaultPool_0 = await defaultPool.getEBTCDebt()
+    const EBTCinDefaultPool_0 = await defaultPool.getSystemDebt()
 
     // price drops to 200 
     await priceFeed.setPrice(dec(200, 18))
@@ -859,7 +859,7 @@ contract('Gas compensation tests', async accounts => {
     const liquidatorBalance_after = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check EBTC in DefaultPool has decreased
-    const EBTCinDefaultPool_1 = await defaultPool.getEBTCDebt()
+    const EBTCinDefaultPool_1 = await defaultPool.getSystemDebt()
     assert.isFalse(EBTCinDefaultPool_1.eq(EBTCinDefaultPool_0))
 
     // Check liquidator's balance has increased by the expected compensation amount
@@ -868,7 +868,7 @@ contract('Gas compensation tests', async accounts => {
     assert.isAtMost(th.getDifference(expectedGasComp, compensationReceived), 1000)
 
     // Check ETH in defaultPool now equals the expected liquidated collateral
-    const ETHinDefaultPool = (await defaultPool.getStEthColl()).toString()
+    const ETHinDefaultPool = (await defaultPool.getSystemCollShares()).toString()
     assert.isAtMost(th.getDifference('0', ETHinDefaultPool), 1000)
   })
 

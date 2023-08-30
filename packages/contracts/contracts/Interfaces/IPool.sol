@@ -13,11 +13,11 @@ interface IPool {
 
     // --- Functions ---
 
-    function getStEthColl() external view returns (uint);
+    function getSystemCollShares() external view returns (uint);
 
-    function getEBTCDebt() external view returns (uint);
+    function getSystemDebt() external view returns (uint);
 
-    function increaseEBTCDebt(uint _amount) external;
+    function increaseSystemDebt(uint _amount) external;
 
-    function decreaseEBTCDebt(uint _amount) external;
+    function decreaseSystemDebt(uint _amount) external;
 }

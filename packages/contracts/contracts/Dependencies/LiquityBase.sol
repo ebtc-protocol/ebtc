@@ -63,7 +63,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
      */
     function getEntireSystemColl() public view returns (uint entireSystemColl) {
-        return (activePool.getStEthColl());
+        return (activePool.getSystemCollShares());
     }
 
     /**
@@ -71,7 +71,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
      */
     function _getEntireSystemDebt() internal view returns (uint entireSystemDebt) {
-        return (activePool.getEBTCDebt());
+        return (activePool.getSystemDebt());
     }
 
     function _getTCR(uint256 _price) internal view returns (uint TCR) {

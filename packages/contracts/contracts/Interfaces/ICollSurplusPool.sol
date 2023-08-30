@@ -17,7 +17,7 @@ interface ICollSurplusPool {
 
     // --- Contract setters ---
 
-    function getStEthColl() external view returns (uint);
+    function getSystemCollShares() external view returns (uint);
 
     function getCollateral(address _account) external view returns (uint);
 
