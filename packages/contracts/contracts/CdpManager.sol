@@ -183,7 +183,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // No debt left in the Cdp, therefore the cdp gets closed
             {
                 address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
-                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp._cdpId].liquidatorRewardShares;
+                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp._cdpId]
+                    .liquidatorRewardShares;
 
                 singleRedemption.collSurplus = newColl; // Collateral surplus processed on full redemption
                 singleRedemption.liquidatorRewardShares = _liquidatorRewardShares;
@@ -533,7 +534,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     // get totalStakes after split fee taken removed
-    function getTotalStakeForFeeTaken(uint256 _feeTaken) public view override returns (uint256, uint256) {
+    function getTotalStakeForFeeTaken(
+        uint256 _feeTaken
+    ) public view override returns (uint256, uint256) {
         uint256 stake = _computeNewStake(_feeTaken);
         uint256 _newTotalStakes = totalStakes - stake;
         return (_newTotalStakes, stake);
@@ -544,7 +547,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _updateStakeAndTotalStakes(_cdpId);
     }
 
-    function closeCdp(bytes32 _cdpId, address _borrower, uint256 _debt, uint256 _coll) external override {
+    function closeCdp(
+        bytes32 _cdpId,
+        address _borrower,
+        uint256 _debt,
+        uint256 _coll
+    ) external override {
         _requireCallerIsBorrowerOperations();
         emit CdpUpdated(_cdpId, _borrower, _debt, _coll, 0, 0, 0, CdpOperation.closeCdp);
         return _closeCdp(_cdpId, Status.closedByOwner);
@@ -656,7 +664,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _calcRedemptionFee(getRedemptionRateWithDecay(), _ETHDrawn);
     }
 
-    function _calcRedemptionFee(uint256 _redemptionRate, uint256 _ETHDrawn) internal pure returns (uint256) {
+    function _calcRedemptionFee(
+        uint256 _redemptionRate,
+        uint256 _ETHDrawn
+    ) internal pure returns (uint256) {
         uint256 redemptionFee = (_redemptionRate * _ETHDrawn) / DECIMAL_PRECISION;
         require(redemptionFee < _ETHDrawn, "CdpManager: Fee would eat up all returned collateral");
         return redemptionFee;

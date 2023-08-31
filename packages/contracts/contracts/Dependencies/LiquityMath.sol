@@ -100,7 +100,11 @@ library LiquityMath {
         }
     }
 
-    function _computeCR(uint256 _coll, uint256 _debt, uint256 _price) internal pure returns (uint256) {
+    function _computeCR(
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _price
+    ) internal pure returns (uint256) {
         if (_debt > 0) {
             uint256 newCollRatio = (_coll * _price) / _debt;
 

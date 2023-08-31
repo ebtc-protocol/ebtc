@@ -469,7 +469,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         }
     }
 
-    function _partiallyReduceCdpDebt(bytes32 _cdpId, uint256 _partialDebt, uint256 _partialColl) internal {
+    function _partiallyReduceCdpDebt(
+        bytes32 _cdpId,
+        uint256 _partialDebt,
+        uint256 _partialColl
+    ) internal {
         Cdp storage _cdp = Cdps[_cdpId];
 
         uint256 _coll = _cdp.coll;
@@ -563,7 +567,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _totalDebtToBurn,
         uint256 _totalColToSend,
         bool _fullLiquidation
-    ) private view returns (uint256 cappedColPortion, uint256 collSurplus, uint256 debtToRedistribute) {
+    )
+        private
+        view
+        returns (uint256 cappedColPortion, uint256 collSurplus, uint256 debtToRedistribute)
+    {
         // Calculate liquidation incentive for liquidator:
         // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
         // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt * min(ICR, 110%) / price
@@ -608,7 +616,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         _applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
-        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
+        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(
+            vars.price
+        );
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
@@ -735,7 +745,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         _applyPendingGlobalState();
 
         vars.price = priceFeed.fetchPrice();
-        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(vars.price);
+        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(
+            vars.price
+        );
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
         // Perform the appropriate liquidation sequence - tally values and obtain their totals.

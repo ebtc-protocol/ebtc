@@ -563,7 +563,11 @@ contract BorrowerOperations is
 
     // Issue the specified amount of EBTC to _account and increases
     // the total active debt
-    function _withdrawEBTC(address _account, uint256 _EBTCAmount, uint256 _netDebtIncrease) internal {
+    function _withdrawEBTC(
+        address _account,
+        uint256 _EBTCAmount,
+        uint256 _netDebtIncrease
+    ) internal {
         activePool.increaseSystemDebt(_netDebtIncrease);
         ebtcToken.mint(_account, _EBTCAmount);
     }
@@ -581,7 +585,10 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint256 _collAdd, uint256 _stEthBalanceDecrease) internal pure {
+    function _requireSingularCollChange(
+        uint256 _collAdd,
+        uint256 _stEthBalanceDecrease
+    ) internal pure {
         require(
             _collAdd == 0 || _stEthBalanceDecrease == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"

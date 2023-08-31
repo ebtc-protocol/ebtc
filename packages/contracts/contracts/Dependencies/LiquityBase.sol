@@ -98,7 +98,11 @@ contract LiquityBase is BaseMath, ILiquityBase {
         return _tcr < CCR;
     }
 
-    function _requireUserAcceptsFee(uint256 _fee, uint256 _amount, uint256 _maxFeePercentage) internal pure {
+    function _requireUserAcceptsFee(
+        uint256 _fee,
+        uint256 _amount,
+        uint256 _maxFeePercentage
+    ) internal pure {
         uint256 feePercentage = (_fee * DECIMAL_PRECISION) / _amount;
         require(feePercentage <= _maxFeePercentage, "Fee exceeded provided maximum");
     }
@@ -106,7 +110,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
     // Convert debt denominated in ETH to debt denominated in BTC given that _price is ETH/BTC
     // _debt is denominated in ETH
     // _price is ETH/BTC
-    function _convertDebtDenominationToBtc(uint256 _debt, uint256 _price) internal pure returns (uint256) {
+    function _convertDebtDenominationToBtc(
+        uint256 _debt,
+        uint256 _price
+    ) internal pure returns (uint256) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
 }

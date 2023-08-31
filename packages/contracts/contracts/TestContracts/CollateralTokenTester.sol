@@ -53,7 +53,11 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     }
 
     // helper to set allowance in test
-    function nonStandardSetApproval(address owner, address guy, uint256 wad) external returns (bool) {
+    function nonStandardSetApproval(
+        address owner,
+        address guy,
+        uint256 wad
+    ) external returns (bool) {
         allowance[owner][guy] = wad;
         emit Approval(owner, guy, wad);
         return true;

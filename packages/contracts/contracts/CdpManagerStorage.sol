@@ -314,7 +314,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             return 0;
         }
 
-        uint256 rewardPerUnitStaked = systemDebtRedistributionIndex - debtRedistributionIndex[_cdpId];
+        uint256 rewardPerUnitStaked = systemDebtRedistributionIndex -
+            debtRedistributionIndex[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
@@ -475,10 +476,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function _applyPendingGlobalState() internal {
         (uint256 _oldIndex, uint256 _newIndex) = _syncStEthIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
-            (uint256 _feeTaken, uint256 _deltaFeePerUnit, uint256 _perUnitError) = calcFeeUponStakingReward(
-                _newIndex,
-                _oldIndex
-            );
+            (
+                uint256 _feeTaken,
+                uint256 _deltaFeePerUnit,
+                uint256 _perUnitError
+            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
             _updateSystemSnapshotsExcludeCollRemainder(0);
         }
