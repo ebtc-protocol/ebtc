@@ -73,12 +73,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             );
 
             // == Grace Period == //
+            uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
             require(
-                lastGracePeriodStartTimestamp != UNSET_TIMESTAMP,
+                cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP,
                 "CdpManager: Recovery Mode grace period not started"
             );
             require(
-                block.timestamp > lastGracePeriodStartTimestamp + recoveryModeGracePeriod,
+                block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod,
                 "CdpManager: Recovery mode grace period still in effect"
             );
         } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
@@ -1037,10 +1038,11 @@ contract LiquidationLibrary is CdpManagerStorage {
     // Can liquidate in RM if ICR < TCR AND Enough time has passed
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
         // ICR < TCR and we have waited enough
+        uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
         return
             icr < tcr &&
-            lastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
-            block.timestamp > lastGracePeriodStartTimestamp + recoveryModeGracePeriod;
+            cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
+            block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
     }
 
     function _canLiquidateInCurrentMode(

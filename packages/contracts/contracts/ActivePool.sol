@@ -170,11 +170,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         systemCollShares = cachedSystemCollShares;
 
-        uint256 _FeeRecipientColl = feeRecipientCollShares + _shares;
-        feeRecipientCollShares = _FeeRecipientColl;
+        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares + _shares;
+        feeRecipientCollShares = cachedFeeRecipientCollShares;
 
         emit SystemCollSharesUpdated(cachedSystemCollShares);
-        emit FeeRecipientClaimableCollSharesIncreased(_FeeRecipientColl, _shares);
+        emit FeeRecipientClaimableCollSharesIncreased(cachedFeeRecipientCollShares, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -197,10 +197,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function increaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedEBTCDebt = systemDebt + _amount;
+        uint256 cachedSystemDebt = systemDebt + _amount;
 
-        systemDebt = cachedEBTCDebt;
-        emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
+        systemDebt = cachedSystemDebt;
+        emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
     /// @notice Decreases the tracked EBTC debt of the system by a specified amount
@@ -210,10 +210,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function decreaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedEBTCDebt = systemDebt - _amount;
+        uint256 cachedSystemDebt = systemDebt - _amount;
 
-        systemDebt = cachedEBTCDebt;
-        emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
+        systemDebt = cachedSystemDebt;
+        emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
     // --- 'require' functions ---
@@ -349,15 +349,18 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function claimFeeRecipientCollShares(uint256 _shares) external override requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Calling this increases shares so do it first
 
-        uint256 _FeeRecipientColl = feeRecipientCollShares;
-        require(_FeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares;
+        require(
+            cachedFeeRecipientCollShares >= _shares,
+            "ActivePool: Insufficient fee recipient coll"
+        );
 
         unchecked {
-            _FeeRecipientColl -= _shares;
+            cachedFeeRecipientCollShares -= _shares;
         }
 
-        feeRecipientCollShares = _FeeRecipientColl;
-        emit FeeRecipientClaimableCollSharesDecreased(_FeeRecipientColl, _shares);
+        feeRecipientCollShares = cachedFeeRecipientCollShares;
+        emit FeeRecipientClaimableCollSharesDecreased(cachedFeeRecipientCollShares, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }
