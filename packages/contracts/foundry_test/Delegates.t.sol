@@ -47,7 +47,7 @@ contract DelegatesTest is eBTCBaseInvariants {
 
         // set delegate
         vm.prank(user);
-        borrowerOperations.setDelegate(user, delegate, true);
+        borrowerOperations.setDelegate(delegate, true);
 
         tokens.push(address(eBTCToken));
         tokens.push(address(collateral));
@@ -63,22 +63,22 @@ contract DelegatesTest is eBTCBaseInvariants {
         vm.startPrank(user);
 
         // set delegate
-        borrowerOperations.setDelegate(user, delegate, true);
+        borrowerOperations.setDelegate(delegate, true);
         // confirm correct state
         assertTrue(borrowerOperations.isDelegate(user, delegate));
 
         // unset delegate
-        borrowerOperations.setDelegate(user, delegate, false);
+        borrowerOperations.setDelegate(delegate, false);
         // confirm correct state
         assertFalse(borrowerOperations.isDelegate(user, delegate));
 
         // set delegate again
-        borrowerOperations.setDelegate(user, delegate, true);
+        borrowerOperations.setDelegate(delegate, true);
         // confirm correct state
         assertTrue(borrowerOperations.isDelegate(user, delegate));
 
         // set delegate again
-        borrowerOperations.setDelegate(user, delegate, true);
+        borrowerOperations.setDelegate(delegate, true);
         // confirm correct state
         assertTrue(borrowerOperations.isDelegate(user, delegate));
 
@@ -90,9 +90,8 @@ contract DelegatesTest is eBTCBaseInvariants {
 
         vm.startPrank(user);
         address _otherUser = _utils.getNextUserAddress();
-        // attempt set delegate
-        vm.expectRevert("BorrowerOperations: Only borrower can set delegate status for own account");
-        borrowerOperations.setDelegate(_otherUser, delegate, true);
+
+        borrowerOperations.setDelegate(delegate, true);
         // confirm correct state
         assertFalse(borrowerOperations.isDelegate(_otherUser, delegate));
 

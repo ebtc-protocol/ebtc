@@ -89,5 +89,5 @@ interface IBorrowerOperations {
 
     function isDelegate(address _borrower, address _delegate) external view returns (bool);
 
-    function setDelegate(address _borrower, address _delegate, bool _isDelegate) external;
+    function setDelegate(address _delegate, bool _isDelegate) external;
 }

@@ -508,13 +508,10 @@ contract BorrowerOperations is
         return delegates[_borrower][_delegate];
     }
 
-    function setDelegate(address _borrower, address _delegate, bool _isDelegate) external {
-        require(
-            _borrower == msg.sender,
-            "BorrowerOperations: Only borrower can set delegate status for own account"
-        );
-        delegates[_borrower][_delegate] = _isDelegate;
-        emit DelegateSet(_borrower, _delegate, _isDelegate);
+    function setDelegate(address _delegate, bool _isDelegate) external {
+
+        delegates[msg.sender][_delegate] = _isDelegate;
+        emit DelegateSet(msg.sender, _delegate, _isDelegate);
     }
 
     // --- Helper functions ---
