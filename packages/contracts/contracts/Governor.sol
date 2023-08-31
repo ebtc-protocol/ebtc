@@ -59,8 +59,8 @@ contract Governor is RolesAuthority {
 
     function getUsersByRole(uint8 role) external view returns (address[] memory usersWithRole) {
         // Search over all users: O(n) * 2
-        uint count;
-        for (uint i = 0; i < users.length(); i++) {
+        uint256 count;
+        for (uint256 i = 0; i < users.length(); i++) {
             address user = users.at(i);
             bool _canCall = doesUserHaveRole(user, role);
             if (_canCall) {
@@ -68,10 +68,10 @@ contract Governor is RolesAuthority {
             }
         }
         if (count > 0) {
-            uint j = 0;
+            uint256 j = 0;
             usersWithRole = new address[](count);
             address[] memory _usrs = users.values();
-            for (uint i = 0; i < _usrs.length; i++) {
+            for (uint256 i = 0; i < _usrs.length; i++) {
                 address user = _usrs[i];
                 bool _canCall = doesUserHaveRole(user, role);
                 if (_canCall) {
@@ -90,14 +90,14 @@ contract Governor is RolesAuthority {
 
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
-        uint count;
+        uint256 count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
             if (doesUserHaveRole(user, i)) {
                 count += 1;
             }
         }
         if (count > 0) {
-            uint j = 0;
+            uint256 j = 0;
             rolesForUser = new uint8[](count);
             for (uint8 i = 0; i < type(uint8).max; i++) {
                 if (doesUserHaveRole(user, i)) {
@@ -109,18 +109,18 @@ contract Governor is RolesAuthority {
     }
 
     function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
-        uint count;
+        uint256 count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
-            bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
+            bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
             if (roleEnabled) {
                 count += 1;
             }
         }
         if (count > 0) {
-            uint j = 0;
+            uint256 j = 0;
             roleIds = new uint8[](count);
             for (uint8 i = 0; i < type(uint8).max; i++) {
-                bool roleEnabled = (uint(byteMap >> i) & 1) != 0;
+                bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
                 if (roleEnabled) {
                     roleIds[j] = i;
                     j++;
@@ -133,7 +133,7 @@ contract Governor is RolesAuthority {
     function getByteMapFromRoles(uint8[] memory roleIds) public pure returns (bytes32) {
         bytes32 _data;
         for (uint8 i = 0; i < roleIds.length; i++) {
-            _data |= bytes32(1 << uint(roleIds[i]));
+            _data |= bytes32(1 << uint256(roleIds[i]));
         }
         return _data;
     }
@@ -145,7 +145,7 @@ contract Governor is RolesAuthority {
         bytes32[] memory _sigs = enabledFunctionSigsByTarget[_target].values();
         if (_sigs.length > 0) {
             _funcs = new bytes4[](_sigs.length);
-            for (uint i = 0; i < _sigs.length; ++i) {
+            for (uint256 i = 0; i < _sigs.length; ++i) {
                 _funcs[i] = bytes4(_sigs[i]);
             }
         }

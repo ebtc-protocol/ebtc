@@ -42,39 +42,39 @@ contract BorrowerOperations is
     "CompilerError: Stack too deep". */
 
     struct LocalVariables_adjustCdp {
-        uint price;
-        uint collChange;
-        uint netDebtChange;
+        uint256 price;
+        uint256 collChange;
+        uint256 netDebtChange;
         bool isCollIncrease;
-        uint debt;
-        uint coll;
-        uint oldICR;
-        uint newICR;
-        uint newTCR;
-        uint newDebt;
-        uint newColl;
-        uint stake;
+        uint256 debt;
+        uint256 coll;
+        uint256 oldICR;
+        uint256 newICR;
+        uint256 newTCR;
+        uint256 newDebt;
+        uint256 newColl;
+        uint256 stake;
     }
 
     struct LocalVariables_openCdp {
-        uint price;
-        uint debt;
-        uint totalColl;
-        uint netColl;
-        uint ICR;
-        uint NICR;
-        uint stake;
-        uint arrayIndex;
+        uint256 price;
+        uint256 debt;
+        uint256 totalColl;
+        uint256 netColl;
+        uint256 ICR;
+        uint256 NICR;
+        uint256 stake;
+        uint256 arrayIndex;
     }
 
     struct LocalVariables_moveTokens {
         address user;
-        uint collChange;
-        uint collAddUnderlying; // ONLY for isCollIncrease=true
+        uint256 collChange;
+        uint256 collAddUnderlying; // ONLY for isCollIncrease=true
         bool isCollIncrease;
-        uint EBTCChange;
+        uint256 EBTCChange;
         bool isDebtIncrease;
-        uint netDebtChange;
+        uint256 netDebtChange;
     }
 
     // --- Dependency setters ---
@@ -141,10 +141,10 @@ contract BorrowerOperations is
     @notice In addition to the requested debt, extra debt is issued to cover the gas compensation.
     */
     function openCdp(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalance
+        uint256 _stEthBalance
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _stEthBalance, msg.sender);
     }
@@ -154,7 +154,7 @@ contract BorrowerOperations is
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalanceIncrease
+        uint256 _stEthBalanceIncrease
     ) external override nonReentrantSelfAndCdpM {
         _adjustCdpInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, _stEthBalanceIncrease);
     }
@@ -164,7 +164,7 @@ contract BorrowerOperations is
     */
     function withdrawColl(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
+        uint256 _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
@@ -177,7 +177,7 @@ contract BorrowerOperations is
      */
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
@@ -190,7 +190,7 @@ contract BorrowerOperations is
     */
     function repayEBTC(
         bytes32 _cdpId,
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external override nonReentrantSelfAndCdpM {
@@ -199,8 +199,8 @@ contract BorrowerOperations is
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
-        uint _EBTCChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _EBTCChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -222,12 +222,12 @@ contract BorrowerOperations is
     // TODO optimization candidate
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
-        uint _EBTCChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _EBTCChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalanceIncrease
+        uint256 _stEthBalanceIncrease
     ) external override nonReentrantSelfAndCdpM {
         _adjustCdpInternal(
             _cdpId,
@@ -250,12 +250,12 @@ contract BorrowerOperations is
      */
     function _adjustCdpInternal(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
-        uint _EBTCChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _EBTCChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalanceIncrease
+        uint256 _stEthBalanceIncrease
     ) internal {
         _requireCdpOwner(_cdpId);
         _requireCdpisActive(cdpManager, _cdpId);
@@ -289,7 +289,7 @@ contract BorrowerOperations is
         vars.coll = cdpManager.getCdpCollShares(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
-        uint _cdpStEthBalance = collateral.getPooledEthByShares(vars.coll); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
+        uint256 _cdpStEthBalance = collateral.getPooledEthByShares(vars.coll); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
         require(
             _stEthBalanceDecrease <= _cdpStEthBalance,
             "BorrowerOperations: withdraw more collateral than CDP has!"
@@ -335,7 +335,7 @@ contract BorrowerOperations is
 
         // Re-insert cdp in to the sorted list
         {
-            uint newNICR = _getNewNominalICRFromCdpChange(vars, _isDebtIncrease);
+            uint256 newNICR = _getNewNominalICRFromCdpChange(vars, _isDebtIncrease);
             sortedCdps.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
         }
 
@@ -355,10 +355,10 @@ contract BorrowerOperations is
     }
 
     function _openCdp(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalance,
+        uint256 _stEthBalance,
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
@@ -382,8 +382,8 @@ contract BorrowerOperations is
         // Sanity check
         require(vars.netColl > 0, "BorrowerOperations: zero collateral for openCdp()!");
 
-        uint _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
-        uint _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
+        uint256 _netCollAsShares = collateral.getSharesByPooledEth(vars.netColl);
+        uint256 _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
 
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.ICR = LiquityMath._computeCR(vars.netColl, vars.debt, vars.price);
@@ -398,7 +398,7 @@ contract BorrowerOperations is
             In normal mode, ICR must be greater thatn MCR
             Additionally, the new system TCR after the CDPs addition must be >CCR
         */
-        uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price);
+        uint256 newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price);
         if (isRecoveryMode) {
             _requireICRisAboveCCR(vars.ICR);
 
@@ -464,16 +464,16 @@ contract BorrowerOperations is
 
         cdpManager.syncAccounting(_cdpId);
 
-        uint price = priceFeed.fetchPrice();
+        uint256 price = priceFeed.fetchPrice();
         _requireNotInRecoveryMode(_getTCR(price));
 
-        uint coll = cdpManager.getCdpCollShares(_cdpId);
-        uint debt = cdpManager.getCdpDebt(_cdpId);
-        uint liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
+        uint256 coll = cdpManager.getCdpCollShares(_cdpId);
+        uint256 debt = cdpManager.getCdpDebt(_cdpId);
+        uint256 liquidatorRewardShares = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
-        uint newTCR = _getNewTCRFromCdpChange(
+        uint256 newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
             false,
             debt,
@@ -515,9 +515,9 @@ contract BorrowerOperations is
     // --- Helper functions ---
 
     function _getCollSharesChangeFromStEthChange(
-        uint _collReceived,
-        uint _requestedCollWithdrawal
-    ) internal view returns (uint collChange, bool isCollIncrease) {
+        uint256 _collReceived,
+        uint256 _requestedCollWithdrawal
+    ) internal view returns (uint256 collChange, bool isCollIncrease) {
         if (_collReceived != 0) {
             collChange = collateral.getSharesByPooledEth(_collReceived);
             isCollIncrease = true;
@@ -555,7 +555,7 @@ contract BorrowerOperations is
     /// @param _sharesToTrack coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
     /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
-    function _activePoolAddColl(uint _stEthBalance, uint _sharesToTrack) internal {
+    function _activePoolAddColl(uint256 _stEthBalance, uint256 _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _stEthBalance);
         activePool.increaseSystemCollShares(_sharesToTrack);
@@ -563,13 +563,13 @@ contract BorrowerOperations is
 
     // Issue the specified amount of EBTC to _account and increases
     // the total active debt
-    function _withdrawEBTC(address _account, uint _EBTCAmount, uint _netDebtIncrease) internal {
+    function _withdrawEBTC(address _account, uint256 _EBTCAmount, uint256 _netDebtIncrease) internal {
         activePool.increaseSystemDebt(_netDebtIncrease);
         ebtcToken.mint(_account, _EBTCAmount);
     }
 
     // Burn the specified amount of EBTC from _account and decreases the total active debt
-    function _repayEBTC(address _account, uint _EBTC) internal {
+    function _repayEBTC(address _account, uint256 _EBTC) internal {
         activePool.decreaseSystemDebt(_EBTC);
         ebtcToken.burn(_account, _EBTC);
     }
@@ -581,7 +581,7 @@ contract BorrowerOperations is
         require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
     }
 
-    function _requireSingularCollChange(uint _collAdd, uint _stEthBalanceDecrease) internal pure {
+    function _requireSingularCollChange(uint256 _collAdd, uint256 _stEthBalanceDecrease) internal pure {
         require(
             _collAdd == 0 || _stEthBalanceDecrease == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"
@@ -596,9 +596,9 @@ contract BorrowerOperations is
     }
 
     function _requireNonZeroAdjustment(
-        uint _stEthBalanceIncrease,
-        uint _EBTCChange,
-        uint _stEthBalanceDecrease
+        uint256 _stEthBalanceIncrease,
+        uint256 _EBTCChange,
+        uint256 _stEthBalanceDecrease
     ) internal pure {
         require(
             _stEthBalanceIncrease != 0 || _stEthBalanceDecrease != 0 || _EBTCChange != 0,
@@ -607,22 +607,22 @@ contract BorrowerOperations is
     }
 
     function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
-        uint status = _cdpManager.getCdpStatus(_cdpId);
+        uint256 status = _cdpManager.getCdpStatus(_cdpId);
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
+    function _requireNonZeroDebtChange(uint256 _EBTCChange) internal pure {
         require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
 
-    function _requireNotInRecoveryMode(uint _tcr) internal view {
+    function _requireNotInRecoveryMode(uint256 _tcr) internal view {
         require(
             !_checkRecoveryModeForTCR(_tcr),
             "BorrowerOperations: Operation not permitted during Recovery Mode"
         );
     }
 
-    function _requireNoStEthBalanceDecrease(uint _stEthBalanceDecrease) internal pure {
+    function _requireNoStEthBalanceDecrease(uint256 _stEthBalanceDecrease) internal pure {
         require(
             _stEthBalanceDecrease == 0,
             "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode"
@@ -631,7 +631,7 @@ contract BorrowerOperations is
 
     function _requireValidAdjustmentInCurrentMode(
         bool _isRecoveryMode,
-        uint _stEthBalanceDecrease,
+        uint256 _stEthBalanceDecrease,
         bool _isDebtIncrease,
         LocalVariables_adjustCdp memory _vars
     ) internal {
@@ -687,43 +687,43 @@ contract BorrowerOperations is
         }
     }
 
-    function _requireICRisAboveMCR(uint _newICR) internal pure {
+    function _requireICRisAboveMCR(uint256 _newICR) internal pure {
         require(
             _newICR >= MCR,
             "BorrowerOperations: An operation that would result in ICR < MCR is not permitted"
         );
     }
 
-    function _requireICRisAboveCCR(uint _newICR) internal pure {
+    function _requireICRisAboveCCR(uint256 _newICR) internal pure {
         require(_newICR >= CCR, "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
     }
 
-    function _requireNewICRisAboveOldICR(uint _newICR, uint _oldICR) internal pure {
+    function _requireNewICRisAboveOldICR(uint256 _newICR, uint256 _oldICR) internal pure {
         require(
             _newICR >= _oldICR,
             "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode"
         );
     }
 
-    function _requireNewTCRisAboveCCR(uint _newTCR) internal pure {
+    function _requireNewTCRisAboveCCR(uint256 _newTCR) internal pure {
         require(
             _newTCR >= CCR,
             "BorrowerOperations: An operation that would result in TCR < CCR is not permitted"
         );
     }
 
-    function _requireNonZeroDebt(uint _debt) internal pure {
+    function _requireNonZeroDebt(uint256 _debt) internal pure {
         require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
     }
 
-    function _requireAtLeastMinNetStEthBalance(uint _coll) internal pure {
+    function _requireAtLeastMinNetStEthBalance(uint256 _coll) internal pure {
         require(
             _coll >= MIN_NET_COLL,
             "BorrowerOperations: Cdp's net coll must be greater than minimum"
         );
     }
 
-    function _requireValidEBTCRepayment(uint _currentDebt, uint _debtRepayment) internal pure {
+    function _requireValidEBTCRepayment(uint256 _currentDebt, uint256 _debtRepayment) internal pure {
         require(
             _debtRepayment <= _currentDebt,
             "BorrowerOperations: Amount repaid must not be larger than the Cdp's debt"
@@ -733,7 +733,7 @@ contract BorrowerOperations is
     function _requireSufficientEBTCBalance(
         IEBTCToken _ebtcToken,
         address _borrower,
-        uint _debtRepayment
+        uint256 _debtRepayment
     ) internal view {
         require(
             _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
@@ -747,8 +747,8 @@ contract BorrowerOperations is
     function _getNewNominalICRFromCdpChange(
         LocalVariables_adjustCdp memory vars,
         bool _isDebtIncrease
-    ) internal pure returns (uint) {
-        (uint newColl, uint newDebt) = _getNewCdpAmounts(
+    ) internal pure returns (uint256) {
+        (uint256 newColl, uint256 newDebt) = _getNewCdpAmounts(
             vars.coll,
             vars.debt,
             vars.collChange,
@@ -757,21 +757,21 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
+        uint256 newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
         return newNICR;
     }
 
     // Compute the new collateral ratio, considering the change in coll and debt. Assumes 0 pending rewards.
     function _getNewICRFromCdpChange(
-        uint _coll,
-        uint _debt,
-        uint _collChange,
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _collChange,
         bool _isCollIncrease,
-        uint _debtChange,
+        uint256 _debtChange,
         bool _isDebtIncrease,
-        uint _price
-    ) internal view returns (uint) {
-        (uint newColl, uint newDebt) = _getNewCdpAmounts(
+        uint256 _price
+    ) internal view returns (uint256) {
+        (uint256 newColl, uint256 newDebt) = _getNewCdpAmounts(
             _coll,
             _debt,
             _collChange,
@@ -780,7 +780,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint newICR = LiquityMath._computeCR(
+        uint256 newICR = LiquityMath._computeCR(
             collateral.getPooledEthByShares(newColl),
             newDebt,
             _price
@@ -789,15 +789,15 @@ contract BorrowerOperations is
     }
 
     function _getNewCdpAmounts(
-        uint _coll,
-        uint _debt,
-        uint _collChange,
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _collChange,
         bool _isCollIncrease,
-        uint _debtChange,
+        uint256 _debtChange,
         bool _isDebtIncrease
-    ) internal pure returns (uint, uint) {
-        uint newColl = _coll;
-        uint newDebt = _debt;
+    ) internal pure returns (uint256, uint256) {
+        uint256 newColl = _coll;
+        uint256 newDebt = _debt;
 
         newColl = _isCollIncrease ? _coll + _collChange : _coll - _collChange;
         newDebt = _isDebtIncrease ? _debt + _debtChange : _debt - _debtChange;
@@ -806,20 +806,20 @@ contract BorrowerOperations is
     }
 
     function _getNewTCRFromCdpChange(
-        uint _collChange,
+        uint256 _collChange,
         bool _isCollIncrease,
-        uint _debtChange,
+        uint256 _debtChange,
         bool _isDebtIncrease,
-        uint _price
-    ) internal view returns (uint) {
-        uint _shareColl = getEntireSystemColl();
-        uint totalColl = collateral.getPooledEthByShares(_shareColl);
-        uint totalDebt = _getEntireSystemDebt();
+        uint256 _price
+    ) internal view returns (uint256) {
+        uint256 _shareColl = getEntireSystemColl();
+        uint256 totalColl = collateral.getPooledEthByShares(_shareColl);
+        uint256 totalDebt = _getEntireSystemDebt();
 
         totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
         totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
 
-        uint newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
+        uint256 newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
         return newTCR;
     }
 
@@ -891,13 +891,13 @@ contract BorrowerOperations is
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
-    function setFeeBps(uint _newFee) external requiresAuth {
+    function setFeeBps(uint256 _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
         cdpManager.applyPendingGlobalState();
 
         // set new flash fee
-        uint _oldFee = feeBps;
+        uint256 _oldFee = feeBps;
         feeBps = uint16(_newFee);
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }

@@ -12,10 +12,10 @@ contract BorrowerOperationsScript {
     }
 
     function openCdp(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalance
+        uint256 _stEthBalance
     ) external {
         borrowerOperations.openCdp(_EBTCAmount, _upperHint, _lowerHint, _stEthBalance);
     }
@@ -24,14 +24,14 @@ contract BorrowerOperationsScript {
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalanceIncrease
+        uint256 _stEthBalanceIncrease
     ) external {
         borrowerOperations.addColl(_cdpId, _upperHint, _lowerHint, _stEthBalanceIncrease);
     }
 
     function withdrawColl(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
+        uint256 _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -40,7 +40,7 @@ contract BorrowerOperationsScript {
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -49,7 +49,7 @@ contract BorrowerOperationsScript {
 
     function repayEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -62,8 +62,8 @@ contract BorrowerOperationsScript {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -80,12 +80,12 @@ contract BorrowerOperationsScript {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _stEthBalanceDecrease,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _stEthBalanceIncrease
+        uint256 _stEthBalanceIncrease
     ) external {
         borrowerOperations.adjustCdpWithColl(
             _cdpId,

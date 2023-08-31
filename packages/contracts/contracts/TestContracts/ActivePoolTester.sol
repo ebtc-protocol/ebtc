@@ -25,15 +25,15 @@ contract ActivePoolTester is ActivePool {
     bytes4 public constant FUNC_SIG_FL_FEE = 0x72c27b62; //setFeeBps(uint256)
     bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
 
-    function unprotectedIncreaseSystemDebt(uint _amount) external {
+    function unprotectedIncreaseSystemDebt(uint256 _amount) external {
         systemDebt = systemDebt + _amount;
     }
 
-    function unprotectedReceiveColl(uint _amount) external {
+    function unprotectedReceiveColl(uint256 _amount) external {
         systemCollShares = systemCollShares + _amount;
     }
 
-    function unprotectedallocateSystemCollSharesToFeeRecipient(uint _shares) external {
+    function unprotectedallocateSystemCollSharesToFeeRecipient(uint256 _shares) external {
         systemCollShares = systemCollShares - _shares;
         feeRecipientCollShares = feeRecipientCollShares + _shares;
 

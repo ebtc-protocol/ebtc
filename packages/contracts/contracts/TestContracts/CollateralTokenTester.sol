@@ -5,7 +5,7 @@ import "../Dependencies/ICollateralToken.sol";
 import "../Dependencies/ICollateralTokenOracle.sol";
 
 interface IEbtcInternalPool {
-    function increaseSystemCollShares(uint _value) external;
+    function increaseSystemCollShares(uint256 _value) external;
 }
 
 // based on WETH9 contract
@@ -14,33 +14,33 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     string public override symbol = "CollTester";
     uint8 public override decimals = 18;
 
-    event Transfer(address indexed src, address indexed dst, uint wad, uint _share);
-    event Deposit(address indexed dst, uint wad, uint _share);
-    event Withdrawal(address indexed src, uint wad, uint _share);
+    event Transfer(address indexed src, address indexed dst, uint256 wad, uint256 _share);
+    event Deposit(address indexed dst, uint256 wad, uint256 _share);
+    event Withdrawal(address indexed src, uint256 wad, uint256 _share);
 
-    mapping(address => uint) private balances;
-    mapping(address => mapping(address => uint)) public override allowance;
+    mapping(address => uint256) private balances;
+    mapping(address => mapping(address => uint256)) public override allowance;
 
-    uint private _ethPerShare = 1e18;
-    uint private _totalBalance;
+    uint256 private _ethPerShare = 1e18;
+    uint256 private _totalBalance;
 
-    uint private epochsPerFrame = 225;
-    uint private slotsPerEpoch = 32;
-    uint private secondsPerSlot = 12;
+    uint256 private epochsPerFrame = 225;
+    uint256 private slotsPerEpoch = 32;
+    uint256 private secondsPerSlot = 12;
 
     receive() external payable {
         deposit();
     }
 
     function deposit() public payable {
-        uint _share = getSharesByPooledEth(msg.value);
+        uint256 _share = getSharesByPooledEth(msg.value);
         balances[msg.sender] += _share;
         _totalBalance += _share;
         emit Deposit(msg.sender, msg.value, _share);
     }
 
-    function withdraw(uint wad) public {
-        uint _share = getSharesByPooledEth(wad);
+    function withdraw(uint256 wad) public {
+        uint256 _share = getSharesByPooledEth(wad);
         require(balances[msg.sender] >= _share);
         balances[msg.sender] -= _share;
         _totalBalance -= _share;
@@ -48,29 +48,29 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         emit Withdrawal(msg.sender, wad, _share);
     }
 
-    function totalSupply() public view override returns (uint) {
+    function totalSupply() public view override returns (uint256) {
         return _totalBalance;
     }
 
     // helper to set allowance in test
-    function nonStandardSetApproval(address owner, address guy, uint wad) external returns (bool) {
+    function nonStandardSetApproval(address owner, address guy, uint256 wad) external returns (bool) {
         allowance[owner][guy] = wad;
         emit Approval(owner, guy, wad);
         return true;
     }
 
-    function approve(address guy, uint wad) public override returns (bool) {
+    function approve(address guy, uint256 wad) public override returns (bool) {
         allowance[msg.sender][guy] = wad;
         emit Approval(msg.sender, guy, wad);
         return true;
     }
 
-    function transfer(address dst, uint wad) public override returns (bool) {
+    function transfer(address dst, uint256 wad) public override returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad) public override returns (bool) {
-        uint _share = getSharesByPooledEth(wad);
+    function transferFrom(address src, address dst, uint256 wad) public override returns (bool) {
+        uint256 _share = getSharesByPooledEth(wad);
         require(balances[src] >= _share, "ERC20: transfer amount exceeds balance");
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
@@ -87,17 +87,17 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     }
 
     // tests should adjust the ratio by this function
-    function setEthPerShare(uint _ePerS) external {
+    function setEthPerShare(uint256 _ePerS) external {
         _ethPerShare = _ePerS;
     }
 
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
-        uint _tmp = _mul(1e18, _ethAmount);
+        uint256 _tmp = _mul(1e18, _ethAmount);
         return _div(_tmp, _ethPerShare);
     }
 
     function getPooledEthByShares(uint256 _sharesAmount) public view override returns (uint256) {
-        uint _tmp = _mul(_ethPerShare, _sharesAmount);
+        uint256 _tmp = _mul(_ethPerShare, _sharesAmount);
         return _div(_tmp, 1e18);
     }
 
@@ -105,7 +105,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
         address _recipient,
         uint256 _sharesAmount
     ) public override returns (uint256) {
-        uint _tknAmt = getPooledEthByShares(_sharesAmount);
+        uint256 _tknAmt = getPooledEthByShares(_sharesAmount);
         transfer(_recipient, _tknAmt);
         return _tknAmt;
     }
@@ -146,7 +146,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle {
     }
 
     function balanceOf(address _usr) external view override returns (uint256) {
-        uint _tmp = _mul(_ethPerShare, balances[_usr]);
+        uint256 _tmp = _mul(_ethPerShare, balances[_usr]);
         return _div(_tmp, 1e18);
     }
 
