@@ -500,6 +500,7 @@ contract BorrowerOperations is
         collSurplusPool.claimColl(msg.sender);
     }
 
+    /// @notice Returns true if the borrower is allowing delegate to act on their behalf
     function isDelegate(address _borrower, address _delegate) external view returns (bool) {
         return _isDelegate(_borrower, _delegate);
     }
@@ -508,10 +509,18 @@ contract BorrowerOperations is
         return delegates[_borrower][_delegate];
     }
 
+    /// @notice Set whether to allow `_delegate` to act on your behalf
+    /// @notice Delegation allows stealing of tokens if given to a malicious `_delegate`
     function setDelegate(address _delegate, bool _isDelegate) external {
-
         delegates[msg.sender][_delegate] = _isDelegate;
         emit DelegateSet(msg.sender, _delegate, _isDelegate);
+    }
+
+    /// @notice Allows recipient of delegation to renounce it
+    /// @notice Useful to allow one-off delegations, which could be 
+    function renounceDelegation(address _delegatee) external {
+        delegates[_delegatee][msg.sender] = false;
+        emit DelegateSet(_delegatee, msg.sender, false);
     }
 
     // --- Helper functions ---
