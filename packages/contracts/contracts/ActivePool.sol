@@ -197,10 +197,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function increaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedEBTCDebt = systemDebt + _amount;
+        uint256 cachedSystemDebt = systemDebt + _amount;
 
-        systemDebt = cachedEBTCDebt;
-        emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
+        systemDebt = cachedSystemDebt;
+        emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
     /// @notice Decreases the tracked EBTC debt of the system by a specified amount
@@ -210,10 +210,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function decreaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedEBTCDebt = systemDebt - _amount;
+        uint256 cachedSystemDebt = systemDebt - _amount;
 
-        systemDebt = cachedEBTCDebt;
-        emit ActivePoolEBTCDebtUpdated(cachedEBTCDebt);
+        systemDebt = cachedSystemDebt;
+        emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
     // --- 'require' functions ---
