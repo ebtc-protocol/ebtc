@@ -69,7 +69,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[1 + i] = _openTestCDP(users[1], coll2, debt2);
         }
 
-        uint TCR = cdpManager.getTCR(_curPrice);
+        uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
         // Move past bootstrap phase to allow redemptions
@@ -379,13 +379,13 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
-            uint toRedeem = 5e17;
+            uint256 toRedeem = 5e17;
             //redemption
             (
                 bytes32 firstRedemptionHint,
-                uint partialRedemptionHintNICR,
-                uint truncatedEBTCamount,
-                uint partialRedemptionNewColl
+                uint256 partialRedemptionHintNICR,
+                uint256 truncatedEBTCamount,
+                uint256 partialRedemptionNewColl
             ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
 
             vm.prank(borrower);
@@ -476,7 +476,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     /// @dev Run these checks immediately after action that sets grace period
     function _postValidActionLiquidationChecks(bytes32[] memory cdps) internal {
         // Grace period timestamp is now
-        uint recoveryModeSetTimestamp = block.timestamp;
+        uint256 recoveryModeSetTimestamp = block.timestamp;
         assertEq(
             cdpManager.lastGracePeriodStartTimestamp(),
             block.timestamp,

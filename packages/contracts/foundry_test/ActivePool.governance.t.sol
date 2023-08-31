@@ -16,7 +16,10 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         mockToken = new WethMock();
     }
 
-    function test_AuthorizedUserCanSweepTokens(uint amountInActivePool, uint amountToSweep) public {
+    function test_AuthorizedUserCanSweepTokens(
+        uint256 amountInActivePool,
+        uint256 amountToSweep
+    ) public {
         vm.assume(amountInActivePool > 0);
         vm.assume(amountInActivePool <= type(uint96).max);
 
@@ -45,8 +48,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     }
 
     function test_UnauthorizedUserCannotSweepTokens(
-        uint amountInActivePool,
-        uint amountToSweep
+        uint256 amountInActivePool,
+        uint256 amountToSweep
     ) public {
         vm.assume(amountInActivePool > 0);
         vm.assume(amountInActivePool <= type(uint96).max);
@@ -72,8 +75,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(mockToken.balanceOf(address(feeRecipientAddress)), 0);
     }
 
-    function test_AuthorizedUserCannotSweepCollateral(uint amountToSweep) public {
-        uint activePoolCollateralBefore = collateral.balanceOf(address(activePool));
+    function test_AuthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
+        uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
         vm.assume(amountToSweep >= activePoolCollateralBefore);
 
         // grant random user role
@@ -90,8 +93,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), activePoolCollateralBefore);
     }
 
-    function test_UnauthorizedUserCannotSweepCollateral(uint amountToSweep) public {
-        uint activePoolCollateralBefore = collateral.balanceOf(address(activePool));
+    function test_UnauthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
+        uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
         vm.assume(amountToSweep >= activePoolCollateralBefore);
 
         // random user cannot sweep collateral
@@ -104,7 +107,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), activePoolCollateralBefore);
     }
 
-    function test_AuthorizedUserCanClaimOutstandingFeesToFeeRecipient(uint outstandingFees) public {
+    function test_AuthorizedUserCanClaimOutstandingFeesToFeeRecipient(
+        uint256 outstandingFees
+    ) public {
         vm.assume(outstandingFees > 0);
         vm.assume(outstandingFees <= type(uint64).max);
         address feeRecipientAddress = activePool.feeRecipientAddress();
@@ -117,7 +122,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         authority.setUserRole(user, 6, true);
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableCollShares();
+        uint256 availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         console.log("availableFees", availableFees);
         console.log(
@@ -132,8 +137,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         vm.prank(user);
         activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableCollShares();
-        uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
+        uint256 claimableColl = activePool.getFeeRecipientClaimableCollShares();
+        uint256 feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
         console.log("activePool.getFeeRecipientClaimableCollShares()2", claimableColl);
         console.log("collateral.balanceOf(feeRecipientAddress)2", feeRecipientColl);
@@ -143,7 +148,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     }
 
     function test_UnauthorizedUserCannotClaimOutstandingFeesToFeeRecipient(
-        uint outstandingFees
+        uint256 outstandingFees
     ) public {
         vm.assume(outstandingFees > 0);
         vm.assume(outstandingFees <= type(uint64).max);
@@ -155,14 +160,14 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableCollShares();
+        uint256 availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         vm.prank(user);
         vm.expectRevert("Auth: UNAUTHORIZED");
         activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableCollShares();
-        uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
+        uint256 claimableColl = activePool.getFeeRecipientClaimableCollShares();
+        uint256 feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
         assertEq(
             claimableColl,
@@ -228,9 +233,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
     }
 
-    function _sendCollateralToActivePoolAndAllocateAsClaimableFee(uint amount) internal {
+    function _sendCollateralToActivePoolAndAllocateAsClaimableFee(uint256 amount) internal {
         // send actual tokens to activePool
-        uint ethAmount = collateral.getPooledEthByShares(amount);
+        uint256 ethAmount = collateral.getPooledEthByShares(amount);
 
         vm.deal(address(activePool), ethAmount);
 

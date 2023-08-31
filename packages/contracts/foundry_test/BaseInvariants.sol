@@ -4,7 +4,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 
 contract eBTCBaseInvariants is eBTCBaseFixture {
-    uint public _tolerance = 2000000; //compared to 1e18
+    uint256 public _tolerance = 2000000; //compared to 1e18
 
     ////////////////////////////////////////////////////////////////////////////
     // Basic Invariants for ebtc system
@@ -46,9 +46,9 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_active_pool_invariant_4() internal view {
-        uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        uint256 _sum;
+        for (uint256 i = 0; i < _cdpCount; ++i) {
             CdpState memory _cdpState = _getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = (_sum + _cdpState.coll);
         }
@@ -59,10 +59,10 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_active_pool_invariant_5() internal view {
-        uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
-            (uint _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        uint256 _sum;
+        for (uint256 i = 0; i < _cdpCount; ++i) {
+            (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = _sum + _debt;
         }
         require(
@@ -80,18 +80,18 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
     }
 
     function _assert_cdp_manager_invariant_2() internal {
-        uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _sum;
-        for (uint i = 0; i < _cdpCount; ++i) {
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        uint256 _sum;
+        for (uint256 i = 0; i < _cdpCount; ++i) {
             _sum = (_sum + cdpManager.getCdpStake(cdpManager.CdpIds(i)));
         }
         assertEq(_sum, cdpManager.totalStakes(), "System Invariant: cdp_manager_2");
     }
 
     function _assert_cdp_manager_invariant_3() internal {
-        uint _cdpCount = cdpManager.getActiveCdpsCount();
-        uint _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
-        for (uint i = 0; i < _cdpCount; ++i) {
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
+        for (uint256 i = 0; i < _cdpCount; ++i) {
             assertGe(
                 _systemStEthFeePerUnitIndex,
                 cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i)),
@@ -133,7 +133,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
 
     function _assert_sorted_list_invariant_2() internal {
         bytes32 _first = sortedCdps.getFirst();
-        uint _price = priceFeedMock.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         if (_first != sortedCdps.dummyId() && _price > 0) {
             assertGe(
                 cdpManager.getICR(_first, _price),
