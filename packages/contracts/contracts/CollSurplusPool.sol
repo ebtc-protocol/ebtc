@@ -95,8 +95,13 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         balances[_account] = 0;
         emit SurplusCollSharesUpdated(_account, 0);
 
-        require(totalSurplusCollShares >= claimableColl, "!CollSurplusPoolBal");
-        totalSurplusCollShares = totalSurplusCollShares - claimableColl;
+        uint256 cachedTotalSurplusCollShares = totalSurplusCollShares;
+
+        require(cachedTotalSurplusCollShares >= claimableColl, "!CollSurplusPoolBal");
+        // Safe per the check above
+        unchecked {
+            totalSurplusCollShares = cachedTotalSurplusCollShares - claimableColl;
+        }
         emit CollSharesTransferred(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
