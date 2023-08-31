@@ -52,20 +52,19 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
 
     /// @dev Deposit collateral without ether for testing purposes
     function forceDeposit(uint ethToDeposit) external {
-        uint mintAmount = ethToDeposit;
         if (!isUncappedMinter[msg.sender]) {
+            require(ethToDeposit <= mintCap, "CollTester: Above mint cap");
             require(
                 lastMintTime[msg.sender] == 0 ||
                     lastMintTime[msg.sender] + mintCooldown < block.timestamp,
-                "Cooldown period not completed"
+                "CollTester: Cooldown period not completed"
             );
-            mintAmount = mintCap;
             lastMintTime[msg.sender] = block.timestamp;
         }
-        uint _share = getSharesByPooledEth(mintAmount);
+        uint _share = getSharesByPooledEth(ethToDeposit);
         balances[msg.sender] += _share;
         _totalBalance += _share;
-        emit Deposit(msg.sender, mintAmount, _share);
+        emit Deposit(msg.sender, ethToDeposit, _share);
     }
 
     function withdraw(uint wad) public {
