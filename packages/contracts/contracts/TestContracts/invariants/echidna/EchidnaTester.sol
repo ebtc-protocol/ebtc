@@ -470,6 +470,29 @@ contract EchidnaTester is
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -525,6 +548,30 @@ contract EchidnaTester is
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -584,6 +631,30 @@ contract EchidnaTester is
                 emit LogUint256("minIcrBefore", minIcrBefore);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, L_12);
+            }
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             bool atLeastOneCdpIsLiquidatable = false;
@@ -656,6 +727,30 @@ contract EchidnaTester is
             assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         }
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     ///////////////////////////////////////////////////////
@@ -670,6 +765,8 @@ contract EchidnaTester is
 
         _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
         uint _fee = activePool.flashFee(address(collateral), _amount);
+
+        _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
         uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
@@ -686,9 +783,35 @@ contract EchidnaTester is
 
         require(success);
 
+        _after(bytes32(0));
+
         uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
         assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     ///////////////////////////////////////////////////////
@@ -704,6 +827,8 @@ contract EchidnaTester is
         _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
 
         uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
+
+        _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
         uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
@@ -721,8 +846,34 @@ contract EchidnaTester is
         // BorrowerOperations.flashLoan may revert due to reentrancy
         require(success);
 
+        _after(bytes32(0));
+
         uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
         assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
@@ -786,6 +937,29 @@ contract EchidnaTester is
                 vars.sortedCdpsSizeAfter,
                 "CDPs count must have increased"
             );
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -871,6 +1045,30 @@ contract EchidnaTester is
             );
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -923,6 +1121,30 @@ contract EchidnaTester is
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -975,6 +1197,30 @@ contract EchidnaTester is
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     function repayEBTC(uint _amount, uint256 _i) external log {
@@ -1025,6 +1271,30 @@ contract EchidnaTester is
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     function closeCdp(uint _i) external log {
@@ -1081,6 +1351,30 @@ contract EchidnaTester is
                 BO_05
             );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1138,6 +1432,30 @@ contract EchidnaTester is
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+        }
     }
 
     ///////////////////////////////////////////////////////

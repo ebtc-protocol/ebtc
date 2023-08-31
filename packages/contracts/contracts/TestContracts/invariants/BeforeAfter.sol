@@ -43,6 +43,10 @@ abstract contract BeforeAfter {
         uint256 priceAfter;
         bool isRecoveryModeBefore;
         bool isRecoveryModeAfter;
+        uint256 lastGracePeriodStartTimestampBefore;
+        uint256 lastGracePeriodStartTimestampAfter;
+        bool lastGracePeriodStartTimestampIsSetBefore;
+        bool lastGracePeriodStartTimestampIsSetAfter;
         bool hasGracePeriodPassedBefore;
         bool hasGracePeriodPassedAfter;
     }

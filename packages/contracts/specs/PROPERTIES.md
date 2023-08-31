@@ -103,6 +103,9 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | L-10 | As a Individual Leveraged to the maximum (110 CR), I can only be liquidated if: The oracle price changes in such a way that my CR goes below 110 or Other depositors bring the system CR to 125 (edge of Recovery Mode), then the Oracle Price updates to a lower value, causing every CDP below RM to be liquidatable | State Transitions | TODO: Yes, you can only ever be liquidated if: Below MCR, System is in RM and you are below CCR |
 | L-11 | A user can only be liquidated if there is a negative rebasing event or a price change that make the position go below the LT, or RM is triggered | State Transitions | |
 | L-12 | TCR must increase after liquidation with no redistributions | High Level | ✅ |
+| L-14 | If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp | High Level | ✅ |
+| L-15 | The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR | High Level | ✅ |
+| L-16 | The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR | High Level | ✅ |
 
 ## Fees
 

@@ -44,6 +44,9 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareBefore = collateral.getEthPerShare();
         vars.activePoolCollBefore = activePool.getStEthColl();
         vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
+        vars.lastGracePeriodStartTimestampIsSetBefore =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
         vars.hasGracePeriodPassedBefore =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
@@ -83,6 +86,9 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareAfter = collateral.getEthPerShare();
         vars.activePoolCollAfter = activePool.getStEthColl();
         vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();
+        vars.lastGracePeriodStartTimestampIsSetAfter =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
         vars.hasGracePeriodPassedAfter =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >

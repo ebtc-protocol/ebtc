@@ -86,6 +86,12 @@ abstract contract PropertiesDescriptions {
     string constant L_01 =
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
     string constant L_12 = "L-12: TCR must increase after liquidation with no redistributions";
+    string constant L_14 =
+        "If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp";
+    string constant L_15 =
+        "L-15: The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR";
+    string constant L_16 =
+        "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR";
 
     ///////////////////////////////////////////////////////
     // eBTC
