@@ -258,12 +258,17 @@ contract LiquidationLibrary is CdpManagerStorage {
         _liqState.totalColReward = _liqState.totalColReward + _liquidatorReward;
 
         // Emit events
+        uint _debtToColl = (_totalDebtToBurn * 1e18) / _liqState._price;
+        uint _cappedColl = collateral.getPooledEthByShares(_cappedColPortion + _liquidatorReward);
+
         emit CdpLiquidated(
             _liqState._cdpId,
             _borrower,
             _totalDebtToBurn,
             _cappedColPortion,
-            CdpOperation.liquidateInNormalMode
+            CdpOperation.liquidateInNormalMode,
+            msg.sender,
+            _cappedColl > _debtToColl ? (_cappedColl - _debtToColl) : 0
         );
 
         return _liqState;
@@ -332,12 +337,16 @@ contract LiquidationLibrary is CdpManagerStorage {
             ? _recoveryState.entireSystemColl - _totalColToSend
             : 0;
 
+        uint _debtToColl = (_totalDebtToBurn * 1e18) / _recoveryState._price;
+        uint _cappedColl = collateral.getPooledEthByShares(_cappedColPortion + _liquidatorReward);
         emit CdpLiquidated(
             _recoveryState._cdpId,
             _borrower,
             _totalDebtToBurn,
             _cappedColPortion,
-            CdpOperation.liquidateInRecoveryMode
+            CdpOperation.liquidateInRecoveryMode,
+            msg.sender,
+            _cappedColl > _debtToColl ? (_cappedColl - _debtToColl) : 0
         );
 
         return _recoveryState;
