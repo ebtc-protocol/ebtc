@@ -319,7 +319,7 @@ contract EchidnaTester is
         ans = new Cdp[](superset.length - subset.length);
         uint256 index = 0;
         for (uint256 i = 0; i < superset.length; i++) {
-            bool duplicate;
+            bool duplicate = false;
             for (uint256 j = 0; j < subset.length; j++) {
                 if (superset[i].id == subset[j].id) {
                     duplicate = true;
@@ -569,6 +569,7 @@ contract EchidnaTester is
             );
             uint256 minIcrBefore = type(uint256).max;
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+                emit L3(i, cdpsBefore[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
                 assertWithMsg(
                     cdpsLiquidated[i].icr < cdpManager.MCR() ||
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),

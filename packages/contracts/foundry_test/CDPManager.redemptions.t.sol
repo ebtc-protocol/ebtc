@@ -440,13 +440,11 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     function test_RedemptionMustSatisfyAccountingEquation() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
-        //   setEthPerShare 918257478759017910
-        //   setEthPerShare 834779526144561736
-        //   openCdp 2200000000000000016 1
-        //   setEthPerShare 758890478313237941
-        //   openCdp 2200000000000000016 1
-        //   setEthPerShare 775495175528592427
-        //   redeemCollateral 1 16255093501771068715759097899081134636629229191974495785422 525583544679053958
+        //   openCdp 2207548843074452359 448582450856257
+        //   setEthPerShare 909090909090909090
+        //   openCdp 2611795833394747425 24470555603649471
+        //   redeemCollateral 24874358367087059 324716510753437861637334411829258853907269948177025380754019411104812116966 516485612249186240
+        //   			 1
 
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -455,16 +453,21 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        collateral.setEthPerShare(918257478759017910);
-        collateral.setEthPerShare(834779526144561736);
+        bytes32 _cdpId1 = borrowerOperations.openCdp(
+            448582450856257,
+            bytes32(0),
+            bytes32(0),
+            2207548843074452359
+        );
 
-        bytes32 _cdpId1 = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
+        collateral.setEthPerShare(909090909090909090);
 
-        collateral.setEthPerShare(758890478313237941);
-
-        bytes32 _cdpId2 = borrowerOperations.openCdp(1, bytes32(0), bytes32(0), 2200000000000000016);
-
-        collateral.setEthPerShare(775495175528592427);
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            24470555603649471,
+            bytes32(0),
+            bytes32(0),
+            2611795833394747425
+        );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
@@ -475,11 +478,15 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         vars.priceBefore = priceFeedMock.getPrice();
         vars.actorEbtcBefore = eBTCToken.balanceOf(user);
         vars.actorCollBefore = collateral.balanceOf(user);
+        vars.ethPerShareBefore = collateral.getEthPerShare();
 
-        (vars.feeSplitBefore, , ) = cdpManager.calcFeeUponStakingReward(
-            collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
+        (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
             cdpManager.stFPPSg()
-        );
+            ? cdpManager.calcFeeUponStakingReward(
+                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
+                cdpManager.stFPPSg()
+            )
+            : (0, 0, 0);
 
         vars.feeRecipientTotalCollBefore =
             activePool.getFeeRecipientClaimableColl() +
@@ -487,13 +494,13 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             vars.feeSplitBefore;
 
         cdpManager.redeemCollateral(
+            24874358367087059,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0),
+            324716510753437861637334411829258853907269948177025380754019411104812116966,
             1,
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            16255093501771068715759097899081134636629229191974495785422,
-            1,
-            525583544679053958
+            516485612249186240
         );
 
         vars.activePoolCollAfter = activePool.getStEthColl();
@@ -523,6 +530,34 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         console2.log("Redeemed", redeemedColl);
         console2.log("Fee", fee);
 
+        console2.log(
+            "coll",
+            (vars.activePoolCollBefore +
+                vars.liquidatorRewardSharesBefore +
+                vars.collSurplusPoolBefore),
+            (vars.activePoolCollAfter +
+                vars.liquidatorRewardSharesAfter +
+                vars.collSurplusPoolAfter +
+                fee)
+        );
+        console2.log("debt", (vars.debtBefore), (vars.debtAfter));
+
+        console2.log(
+            "$$",
+            ((vars.activePoolCollBefore +
+                vars.liquidatorRewardSharesBefore +
+                vars.collSurplusPoolBefore) * vars.priceBefore) /
+                1e18 -
+                vars.debtBefore,
+            ((vars.activePoolCollAfter +
+                vars.liquidatorRewardSharesAfter +
+                vars.collSurplusPoolAfter) * vars.priceAfter) /
+                1e18 -
+                vars.debtAfter
+        );
+
+        console2.log("$", (vars.debtBefore), (vars.debtAfter));
+
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore) * vars.priceBefore) /
@@ -530,13 +565,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             vars.debtBefore;
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
-            vars.collSurplusPoolAfter -
-            redeemedColl -
-            fee +
-            vars.feeSplitBefore) * vars.priceAfter) /
+            vars.collSurplusPoolAfter +
+            fee) * vars.priceAfter) /
             1e18 -
-            vars.debtAfter +
-            paidEbtc;
+            vars.debtAfter;
 
         console2.log("value", beforeValue, afterValue);
 

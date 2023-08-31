@@ -160,6 +160,72 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         // );
     }
 
+    function testAccounting() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(0, 448582450856257);
+        setEthPerShare(0);
+        openCdp(4, 24470555603649471);
+        redeemCollateral(
+            1262504356243914873145497331712710699576190790757570093263493772647481834800,
+            324716510753437861637334411829258853907269948177025380754019411104812116966,
+            115656285546591327127987156293232022910044696860076174122216818173235860985,
+            3324672641043434299159819722277063039259254370648171108982871126762220081
+        );
+    }
+
+    function testIcrAboveThresholds() public {
+        bytes32 _cdpId = openCdp(19688822766013999646450751621063422027850672888, 1);
+        addColl(
+            8702575408528755242379334958854353780140793255186322495592959566377201720321,
+            173068267
+        );
+        withdrawEBTC(
+            992457735204281874,
+            529683446718475933667566514872459861798391718976380365152122970137656211672
+        );
+        setEthPerShare(652766360785374473453018027512189970372374737774796411704924262);
+        uint256 _price = priceFeedMock.getPrice();
+        console2.log(
+            "CDP1",
+            uint256(sortedCdps.getFirst()),
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getCdpDebt(_cdpId)
+        );
+        repayEBTC(1, 0);
+        console2.log(
+            "CDP1",
+            uint256(sortedCdps.getFirst()),
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getCdpDebt(_cdpId)
+        );
+    }
+
+    function testLiquidate() public {
+        bytes32 _cdpId1 = openCdp(0, 1);
+        bytes32 _cdpId2 = openCdp(0, 138503371414274893);
+        setEthPerShare(25767972494220010983395751604996338730092976238166499268284213460476321971);
+        setEthPerShare(6227937557915401158291460378146315744099125361417328696236621337846631);
+        setPrice(0);
+        uint256 _price = priceFeedMock.getPrice();
+        console2.log(
+            "\tCR before",
+            cdpManager.getTCR(_price),
+            cdpManager.getCurrentICR(_cdpId1, _price),
+            cdpManager.getCurrentICR(_cdpId2, _price)
+        );
+        console2.log(
+            "CDP1",
+            uint256(sortedCdps.getFirst()),
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price)
+        );
+        liquidateCdps(18144554526834239235);
+        console2.log(
+            "CDP1",
+            uint256(sortedCdps.getFirst()),
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price)
+        );
+    }
+
     function testFlashLoanEBTC() public {
         openCdp(0, 2);
         vm.expectRevert();
