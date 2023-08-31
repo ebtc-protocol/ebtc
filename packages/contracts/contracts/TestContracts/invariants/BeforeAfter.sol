@@ -28,6 +28,7 @@ abstract contract BeforeAfter {
         uint256 cdpStatusAfter;
         uint256 tcrBefore;
         uint256 tcrAfter;
+        uint256 newTcrAfterSyncPendingGlobalState;
         uint256 debtBefore;
         uint256 debtAfter;
         uint256 ebtcTotalSupplyBefore;
@@ -42,6 +43,12 @@ abstract contract BeforeAfter {
         uint256 priceAfter;
         bool isRecoveryModeBefore;
         bool isRecoveryModeAfter;
+        uint256 lastGracePeriodStartTimestampBefore;
+        uint256 lastGracePeriodStartTimestampAfter;
+        bool lastGracePeriodStartTimestampIsSetBefore;
+        bool lastGracePeriodStartTimestampIsSetAfter;
+        bool hasGracePeriodPassedBefore;
+        bool hasGracePeriodPassedAfter;
     }
 
     Vars vars;

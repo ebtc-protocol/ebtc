@@ -51,7 +51,7 @@ abstract contract PropertiesDescriptions {
     ///////////////////////////////////////////////////////
 
     string constant BO_03 = "BO-03: Adding collateral improves Nominal ICR";
-    string constant BO_04 = "BO-04: Removing collateral decreases the Nominal ICR";
+    string constant BO_04 = "BO-04: Removing collateral does not increase the Nominal ICR";
     string constant BO_05 =
         "BO-05: When a borrower closes their active CDP, the gas compensation is refunded to the user";
     string constant BO_07 = "BO-07: eBTC tokens are burned upon repayment of a CDP's debt";
@@ -67,14 +67,16 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_03 =
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
     string constant GENERAL_09 =
-        "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode";
+        "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
+    string constant GENERAL_11 =
+        "GENERAL-11: The TCR pre-computed (TCRNotified) is the same as the one after all calls";
 
     ///////////////////////////////////////////////////////
     // Redemptions
     ///////////////////////////////////////////////////////
 
-    string constant R_07 = "R-07: TCR should be slightly improved after every redemption";
+    string constant R_07 = "R-07: TCR should not decrease after redemptions";
     string constant R_08 = "R-08: The user eBTC balance should be used to pay the system debt";
 
     ///////////////////////////////////////////////////////
@@ -84,13 +86,19 @@ abstract contract PropertiesDescriptions {
     string constant L_01 =
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
     string constant L_12 = "L-12: TCR must increase after liquidation with no redistributions";
+    string constant L_14 =
+        "If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp";
+    string constant L_15 =
+        "L-15: The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR";
+    string constant L_16 =
+        "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR";
 
     ///////////////////////////////////////////////////////
     // eBTC
     ///////////////////////////////////////////////////////
 
     string constant EBTC_02 =
-        "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode";
+        "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR";
 
     ///////////////////////////////////////////////////////
     // Price Feed

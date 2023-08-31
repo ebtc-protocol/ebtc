@@ -7,8 +7,6 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 contract SandWhichSniperTest is eBTCBaseFixture {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
-
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;
@@ -99,6 +97,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         // We can now liquidate victim
         /** SANDWHICH 3 */
         vm.startPrank(users[0]);
+        vm.expectRevert("CdpManager: Recovery Mode grace period not started");
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);

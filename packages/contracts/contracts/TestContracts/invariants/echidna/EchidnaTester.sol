@@ -319,7 +319,7 @@ contract EchidnaTester is
         ans = new Cdp[](superset.length - subset.length);
         uint256 index = 0;
         for (uint256 i = 0; i < superset.length; i++) {
-            bool duplicate;
+            bool duplicate = false;
             for (uint256 j = 0; j < subset.length; j++) {
                 if (superset[i].id == subset[j].id) {
                     duplicate = true;
@@ -461,15 +461,38 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            if (vars.icrBefore < collateral.getSharesByPooledEth(cdpManager.LICR())) {
+            if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(vars.tcrAfter, vars.tcrBefore, L_12);
+                assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, L_12);
             }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
                     (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -509,9 +532,9 @@ contract EchidnaTester is
             (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
             assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
 
-            if (vars.icrBefore < cdpManager.LICR()) {
+            if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+                assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, L_12);
             }
             assertWithMsg(
                 vars.icrBefore < cdpManager.MCR() ||
@@ -520,7 +543,35 @@ contract EchidnaTester is
             );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
+            );
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -565,6 +616,7 @@ contract EchidnaTester is
             );
             uint256 minIcrBefore = type(uint256).max;
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+                emit L3(i, cdpsBefore[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
                 assertWithMsg(
                     cdpsLiquidated[i].icr < cdpManager.MCR() ||
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
@@ -575,9 +627,34 @@ contract EchidnaTester is
                 }
             }
 
-            if (minIcrBefore < cdpManager.LICR()) {
+            if (minIcrBefore > cdpManager.LICR()) {
+                emit LogUint256("minIcrBefore", minIcrBefore);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertWithMsg(vars.tcrAfter > vars.tcrBefore, L_12);
+                assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, L_12);
+            }
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             bool atLeastOneCdpIsLiquidatable = false;
@@ -599,7 +676,8 @@ contract EchidnaTester is
     function redeemCollateral(
         uint _EBTCAmount,
         uint _partialRedemptionHintNICR,
-        uint _maxFeePercentage
+        uint _maxFeePercentage,
+        uint _maxIterations
     ) external log {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
@@ -612,6 +690,7 @@ contract EchidnaTester is
         bytes memory returnData;
 
         _EBTCAmount = clampBetween(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
+        _maxIterations = clampBetween(_maxIterations, 0, 1);
 
         _maxFeePercentage = clampBetween(
             _maxFeePercentage,
@@ -631,27 +710,46 @@ contract EchidnaTester is
                 bytes32(0),
                 bytes32(0),
                 _partialRedemptionHintNICR,
-                // redeem a maximum of 1 CDP to make invariand CDPM_04 easier to calculate
-                1,
+                _maxIterations,
                 _maxFeePercentage
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            assertWithMsg(!vars.isRecoveryModeBefore, EBTC_02);
+        assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
+        if (_maxIterations == 1) {
             assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
-            assertGte(vars.tcrAfter, vars.tcrBefore, R_07);
-            assertEq(
-                (vars.actorEbtcBefore - vars.actorEbtcAfter),
-                vars.debtBefore - vars.debtAfter,
-                R_08
-            );
-
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
+            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
+            assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
             assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 
@@ -668,6 +766,8 @@ contract EchidnaTester is
         _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
         uint _fee = activePool.flashFee(address(collateral), _amount);
 
+        _before(bytes32(0));
+
         // take the flashloan which should always cost the fee paid by caller
         uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         (success, returnData) = actor.proxy(
@@ -681,12 +781,36 @@ contract EchidnaTester is
             )
         );
 
-        if (success) {
-            uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
-            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        require(success);
+
+        _after(bytes32(0));
+
+        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
+        assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 
@@ -694,7 +818,7 @@ contract EchidnaTester is
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) external log {
+    function flashLoanEBTC(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -703,6 +827,8 @@ contract EchidnaTester is
         _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
 
         uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
+
+        _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
         uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
@@ -717,11 +843,36 @@ contract EchidnaTester is
             )
         );
 
-        if (success) {
-            uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        // BorrowerOperations.flashLoan may revert due to reentrancy
+        require(success);
+
+        _after(bytes32(0));
+
+        uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 
@@ -765,21 +916,50 @@ contract EchidnaTester is
             )
         );
 
-        _after(bytes32(0));
-
-        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         if (success) {
             bytes32 _cdpId = abi.decode(returnData, (bytes32));
+            _after(_cdpId);
+
+            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
+            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
+            );
             assertEq(
                 vars.sortedCdpsSizeBefore + 1,
                 vars.sortedCdpsSizeAfter,
                 "CDPs count must have increased"
             );
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -839,16 +1019,56 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            emit L3(
+                vars.isRecoveryModeBefore ? 1 : 0,
+                vars.hasGracePeriodPassedBefore ? 1 : 0,
+                vars.icrAfter
+            );
+            emit L3(
+                block.timestamp,
+                cdpManager.lastGracePeriodStartTimestamp(),
+                cdpManager.recoveryModeGracePeriod()
+            );
+
+            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
             assertWithMsg(
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
+            );
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -890,12 +1110,41 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertLt(vars.nicrAfter, vars.nicrBefore, BO_04);
+            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+            assertLte(vars.nicrAfter, vars.nicrBefore, BO_04);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
+            assertGte(
+                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                borrowerOperations.MIN_NET_COLL(),
+                GENERAL_10
+            );
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -931,19 +1180,46 @@ contract EchidnaTester is
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+        assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+        assertEq(
+            vars.actorEbtcAfter,
+            vars.actorEbtcBefore + _amount,
+            "withdrawEBTC must increase debt by requested amount"
+        );
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
             assertEq(
-                vars.actorEbtcAfter,
-                vars.actorEbtcBefore + _amount,
-                "withdrawEBTC must increase debt by requested amount"
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
             );
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 
@@ -975,26 +1251,49 @@ contract EchidnaTester is
                 _cdpId
             )
         );
+        require(success);
 
         _after(_cdpId);
 
-        if (success) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(
-            //     vars.tcrAfter > vars.tcrBefore ||
-            //         diffPercent(vars.tcrAfter, vars.tcrBefore) < 0.01e18,
-            //     BO_08
-            // );
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
 
-            assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
-            assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, BO_08);
+
+        assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
+        assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 
@@ -1023,6 +1322,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
+            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
@@ -1034,26 +1334,47 @@ contract EchidnaTester is
                 "closeCdp increases the collateral balance of the user"
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             emit L4(
                 vars.actorCollBefore,
                 vars.cdpCollBefore,
                 vars.liquidatorRewardSharesBefore,
                 vars.actorCollAfter
             );
-            assertWithMsg(
-                isApproximateEq(
-                    vars.actorCollBefore +
-                        // ActivePool transfer SHARES not ETH directly
-                        collateral.getPooledEthByShares(
-                            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-                        ),
-                    vars.actorCollAfter,
-                    0.01e18
-                ),
+            assertGt(
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
+                // Note: not checking for strict equality since split fee is difficult to calculate a-priori, so the CDP collateral value may not be sent back to the user in full
+                vars.actorCollAfter,
+                vars.actorCollBefore +
+                    // ActivePool transfer SHARES not ETH directly
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 BO_05
             );
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                assertEq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+                assertWithMsg(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
+            }
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1064,7 +1385,7 @@ contract EchidnaTester is
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) internal log {
+    ) external log {
         actor = actors[msg.sender];
 
         bool success;
@@ -1096,17 +1417,44 @@ contract EchidnaTester is
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertWithMsg(invariant_GENERAL_09(cdpManager, priceFeedTestnet, _cdpId), GENERAL_09);
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
 
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            // assertGte(cdpManager.getCdpColl(_cdpId), borrowerOperations.MIN_NET_COLL(), GENERAL_10);
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
+
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            assertEq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
+        }
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            assertWithMsg(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+
+        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+            assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
     }
 

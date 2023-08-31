@@ -4,6 +4,7 @@ import "./Strings.sol";
 
 contract LogUtils {
     using Strings for uint256;
+    using Strings for bytes32;
 
     enum GlueType {
         None,
@@ -46,5 +47,9 @@ contract LogUtils {
         }
 
         return result;
+    }
+
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        return _bytes32.bytes32ToString();
     }
 }

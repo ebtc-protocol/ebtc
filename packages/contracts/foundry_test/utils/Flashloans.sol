@@ -38,7 +38,7 @@ contract eBTCFlashReceiver is IERC3156FlashBorrower {
     }
 }
 
-contract WETHFlashReceiver is IERC3156FlashBorrower {
+contract STETHFlashReceiver is IERC3156FlashBorrower {
     function onFlashLoan(
         address initiator,
         address token,

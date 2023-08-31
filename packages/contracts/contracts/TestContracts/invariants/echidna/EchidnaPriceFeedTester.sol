@@ -5,10 +5,10 @@ pragma solidity 0.8.17;
 import "@crytic/properties/contracts/util/PropertiesHelper.sol";
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 
-import "../../MockAggregator.sol";
-import "../../../Dependencies/AuthNoOwner.sol";
-import "../../../Interfaces/IFallbackCaller.sol";
 import "../../../PriceFeed.sol";
+import "../../MockAggregator.sol";
+import {MockFallbackCaller} from "../../MockFallbackCaller.sol";
+import "../../../Dependencies/AuthNoOwner.sol";
 
 import "../PropertiesDescriptions.sol";
 
@@ -18,7 +18,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     MockAggregator internal collEthCLFeed;
     MockAggregator internal ethBtcCLFeed;
     AuthNoOwner internal authority;
-    IFallbackCaller internal fallbackCaller;
+    MockFallbackCaller internal fallbackCaller;
 
     uint256 internal constant MAX_PRICE_CHANGE = 1.2e18;
     uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
@@ -49,7 +49,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
         // do we have a fallback caller?
-        fallbackCaller = IFallbackCaller(address(0));
+        fallbackCaller = new MockFallbackCaller();
+
         priceFeed = new PriceFeed(
             address(fallbackCaller),
             address(authority),
@@ -59,6 +60,44 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
 
         statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
             .status();
+    }
+
+    function setFallbackCaller(bool flag) public {
+        priceFeed.setFallbackCaller(flag ? address(fallbackCaller) : address(0));
+    }
+
+    function setFallbackResponse(uint256 answer, uint256 timestampRetrieved, bool success) public {
+        answer = (
+            clampBetween(
+                answer,
+                (fallbackCaller._answer() * 1e18) / MAX_PRICE_CHANGE,
+                (fallbackCaller._answer() * MAX_PRICE_CHANGE) / 1e18
+            )
+        );
+        timestampRetrieved = (
+            clampBetween(
+                timestampRetrieved,
+                fallbackCaller._timestampRetrieved(),
+                fallbackCaller._timestampRetrieved() + MAX_UPDATE_TIME_CHANGE
+            )
+        );
+        fallbackCaller.setFallbackResponse(answer, timestampRetrieved, success);
+    }
+
+    function setGetFallbackResponseRevert(uint256 seed) public {
+        seed = clampBetween(seed, 0, 1e18);
+        bool reverted = fallbackCaller.getFallbackResponseRevert();
+        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
+            fallbackCaller.setFallbackTimeoutRevert();
+        }
+    }
+
+    function setFallbackTimeoutRevert(uint256 seed) public {
+        seed = clampBetween(seed, 0, 1e18);
+        bool reverted = fallbackCaller.fallbackTimeoutRevert();
+        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
+            fallbackCaller.setFallbackTimeoutRevert();
+        }
     }
 
     function setLatestRevert(bool flag, uint256 seed) public log {
@@ -80,12 +119,12 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
-    function setDecimals(uint8 decimals, bool flag) internal {
+    function setDecimals(uint8 decimals, bool flag) external {
         // https://github.com/d-xo/weird-erc20
         // GUSD 2
         // USDC 6
         // YAM-V2 24
-        decimals = uint8(clampBetween(uint256(decimals), 0, 24));
+        decimals = uint8(clampBetween(uint256(decimals), 2, 24));
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setDecimals(decimals);
     }
@@ -164,9 +203,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;
 
-        if (address(fallbackCaller) != address(0)) {
-            (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();
-        }
+        (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();
         try priceFeed.fetchPrice() returns (uint256 price) {
             IPriceFeed.Status statusAfter = priceFeed.status();
             assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
@@ -177,13 +214,12 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
             ) {
                 assertEq(price, priceFeed.lastGoodPrice(), PF_04);
 
-                // Note: this isn't being tested since for now we do not use a fallback oracle
-                if (address(fallbackCaller) != address(0)) {
+                if (address(priceFeed.fallbackCaller()) != address(0)) {
                     assertNeq(price, fallbackResponse, PF_05);
                 }
             }
 
-            if (address(fallbackCaller) == address(0)) {
+            if (address(priceFeed.fallbackCaller()) == address(0)) {
                 assertWithMsg(
                     statusAfter == IPriceFeed.Status.chainlinkWorking ||
                         statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||

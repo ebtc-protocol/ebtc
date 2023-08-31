@@ -69,7 +69,8 @@ contract LeverageMacroBase {
 
     enum FlashLoanType {
         stETH,
-        eBTC
+        eBTC,
+        noFlashloan // Use this to not perform a FL and just `doOperation`
     }
 
     enum PostOperationCheck {
@@ -157,8 +158,8 @@ contract LeverageMacroBase {
                 abi.encode(operation)
             );
         } else {
-            // TODO: If enum OOB reverts, can remove this, can also leave as explicity
-            revert("Must be valid due to forwarding of users");
+            // No leverage, just do the operation
+            _handleOperation(operation);
         }
 
         /**
@@ -172,8 +173,8 @@ contract LeverageMacroBase {
 
             // Check for param details
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
-            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
+            _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: openCDP status check"
@@ -184,8 +185,8 @@ contract LeverageMacroBase {
         if (postCheckType == PostOperationCheck.cdpStats) {
             ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
-            _doCheckValueType(cdpInfo.debt, checkParams.expectedDebt);
-            _doCheckValueType(cdpInfo.coll, checkParams.expectedCollateral);
+            _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
+            _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: adjustCDP status check"
@@ -216,14 +217,14 @@ contract LeverageMacroBase {
          */
         // Safe unchecked because known tokens
         uint256 ebtcBal = ebtcToken.balanceOf(address(this));
-        uint256 collateralBal = stETH.balanceOf(address(this));
+        uint256 collateralBal = stETH.sharesOf(address(this));
 
         if (ebtcBal > 0) {
             ebtcToken.transfer(msg.sender, ebtcBal);
         }
 
         if (collateralBal > 0) {
-            stETH.transfer(msg.sender, collateralBal);
+            stETH.transferShares(msg.sender, collateralBal);
         }
     }
 
@@ -237,7 +238,7 @@ contract LeverageMacroBase {
     ///     >= you prob use this one
     ///     <= if you don't need >= you go for lte
     ///     And if you really need eq, it's third
-    function _doCheckValueType(uint256 valueToCheck, CheckValueAndType memory check) internal {
+    function _doCheckValueType(CheckValueAndType memory check, uint256 valueToCheck) internal {
         if (check.operator == Operator.skip) {
             // Early return
             return;
@@ -392,7 +393,7 @@ contract LeverageMacroBase {
 
         // Exact approve
         // Approve can be given anywhere because this is a router, and after call we will delete all approvals
-        IERC20(swapData.tokenForSwap).approve(
+        IERC20(swapData.tokenForSwap).safeApprove(
             swapData.addressForApprove,
             swapData.exactApproveAmount
         );
@@ -414,7 +415,7 @@ contract LeverageMacroBase {
         // Enforce exact approval
         // Can use max because the tokens are OZ
         // val -> 0 -> 0 -> val means this is safe to repeat since even if full approve is unused, we always go back to 0 after
-        IERC20(swapData.tokenForSwap).approve(swapData.addressForApprove, 0);
+        IERC20(swapData.tokenForSwap).safeApprove(swapData.addressForApprove, 0);
 
         // Do the balance checks after the call to the aggregator
         _doSwapChecks(swapData.swapChecks);

@@ -44,6 +44,13 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareBefore = collateral.getEthPerShare();
         vars.activePoolCollBefore = activePool.getStEthColl();
         vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
+        vars.lastGracePeriodStartTimestampIsSetBefore =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
+        vars.hasGracePeriodPassedBefore =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
+            block.timestamp >
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -79,5 +86,31 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
         vars.ethPerShareAfter = collateral.getEthPerShare();
         vars.activePoolCollAfter = activePool.getStEthColl();
         vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();
+        vars.lastGracePeriodStartTimestampIsSetAfter =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
+        vars.hasGracePeriodPassedAfter =
+            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
+            block.timestamp >
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+
+        address[] memory _targets = new address[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+
+        _targets[0] = address(cdpManager);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+
+        _targets[1] = address(cdpManager);
+        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceAfter);
+
+        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+            assembly {
+                // Slice the sighash.
+                reason := add(reason, 0x04)
+            }
+            bytes memory returnData = abi.decode(reason, (bytes));
+            vars.newTcrAfterSyncPendingGlobalState = abi.decode(returnData, (uint256));
+        }
     }
 }

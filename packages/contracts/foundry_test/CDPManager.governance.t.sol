@@ -220,4 +220,149 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         // Confirm variable set
         assertEq(cdpManager.beta(), newBeta);
     }
+
+    function test_CdpManagerSetGracePeriod_Auth(uint128 newGracePeriod) public {
+        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        address noPermissionsUser = _utils.getNextUserAddress();
+        vm.prank(noPermissionsUser);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        cdpManager.setGracePeriod(newGracePeriod);
+    }
+
+    function test_CdpManagerSetGracePeriodValid_Succeeds(uint128 newGracePeriod) public {
+        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        vm.prank(defaultGovernance);
+        cdpManager.setGracePeriod(newGracePeriod);
+
+        assertEq(cdpManager.recoveryModeGracePeriod(), newGracePeriod);
+    }
+
+    /// @dev Confirm extending the grace period works
+    function test_CdpManagerSetGracePeriodValid_IsEnforcedForUnsetGracePeriod(
+        uint128 newGracePeriod
+    ) public {
+        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD() + 2);
+        vm.assume(newGracePeriod < type(uint128).max / 10); // prevent unrealistic overflow
+
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        vm.prank(defaultGovernance);
+        cdpManager.setGracePeriod(newGracePeriod);
+
+        assertEq(cdpManager.recoveryModeGracePeriod(), newGracePeriod);
+
+        _confirmGracePeriodNewDurationEnforced(
+            oldGracePeriod,
+            newGracePeriod,
+            whale,
+            toLiquidateCdpId
+        );
+    }
+
+    function test_CdpManagerSetGracePeriodInvalid_Reverts(uint128 newGracePeriod) public {
+        vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        vm.prank(defaultGovernance);
+        vm.expectRevert("CdpManager: Grace period below minimum duration");
+        cdpManager.setGracePeriod(newGracePeriod);
+
+        assertEq(cdpManager.recoveryModeGracePeriod(), oldGracePeriod);
+    }
+
+    function test_CdpManagerSetGracePeriodInvalid_RevertsAndIsNotEnforcedForUnsetGracePeriod(
+        uint128 newGracePeriod
+    ) public {
+        vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+
+        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+
+        vm.prank(defaultGovernance);
+        vm.expectRevert("CdpManager: Grace period below minimum duration");
+        cdpManager.setGracePeriod(newGracePeriod);
+
+        assertEq(cdpManager.recoveryModeGracePeriod(), oldGracePeriod);
+    }
+
+    /// @dev Assumes newGracePeriod > oldGracePeriod
+    function _confirmGracePeriodNewDurationEnforced(
+        uint oldGracePeriod,
+        uint newGracePeriod,
+        address actor,
+        bytes32 toLiquidateCdpId
+    ) public {
+        vm.startPrank(actor);
+        cdpManager.syncGracePeriod();
+        uint startTimestamp = block.timestamp;
+        uint expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriod() +
+            cdpManager.lastGracePeriodStartTimestamp();
+
+        assertEq(startTimestamp, cdpManager.lastGracePeriodStartTimestamp());
+
+        // Attempt before previous duration, should fail
+        vm.warp(startTimestamp + oldGracePeriod + 1);
+        assertLt(block.timestamp, expectedGracePeriodExpiration, "after grace period complete");
+
+        console.log(1);
+
+        vm.expectRevert("CdpManager: Recovery mode grace period still in effect");
+        cdpManager.liquidate(toLiquidateCdpId);
+
+        // Attempt between previous duration and new duration, should fail
+        vm.warp(startTimestamp + newGracePeriod - 1);
+        assertLt(block.timestamp, expectedGracePeriodExpiration, "after grace period complete");
+
+        console.log(2);
+
+        vm.expectRevert("CdpManager: Recovery mode grace period still in effect");
+        cdpManager.liquidate(toLiquidateCdpId);
+
+        // Attempt after new duration, should succeed
+        vm.warp(startTimestamp + newGracePeriod + 1);
+        assertGe(block.timestamp, expectedGracePeriodExpiration, "before grace period complete");
+
+        console.log(3);
+        cdpManager.liquidate(toLiquidateCdpId);
+
+        vm.stopPrank();
+    }
+
+    function _initSystemInRecoveryMode()
+        internal
+        returns (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale)
+    {
+        // Create a whale
+        whale = _utils.getNextUserAddress();
+
+        // 2x test price
+        priceFeedMock.setPrice(2 ether);
+        uint price = priceFeedMock.fetchPrice();
+
+        // Open whale CDPs at 220%
+        toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);
+        whaleCdpId = _openTestCDP(whale, 1100.2e18, 1000e18);
+
+        assertEq(cdpManager.getCurrentICR(whaleCdpId, price), 220e16, "unexpected ICR");
+        assertEq(cdpManager.getTCR(price), 220e16, "unexpected TCR");
+
+        // original price
+        priceFeedMock.setPrice(1 ether);
+        price = priceFeedMock.fetchPrice();
+
+        assertEq(cdpManager.getCurrentICR(whaleCdpId, price), 110e16, "unexpected ICR");
+        assertEq(cdpManager.getTCR(price), 110e16, "unexpected TCR");
+    }
 }

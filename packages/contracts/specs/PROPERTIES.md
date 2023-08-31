@@ -35,7 +35,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | BO-01 | Users can only open CDPs with healthy ICR | Unit Tests | TODO: Opening CDP can never directly trigger RM, Can NEVER open below 110 |
 | BO-02 | Users must repay all debt to close a CDP | State Transitions | TODO: Always, at all time, in all conditions |
 | BO-03 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
-| BO-04 | Reoving collateral decreases the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
+| BO-04 | Removing collateral does not increase the Nominal ICR | Unit Tests | ✅ |
 | BO-05 | If an existing CDP's adjustment reduces its ICR in Recovery Mode, the transaction is only executed if the resulting TCR is above 125% | State Transitions | TODO: May change to TCR + Buffer. KEY invariant |
 | BO-05 | When a borrower closes their active CDP, the gas compensation is refunded to the user: the amount of shares sent by the user is transferred back from the GasPool to the user | Unit Tests | ✅ |
 | BO-06 | Each time I change my ICR, the TCR changes by an impact that is equal to the relative weight of collateral and debt from my position | State Transitions | |
@@ -70,8 +70,9 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-06 | At all times, the total debt is equal to the sum of all debts from all CDP + toRedistribute | High Level | ✅ TODO: + toRedistribute is not being checked |
 | GENERAL-07 | Without a price change, a rebasing event, or a redistribution, my position can never reduce in absolute value | State Transitions | |
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level | TODO: redistribution and pending fee split (prob need to look into this more) |
-| GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal mode or TCR in Recovery mode | High Level | ✅ |
+| GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR | High Level | ✅ |
 | GENERAL-10 | All CDPs should maintain a minimum collateral size | High Level | ✅ |
+| GENERAL-11 | The TCR pre-computed (TCRNotified) is the same as the one after all calls | High Level | ✅ |
 
 ## Redemptions
 
@@ -83,7 +84,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | R-04 | Redemptions are disabled during the first 14 days of operation since deployment of the eBTC protocol | Valid States | ✅ |
 | R-05 | Partially redeemed CDP is re-inserted into the sorted list of CDPs, and remains active, with reduced collateral and debt. Linked List invariant is maintained. And new values correspond with tokens burned and transferred. | Unit Tests | |
 | R-06 | If the redemption causes a CDP's full debt to be cancelled, the CDP is then closed: Gas Stipend from the Liquidation Reserve becomes avaiable for the borrower to reclaim along of the CDP's Collateral Surplus. The original CDP owner gets the stipend when a CDP is fully closed by redemption | Unit Tests | |
-| R-07 | TCR should be slightly improved after every redemption | Unit Tests | ✅ |
+| R-07 | TCR should not decrease after redemptions | Unit Tests | ✅ |
 | R-08 | The user eBTC balance should be used to pay the system debt | Unit Tests | ✅ |
 
 ## Liquidations
@@ -102,6 +103,9 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | L-10 | As a Individual Leveraged to the maximum (110 CR), I can only be liquidated if: The oracle price changes in such a way that my CR goes below 110 or Other depositors bring the system CR to 125 (edge of Recovery Mode), then the Oracle Price updates to a lower value, causing every CDP below RM to be liquidatable | State Transitions | TODO: Yes, you can only ever be liquidated if: Below MCR, System is in RM and you are below CCR |
 | L-11 | A user can only be liquidated if there is a negative rebasing event or a price change that make the position go below the LT, or RM is triggered | State Transitions | |
 | L-12 | TCR must increase after liquidation with no redistributions | High Level | ✅ |
+| L-14 | If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp | High Level | ✅ |
+| L-15 | The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR | High Level | ✅ |
+| L-16 | The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR | High Level | ✅ |
 
 ## Fees
 
@@ -114,7 +118,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
 | EBTC-01 | Anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not | Unit Tests | TODO: use [crytic/properties](https://github.com/crytic/properties) |
-| EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless the system is in Recovery Mode | High Level | TODO: verify if this is true for MCR or CCR |
+| EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR | High Level | TODO: verify if this is true for MCR or CCR |
 | EBTC-03 | The eBTC token contract implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers | Unit Tests | TODO: this can be partially & easily implemented with [crytic/properties](https://github.com/crytic/properties) |
 
 ## Governance

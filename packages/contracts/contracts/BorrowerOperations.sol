@@ -301,7 +301,6 @@ contract BorrowerOperations is
             _isDebtIncrease,
             vars.price
         );
-        assert(_collWithdrawal <= _cdpCollAmt);
 
         // Check the adjustment satisfies all conditions for the current system mode
         _requireValidAdjustmentInCurrentMode(isRecoveryMode, _collWithdrawal, _isDebtIncrease, vars);
@@ -322,12 +321,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        // Only check when the collateral exchange rate from share is above 1e18
-        // If there is big decrease due to slashing, some CDP might already fall below minimum collateral requirements
-        if (collateral.getPooledEthByShares(DECIMAL_PRECISION) >= DECIMAL_PRECISION) {
-            //@audit why do we get this value again? we can calculate it locally
-            _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
-        }
+        _requireAtLeastMinNetColl(collateral.getPooledEthByShares(vars.newColl));
 
         cdpManager.updateCdp(_cdpId, _borrower, vars.coll, vars.debt, vars.newColl, vars.newDebt);
 
@@ -396,12 +390,28 @@ contract BorrowerOperations is
             In normal mode, ICR must be greater thatn MCR
             Additionally, the new system TCR after the CDPs addition must be >CCR
         */
+        uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price);
         if (isRecoveryMode) {
             _requireICRisAboveCCR(vars.ICR);
+
+            // == Grace Period == //
+            // We are in RM, Edge case is Depositing Coll could exit RM
+            // We check with newTCR
+            if (newTCR < CCR) {
+                // Notify RM
+                cdpManager.notifyStartGracePeriod(newTCR);
+            } else {
+                // Notify Back to Normal Mode
+                cdpManager.notifyEndGracePeriod(newTCR);
+            }
         } else {
             _requireICRisAboveMCR(vars.ICR);
-            uint newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price); // bools: coll increase, debt increase
             _requireNewTCRisAboveCCR(newTCR);
+
+            // == Grace Period == //
+            // We are not in RM, no edge case, we always stay above RM
+            // Always Notify Back to Normal Mode
+            cdpManager.notifyEndGracePeriod(newTCR);
         }
 
         // Set the cdp struct's properties
@@ -455,10 +465,6 @@ contract BorrowerOperations is
 
         _requireSufficientEBTCBalance(ebtcToken, msg.sender, debt);
 
-        uint sc = getEntireSystemColl();
-        uint tc = collateral.getPooledEthByShares(sc);
-        uint td = _getEntireSystemDebt();
-
         uint newTCR = _getNewTCRFromCdpChange(
             collateral.getPooledEthByShares(coll),
             false,
@@ -467,6 +473,10 @@ contract BorrowerOperations is
             price
         );
         _requireNewTCRisAboveCCR(newTCR);
+
+        // == Grace Period == //
+        // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
+        cdpManager.notifyEndGracePeriod(newTCR);
 
         cdpManager.removeStake(_cdpId);
 
@@ -612,7 +622,7 @@ contract BorrowerOperations is
         uint _collWithdrawal,
         bool _isDebtIncrease,
         LocalVariables_adjustCdp memory _vars
-    ) internal view {
+    ) internal {
         /*
          *In Recovery Mode, only allow:
          *
@@ -627,23 +637,41 @@ contract BorrowerOperations is
          * - The new ICR is above MCR
          * - The adjustment won't pull the TCR below CCR
          */
+
+        _vars.newTCR = _getNewTCRFromCdpChange(
+            collateral.getPooledEthByShares(_vars.collChange),
+            _vars.isCollIncrease,
+            _vars.netDebtChange,
+            _isDebtIncrease,
+            _vars.price
+        );
+
         if (_isRecoveryMode) {
             _requireNoCollWithdrawal(_collWithdrawal);
             if (_isDebtIncrease) {
                 _requireICRisAboveCCR(_vars.newICR);
                 _requireNewICRisAboveOldICR(_vars.newICR, _vars.oldICR);
             }
+
+            // == Grace Period == //
+            // We are in RM, Edge case is Depositing Coll could exit RM
+            // We check with newTCR
+            if (_vars.newTCR < CCR) {
+                // Notify RM
+                cdpManager.notifyStartGracePeriod(_vars.newTCR);
+            } else {
+                // Notify Back to Normal Mode
+                cdpManager.notifyEndGracePeriod(_vars.newTCR);
+            }
         } else {
             // if Normal Mode
             _requireICRisAboveMCR(_vars.newICR);
-            _vars.newTCR = _getNewTCRFromCdpChange(
-                collateral.getPooledEthByShares(_vars.collChange),
-                _vars.isCollIncrease,
-                _vars.netDebtChange,
-                _isDebtIncrease,
-                _vars.price
-            );
             _requireNewTCRisAboveCCR(_vars.newTCR);
+
+            // == Grace Period == //
+            // We are not in RM, no edge case, we always stay above RM
+            // Always Notify Back to Normal Mode
+            cdpManager.notifyEndGracePeriod(_vars.newTCR);
         }
     }
 
@@ -820,6 +848,7 @@ contract BorrowerOperations is
 
     function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
+        require(!flashLoansPaused, "BorrowerOperations: Flash Loans Paused");
 
         return (amount * feeBps) / MAX_BPS;
     }
@@ -829,6 +858,11 @@ contract BorrowerOperations is
         if (token != address(ebtcToken)) {
             return 0;
         }
+
+        if (flashLoansPaused) {
+            return 0;
+        }
+
         return type(uint112).max;
     }
 

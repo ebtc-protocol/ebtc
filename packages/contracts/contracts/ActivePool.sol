@@ -315,6 +315,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
     function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
+        require(!flashLoansPaused, "ActivePool: Flash Loans Paused");
 
         return (amount * feeBps) / MAX_BPS;
     }
@@ -325,6 +326,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @return The maximum flash loan amount for the token
     function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(collateral)) {
+            return 0;
+        }
+
+        if (flashLoansPaused) {
             return 0;
         }
 

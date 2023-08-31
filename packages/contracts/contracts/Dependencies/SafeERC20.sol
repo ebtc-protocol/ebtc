@@ -26,6 +26,11 @@ library SafeERC20 {
         _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
     }
 
+    /// @dev Calls approve while checking bool return value, handles no-return tokens
+    function safeApprove(IERC20 token, address spender, uint256 amount) internal {
+        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, amount));
+    }
+
     function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
         _callOptionalReturn(
             token,
