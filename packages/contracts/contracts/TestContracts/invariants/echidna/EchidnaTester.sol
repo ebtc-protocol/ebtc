@@ -616,7 +616,7 @@ contract EchidnaTester is
             );
             uint256 minIcrBefore = type(uint256).max;
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-                emit L3(i, cdpsBefore[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
+                emit L3(i, cdpsLiquidated[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
                 assertWithMsg(
                     cdpsLiquidated[i].icr < cdpManager.MCR() ||
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
