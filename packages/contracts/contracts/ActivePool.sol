@@ -170,11 +170,11 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         systemCollShares = cachedSystemCollShares;
 
-        uint256 cachedFeeRecipientColl = feeRecipientCollShares + _shares;
-        feeRecipientCollShares = cachedFeeRecipientColl;
+        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares + _shares;
+        feeRecipientCollShares = cachedFeeRecipientCollShares;
 
         emit SystemCollSharesUpdated(cachedSystemCollShares);
-        emit FeeRecipientClaimableCollSharesIncreased(cachedFeeRecipientColl, _shares);
+        emit FeeRecipientClaimableCollSharesIncreased(cachedFeeRecipientCollShares, _shares);
     }
 
     /// @notice Helper function to transfer stETH shares to another address, ensuring to call hooks into other system pools if they are the recipient
@@ -349,15 +349,15 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     function claimFeeRecipientCollShares(uint256 _shares) external override requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Calling this increases shares so do it first
 
-        uint256 cachedFeeRecipientColl = feeRecipientCollShares;
-        require(cachedFeeRecipientColl >= _shares, "ActivePool: Insufficient fee recipient coll");
+        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares;
+        require(cachedFeeRecipientCollShares >= _shares, "ActivePool: Insufficient fee recipient coll");
 
         unchecked {
-            cachedFeeRecipientColl -= _shares;
+            cachedFeeRecipientCollShares -= _shares;
         }
 
-        feeRecipientCollShares = cachedFeeRecipientColl;
-        emit FeeRecipientClaimableCollSharesDecreased(cachedFeeRecipientColl, _shares);
+        feeRecipientCollShares = cachedFeeRecipientCollShares;
+        emit FeeRecipientClaimableCollSharesDecreased(cachedFeeRecipientCollShares, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
     }
