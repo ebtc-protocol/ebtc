@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../contracts/Interfaces/IERC3156FlashBorrower.sol";
+import {ICdpManagerData} from "../../contracts/Interfaces/ICdpManagerData.sol";
 import {IERC20} from "../../contracts/Dependencies/IERC20.sol";
 
 // TODO: CODE THESE
@@ -19,6 +20,31 @@ contract UselessFlashReceiver is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external pure override returns (bytes32) {
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+}
+
+
+// Causes Fee Split to be distributed, does nothing else
+contract FeeSplitClaimFlashReceiver is IERC3156FlashBorrower {
+
+    ICdpManagerData cdpManager;
+    constructor(address cdp) {
+        cdpManager = ICdpManagerData(cdp);
+    }
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
+        // Move state (Causes CollShares to change downwads)
+        cdpManager.syncPendingGlobalState();
+
+        // Approve to repay (Should ensure this works)
+        IERC20(token).approve(msg.sender, amount + fee);
+
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }

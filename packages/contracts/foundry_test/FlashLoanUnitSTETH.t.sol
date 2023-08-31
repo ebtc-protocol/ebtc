@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
-import {UselessFlashReceiver, STETHFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn} from "./utils/Flashloans.sol";
+import {UselessFlashReceiver, STETHFlashReceiver, FlashLoanSpecReceiver, FlashLoanWrongReturn, FeeSplitClaimFlashReceiver} from "./utils/Flashloans.sol";
 
 /*
  * Unit Tests for Flashloans
@@ -16,6 +16,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
     STETHFlashReceiver internal stethReceiver;
     FlashLoanSpecReceiver internal specReceiver;
     FlashLoanWrongReturn internal wrongReturnReceiver;
+    FeeSplitClaimFlashReceiver internal splitClaimReceiver;
 
     function setUp() public override {
         // Base setup
@@ -28,6 +29,24 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         stethReceiver = new STETHFlashReceiver();
         specReceiver = new FlashLoanSpecReceiver();
         wrongReturnReceiver = new FlashLoanWrongReturn();
+        splitClaimReceiver = new FeeSplitClaimFlashReceiver(address(cdpManager));
+
+        // Open a CDP so there's something to borrow
+        address payable[] memory users;
+        users = _utils.createUsers(1);
+        address user = users[0];
+        uint borrowedAmount = _utils.calculateBorrowAmount(
+            3000 ether,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+        // Make sure there is no CDPs in the system yet
+        assert(sortedCdps.getLast() == "");
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 3000 ether}();
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 3000 ether);
+        vm.stopPrank();
     }
 
     /// @dev Basic happy path test
@@ -126,6 +145,31 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         // Perform flashloan
         activePool.flashLoan(
             uselessReceiver,
+            address(collateral),
+            loanAmount,
+            abi.encodePacked(uint256(0))
+        );
+    }
+
+
+    function testStEthFeeSplitCausesRevertOnRepay(uint128 loanAmount) public {
+        uint256 loanAmount = loanAmount % activePool.maxFlashLoan(address(collateral));
+        uint256 fee = activePool.flashFee(address(collateral), loanAmount);
+        // Ensure fee is not rounded down
+        vm.assume(fee > 1);
+
+        // Dramatic effect example
+        collateral.setEthPerShare(1.5e18); 
+
+        // FL Should succeed
+        dealCollateral(address(activePool), loanAmount);
+        dealCollateral(address(splitClaimReceiver), fee * 5); // BS Amount so we have enough to repay
+
+
+        // NOTE: This will not revert because the fee split makes it easier to meet the requirement
+        // Perform flashloan
+        activePool.flashLoan(
+            splitClaimReceiver,
             address(collateral),
             loanAmount,
             abi.encodePacked(uint256(0))
