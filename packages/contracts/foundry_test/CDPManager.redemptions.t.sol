@@ -440,11 +440,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     function test_RedemptionMustSatisfyAccountingEquation() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
-        //   openCdp 2207548843074452359 448582450856257
+        //   openCdp 2200000000000000067 4
+        //   openCdp 2293234842987251430 136273187309674429
         //   setEthPerShare 909090909090909090
-        //   openCdp 2611795833394747425 24470555603649471
-        //   redeemCollateral 24874358367087059 324716510753437861637334411829258853907269948177025380754019411104812116966 516485612249186240
-        //   			 1
+        //   redeemCollateral 77233452000714940 137 302083018134466905 1
 
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -453,21 +452,16 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        bytes32 _cdpId1 = borrowerOperations.openCdp(
-            448582450856257,
+        bytes32 _cdpId1 = borrowerOperations.openCdp(4, bytes32(0), bytes32(0), 2200000000000000067);
+
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            136273187309674429,
             bytes32(0),
             bytes32(0),
-            2207548843074452359
+            2293234842987251430
         );
 
         collateral.setEthPerShare(909090909090909090);
-
-        bytes32 _cdpId2 = borrowerOperations.openCdp(
-            24470555603649471,
-            bytes32(0),
-            bytes32(0),
-            2611795833394747425
-        );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
@@ -494,13 +488,13 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             vars.feeSplitBefore;
 
         cdpManager.redeemCollateral(
-            24874358367087059,
+            77233452000714940,
             bytes32(0),
             bytes32(0),
             bytes32(0),
-            324716510753437861637334411829258853907269948177025380754019411104812116966,
+            137,
             1,
-            516485612249186240
+            302083018134466905
         );
 
         vars.activePoolCollAfter = activePool.getStEthColl();

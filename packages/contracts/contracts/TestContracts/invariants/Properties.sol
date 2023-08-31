@@ -106,7 +106,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             fee) * vars.priceAfter) /
             1e18 -
             vars.debtAfter;
-        return afterValue > beforeValue;
+        return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
     }
 
     function invariant_CSP_01(

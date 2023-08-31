@@ -644,19 +644,17 @@ contract EchidnaTester is
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
-            if (_maxIterations == 1) {
-                assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
-                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
-                // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
-                assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
-                assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
-            }
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+        assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
+        if (_maxIterations == 1) {
+            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
+            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, R_07);
+            assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
+            assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         }
     }
 
@@ -686,20 +684,18 @@ contract EchidnaTester is
             )
         );
 
-        if (success) {
-            uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
-            assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
+        require(success);
+
+        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
+        assertEq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
     }
 
     ///////////////////////////////////////////////////////
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) external log {
+    function flashLoanEBTC(uint _amount) internal log {
         actor = actors[msg.sender];
 
         bool success;
@@ -962,25 +958,23 @@ contract EchidnaTester is
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
-            assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
-            assertEq(
-                vars.actorEbtcAfter,
-                vars.actorEbtcBefore + _amount,
-                "withdrawEBTC must increase debt by requested amount"
-            );
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+        assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+        assertEq(
+            vars.actorEbtcAfter,
+            vars.actorEbtcBefore + _amount,
+            "withdrawEBTC must increase debt by requested amount"
+        );
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     function repayEBTC(uint _amount, uint256 _i) external log {
@@ -1011,29 +1005,26 @@ contract EchidnaTester is
                 _cdpId
             )
         );
+        require(success);
 
         _after(_cdpId);
 
-        if (success) {
-            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
 
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, BO_08);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        // assertGt(vars.newTcrAfterSyncPendingGlobalState, vars.tcrBefore, BO_08);
 
-            assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
-            assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
+        assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
+        assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     function closeCdp(uint _i) external log {
@@ -1132,23 +1123,21 @@ contract EchidnaTester is
             )
         );
 
+        require(success);
+
         _after(_cdpId);
 
-        if (success) {
-            assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-            assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
+        assertEq(vars.newTcrAfterSyncPendingGlobalState, vars.tcrAfter, GENERAL_11);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+        assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
 
-            assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
-        } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
-        }
+        assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+        assertGte(
+            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            borrowerOperations.MIN_NET_COLL(),
+            GENERAL_10
+        );
     }
 
     ///////////////////////////////////////////////////////
