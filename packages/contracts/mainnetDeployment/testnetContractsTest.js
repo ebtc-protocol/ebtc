@@ -25,14 +25,14 @@ contract('CollateralTokenTester', async accounts => {
             assert.equal(await collateralTokenTester.balanceOf(alice), dec(10, 18))
         })
 
-        it("Capped user mints 10e18 when attempting to mint more", async () => {
-            await collateralTokenTester.forceDeposit(dec(100, 18), { from: alice })
-            assert.equal(await collateralTokenTester.balanceOf(alice), dec(10, 18))
+        it("Capped user can't mint more than 10e18", async () => {
+            await assertRevert(collateralTokenTester.forceDeposit(dec(100, 18), { from: alice }))
+            assert.equal(await collateralTokenTester.balanceOf(alice), 0)
         })
 
-        it("Capped user mints 10e18 when attempting to mint less", async () => {
+        it("Capped user mints can mint less than cap", async () => {
             await collateralTokenTester.forceDeposit(dec(8, 18), { from: alice })
-            assert.equal(await collateralTokenTester.balanceOf(alice), dec(10, 18))
+            assert.equal(await collateralTokenTester.balanceOf(alice), dec(8, 18))
         })
 
         it("Uncapped user can mint more than 10e18", async () => {
@@ -76,8 +76,8 @@ contract('CollateralTokenTester', async accounts => {
 
             await collateralTokenTester.removeUncappedMinter(alice, { from: owner })
 
-            // Alice is now an uncapped minter but can mint 10e18 more without waiting anytime
-            await collateralTokenTester.forceDeposit(dec(100, 18), { from: alice }) // Attempts to mint more
+            // Alice is now a capped minter but can mint 10e18 more without waiting anytime
+            await collateralTokenTester.forceDeposit(dec(10, 18), { from: alice })
             assert.equal(await collateralTokenTester.balanceOf(alice), dec(110, 18))
 
             // Attempting to mint again reverts
@@ -88,8 +88,10 @@ contract('CollateralTokenTester', async accounts => {
             // Owner changes the deposit cap
             await collateralTokenTester.setMintCap(dec(5, 18), { from: owner })
 
-            // Alice attempts to mint more and gets the new cap only
-            await collateralTokenTester.forceDeposit(dec(100, 18), { from: alice })
+            // Alice attempts to mint more and it fails
+            await assertRevert(collateralTokenTester.forceDeposit(dec(10, 18), { from: alice }))
+            // Alice attempts to mint the new cap amount and it works
+            await collateralTokenTester.forceDeposit(dec(5, 18), { from: alice })
             assert.equal(await collateralTokenTester.balanceOf(alice), dec(5, 18))
 
             // 12 hours go by and minting reverts for Alice
@@ -100,8 +102,15 @@ contract('CollateralTokenTester', async accounts => {
             await collateralTokenTester.setMintCooldown(60 * 60 * 4, { from: owner })
 
             // Alice can mint
-            await collateralTokenTester.forceDeposit(dec(10, 18), { from: alice }) // Attempts to mint more
-            assert.equal(await collateralTokenTester.balanceOf(alice), dec(10, 18))
+            await collateralTokenTester.forceDeposit(dec(4, 18), { from: alice })
+            assert.equal(await collateralTokenTester.balanceOf(alice), dec(9, 18))
+
+            // Owner changes the deposit cap to something larger
+            await collateralTokenTester.setMintCap(dec(30, 18), { from: owner })
+
+            // Bob can mint this
+            await collateralTokenTester.forceDeposit(dec(30, 18), { from: bob })
+            assert.equal(await collateralTokenTester.balanceOf(bob), dec(30, 18))
         })
 
         it("Setter permissions work properly", async () => {
