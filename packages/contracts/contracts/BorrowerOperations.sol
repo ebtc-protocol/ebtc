@@ -517,7 +517,7 @@ contract BorrowerOperations is
     }
 
     /// @notice Allows recipient of delegation to renounce it
-    /// @notice Useful to allow one-off delegations, which could be 
+    /// @notice Useful to allow one-off delegations, which could be
     function renounceDelegation(address _delegatee) external {
         delegates[_delegatee][msg.sender] = false;
         emit DelegateSet(_delegatee, msg.sender, false);
