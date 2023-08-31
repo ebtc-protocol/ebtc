@@ -428,8 +428,8 @@ contract BorrowerOperations is
             _borrower
         );
 
-        // Mint the full EBTCAmount to the borrower
-        _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
+        // Mint the full EBTCAmount to the caller
+        _withdrawEBTC(msg.sender, _EBTCAmount, _EBTCAmount);
 
         /**
             Note that only NET coll (as shares) is considered part of the CDP.
