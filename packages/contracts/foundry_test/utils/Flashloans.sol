@@ -24,14 +24,14 @@ contract UselessFlashReceiver is IERC3156FlashBorrower {
     }
 }
 
-
 // Causes Fee Split to be distributed, does nothing else
 contract FeeSplitClaimFlashReceiver is IERC3156FlashBorrower {
-
     ICdpManagerData cdpManager;
+
     constructor(address cdp) {
         cdpManager = ICdpManagerData(cdp);
     }
+
     function onFlashLoan(
         address initiator,
         address token,

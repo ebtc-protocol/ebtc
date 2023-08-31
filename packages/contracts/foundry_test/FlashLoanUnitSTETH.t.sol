@@ -151,7 +151,6 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         );
     }
 
-
     function testStEthFeeSplitCausesRevertOnRepay(uint128 loanAmount) public {
         uint256 loanAmount = loanAmount % activePool.maxFlashLoan(address(collateral));
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
@@ -159,12 +158,11 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         vm.assume(fee > 1);
 
         // Dramatic effect example
-        collateral.setEthPerShare(1.5e18); 
+        collateral.setEthPerShare(1.5e18);
 
         // FL Should succeed
         dealCollateral(address(activePool), loanAmount);
         dealCollateral(address(splitClaimReceiver), fee * 5); // BS Amount so we have enough to repay
-
 
         // NOTE: This will not revert because the fee split makes it easier to meet the requirement
         // Perform flashloan
