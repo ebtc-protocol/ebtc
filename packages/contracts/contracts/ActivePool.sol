@@ -350,7 +350,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Calling this increases shares so do it first
 
         uint256 cachedFeeRecipientCollShares = feeRecipientCollShares;
-        require(cachedFeeRecipientCollShares >= _shares, "ActivePool: Insufficient fee recipient coll");
+        require(
+            cachedFeeRecipientCollShares >= _shares,
+            "ActivePool: Insufficient fee recipient coll"
+        );
 
         unchecked {
             cachedFeeRecipientCollShares -= _shares;
