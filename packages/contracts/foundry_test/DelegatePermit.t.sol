@@ -3,200 +3,175 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {BalanceSnapshot} from "./utils/BalanceSnapshot.sol";
+import {IDelegatePermit} from "../contracts/Interfaces/IDelegatePermit.sol";
 
 /*
- * Test suite that tests exactly one thing: opening CDPs
- * It tests different cases and also does random testing against random coll amounts and amount of users
+ * Test suite that tests permit sign feature of delegate
  */
-contract DelegatesTest is eBTCBaseInvariants {
-    // // betaGang standard CDP
-    // uint public constant STANDARD_DEBT = 10 ether;
-    // uint public constant STANDARD_COLL = 20.2 ether;
-    // address[] public accounts;
-    // address[] public tokens;
-    // function setUp() public override {
-    //     super.setUp();
-    //     connectCoreContracts();
-    //     connectLQTYContractsToCore();
-    // }
-    // function _testPreconditions()
-    //     internal
-    //     returns (address user, address delegate, bytes32 userCdpId)
-    // {
-    //     collateral.setEthPerShare(1e18);
-    //     priceFeedMock.setPrice(1e18);
-    //     user = _utils.getNextUserAddress();
-    //     delegate = _utils.getNextUserAddress();
-    //     dealCollateral(delegate, STANDARD_COLL * 10);
-    //     vm.prank(delegate);
-    //     collateral.approve(address(borrowerOperations), STANDARD_COLL * 10);
-    //     userCdpId = _openTestCDP(user, STANDARD_COLL, STANDARD_DEBT);
-    //     // open a second CDP so closing is possible
-    //     _openTestCDP(user, STANDARD_COLL, STANDARD_DEBT);
-    //     vm.prank(user);
-    //     eBTCToken.transfer(delegate, STANDARD_DEBT);
-    //     tokens.push(address(eBTCToken));
-    //     tokens.push(address(collateral));
-    //     accounts.push(user);
-    //     accounts.push(delegate);
-    // }
-    // ///@dev Delegate should be able to openCdp via permit
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanOpenCdp_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
-    //     vm.prank(delegate);
-    //     bytes32 _cdpOpenedByDelegate = borrowerOperations.openCdpFor(
-    //         STANDARD_DEBT,
-    //         bytes32(0),
-    //         bytes32(0),
-    //         STANDARD_COLL,
-    //         user
-    //     );
-    //     assertTrue(sortedCdps.contains(_cdpOpenedByDelegate));
-    //     assertTrue(sortedCdps.getOwnerAddress(_cdpOpenedByDelegate) == user);
-    //     assertEq(
-    //         sortedCdps.cdpCountOf(user),
-    //         _cdpOfUserBefore + 1,
-    //         "CDP number mismatch for user after delegate openCdpFor()"
-    //     );
-    // }
-    // ///@dev Delegate should be able withdraw collateral from the user's position to their own address
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanWithdrawColl_ViaOneTimePermit(uint collToWithdraw) public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     vm.assume(collToWithdraw > 0);
-    //     vm.assume(collToWithdraw < cdpManager.getCdpStEthBalance(userCdpId));
-    //     vm.assume(
-    //         cdpManager.getCdpStEthBalance(userCdpId) - collToWithdraw > cdpManager.MIN_NET_COLL()
-    //     );
-    //     // FIXME? collateral withdrawn to delegate instead CDP owner?
-    //     uint _balBefore = collateral.balanceOf(delegate);
-    //     vm.prank(delegate);
-    //     borrowerOperations.withdrawColl(userCdpId, collToWithdraw, bytes32(0), bytes32(0));
-    //     assertEq(
-    //         collateral.balanceOf(delegate),
-    //         _balBefore + collToWithdraw,
-    //         "collateral not sent to correct recipient after withdrawColl()"
-    //     );
-    // }
-    // ///@dev Delegate should be able increase collateral to the user's position from their own address
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanAddColl_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     uint _cdpColl = cdpManager.getCdpColl(userCdpId);
-    //     uint _collChange = 1e17;
-    //     vm.prank(delegate);
-    //     BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
-    //     borrowerOperations.addColl(userCdpId, bytes32(0), bytes32(0), _collChange);
-    //     BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
-    //     assertEq(
-    //         cdpManager.getCdpColl(userCdpId),
-    //         _cdpColl + _collChange,
-    //         "collateral in CDP mismatch after delegate addColl()"
-    //     );
-    //     assertEq(
-    //         a.get(address(collateral), delegate),
-    //         b.get(address(collateral), delegate) + _collChange,
-    //         "delegate stEth balance should have decreased by increased stEth amount"
-    //     );
-    //     assertEq(
-    //         a.get(address(collateral), user),
-    //         b.get(address(collateral), user),
-    //         "user stEth balance should remain the same"
-    //     );
-    // }
-    // /// @dev Delegate should be able to increase debt of Cdp
-    // /// @dev eBTC should go to delegate's account
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanWithdrawEBTC_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     // FIXME? debt withdrawn to delegate instead CDP owner?
-    //     uint _balBefore = eBTCToken.balanceOf(delegate);
-    //     uint _debtChange = 1e17;
-    //     vm.prank(delegate);
-    //     borrowerOperations.withdrawEBTC(userCdpId, _debtChange, bytes32(0), bytes32(0));
-    //     assertEq(
-    //         eBTCToken.balanceOf(delegate),
-    //         _balBefore + _debtChange,
-    //         "debt not sent to correct recipient after withdrawEBTC()"
-    //     );
-    // }
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanRepayEBTC_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     uint delegateBalanceBefore = eBTCToken.balanceOf(delegate);
-    //     uint userBalanceBefore = eBTCToken.balanceOf(user);
-    //     vm.prank(delegate);
-    //     borrowerOperations.repayEBTC(userCdpId, 1e17, bytes32(0), bytes32(0));
-    //     assertEq(
-    //         delegateBalanceBefore - eBTCToken.balanceOf(delegate),
-    //         1e17,
-    //         "delegate balance should be used to repay eBTC"
-    //     );
-    //     assertEq(
-    //         userBalanceBefore,
-    //         eBTCToken.balanceOf(user),
-    //         "user balance should remain unchanged"
-    //     );
-    // }
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanAdjustCdp_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     // FIXME? debt withdrawn to delegate instead CDP owner?
-    //     uint _balBefore = eBTCToken.balanceOf(delegate);
-    //     uint _debtChange = 1e17;
-    //     vm.prank(delegate);
-    //     borrowerOperations.adjustCdp(userCdpId, 0, _debtChange, true, bytes32(0), bytes32(0));
-    //     assertEq(
-    //         eBTCToken.balanceOf(delegate),
-    //         _balBefore + _debtChange,
-    //         "debt not sent to correct recipient after adjustCdp(_isDebtIncrease=true)"
-    //     );
-    // }
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanAdjustCdpWithColl_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
-    //     uint delegateBalanceBefore = eBTCToken.balanceOf(delegate);
-    //     uint userBalanceBefore = eBTCToken.balanceOf(user);
-    //     vm.prank(delegate);
-    //     borrowerOperations.adjustCdpWithColl(
-    //         userCdpId,
-    //         0,
-    //         1e17,
-    //         false,
-    //         bytes32(0),
-    //         bytes32(0),
-    //         1e17
-    //     );
-    //     BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
-    //     assertEq(
-    //         a.get(address(eBTCToken), delegate) - b.get(address(eBTCToken), delegate),
-    //         1e17,
-    //         "delegate balance should be used to repay eBTC"
-    //     );
-    //     assertEq(
-    //         a.get(address(eBTCToken), user),
-    //         b.get(address(eBTCToken), user),
-    //         "user balance should remain unchanged"
-    //     );
-    // }
-    // ///@dev One-time delegation: The delegate should _not_ be delegated after the call if they were not before
-    // function test_DelegateCanCloseCdp_ViaOneTimePermit() public {
-    //     (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
-    //     // close Cdp
-    //     console.log("eBTCToken.balanceOf(delegate): ", eBTCToken.balanceOf(delegate));
-    //     console.log("cdpManager.getCdpDebt(userCdpId): ", cdpManager.getCdpDebt(userCdpId));
-    //     assertGe(eBTCToken.balanceOf(delegate), cdpManager.getCdpDebt(userCdpId));
-    //     uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
-    //     vm.prank(delegate);
-    //     borrowerOperations.closeCdp(userCdpId);
-    //     assertFalse(sortedCdps.contains(userCdpId));
-    //     assertEq(
-    //         sortedCdps.cdpCountOf(user),
-    //         _cdpOfUserBefore - 1,
-    //         "CDP number mismatch for user after delegate closeCdp()"
-    //     );
-    // }
+contract DelegatePermitTest is eBTCBaseInvariants {
+    uint256 internal constant userPrivateKey = 0xabc123;
+    uint256 internal constant delegatePrivateKey = 0xabc987;
+    uint256 internal constant deadline = 1800;
+
+    function setUp() public override {
+        super.setUp();
+        connectCoreContracts();
+        connectLQTYContractsToCore();
+    }
+
+    function _testPreconditions() internal returns (address user, address delegate) {
+        user = vm.addr(userPrivateKey);
+        delegate = vm.addr(delegatePrivateKey);
+    }
+
+    ///@dev Delegate should be valid until deadline
+    function test_PermitValidUntilDeadline() public {
+        (address user, address delegate) = _testPreconditions();
+
+        uint _deadline = (block.timestamp + deadline);
+        IDelegatePermit.DelegateStatus _status = IDelegatePermit.DelegateStatus.Persistent;
+
+        // set delegate via digest sign
+        vm.startPrank(user);
+        bytes32 digest = _generatePermitSignature(user, delegate, _status, _deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+        vm.stopPrank();
+
+        vm.prank(delegate);
+        borrowerOperations.permitDelegate(user, delegate, _status, _deadline, v, r, s);
+        assertTrue(borrowerOperations.getDelegateStatus(user, delegate) == _status);
+    }
+
+    ///@dev Delegate should be invalid after deadline
+    function test_PermitInvalidAfterDeadline() public {
+        (address user, address delegate) = _testPreconditions();
+
+        uint _deadline = (block.timestamp + deadline);
+        IDelegatePermit.DelegateStatus _originalStatus = borrowerOperations.getDelegateStatus(
+            user,
+            delegate
+        );
+        IDelegatePermit.DelegateStatus _status = IDelegatePermit.DelegateStatus.Persistent;
+
+        // set delegate via digest sign
+        vm.startPrank(user);
+        bytes32 digest = _generatePermitSignature(user, delegate, _status, _deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+        vm.stopPrank();
+
+        vm.warp(_deadline + 123);
+        vm.expectRevert("BorrowerOperations: Delegate permit expired");
+        borrowerOperations.permitDelegate(user, delegate, _status, _deadline, v, r, s);
+        assertTrue(borrowerOperations.getDelegateStatus(user, delegate) == _originalStatus);
+    }
+
+    ///@dev Delegate should be invalid if not correct signed
+    function test_PermitInvalidIfNotBorrower() public {
+        (address user, address delegate) = _testPreconditions();
+
+        uint _deadline = (block.timestamp + deadline);
+        IDelegatePermit.DelegateStatus _originalStatus = borrowerOperations.getDelegateStatus(
+            user,
+            delegate
+        );
+        IDelegatePermit.DelegateStatus _status = IDelegatePermit.DelegateStatus.Persistent;
+
+        // set delegate via digest sign but with wrong signer
+        vm.startPrank(delegate);
+        bytes32 digest = _generatePermitSignature(user, delegate, _status, _deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(delegatePrivateKey, digest);
+        vm.stopPrank();
+
+        vm.expectRevert("BorrowerOperations: Invalid signature");
+        borrowerOperations.permitDelegate(user, delegate, _status, _deadline, v, r, s);
+        assertTrue(borrowerOperations.getDelegateStatus(user, delegate) == _originalStatus);
+    }
+
+    ///@dev Delegate should be invalid if recovered signer is address zero
+    function test_PermitInvalidIfZeroAddress() public {
+        (address user, address delegate) = _testPreconditions();
+
+        uint _deadline = (block.timestamp + deadline);
+        IDelegatePermit.DelegateStatus _originalStatus = borrowerOperations.getDelegateStatus(
+            user,
+            delegate
+        );
+        IDelegatePermit.DelegateStatus _status = IDelegatePermit.DelegateStatus.Persistent;
+
+        // set delegate via digest sign but with wrong signer
+        vm.startPrank(delegate);
+        bytes32 digest = _generatePermitSignature(user, delegate, _status, _deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(delegatePrivateKey, digest);
+        vm.stopPrank();
+
+        // tweak to always get zero address for ecrecover
+        // https://gist.github.com/axic/5b33912c6f61ae6fd96d6c4a47afde6d#file-ecverify-sol-L85
+        uint8 _wrongV = 17;
+        address recoveredAddress = ecrecover(digest, _wrongV, r, s);
+        assertTrue(recoveredAddress == address(0x0000000000000000000000000000));
+        vm.expectRevert("BorrowerOperations: Invalid signature");
+        borrowerOperations.permitDelegate(user, delegate, _status, _deadline, _wrongV, r, s);
+        assertTrue(borrowerOperations.getDelegateStatus(user, delegate) == _originalStatus);
+    }
+
+    ///@dev Delegate should be valid until deadline
+    function test_statusFuzzWithValidPermit(uint _status) public {
+        (address user, address delegate) = _testPreconditions();
+        vm.assume(_status <= 2);
+
+        uint _deadline = (block.timestamp + deadline);
+        uint _originalStatus = uint(borrowerOperations.getDelegateStatus(user, delegate));
+
+        // set delegate via digest sign
+        vm.startPrank(user);
+        bytes32 digest = _generatePermitSignature(
+            user,
+            delegate,
+            IDelegatePermit.DelegateStatus(_status),
+            _deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+        vm.stopPrank();
+
+        vm.prank(delegate);
+        borrowerOperations.permitDelegate(
+            user,
+            delegate,
+            IDelegatePermit.DelegateStatus(_status),
+            _deadline,
+            v,
+            r,
+            s
+        );
+        uint _newStatus = uint(borrowerOperations.getDelegateStatus(user, delegate));
+        assertTrue(_newStatus == _status);
+        if (_status != _originalStatus) {
+            assertTrue(_newStatus != _originalStatus);
+        }
+    }
+
+    function _generatePermitSignature(
+        address _signer,
+        address _delegate,
+        IDelegatePermit.DelegateStatus _status,
+        uint _deadline
+    ) internal returns (bytes32) {
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                borrowerOperations.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401,
+                        _signer,
+                        _delegate,
+                        _status,
+                        borrowerOperations.nonces(_signer),
+                        _deadline
+                    )
+                )
+            )
+        );
+        return digest;
+    }
 }

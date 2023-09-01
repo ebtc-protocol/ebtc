@@ -118,6 +118,34 @@ contract DelegatesTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
+    function test_DelegateCanOpenCdpWithOneTimePermit() public {
+        (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
+
+        vm.prank(user);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.OneTime);
+
+        uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
+        vm.prank(delegate);
+        bytes32 _cdpOpenedByDelegate = borrowerOperations.openCdpFor(
+            STANDARD_DEBT,
+            bytes32(0),
+            bytes32(0),
+            STANDARD_COLL,
+            user
+        );
+        assertTrue(sortedCdps.contains(_cdpOpenedByDelegate));
+        assertTrue(sortedCdps.getOwnerAddress(_cdpOpenedByDelegate) == user);
+        assertEq(
+            sortedCdps.cdpCountOf(user),
+            _cdpOfUserBefore + 1,
+            "CDP number mismatch for user after delegate openCdpFor()"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.None
+        );
+    }
+
     function test_DelegateCanOpenCdp() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
         uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
@@ -135,6 +163,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             sortedCdps.cdpCountOf(user),
             _cdpOfUserBefore + 1,
             "CDP number mismatch for user after delegate openCdpFor()"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
         );
     }
 
@@ -155,6 +187,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             collateral.balanceOf(delegate),
             _balBefore + collToWithdraw,
             "collateral not sent to correct recipient after withdrawColl()"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
         );
     }
 
@@ -189,6 +225,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             b.get(address(collateral), user),
             "user stEth balance should remain the same"
         );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
     }
 
     /// @dev Delegate should be able to increase debt of Cdp
@@ -205,6 +245,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             eBTCToken.balanceOf(delegate),
             _balBefore + _debtChange,
             "debt not sent to correct recipient after withdrawEBTC()"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
         );
     }
 
@@ -227,6 +271,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             eBTCToken.balanceOf(user),
             "user balance should remain unchanged"
         );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
     }
 
     function test_DelegateCanAdjustCdp() public {
@@ -241,6 +289,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             eBTCToken.balanceOf(delegate),
             _balBefore + _debtChange,
             "debt not sent to correct recipient after adjustCdp(_isDebtIncrease=true)"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
         );
     }
 
@@ -275,6 +327,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             b.get(address(eBTCToken), user),
             "user balance should remain unchanged"
         );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
     }
 
     function test_DelegateCanCloseCdp() public {
@@ -293,6 +349,10 @@ contract DelegatesTest is eBTCBaseInvariants {
             sortedCdps.cdpCountOf(user),
             _cdpOfUserBefore - 1,
             "CDP number mismatch for user after delegate closeCdp()"
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
         );
     }
 }
