@@ -47,6 +47,24 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         flashLoanColl(216);
     }
 
+    function testNewTcr() public {
+        bytes32 cdp = openCdp(2200000000000000387, 23);
+        setEthPerShare(1098930478707180969);
+        uint256 currentPrice = priceFeedMock.getPrice();
+
+        cdpManager.syncPendingGlobalState();
+        uint256 prevTCR = cdpManager.getTCR(currentPrice);
+
+        repayEBTC(1, 0);
+        uint256 tcrAfter = cdpManager.getTCR(currentPrice);
+
+        console2.log("tcrAfter", tcrAfter);
+        console2.log("prevTCR", prevTCR);
+
+        // assertGt(_getICR(cdp), cdpManager.MCR(), "ICR, MCR"); // basic
+        assertGt(tcrAfter, prevTCR, "TCR Improved");
+    }
+
     function testBO05() public {
         openCdp(0, 1);
         setEthPerShare(0);
