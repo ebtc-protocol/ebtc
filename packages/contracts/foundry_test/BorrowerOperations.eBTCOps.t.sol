@@ -402,7 +402,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         assertEq(userEbtcBefore - repayAmount, userEbtcAfter, BO_07);
     }
-
+    // See: https://gist.github.com/GalloDaSballo/9aadaaf32c5d5bb629df7daed0b745e2
     function testAllCdpsShouldMaintainAMinimumCollateralSize() public {
         uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
         uint _EBTCAmount = 1;
