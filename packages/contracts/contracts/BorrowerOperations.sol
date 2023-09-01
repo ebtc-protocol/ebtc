@@ -13,33 +13,20 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
+import "./Dependencies/EIP712Base.sol";
 
 contract BorrowerOperations is
     LiquityBase,
     ReentrancyGuard,
     IBorrowerOperations,
     ERC3156FlashLender,
-    AuthNoOwner
+    AuthNoOwner,
+    EIP712Base
 {
-    string public constant NAME = "BorrowerOperations";
-
     // keccak256("PermitDelegate(address borrower,address delegate,uint256 status,uint256 nonce,uint256 deadline)");
     bytes32 private constant _PERMIT_DELEGATE_TYPEHASH =
         0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401;
 
-    // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 private constant _TYPE_HASH =
-        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
-
-    string internal constant _VERSION = "1";
-
-    // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
-    // invalidate the cached domain separator if the chain id changes.
-    bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
-    uint256 private immutable _CACHED_CHAIN_ID;
-
-    bytes32 private immutable _HASHED_NAME;
-    bytes32 private immutable _HASHED_VERSION;
 
     // --- Connected contract declarations ---
 
@@ -56,7 +43,7 @@ contract BorrowerOperations is
 
     // Mapping of borrowers to approved delegates, by number of remaining approved actions: cdpOwner(borrower) -> delegate -> DelegateStatus (None, OneTime, Persistent)
     mapping(address => mapping(address => DelegateStatus)) public delegateStatus;
-    mapping(address => uint256) private _nonces;
+    
 
     /* --- Variable container structs  ---
 
@@ -109,7 +96,7 @@ contract BorrowerOperations is
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
+    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) EIP712Base("BorrowerOperations") {
         // This makes impossible to open a cdp with zero withdrawn EBTC
         // TODO: Re-evaluate this
 
@@ -124,13 +111,9 @@ contract BorrowerOperations is
             _initializeAuthority(_authorityAddress);
         }
 
-        bytes32 hashedName = keccak256(bytes(NAME));
-        bytes32 hashedVersion = keccak256(bytes(_VERSION));
 
-        _HASHED_NAME = hashedName;
-        _HASHED_VERSION = hashedVersion;
-        _CACHED_CHAIN_ID = _chainID();
-        _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
+
+
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -558,45 +541,13 @@ contract BorrowerOperations is
     }
 
     /// @notice Allows recipient of delegation to renounce it
+    /// @dev Best way to build safe zaps is to receive delegation via permit, then renounce it at the end
     function renounceDelegation(address _borrower) external override {
         delegateStatus[_borrower][msg.sender] = DelegateStatus.None;
         emit DelegateStatusSet(_borrower, msg.sender, DelegateStatus.None);
     }
 
-    function DOMAIN_SEPARATOR() external view returns (bytes32) {
-        return domainSeparator();
-    }
-
-    function domainSeparator() public view override returns (bytes32) {
-        if (_chainID() == _CACHED_CHAIN_ID) {
-            return _CACHED_DOMAIN_SEPARATOR;
-        } else {
-            return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
-        }
-    }
-
-    function _chainID() private view returns (uint256) {
-        return block.chainid;
-    }
-
-    function _buildDomainSeparator(
-        bytes32 typeHash,
-        bytes32 name,
-        bytes32 version
-    ) private view returns (bytes32) {
-        return keccak256(abi.encode(typeHash, name, version, _chainID(), address(this)));
-    }
-
-    function nonces(address _borrower) external view override returns (uint256) {
-        // FOR EIP 2612
-        return _nonces[_borrower];
-    }
-
-    function version() external pure override returns (string memory) {
-        return _VERSION;
-    }
-
-    function permitTypeHash() external pure override returns (bytes32) {
+    function permitTypeHash() public pure override returns (bytes32) {
         return _PERMIT_DELEGATE_TYPEHASH;
     }
 
@@ -610,14 +561,14 @@ contract BorrowerOperations is
         bytes32 s
     ) external override {
         require(_deadline >= block.timestamp, "BorrowerOperations: Delegate permit expired");
-
+        /// @audit Can refactor this as well imo
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 domainSeparator(),
                 keccak256(
                     abi.encode(
-                        _PERMIT_DELEGATE_TYPEHASH,
+                        permitTypeHash(),
                         _borrower,
                         _delegate,
                         _status,
