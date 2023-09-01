@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {BalanceSnapshot} from "./utils/BalanceSnapshot.sol";
+import "../contracts/Interfaces/IDelegatePermit.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
@@ -47,7 +48,7 @@ contract DelegatesTest is eBTCBaseInvariants {
 
         // set delegate
         vm.prank(user);
-        borrowerOperations.setDelegate(delegate, true);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.Persistent);
 
         tokens.push(address(eBTCToken));
         tokens.push(address(collateral));
@@ -63,24 +64,36 @@ contract DelegatesTest is eBTCBaseInvariants {
         vm.startPrank(user);
 
         // set delegate
-        borrowerOperations.setDelegate(delegate, true);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.Persistent);
         // confirm correct state
-        assertTrue(borrowerOperations.isDelegate(user, delegate));
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
 
         // unset delegate
-        borrowerOperations.setDelegate(delegate, false);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.None);
         // confirm correct state
-        assertFalse(borrowerOperations.isDelegate(user, delegate));
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.None
+        );
 
         // set delegate again
-        borrowerOperations.setDelegate(delegate, true);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.Persistent);
         // confirm correct state
-        assertTrue(borrowerOperations.isDelegate(user, delegate));
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
 
         // set delegate again
-        borrowerOperations.setDelegate(delegate, true);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.Persistent);
         // confirm correct state
-        assertTrue(borrowerOperations.isDelegate(user, delegate));
+        assertTrue(
+            borrowerOperations.getDelegateStatus(user, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
 
         vm.stopPrank();
     }
@@ -91,9 +104,16 @@ contract DelegatesTest is eBTCBaseInvariants {
         vm.startPrank(user);
         address _otherUser = _utils.getNextUserAddress();
 
-        borrowerOperations.setDelegate(delegate, true);
+        borrowerOperations.setDelegateStatus(delegate, IDelegatePermit.DelegateStatus.Persistent);
         // confirm correct state
-        assertFalse(borrowerOperations.isDelegate(_otherUser, delegate));
+        assertFalse(
+            borrowerOperations.getDelegateStatus(_otherUser, delegate) ==
+                IDelegatePermit.DelegateStatus.Persistent
+        );
+        assertTrue(
+            borrowerOperations.getDelegateStatus(_otherUser, delegate) ==
+                IDelegatePermit.DelegateStatus.None
+        );
 
         vm.stopPrank();
     }
@@ -138,19 +158,41 @@ contract DelegatesTest is eBTCBaseInvariants {
         );
     }
 
+    /// @dev Delegate should be able to increase collateral of Cdp
+    /// @dev coll should come from delegate's account
     function test_DelegateCanAddColl() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
         uint _cdpColl = cdpManager.getCdpColl(userCdpId);
         uint _collChange = 1e17;
+
+        BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
+
         vm.prank(delegate);
         borrowerOperations.addColl(userCdpId, bytes32(0), bytes32(0), _collChange);
+
+        BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
+
         assertEq(
             cdpManager.getCdpColl(userCdpId),
             _cdpColl + _collChange,
             "collateral in CDP mismatch after delegate addColl()"
         );
+
+        assertEq(
+            a.get(address(collateral), delegate),
+            b.get(address(collateral), delegate) + _collChange,
+            "delegate stEth balance should have decreased by increased stEth amount"
+        );
+
+        assertEq(
+            a.get(address(collateral), user),
+            b.get(address(collateral), user),
+            "user stEth balance should remain the same"
+        );
     }
 
+    /// @dev Delegate should be able to increase debt of Cdp
+    /// @dev eBTC should go to delegate's account
     function test_DelegateCanWithdrawEBTC() public {
         (address user, address delegate, bytes32 userCdpId) = _testPreconditions();
 

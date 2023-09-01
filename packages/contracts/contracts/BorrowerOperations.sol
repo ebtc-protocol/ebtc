@@ -23,6 +23,24 @@ contract BorrowerOperations is
 {
     string public constant NAME = "BorrowerOperations";
 
+    // keccak256("PermitDelegate(address borrower,address delegate,uint256 status,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _PERMIT_DELEGATE_TYPEHASH =
+        0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401;
+
+    // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant _TYPE_HASH =
+        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    string internal constant _VERSION = "1";
+
+    // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
+    // invalidate the cached domain separator if the chain id changes.
+    bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
+    uint256 private immutable _CACHED_CHAIN_ID;
+
+    bytes32 private immutable _HASHED_NAME;
+    bytes32 private immutable _HASHED_VERSION;
+
     // --- Connected contract declarations ---
 
     ICdpManager public immutable cdpManager;
@@ -36,8 +54,9 @@ contract BorrowerOperations is
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
-    // Mapping of borrowers to approved delegates: cdpOwner(borrower) -> delegate -> true/false
-    mapping(address => mapping(address => bool)) public delegates;
+    // Mapping of borrowers to approved delegates, by number of remaining approved actions: cdpOwner(borrower) -> delegate -> DelegateStatus (None, OneTime, Persistent)
+    mapping(address => mapping(address => DelegateStatus)) public delegateStatus;
+    mapping(address => uint256) private _nonces;
 
     /* --- Variable container structs  ---
 
@@ -104,6 +123,14 @@ contract BorrowerOperations is
         if (_authorityAddress != address(0)) {
             _initializeAuthority(_authorityAddress);
         }
+
+        bytes32 hashedName = keccak256(bytes(NAME));
+        bytes32 hashedVersion = keccak256(bytes(_VERSION));
+
+        _HASHED_NAME = hashedName;
+        _HASHED_VERSION = hashedVersion;
+        _CACHED_CHAIN_ID = _chainID();
+        _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
 
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
@@ -273,6 +300,7 @@ contract BorrowerOperations is
         // Confirm the operation is the borrower or approved delegate adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         _requireBorrowerOrApprovedDelegate(_borrower);
+        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -372,6 +400,7 @@ contract BorrowerOperations is
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
         _requireBorrowerOrApprovedDelegate(_borrower);
+        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
 
         LocalVariables_openCdp memory vars;
 
@@ -455,6 +484,7 @@ contract BorrowerOperations is
     function closeCdp(bytes32 _cdpId) external override {
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         _requireBorrowerOrApprovedDelegate(_borrower);
+        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -501,26 +531,112 @@ contract BorrowerOperations is
     }
 
     /// @notice Returns true if the borrower is allowing delegate to act on their behalf
-    function isDelegate(address _borrower, address _delegate) external view returns (bool) {
-        return _isDelegate(_borrower, _delegate);
+    function getDelegateStatus(
+        address _borrower,
+        address _delegate
+    ) external view override returns (DelegateStatus) {
+        return _getDelegateStatus(_borrower, _delegate);
     }
 
-    function _isDelegate(address _borrower, address _delegate) internal view returns (bool) {
-        return delegates[_borrower][_delegate];
+    function _getDelegateStatus(
+        address _borrower,
+        address _delegate
+    ) internal view returns (DelegateStatus) {
+        return delegateStatus[_borrower][_delegate];
     }
 
     /// @notice Set whether to allow `_delegate` to act on your behalf
     /// @notice Delegation allows stealing of tokens if given to a malicious `_delegate`
-    function setDelegate(address _delegate, bool _isDelegate) external {
-        delegates[msg.sender][_delegate] = _isDelegate;
-        emit DelegateSet(msg.sender, _delegate, _isDelegate);
+    function setDelegateStatus(address _delegate, DelegateStatus _status) external override {
+        _setDelegateStatus(msg.sender, _delegate, _status);
+    }
+
+    function _setDelegateStatus(
+        address _borrower,
+        address _delegate,
+        DelegateStatus _status
+    ) internal {
+        delegateStatus[_borrower][_delegate] = _status;
+        emit DelegateStatusSet(_borrower, _delegate, _status);
     }
 
     /// @notice Allows recipient of delegation to renounce it
-    /// @notice Useful to allow one-off delegations, which could be
-    function renounceDelegation(address _delegatee) external {
-        delegates[_delegatee][msg.sender] = false;
-        emit DelegateSet(_delegatee, msg.sender, false);
+    function renounceDelegation(address _borrower) external override {
+        delegateStatus[_borrower][msg.sender] = DelegateStatus.None;
+        emit DelegateStatusSet(_borrower, msg.sender, DelegateStatus.None);
+    }
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return domainSeparator();
+    }
+
+    function domainSeparator() public view override returns (bytes32) {
+        if (_chainID() == _CACHED_CHAIN_ID) {
+            return _CACHED_DOMAIN_SEPARATOR;
+        } else {
+            return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
+        }
+    }
+
+    function _chainID() private view returns (uint256) {
+        return block.chainid;
+    }
+
+    function _buildDomainSeparator(
+        bytes32 typeHash,
+        bytes32 name,
+        bytes32 version
+    ) private view returns (bytes32) {
+        return keccak256(abi.encode(typeHash, name, version, _chainID(), address(this)));
+    }
+
+    function nonces(address _borrower) external view override returns (uint256) {
+        // FOR EIP 2612
+        return _nonces[_borrower];
+    }
+
+    function version() external pure override returns (string memory) {
+        return _VERSION;
+    }
+
+    function permitTypeHash() external pure override returns (bytes32) {
+        return _PERMIT_DELEGATE_TYPEHASH;
+    }
+
+    function permitDelegate(
+        address _borrower,
+        address _delegate,
+        DelegateStatus _status,
+        uint _deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override {
+        require(_deadline >= block.timestamp, "BorrowerOperations: Delegate permit expired");
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator(),
+                keccak256(
+                    abi.encode(
+                        _PERMIT_DELEGATE_TYPEHASH,
+                        _borrower,
+                        _delegate,
+                        _status,
+                        _nonces[_borrower]++,
+                        _deadline
+                    )
+                )
+            )
+        );
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(
+            recoveredAddress != address(0) && recoveredAddress == _borrower,
+            "BorrowerOperations: Invalid signature"
+        );
+
+        _setDelegateStatus(_borrower, _delegate, _status);
     }
 
     // --- Helper functions ---
@@ -724,9 +840,21 @@ contract BorrowerOperations is
 
     function _requireBorrowerOrApprovedDelegate(address _borrower) internal view {
         require(
-            _borrower == msg.sender || _isDelegate(_borrower, msg.sender),
+            _borrower == msg.sender ||
+                _getDelegateStatus(_borrower, msg.sender) != DelegateStatus.None,
             "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf"
         );
+    }
+
+    /// @dev If this is a delegate operation with a one-time delegation approval, clear that approval
+    /// @dev If the DelegateStatus was none, we should have failed with the check in _requireBorrowerOrApprovedDelegate
+    function _conditionalAdjustDelegateStatus(address _sender, address _borrower) internal {
+        if (_sender != _borrower) {
+            DelegateStatus _status = _getDelegateStatus(_borrower, _sender);
+            if (_status == DelegateStatus.OneTime) {
+                _setDelegateStatus(_borrower, _sender, DelegateStatus.None);
+            }
+        }
     }
 
     // --- ICR and TCR getters ---

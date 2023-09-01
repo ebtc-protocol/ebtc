@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
+import "./IDelegatePermit.sol";
 
 // Common interface for the Cdp Manager.
-interface IBorrowerOperations {
+interface IBorrowerOperations is IDelegatePermit {
     // --- Events ---
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
@@ -15,7 +16,6 @@ interface IBorrowerOperations {
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
-    event DelegateSet(address _borrower, address _delegate, bool _isDelegate);
 
     // --- Functions ---
 
@@ -86,8 +86,4 @@ interface IBorrowerOperations {
     function claimCollateral() external;
 
     function feeRecipientAddress() external view returns (address);
-
-    function isDelegate(address _borrower, address _delegate) external view returns (bool);
-
-    function setDelegate(address _delegate, bool _isDelegate) external;
 }
