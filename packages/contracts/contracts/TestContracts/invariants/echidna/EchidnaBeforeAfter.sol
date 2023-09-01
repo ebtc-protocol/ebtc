@@ -51,6 +51,25 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+
+        address[] memory _targets = new address[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+
+        _targets[0] = address(cdpManager);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+
+        _targets[1] = address(cdpManager);
+        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceBefore);
+
+        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+            assembly {
+                // Slice the sighash.
+                reason := add(reason, 0x04)
+            }
+            bytes memory returnData = abi.decode(reason, (bytes));
+            vars.newTcrSyncPendingGlobalStateBefore = abi.decode(returnData, (uint256));
+        }
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -110,7 +129,7 @@ abstract contract EchidnaBeforeAfter is EchidnaBaseTester, BeforeAfter {
                 reason := add(reason, 0x04)
             }
             bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newTcrAfterSyncPendingGlobalState = abi.decode(returnData, (uint256));
+            vars.newTcrSyncPendingGlobalStateAfter = abi.decode(returnData, (uint256));
         }
     }
 }

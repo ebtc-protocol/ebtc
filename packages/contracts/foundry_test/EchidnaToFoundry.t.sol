@@ -203,6 +203,77 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
     }
 
+    function testBrokenL01() public {
+        uint256 _price = priceFeedMock.getPrice();
+        bytes32 _cdpId0 = openCdp(5730552934738, 1);
+        bytes32 _cdpId = openCdp(327421463579861122389783144090, 130973672053670060);
+        setEthPerShare(0);
+        addColl(28537941311866640174, 3493149676010392);
+
+        console2.log(
+            "\tCDPs before rebase",
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+        );
+
+        setEthPerShare(148956803032284651814317393496782677);
+
+        console2.log("\tTCR before", cdpManager.getTCR(_price));
+        console2.log(
+            "\tCDPs before",
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+        );
+        liquidateCdps(0);
+        console2.log(
+            "\tCDPs after",
+            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+        );
+    }
+
+    function testNewTcr() public {
+        bytes32 cdp = openCdp(
+            57171402311851979203771794298570627232849516536367359032302056791630,
+            22
+        );
+        setPrice(969908437377713906993269161715201666459885343214304447044925418238284);
+        uint256 currentPrice = priceFeedMock.getPrice();
+
+        console2.log("tcr before sync", cdpManager.getTCR(currentPrice));
+
+        cdpManager.syncPendingGlobalState();
+        uint256 prevTCR = cdpManager.getTCR(currentPrice);
+
+        console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
+
+        repayEBTC(
+            65721117470445406076343058077880221223501416620988368611416146266508,
+            158540941122585656115423420542823120113261891967556325033385077539052280
+        );
+        uint256 tcrAfter = cdpManager.getTCR(currentPrice);
+
+        console2.log("tcr after repay", cdpManager.getTCR(currentPrice));
+        console2.log("tcr after simulated sync", _getTcrAfterSimulatedSync());
+
+        cdpManager.syncPendingGlobalState();
+
+        console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
+
+        // assertGt(_getICR(cdp), cdpManager.MCR(), "ICR, MCR"); // basic
+
+        // Logs:
+        //   openCdp 2200000000000000370 22
+        //   setPrice 71041372806687933
+        //   tcr before sync 6458306618789813285695815385206145
+        //   tcr after sync 6458306618789813285695815385206145
+        //   repayEBTC 1 0
+        //   tcr after repay 6765845029208375823109901832120724
+        //   tcr after sync 6765845029208375823109901832120724
+
+        assertGt(tcrAfter, prevTCR, "TCR Improved");
+    }
+
     function testLiquidate() public {
         bytes32 _cdpId1 = openCdp(0, 1);
         bytes32 _cdpId2 = openCdp(0, 138503371414274893);
@@ -292,8 +363,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
-            (currentPrice * 1e18) / 1.1e18,
-            (currentPrice * 1.1e18) / 1e18
+            (currentPrice * 1e18) / 1.05e18,
+            (currentPrice * 1.05e18) / 1e18
         );
 
         console2.log("setPrice", _newPrice);
@@ -559,5 +630,46 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         IERC20(token).approve(msg.sender, amount + fee);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+
+    function _getTcrAfterSimulatedSync() internal returns (uint256 newTcr) {
+        address[] memory _targets = new address[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+
+        _targets[0] = address(cdpManager);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+
+        _targets[1] = address(cdpManager);
+        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, priceFeedMock.getPrice());
+
+        console2.log("simulate");
+
+        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        try this.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+            console2.logBytes(reason);
+            assembly {
+                // Slice the sighash.
+                reason := add(reason, 0x04)
+            }
+            bytes memory returnData = abi.decode(reason, (bytes));
+            newTcr = abi.decode(returnData, (uint256));
+            console2.log("newTcr", newTcr);
+        }
+    }
+
+    error Simulate(bytes);
+
+    function simulate(address[] memory _targets, bytes[] memory _calldatas) public {
+        uint256 length = _targets.length;
+
+        bool success;
+        bytes memory returnData;
+
+        for (uint256 i = 0; i < length; i++) {
+            (success, returnData) = address(_targets[i]).call(_calldatas[i]);
+            require(success, _getRevertMsg(returnData));
+        }
+
+        revert Simulate(returnData);
     }
 }

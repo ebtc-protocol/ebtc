@@ -28,7 +28,8 @@ abstract contract BeforeAfter {
         uint256 cdpStatusAfter;
         uint256 tcrBefore;
         uint256 tcrAfter;
-        uint256 newTcrAfterSyncPendingGlobalState;
+        uint256 newTcrSyncPendingGlobalStateBefore;
+        uint256 newTcrSyncPendingGlobalStateAfter;
         uint256 debtBefore;
         uint256 debtAfter;
         uint256 ebtcTotalSupplyBefore;
