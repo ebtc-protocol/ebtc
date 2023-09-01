@@ -299,8 +299,7 @@ contract BorrowerOperations is
     ) internal {
         // Confirm the operation is the borrower or approved delegate adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrApprovedDelegate(_borrower);
-        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
+        _requireBorrowerOrApprovedDelegateAndUpdateDelegationStatus(_borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -399,8 +398,7 @@ contract BorrowerOperations is
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
-        _requireBorrowerOrApprovedDelegate(_borrower);
-        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
+        _requireBorrowerOrApprovedDelegateAndUpdateDelegationStatus(_borrower);
 
         LocalVariables_openCdp memory vars;
 
@@ -483,8 +481,7 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrApprovedDelegate(_borrower);
-        _conditionalAdjustDelegateStatus(msg.sender, _borrower);
+        _requireBorrowerOrApprovedDelegateAndUpdateDelegationStatus(_borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -838,22 +835,25 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireBorrowerOrApprovedDelegate(address _borrower) internal view {
+    function _requireBorrowerOrApprovedDelegateAndUpdateDelegationStatus(
+        address _borrower
+    ) internal {
+        if (_borrower == msg.sender) {
+            return; // Early return, no delegation
+        }
+
+        DelegateStatus _status = _getDelegateStatus(_borrower, msg.sender);
+        // Must be delegated at this point
         require(
-            _borrower == msg.sender ||
-                _getDelegateStatus(_borrower, msg.sender) != DelegateStatus.None,
+            _status != DelegateStatus.None,
             "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf"
         );
-    }
 
-    /// @dev If this is a delegate operation with a one-time delegation approval, clear that approval
-    /// @dev If the DelegateStatus was none, we should have failed with the check in _requireBorrowerOrApprovedDelegate
-    function _conditionalAdjustDelegateStatus(address _sender, address _borrower) internal {
-        if (_sender != _borrower) {
-            DelegateStatus _status = _getDelegateStatus(_borrower, _sender);
-            if (_status == DelegateStatus.OneTime) {
-                _setDelegateStatus(_borrower, _sender, DelegateStatus.None);
-            }
+        // Conditional Adjustment
+        /// @dev If this is a delegate operation with a one-time delegation approval, clear that approval
+        /// @dev If the DelegateStatus was none, we should have failed with the check in _requireBorrowerOrApprovedDelegateAndUpdateDelegationStatus
+        if (_status == DelegateStatus.OneTime) {
+            _setDelegateStatus(_borrower, msg.sender, DelegateStatus.None);
         }
     }
 
