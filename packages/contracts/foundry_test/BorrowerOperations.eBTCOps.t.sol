@@ -428,6 +428,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         );
 
         console2.log("withdrawColl", withdrawAmount);
+        vm.expectRevert(); // NOTE: Fixed by removing the check, this wont' work because of the min coll check
         borrowerOperations.withdrawColl(_cdpId, withdrawAmount, _cdpId, _cdpId);
 
         console2.log(">> CDP coll after", cdpManager.getCdpColl(_cdpId));
@@ -437,7 +438,9 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         );
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-        assertGe(
+        // NOTE: Assertion implies CDP size is below min
+        // That is correct but it won't be after any user operation
+        assertLt(
             collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
