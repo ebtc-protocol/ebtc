@@ -835,9 +835,7 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireBorrowerOrApprovedDelegateAndUpdate(
-        address _borrower
-    ) internal {
+    function _requireBorrowerOrApprovedDelegateAndUpdate(address _borrower) internal {
         if (_borrower == msg.sender) {
             return; // Early return, no delegation
         }
