@@ -65,6 +65,45 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         assertGt(tcrAfter, prevTCR, "TCR Improved");
     }
 
+    function testRedemptionsImproveTcr() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
+        console2.log("Price 0", priceFeedMock.getPrice());
+        bytes32 smallCdpId = openCdp(2200000000000000016, 1);
+        setPrice(68901458801417520); // - 7%
+        console2.log("Price 1", priceFeedMock.getPrice());
+        bytes32 secondCdp = openCdp(2344780205809045144, 129247021399144974);
+        setPrice(62637689819470472); // - 10%
+
+        console2.log("Small", uint256(smallCdpId));
+        console2.log("Second", uint256(secondCdp));
+        console2.log("getLast", uint256(sortedCdps.getLast()));
+
+        // Get TCR of both
+        console2.log("_getICR(smallCdpId)", _getICR(smallCdpId));
+        console2.log("_getICR(secondCdp)", _getICR(secondCdp));
+
+        console2.log("Price 2", priceFeedMock.getPrice());
+        uint256 currentPrice = priceFeedMock.getPrice();
+        uint256 prevTCR = cdpManager.getTCR(currentPrice);
+        console2.log("prevTCR", prevTCR);
+        console2.log("debt", cdpManager.getEntireSystemDebt());
+        console2.log("coll", cdpManager.getEntireSystemColl());
+        redeemCollateral(33144381253469730, 1, 451485902797602866794737611631, 514559204056333927);
+        uint256 endTcr = cdpManager.getTCR(currentPrice);
+        console2.log("endTcr", endTcr);
+        console2.log("debt", cdpManager.getEntireSystemDebt());
+        console2.log("coll", cdpManager.getEntireSystemColl());
+        assertGt(endTcr, prevTCR, "TCR Improved");
+        console2.log("cdpColl 1", cdpManager.getCdpColl(smallCdpId));
+        console2.log("cdpColl 2", cdpManager.getCdpColl(secondCdp));
+        console2.log("_getICR(smallCdpId)", _getICR(smallCdpId));
+        console2.log("_getICR(secondCdp)", _getICR(secondCdp));
+        console2.log("getLast", uint256(sortedCdps.getLast()));
+
+
+
+    }
+
     function testBO05() public {
         openCdp(0, 1);
         setEthPerShare(0);
