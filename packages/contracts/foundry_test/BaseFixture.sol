@@ -21,8 +21,9 @@ import {Utilities} from "./utils/Utilities.sol";
 import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
+import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 
-contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
+contract eBTCBaseFixture is Test, BaseStorageVariables, BytecodeReader, LogUtils {
     uint internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint public constant CCR = 125e16; // 125%
@@ -86,26 +87,8 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
-    PriceFeedTestnet priceFeedMock;
-    SortedCdps sortedCdps;
-    CdpManager cdpManager;
-    WETH9 weth;
-    ActivePool activePool;
-    CollSurplusPool collSurplusPool;
-    FunctionCaller functionCaller;
-    BorrowerOperations borrowerOperations;
-    HintHelpers hintHelpers;
-    EBTCToken eBTCToken;
-    CollateralTokenTester collateral;
-    Governor authority;
-    LiquidationLibrary liqudationLibrary;
-    EBTCDeployer ebtcDeployer;
-    address defaultGovernance;
 
     Utilities internal _utils;
-
-    // LQTY Stuff
-    FeeRecipient feeRecipient;
 
     ////////////////////////////////////////////////////////////////////////////
     // Structs

@@ -23,10 +23,10 @@ import "../Properties.sol";
 import "../Actor.sol";
 import "./EchidnaBaseTester.sol";
 import "./EchidnaProperties.sol";
-import "./EchidnaBeforeAfter.sol";
+import "../BeforeAfter.sol";
 import "./EchidnaAssertionHelper.sol";
 
-contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertionHelper {
+contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper {
     constructor() payable {
         _setUp();
         _setUpActors();
@@ -40,7 +40,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         uint256 ans;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
             if (cdpManager.getCurrentICR(currentCdp, _price) < cdpManager.MCR()) {
@@ -58,7 +58,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         uint256 i = 0;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
             ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getCurrentICR(currentCdp, _price)});
@@ -179,7 +179,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getCurrentICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+            cdpManager.getCurrentICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -219,7 +219,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         _before(_cdpId);
 
@@ -368,7 +368,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
 
         uint256 totalCdpsBelowMcr = _totalCdpsBelowMcr();
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         Cdp[] memory cdpsBefore = _getCdpIdsAndICRs();
 
         _before(bytes32(0));
@@ -476,7 +476,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
         bool _atLeastOneCdpIsLiquidatableBefore = _atLeastOneCdpIsLiquidatable(
             _getCdpIdsAndICRs(),
-            cdpManager.checkRecoveryMode(priceFeedTestnet.getPrice())
+            cdpManager.checkRecoveryMode(priceFeedMock.getPrice())
         );
 
         _before(_cdpId);
@@ -671,7 +671,7 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedTestnet.getPrice();
+        uint price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
@@ -1273,12 +1273,12 @@ contract EchidnaTester is EchidnaBeforeAfter, EchidnaProperties, EchidnaAssertio
     ///////////////////////////////////////////////////////
 
     function setPrice(uint256 _newPrice) external {
-        uint256 currentPrice = priceFeedTestnet.getPrice();
+        uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
             (currentPrice * 1e18) / MAX_PRICE_CHANGE_PERCENT,
             (currentPrice * MAX_PRICE_CHANGE_PERCENT) / 1e18
         );
-        priceFeedTestnet.setPrice(_newPrice);
+        priceFeedMock.setPrice(_newPrice);
     }
 }

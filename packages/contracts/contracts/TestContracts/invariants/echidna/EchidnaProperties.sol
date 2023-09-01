@@ -6,7 +6,7 @@ import {Properties} from "../Properties.sol";
 
 abstract contract EchidnaProperties is EchidnaBaseTester, EchidnaLog, Properties {
     function echidna_price() public log returns (bool) {
-        return invariant_DUMMY_01(priceFeedTestnet);
+        return invariant_DUMMY_01(priceFeedMock);
     }
 
     function echidna_active_pool_invariant_1() public log returns (bool) {
@@ -50,15 +50,15 @@ abstract contract EchidnaProperties is EchidnaBaseTester, EchidnaLog, Properties
     }
 
     function echidna_sorted_list_invariant_2() public log returns (bool) {
-        return invariant_SL_02(cdpManager, sortedCdps, priceFeedTestnet, diff_tolerance);
+        return invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, diff_tolerance);
     }
 
     function echidna_sorted_list_invariant_3() public log returns (bool) {
-        return invariant_SL_03(cdpManager, priceFeedTestnet, sortedCdps);
+        return invariant_SL_03(cdpManager, priceFeedMock, sortedCdps);
     }
 
     function echidna_GENERAL_02() public log returns (bool) {
-        return invariant_GENERAL_02(cdpManager, priceFeedTestnet, eBTCToken);
+        return invariant_GENERAL_02(cdpManager, priceFeedMock, eBTCToken);
     }
 
     function echidna_GENERAL_03() public log returns (bool) {

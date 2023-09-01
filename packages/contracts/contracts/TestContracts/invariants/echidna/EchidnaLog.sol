@@ -7,7 +7,7 @@ abstract contract EchidnaLog is EchidnaBaseTester {
 
     modifier log() {
         {
-            uint256 price = priceFeedTestnet.getPrice();
+            uint256 price = priceFeedMock.getPrice();
 
             emit Log("Price", price);
             emit Log("EthPerShare", collateral.getEthPerShare());

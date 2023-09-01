@@ -21,31 +21,14 @@ import "../../../EBTCDeployer.sol";
 import "../IHevm.sol";
 import "../Properties.sol";
 import "../Actor.sol";
+import "../../BaseStorageVariables.sol";
 
-abstract contract EchidnaBaseTester is PropertiesConstants {
+abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants {
     using SafeMath for uint;
 
     uint internal constant NUMBER_OF_ACTORS = 3;
     uint internal constant INITIAL_ETH_BALANCE = 1e24;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
-
-    CdpManager internal cdpManager;
-    BorrowerOperations internal borrowerOperations;
-    ActivePool internal activePool;
-    CollSurplusPool internal collSurplusPool;
-    EBTCTokenTester internal eBTCToken;
-    SortedCdps internal sortedCdps;
-    HintHelpers internal hintHelpers;
-    PriceFeedTestnet internal priceFeedTestnet;
-    CollateralTokenTester internal collateral;
-    FeeRecipient internal feeRecipient;
-    LiquidationLibrary internal liqudationLibrary;
-    Governor internal authority;
-    address defaultGovernance;
-    EBTCDeployer ebtcDeployer;
-
-    mapping(address => Actor) internal actors;
-    Actor internal actor;
 
     uint internal numberOfCdps;
 
@@ -170,7 +153,7 @@ abstract contract EchidnaBaseTester is PropertiesConstants {
             creationCode = type(PriceFeedTestnet).creationCode;
             args = abi.encode(addr.authorityAddress);
 
-            priceFeedTestnet = PriceFeedTestnet(
+            priceFeedMock = PriceFeedTestnet(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -279,7 +262,7 @@ abstract contract EchidnaBaseTester is PropertiesConstants {
             authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
             authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
 
-            authority.setRoleCapability(4, address(priceFeedTestnet), SET_TELLOR_CALLER_SIG, true);
+            authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
 
             authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
             authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
