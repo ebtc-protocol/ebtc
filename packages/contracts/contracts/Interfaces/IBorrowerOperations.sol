@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-import "./IDelegatePermit.sol";
+import "./IPositionManagers.sol";
 
 // Common interface for the Cdp Manager.
-interface IBorrowerOperations is IDelegatePermit {
+interface IBorrowerOperations is IPositionManagers {
     // --- Events ---
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);

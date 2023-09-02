@@ -23,8 +23,8 @@ contract BorrowerOperations is
 {
     string public constant NAME = "BorrowerOperations";
 
-    // keccak256("PermitDelegate(address borrower,address delegate,uint256 status,uint256 nonce,uint256 deadline)");
-    bytes32 private constant _PERMIT_DELEGATE_TYPEHASH =
+    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _PERMIT_POSITION_MANAGER_TYPEHASH =
         0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401;
 
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -54,8 +54,8 @@ contract BorrowerOperations is
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
 
-    // Mapping of borrowers to approved delegates, by number of remaining approved actions: cdpOwner(borrower) -> delegate -> DelegateStatus (None, OneTime, Persistent)
-    mapping(address => mapping(address => DelegateStatus)) public delegateStatus;
+    // Mapping of borrowers to approved position managers, by approval status: cdpOwner(borrower) -> positionManager -> PositionManagerApproval (None, OneTime, Persistent)
+    mapping(address => mapping(address => PositionManagerApproval)) public positionManagers;
     mapping(address => uint256) private _nonces;
 
     /* --- Variable container structs  ---
@@ -297,9 +297,9 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
-        // Confirm the operation is the borrower or approved delegate adjusting its own cdp
+        // Confirm the operation is the borrower or approved position manager adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrApprovedDelegateAndUpdate(_borrower);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -398,7 +398,7 @@ contract BorrowerOperations is
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
-        _requireBorrowerOrApprovedDelegateAndUpdate(_borrower);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
 
         LocalVariables_openCdp memory vars;
 
@@ -481,7 +481,7 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrApprovedDelegateAndUpdate(_borrower);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -527,40 +527,50 @@ contract BorrowerOperations is
         collSurplusPool.claimColl(msg.sender);
     }
 
-    /// @notice Returns true if the borrower is allowing delegate to act on their behalf
-    function getDelegateStatus(
+    /// @notice Returns true if the borrower is allowing position manager to act on their behalf
+    function getPositionManagerApproval(
         address _borrower,
-        address _delegate
-    ) external view override returns (DelegateStatus) {
-        return _getDelegateStatus(_borrower, _delegate);
+        address _positionManager
+    ) external view override returns (PositionManagerApproval) {
+        return _getPositionManagerApproval(_borrower, _positionManager);
     }
 
-    function _getDelegateStatus(
+    function _getPositionManagerApproval(
         address _borrower,
-        address _delegate
-    ) internal view returns (DelegateStatus) {
-        return delegateStatus[_borrower][_delegate];
+        address _positionManager
+    ) internal view returns (PositionManagerApproval) {
+        return positionManagers[_borrower][_positionManager];
     }
 
-    /// @notice Set whether to allow `_delegate` to act on your behalf
-    /// @notice Delegation allows stealing of tokens if given to a malicious `_delegate`
-    function setDelegateStatus(address _delegate, DelegateStatus _status) external override {
-        _setDelegateStatus(msg.sender, _delegate, _status);
+    /// @notice Approve an account to take arbitrary actions on your Cdps.
+    /// @notice Account managers with 'Persistent' status will be able to take actions indefinitely
+    /// @notice Account managers with 'OneTIme' status will be able to take a single action on one Cdp. Approval will be automatically revoked after one Cdp-related action.
+    /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    function setPositionManagerApproval(
+        address _positionManager,
+        PositionManagerApproval _approval
+    ) external override {
+        _setPositionManagerApproval(msg.sender, _positionManager, _approval);
     }
 
-    function _setDelegateStatus(
+    function _setPositionManagerApproval(
         address _borrower,
-        address _delegate,
-        DelegateStatus _status
+        address _positionManager,
+        PositionManagerApproval _approval
     ) internal {
-        delegateStatus[_borrower][_delegate] = _status;
-        emit DelegateStatusSet(_borrower, _delegate, _status);
+        positionManagers[_borrower][_positionManager] = _approval;
+        emit PositionManagerApprovalSet(_borrower, _positionManager, _approval);
+    }
+
+    /// @notice Revoke a position manager from taking further actions on your Cdps
+    /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    function revokePositionManagerApproval(address _positionManager) external override {
+        _setPositionManagerApproval(msg.sender, _positionManager, PositionManagerApproval.None);
     }
 
     /// @notice Allows recipient of delegation to renounce it
-    function renounceDelegation(address _borrower) external override {
-        delegateStatus[_borrower][msg.sender] = DelegateStatus.None;
-        emit DelegateStatusSet(_borrower, msg.sender, DelegateStatus.None);
+    function renouncePositionManagerApproval(address _borrower) external override {
+        _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
@@ -597,19 +607,19 @@ contract BorrowerOperations is
     }
 
     function permitTypeHash() external pure override returns (bytes32) {
-        return _PERMIT_DELEGATE_TYPEHASH;
+        return _PERMIT_POSITION_MANAGER_TYPEHASH;
     }
 
-    function permitDelegate(
+    function permitPositionManagerApproval(
         address _borrower,
-        address _delegate,
-        DelegateStatus _status,
+        address _positionManager,
+        PositionManagerApproval _approval,
         uint _deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external override {
-        require(_deadline >= block.timestamp, "BorrowerOperations: Delegate permit expired");
+        require(_deadline >= block.timestamp, "BorrowerOperations: Position manager permit expired");
 
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -617,10 +627,10 @@ contract BorrowerOperations is
                 domainSeparator(),
                 keccak256(
                     abi.encode(
-                        _PERMIT_DELEGATE_TYPEHASH,
+                        _PERMIT_POSITION_MANAGER_TYPEHASH,
                         _borrower,
-                        _delegate,
-                        _status,
+                        _positionManager,
+                        _approval,
                         _nonces[_borrower]++,
                         _deadline
                     )
@@ -633,7 +643,7 @@ contract BorrowerOperations is
             "BorrowerOperations: Invalid signature"
         );
 
-        _setDelegateStatus(_borrower, _delegate, _status);
+        _setPositionManagerApproval(_borrower, _positionManager, _approval);
     }
 
     // --- Helper functions ---
@@ -835,23 +845,23 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireBorrowerOrApprovedDelegateAndUpdate(address _borrower) internal {
+    function _requireBorrowerOrPositionManagerAndUpdate(address _borrower) internal {
         if (_borrower == msg.sender) {
             return; // Early return, no delegation
         }
 
-        DelegateStatus _status = _getDelegateStatus(_borrower, msg.sender);
-        // Must be delegated at this point
+        PositionManagerApproval _approval = _getPositionManagerApproval(_borrower, msg.sender);
+        // Must be an approved position manager at this point
         require(
-            _status != DelegateStatus.None,
-            "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf"
+            _approval != PositionManagerApproval.None,
+            "BorrowerOperations: Only borrower account or approved position manager can OpenCdp on borrower's behalf"
         );
 
         // Conditional Adjustment
-        /// @dev If this is a delegate operation with a one-time delegation approval, clear that approval
-        /// @dev If the DelegateStatus was none, we should have failed with the check in _requireBorrowerOrApprovedDelegateAndUpdate
-        if (_status == DelegateStatus.OneTime) {
-            _setDelegateStatus(_borrower, msg.sender, DelegateStatus.None);
+        /// @dev If this is a position manager operation with a one-time approval, clear that approval
+        /// @dev If the PositionManagerApproval was none, we should have failed with the check in _requireBorrowerOrPositionManagerAndUpdate
+        if (_approval == PositionManagerApproval.OneTime) {
+            _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
         }
     }
 
