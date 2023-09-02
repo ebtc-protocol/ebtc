@@ -8,34 +8,34 @@ interface IActivePool is IPool {
     // --- Events ---
     event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolEBTCDebtUpdated(uint _EBTCDebt);
-    event SystemCollSharesUpdated(uint _coll);
+    event ActivePoolEBTCDebtUpdated(uint256 _EBTCDebt);
+    event SystemCollSharesUpdated(uint256 _coll);
     event CollateralAddressChanged(address _collTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollSurplusPoolAddressChanged(address _collSurplusAddress);
-    event FeeRecipientClaimableCollSharesIncreased(uint _coll, uint _fee);
-    event FeeRecipientClaimableCollSharesDecreased(uint _coll, uint _fee);
-    event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
-    event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
+    event FeeRecipientClaimableCollSharesIncreased(uint256 _coll, uint256 _fee);
+    event FeeRecipientClaimableCollSharesDecreased(uint256 _coll, uint256 _fee);
+    event FlashLoanSuccess(address _receiver, address _token, uint256 _amount, uint256 _fee);
+    event SweepTokenSuccess(address indexed _token, uint256 _amount, address indexed _recipient);
 
     // --- Functions ---
-    function transferSystemCollShares(address _account, uint _amount) external;
+    function transferSystemCollShares(address _account, uint256 _amount) external;
 
-    function increaseSystemCollShares(uint _value) external;
+    function increaseSystemCollShares(uint256 _value) external;
 
     function transferSystemCollSharesAndLiquidatorReward(
         address _account,
-        uint _shares,
-        uint _liquidatorRewardShares
+        uint256 _shares,
+        uint256 _liquidatorRewardShares
     ) external;
 
-    function allocateSystemCollSharesToFeeRecipient(uint _shares) external;
+    function allocateSystemCollSharesToFeeRecipient(uint256 _shares) external;
 
-    function claimFeeRecipientCollShares(uint _shares) external;
+    function claimFeeRecipientCollShares(uint256 _shares) external;
 
     function feeRecipientAddress() external view returns (address);
 
-    function getFeeRecipientClaimableCollShares() external view returns (uint);
+    function getFeeRecipientClaimableCollShares() external view returns (uint256);
 
     function setFeeRecipientAddress(address _feeRecipientAddress) external;
 }

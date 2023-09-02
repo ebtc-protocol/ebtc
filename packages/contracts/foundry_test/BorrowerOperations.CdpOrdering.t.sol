@@ -20,12 +20,12 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         collateral.setEthPerShare(1e18);
 
         address user = _utils.getNextUserAddress();
-        uint coll = 100 ether;
-        uint debt = 1 ether;
+        uint256 coll = 100 ether;
+        uint256 debt = 1 ether;
 
         bytes32 cdp1 = _openTestCDP(user, coll, debt);
 
-        uint price = priceFeedMock.fetchPrice();
+        uint256 price = priceFeedMock.fetchPrice();
         console.log("cdp1 before: ", cdpManager.getICR(cdp1, price));
 
         /**
@@ -55,11 +55,11 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         Ensure CDP ordering on operations in the face of rebasing stETH index
      */
     function test_CdpOrdering() public {
-        uint rebaseCount = 100;
-        uint maxIndexChangeUp = 1e16;
-        uint maxIndexChangeDown = 1e15;
+        uint256 rebaseCount = 100;
+        uint256 maxIndexChangeUp = 1e16;
+        uint256 maxIndexChangeDown = 1e15;
 
-        uint indexChangeUpProbabilityBps = 9500;
+        uint256 indexChangeUpProbabilityBps = 9500;
 
         int indexChange = _getIndexChangeWithinRange(
             maxIndexChangeUp,
@@ -67,8 +67,8 @@ contract CdpOrderingTest is eBTCBaseInvariants {
             indexChangeUpProbabilityBps
         );
 
-        for (uint i = 0; i < rebaseCount; i++) {
-            (uint oldIndex, uint newIndex) = _applyIndexChange(indexChange);
+        for (uint256 i = 0; i < rebaseCount; i++) {
+            (uint256 oldIndex, uint256 newIndex) = _applyIndexChange(indexChange);
             if (newIndex >= oldIndex) {
                 console.log(newIndex);
             } else {
@@ -79,13 +79,13 @@ contract CdpOrderingTest is eBTCBaseInvariants {
             vm.startPrank(user);
 
             // Randomize collateral amount used
-            uint collAmount = _utils.generateRandomNumber(2 ether, 10000 ether, user);
+            uint256 collAmount = _utils.generateRandomNumber(2 ether, 10000 ether, user);
             // deal ETH and deposit for collateral
             vm.deal(user, collAmount * 1000);
             collateral.approve(address(borrowerOperations), collAmount);
             collateral.deposit{value: collAmount * 1000}();
 
-            uint borrowedAmount = _utils.calculateBorrowAmount(
+            uint256 borrowedAmount = _utils.calculateBorrowAmount(
                 collAmount,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO
@@ -101,11 +101,11 @@ contract CdpOrderingTest is eBTCBaseInvariants {
     }
 
     function _getIndexChangeWithinRange(
-        uint maxIndexChangeUp,
-        uint maxIndexChangeDown,
-        uint indexChangeUpProbabilityBps
+        uint256 maxIndexChangeUp,
+        uint256 maxIndexChangeDown,
+        uint256 indexChangeUpProbabilityBps
     ) internal view returns (int) {
-        uint random = _utils.generateRandomNumber(0, 10000, address(1));
+        uint256 random = _utils.generateRandomNumber(0, 10000, address(1));
         if (random < indexChangeUpProbabilityBps) {
             return int(_utils.generateRandomNumber(0, maxIndexChangeUp, address(0)));
         } else {
@@ -113,16 +113,16 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         }
     }
 
-    function _applyIndexChange(int indexChange) internal returns (uint, uint) {
-        uint currentIndex = collateral.getPooledEthByShares(1e18);
-        uint proposedIndex;
+    function _applyIndexChange(int indexChange) internal returns (uint256, uint256) {
+        uint256 currentIndex = collateral.getPooledEthByShares(1e18);
+        uint256 proposedIndex;
 
         if (indexChange >= 0) {
-            proposedIndex = currentIndex + uint(indexChange);
+            proposedIndex = currentIndex + uint256(indexChange);
         } else if (indexChange < 0) {
             // if we will be above zero
-            if (currentIndex >= uint(indexChange)) {
-                proposedIndex = currentIndex - uint(indexChange);
+            if (currentIndex >= uint256(indexChange)) {
+                proposedIndex = currentIndex - uint256(indexChange);
             }
             // handle zero / underflow
             else {

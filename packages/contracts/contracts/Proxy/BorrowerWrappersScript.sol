@@ -15,7 +15,7 @@ import "./LQTYStakingScript.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, LQTYStakingScript {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     string public constant NAME = "BorrowerWrappersScript";
 
@@ -55,22 +55,22 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
     }
 
     function claimCollateralAndOpenCdp(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint256 _collAmount
     ) external {
-        uint balanceBefore = collToken.balanceOf(address(this));
+        uint256 balanceBefore = collToken.balanceOf(address(this));
 
         // Claim collateral
         borrowerOperations.claimSurplusCollShares();
 
-        uint balanceAfter = collToken.balanceOf(address(this));
+        uint256 balanceAfter = collToken.balanceOf(address(this));
 
         // already checked in CollSurplusPool
         assert(balanceAfter > balanceBefore);
 
-        uint totalCollateral = balanceAfter.sub(balanceBefore).add(_collAmount);
+        uint256 totalCollateral = balanceAfter.sub(balanceBefore).add(_collAmount);
 
         // Open cdp with obtained collateral, plus collateral sent by user
         collToken.approve(address(borrowerOperations), type(uint256).max);
@@ -83,13 +83,13 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
         bytes32 _lowerHint
     ) external {
         require(address(collToken) != address(0), "!collToken");
-        uint collBalanceBefore = collToken.balanceOf(address(this));
-        uint ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
+        uint256 collBalanceBefore = collToken.balanceOf(address(this));
+        uint256 ebtcBalanceBefore = ebtcToken.balanceOf(address(this));
 
-        uint gainedCollateral = collToken.balanceOf(address(this)).sub(collBalanceBefore); // stack too deep issues :'(
-        uint gainedEBTC = ebtcToken.balanceOf(address(this)).sub(ebtcBalanceBefore);
+        uint256 gainedCollateral = collToken.balanceOf(address(this)).sub(collBalanceBefore); // stack too deep issues :'(
+        uint256 gainedEBTC = ebtcToken.balanceOf(address(this)).sub(ebtcBalanceBefore);
 
-        uint netEBTCAmount;
+        uint256 netEBTCAmount;
         // Top up cdp and get more EBTC, keeping ICR constant
         if (gainedCollateral > 0) {
             _requireUserHasCdp(_cdpId);
@@ -105,18 +105,18 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
             );
         }
 
-        uint totalEBTC = gainedEBTC.add(netEBTCAmount);
+        uint256 totalEBTC = gainedEBTC.add(netEBTCAmount);
         if (totalEBTC > 0) {
             ebtcToken.transfer(address(0x000000000000000000000000000000000000dEaD), totalEBTC);
         }
     }
 
-    function _getNetEBTCAmount(bytes32 _cdpId, uint _collateral) internal returns (uint) {
-        uint price = priceFeed.fetchPrice();
-        uint ICR = cdpManager.getICR(_cdpId, price);
+    function _getNetEBTCAmount(bytes32 _cdpId, uint256 _collateral) internal returns (uint256) {
+        uint256 price = priceFeed.fetchPrice();
+        uint256 ICR = cdpManager.getICR(_cdpId, price);
 
-        uint EBTCAmount = _collateral.mul(price).div(ICR);
-        uint netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(
+        uint256 EBTCAmount = _collateral.mul(price).div(ICR);
+        uint256 netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(
             LiquityMath.DECIMAL_PRECISION
         );
 

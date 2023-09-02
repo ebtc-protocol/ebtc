@@ -12,7 +12,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 contract CDPManagerGovernanceTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
-    uint public mintAmount = 1e18;
+    uint256 public mintAmount = 1e18;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -31,7 +31,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetStakingRewardSplitWithPermission(uint newStakingRewardSplit) public {
+    function testCDPManagerSetStakingRewardSplitWithPermission(
+        uint256 newStakingRewardSplit
+    ) public {
         // TODO: Test the actual math from this works out
         vm.assume(newStakingRewardSplit <= cdpManager.MAX_REWARD_SPLIT());
 
@@ -53,7 +55,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetStakingRewardSplitValueLimits(
-        uint newInvalidStakingRewardSplit
+        uint256 newInvalidStakingRewardSplit
     ) public {
         vm.assume(newInvalidStakingRewardSplit > cdpManager.MAX_REWARD_SPLIT());
 
@@ -80,7 +82,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetRedemptionFeeFloorWithPermission(uint newRedemptionFeeFloor) public {
+    function testCDPManagerSetRedemptionFeeFloorWithPermission(
+        uint256 newRedemptionFeeFloor
+    ) public {
         // TODO: Test the actual math from this works out
         vm.assume(newRedemptionFeeFloor >= cdpManager.MIN_REDEMPTION_FEE_FLOOR());
         vm.assume(newRedemptionFeeFloor <= cdpManager.DECIMAL_PRECISION());
@@ -103,7 +107,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetRedemptionFeeFloorValueLimits(
-        uint newInvalidRedemptionFeeFloor
+        uint256 newInvalidRedemptionFeeFloor
     ) public {
         vm.assume(
             newInvalidRedemptionFeeFloor < cdpManager.MIN_REDEMPTION_FEE_FLOOR() ||
@@ -128,7 +132,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetRedemptionFeeFloorHigherThanMax() public {
-        uint newInvalidRedemptionFeeFloor = cdpManager.DECIMAL_PRECISION() + 1;
+        uint256 newInvalidRedemptionFeeFloor = cdpManager.DECIMAL_PRECISION() + 1;
 
         address user = _utils.getNextUserAddress();
 
@@ -152,7 +156,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetMinuteDecayFactorWithPermission(uint newMinuteDecayFactor) public {
+    function testCDPManagerSetMinuteDecayFactorWithPermission(uint256 newMinuteDecayFactor) public {
         vm.assume(
             newMinuteDecayFactor >= cdpManager.MIN_MINUTE_DECAY_FACTOR() &&
                 newMinuteDecayFactor <= cdpManager.MAX_MINUTE_DECAY_FACTOR()
@@ -175,7 +179,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertEq(cdpManager.minuteDecayFactor(), newMinuteDecayFactor);
     }
 
-    function testCDPManagerSetMinuteDecayFactorLimits(uint newInvalidMinuteDecayFactor) public {
+    function testCDPManagerSetMinuteDecayFactorLimits(uint256 newInvalidMinuteDecayFactor) public {
         vm.assume(
             newInvalidMinuteDecayFactor < cdpManager.MIN_MINUTE_DECAY_FACTOR() ||
                 newInvalidMinuteDecayFactor > cdpManager.MAX_MINUTE_DECAY_FACTOR()
@@ -203,7 +207,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetBetaWithPermission(uint newBeta) public {
+    function testCDPManagerSetBetaWithPermission(uint256 newBeta) public {
         address user = _utils.getNextUserAddress();
 
         // Grant permission
@@ -225,7 +229,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
 
         address noPermissionsUser = _utils.getNextUserAddress();
         vm.prank(noPermissionsUser);
@@ -237,7 +241,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
 
         vm.prank(defaultGovernance);
         cdpManager.setGracePeriod(newGracePeriod);
@@ -254,7 +258,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
 
         vm.prank(defaultGovernance);
         cdpManager.setGracePeriod(newGracePeriod);
@@ -273,7 +277,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
 
         vm.prank(defaultGovernance);
         vm.expectRevert("CdpManager: Grace period below minimum duration");
@@ -288,7 +292,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
 
         vm.prank(defaultGovernance);
         vm.expectRevert("CdpManager: Grace period below minimum duration");
@@ -299,15 +303,15 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
     /// @dev Assumes newGracePeriod > oldGracePeriod
     function _confirmGracePeriodNewDurationEnforced(
-        uint oldGracePeriod,
-        uint newGracePeriod,
+        uint256 oldGracePeriod,
+        uint256 newGracePeriod,
         address actor,
         bytes32 toLiquidateCdpId
     ) public {
         vm.startPrank(actor);
         cdpManager.syncGracePeriod();
-        uint startTimestamp = block.timestamp;
-        uint expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriod() +
+        uint256 startTimestamp = block.timestamp;
+        uint256 expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriod() +
             cdpManager.lastGracePeriodStartTimestamp();
 
         assertEq(startTimestamp, cdpManager.lastGracePeriodStartTimestamp());
@@ -349,7 +353,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
         // 2x test price
         priceFeedMock.setPrice(2 ether);
-        uint price = priceFeedMock.fetchPrice();
+        uint256 price = priceFeedMock.fetchPrice();
 
         // Open whale CDPs at 220%
         toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);

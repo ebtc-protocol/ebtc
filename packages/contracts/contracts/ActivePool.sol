@@ -396,13 +396,13 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
-    function setFeeBps(uint _newFee) external requiresAuth {
+    function setFeeBps(uint256 _newFee) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
         // set new flash fee
-        uint _oldFee = feeBps;
+        uint256 _oldFee = feeBps;
         feeBps = uint16(_newFee);
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }

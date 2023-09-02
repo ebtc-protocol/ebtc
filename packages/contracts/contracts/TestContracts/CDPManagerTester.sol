@@ -39,27 +39,31 @@ contract CdpManagerTester is CdpManager {
         )
     {}
 
-    function computeICR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
+    function computeICR(
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _price
+    ) external pure returns (uint256) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
 
     function getDeltaIndexToTriggerRM(
-        uint _currentIndex,
-        uint _price,
-        uint _stakingRewardSplit
-    ) external view returns (uint) {
-        uint _tcr = _getTCR(_price);
+        uint256 _currentIndex,
+        uint256 _price,
+        uint256 _stakingRewardSplit
+    ) external view returns (uint256) {
+        uint256 _tcr = _getTCR(_price);
         if (_tcr <= CCR) {
             return 0;
         } else if (_tcr == LiquityMath.MAX_TCR) {
             return type(uint256).max;
         } else {
-            uint _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
+            uint256 _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
             return (_splitIndex * (_tcr - CCR)) / _tcr;
         }
     }
 
-    function unprotectedDecayBaseRateFromBorrowing() external returns (uint) {
+    function unprotectedDecayBaseRateFromBorrowing() external returns (uint256) {
         baseRate = _calcDecayedBaseRate();
         assert(baseRate >= 0 && baseRate <= DECIMAL_PRECISION);
 
@@ -67,7 +71,7 @@ contract CdpManagerTester is CdpManager {
         return baseRate;
     }
 
-    function minutesPassedSinceLastRedemption() external view returns (uint) {
+    function minutesPassedSinceLastRedemption() external view returns (uint256) {
         return _minutesPassedSinceLastRedemption();
     }
 
@@ -79,18 +83,18 @@ contract CdpManagerTester is CdpManager {
         lastRedemptionTimestamp = block.timestamp;
     }
 
-    function getDecayedBaseRate() external view returns (uint) {
-        uint minutesPassed = _minutesPassedSinceLastRedemption();
-        uint _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
+    function getDecayedBaseRate() external view returns (uint256) {
+        uint256 minutesPassed = _minutesPassedSinceLastRedemption();
+        uint256 _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
         return (baseRate * _mulFactor) / DECIMAL_PRECISION;
     }
 
-    function setBaseRate(uint _baseRate) external {
+    function setBaseRate(uint256 _baseRate) external {
         baseRate = _baseRate;
     }
 
     /// @dev No more concept of composite debt. Just return debt. Maintaining for test compatiblity
-    function getActualDebtFromComposite(uint _debtVal) external pure returns (uint) {
+    function getActualDebtFromComposite(uint256 _debtVal) external pure returns (uint256) {
         return _debtVal;
     }
 
@@ -99,26 +103,26 @@ contract CdpManagerTester is CdpManager {
     }
 
     function getUpdatedBaseRateFromRedemption(
-        uint _ETHDrawn,
-        uint _price
-    ) external view returns (uint) {
-        uint _totalEBTCSupply = _getEntireSystemDebt();
-        uint decayedBaseRate = _calcDecayedBaseRate();
-        uint redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
+        uint256 _ETHDrawn,
+        uint256 _price
+    ) external view returns (uint256) {
+        uint256 _totalEBTCSupply = _getEntireSystemDebt();
+        uint256 decayedBaseRate = _calcDecayedBaseRate();
+        uint256 redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
-        uint newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
+        uint256 newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
         return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 
-    function activePoolIncreaseSystemDebt(uint _amount) external {
+    function activePoolIncreaseSystemDebt(uint256 _amount) external {
         activePool.increaseSystemDebt(_amount);
     }
 
-    function activePoolDecreaseSystemDebt(uint _amount) external {
+    function activePoolDecreaseSystemDebt(uint256 _amount) external {
         activePool.decreaseSystemDebt(_amount);
     }
 
-    function activePoolTransferSystemCollShares(address _addr, uint _amt) external {
+    function activePoolTransferSystemCollShares(address _addr, uint256 _amt) external {
         activePool.transferSystemCollShares(_addr, _amt);
     }
 
@@ -132,7 +136,7 @@ contract CdpManagerTester is CdpManager {
     }
 
     //    function callInternalRemoveCdpOwner(address _cdpOwner) external {
-    //        uint cdpOwnersArrayLength = CdpOwners.length;
+    //        uint256 cdpOwnersArrayLength = CdpOwners.length;
     //        _removeCdpOwner(_cdpOwner, cdpOwnersArrayLength);
     //    }
 }

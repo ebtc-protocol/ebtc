@@ -8,9 +8,9 @@ import "./ICdpManagerData.sol";
 // Common interface for the Cdp Manager.
 interface ICdpManager is ILiquityBase, ICdpManagerData {
     // --- Functions ---
-    function getActiveCdpsCount() external view returns (uint);
+    function getActiveCdpsCount() external view returns (uint256);
 
-    function getIdFromCdpIdsArray(uint _index) external view returns (bytes32);
+    function getIdFromCdpIdsArray(uint256 _index) external view returns (bytes32);
 
     function liquidate(bytes32 _cdpId) external;
 
@@ -21,66 +21,66 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
         bytes32 _lowerPartialHint
     ) external;
 
-    function liquidateCdps(uint _n) external;
+    function liquidateCdps(uint256 _n) external;
 
     function batchLiquidateCdps(bytes32[] calldata _cdpArray) external;
 
     function redeemCollateral(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
-        uint _partialRedemptionHintNICR,
-        uint _maxIterations,
-        uint _maxFee
+        uint256 _partialRedemptionHintNICR,
+        uint256 _maxIterations,
+        uint256 _maxFee
     ) external;
 
-    function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint);
+    function updateStakeAndTotalStakes(bytes32 _cdpId) external returns (uint256);
 
     function syncAccounting(bytes32 _cdpId) external;
 
-    function getTotalStakeForFeeTaken(uint _feeTaken) external view returns (uint, uint);
+    function getTotalStakeForFeeTaken(uint256 _feeTaken) external view returns (uint256, uint256);
 
-    function closeCdp(bytes32 _cdpId, address _borrower, uint _debt, uint _coll) external;
+    function closeCdp(bytes32 _cdpId, address _borrower, uint256 _debt, uint256 _coll) external;
 
     function removeStake(bytes32 _cdpId) external;
 
-    function getRedemptionRate() external view returns (uint);
+    function getRedemptionRate() external view returns (uint256);
 
-    function getRedemptionRateWithDecay() external view returns (uint);
+    function getRedemptionRateWithDecay() external view returns (uint256);
 
-    function getRedemptionFeeWithDecay(uint _ETHDrawn) external view returns (uint);
+    function getRedemptionFeeWithDecay(uint256 _ETHDrawn) external view returns (uint256);
 
     function decayBaseRateFromBorrowing() external;
 
-    function getCdpStatus(bytes32 _cdpId) external view returns (uint);
+    function getCdpStatus(bytes32 _cdpId) external view returns (uint256);
 
-    function getCdpStake(bytes32 _cdpId) external view returns (uint);
+    function getCdpStake(bytes32 _cdpId) external view returns (uint256);
 
-    function getCdpDebt(bytes32 _cdpId) external view returns (uint);
+    function getCdpDebt(bytes32 _cdpId) external view returns (uint256);
 
-    function getCdpCollShares(bytes32 _cdpId) external view returns (uint);
+    function getCdpCollShares(bytes32 _cdpId) external view returns (uint256);
 
-    function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint);
+    function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view returns (uint256);
 
     function initializeCdp(
         bytes32 _cdpId,
-        uint _debt,
-        uint _coll,
-        uint _liquidatorRewardShares,
+        uint256 _debt,
+        uint256 _coll,
+        uint256 _liquidatorRewardShares,
         address _borrower
     ) external;
 
     function updateCdp(
         bytes32 _cdpId,
         address _borrower,
-        uint _coll,
-        uint _debt,
-        uint _newColl,
-        uint _newDebt
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _newColl,
+        uint256 _newDebt
     ) external;
 
-    function getTCR(uint _price) external view returns (uint);
+    function getTCR(uint256 _price) external view returns (uint256);
 
-    function checkRecoveryMode(uint _price) external view returns (bool);
+    function checkRecoveryMode(uint256 _price) external view returns (bool);
 }

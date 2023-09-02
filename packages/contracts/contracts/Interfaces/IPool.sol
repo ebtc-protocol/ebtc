@@ -6,18 +6,18 @@ pragma solidity 0.8.17;
 interface IPool {
     // --- Events ---
 
-    event ETHBalanceUpdated(uint _newBalance);
-    event EBTCBalanceUpdated(uint _newBalance);
+    event ETHBalanceUpdated(uint256 _newBalance);
+    event EBTCBalanceUpdated(uint256 _newBalance);
     event ActivePoolAddressChanged(address _newActivePoolAddress);
-    event CollSharesTransferred(address _to, uint _amount);
+    event CollSharesTransferred(address _to, uint256 _amount);
 
     // --- Functions ---
 
-    function getSystemCollShares() external view returns (uint);
+    function getSystemCollShares() external view returns (uint256);
 
-    function getSystemDebt() external view returns (uint);
+    function getSystemDebt() external view returns (uint256);
 
-    function increaseSystemDebt(uint _amount) external;
+    function increaseSystemDebt(uint256 _amount) external;
 
-    function decreaseSystemDebt(uint _amount) external;
+    function decreaseSystemDebt(uint256 _amount) external;
 }
