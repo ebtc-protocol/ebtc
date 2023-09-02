@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
-contract CDPTest is eBTCBaseFixture {
+contract OpenCloseCdpTest is eBTCBaseInvariants {
     mapping(bytes32 => bool) private _cdpIdsExist;
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+
+        connectCoreContracts();
+        connectLQTYContractsToCore();
     }
 
     // Generic test for happy case when 1 user open CDP
@@ -74,6 +75,8 @@ contract CDPTest is eBTCBaseFixture {
         borrowerOperations.closeCdp(cdpId);
         // Make sure CDP is now not active anymore. Enum Status.2 == closedByOwner
         assertEq(cdpManager.getCdpStatus(cdpId), 2);
+        _assertCdpClosed(cdpId, 2);
+        _assertCdpNotInSortedCdps(cdpId);
         vm.stopPrank();
     }
 
@@ -89,7 +92,7 @@ contract CDPTest is eBTCBaseFixture {
         vm.startPrank(user);
         // Borrowed eBTC amount is too high compared to Collateral
         vm.expectRevert(
-            bytes("BorrowerOps: An operation that would result in ICR < MCR is not permitted")
+            bytes("BorrowerOperations: An operation that would result in ICR < MCR is not permitted")
         );
         borrowerOperations.openCdp(20000e20, "hint", "hint", 10 ether);
         vm.stopPrank();
@@ -106,7 +109,7 @@ contract CDPTest is eBTCBaseFixture {
 
         assert(sortedCdps.getLast() == "");
         // Borrowed eBTC amount is lower than MIN_NET_DEBT
-        vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+        vm.expectRevert(bytes("BorrowerOperations: Cdp's net debt must be greater than minimum"));
         borrowerOperations.openCdp(1e15, "hint", "hint", 30 ether);
         vm.stopPrank();
     }
@@ -127,7 +130,7 @@ contract CDPTest is eBTCBaseFixture {
         assert(sortedCdps.getLast() == "");
 
         vm.startPrank(user);
-        vm.expectRevert(bytes("BorrowerOps: Cdp's net coll must be greater than minimum"));
+        vm.expectRevert(bytes("BorrowerOperations: Cdp's net coll must be greater than minimum"));
         borrowerOperations.openCdp(1, "hint", "hint", collPlusLiquidatorReward);
         vm.stopPrank();
     }
@@ -199,6 +202,7 @@ contract CDPTest is eBTCBaseFixture {
             vm.stopPrank();
         }
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
+        _ensureSystemInvariants();
     }
 
     /* Open CDPs for fuzzed amount of users with random collateral. Don't restrict coll amount by bottom.
@@ -222,7 +226,9 @@ contract CDPTest is eBTCBaseFixture {
             vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
             if (borrowedAmountWithFee < MIN_NET_DEBT) {
-                vm.expectRevert(bytes("BorrowerOps: Cdp's net debt must be greater than minimum"));
+                vm.expectRevert(
+                    bytes("BorrowerOperations: Cdp's net debt must be greater than minimum")
+                );
                 vm.prank(user);
                 borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             }
@@ -263,5 +269,6 @@ contract CDPTest is eBTCBaseFixture {
         }
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
+        _ensureSystemInvariants();
     }
 }

@@ -74,7 +74,13 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     }
 
     it('First cdp only doesn’t get out of Recovery Mode', async () => {
-      await setup()
+      await setup()		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
+		
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
@@ -88,7 +94,12 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
@@ -98,9 +109,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
-      assert.equal(liquidationEvents[0].args[4].toString(), '2');//liquidateInRecoveryMode
-      assert.equal(liquidationEvents[1].args[4].toString(), '2');//liquidateInRecoveryMode
-      assert.equal(liquidationEvents[2].args[4].toString(), '1');//liquidateInNormalMode
+      assert.equal(liquidationEvents[0].args[4].toString(), '5');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[1].args[4].toString(), '5');//liquidateInRecoveryMode
+      assert.equal(liquidationEvents[2].args[4].toString(), '4');//liquidateInNormalMode
 
       // Confirm all cdps removed
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -140,7 +151,12 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 
       assert.isTrue(ICR_A.gt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
-      assert.isTrue(ICR_C.lt(mv._ICR100))
+      assert.isTrue(ICR_C.lt(mv._ICR100))		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
@@ -198,7 +214,13 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     }
 
     it('First cdp only doesn’t get out of Recovery Mode', async () => {
-      await setup()
+      await setup()		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
+		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       const tx = await cdpManager.liquidateCdps(1)
@@ -210,7 +232,12 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     it('Two cdps over MCR are liquidated', async () => {
       await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);		  
+	  	  
+      // trigger cooldown and pass the liq wait
+      await cdpManager.syncGracePeriod();
+      await ethers.provider.send("evm_increaseTime", [901]);
+      await ethers.provider.send("evm_mine");
 		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});

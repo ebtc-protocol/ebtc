@@ -164,7 +164,7 @@ contract('CollSurplusPool', async accounts => {
       await collSurplusPool.sweepToken(_dustToken.address, _amt)
     } catch (err) {
       //console.log("errMsg=" + err.message)
-      assert.include(err.message, "ReentrancyGuard: REENTRANCY")
+      assert.include(err.message, "ReentrancyGuard: Reentrancy in nonReentrant call")
     }
 	
     // expect revert on failed safeTransfer() case 1: transfer() returns false

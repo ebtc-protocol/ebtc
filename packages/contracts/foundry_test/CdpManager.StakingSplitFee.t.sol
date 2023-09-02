@@ -7,8 +7,6 @@ import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
-    uint public constant DECIMAL_PRECISION = 1e18;
-
     address private splitFeeRecipient;
     mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
     mapping(bytes32 => uint) private _targetCdpPrevColls;
@@ -96,13 +94,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
         uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-        uint _stFeePerUnitgError = cdpManager.stFeePerUnitgError();
-        uint _totalStake = cdpManager.totalStakes();
         (uint _feeSplitDistributed, ) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
-            _stFeePerUnitg,
-            _stFeePerUnitgError,
-            _totalStake
+            _stFeePerUnitg
         );
 
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;
@@ -121,7 +115,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
         uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableColl();
 
-        cdpManager.claimStakingSplitFee();
+        cdpManager.syncPendingGlobalState();
 
         uint _totalCollAfter = cdpManager.getEntireSystemColl();
         uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));

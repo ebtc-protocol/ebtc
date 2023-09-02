@@ -139,10 +139,14 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev This test converts the MUST into assets from the spec
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
-    function testEBTCSpec(uint128 amount, address randomToken) public {
+    function testEBTCSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
         vm.assume(randomToken != address(eBTCToken));
         vm.assume(amount > 0);
+        vm.assume(flashFee <= borrowerOperations.MAX_FEE_BPS());
+
+        vm.prank(defaultGovernance);
+        borrowerOperations.setFeeBps(flashFee);
 
         // The maxFlashLoan function MUST return the maximum loan possible for token.
         assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), type(uint112).max);
@@ -159,6 +163,32 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         // If the token is not supported feeBps MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
         borrowerOperations.flashFee(randomToken, amount);
+
+        // Pause FL
+        vm.startPrank(defaultGovernance);
+        borrowerOperations.setFlashLoansPaused(true);
+        vm.stopPrank();
+
+        // If the FL is paused, flashFee Reverts
+        vm.expectRevert("BorrowerOperations: Flash Loans Paused");
+        borrowerOperations.flashFee(address(eBTCToken), amount);
+
+        // If the FL is paused, maxFlashLoan returns 0
+        assertEq(borrowerOperations.maxFlashLoan(address(eBTCToken)), 0);
+
+        // if the FL is paused, flashLoan Reverts
+        vm.expectRevert("BorrowerOperations: Flash Loans Paused");
+        borrowerOperations.flashLoan(
+            specReceiver,
+            address(eBTCToken),
+            amount,
+            abi.encodePacked(uint256(0))
+        );
+
+        // Unpause
+        vm.startPrank(defaultGovernance);
+        borrowerOperations.setFlashLoansPaused(false);
+        vm.stopPrank();
 
         // If the token is not supported flashLoan MUST revert.
         vm.expectRevert("BorrowerOperations: EBTC Only");
@@ -212,7 +242,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     }
 
     function testEBTCSpecReturnValue() public {
-        vm.expectRevert("BorrowerOperations: IERC3156: Callback failed");
+        vm.expectRevert("IERC3156: Callback failed");
         borrowerOperations.flashLoan(
             wrongReturnReceiver,
             address(eBTCToken),
