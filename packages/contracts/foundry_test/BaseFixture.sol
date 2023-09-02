@@ -23,19 +23,19 @@ import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 
 contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
-    uint internal constant FEE = 5e15; // 0.5%
+    uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
-    uint public constant CCR = 125e16; // 125%
+    uint256 public constant CCR = 125e16; // 125%
     uint256 internal constant COLLATERAL_RATIO = 160e16; // 160%: take higher CR as CCR is 150%
     uint256 internal constant COLLATERAL_RATIO_DEFENSIVE = 200e16; // 200% - defensive CR
-    uint internal constant MIN_NET_DEBT = 1e17; // Subject to changes once CL is changed
+    uint256 internal constant MIN_NET_DEBT = 1e17; // Subject to changes once CL is changed
     // TODO: Modify these constants to increase/decrease amount of users
-    uint internal constant AMOUNT_OF_USERS = 100;
-    uint internal constant AMOUNT_OF_CDPS = 3;
-    uint internal DECIMAL_PRECISION = 1e18;
+    uint256 internal constant AMOUNT_OF_USERS = 100;
+    uint256 internal constant AMOUNT_OF_CDPS = 3;
+    uint256 internal DECIMAL_PRECISION = 1e18;
     bytes32 public constant ZERO_ID = bytes32(0);
 
-    uint internal constant MAX_BPS = 10000;
+    uint256 internal constant MAX_BPS = 10000;
 
     enum CapabilityFlag {
         None,
@@ -81,8 +81,8 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
         bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
 
-    event FlashFeeSet(address _setter, uint _oldFee, uint _newFee);
-    event MaxFlashFeeSet(address _setter, uint _oldMaxFee, uint _newMaxFee);
+    event FlashFeeSet(address _setter, uint256 _oldFee, uint256 _newFee);
+    event MaxFlashFeeSet(address _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
@@ -390,14 +390,14 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         return CdpState(debt, coll, pendingEBTCDebtReward);
     }
 
-    function dealCollateral(address _recipient, uint _amount) public virtual returns (uint) {
+    function dealCollateral(address _recipient, uint256 _amount) public virtual returns (uint256) {
         vm.deal(_recipient, _amount);
-        uint _balBefore = collateral.balanceOf(_recipient);
+        uint256 _balBefore = collateral.balanceOf(_recipient);
 
         vm.prank(_recipient);
         collateral.deposit{value: _amount}();
 
-        uint _balAfter = collateral.balanceOf(_recipient);
+        uint256 _balAfter = collateral.balanceOf(_recipient);
         return _balAfter - _balBefore;
     }
 
@@ -410,7 +410,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         collateral.deposit{value: 10000 ether}();
     }
 
-    function _openTestCDP(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+    function _openTestCDP(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
@@ -422,7 +422,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     /// @dev Increase index on collateral, storing real before, after, and what is stored in the CdpManager global index
     function _increaseCollateralIndex()
         internal
-        returns (uint oldIndex, uint newIndex, uint storedIndex)
+        returns (uint256 oldIndex, uint256 newIndex, uint256 storedIndex)
     {
         oldIndex = collateral.getPooledEthByShares(1e18);
         collateral.setEthPerShare(oldIndex + 1e17);
@@ -432,11 +432,16 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     }
 
     /// @dev Ensure data fields for Cdp are in expected post-close state
-    function _assertCdpClosed(bytes32 cdpId, uint expectedStatus) internal {
-        (uint _debt, uint _coll, uint _stake, uint _liquidatorRewardShares, , ) = cdpManager.Cdps(
-            cdpId
-        );
-        uint _status = cdpManager.getCdpStatus(cdpId);
+    function _assertCdpClosed(bytes32 cdpId, uint256 expectedStatus) internal {
+        (
+            uint256 _debt,
+            uint256 _coll,
+            uint256 _stake,
+            uint256 _liquidatorRewardShares,
+            ,
+
+        ) = cdpManager.Cdps(cdpId);
+        uint256 _status = cdpManager.getCdpStatus(cdpId);
 
         assertTrue(_debt == 0);
         assertTrue(_coll == 0);
@@ -449,7 +454,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     }
 
     function _printSystemState() internal {
-        uint price = priceFeedMock.fetchPrice();
+        uint256 price = priceFeedMock.fetchPrice();
         console.log("== Core State ==");
         console.log("systemCollShares   :", activePool.getSystemCollShares());
         console.log(
@@ -463,14 +468,14 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         console.log("price              :", price);
     }
 
-    function _getICR(bytes32 cdpId) internal returns (uint) {
-        uint price = priceFeedMock.fetchPrice();
+    function _getICR(bytes32 cdpId) internal returns (uint256) {
+        uint256 price = priceFeedMock.fetchPrice();
         return cdpManager.getICR(cdpId, price);
     }
 
     function _printAllCdps() internal {
-        uint price = priceFeedMock.fetchPrice();
-        uint numCdps = sortedCdps.getSize();
+        uint256 price = priceFeedMock.fetchPrice();
+        uint256 numCdps = sortedCdps.getSize();
         bytes32 node = sortedCdps.getLast();
         address borrower = sortedCdps.getOwnerAddress(node);
 

@@ -14,14 +14,14 @@ contract CdpManagerScript {
     }
 
     function redeemCollateral(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
-        uint _partialRedemptionHintNICR,
-        uint _maxIterations,
-        uint _maxFee
-    ) external returns (uint) {
+        uint256 _partialRedemptionHintNICR,
+        uint256 _maxIterations,
+        uint256 _maxFee
+    ) external returns (uint256) {
         cdpManager.redeemCollateral(
             _EBTCAmount,
             _firstRedemptionHint,

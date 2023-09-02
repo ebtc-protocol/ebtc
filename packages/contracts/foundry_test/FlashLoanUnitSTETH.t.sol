@@ -50,7 +50,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         dealCollateral(address(stethReceiver), fee);
 
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
-        uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
+        uint256 _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
         dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
@@ -107,7 +107,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
                 loanAmount,
                 abi.encodePacked(uint256(0))
             )
-        {} catch Panic(uint _errorCode) {
+        {} catch Panic(uint256 _errorCode) {
             assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
         }
     }
@@ -162,8 +162,8 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
         assertEq(
-            uint(fee),
-            (uint256(amount) * uint256(activePool.feeBps())) / uint(activePool.MAX_BPS())
+            uint256(fee),
+            (uint256(amount) * uint256(activePool.feeBps())) / uint256(activePool.MAX_BPS())
         );
 
         // If the token is not supported feeBps MUST revert.

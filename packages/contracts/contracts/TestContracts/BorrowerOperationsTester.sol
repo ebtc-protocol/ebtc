@@ -33,14 +33,14 @@ contract BorrowerOperationsTester is BorrowerOperations {
     bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
 
     function getNewICRFromCdpChange(
-        uint _coll,
-        uint _debt,
-        uint _collChange,
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _collChange,
         bool isCollIncrease,
-        uint _debtChange,
+        uint256 _debtChange,
         bool isDebtIncrease,
-        uint _price
-    ) external view returns (uint) {
+        uint256 _price
+    ) external view returns (uint256) {
         return
             _getNewICRFromCdpChange(
                 _coll,
@@ -54,12 +54,12 @@ contract BorrowerOperationsTester is BorrowerOperations {
     }
 
     function getNewTCRFromCdpChange(
-        uint _collChange,
+        uint256 _collChange,
         bool isCollIncrease,
-        uint _debtChange,
+        uint256 _debtChange,
         bool isDebtIncrease,
-        uint _price
-    ) external view returns (uint) {
+        uint256 _price
+    ) external view returns (uint256) {
         return
             _getNewTCRFromCdpChange(
                 _collChange,
@@ -72,8 +72,8 @@ contract BorrowerOperationsTester is BorrowerOperations {
 
     function callInternalAdjustLoan(
         address _borrower,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _collWithdrawal,
+        uint256 _debtChange,
         bool _isDebtIncrease,
         address _upperHint,
         address _lowerHint
@@ -81,7 +81,7 @@ contract BorrowerOperationsTester is BorrowerOperations {
         //_adjustCdp(_borrower, _collWithdrawal, _debtChange, _isDebtIncrease, _upperHint, _lowerHint, 0);
     }
 
-    function unprotectedActivePoolReceiveColl(uint _amt) external {
+    function unprotectedActivePoolReceiveColl(uint256 _amt) external {
         activePool.increaseSystemCollShares(_amt);
     }
 

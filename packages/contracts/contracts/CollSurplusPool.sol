@@ -23,7 +23,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     // deposited ether tracker
     uint256 internal totalSurplusCollShares;
     // Collateral surplus claimable by cdp owners
-    mapping(address => uint) internal balances;
+    mapping(address => uint256) internal balances;
 
     // --- Contract setters ---
 
@@ -63,7 +63,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @dev Not necessarily equal to the raw collateral token balance - tokens can be forcibly sent to contracts
      * @return The current collateral balance tracked by the variable
      */
-    function getTotalSurplusCollShares() external view override returns (uint) {
+    function getTotalSurplusCollShares() external view override returns (uint256) {
         return totalSurplusCollShares;
     }
 
@@ -72,16 +72,16 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
      * @param _account The address of the account
      * @return The collateral balance available to claim
      */
-    function getSurplusCollShares(address _account) external view override returns (uint) {
+    function getSurplusCollShares(address _account) external view override returns (uint256) {
         return balances[_account];
     }
 
     // --- Pool functionality ---
 
-    function increaseSurplusCollShares(address _account, uint _amount) external override {
+    function increaseSurplusCollShares(address _account, uint256 _amount) external override {
         _requireCallerIsCdpManager();
 
-        uint newAmount = balances[_account] + _amount;
+        uint256 newAmount = balances[_account] + _amount;
         balances[_account] = newAmount;
 
         emit SurplusCollSharesUpdated(_account, newAmount);
@@ -89,7 +89,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     function claimSurplusCollShares(address _account) external override {
         _requireCallerIsBorrowerOperations();
-        uint claimableColl = balances[_account];
+        uint256 claimableColl = balances[_account];
         require(claimableColl > 0, "CollSurplusPool: No collateral available to claim");
 
         balances[_account] = 0;
@@ -125,7 +125,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(msg.sender == activePoolAddress, "CollSurplusPool: Caller is not Active Pool");
     }
 
-    function increaseTotalSurplusCollShares(uint _value) external override {
+    function increaseTotalSurplusCollShares(uint256 _value) external override {
         _requireCallerIsActivePool();
         totalSurplusCollShares = totalSurplusCollShares + _value;
     }
@@ -135,7 +135,7 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
-    function sweepToken(address token, uint amount) public nonReentrant requiresAuth {
+    function sweepToken(address token, uint256 amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "CollSurplusPool: Cannot Sweep Collateral");
 
         uint256 balance = IERC20(token).balanceOf(address(this));

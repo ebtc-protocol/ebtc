@@ -8,13 +8,13 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
     address payable[] users;
 
     address private splitFeeRecipient;
-    mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
-    mapping(bytes32 => uint) private _targetCdpPrevColls;
-    mapping(bytes32 => uint) private _targetCdpPrevFeeApplied;
+    mapping(bytes32 => uint256) private _targetCdpPrevCollUnderlyings;
+    mapping(bytes32 => uint256) private _targetCdpPrevColls;
+    mapping(bytes32 => uint256) private _targetCdpPrevFeeApplied;
 
     struct LocalFeeSplitVar {
-        uint _prevSystemStEthFeePerUnitIndex;
-        uint _prevTotalCollUnderlying;
+        uint256 _prevSystemStEthFeePerUnitIndex;
+        uint256 _prevTotalCollUnderlying;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -39,15 +39,15 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
         vm.assume(debtAmt > 1e18);
 
-        uint _curPrice = priceFeedMock.getPrice();
+        uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16);
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // Once a CDP is open
         // Just take some yield
-        uint _curIndex = collateral.getPooledEthByShares(1e18);
-        uint _newIndex = _curIndex + 5e16;
+        uint256 _curIndex = collateral.getPooledEthByShares(1e18);
+        uint256 _newIndex = _curIndex + 5e16;
         collateral.setEthPerShare(_newIndex);
 
         // Get TCR
@@ -64,7 +64,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         assertLt(tcrAfter, tcr, "TCR didn't decrease");
     }
 
-    function _tryOpenCdp(address _user, uint _coll, uint _debt) internal returns (bytes32) {
+    function _tryOpenCdp(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
@@ -93,7 +93,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         cdpCR = cdpCR % 126e16; // Anything above is not meaningful since it drives the TCR above
         console.log("cdpCR", cdpCR);
 
-        uint _curPrice = priceFeedMock.getPrice();
+        uint256 _curPrice = priceFeedMock.getPrice();
 
         // 2) Given an initial deposit that matches the attacker capital, that is very close to CCR
         uint256 coll1 = _utils.calculateCollAmount(systemDebtAmount, _curPrice, 126e16); // Literally at the edge
@@ -123,17 +123,17 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         // Just take some yield
         // NOTE: We must do this here due to `updateCdpDebtRedistributionIndex` resynching the index after each open
         {
-            uint _curIndex = collateral.getPooledEthByShares(1e18);
-            uint _newIndex = _curIndex + 5e16;
+            uint256 _curIndex = collateral.getPooledEthByShares(1e18);
+            uint256 _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
-            uint _tcr = cdpManager.getTCR(_curPrice);
+            uint256 _tcr = cdpManager.getTCR(_curPrice);
 
             // reference https://github.com/Badger-Finance/ebtc/pull/456#issuecomment-1566821518
-            uint _requiredDeltaIdxTriggeRM = (((_newIndex * (_tcr - cdpManager.CCR())) / _tcr) *
+            uint256 _requiredDeltaIdxTriggeRM = (((_newIndex * (_tcr - cdpManager.CCR())) / _tcr) *
                 cdpManager.MAX_REWARD_SPLIT()) / cdpManager.stakingRewardSplit();
 
             // hack manipulation to sync global index in attacker's benefit
-            uint _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
+            uint256 _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
             collateral.setEthPerShare(_oldIdx);
             cdpManager.syncGlobalAccountingAndGracePeriod();
             console.log("_oldIndex:", cdpManager.stEthIndex());
@@ -175,7 +175,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
 
         vm.assume(debtAmt > 1e18);
 
-        uint _curPrice = priceFeedMock.getPrice();
+        uint256 _curPrice = priceFeedMock.getPrice();
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge
 
@@ -200,8 +200,8 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         // Once a CDP is open
         // Just take some yield
         // NOTE: We must do this here due to `updateCdpDebtRedistributionIndex` resynching the index after each open
-        uint _curIndex = collateral.getPooledEthByShares(1e18);
-        uint _newIndex = _curIndex + 5e16;
+        uint256 _curIndex = collateral.getPooledEthByShares(1e18);
+        uint256 _newIndex = _curIndex + 5e16;
         collateral.setEthPerShare(_newIndex);
 
         // Attacker opens CDP to push to barely to RM
