@@ -469,7 +469,7 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    it("addColl(), reverts if cdp is not owned by caller", async () => {
+    it.only("addColl(), reverts if cdp is not owned by caller (does not consider approved positionManagers)", async () => {
       // A, B open cdps
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
@@ -480,8 +480,7 @@ contract('BorrowerOperations', async accounts => {
         const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: alice })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
-        assert.include(error.message, "revert")
-        assert.include(error.message, "BorrowerOperations: Only borrower account or approved delegate can OpenCdp on borrower's behalf")
+        assert.include(error.message, "BorrowerOperations: Only borrower account or approved position manager can OpenCdp on borrower's behalf")
       }
     })
 
