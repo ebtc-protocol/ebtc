@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
+import "./IPositionManagers.sol";
 
 // Common interface for the Cdp Manager.
-interface IBorrowerOperations {
+interface IBorrowerOperations is IPositionManagers {
     // --- Events ---
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
@@ -23,6 +24,14 @@ interface IBorrowerOperations {
         bytes32 _upperHint,
         bytes32 _lowerHint,
         uint _collAmount
+    ) external returns (bytes32);
+
+    function openCdpFor(
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount,
+        address _borrower
     ) external returns (bytes32);
 
     function addColl(

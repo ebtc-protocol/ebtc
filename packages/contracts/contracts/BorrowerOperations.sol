@@ -23,6 +23,24 @@ contract BorrowerOperations is
 {
     string public constant NAME = "BorrowerOperations";
 
+    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _PERMIT_POSITION_MANAGER_TYPEHASH =
+        0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401;
+
+    // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant _TYPE_HASH =
+        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    string internal constant _VERSION = "1";
+
+    // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
+    // invalidate the cached domain separator if the chain id changes.
+    bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
+    uint256 private immutable _CACHED_CHAIN_ID;
+
+    bytes32 private immutable _HASHED_NAME;
+    bytes32 private immutable _HASHED_VERSION;
+
     // --- Connected contract declarations ---
 
     ICdpManager public immutable cdpManager;
@@ -35,6 +53,10 @@ contract BorrowerOperations is
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
+
+    // Mapping of borrowers to approved position managers, by approval status: cdpOwner(borrower) -> positionManager -> PositionManagerApproval (None, OneTime, Persistent)
+    mapping(address => mapping(address => PositionManagerApproval)) public positionManagers;
+    mapping(address => uint256) private _nonces;
 
     /* --- Variable container structs  ---
 
@@ -102,6 +124,14 @@ contract BorrowerOperations is
             _initializeAuthority(_authorityAddress);
         }
 
+        bytes32 hashedName = keccak256(bytes(NAME));
+        bytes32 hashedVersion = keccak256(bytes(_VERSION));
+
+        _HASHED_NAME = hashedName;
+        _HASHED_VERSION = hashedVersion;
+        _CACHED_CHAIN_ID = _chainID();
+        _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
+
         emit CdpManagerAddressChanged(_cdpManagerAddress);
         emit ActivePoolAddressChanged(_activePoolAddress);
         emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
@@ -147,6 +177,16 @@ contract BorrowerOperations is
         uint _collAmount
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
         return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, msg.sender);
+    }
+
+    function openCdpFor(
+        uint _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint _collAmount,
+        address _borrower
+    ) external override nonReentrantSelfAndCdpM returns (bytes32) {
+        return _openCdp(_EBTCAmount, _upperHint, _lowerHint, _collAmount, _borrower);
     }
 
     // Function that adds the received stETH to the caller's specified Cdp.
@@ -257,7 +297,10 @@ contract BorrowerOperations is
         bytes32 _lowerHint,
         uint _collAddAmount
     ) internal {
-        _requireCdpOwner(_cdpId);
+        // Confirm the operation is the borrower or approved position manager adjusting its own cdp
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
+
         _requireCdpisActive(cdpManager, _cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -272,10 +315,6 @@ contract BorrowerOperations is
         }
         _requireSingularCollChange(_collAddAmount, _collWithdrawal);
         _requireNonZeroAdjustment(_collAddAmount, _collWithdrawal, _EBTCChange);
-
-        // Confirm the operation is the borrower adjusting its own cdp
-        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        require(msg.sender == _borrower, "BorrowerOperations: only allow CDP owner to adjust!");
 
         // Get the collChange based on the collateral value transferred in the transaction
         (vars.collChange, vars.isCollIncrease) = _getCollChange(_collAddAmount, _collWithdrawal);
@@ -308,7 +347,7 @@ contract BorrowerOperations is
         // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
         if (!_isDebtIncrease && _EBTCChange > 0) {
             _requireValidEBTCRepayment(vars.debt, vars.netDebtChange);
-            _requireSufficientEBTCBalance(ebtcToken, _borrower, vars.netDebtChange);
+            _requireSufficientEBTCBalance(ebtcToken, msg.sender, vars.netDebtChange);
             _requireNonZeroDebt(vars.debt - vars.netDebtChange);
         }
 
@@ -354,6 +393,7 @@ contract BorrowerOperations is
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_EBTCAmount);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
 
         LocalVariables_openCdp memory vars;
 
@@ -426,8 +466,8 @@ contract BorrowerOperations is
             _borrower
         );
 
-        // Mint the full EBTCAmount to the borrower
-        _withdrawEBTC(_borrower, _EBTCAmount, _EBTCAmount);
+        // Mint the full EBTCAmount to the caller
+        _withdrawEBTC(msg.sender, _EBTCAmount, _EBTCAmount);
 
         /**
             Note that only NET coll (as shares) is considered part of the CDP.
@@ -451,7 +491,9 @@ contract BorrowerOperations is
     allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
     */
     function closeCdp(bytes32 _cdpId) external override {
-        _requireCdpOwner(_cdpId);
+        address _borrower = sortedCdps.getOwnerAddress(_cdpId);
+        _requireBorrowerOrPositionManagerAndUpdate(_borrower);
+
         _requireCdpisActive(cdpManager, _cdpId);
 
         cdpManager.applyPendingState(_cdpId);
@@ -498,6 +540,125 @@ contract BorrowerOperations is
     function claimCollateral() external override {
         // send ETH from CollSurplus Pool to owner
         collSurplusPool.claimColl(msg.sender);
+    }
+
+    /// @notice Returns true if the borrower is allowing position manager to act on their behalf
+    function getPositionManagerApproval(
+        address _borrower,
+        address _positionManager
+    ) external view override returns (PositionManagerApproval) {
+        return _getPositionManagerApproval(_borrower, _positionManager);
+    }
+
+    function _getPositionManagerApproval(
+        address _borrower,
+        address _positionManager
+    ) internal view returns (PositionManagerApproval) {
+        return positionManagers[_borrower][_positionManager];
+    }
+
+    /// @notice Approve an account to take arbitrary actions on your Cdps.
+    /// @notice Account managers with 'Persistent' status will be able to take actions indefinitely
+    /// @notice Account managers with 'OneTIme' status will be able to take a single action on one Cdp. Approval will be automatically revoked after one Cdp-related action.
+    /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    function setPositionManagerApproval(
+        address _positionManager,
+        PositionManagerApproval _approval
+    ) external override {
+        _setPositionManagerApproval(msg.sender, _positionManager, _approval);
+    }
+
+    function _setPositionManagerApproval(
+        address _borrower,
+        address _positionManager,
+        PositionManagerApproval _approval
+    ) internal {
+        positionManagers[_borrower][_positionManager] = _approval;
+        emit PositionManagerApprovalSet(_borrower, _positionManager, _approval);
+    }
+
+    /// @notice Revoke a position manager from taking further actions on your Cdps
+    /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    function revokePositionManagerApproval(address _positionManager) external override {
+        _setPositionManagerApproval(msg.sender, _positionManager, PositionManagerApproval.None);
+    }
+
+    /// @notice Allows recipient of delegation to renounce it
+    function renouncePositionManagerApproval(address _borrower) external override {
+        _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
+    }
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return domainSeparator();
+    }
+
+    function domainSeparator() public view override returns (bytes32) {
+        if (_chainID() == _CACHED_CHAIN_ID) {
+            return _CACHED_DOMAIN_SEPARATOR;
+        } else {
+            return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
+        }
+    }
+
+    function _chainID() private view returns (uint256) {
+        return block.chainid;
+    }
+
+    function _buildDomainSeparator(
+        bytes32 typeHash,
+        bytes32 name,
+        bytes32 version
+    ) private view returns (bytes32) {
+        return keccak256(abi.encode(typeHash, name, version, _chainID(), address(this)));
+    }
+
+    function nonces(address _borrower) external view override returns (uint256) {
+        // FOR EIP 2612
+        return _nonces[_borrower];
+    }
+
+    function version() external pure override returns (string memory) {
+        return _VERSION;
+    }
+
+    function permitTypeHash() external pure override returns (bytes32) {
+        return _PERMIT_POSITION_MANAGER_TYPEHASH;
+    }
+
+    function permitPositionManagerApproval(
+        address _borrower,
+        address _positionManager,
+        PositionManagerApproval _approval,
+        uint _deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override {
+        require(_deadline >= block.timestamp, "BorrowerOperations: Position manager permit expired");
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator(),
+                keccak256(
+                    abi.encode(
+                        _PERMIT_POSITION_MANAGER_TYPEHASH,
+                        _borrower,
+                        _positionManager,
+                        _approval,
+                        _nonces[_borrower]++,
+                        _deadline
+                    )
+                )
+            )
+        );
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(
+            recoveredAddress != address(0) && recoveredAddress == _borrower,
+            "BorrowerOperations: Invalid signature"
+        );
+
+        _setPositionManagerApproval(_borrower, _positionManager, _approval);
     }
 
     // --- Helper functions ---
@@ -564,22 +725,10 @@ contract BorrowerOperations is
 
     // --- 'Require' wrapper functions ---
 
-    function _requireCdpOwner(bytes32 _cdpId) internal view {
-        address _owner = sortedCdps.existCdpOwners(_cdpId);
-        require(msg.sender == _owner, "BorrowerOperations: Caller must be cdp owner");
-    }
-
     function _requireSingularCollChange(uint _collAdd, uint _collWithdrawal) internal pure {
         require(
             _collAdd == 0 || _collWithdrawal == 0,
             "BorrowerOperations: Cannot add and withdraw collateral in same operation"
-        );
-    }
-
-    function _requireCallerIsBorrower(address _borrower) internal view {
-        require(
-            msg.sender == _borrower,
-            "BorrowerOperations: Caller must be the borrower for a withdrawal"
         );
     }
 
@@ -720,13 +869,33 @@ contract BorrowerOperations is
 
     function _requireSufficientEBTCBalance(
         IEBTCToken _ebtcToken,
-        address _borrower,
+        address _account,
         uint _debtRepayment
     ) internal view {
         require(
-            _ebtcToken.balanceOf(_borrower) >= _debtRepayment,
+            _ebtcToken.balanceOf(_account) >= _debtRepayment,
             "BorrowerOperations: Caller doesnt have enough EBTC to make repayment"
         );
+    }
+
+    function _requireBorrowerOrPositionManagerAndUpdate(address _borrower) internal {
+        if (_borrower == msg.sender) {
+            return; // Early return, no delegation
+        }
+
+        PositionManagerApproval _approval = _getPositionManagerApproval(_borrower, msg.sender);
+        // Must be an approved position manager at this point
+        require(
+            _approval != PositionManagerApproval.None,
+            "BorrowerOperations: Only borrower account or approved position manager can OpenCdp on borrower's behalf"
+        );
+
+        // Conditional Adjustment
+        /// @dev If this is a position manager operation with a one-time approval, clear that approval
+        /// @dev If the PositionManagerApproval was none, we should have failed with the check in _requireBorrowerOrPositionManagerAndUpdate
+        if (_approval == PositionManagerApproval.OneTime) {
+            _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
+        }
     }
 
     // --- ICR and TCR getters ---
