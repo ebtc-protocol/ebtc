@@ -33,7 +33,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _attemptedEBTCAmount,
         uint256 _actualEBTCAmount,
         uint256 _ETHSent,
-        uint256 _ETHFee
+        uint256 _ETHFee,
+        address _redeemer
     );
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -48,9 +49,11 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     event CdpLiquidated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
-        uint256 _debt,
-        uint256 _coll,
-        CdpOperation _operation
+        uint _debt,
+        uint _coll,
+        CdpOperation _operation,
+        address _liquidator,
+        uint _premiumToLiquidator
     );
     event CdpPartiallyLiquidated(
         bytes32 indexed _cdpId,

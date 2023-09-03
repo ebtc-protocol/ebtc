@@ -484,7 +484,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             totals.price
         );
 
-        emit Redemption(_EBTCamount, totals.totalEBTCToRedeem, totals.totalETHDrawn, totals.ETHFee);
+        emit Redemption(
+            _EBTCamount,
+            totals.totalEBTCToRedeem,
+            totals.totalETHDrawn,
+            totals.ETHFee,
+            msg.sender
+        );
 
         // Burn the total eBTC that is redeemed
         ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);

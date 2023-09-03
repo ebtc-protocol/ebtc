@@ -515,6 +515,15 @@ class TestHelper {
     }
     return events
   }
+  
+  static getEventValByName(event, argName) {
+    const keys = Object.keys(event.args)
+    for (let j = 0; j < keys.length; j++) {
+      if (keys[j] === argName) {
+        return event.args[keys[j]]
+      }
+    }
+  }
 
   static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
