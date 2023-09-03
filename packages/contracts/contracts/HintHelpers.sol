@@ -14,10 +14,6 @@ contract HintHelpers is LiquityBase {
 
     // --- Events ---
 
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
     struct LocalVariables_getRedemptionHints {
         uint remainingEbtcToRedeem;
         uint minNetDebtInBTC;
@@ -35,10 +31,6 @@ contract HintHelpers is LiquityBase {
     ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
-
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit CollateralAddressChanged(_collateralAddress);
     }
 
     // --- Functions ---

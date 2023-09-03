@@ -61,10 +61,6 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
             _initializeAuthority(_authorityAddress);
         }
 
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
-        emit CollSurplusPoolAddressChanged(_collSurplusAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 

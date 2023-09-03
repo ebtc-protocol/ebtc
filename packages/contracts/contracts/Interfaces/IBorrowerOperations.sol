@@ -7,14 +7,7 @@ import "./IPositionManagers.sol";
 interface IBorrowerOperations is IPositionManagers {
     // --- Events ---
 
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolAddressChanged(address _activePoolAddress);
-    event CollSurplusPoolAddressChanged(address _collSurplusPoolAddress);
-    event PriceFeedAddressChanged(address _newPriceFeedAddress);
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
     event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
 
     // --- Functions ---

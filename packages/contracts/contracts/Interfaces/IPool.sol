@@ -8,7 +8,6 @@ interface IPool {
 
     event ETHBalanceUpdated(uint _newBalance);
     event EBTCBalanceUpdated(uint _newBalance);
-    event ActivePoolAddressChanged(address _newActivePoolAddress);
     event CollateralSent(address _to, uint _amount);
 
     // --- Functions ---

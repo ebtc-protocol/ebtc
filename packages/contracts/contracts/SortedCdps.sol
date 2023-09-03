@@ -91,9 +91,6 @@ contract SortedCdps is ISortedCdps {
 
         cdpManager = ICdpManager(_cdpManagerAddress);
         borrowerOperationsAddress = _borrowerOperationsAddress;
-
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
     }
 
     // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
