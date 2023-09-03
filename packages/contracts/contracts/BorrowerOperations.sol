@@ -131,7 +131,7 @@ contract BorrowerOperations is
         _HASHED_VERSION = hashedVersion;
         _CACHED_CHAIN_ID = _chainID();
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
-        
+
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 

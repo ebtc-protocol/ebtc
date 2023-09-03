@@ -35,7 +35,7 @@ import "./Interfaces/IBorrowerOperations.sol";
  * - Keys have been removed from nodes
  *
  * - Ordering checks for insertion are performed by comparing an NICR argument to the current NICR, calculated at runtime.
- *   The list relies on the property that ordering by ICR is maintained as the ETH:USD price varies.
+ *   The list relies on the property that ordering by ICR is maintained as the stETH:BTC price varies.
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
  */
@@ -67,19 +67,9 @@ contract SortedCdps is ISortedCdps {
 
     Data public data;
 
-    mapping(bytes32 => address) public cdpOwners;
     uint256 public nextCdpNonce;
     bytes32 public constant dummyId =
         0x0000000000000000000000000000000000000000000000000000000000000000;
-
-    // Mapping from cdp owner to list of owned cdp IDs
-    mapping(address => mapping(uint256 => bytes32)) public override _ownedCdps;
-
-    // Mapping from cdp ID to index within owner cdp list
-    mapping(bytes32 => uint256) public override _ownedCdpIndex;
-
-    // Mapping from cdp owner to its owned cdps count
-    mapping(address => uint256) public override _ownedCount;
 
     // --- Dependency setters ---
     constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
@@ -108,36 +98,121 @@ contract SortedCdps is ISortedCdps {
         return serialized;
     }
 
+    /// @notice Get owner address of a given Cdp, by CdpId.
+    /// @dev The owner address is stored in the first 20 bytes of the CdpId
+    /// @param cdpId cdpId of Cdp to get owner of
+    /// @return owner address of the Cdp
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
         uint256 _tmp = uint256(cdpId) >> ADDRESS_SHIFT;
         return address(uint160(_tmp));
-    }
-
-    function existCdpOwners(bytes32 cdpId) public view override returns (address) {
-        return cdpOwners[cdpId];
     }
 
     function nonExistId() public pure override returns (bytes32) {
         return dummyId;
     }
 
-    function cdpOfOwnerByIndex(address owner, uint256 index) public view override returns (bytes32) {
-        require(index < _ownedCount[owner], "SortedCdps: index exceeds owned count of owner");
-        return _ownedCdps[owner][index];
+    /// @notice Find a specific Cdp for a given owner, indexed by it's place in the linked list relative to other Cdps owned by the same address
+    /// @notice Reverts if the index exceeds the number of active Cdps owned by the given owner
+    /// @dev Intended for off-chain use, O(n) operation on size of SortedCdps linked list
+    /// @param owner address of Cdp owner
+    /// @param index index of Cdp, ordered by position in linked list relative to Cdps of the same owner
+    function cdpOfOwnerByIndex(
+        address owner,
+        uint256 index
+    ) external view override returns (bytes32) {
+        return _cdpOfOwnerByIndex(owner, index, bytes32(0), 0);
     }
 
-    function cdpCountOf(address owner) public view override returns (uint256) {
-        return _ownedCount[owner];
-    }
+    function _cdpOfOwnerByIndex(
+        address owner,
+        uint256 index,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) internal view returns (bytes32) {
+        bytes32 _currentCdpId = data.tail;
+        uint _currentIndex = 0;
 
-    // Returns array of all user owned CDPs
-    function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
-        uint countOfCdps = _ownedCount[owner];
-        bytes32[] memory cdps = new bytes32[](countOfCdps);
-        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
-            cdps[cdpIx] = _ownedCdps[owner][cdpIx];
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                // if the current index of the owner Cdp matches specified index
+                if (_currentIndex == index) {
+                    return _currentCdpId;
+                } else {
+                    // if not, increment the owner index as we've seen a Cdp owned by them
+                    _currentIndex = _currentIndex + 1;
+                }
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
         }
-        return cdps;
+
+        // if we reach end without seeing the specified index for the owner, a Cdp of that index doesn't exist (they have fewer active Cdps than that)
+        revert("SortedCdps: index exceeds owned count of owner");
+    }
+
+    /// @notice Get active Cdp count of a given address
+    /// @dev Intended for off-chain use, O(n) operation on size of linked list
+    function cdpCountOf(address owner) external view override returns (uint256) {
+        return _cdpCountOf(owner, bytes32(0), 0);
+    }
+
+    function _cdpCountOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) internal view returns (uint256) {
+        // walk the list, until we get to the index
+        bytes32 _currentCdpId = data.tail;
+        uint _ownedCount = 0;
+
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                _ownedCount = _ownedCount + 1;
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
+        }
+        return _ownedCount;
+    }
+
+    /// @notice Get all active Cdps for a given address
+    /// @dev Intended for off-chain use, O(n) operation on size of linked list
+    function getCdpsOf(address owner) external view override returns (bytes32[] memory) {
+        // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
+        // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
+        uint _ownedCount = _cdpCountOf(owner, bytes32(0), 0);
+        return _getCdpsOf(owner, bytes32(0), 0, _ownedCount);
+    }
+
+    function _getCdpsOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes,
+        uint maxArraySize
+    ) internal view returns (bytes32[] memory) {
+        // Two-pass strategy, halving the amount of Cdps we can process before relying on pagination or off-chain methods
+        bytes32[] memory userCdps = new bytes32[](maxArraySize);
+        uint i = 0;
+
+        // walk the list, until we get to the index
+        bytes32 _currentCdpId = data.tail;
+
+        while (_currentCdpId != dummyId) {
+            // if the current Cdp is owned by specified owner
+            if (getOwnerAddress(_currentCdpId) == owner) {
+                userCdps[i] = _currentCdpId;
+                i++;
+            }
+
+            // move to the next Cdp in the list
+            _currentCdpId = data.nodes[_currentCdpId].prevId;
+        }
+
+        return userCdps;
     }
 
     /*
@@ -157,24 +232,16 @@ contract SortedCdps is ISortedCdps {
         bytes32 _id = toCdpId(owner, block.number, nextCdpNonce);
         require(cdpManager.getCdpStatus(_id) == 0, "SortedCdps: new id is NOT nonExistent!");
 
-        _insert(cdpManager, _id, _NICR, _prevId, _nextId);
+        _insert(_id, _NICR, _prevId, _nextId);
 
         unchecked {
             ++nextCdpNonce;
         }
 
-        cdpOwners[_id] = owner;
-        _addCdpToOwnerEnumeration(owner, _id);
         return _id;
     }
 
-    function _insert(
-        ICdpManager _cdpManager,
-        bytes32 _id,
-        uint256 _NICR,
-        bytes32 _prevId,
-        bytes32 _nextId
-    ) internal {
+    function _insert(bytes32 _id, uint256 _NICR, bytes32 _prevId, bytes32 _nextId) internal {
         // List must not be full
         require(!isFull(), "SortedCdps: List is full");
         // List must not already contain node
@@ -187,10 +254,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 prevId = _prevId;
         bytes32 nextId = _nextId;
 
-        if (!_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        if (!_validInsertPosition(_NICR, prevId, nextId)) {
             // Sender's hint was not a valid insert position
             // Use sender's hint to find a valid insert position
-            (prevId, nextId) = _findInsertPosition(_cdpManager, _NICR, prevId, nextId);
+            (prevId, nextId) = _findInsertPosition(_NICR, prevId, nextId);
         }
 
         if (prevId == dummyId && nextId == dummyId) {
@@ -222,10 +289,6 @@ contract SortedCdps is ISortedCdps {
     function remove(bytes32 _id) external override {
         _requireCallerIsCdpManager();
         _remove(_id);
-
-        address _owner = cdpOwners[_id];
-        _removeCdpFromOwnerEnumeration(_owner, _id);
-        delete cdpOwners[_id];
     }
 
     function batchRemove(bytes32[] memory _ids) external override {
@@ -259,8 +322,6 @@ contract SortedCdps is ISortedCdps {
 
         // delete node & owner storages to get gas refund
         for (uint i = 0; i < _len; ++i) {
-            _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
-            delete cdpOwners[_ids[i]];
             delete data.nodes[_ids[i]];
             emit NodeRemoved(_ids[i]);
         }
@@ -330,40 +391,7 @@ contract SortedCdps is ISortedCdps {
         // Remove node from the list
         _remove(_id);
 
-        _insert(cdpManager, _id, _newNICR, _prevId, _nextId);
-    }
-
-    /**
-     * @dev Private function to add a cdp to ownership-tracking data structures.
-     * @param to address representing the owner of the given cdp ID
-     * @param cdpId bytes32 ID of the cdp to be added to the owned list of the given owner
-     */
-    function _addCdpToOwnerEnumeration(address to, bytes32 cdpId) private {
-        uint256 length = _ownedCount[to];
-        _ownedCdps[to][length] = cdpId;
-        _ownedCdpIndex[cdpId] = length;
-        _ownedCount[to] = length + 1;
-    }
-
-    /**
-     * @dev Private function to remove a cdp from ownership-tracking data structures.
-     * This has O(1) time complexity, but alters the ordering within the _ownedCdps.
-     * @param from address representing the owner of the given cdp ID
-     * @param cdpId bytes32 ID of the cdp to be removed from the owned list of the given owner
-     */
-    function _removeCdpFromOwnerEnumeration(address from, bytes32 cdpId) private {
-        uint256 lastCdpIndex = _ownedCount[from] - 1;
-        uint256 cdpIndex = _ownedCdpIndex[cdpId];
-
-        if (cdpIndex != lastCdpIndex) {
-            bytes32 lastCdpId = _ownedCdps[from][lastCdpIndex];
-            _ownedCdps[from][cdpIndex] = lastCdpId; // Move the last cdp to the slot of the to-delete cdp
-            _ownedCdpIndex[lastCdpId] = cdpIndex; // Update the moved cdp's index
-        }
-
-        delete _ownedCdpIndex[cdpId];
-        delete _ownedCdps[from][lastCdpIndex];
-        _ownedCount[from] = lastCdpIndex;
+        _insert(_id, _newNICR, _prevId, _nextId);
     }
 
     /**
@@ -458,11 +486,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external view override returns (bool) {
-        return _validInsertPosition(cdpManager, _NICR, _prevId, _nextId);
+        return _validInsertPosition(_NICR, _prevId, _nextId);
     }
 
     function _validInsertPosition(
-        ICdpManager _cdpManager,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
@@ -472,32 +499,27 @@ contract SortedCdps is ISortedCdps {
             return isEmpty();
         } else if (_prevId == dummyId) {
             // `(null, _nextId)` is a valid insert position if `_nextId` is the head of the list
-            return data.head == _nextId && _NICR >= _cdpManager.getNominalICR(_nextId);
+            return data.head == _nextId && _NICR >= cdpManager.getNominalICR(_nextId);
         } else if (_nextId == dummyId) {
             // `(_prevId, null)` is a valid insert position if `_prevId` is the tail of the list
-            return data.tail == _prevId && _NICR <= _cdpManager.getNominalICR(_prevId);
+            return data.tail == _prevId && _NICR <= cdpManager.getNominalICR(_prevId);
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_NICR` falls between the two nodes' NICRs
             return
                 data.nodes[_prevId].nextId == _nextId &&
-                _cdpManager.getNominalICR(_prevId) >= _NICR &&
-                _NICR >= _cdpManager.getNominalICR(_nextId);
+                cdpManager.getNominalICR(_prevId) >= _NICR &&
+                _NICR >= cdpManager.getNominalICR(_nextId);
         }
     }
 
     /*
      * @dev Descend the list (larger NICRs to smaller NICRs) to find a valid insert position
-     * @param _cdpManager CdpManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start descending the list from
      */
-    function _descendList(
-        ICdpManager _cdpManager,
-        uint256 _NICR,
-        bytes32 _startId
-    ) internal view returns (bytes32, bytes32) {
+    function _descendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
-        if (data.head == _startId && _NICR >= _cdpManager.getNominalICR(_startId)) {
+        if (data.head == _startId && _NICR >= cdpManager.getNominalICR(_startId)) {
             return (dummyId, _startId);
         }
 
@@ -505,7 +527,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 nextId = data.nodes[prevId].nextId;
 
         // Descend the list until we reach the end or until we find a valid insert position
-        while (prevId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        while (prevId != dummyId && !_validInsertPosition(_NICR, prevId, nextId)) {
             prevId = data.nodes[prevId].nextId;
             nextId = data.nodes[prevId].nextId;
         }
@@ -515,17 +537,12 @@ contract SortedCdps is ISortedCdps {
 
     /*
      * @dev Ascend the list (smaller NICRs to larger NICRs) to find a valid insert position
-     * @param _cdpManager CdpManager contract, passed in as param to save SLOAD’s
      * @param _NICR Node's NICR
      * @param _startId Id of node to start ascending the list from
      */
-    function _ascendList(
-        ICdpManager _cdpManager,
-        uint256 _NICR,
-        bytes32 _startId
-    ) internal view returns (bytes32, bytes32) {
+    function _ascendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
-        if (data.tail == _startId && _NICR <= _cdpManager.getNominalICR(_startId)) {
+        if (data.tail == _startId && _NICR <= cdpManager.getNominalICR(_startId)) {
             return (_startId, dummyId);
         }
 
@@ -533,7 +550,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 prevId = data.nodes[nextId].prevId;
 
         // Ascend the list until we reach the end or until we find a valid insertion point
-        while (nextId != dummyId && !_validInsertPosition(_cdpManager, _NICR, prevId, nextId)) {
+        while (nextId != dummyId && !_validInsertPosition(_NICR, prevId, nextId)) {
             nextId = data.nodes[nextId].prevId;
             prevId = data.nodes[nextId].prevId;
         }
@@ -553,11 +570,10 @@ contract SortedCdps is ISortedCdps {
         bytes32 _prevId,
         bytes32 _nextId
     ) external view override returns (bytes32, bytes32) {
-        return _findInsertPosition(cdpManager, _NICR, _prevId, _nextId);
+        return _findInsertPosition(_NICR, _prevId, _nextId);
     }
 
     function _findInsertPosition(
-        ICdpManager _cdpManager,
         uint256 _NICR,
         bytes32 _prevId,
         bytes32 _nextId
@@ -566,14 +582,14 @@ contract SortedCdps is ISortedCdps {
         bytes32 nextId = _nextId;
 
         if (prevId != dummyId) {
-            if (!contains(prevId) || _NICR > _cdpManager.getNominalICR(prevId)) {
+            if (!contains(prevId) || _NICR > cdpManager.getNominalICR(prevId)) {
                 // `prevId` does not exist anymore or now has a smaller NICR than the given NICR
                 prevId = dummyId;
             }
         }
 
         if (nextId != dummyId) {
-            if (!contains(nextId) || _NICR < _cdpManager.getNominalICR(nextId)) {
+            if (!contains(nextId) || _NICR < cdpManager.getNominalICR(nextId)) {
                 // `nextId` does not exist anymore or now has a larger NICR than the given NICR
                 nextId = dummyId;
             }
@@ -581,16 +597,16 @@ contract SortedCdps is ISortedCdps {
 
         if (prevId == dummyId && nextId == dummyId) {
             // No hint - descend list starting from head
-            return _descendList(_cdpManager, _NICR, data.head);
+            return _descendList(_NICR, data.head);
         } else if (prevId == dummyId) {
             // No `prevId` for hint - ascend list starting from `nextId`
-            return _ascendList(_cdpManager, _NICR, nextId);
+            return _ascendList(_NICR, nextId);
         } else if (nextId == dummyId) {
             // No `nextId` for hint - descend list starting from `prevId`
-            return _descendList(_cdpManager, _NICR, prevId);
+            return _descendList(_NICR, prevId);
         } else {
             // Descend list starting from `prevId`
-            return _descendList(_cdpManager, _NICR, prevId);
+            return _descendList(_NICR, prevId);
         }
     }
 
