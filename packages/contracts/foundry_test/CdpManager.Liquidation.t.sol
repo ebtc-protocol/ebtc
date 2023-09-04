@@ -722,19 +722,19 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
-        // Call _liquidateSingleCDP with the appropriate arguments
+        // Call _liquidateIndividualCdpSetupCDP with the appropriate arguments
         // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
     }
 
     function testPartialLiquidation() public {
         // Set up a test case where the CDP is only partially liquidated using HintHelper, with ICR below MCR or TCR in recovery mode
-        // Call _liquidateSingleCDP with the appropriate arguments
+        // Call _liquidateIndividualCdpSetupCDP with the appropriate arguments
         // Assert that the correct total debt was burned and collateral was sent, and that no remaining debt was redistributed
     }
 
     function testRetryFullLiquidation() public {
         // Set up a test case where the CDP is partially liquidated but the amount of collateral sent is 0, resulting in a retry with full liquidation
-        // Call _liquidateSingleCDP with the appropriate arguments
+        // Call _liquidateIndividualCdpSetupCDP with the appropriate arguments
         // Assert that the correct total debt was burned, collateral was sent, and any remaining debt was redistributed
     }
 

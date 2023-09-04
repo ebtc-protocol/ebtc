@@ -107,21 +107,21 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
      * in order to avoid the error: "CompilerError: Stack too deep".
      **/
 
-    struct LocalVar_CdpDebtColl {
+    struct CdpDebtAndCollShares {
         uint256 entireDebt;
         uint256 entireColl;
         uint256 pendingDebtReward;
     }
 
-    struct LocalVar_InternalLiquidate {
-        bytes32 _cdpId;
-        uint256 _partialAmount; // used only for partial liquidation, default 0 means full liquidation
-        uint256 _price;
-        uint256 _ICR;
-        bytes32 _upperPartialHint;
-        bytes32 _lowerPartialHint;
-        bool _recoveryModeAtStart;
-        uint256 _TCR;
+    struct LiquidationLocals {
+        bytes32 cdpId;
+        uint256 partialAmount; // used only for partial liquidation, default 0 means full liquidation
+        uint256 price;
+        uint256 ICR;
+        bytes32 upperPartialHint;
+        bytes32 lowerPartialHint;
+        bool recoveryModeAtStart;
+        uint256 TCR;
         uint256 totalColSurplus;
         uint256 totalColToSend;
         uint256 totalDebtToBurn;
@@ -130,15 +130,15 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bool sequenceLiq;
     }
 
-    struct LocalVar_RecoveryLiquidate {
+    struct LiquidationRecoveryModeLocals {
         uint256 entireSystemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
         uint256 totalColToSend;
         uint256 totalColSurplus;
-        bytes32 _cdpId;
-        uint256 _price;
-        uint256 _ICR;
+        bytes32 cdpId;
+        uint256 price;
+        uint256 ICR;
         uint256 totalDebtToRedistribute;
         uint256 totalColReward;
         bool sequenceLiq;
@@ -162,13 +162,13 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 TCR;
     }
 
-    struct LocalVariables_RedeemCollateralFromCdp {
-        bytes32 _cdpId;
-        uint256 _maxEBTCamount;
-        uint256 _price;
-        bytes32 _upperPartialRedemptionHint;
-        bytes32 _lowerPartialRedemptionHint;
-        uint256 _partialRedemptionHintNICR;
+    struct SingleRedemptionInputs {
+        bytes32 cdpId;
+        uint256 maxEBTCamount;
+        uint256 price;
+        bytes32 upperPartialRedemptionHint;
+        bytes32 lowerPartialRedemptionHint;
+        uint256 partialRedemptionHintNICR;
     }
 
     struct LiquidationValues {

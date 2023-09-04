@@ -75,10 +75,10 @@ contract LiquityBase is BaseMath, ILiquityBase {
     }
 
     function _getTCR(uint256 _price) internal view returns (uint256 TCR) {
-        (TCR, , ) = _getTCRWithTotalCollAndDebt(_price);
+        (TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
     }
 
-    function _getTCRWithTotalCollAndDebt(
+    function _getTCRWithSystemDebtAndCollShares(
         uint256 _price
     ) internal view returns (uint256 TCR, uint256 _coll, uint256 _debt) {
         uint256 entireSystemColl = getEntireSystemColl();

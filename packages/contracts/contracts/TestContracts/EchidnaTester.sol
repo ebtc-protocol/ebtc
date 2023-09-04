@@ -900,7 +900,9 @@ contract EchidnaTester {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (_systemStEthFeePerUnitIndex < cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i))) {
+            if (
+                _systemStEthFeePerUnitIndex < cdpManager.stEthFeePerUnitIndex(cdpManager.CdpIds(i))
+            ) {
                 return false;
             }
         }

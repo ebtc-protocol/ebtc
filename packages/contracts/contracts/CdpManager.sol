@@ -145,24 +145,24 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _redeemColFromCdp Struct containing variables for redeeming collateral.
     /// @return singleRedemption Struct containing redemption values.
     function _redeemCollateralFromCdp(
-        LocalVariables_RedeemCollateralFromCdp memory _redeemColFromCdp
+        SingleRedemptionInputs memory _redeemColFromCdp
     ) internal returns (SingleRedemptionValues memory singleRedemption) {
         // Determine the remaining amount (lot) to be redeemed,
         // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.eBtcToRedeem = LiquityMath._min(
-            _redeemColFromCdp._maxEBTCamount,
-            Cdps[_redeemColFromCdp._cdpId].debt
+            _redeemColFromCdp.maxEBTCamount,
+            Cdps[_redeemColFromCdp.cdpId].debt
         );
 
         // Get the stEthToRecieve of equivalent value in USD
         singleRedemption.stEthToRecieve = collateral.getSharesByPooledEth(
-            (singleRedemption.eBtcToRedeem * DECIMAL_PRECISION) / _redeemColFromCdp._price
+            (singleRedemption.eBtcToRedeem * DECIMAL_PRECISION) / _redeemColFromCdp.price
         );
 
         // Repurposing this struct here to avoid stack too deep.
-        LocalVar_CdpDebtColl memory _oldDebtAndColl = LocalVar_CdpDebtColl(
-            Cdps[_redeemColFromCdp._cdpId].debt,
-            Cdps[_redeemColFromCdp._cdpId].coll,
+        CdpDebtAndCollShares memory _oldDebtAndColl = CdpDebtAndCollShares(
+            Cdps[_redeemColFromCdp.cdpId].debt,
+            Cdps[_redeemColFromCdp.cdpId].coll,
             0
         );
 
@@ -174,8 +174,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // No debt remains, close CDP
             // No debt left in the Cdp, therefore the cdp gets closed
             {
-                address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp._cdpId);
-                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp._cdpId]
+                address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp.cdpId);
+                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp.cdpId]
                     .liquidatorRewardShares;
 
                 singleRedemption.collSurplus = newColl; // Collateral surplus processed on full redemption
@@ -183,7 +183,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 singleRedemption.fullRedemption = true;
 
                 _closeCdpByRedemption(
-                    _redeemColFromCdp._cdpId,
+                    _redeemColFromCdp.cdpId,
                     0,
                     newColl,
                     _liquidatorRewardShares,
@@ -191,7 +191,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 );
 
                 emit CdpUpdated(
-                    _redeemColFromCdp._cdpId,
+                    _redeemColFromCdp.cdpId,
                     _borrower,
                     _oldDebtAndColl.entireDebt,
                     _oldDebtAndColl.entireColl,
@@ -212,7 +212,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              * If the resultant net coll of the partial is less than the minimum, we bail.
              */
             if (
-                newNICR != _redeemColFromCdp._partialRedemptionHintNICR ||
+                newNICR != _redeemColFromCdp.partialRedemptionHintNICR ||
                 collateral.getPooledEthByShares(newColl) < MIN_NET_COLL
             ) {
                 singleRedemption.cancelledPartial = true;
@@ -220,25 +220,25 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             }
 
             sortedCdps.reInsert(
-                _redeemColFromCdp._cdpId,
+                _redeemColFromCdp.cdpId,
                 newNICR,
-                _redeemColFromCdp._upperPartialRedemptionHint,
-                _redeemColFromCdp._lowerPartialRedemptionHint
+                _redeemColFromCdp.upperPartialRedemptionHint,
+                _redeemColFromCdp.lowerPartialRedemptionHint
             );
 
-            Cdps[_redeemColFromCdp._cdpId].debt = newDebt;
-            Cdps[_redeemColFromCdp._cdpId].coll = newColl;
-            _updateStakeAndTotalStakes(_redeemColFromCdp._cdpId);
+            Cdps[_redeemColFromCdp.cdpId].debt = newDebt;
+            Cdps[_redeemColFromCdp.cdpId].coll = newColl;
+            _updateStakeAndTotalStakes(_redeemColFromCdp.cdpId);
 
-            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp._cdpId);
+            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp.cdpId);
             emit CdpUpdated(
-                _redeemColFromCdp._cdpId,
+                _redeemColFromCdp.cdpId,
                 _borrower,
                 _oldDebtAndColl.entireDebt,
                 _oldDebtAndColl.entireColl,
                 newDebt,
                 newColl,
-                Cdps[_redeemColFromCdp._cdpId].stake,
+                Cdps[_redeemColFromCdp.cdpId].stake,
                 CdpOperation.redeemCollateral
             );
         }
@@ -354,7 +354,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 uint256 tcrAtStart,
                 uint256 totalCollSharesAtStart,
                 uint256 totalEBTCSupplyAtStart
-            ) = _getTCRWithTotalCollAndDebt(totals.price);
+            ) = _getTCRWithSystemDebtAndCollShares(totals.price);
             totals.tcrAtStart = tcrAtStart;
             totals.totalCollSharesAtStart = totalCollSharesAtStart;
             totals.totalEBTCSupplyAtStart = totalEBTCSupplyAtStart;
@@ -406,15 +406,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             {
                 _syncAccounting(_cId);
 
-                LocalVariables_RedeemCollateralFromCdp
-                    memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
-                        _cId,
-                        totals.remainingEBTC,
-                        totals.price,
-                        _upperPartialRedemptionHint,
-                        _lowerPartialRedemptionHint,
-                        _partialRedemptionHintNICR
-                    );
+                SingleRedemptionInputs memory _redeemColFromCdp = SingleRedemptionInputs(
+                    _cId,
+                    totals.remainingEBTC,
+                    totals.price,
+                    _upperPartialRedemptionHint,
+                    _lowerPartialRedemptionHint,
+                    _partialRedemptionHintNICR
+                );
                 SingleRedemptionValues memory singleRedemption = _redeemCollateralFromCdp(
                     _redeemColFromCdp
                 );
