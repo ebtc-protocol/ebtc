@@ -47,6 +47,6 @@ Alternatively (easier), if the same block proposer were to be able to offer 2 bl
 
 
 ## Gotchas:
-        cdpManager.updateCdpRewardSnapshots(_cdpId);
+        cdpManager.updateCdpDebtRedistributionIndex(_cdpId);
 
 Is already re-synching the index

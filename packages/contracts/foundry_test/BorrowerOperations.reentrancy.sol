@@ -28,7 +28,7 @@ contract BorrowerOperationsReentrancyTest is eBTCBaseFixture {
         priceFeedMock.setPrice(1e18);
 
         vm.startPrank(user);
-        uint borrowedAmount = 5 ether;
+        uint256 borrowedAmount = 5 ether;
 
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 10 ether);
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 10 ether);

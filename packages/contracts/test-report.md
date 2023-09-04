@@ -23,8 +23,8 @@ $ hardhat test
     BorrowerOperations
       ✓ moveETHGainToCdp(): reverts when called by an account that is not StabilityPool
     CdpManager
-      ✓ applyPendingState(): reverts when called by an account that is not BorrowerOperations
-      ✓ updateRewardSnapshots(): reverts when called by an account that is not BorrowerOperations
+      ✓ syncAccounting(): reverts when called by an account that is not BorrowerOperations
+      ✓ updatedebtRedistributionIndex(): reverts when called by an account that is not BorrowerOperations
       ✓ removeStake(): reverts when called by an account that is not BorrowerOperations
       ✓ updateStakeAndTotalStakes(): reverts when called by an account that is not BorrowerOperations
       ✓ closeCdp(): reverts when called by an account that is not BorrowerOperations
@@ -35,13 +35,13 @@ $ hardhat test
       ✓ increaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
       ✓ decreaseCdpDebt(): reverts when called by an account that is not BorrowerOperations
     ActivePool
-      ✓ sendStEthColl(): reverts when called by an account that is not BO nor CdpM nor SP
-      ✓ increaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM
-      ✓ decreaseEBTCDebt(): reverts when called by an account that is not BO nor CdpM nor SP
+      ✓ transferSystemCollShares(): reverts when called by an account that is not BO nor CdpM nor SP
+      ✓ increaseSystemDebt(): reverts when called by an account that is not BO nor CdpM
+      ✓ decreaseSystemDebt(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ fallback(): reverts when called by an account that is not Borrower Operations nor Default Pool
     DefaultPool
       ✓ sendETHToActivePool(): reverts when called by an account that is not CdpManager
-      ✓ increaseEBTCDebt(): reverts when called by an account that is not CdpManager
+      ✓ increaseSystemDebt(): reverts when called by an account that is not CdpManager
       ✓ decreaseEBTC(): reverts when called by an account that is not CdpManager
       ✓ fallback(): reverts when called by an account that is not the Active Pool
     StabilityPool
@@ -73,7 +73,7 @@ $ hardhat test
       ✓ addColl(), active Cdp: adds the correct collateral amount to the Cdp (194ms)
       ✓ addColl(), active Cdp: Cdp is in sortedList before and after (213ms)
       ✓ addColl(), active Cdp: updates the stake and updates the total stakes (225ms)
-      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (736ms)
+      ✓ addColl(), active Cdp: applies pending rewards and updates user's L_STETHColl, systemDebtRedistributionIndex snapshots (736ms)
       ✓ addColl(), reverts if cdp is non-existent or closed (831ms)
       ✓ addColl(): can add collateral in Recovery Mode (252ms)
       ✓ withdrawColl(): reverts when withdrawal would leave cdp with ICR < MCR (349ms)
@@ -88,7 +88,7 @@ $ hardhat test
       ✓ withdrawColl(): reduces ActivePool ETH and raw ether by correct amount (291ms)
       ✓ withdrawColl(): updates the stake and updates the total stakes (342ms)
       ✓ withdrawColl(): sends the correct amount of ETH to the user (289ms)
-      ✓ withdrawColl(): applies pending rewards and updates user's L_STETHColl, L_EBTCDebt snapshots (1205ms)
+      ✓ withdrawColl(): applies pending rewards and updates user's L_STETHColl, systemDebtRedistributionIndex snapshots (1205ms)
       ✓ withdrawEBTC(): reverts when withdrawal would leave cdp with ICR < MCR (516ms)
       ✓ withdrawEBTC(): decays a non-zero base rate (1192ms)
       ✓ withdrawEBTC(): reverts if max fee > 100% (668ms)
@@ -216,7 +216,7 @@ $ hardhat test
       ✓ openCdp(): creates a stake and adds it to total stakes (281ms)
       ✓ openCdp(): inserts Cdp to Sorted Cdps list (370ms)
       ✓ openCdp(): Increases the activePool ETH and raw ether balance by correct amount (294ms)
-      ✓ openCdp(): records up-to-date initial snapshots of L_STETHColl and L_EBTCDebt (639ms)
+      ✓ openCdp(): records up-to-date initial snapshots of L_STETHColl and systemDebtRedistributionIndex (639ms)
       ✓ openCdp(): allows a user to open a Cdp, then close it, then re-open it (687ms)
       ✓ openCdp(): increases the Cdp's EBTC debt by the correct amount (129ms)
       ✓ openCdp(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
@@ -245,12 +245,12 @@ $ hardhat test
         ✓ collChange is negative, debtChange is positive (381ms)
 
   Contract: CollSurplusPool
-    ✓ CollSurplusPool::getStEthColl(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
-    ✓ CollSurplusPool: claimColl(): Reverts if caller is not Borrower Operations
-    ✓ CollSurplusPool: claimColl(): Reverts if nothing to claim
-    ✓ CollSurplusPool: claimColl(): Reverts if owner cannot receive ETH surplus (723ms)
+    ✓ CollSurplusPool::getSystemCollShares(): Returns the ETH balance of the CollSurplusPool after redemption (2203ms)
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if caller is not Borrower Operations
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if nothing to claim
+    ✓ CollSurplusPool: claimSurplusCollShares(): Reverts if owner cannot receive ETH surplus (723ms)
     ✓ CollSurplusPool: reverts trying to send ETH to it
-    ✓ CollSurplusPool: accountSurplus: reverts if caller is not Cdp Manager
+    ✓ CollSurplusPool: increaseSurplusCollShares: reverts if caller is not Cdp Manager
 
   Contract: Deployment script - Sets correct contract addresses dependencies after deployment
     ✓ Sets the correct PriceFeed address in CdpManager
@@ -295,8 +295,8 @@ $ hardhat test
     ✓ sendETHToActivePool(): fails if receiver cannot receive ETH
 
   Contract: Fee arithmetic tests
-    ✓ minutesPassedSinceLastFeeOp(): returns minutes passed for no time increase (197ms)
-    ✓ minutesPassedSinceLastFeeOp(): returns minutes passed between time of last fee operation and current block.timestamp, rounded down to nearest minutes (982ms)
+    ✓ minutesPassedSinceLastRedemption(): returns minutes passed for no time increase (197ms)
+    ✓ minutesPassedSinceLastRedemption(): returns minutes passed between time of last fee operation and current block.timestamp, rounded down to nearest minutes (982ms)
     ✓ decayBaseRateFromBorrowing(): returns the initial base rate for no time increase
     ✓ decayBaseRateFromBorrowing(): returns the initial base rate for less than one minute passed  (386ms)
     ✓ decayBaseRateFromBorrowing(): returns correctly decayed base rate, for various durations. Initial baseRate = 0.01 (2908ms)
@@ -327,7 +327,7 @@ $ hardhat test
     ✓ _getCompositeDebt(): returns (debt + 50) when collateral < $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) collateral = $10 in value
     ✓ getCompositeDebt(): returns (debt + 50) when 0.5% of collateral > $10 in value (52ms)
-    ✓ getCurrentICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
+    ✓ getICR(): Incorporates virtual debt, and returns the correct ICR for new cdps (1147ms)
     ✓ Gas compensation from pool-offset liquidations. All collateral paid as compensation (1340ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral < $10 in value. Compensates $10 worth of collateral, liquidates the remainder (1199ms)
     ✓ gas compensation from pool-offset liquidations: 0.5% collateral > $10 in value. Compensates 0.5% of  collateral, liquidates the remainder (1333ms)
@@ -627,19 +627,19 @@ issuance fraction after: 949066037374286
       ✓ setLQTYAddress(): reverts when called by non-owner, with wrong address, or twice (216ms)
 
   Contract: StabilityPool
-    ✓ getStEthColl(): gets the recorded ETH balance
+    ✓ getSystemCollShares(): gets the recorded ETH balance
     ✓ getTotalEBTCDeposits(): gets the recorded EBTC balance
 
   Contract: ActivePool
-    ✓ getStEthColl(): gets the recorded ETH balance
-    ✓ getEBTCDebt(): gets the recorded EBTC balance
+    ✓ getSystemCollShares(): gets the recorded ETH balance
+    ✓ getSystemDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount
-    ✓ sendStEthColl(): decreases the recorded ETH balance by the correct amount
+    ✓ transferSystemCollShares(): decreases the recorded ETH balance by the correct amount
 
   Contract: DefaultPool
-    ✓ getStEthColl(): gets the recorded EBTC balance
-    ✓ getEBTCDebt(): gets the recorded EBTC balance
+    ✓ getSystemCollShares(): gets the recorded EBTC balance
+    ✓ getSystemDebt(): gets the recorded EBTC balance
     ✓ increaseEBTC(): increases the recorded EBTC balance by the correct amount
     ✓ decreaseEBTC(): decreases the recorded EBTC balance by the correct amount (57ms)
     ✓ sendETHToActivePool(): decreases the recorded ETH balance by the correct amount (50ms)
@@ -1117,7 +1117,7 @@ gasUsed:  636956
     ✓ liquidate(): removes the Cdp's stake from the total stakes (608ms)
     ✓ liquidate(): Removes the correct cdp from the CdpOwners array, and moves the last array element to the new empty slot (1276ms)
     ✓ liquidate(): updates the snapshots of total stakes and total collateral (422ms)
-    ✓ liquidate(): updates the L_STETHColl and L_EBTCDebt reward-per-unit-staked totals (984ms)
+    ✓ liquidate(): updates the L_STETHColl and systemDebtRedistributionIndex reward-per-unit-staked totals (984ms)
     ✓ liquidate(): Liquidates undercollateralized cdp if there are two cdps in the system (503ms)
     ✓ liquidate(): reverts if cdp is non-existent (303ms)
     ✓ liquidate(): reverts if cdp has been closed (745ms)
@@ -1193,7 +1193,7 @@ gasUsed:  636956
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner to claim (5373ms)
     ✓ redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner after re-opening cdp (2154ms)
     ✓ redeemCollateral(): reverts if fee eats up all returned collateral (1412ms)
-    ✓ getPendingEBTCDebtReward(): Returns 0 if there is no pending EBTCDebt reward (618ms)
+    ✓ getPendingRedistributedDebt(): Returns 0 if there is no pending EBTCDebt reward (618ms)
     ✓ getPendingETHReward(): Returns 0 if there is no pending ETH reward (620ms)
     ✓ computeICR(): Returns 0 if cdp's coll is worth 0
     ✓ computeICR(): Returns 2^256-1 for ETH:USD = 100, coll = 1 ETH, debt = 100 EBTC
@@ -1206,10 +1206,10 @@ gasUsed:  636956
     ✓ checkRecoveryMode(): Returns false when TCR > 150% (365ms)
     ✓ checkRecoveryMode(): Returns false when TCR == 0 (604ms)
     ✓ getCdpStake(): Returns stake (511ms)
-    ✓ getCdpColl(): Returns coll (494ms)
+    ✓ getCdpCollShares(): Returns coll (494ms)
     ✓ getCdpDebt(): Returns debt (400ms)
     ✓ getCdpStatus(): Returns status (434ms)
-    ✓ hasPendingRewards(): Returns false it cdp is not active
+    ✓ hasPendingRedistributedDebt(): Returns false it cdp is not active
 
   Contract: Unipool
     Unipool

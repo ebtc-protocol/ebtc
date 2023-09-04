@@ -293,7 +293,7 @@ contract SortedCdps is ISortedCdps {
 
     function batchRemove(bytes32[] memory _ids) external override {
         _requireCallerIsCdpManager();
-        uint _len = _ids.length;
+        uint256 _len = _ids.length;
         require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
 
         bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
@@ -304,7 +304,7 @@ contract SortedCdps is ISortedCdps {
             "SortedCdps: batchRemove() leave ZERO node left!"
         );
 
-        for (uint i = 0; i < _len; ++i) {
+        for (uint256 i = 0; i < _len; ++i) {
             require(contains(_ids[i]), "SortedCdps: List does not contain the id");
         }
 

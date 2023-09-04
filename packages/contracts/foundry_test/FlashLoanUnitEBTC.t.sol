@@ -29,7 +29,7 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
