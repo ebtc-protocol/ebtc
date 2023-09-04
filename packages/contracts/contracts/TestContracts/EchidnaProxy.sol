@@ -43,10 +43,10 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     // helper functions
     function _ensureNoLiquidationTriggered(bytes32 _cdpId) internal view {
-        uint _price = priceFeed.getPrice();
+        uint256 _price = priceFeed.getPrice();
         if (_price > 0) {
             bool _recovery = cdpManager.checkRecoveryMode(_price);
-            uint _icr = cdpManager.getCurrentICR(_cdpId, _price);
+            uint256 _icr = cdpManager.getICR(_cdpId, _price);
             if (_recovery) {
                 require(_icr > cdpManager.getTCR(_price), "liquidationTriggeredInRecoveryMode");
             } else {
@@ -56,14 +56,14 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     function _ensureNoRecoveryModeTriggered() internal view {
-        uint _price = priceFeed.getPrice();
+        uint256 _price = priceFeed.getPrice();
         if (_price > 0) {
             require(!cdpManager.checkRecoveryMode(_price), "!recoveryModeTriggered");
         }
     }
 
     function _ensureMinCollInCdp(bytes32 _cdpId) internal view {
-        uint _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId));
+        uint256 _collWorth = collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId));
         require(_collWorth < cdpManager.MIN_NET_COLL(), "!minimum CDP collateral");
     }
 
@@ -73,11 +73,11 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         cdpManager.liquidate(_cdpId);
     }
 
-    function partialLiquidatePrx(bytes32 _cdpId, uint _partialAmount) external {
+    function partialLiquidatePrx(bytes32 _cdpId, uint256 _partialAmount) external {
         cdpManager.partiallyLiquidate(_cdpId, _partialAmount, _cdpId, _cdpId);
     }
 
-    function liquidateCdpsPrx(uint _n) external {
+    function liquidateCdpsPrx(uint256 _n) external {
         cdpManager.liquidateCdps(_n);
     }
 
@@ -86,13 +86,13 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     function redeemCollateralPrx(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
-        uint _partialRedemptionHintNICR,
-        uint _maxIterations,
-        uint _maxFee
+        uint256 _partialRedemptionHintNICR,
+        uint256 _maxIterations,
+        uint256 _maxFee
     ) external {
         cdpManager.redeemCollateral(
             _EBTCAmount,
@@ -107,51 +107,51 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     // ActivePool
 
-    function flashloanColl(uint _amount) external {
+    function flashloanColl(uint256 _amount) external {
         require(_amount < activePool.maxFlashLoan(address(collateral)), "!tooMuchCollToFL");
 
         // sugardaddy fee
-        uint _fee = activePool.flashFee(address(collateral), _amount);
+        uint256 _fee = activePool.flashFee(address(collateral), _amount);
         require(_fee < address(this).balance, "!tooMuchFeeCollFL");
         collateral.deposit{value: _fee}();
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        uint256 _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         activePool.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(collateral),
             _amount,
             abi.encodePacked(uint256(0))
         );
-        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        uint256 _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         require(_balAfter - _balBefore == _fee, "!flFeeColl");
     }
 
     // Borrower Operations
 
-    function flashloanEBTC(uint _amount) external {
+    function flashloanEBTC(uint256 _amount) external {
         require(_amount < borrowerOperations.maxFlashLoan(address(ebtcToken)), "!tooMuchEBTCToFL");
 
         // sugardaddy fee
-        uint _fee = borrowerOperations.flashFee(address(ebtcToken), _amount);
+        uint256 _fee = borrowerOperations.flashFee(address(ebtcToken), _amount);
         ebtcToken.unprotectedMint(address(this), _fee);
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        uint256 _balBefore = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         borrowerOperations.flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(ebtcToken),
             _amount,
             abi.encodePacked(uint256(0))
         );
-        uint _balAfter = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        uint256 _balAfter = ebtcToken.balanceOf(borrowerOperations.feeRecipientAddress());
         require(_balAfter - _balBefore == _fee, "!flFeeEBTC");
         ebtcToken.unprotectedBurn(borrowerOperations.feeRecipientAddress(), _fee);
     }
 
     function openCdpPrx(
-        uint _coll,
-        uint _EBTCAmount,
+        uint256 _coll,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -163,7 +163,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function addCollPrx(
         bytes32 _cdpId,
-        uint _coll,
+        uint256 _coll,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -172,7 +172,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function withdrawCollPrx(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -183,7 +183,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function withdrawEBTCPrx(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
@@ -194,15 +194,15 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function repayEBTCPrx(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
         if (_amount > 0) {
-            uint _price = priceFeed.fetchPrice();
-            uint _tcrBefore = cdpManager.getTCR(_price);
+            uint256 _price = priceFeed.fetchPrice();
+            uint256 _tcrBefore = cdpManager.getTCR(_price);
             borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
-            uint _tcrAfter = cdpManager.getTCR(_price);
+            uint256 _tcrAfter = cdpManager.getTCR(_price);
             require(_tcrAfter > _tcrBefore, "!tcrAfterRepay");
         }
     }
@@ -213,8 +213,8 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function adjustCdpPrx(
         bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _collWithdrawal,
+        uint256 _debtChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -235,9 +235,9 @@ contract EchidnaProxy is IERC3156FlashBorrower {
 
     function adjustCdpWithCollPrx(
         bytes32 _cdpId,
-        uint _collAddAmount,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _collAddAmount,
+        uint256 _collWithdrawal,
+        uint256 _debtChange,
         bool _isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -284,12 +284,12 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     // Collateral
-    function dealCollateral(uint _amount) public returns (uint) {
-        uint _balBefore = collateral.balanceOf(address(this));
+    function dealCollateral(uint256 _amount) public returns (uint256) {
+        uint256 _balBefore = collateral.balanceOf(address(this));
 
         collateral.deposit{value: _amount}();
 
-        uint _balAfter = collateral.balanceOf(address(this));
+        uint256 _balAfter = collateral.balanceOf(address(this));
         return _balAfter - _balBefore;
     }
 

@@ -465,7 +465,7 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
   // Number of cdps
-  const numCdps = await ebtcCore.cdpManager.getCdpIdsCount()
+  const numCdps = await ebtcCore.cdpManager.getActiveCdpsCount()
   console.log(`number of cdps: ${numCdps} `)
 
   // Sorted list size
@@ -500,9 +500,9 @@ async function mainnetDeploy(configParams) {
   th.logBN("Snapshot of total cdp collateral before last liq. ", totalCollateralSnapshot)
 
   const L_STETHColl = await ebtcCore.cdpManager.L_STETHColl()
-  const L_EBTCDebt = await ebtcCore.cdpManager.L_EBTCDebt()
+  const systemDebtRedistributionIndex = await ebtcCore.cdpManager.systemDebtRedistributionIndex()
   th.logBN("L_STETHColl", L_STETHColl)
-  th.logBN("L_EBTCDebt", L_EBTCDebt)
+  th.logBN("systemDebtRedistributionIndex", systemDebtRedistributionIndex)
 
 
   // TODO: Uniswap *LQTY-ETH* pool size (check it's deployed?)

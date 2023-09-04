@@ -162,10 +162,10 @@ contract('BorrowerWrappers', async accounts => {
 
     // check everything remain the same
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollShares(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId), collateral)
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId), collateral)
   })
 
   it('claimCollateralAndOpenCdp(): without sending any value', async () => {
@@ -188,7 +188,7 @@ contract('BorrowerWrappers', async accounts => {
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollShares(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
@@ -196,10 +196,10 @@ contract('BorrowerWrappers', async accounts => {
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollShares(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.sub(liqReward))
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId2), expectedSurplus.sub(liqReward))
   })
 
   it('claimCollateralAndOpenCdp(): sending value in the transaction', async () => {
@@ -222,7 +222,7 @@ contract('BorrowerWrappers', async accounts => {
     // surplus: 5 - 150/200
     const price = await priceFeed.getPrice();
     const expectedSurplus = collateral.sub(redeemAmount.mul(mv._1e18BN).div(price)).add(liqReward)
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), expectedSurplus)
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollShares(proxyAddress), expectedSurplus)
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId), 4) // closed by redemption
 
     // alice claims collateral and re-opens the cdp
@@ -231,10 +231,10 @@ contract('BorrowerWrappers', async accounts => {
     let _aliceCdpId2 = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
-    th.assertIsApproximatelyEqual(await collSurplusPool.getCollateral(proxyAddress), '0')
+    th.assertIsApproximatelyEqual(await collSurplusPool.getSurplusCollShares(proxyAddress), '0')
     th.assertIsApproximatelyEqual(await ebtcToken.balanceOf(proxyAddress), ebtcAmount.mul(toBN(2)))
     assert.equal(await cdpManager.getCdpStatus(_aliceCdpId2), 1)
-    th.assertIsApproximatelyEqual(await cdpManager.getCdpColl(_aliceCdpId2), expectedSurplus.add(collateral).sub(liqReward))
+    th.assertIsApproximatelyEqual(await cdpManager.getCdpCollShares(_aliceCdpId2), expectedSurplus.add(collateral).sub(liqReward))
   })
 
   // --- claimSPRewardsAndRecycle ---
@@ -299,11 +299,11 @@ contract('BorrowerWrappers', async accounts => {
     const expectedETHGain_A = toBN('0').mul(aliceDeposit).div(totalDeposits).mul(toBN(dec(995, 15))).div(mv._1e18BN)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getCdpColl(_aliceCdpId)
+    const cdpCollBefore = await cdpManager.getCdpCollShares(_aliceCdpId)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, price)
+    const ICRBefore = await cdpManager.getICR(_aliceCdpId, price)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
 
@@ -314,11 +314,11 @@ contract('BorrowerWrappers', async accounts => {
     await priceFeed.setPrice(price.mul(toBN(2)));
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getCdpColl(_aliceCdpId)
+    const cdpCollAfter = await cdpManager.getCdpCollShares(_aliceCdpId)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(_aliceCdpId, price)
+    const ICRAfter = await cdpManager.getICR(_aliceCdpId, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check proxy balances remain the same
@@ -404,11 +404,11 @@ contract('BorrowerWrappers', async accounts => {
     await th.redeemCollateral(whale, contracts, redeemedAmount, GAS_PRICE)
 
     const ethBalanceBefore = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollBefore = await cdpManager.getCdpColl(th.DUMMY_BYTES32)
+    const cdpCollBefore = await cdpManager.getCdpCollShares(th.DUMMY_BYTES32)
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
+    const ICRBefore = await cdpManager.getICR(th.DUMMY_BYTES32, price)
     const stakeBefore = await feeRecipient.stakes(alice)
 
     // Alice claims staking rewards and puts them back in the system through the proxy
@@ -418,11 +418,11 @@ contract('BorrowerWrappers', async accounts => {
     )
 
     const ethBalanceAfter = await web3.eth.getBalance(borrowerOperations.getProxyAddressFromUser(alice))
-    const cdpCollAfter = await cdpManager.getCdpColl(th.DUMMY_BYTES32)
+    const cdpCollAfter = await cdpManager.getCdpCollShares(th.DUMMY_BYTES32)
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getCurrentICR(th.DUMMY_BYTES32, price)
+    const ICRAfter = await cdpManager.getICR(th.DUMMY_BYTES32, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check everything remains the same

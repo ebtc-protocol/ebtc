@@ -24,8 +24,8 @@ contract('SortedCdps', async accounts => {
       // Get the adjacent upper cdp ("prev" moves up the list, from lower ICR -> higher ICR)
       const prevCdp = await contracts.sortedCdps.getPrev(cdp)
      
-      const cdpICR = await contracts.cdpManager.getCurrentICR(cdp, price)
-      const prevCdpICR = await contracts.cdpManager.getCurrentICR(prevCdp, price)
+      const cdpICR = await contracts.cdpManager.getICR(cdp, price)
+      const prevCdpICR = await contracts.cdpManager.getICR(prevCdp, price)
       
       assert.isTrue(prevCdpICR.gte(cdpICR))
 

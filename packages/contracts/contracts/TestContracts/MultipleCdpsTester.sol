@@ -2,8 +2,8 @@ pragma solidity 0.8.17;
 
 interface IBorrowerOperations {
     function openCdp(
-        uint _maxFeePercentage,
-        uint _EBTCAmount,
+        uint256 _maxFeePercentage,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external payable;
@@ -30,8 +30,8 @@ contract MultipleCdpsTester {
 
     function openCdps(
         uint256 _count,
-        uint _maxFeePercentage,
-        uint _EBTCAmount,
+        uint256 _maxFeePercentage,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external payable {

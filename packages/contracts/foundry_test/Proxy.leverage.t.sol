@@ -290,7 +290,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // prepare operation data
         {
-            (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+            (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
             _totalDebt = _debt;
             uint256 _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
             LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(
@@ -360,7 +360,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
         // prepare operation data
         {
             _adjustVars = _increaseCdpSize(cdpId, _totalColl, _collAdded, _debt);
@@ -415,7 +415,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
         // prepare operation data
         {
             if (
@@ -487,7 +487,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt > _debt, "!CDP debt already maximized thus can't increase any more");
         uint256 _totalDebt = _targetDebt - _debt;
@@ -542,7 +542,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt < _debt, "!CDP debt already minimized thus can't decrease any more");
         uint256 _totalDebt = _debt - _targetDebt;

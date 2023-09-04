@@ -187,8 +187,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('getCdpDebt', user)
   }
 
-  async getCdpColl(user) {
-    return this.proxyFunctionWithUser('getCdpColl', user)
+  async getCdpCollShares(user) {
+    return this.proxyFunctionWithUser('getCdpCollShares', user)
   }
 
   async totalStakes() {
@@ -199,8 +199,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getPendingETHReward', params)
   }
 
-  async getPendingEBTCDebtReward(...params) {
-    return this.proxyFunction('getPendingEBTCDebtReward', params)
+  async getPendingRedistributedDebt(...params) {
+    return this.proxyFunction('getPendingRedistributedDebt', params)
   }
 
   async liquidate(user) {
@@ -211,8 +211,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getTCR', params)
   }
 
-  async getCurrentICR(user, price) {
-    return this.contract.getCurrentICR(this.getProxyAddressFromUser(user), price)
+  async getICR(user, price) {
+    return this.contract.getICR(this.getProxyAddressFromUser(user), price)
   }
 
   async checkRecoveryMode(...params) {
@@ -231,16 +231,16 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('L_STETHColl', [])
   }
 
-  async L_EBTCDebt() {
-    return this.proxyFunction('L_EBTCDebt', [])
+  async systemDebtRedistributionIndex() {
+    return this.proxyFunction('systemDebtRedistributionIndex', [])
   }
 
-  async rewardSnapshots(user) {
-    return this.proxyFunctionWithUser('rewardSnapshots', user)
+  async debtRedistributionIndex(user) {
+    return this.proxyFunctionWithUser('debtRedistributionIndex', user)
   }
 
-  async lastFeeOperationTime() {
-    return this.proxyFunction('lastFeeOperationTime', [])
+  async lastRedemptionTimestamp() {
+    return this.proxyFunction('lastRedemptionTimestamp', [])
   }
 
   async redeemCollateral(...params) {
@@ -255,8 +255,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getEntireDebtAndColl(...params) {
-    return this.proxyFunction('getEntireDebtAndColl', params)
+  async getDebtAndCollShares(...params) {
+    return this.proxyFunction('getDebtAndCollShares', params)
   }
 }
 
