@@ -135,9 +135,9 @@ contract SortedCdps is ISortedCdps {
 
     // Returns array of all user owned CDPs
     function getCdpsOf(address owner) public view override returns (bytes32[] memory) {
-        uint countOfCdps = _ownedCount[owner];
+        uint256 countOfCdps = _ownedCount[owner];
         bytes32[] memory cdps = new bytes32[](countOfCdps);
-        for (uint cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
+        for (uint256 cdpIx = 0; cdpIx < countOfCdps; ++cdpIx) {
             cdps[cdpIx] = _ownedCdps[owner][cdpIx];
         }
         return cdps;
@@ -233,7 +233,7 @@ contract SortedCdps is ISortedCdps {
 
     function batchRemove(bytes32[] memory _ids) external override {
         _requireCallerIsCdpManager();
-        uint _len = _ids.length;
+        uint256 _len = _ids.length;
         require(_len > 1, "SortedCdps: batchRemove() only apply to multiple cdpIds!");
 
         bytes32 _firstPrev = data.nodes[_ids[0]].prevId;
@@ -244,7 +244,7 @@ contract SortedCdps is ISortedCdps {
             "SortedCdps: batchRemove() leave ZERO node left!"
         );
 
-        for (uint i = 0; i < _len; ++i) {
+        for (uint256 i = 0; i < _len; ++i) {
             require(contains(_ids[i]), "SortedCdps: List does not contain the id");
         }
 
@@ -261,7 +261,7 @@ contract SortedCdps is ISortedCdps {
         }
 
         // delete node & owner storages to get gas refund
-        for (uint i = 0; i < _len; ++i) {
+        for (uint256 i = 0; i < _len; ++i) {
             _removeCdpFromOwnerEnumeration(cdpOwners[_ids[i]], _ids[i]);
             delete cdpOwners[_ids[i]];
             delete data.nodes[_ids[i]];

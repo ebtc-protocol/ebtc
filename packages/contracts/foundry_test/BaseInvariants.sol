@@ -5,7 +5,7 @@ import {Utilities} from "./utils/Utilities.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
-    uint public _tolerance = 2000000; //compared to 1e18
+    uint256 public _tolerance = 2000000; //compared to 1e18
 
     ////////////////////////////////////////////////////////////////////////////
     // See PROPERTIES.md for the invariants of the eBTC system

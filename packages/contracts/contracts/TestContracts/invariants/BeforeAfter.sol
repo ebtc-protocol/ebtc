@@ -30,8 +30,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 cdpStatusAfter;
         uint256 tcrBefore;
         uint256 tcrAfter;
-        uint256 newTcrSyncPendingGlobalStateBefore;
-        uint256 newTcrSyncPendingGlobalStateAfter;
+        uint256 newTcrBefore;
+        uint256 newTcrAfter;
         uint256 debtBefore;
         uint256 debtAfter;
         uint256 ebtcTotalSupplyBefore;
@@ -65,9 +65,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0)
-            ? cdpManager.getCurrentICR(_cdpId, vars.priceBefore)
+            ? cdpManager.getICR(_cdpId, vars.priceBefore)
             : 0;
-        vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
@@ -77,14 +77,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
         (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
-            cdpManager.stFPPSg()
+            cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
                 collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
-                cdpManager.stFPPSg()
+                cdpManager.stEthIndex()
             )
             : (0, 0, 0);
         vars.feeRecipientTotalCollBefore =
-            activePool.getFeeRecipientClaimableColl() +
+            activePool.getFeeRecipientClaimableCollShares() +
             collateral.balanceOf(activePool.feeRecipientAddress());
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
@@ -93,8 +93,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrBefore = cdpManager.getTCR(vars.priceBefore);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
         vars.ethPerShareBefore = collateral.getEthPerShare();
-        vars.activePoolCollBefore = activePool.getStEthColl();
-        vars.collSurplusPoolBefore = collSurplusPool.getStEthColl();
+        vars.activePoolCollBefore = activePool.getSystemCollShares();
+        vars.collSurplusPoolBefore = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
         vars.lastGracePeriodStartTimestampIsSetBefore =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
@@ -107,19 +107,19 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceBefore);
 
-        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
         try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
             assembly {
                 // Slice the sighash.
                 reason := add(reason, 0x04)
             }
             bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newTcrSyncPendingGlobalStateBefore = abi.decode(returnData, (uint256));
+            vars.newTcrBefore = abi.decode(returnData, (uint256));
         }
     }
 
@@ -127,8 +127,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.priceAfter = priceFeedMock.fetchPrice();
 
         vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
-        vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCurrentICR(_cdpId, vars.priceAfter) : 0;
-        vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpColl(_cdpId) : 0;
+        vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceAfter) : 0;
+        vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
@@ -138,14 +138,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
         (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
-            cdpManager.stFPPSg()
+            cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
                 collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
-                cdpManager.stFPPSg()
+                cdpManager.stEthIndex()
             )
             : (0, 0, 0);
         vars.feeRecipientTotalCollAfter =
-            activePool.getFeeRecipientClaimableColl() +
+            activePool.getFeeRecipientClaimableCollShares() +
             collateral.balanceOf(activePool.feeRecipientAddress());
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
@@ -154,8 +154,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrAfter = cdpManager.getTCR(vars.priceAfter);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
         vars.ethPerShareAfter = collateral.getEthPerShare();
-        vars.activePoolCollAfter = activePool.getStEthColl();
-        vars.collSurplusPoolAfter = collSurplusPool.getStEthColl();
+        vars.activePoolCollAfter = activePool.getSystemCollShares();
+        vars.collSurplusPoolAfter = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();
         vars.lastGracePeriodStartTimestampIsSetAfter =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
@@ -168,19 +168,19 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceAfter);
 
-        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
         try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
             assembly {
                 // Slice the sighash.
                 reason := add(reason, 0x04)
             }
             bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newTcrSyncPendingGlobalStateAfter = abi.decode(returnData, (uint256));
+            vars.newTcrAfter = abi.decode(returnData, (uint256));
         }
     }
 }
