@@ -56,7 +56,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     ) internal {
         _requireCdpIsActive(_cdpId);
 
-        _applyAccumulatedFeeSplit(_cdpId);
+        _applyPendingState(_cdpId);
 
         uint256 _price = priceFeed.fetchPrice();
 
@@ -157,7 +157,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             }
         }
 
-        _finalizeExternalLiquidation(
+        _finalizeLiquidation(
             liquidationValues.debtToOffset,
             liquidationValues.totalCollToSendToLiquidator,
             liquidationValues.debtToRedistribute,
@@ -214,7 +214,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(_liqState._cdpId, _liqState.sequenceLiq);
+        ) = _closeCdpByLiquidation(_liqState._cdpId, _liqState.sequenceLiq);
         uint256 _cappedColPortion;
         uint256 _collSurplus;
         uint256 _debtToRedistribute;
@@ -274,10 +274,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _liquidateCDPByExternalLiquidatorWithoutEvent(
-                _recoveryState._cdpId,
-                _recoveryState.sequenceLiq
-            );
+        ) = _closeCdpByLiquidation(_recoveryState._cdpId, _recoveryState.sequenceLiq);
 
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
@@ -343,7 +340,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     // liquidate (and close) the CDP from an external liquidator
     // this function would return the liquidated debt and collateral of the given CDP
     // without emmiting events
-    function _liquidateCDPByExternalLiquidatorWithoutEvent(
+    function _closeCdpByLiquidation(
         bytes32 _cdpId,
         bool _sequenceLiq
     ) private returns (uint256, uint256, uint256) {
@@ -516,7 +513,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
     }
 
-    function _finalizeExternalLiquidation(
+    function _finalizeLiquidation(
         uint256 totalDebtToBurn,
         uint256 totalColToSend,
         uint256 totalDebtToRedistribute,
@@ -633,7 +630,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
         }
 
-        _finalizeExternalLiquidation(
+        _finalizeLiquidation(
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
@@ -755,7 +752,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             activePool.sendStEthColl(address(collSurplusPool), totals.totalCollSurplus);
         }
 
-        _finalizeExternalLiquidation(
+        _finalizeLiquidation(
             totals.totalDebtToOffset,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
@@ -804,7 +801,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
                     vars.price = _price;
-                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _applyPendingState(vars.cdpId);
                     _getLiquidationValuesRecoveryMode(
                         _price,
                         vars.entireSystemDebt,
@@ -833,7 +830,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     _liqFlags[vars.i] = true;
                     _liqCnt += 1;
                 } else if (vars.backToNormalMode && vars.ICR < MCR) {
-                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _applyPendingState(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
                         _TCR,
@@ -905,7 +902,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 vars.ICR = getCurrentICR(vars.cdpId, _price);
 
                 if (vars.ICR < MCR) {
-                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _applyPendingState(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
                         _TCR,
