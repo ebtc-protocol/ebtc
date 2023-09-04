@@ -469,7 +469,7 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    it.only("addColl(), reverts if cdp is not owned by caller (does not consider approved positionManagers)", async () => {
+    it("addColl(), reverts if cdp is not owned by caller (does not consider approved positionManagers)", async () => {
       // A, B open cdps
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
