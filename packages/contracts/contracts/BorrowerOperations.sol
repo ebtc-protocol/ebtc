@@ -405,7 +405,7 @@ contract BorrowerOperations is
         _requireAtLeastMinNetStEthBalance(vars.netColl);
 
         // Update global pending index before any operations
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
@@ -1063,7 +1063,7 @@ contract BorrowerOperations is
             "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
@@ -1072,7 +1072,7 @@ contract BorrowerOperations is
     function setFeeBps(uint256 _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         // set new flash fee
         uint256 _oldFee = feeBps;
@@ -1081,7 +1081,7 @@ contract BorrowerOperations is
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);

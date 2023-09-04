@@ -229,7 +229,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _prevIndex
     ) external view returns (uint256, uint256, uint256);
 
-    function applyPendingGlobalState() external; // Accrues StEthFeeSplit without influencing Grace Period
+    function syncGlobalAccounting() external; // Accrues StEthFeeSplit without influencing Grace Period
 
     function syncGlobalAccountingAndGracePeriod() external; // Accrues StEthFeeSplit and influences Grace Period
 

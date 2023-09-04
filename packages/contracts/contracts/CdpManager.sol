@@ -346,7 +346,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
-        _applyPendingGlobalState(); // Apply state, we will syncGracePeriod at end of function
+        _syncGlobalAccounting(); // Apply state, we will syncGracePeriod at end of function
 
         totals.price = priceFeed.fetchPrice();
         {

@@ -466,12 +466,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
     /// @dev BO can call this without trigggering a
-    function applyPendingGlobalState() external {
+    function syncGlobalAccounting() external {
         _requireCallerIsBorrowerOperations();
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
     }
 
-    function _applyPendingGlobalState() internal {
+    function _syncGlobalAccounting() internal {
         (uint256 _oldIndex, uint256 _newIndex) = _syncStEthIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (
@@ -487,7 +487,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Claim Fee Split, toggles Grace Period accordingly
     /// @notice Call this if you want to accrue feeSplit
     function syncGlobalAccountingAndGracePeriod() public {
-        _applyPendingGlobalState(); // Apply // Could trigger RM
+        _syncGlobalAccounting(); // Apply // Could trigger RM
         syncGracePeriod(); // Synch Grace Period
     }
 
@@ -553,7 +553,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
 
         uint256 _oldPerUnitCdp = stFeePerUnitIndex[_cdpId];
         uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;

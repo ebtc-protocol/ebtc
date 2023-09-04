@@ -620,7 +620,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
 
         vars.price = priceFeed.fetchPrice();
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(
@@ -749,7 +749,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
 
         vars.price = priceFeed.fetchPrice();
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(
