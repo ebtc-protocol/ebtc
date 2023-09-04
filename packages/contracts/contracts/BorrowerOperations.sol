@@ -25,7 +25,9 @@ contract BorrowerOperations is
 
     // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)");
     bytes32 private constant _PERMIT_POSITION_MANAGER_TYPEHASH =
-        0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401;
+        keccak256(
+            "PermitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)"
+        );
 
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant _TYPE_HASH =
