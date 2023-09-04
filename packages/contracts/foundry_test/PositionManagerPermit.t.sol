@@ -206,7 +206,7 @@ contract PositionManagerPermitTest is eBTCBaseInvariants {
                 borrowerOperations.DOMAIN_SEPARATOR(),
                 keccak256(
                     abi.encode(
-                        0xc32b434a2c378fdc15ea44c7ebd4ef778f1d0036638943e9f1e9785cb2f18401,
+                        borrowerOperations.permitTypeHash(),
                         _signer,
                         _positionManager,
                         _approval,
