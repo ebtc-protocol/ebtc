@@ -93,11 +93,10 @@ contract HintHelpers is LiquityBase {
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
                     uint _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
-                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculateCdpStateAfterPartialRedemption(
-                        vars,
-                        currentCdpDebt,
-                        _price
-                    );
+                    (
+                        partialRedemptionNewColl,
+                        partialRedemptionHintNICR
+                    ) = _calculateCdpStateAfterPartialRedemption(vars, currentCdpDebt, _price);
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
