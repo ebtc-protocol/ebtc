@@ -54,7 +54,7 @@ interface IERC2612 {
      * prevents a signature from being used multiple times.
      *
      * `owner` can limit the time a Permit is valid for by setting `deadline` to
-     * a value in the near future. The deadline argument can be set to uint(-1) to
+     * a value in the near future. The deadline argument can be set to uint256(-1) to
      * create Permits that effectively never expire.
      */
     function nonces(address owner) external view returns (uint256);

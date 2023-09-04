@@ -609,7 +609,7 @@ Hints allow cheaper CDP operations for the user, at the expense of a slightly lo
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 eBTC
 
   // Get CDP's current debt and coll
-  const {0: debt, 1: coll} = await cdpManager.getEntireDebtAndColl(borrower)
+  const {0: debt, 1: coll} = await cdpManager.getDebtAndCollShares(borrower)
   
   const newDebt = debt.sub(EBTCRepayment)
   const newColl = coll.add(collIncrease)

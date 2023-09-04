@@ -54,7 +54,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         openCdp(0, 1);
         uint256 balanceBefore = collateral.balanceOf(address(this));
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), 0);
-        uint256 cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        uint256 cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
         uint256 liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
         console2.log("before %s", balanceBefore);
         closeCdp(0);
@@ -77,9 +77,9 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
 
         uint256 totalColl = cdpManager.getEntireSystemColl();
         uint256 totalDebt = cdpManager.getEntireSystemDebt();
-        uint256 totalCollFeeRecipient = activePool.getFeeRecipientClaimableColl();
+        uint256 totalCollFeeRecipient = activePool.getFeeRecipientClaimableCollShares();
 
-        uint256 surplusColl = collSurplusPool.getStEthColl();
+        uint256 surplusColl = collSurplusPool.getTotalSurplusCollShares();
 
         uint256 totalValue = ((totalCollFeeRecipient * currentPrice) / 1e18) +
             ((totalColl * currentPrice) / 1e18) +
@@ -100,15 +100,15 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         uint256 _price = priceFeedMock.getPrice();
         uint256 tcrBefore = cdpManager.getTCR(_price);
         uint256 feeRecipientBalanceBefore = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableColl();
+            activePool.getFeeRecipientClaimableCollShares();
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), 0);
         // cdpManager.applyPendingGlobalState();
 
         liquidateCdps(0);
         uint256 tcrAfter = cdpManager.getTCR(_price);
         uint256 feeRecipientBalanceAfter = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableColl();
-        console.log("\ttcr %s %s %s", tcrBefore, tcrAfter, cdpManager.getCurrentICR(_cdpId, _price));
+            activePool.getFeeRecipientClaimableCollShares();
+        console.log("\ttcr %s %s %s", tcrBefore, tcrAfter, cdpManager.getICR(_cdpId, _price));
         console.log("\tfee %s %s", feeRecipientBalanceBefore, feeRecipientBalanceAfter);
         console.log("\tLICR", cdpManager.LICR(), collateral.getSharesByPooledEth(cdpManager.LICR()));
         // assertGt(tcrAfter, tcrBefore, L_12);
@@ -129,7 +129,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         openCdp(3571529399317342246939748969305228181926514889773271968455159558869, 9858);
         setEthPerShare(3643538871032775039067393294322983338235379072440222187277243527);
         vars.actorCollBefore = collateral.balanceOf(actor);
-        vars.cdpCollBefore = cdpManager.getCdpColl(_cdpId);
+        vars.cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
         vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
         closeCdp(0);
         vars.actorCollAfter = collateral.balanceOf(actor);
@@ -191,14 +191,14 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getICR(sortedCdps.getFirst(), _price),
             cdpManager.getCdpDebt(_cdpId)
         );
         repayEBTC(1, 0);
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
+            cdpManager.getICR(sortedCdps.getFirst(), _price),
             cdpManager.getCdpDebt(_cdpId)
         );
     }
@@ -212,8 +212,8 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
 
         console2.log(
             "\tCDPs before rebase",
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+            cdpManager.getICR(sortedCdps.getFirst(), _price),
+            cdpManager.getICR(sortedCdps.getLast(), _price)
         );
 
         setEthPerShare(148956803032284651814317393496782677);
@@ -221,14 +221,14 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         console2.log("\tTCR before", cdpManager.getTCR(_price));
         console2.log(
             "\tCDPs before",
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+            cdpManager.getICR(sortedCdps.getFirst(), _price),
+            cdpManager.getICR(sortedCdps.getLast(), _price)
         );
         liquidateCdps(0);
         console2.log(
             "\tCDPs after",
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCurrentICR(sortedCdps.getLast(), _price)
+            cdpManager.getICR(sortedCdps.getFirst(), _price),
+            cdpManager.getICR(sortedCdps.getLast(), _price)
         );
     }
 
@@ -242,7 +242,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
 
         console2.log("tcr before sync", cdpManager.getTCR(currentPrice));
 
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         uint256 prevTCR = cdpManager.getTCR(currentPrice);
 
         console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
@@ -256,7 +256,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         console2.log("tcr after repay", cdpManager.getTCR(currentPrice));
         console2.log("tcr after simulated sync", _getTcrAfterSimulatedSync());
 
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
 
@@ -284,27 +284,20 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         console2.log(
             "\tCR before",
             cdpManager.getTCR(_price),
-            cdpManager.getCurrentICR(_cdpId1, _price),
-            cdpManager.getCurrentICR(_cdpId2, _price)
+            cdpManager.getICR(_cdpId1, _price),
+            cdpManager.getICR(_cdpId2, _price)
         );
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price)
+            cdpManager.getICR(sortedCdps.getFirst(), _price)
         );
         liquidateCdps(18144554526834239235);
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getCurrentICR(sortedCdps.getFirst(), _price)
+            cdpManager.getICR(sortedCdps.getFirst(), _price)
         );
-    }
-
-    function testFlashLoanEBTC() public {
-        openCdp(0, 2);
-        vm.expectRevert();
-        // will attempt to flashloan and openCdp, which reverts
-        flashLoanEBTC(3381920330236730383501813809467656172107682748687169923705762983);
     }
 
     function testGracePeriod() public {
@@ -314,7 +307,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         setPrice(0);
         setEthPerShare(0);
         console2.log("\tTCR before", cdpManager.getTCR(priceFeedMock.getPrice()));
-        console2.log("\tICR after", cdpManager.getCurrentICR(_cdpId, priceFeedMock.getPrice()));
+        console2.log("\tICR after", cdpManager.getICR(_cdpId, priceFeedMock.getPrice()));
         console2.log("grace period before", cdpManager.lastGracePeriodStartTimestamp());
         repayEBTC(
             2484572859117951778134467250756531385828785210248879469979930819007912,
@@ -329,7 +322,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         console2.log("grace period passed", hasGracePeriodPassed);
         console2.log("RM?", cdpManager.checkRecoveryMode(priceFeedMock.getPrice()));
         console2.log("\tTCR after", cdpManager.getTCR(priceFeedMock.getPrice()));
-        console2.log("\tICR after", cdpManager.getCurrentICR(_cdpId, priceFeedMock.getPrice()));
+        console2.log("\tICR after", cdpManager.getICR(_cdpId, priceFeedMock.getPrice()));
         // assertTrue(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
     }
 
@@ -432,7 +425,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         _amount = clampBetween(
             _amount,
             0,
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
         );
 
         console2.log("withdrawColl", _amount, _i);
@@ -445,7 +438,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         _i = clampBetween(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
 
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         _amount = clampBetween(_amount, 0, entireDebt);
 
         console2.log("repayEBTC", _amount, _i);
@@ -486,7 +479,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
     }
 
     function liquidateCdps(uint _n) internal {
-        _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
+        _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
 
         console2.log("liquidateCdps", _n);
         cdpManager.liquidateCdps(_n);
@@ -532,7 +525,7 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
         uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
         uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
-        uint256 _n = clampBetween(value, 1, cdpManager.getCdpIdsCount());
+        uint256 _n = clampBetween(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));
         require(numberOfCdps > 0, "Actor must have at least one CDP open");
@@ -637,14 +630,14 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncPendingGlobalState.selector);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, priceFeedMock.getPrice());
 
         console2.log("simulate");
 
-        // Compute new TCR after syncPendingGlobalState and revert to previous snapshot in oder to not affect the current state
+        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
         try this.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
             console2.logBytes(reason);
             assembly {

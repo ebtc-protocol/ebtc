@@ -18,21 +18,21 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         ICollateralToken collateral,
         ActivePool activePool
     ) internal view returns (bool) {
-        return (collateral.sharesOf(address(activePool)) >= activePool.getStEthColl());
+        return (collateral.sharesOf(address(activePool)) >= activePool.getSystemCollShares());
     }
 
     function invariant_AP_02(
         CdpManager cdpManager,
         ActivePool activePool
     ) internal view returns (bool) {
-        return cdpManager.getCdpIdsCount() > 0 ? activePool.getStEthColl() > 0 : true;
+        return cdpManager.getActiveCdpsCount() > 0 ? activePool.getSystemCollShares() > 0 : true;
     }
 
     function invariant_AP_03(
         EBTCToken eBTCToken,
         ActivePool activePool
     ) internal view returns (bool) {
-        return (eBTCToken.totalSupply() == activePool.getEBTCDebt());
+        return (eBTCToken.totalSupply() == activePool.getSystemDebt());
     }
 
     function invariant_AP_04(
@@ -40,13 +40,13 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         ActivePool activePool,
         uint256 diff_tolerance
     ) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getCdpIdsCount();
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll, ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (, uint256 _coll, ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _coll;
         }
-        uint256 _activeColl = activePool.getStEthColl();
+        uint256 _activeColl = activePool.getSystemCollShares();
         uint256 _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
         uint256 _divisor = _sum > _activeColl ? _sum : _activeColl;
         return (_diff * 1e18 <= diff_tolerance * _activeColl);
@@ -56,10 +56,10 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         CdpManager cdpManager,
         uint256 diff_tolerance
     ) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getCdpIdsCount();
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, , ) = cdpManager.getEntireDebtAndColl(cdpManager.CdpIds(i));
+            (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _debt;
         }
         return isApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance);
@@ -69,11 +69,11 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         CdpManager cdpManager,
         SortedCdps sortedCdps
     ) internal view returns (bool) {
-        return (cdpManager.getCdpIdsCount() == sortedCdps.getSize());
+        return (cdpManager.getActiveCdpsCount() == sortedCdps.getSize());
     }
 
     function invariant_CDPM_02(CdpManager cdpManager) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getCdpIdsCount();
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
             _sum += cdpManager.getCdpStake(cdpManager.CdpIds(i));
@@ -82,10 +82,10 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_CDPM_03(CdpManager cdpManager) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getCdpIdsCount();
-        uint256 _stFeePerUnitg = cdpManager.stFeePerUnitg();
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (_stFeePerUnitg < cdpManager.stFeePerUnitcdp(cdpManager.CdpIds(i))) {
+            if (systemStEthFeePerUnitIndex < cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i))) {
                 return false;
             }
         }
@@ -113,7 +113,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         ICollateralToken collateral,
         CollSurplusPool collSurplusPool
     ) internal view returns (bool) {
-        return collateral.sharesOf(address(collSurplusPool)) >= collSurplusPool.getStEthColl();
+        return collateral.sharesOf(address(collSurplusPool)) >= collSurplusPool.getTotalSurplusCollShares();
     }
 
     event L(string, uint);
@@ -151,7 +151,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint256 _price = priceFeedTestnet.getPrice();
-        uint256 _firstICR = cdpManager.getCurrentICR(_first, _price);
+        uint256 _firstICR = cdpManager.getICR(_first, _price);
         uint256 _TCR = cdpManager.getTCR(_price);
 
         if (
@@ -234,7 +234,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         bytes32 currentCdp = sortedCdps.getFirst();
         uint256 cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(currentCdp);
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(currentCdp);
             cdpsBalance += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }

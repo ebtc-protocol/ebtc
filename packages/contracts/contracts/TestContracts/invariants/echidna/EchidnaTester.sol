@@ -288,7 +288,7 @@ contract EchidnaTester is
         uint256 _price = priceFeedTestnet.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            if (cdpManager.getCurrentICR(currentCdp, _price) < cdpManager.MCR()) {
+            if (cdpManager.getICR(currentCdp, _price) < cdpManager.MCR()) {
                 ++ans;
             }
 
@@ -306,7 +306,7 @@ contract EchidnaTester is
         uint256 _price = priceFeedTestnet.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getCurrentICR(currentCdp, _price)});
+            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getICR(currentCdp, _price)});
 
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -332,7 +332,7 @@ contract EchidnaTester is
     }
 
     function _getRandomCdp(uint _i) internal view returns (bytes32) {
-        uint _cdpIdx = _i % cdpManager.getCdpIdsCount();
+        uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
         return cdpManager.CdpIds(_cdpIdx);
     }
 
@@ -342,7 +342,7 @@ contract EchidnaTester is
         uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
         uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
         uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
-        uint256 _n = clampBetween(value, 1, cdpManager.getCdpIdsCount());
+        uint256 _n = clampBetween(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
         require(numberOfCdps > 0, "Actor must have at least one CDP open");
@@ -424,7 +424,7 @@ contract EchidnaTester is
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getCurrentICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+            cdpManager.getICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -457,11 +457,11 @@ contract EchidnaTester is
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         uint256 _price = priceFeedTestnet.getPrice();
@@ -479,8 +479,8 @@ contract EchidnaTester is
             if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(
-                    vars.newTcrSyncPendingGlobalStateAfter,
-                    vars.newTcrSyncPendingGlobalStateBefore,
+                    vars.newTcrAfter,
+                    vars.newTcrBefore,
                     L_12
                 );
             }
@@ -524,11 +524,11 @@ contract EchidnaTester is
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
@@ -549,14 +549,14 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            (uint256 _newEntireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+            (uint256 _newEntireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
             assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
 
             if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(
-                    vars.newTcrSyncPendingGlobalStateAfter,
-                    vars.newTcrSyncPendingGlobalStateBefore,
+                    vars.newTcrAfter,
+                    vars.newTcrBefore,
                     L_12
                 );
             }
@@ -569,7 +569,7 @@ contract EchidnaTester is
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
@@ -608,9 +608,9 @@ contract EchidnaTester is
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getCdpIdsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
-        _n = clampBetween(_n, 1, cdpManager.getCdpIdsCount());
+        _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
 
         uint256 totalCdpsBelowMcr = _totalCdpsBelowMcr();
         uint256 _price = priceFeedTestnet.getPrice();
@@ -657,8 +657,8 @@ contract EchidnaTester is
                 emit LogUint256("minIcrBefore", minIcrBefore);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(
-                    vars.newTcrSyncPendingGlobalStateAfter,
-                    vars.newTcrSyncPendingGlobalStateBefore,
+                    vars.newTcrAfter,
+                    vars.newTcrBefore,
                     L_12
                 );
             }
@@ -751,8 +751,8 @@ contract EchidnaTester is
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
             //     assertGt(
-            //         vars.newTcrSyncPendingGlobalStateAfter,
-            //         vars.newTcrSyncPendingGlobalStateBefore,
+            //         vars.newTcrAfter,
+            //         vars.newTcrBefore,
             //         R_07
             //     );
             // }
@@ -955,13 +955,13 @@ contract EchidnaTester is
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
 
-            assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
@@ -1063,7 +1063,7 @@ contract EchidnaTester is
                 cdpManager.recoveryModeGracePeriod()
             );
 
-            assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             assertWithMsg(
                 vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
                 BO_03
@@ -1072,7 +1072,7 @@ contract EchidnaTester is
             assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
@@ -1124,7 +1124,7 @@ contract EchidnaTester is
         _amount = clampBetween(
             _amount,
             0,
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId))
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
         );
 
         _before(_cdpId);
@@ -1143,14 +1143,14 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             assertLte(vars.nicrAfter, vars.nicrBefore, BO_04);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
                 borrowerOperations.MIN_NET_COLL(),
                 GENERAL_10
             );
@@ -1217,7 +1217,7 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+        assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
         assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
         assertEq(
             vars.actorEbtcAfter,
@@ -1226,7 +1226,7 @@ contract EchidnaTester is
         );
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
@@ -1269,7 +1269,7 @@ contract EchidnaTester is
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, , ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         _amount = clampBetween(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -1288,12 +1288,12 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+        assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
         assertGt(
-            vars.newTcrSyncPendingGlobalStateAfter,
-            vars.newTcrSyncPendingGlobalStateBefore,
+            vars.newTcrAfter,
+            vars.newTcrBefore,
             BO_08
         );
 
@@ -1304,7 +1304,7 @@ contract EchidnaTester is
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );
@@ -1340,7 +1340,7 @@ contract EchidnaTester is
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getCdpIdsCount() > 1, "Cannot close last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot close last CDP");
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
         require(numberOfCdps > 0, "Actor must have at least one CDP open");
@@ -1359,7 +1359,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
@@ -1435,7 +1435,7 @@ contract EchidnaTester is
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getEntireDebtAndColl(_cdpId);
+        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(_cdpId);
         _collWithdrawal = clampBetween(_collWithdrawal, 0, entireColl);
         _EBTCChange = clampBetween(_EBTCChange, 0, entireDebt);
 
@@ -1458,14 +1458,14 @@ contract EchidnaTester is
 
         _after(_cdpId);
 
-        assertEq(vars.newTcrSyncPendingGlobalStateAfter, vars.tcrAfter, GENERAL_11);
+        assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
         assertWithMsg(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
 
         assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         assertGte(
-            collateral.getPooledEthByShares(cdpManager.getCdpColl(_cdpId)),
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
             borrowerOperations.MIN_NET_COLL(),
             GENERAL_10
         );

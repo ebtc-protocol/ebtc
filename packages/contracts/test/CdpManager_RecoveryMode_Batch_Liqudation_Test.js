@@ -18,10 +18,12 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
   let cdpManager
   let priceFeed
   let sortedCdps
+  let collateral	
 
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000);
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -30,6 +32,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     priceFeed = contracts.priceFeedTestnet
     sortedCdps = contracts.sortedCdps
     debtToken = contracts.ebtcToken;
+    collateral = contracts.collateral;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
   })
@@ -56,14 +59,14 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getCurrentICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
       assert.isTrue(ICR_C.lt(mv._ICR100))
-
+	  
       return {
         A_coll, A_totalDebt,
         B_coll, B_totalDebt,
@@ -91,7 +94,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     })
 
     it('Two cdps over MCR are liquidated', async () => {
-      await setup()
+      let _setups = await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);		  
@@ -105,13 +108,28 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+      let _balBefore = await collateral.balanceOf(owner);
       const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId, _bobCdpId, _carolCdpId])
+      let _balAfter = await collateral.balanceOf(owner);
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 3, 'Not enough liquidations')
       assert.equal(liquidationEvents[0].args[4].toString(), '5');//liquidateInRecoveryMode
       assert.equal(liquidationEvents[1].args[4].toString(), '5');//liquidateInRecoveryMode
       assert.equal(liquidationEvents[2].args[4].toString(), '4');//liquidateInNormalMode
+      let _liquidator = th.getEventValByName(liquidationEvents[0], '_liquidator');
+      assert.isTrue(_liquidator == owner);
+      let _liqPremium1 = th.getEventValByName(liquidationEvents[0], '_premiumToLiquidator');
+      let _liqPremium2 = th.getEventValByName(liquidationEvents[1], '_premiumToLiquidator');
+      let _liqPremium3 = th.getEventValByName(liquidationEvents[2], '_premiumToLiquidator');
+      let _liqPremium = _liqPremium1.add(_liqPremium2).add(_liqPremium3);
+      let _liqDebt1 = th.getEventValByName(liquidationEvents[0], '_debt');
+      let _liqDebt2 = th.getEventValByName(liquidationEvents[1], '_debt');
+      let _liqDebt3 = th.getEventValByName(liquidationEvents[2], '_debt');
+      let totalLiquidatedDebt = _liqDebt1.add(_liqDebt2).add(_liqDebt3);
+      let _debtToColl = totalLiquidatedDebt.mul(mv._1e18BN).div(_setups['price']);
+      let _premiumReceived = _balAfter.sub(_balBefore).sub(_debtToColl);
+      assert.isTrue(_liqPremium.eq(_premiumReceived));
 
       // Confirm all cdps removed
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -145,9 +163,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getCurrentICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -161,10 +179,17 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
+      let _balBefore = await collateral.balanceOf(owner);
       const tx = await cdpManager.batchLiquidateCdps([_bobCdpId, _aliceCdpId])
+      let _balAfter = await collateral.balanceOf(owner);
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 1, 'Not enough liquidations')
+      let _liquidator = th.getEventValByName(liquidationEvents[0], '_liquidator');
+      assert.isTrue(_liquidator == owner);
+      let _liqPremium = th.getEventValByName(liquidationEvents[0], '_premiumToLiquidator');
+      let _debtToColl = B_totalDebt.mul(mv._1e18BN).div(price);
+      assert.isTrue(_liqPremium.eq(_balAfter.sub(_balBefore).sub(_debtToColl)));
 
       // Confirm only Bob’s cdp removed
       assert.isTrue(await sortedCdps.contains(_aliceCdpId))
@@ -199,8 +224,8 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getCurrentICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getCurrentICR(_bobCdpId, price)
+      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -230,7 +255,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     })
 
     it('Two cdps over MCR are liquidated', async () => {
-      await setup()
+      let _setups = await setup()
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);		  
 	  	  
@@ -242,7 +267,9 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
+      let _balBefore = await collateral.balanceOf(owner);
       const tx = await cdpManager.liquidateCdps(10)
+      let _balAfter = await collateral.balanceOf(owner);
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')
       assert.equal(liquidationEvents.length, 2, 'Not enough liquidations')
@@ -250,6 +277,13 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       // Confirm all cdps removed
       assert.isFalse(await sortedCdps.contains(_aliceCdpId))
       assert.isFalse(await sortedCdps.contains(_bobCdpId))
+      let _liquidator = th.getEventValByName(liquidationEvents[0], '_liquidator');
+      assert.isTrue(_liquidator == owner);
+      let _liqPremium1 = th.getEventValByName(liquidationEvents[0], '_premiumToLiquidator');
+      let _liqPremium2 = th.getEventValByName(liquidationEvents[1], '_premiumToLiquidator');
+      let _liqPremium = _liqPremium1.add(_liqPremium2);
+      let _debtToColl = _setups['totalLiquidatedDebt'].mul(mv._1e18BN).div(_setups['price']);
+      assert.isTrue(_liqPremium.eq(_balAfter.sub(_balBefore).sub(_debtToColl)));
 
       // Confirm cdps have status 'closed by liquidation' (Status enum element idx 3)
       assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '3')

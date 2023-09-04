@@ -14,24 +14,24 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     }
 
     function testGetCdpsOfUser() public {
-        uint collAmount = 30 ether;
+        uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 10000 ether}();
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
         // Open X amount of CDPs
-        for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
+        for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
             borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
-        for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
+        for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
             bytes32 cdp = cdps[cdpIx];
             assertEq(cdp, cdpId);
@@ -48,26 +48,26 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // Keep amntOfCdps reasonable, as it will eat all the memory
     // Change to fuzzed uint16 with caution, as it can consume > 10Gb of Memory
     function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
-        uint collAmount = 30 ether;
+        uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
         collateral.approve(address(borrowerOperations), type(uint256).max);
         collateral.deposit{value: 10000 ether}();
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
         // Open X amount of CDPs
-        for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
+        for (uint256 cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
             borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         // And check that amount of CDPs as expected
         assertEq(amntOfCdps, cdps.length);
-        for (uint cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
+        for (uint256 cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
             bytes32 cdp = cdps[cdpIx];
             assertEq(cdp, cdpId);
@@ -85,7 +85,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 coll1 = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll1);
         emit log_string("col1");
-        emit log_uint(cdpManager.getCdpColl(cdpId));
+        emit log_uint(cdpManager.getCdpCollShares(cdpId));
 
         collateral.setEthPerShare(0.957599492232792566e18);
 
@@ -94,7 +94,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll2);
 
         emit log_string("col2");
-        emit log_uint(cdpManager.getCdpColl(cdpId));
+        emit log_uint(cdpManager.getCdpCollShares(cdpId));
 
         collateral.setEthPerShare(1.000002206719401318e18);
 
@@ -103,10 +103,10 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll3);
 
         emit log_string("col3");
-        emit log_uint(cdpManager.getCdpColl(cdpId));
+        emit log_uint(cdpManager.getCdpCollShares(cdpId));
 
         emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
-        emit log_uint(cdpManager.getCurrentICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_01(cdpManager, sortedCdps, 0.01e18), "SL-01");
     }
@@ -127,7 +127,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         collateral.setEthPerShare((collateral.getEthPerShare() * 1 ether) / 1.1 ether);
 
         emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
-        emit log_uint(cdpManager.getCurrentICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), "SL-02");
     }

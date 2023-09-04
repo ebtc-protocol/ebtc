@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
+import "./IPositionManagers.sol";
 
 // Common interface for the Cdp Manager.
-interface IBorrowerOperations {
+interface IBorrowerOperations is IPositionManagers {
     // --- Events ---
 
     event CdpManagerAddressChanged(address _newCdpManagerAddress);
@@ -14,41 +15,49 @@ interface IBorrowerOperations {
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
-    event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
+    event FlashLoanSuccess(address _receiver, address _token, uint256 _amount, uint256 _fee);
 
     // --- Functions ---
 
     function openCdp(
+        uint256 _EBTCAmount,
+        bytes32 _upperHint,
+        bytes32 _lowerHint,
+        uint256 _stEthBalance
+    ) external returns (bytes32);
+
+    function openCdpFor(
         uint _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint _collAmount,
+        address _borrower
     ) external returns (bytes32);
 
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint256 _stEthBalanceIncrease
     ) external;
 
     function withdrawColl(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
     function repayEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
@@ -57,8 +66,8 @@ interface IBorrowerOperations {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -66,15 +75,15 @@ interface IBorrowerOperations {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAddAmount
+        uint256 _stEthBalanceIncrease
     ) external;
 
-    function claimCollateral() external;
+    function claimSurplusCollShares() external;
 
     function feeRecipientAddress() external view returns (address);
 }
