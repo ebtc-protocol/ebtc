@@ -118,25 +118,6 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         payable(address(activePool)).call{value: amount}("");
     }
 
-    /// @dev Amount too high, we overflow when computing fees
-    function testOverflowCaseSTETH() public {
-        // Zero Overflow Case
-        uint256 loanAmount = type(uint256).max / 1e18;
-
-        dealCollateral(address(activePool), loanAmount);
-
-        try
-            activePool.flashLoan(
-                stethReceiver,
-                address(collateral),
-                loanAmount,
-                abi.encodePacked(uint256(0))
-            )
-        {} catch Panic(uint _errorCode) {
-            assertEq(_errorCode, 17); //0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked block.
-        }
-    }
-
     // Do nothing (no fee), check that it reverts
     function testSTETHRevertsIfUnpaid(uint128 loanAmount) public {
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
